@@ -327,7 +327,7 @@ function updateFullScreenAllergySummary() {
   const summary = document.getElementById("mobileViewerAllergySummary");
   if (!summary) return;
   const uniqueKeys = Array.from(
-    new Set((state.allergies || []).map(norm)),
+    new Set((state.allergies || []).map(normalizeAllergen).filter(Boolean)),
   ).filter(Boolean);
   const selectedDiets = state.diets || [];
 
@@ -1049,6 +1049,7 @@ const esc = (s) =>
         "'": "&#39;",
       })[m],
   );
+const norm = (value) => String(value ?? "").toLowerCase().trim();
 const cap = (s) =>
   (s || "")
     .split(" ")
@@ -2794,7 +2795,7 @@ function renderCardsPage() {
 /* chips */
 function renderSavedChips(el) {
   el.innerHTML = "";
-  const saved = (state.allergies || []).map(norm);
+  const saved = (state.allergies || []).map(normalizeAllergen).filter(Boolean);
   if (!saved.length) {
     el.appendChild(
       div(
@@ -2842,7 +2843,7 @@ function renderSavedDiets(el) {
 
 function renderSelectedChips(el) {
   el.innerHTML = "";
-  const selected = (state.allergies || []).map(norm);
+  const selected = (state.allergies || []).map(normalizeAllergen).filter(Boolean);
   if (!selected.length) {
     el.appendChild(div('<div class="note">No allergens selected.</div>'));
     updateFullScreenAllergySummary();
