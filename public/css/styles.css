@@ -2426,13 +2426,28 @@ body.editorView .menuWrap.show {
   -webkit-overflow-scrolling: auto;
 }
 
-/* Hide topbar and other elements when menu is zoomed */
+/* Fade topbar/toolbar when menu is zoomed */
+.simple-topbar,
+.wrap > *:not(.content),
+#root > *:not(.menuWrap) {
+  transition: opacity 0.3s ease;
+}
+
 body.menuZoomed .simple-topbar,
 body.menuZoomed .wrap > *:not(.content),
 body.menuZoomed #root > *:not(.menuWrap) {
-  display: none !important;
+  opacity: 0;
+  pointer-events: none;
+}
+body.menuZoomingOut .simple-topbar,
+body.menuZoomingOut .wrap > *:not(.content),
+body.menuZoomingOut #root > *:not(.menuWrap) {
+  pointer-events: none;
 }
 body.menuZoomed {
+  overflow: hidden;
+}
+body.menuZoomingOut {
   overflow: hidden;
 }
 

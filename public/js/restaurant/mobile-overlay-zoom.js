@@ -164,6 +164,8 @@ export function initMobileOverlayZoom(deps = {}) {
     const menuWrap = document.querySelector(".menuWrap");
     if (!menuWrap || !overlayEl) return;
 
+    document.body.classList.remove("menuZoomingOut");
+
     const menuInner = overlayEl.closest(".menuInner");
     const menuImg = menuInner?.querySelector(".menuImg");
     if (!menuInner || !menuImg) return;
@@ -313,12 +315,14 @@ export function initMobileOverlayZoom(deps = {}) {
     const menuWrap = document.querySelector(".menuWrap");
     if (!menuWrap || isZoomingOut) return;
     isZoomingOut = true;
+    document.body.classList.remove("menuZoomed");
+    document.body.classList.add("menuZoomingOut");
 
     const activeInner =
       currentZoomTransform.menuInner ||
       menuWrap.querySelector(".menuSection.zoomed-active .menuInner");
     const allMenuInners = menuWrap.querySelectorAll(".menuInner");
-    const zoomOutDuration = 320;
+    const zoomOutDuration = 300;
 
     currentZoomScale = 1;
     document.documentElement.style.setProperty("--overlay-zoom-scale", 1);
@@ -356,6 +360,7 @@ export function initMobileOverlayZoom(deps = {}) {
 
       document.body.style.overflow = "";
       document.body.classList.remove("menuZoomed");
+      document.body.classList.remove("menuZoomingOut");
 
       document
         .querySelectorAll(".overlay.selected")
@@ -388,7 +393,7 @@ export function initMobileOverlayZoom(deps = {}) {
       return;
     }
 
-    activeInner.style.transition = "transform 0.32s ease-out";
+    activeInner.style.transition = "transform 0.3s ease-out";
     activeInner.style.transformOrigin = "0 0";
 
     requestAnimationFrame(() => {
