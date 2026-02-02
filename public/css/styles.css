@@ -1921,6 +1921,7 @@ body.menuScrollLocked .menuWrap {
   display: grid;
   gap: 6px;
   align-items: stretch;
+  padding-right: 4px;
 }
 
 .editorToolbar .btn {
