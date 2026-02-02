@@ -65,15 +65,15 @@ type AllergenDietPromptContext = {
 };
 
 function buildDietCompatibilityBlock(dietLabels: Record<string, string>) {
-  const veganLabel = dietLabels.vegan || 'Vegan';
-  const vegetarianLabel = dietLabels.vegetarian || 'Vegetarian';
-  const pescatarianLabel = dietLabels.pescatarian || 'Pescatarian';
+  const veganLabel = dietLabels.Vegan || 'Vegan';
+  const vegetarianLabel = dietLabels.Vegetarian || 'Vegetarian';
+  const pescatarianLabel = dietLabels.Pescatarian || 'Pescatarian';
 
   return `DIETARY COMPATIBILITY:
 - ${veganLabel}: NO animal products (no meat, fish, milk, eggs, honey, gelatin)
-  → If ${veganLabel.toLowerCase()}, also ${vegetarianLabel.toLowerCase()} and ${pescatarianLabel.toLowerCase()}
+  → If ${veganLabel}, also ${vegetarianLabel} and ${pescatarianLabel}
 - ${vegetarianLabel}: NO meat or fish (may have milk/eggs)
-  → If ${vegetarianLabel.toLowerCase()}, also ${pescatarianLabel.toLowerCase()}
+  → If ${vegetarianLabel}, also ${pescatarianLabel}
 - ${pescatarianLabel}: NO meat (may have fish, milk, eggs)`;
 }
 
@@ -84,31 +84,14 @@ async function getAllergenDietPromptContext(): Promise<AllergenDietPromptContext
     ? config.aiDiets
     : (config.supportedDiets || []);
 
-  const aliasesByAllergen: Record<string, string[]> = {};
-  Object.entries(config.allergenAliases || {}).forEach(([alias, key]) => {
-    if (!alias || !key) return;
-    if (!aliasesByAllergen[key]) {
-      aliasesByAllergen[key] = [];
-    }
-    if (!aliasesByAllergen[key].includes(alias)) {
-      aliasesByAllergen[key].push(alias);
-    }
-  });
-
   const allergenDetectionLines = allergenKeys
-    .map((key) => {
-      const aliases = (aliasesByAllergen[key] || []).filter(
-        (alias) => alias !== key,
-      );
-      const aliasList = aliases.length ? ` (${aliases.join(', ')})` : '';
-      return `- "${key}"${aliasList}`;
-    })
+    .map((key) => `- "${key}"`)
     .join('\n');
 
   const dietLabelMap: Record<string, string> = {};
   (config.diets || []).forEach((diet) => {
     if (diet?.key && diet?.label) {
-      dietLabelMap[diet.key.toLowerCase()] = diet.label;
+      dietLabelMap[diet.label] = diet.label;
     }
   });
 
@@ -126,19 +109,19 @@ async function getAllergenDietPromptContext(): Promise<AllergenDietPromptContext
   const exampleDiets = cleanedDietLabels.slice(0, 3);
   const exampleDietsJson = JSON.stringify(exampleDiets);
   const singleDiet =
-    dietLabelMap.pescatarian ||
-    dietLabelMap.vegetarian ||
-    dietLabelMap.vegan ||
+    dietLabelMap.Pescatarian ||
+    dietLabelMap.Vegetarian ||
+    dietLabelMap.Vegan ||
     exampleDiets[0] ||
     '';
   const exampleDietSingleJson = JSON.stringify(singleDiet ? [singleDiet] : []);
   const exampleDietLabelsText = exampleDiets.join(', ');
 
   return {
-    allergenDetectionBlock: `ALLERGEN DETECTION (ONLY from list below):\n${allergenDetectionLines}`,
+    allergenDetectionBlock: `ALLERGEN DETECTION (ONLY from list below, use exact names):\n${allergenDetectionLines}`,
     allergenListText: allergenKeys.join(', '),
     dietListText: dietLabels.join(', '),
-    dietCompatibilityBlock: buildDietCompatibilityBlock(dietLabelMap),
+    dietCompatibilityBlock: `${buildDietCompatibilityBlock(dietLabelMap)}\nUse ONLY these exact diet names in output: ${dietLabels.join(', ')}`,
     exampleAllergensSingleJson,
     exampleAllergensMultiJson,
     exampleDietSingleJson,
@@ -1736,12 +1719,18 @@ serve(async (req) => {
     for (const source of sourcesWithData) {
       // Collect allergens
       if (source.allergens && source.allergens.length > 0) {
-        source.allergens.forEach(a => allAllergens.add(a.toLowerCase()));
+        source.allergens.forEach(a => {
+          const raw = String(a ?? '').trim();
+          if (raw) allAllergens.add(raw);
+        });
       }
 
       // Collect diets
       if (source.diets && source.diets.length > 0) {
-        source.diets.forEach(d => allDiets.add(d.toLowerCase()));
+        source.diets.forEach(d => {
+          const raw = String(d ?? '').trim();
+          if (raw) allDiets.add(raw);
+        });
       }
 
       // Track if we have explicit statements

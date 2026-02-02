@@ -18,16 +18,6 @@ type DietRow = {
   is_ai_enabled: boolean | null;
 };
 
-type AllergenAliasRow = {
-  alias: string | null;
-  allergen?: { key?: string | null } | null;
-};
-
-type DietAliasRow = {
-  alias: string | null;
-  diet?: { key?: string | null; label?: string | null } | null;
-};
-
 type DietConflictRow = {
   diet?: { label?: string | null } | null;
   allergen?: { key?: string | null } | null;
@@ -36,8 +26,6 @@ type DietConflictRow = {
 export type AllergenDietConfig = {
   allergens: AllergenRow[];
   diets: DietRow[];
-  allergenAliases: Record<string, string>;
-  dietAliases: Record<string, string>;
   dietAllergenConflicts: Record<string, string[]>;
   allergenLabels: Record<string, string>;
   allergenEmoji: Record<string, string>;
@@ -52,20 +40,15 @@ const cache: { value: AllergenDietConfig | null; loadedAt: number } = {
   loadedAt: 0,
 };
 
-const norm = (value?: string | null) =>
-  (value || "").toString().trim().toLowerCase();
+const asText = (value?: string | null) => (value || "").toString().trim();
 
 const buildConfig = ({
   allergens = [],
   diets = [],
-  allergenAliases = [],
-  dietAliases = [],
   dietConflicts = [],
 }: {
   allergens?: AllergenRow[];
   diets?: DietRow[];
-  allergenAliases?: AllergenAliasRow[];
-  dietAliases?: DietAliasRow[];
   dietConflicts?: DietConflictRow[];
 } = {}): AllergenDietConfig => {
   const allergenLabels: Record<string, string> = {};
@@ -74,7 +57,7 @@ const buildConfig = ({
   const cleanedAllergens: AllergenRow[] = [];
 
   allergens.forEach((row) => {
-    const key = norm(row?.key);
+    const key = asText(row?.key);
     if (!key) return;
     cleanedAllergens.push(row);
     if (!allergenOrder.has(key)) {
@@ -86,25 +69,14 @@ const buildConfig = ({
     }
   });
 
-  const allergenAliasesMap: Record<string, string> = {};
-  allergenAliases.forEach((row) => {
-    const alias = norm(row?.alias);
-    const key = norm(row?.allergen?.key);
-    if (alias && key) {
-      allergenAliasesMap[alias] = key;
-    }
-  });
-
   const dietEmoji: Record<string, string> = {};
-  const dietAliasesMap: Record<string, string> = {};
   const supportedDiets: string[] = [];
   const aiDiets: string[] = [];
   const cleanedDiets: DietRow[] = [];
 
   diets.forEach((row) => {
-    const label = row?.label ? String(row.label) : "";
-    const key = norm(row?.key || label);
-    if (!key) return;
+    const label = asText(row?.label);
+    if (!label) return;
     cleanedDiets.push(row);
     if (label && row?.is_supported !== false) {
       supportedDiets.push(label);
@@ -112,27 +84,15 @@ const buildConfig = ({
     if (label && row?.is_ai_enabled !== false) {
       aiDiets.push(label);
     }
-    if (row?.emoji) {
-      dietEmoji[key] = String(row.emoji);
-      const labelKey = norm(label);
-      if (labelKey && !dietEmoji[labelKey]) {
-        dietEmoji[labelKey] = String(row.emoji);
-      }
-    }
-  });
-
-  dietAliases.forEach((row) => {
-    const alias = norm(row?.alias);
-    const label = row?.diet?.label;
-    if (alias && label) {
-      dietAliasesMap[alias] = String(label);
+    if (row?.emoji && label) {
+      dietEmoji[label] = String(row.emoji);
     }
   });
 
   const dietAllergenConflicts: Record<string, string[]> = {};
   dietConflicts.forEach((row) => {
-    const dietLabel = row?.diet?.label;
-    const allergenKey = norm(row?.allergen?.key);
+    const dietLabel = asText(row?.diet?.label);
+    const allergenKey = asText(row?.allergen?.key);
     if (!dietLabel || !allergenKey) return;
     if (!dietAllergenConflicts[dietLabel]) {
       dietAllergenConflicts[dietLabel] = [];
@@ -153,8 +113,6 @@ const buildConfig = ({
   return {
     allergens: cleanedAllergens,
     diets: cleanedDiets,
-    allergenAliases: allergenAliasesMap,
-    dietAliases: dietAliasesMap,
     dietAllergenConflicts,
     allergenLabels,
     allergenEmoji,
@@ -178,36 +136,27 @@ export async function fetchAllergenDietConfig(): Promise<AllergenDietConfig> {
   }
 
   const client = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-  const [allergensRes, allergenAliasesRes, dietsRes, dietAliasesRes, dietConflictsRes] =
-    await Promise.all([
-      client
-        .from("allergens")
-        .select("key, label, emoji, sort_order, is_active")
-        .eq("is_active", true)
-        .order("sort_order", { ascending: true }),
-      client
-        .from("allergen_aliases")
-        .select("alias, allergen:allergen_id ( key )"),
-      client
-        .from("diets")
-        .select(
-          "key, label, emoji, sort_order, is_active, is_supported, is_ai_enabled",
-        )
-        .eq("is_active", true)
-        .order("sort_order", { ascending: true }),
-      client.from("diet_aliases").select("alias, diet:diet_id ( label, key )"),
-      client
-        .from("diet_allergen_conflicts")
-        .select("diet:diet_id ( label ), allergen:allergen_id ( key )"),
-    ]);
+  const [allergensRes, dietsRes, dietConflictsRes] = await Promise.all([
+    client
+      .from("allergens")
+      .select("key, label, emoji, sort_order, is_active")
+      .eq("is_active", true)
+      .order("sort_order", { ascending: true }),
+    client
+      .from("diets")
+      .select(
+        "key, label, emoji, sort_order, is_active, is_supported, is_ai_enabled",
+      )
+      .eq("is_active", true)
+      .order("sort_order", { ascending: true }),
+    client
+      .from("diet_allergen_conflicts")
+      .select("diet:diet_id ( label ), allergen:allergen_id ( key )"),
+  ]);
 
   const config = buildConfig({
     allergens: Array.isArray(allergensRes.data) ? allergensRes.data : [],
     diets: Array.isArray(dietsRes.data) ? dietsRes.data : [],
-    allergenAliases: Array.isArray(allergenAliasesRes.data)
-      ? allergenAliasesRes.data
-      : [],
-    dietAliases: Array.isArray(dietAliasesRes.data) ? dietAliasesRes.data : [],
     dietConflicts: Array.isArray(dietConflictsRes.data)
       ? dietConflictsRes.data
       : [],

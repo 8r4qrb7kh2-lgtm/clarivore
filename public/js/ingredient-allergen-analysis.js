@@ -71,39 +71,17 @@ export async function analyzeAllergensWithLabelCropper(transcriptLines) {
         : {};
   const allergenKeys = Array.isArray(config.ALLERGENS) ? config.ALLERGENS : [];
   const dietLabels = Array.isArray(config.DIETS) ? config.DIETS : [];
-  const formatAllergenLabel =
-    typeof config.formatAllergenLabel === "function"
-      ? config.formatAllergenLabel
-      : (value) => String(value || "");
-  const allergenAliases =
-    config.ALLERGEN_ALIASES && typeof config.ALLERGEN_ALIASES === "object"
-      ? config.ALLERGEN_ALIASES
-      : {};
-  const aliasByAllergen = {};
-  Object.entries(allergenAliases).forEach(([alias, key]) => {
-    if (!alias || !key || alias === key) return;
-    if (!aliasByAllergen[key]) aliasByAllergen[key] = [];
-    if (!aliasByAllergen[key].includes(alias)) {
-      aliasByAllergen[key].push(alias);
-    }
-  });
-  const allergenListText = allergenKeys
-    .map((key) => {
-      const label = formatAllergenLabel(key) || key;
-      const aliases = aliasByAllergen[key] || [];
-      const aliasText = aliases.length ? ` (includes ${aliases.join(", ")})` : "";
-      return `${label}${aliasText}`;
-    })
-    .join(", ");
+  const allergenListText = allergenKeys.join(", ");
   const dietLabelMap = {};
   dietLabels.forEach((diet) => {
     if (!diet) return;
-    dietLabelMap[String(diet).toLowerCase()] = diet;
+    dietLabelMap[String(diet)] = diet;
   });
-  const veganLabel = dietLabelMap.vegan;
-  const vegetarianLabel = dietLabelMap.vegetarian;
-  const pescatarianLabel = dietLabelMap.pescatarian;
-  const glutenFreeLabel = dietLabelMap["gluten-free"];
+  const veganLabel = dietLabelMap.Vegan;
+  const vegetarianLabel = dietLabelMap.Vegetarian;
+  const pescatarianLabel = dietLabelMap.Pescatarian;
+  const glutenFreeLabel = dietLabelMap["Gluten-free"];
+  const dietListText = dietLabels.join(", ");
   const dietViolationText = [
     veganLabel ? `${veganLabel} (no animal products)` : null,
     vegetarianLabel ? `${vegetarianLabel} (no meat/fish)` : null,
@@ -139,6 +117,9 @@ ${indexedWordList}
 Analyze for:
 - Allergens: ${allergenListText}
 - Diet violations: ${dietViolationText}
+Use ONLY these exact names in your output:
+- Allergens: ${allergenListText}
+- Diets: ${dietListText}
 
 IMPORTANT: Look for TWO types of allergen declarations:
 1. Allergens in the ingredient list itself (e.g., "wheat flour", "milk", "soybean oil")
@@ -158,14 +139,14 @@ Return ONLY valid JSON:
 {
   "ingredient": "WHEAT",
   "word_indices": [45],
-  "allergens": ["Wheat"],
+  "allergens": ["wheat"],
   "diets": ${glutenFreeExample},
   "risk_type": "contained"
 },
 {
   "ingredient": "SOY",
   "word_indices": [46],
-  "allergens": ["Soy"],
+  "allergens": ["soy"],
   "diets": [],
   "risk_type": "contained"
 }

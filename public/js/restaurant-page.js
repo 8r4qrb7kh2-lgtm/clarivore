@@ -78,11 +78,6 @@ const ALLERGENS = Array.isArray(allergenConfig.ALLERGENS)
   ? allergenConfig.ALLERGENS
   : [];
 const DIETS = Array.isArray(allergenConfig.DIETS) ? allergenConfig.DIETS : [];
-const ALLERGEN_ALIASES =
-  allergenConfig.ALLERGEN_ALIASES &&
-  typeof allergenConfig.ALLERGEN_ALIASES === "object"
-    ? allergenConfig.ALLERGEN_ALIASES
-    : {};
 
 let openBrandIdentificationChoice = () => {};
 let showIngredientPhotoUploadModal = () => {};
@@ -118,7 +113,12 @@ const DIET_EMOJI =
 const normalizeAllergen =
   typeof allergenConfig.normalizeAllergen === "function"
     ? allergenConfig.normalizeAllergen
-    : (value) => (value || "").toString().trim().toLowerCase();
+    : (value) => {
+        const raw = String(value ?? "").trim();
+        if (!raw) return "";
+        if (!ALLERGENS.length) return raw;
+        return ALLERGENS.includes(raw) ? raw : "";
+      };
 const getDietAllergenConflicts =
   typeof allergenConfig.getDietAllergenConflicts === "function"
     ? allergenConfig.getDietAllergenConflicts
@@ -350,7 +350,7 @@ function updateFullScreenAllergySummary() {
     if (selectedDiets.length) {
       const dietBadges = selectedDiets
         .map((d) => {
-          const emoji = DIET_EMOJI[d.toLowerCase()] || "🍽️";
+          const emoji = DIET_EMOJI[d] || "🍽️";
           return `<span style="display:inline-flex;align-items:center;gap:3px;background:rgba(34,197,94,0.15);border:1px solid rgba(34,197,94,0.4);border-radius:999px;padding:3px 8px;font-size:0.8rem;white-space:nowrap;"><span>${emoji}</span><span>${esc(d)}</span></span>`;
         })
         .join("");
@@ -1037,7 +1037,6 @@ if (qrPromoSignupBtn) {
     }
   };
 }
-const norm = (s) => (s || "").toString().trim().toLowerCase();
 const esc = (s) =>
   (s ?? "").toString().replace(
     /[&<>"']/g,
@@ -1114,11 +1113,11 @@ const normalizeDietLabel =
   typeof allergenConfig.normalizeDietLabel === "function"
     ? allergenConfig.normalizeDietLabel
     : (diet) => {
-        if (!diet) return "";
-        const lower = diet.toString().trim().toLowerCase();
-        const match = DIETS.find((d) => d.toLowerCase() === lower);
-        return match || diet.toString().trim();
-      };
+      if (!diet) return "";
+      const raw = diet.toString().trim();
+      if (!DIETS.length) return raw;
+      return DIETS.includes(raw) ? raw : "";
+    };
 const fmtDate = (d) => {
   try {
     const x = new Date(d);
@@ -1147,7 +1146,6 @@ const aiAssistantApi = initAiAssistant({
   getDietAllergenConflicts,
   getIssueReportMeta,
   ALLERGENS,
-  ALLERGEN_ALIASES,
   ALLERGEN_EMOJI,
   DIETS,
   DIET_EMOJI,
@@ -1340,10 +1338,12 @@ function normalizeRestaurant(row) {
     );
     normalized.mayContainDiets = normalizeDietList(overlay.mayContainDiets);
     normalized.removable = Array.isArray(overlay.removable)
-      ? overlay.removable.map((r) => ({
-          ...r,
-          allergen: normalizeAllergen(r.allergen) || r.allergen,
-        }))
+      ? overlay.removable
+          .map((r) => ({
+            ...r,
+            allergen: normalizeAllergen(r.allergen),
+          }))
+          .filter((r) => r.allergen)
       : [];
     if (Array.isArray(overlay.ingredients)) {
       normalized.ingredients = overlay.ingredients.map((ingredient) => ({
@@ -1518,8 +1518,8 @@ function hasCrossContamination(item, sel, userDiets) {
   const hasDietCross =
     normalizedDiets.length > 0 &&
     (item.crossContaminationDiets || []).some((d) => {
-      const normalized = normalizeDietLabel(d) || d;
-      return normalizedDiets.includes(normalized);
+      const normalized = normalizeDietLabel(d);
+      return normalized ? normalizedDiets.includes(normalized) : false;
     });
 
   return hasAllergenCross || hasDietCross;
@@ -1589,8 +1589,7 @@ function tooltipBodyHTML(item, sel, userDiets, isClick = false) {
 
           // Only show ingredient details when clicked (desktop) or always on mobile
           if (showDetails) {
-            const ingredientInfo =
-              details[detailKey] || details[norm(detailKey)] || details[a];
+            const ingredientInfo = details[detailKey] || details[a];
             if (ingredientInfo) {
               // Extract just the ingredients part (remove "Contains " prefix if present)
               const ingredients = ingredientInfo.replace(/^Contains\s+/i, "");
@@ -1613,13 +1612,12 @@ function tooltipBodyHTML(item, sel, userDiets, isClick = false) {
           const label = formatAllergenLabel(a);
           const detailKey = allergenKeyMap.get(a) || a;
           let text = `${emoji} Can be made <strong>${esc(
-            label.toLowerCase(),
+            label,
           )}</strong>-free`;
 
           // Only show ingredient details when clicked (desktop) or always on mobile
           if (showDetails) {
-            const ingredientInfo =
-              details[detailKey] || details[norm(detailKey)] || details[a];
+            const ingredientInfo = details[detailKey] || details[a];
             if (ingredientInfo) {
               // Extract just the ingredients part (remove "Contains " prefix if present)
               const ingredients = ingredientInfo.replace(/^Contains\s+/i, "");
@@ -1645,7 +1643,7 @@ function tooltipBodyHTML(item, sel, userDiets, isClick = false) {
           const emoji = ALLERGEN_EMOJI[normalizeAllergen(a)] || "✅";
           const label = formatAllergenLabel(a);
           return `<div style="margin-bottom:4px;color:#4cc85a;font-size:0.9rem">${emoji} This dish is free of <strong>${esc(
-            label.toLowerCase(),
+            label,
           )}</strong></div>`;
         })
         .join("");
@@ -1673,8 +1671,7 @@ function tooltipBodyHTML(item, sel, userDiets, isClick = false) {
 
     normalizedDiets.forEach((userDiet) => {
       const isDietMet = itemDietSet.has(userDiet);
-      const emoji = DIET_EMOJI[userDiet.toLowerCase()] || "✓";
-      const dietLower = userDiet.toLowerCase();
+      const emoji = DIET_EMOJI[userDiet] || "✓";
 
       // Check if there are removable allergens or blocking ingredients that would affect this diet
       const conflicts = getDietAllergenConflicts(userDiet);
@@ -1707,10 +1704,10 @@ function tooltipBodyHTML(item, sel, userDiets, isClick = false) {
 
       if (isDietMet && !hasRemovableBlockers) {
         // Diet is met and no removable blockers - show green "is"
-        html += `<div style="margin-bottom:6px;color:#4cc85a;font-size:0.9rem">${emoji} This dish is <strong>${esc(dietLower)}</strong></div>`;
+        html += `<div style="margin-bottom:6px;color:#4cc85a;font-size:0.9rem">${emoji} This dish is <strong>${esc(userDiet)}</strong></div>`;
       } else if (isDietMet && hasRemovableBlockers) {
         // Diet is met but has removable blockers for this diet - show yellow "can be made"
-        html += `<div style="margin-bottom:6px;color:#facc15;font-size:0.9rem">${emoji} Can be made <strong>${esc(dietLower)}</strong></div>`;
+        html += `<div style="margin-bottom:6px;color:#facc15;font-size:0.9rem">${emoji} Can be made <strong>${esc(userDiet)}</strong></div>`;
       } else {
         // Diet is not met - check if it can be made to meet the diet
         // (conflicts, conflictingAllergens, allConflictingAllergensRemovable, blockingIngredients, and allBlockingIngredientsRemovable already defined above)
@@ -1749,10 +1746,10 @@ function tooltipBodyHTML(item, sel, userDiets, isClick = false) {
 
         if (canBeMade) {
           // All blocking ingredients/allergens can be substituted out - show yellow (same as allergen warning color)
-          html += `<div style="margin-bottom:6px;color:#facc15;font-size:0.9rem">${emoji} Can be made <strong>${esc(dietLower)}</strong></div>`;
+          html += `<div style="margin-bottom:6px;color:#facc15;font-size:0.9rem">${emoji} Can be made <strong>${esc(userDiet)}</strong></div>`;
         } else {
           // Cannot be made to meet the diet - show red
-          let dietText = `${emoji} This dish is not <strong>${esc(dietLower)}</strong>`;
+          let dietText = `${emoji} This dish is not <strong>${esc(userDiet)}</strong>`;
 
           // Only show ingredient details when clicked (desktop) or always on mobile
           if (showDetails && blockingIngredients.length > 0) {
@@ -1801,7 +1798,7 @@ function tooltipBodyHTML(item, sel, userDiets, isClick = false) {
 
     // Add diet cross-contamination items
     dietCrossHits.forEach((d) => {
-      const emoji = DIET_EMOJI[d.toLowerCase()] || "🍽️";
+      const emoji = DIET_EMOJI[d] || "🍽️";
       allCrossItems.push(`${emoji} <strong>${esc(d)}</strong>`);
     });
 
@@ -2101,23 +2098,21 @@ function mobileCompactBodyHTML(item, sel, userDiets) {
     });
     normalizedAllergens.forEach((allergen) => {
       const label = formatAllergenLabel(allergen);
-      const labelLower = label.toLowerCase();
       const isDanger = dishAllergens.includes(allergen);
       const isCrossContamination = dishCrossContamination.includes(allergen);
       const emoji = ALLERGEN_EMOJI[allergen] || "⚠️";
 
       if (isDanger) {
         const detailKey = allergenKeyMap.get(allergen) || allergen;
-        const ingredientInfo =
-          details[detailKey] || details[norm(detailKey)] || details[allergen];
+        const ingredientInfo = details[detailKey] || details[allergen];
         const ingredients = ingredientInfo
           ? ingredientInfo.replace(/^Contains\s+/i, "")
           : "";
-        allergenRed.push({ emoji, text: labelLower, subtext: ingredients });
+        allergenRed.push({ emoji, text: label, subtext: ingredients });
       } else if (isCrossContamination) {
-        allergenYellow.push({ emoji, text: labelLower });
+        allergenYellow.push({ emoji, text: label });
       } else {
-        allergenGreen.push({ emoji, text: `${labelLower}-free` });
+        allergenGreen.push({ emoji, text: `${label}-free` });
       }
     });
   }
@@ -2134,17 +2129,14 @@ function mobileCompactBodyHTML(item, sel, userDiets) {
     );
     normalizedDiets.forEach((userDiet) => {
       const isDietMet = itemDietSet.has(userDiet);
-      const emoji = DIET_EMOJI[userDiet.toLowerCase()] || "🍽️";
-      const dietLower = userDiet.toLowerCase();
+      const emoji = DIET_EMOJI[userDiet] || "🍽️";
       const hasCrossContamination = crossContaminationDietSet.has(userDiet);
       const blockingIngredients =
-        item.ingredientsBlockingDiets?.[userDiet] ||
-        item.ingredientsBlockingDiets?.[dietLower] ||
-        [];
+        item.ingredientsBlockingDiets?.[userDiet] || [];
 
       if (isDietMet) {
         if (hasCrossContamination) {
-          dietYellow.push({ emoji, text: dietLower });
+          dietYellow.push({ emoji, text: userDiet });
         } else {
           dietGreen.push({ emoji, text: userDiet });
         }
@@ -2158,7 +2150,7 @@ function mobileCompactBodyHTML(item, sel, userDiets) {
             : "";
         dietRed.push({
           emoji,
-          text: `Not ${dietLower}`,
+          text: `Not ${userDiet}`,
           subtext: ingredientNames,
         });
       }
@@ -2839,7 +2831,7 @@ function renderSavedDiets(el) {
   const row = div("", "chips");
   row.style.cssText = "flex-wrap:nowrap;overflow-x:auto;gap:3px;";
   saved.forEach((d) => {
-    const emoji = DIET_EMOJI[d.toLowerCase()] || "🍽️";
+    const emoji = DIET_EMOJI[d] || "🍽️";
     const chip = div(`${emoji} ${esc(d)}`, "chip active");
     chip.style.cssText =
       "flex-shrink:0;padding:4px 8px;font-size:0.75rem;white-space:nowrap;";
@@ -2881,7 +2873,7 @@ function renderSelectedDiets(el) {
   const row = div("", "chips");
   row.style.cssText = "flex-wrap:nowrap;overflow-x:auto;gap:3px;";
   selected.forEach((d) => {
-    const emoji = DIET_EMOJI[d.toLowerCase()] || "🍽️";
+    const emoji = DIET_EMOJI[d] || "🍽️";
     const chip = div(`${emoji} ${esc(d)}`, "chip active");
     chip.style.cssText =
       "flex-shrink:0;padding:4px 8px;font-size:0.75rem;white-space:nowrap;";
@@ -2960,7 +2952,7 @@ function renderDietSelector(el) {
   const sel = new Set((state.diets || []).map(normalizeDietLabel).filter(Boolean));
   DIETS.forEach((diet) => {
     const isActive = sel.has(diet);
-    const emoji = DIET_EMOJI[diet.toLowerCase()] || "🍽️";
+    const emoji = DIET_EMOJI[diet] || "🍽️";
     const c = div(
       `${emoji} ${esc(diet)}`,
       "chip clickable" + (isActive ? " active" : ""),
@@ -3547,28 +3539,34 @@ function drawMenu(
       if (!restaurantId) return;
 
       // Get user's allergens and diets
-      const userAllergens = state.allergies || [];
-      const userDiets = state.diets || [];
+      const userAllergens = (state.allergies || [])
+        .map(normalizeAllergen)
+        .filter(Boolean);
+      const userDiets = (state.diets || [])
+        .map(normalizeDietLabel)
+        .filter(Boolean);
 
       // Calculate dish status based on user's restrictions
       let dishStatus = "neutral";
-      const dishAllergens = (item.allergens || []).map((a) => a.toLowerCase());
-      const dishDiets = item.diets || []; // Diets the dish IS compatible with
-      const removable = (item.removable || []).map((r) =>
-        (r.allergen || "").toLowerCase(),
-      );
+      const dishAllergens = (item.allergens || [])
+        .map(normalizeAllergen)
+        .filter(Boolean);
+      const dishDiets = (item.diets || [])
+        .map(normalizeDietLabel)
+        .filter(Boolean); // Diets the dish IS compatible with
+      const removable = (item.removable || [])
+        .map((r) => normalizeAllergen(r.allergen))
+        .filter(Boolean);
 
       const hasAllergenConflict = userAllergens.some((a) =>
-        dishAllergens.includes(a.toLowerCase()),
+        dishAllergens.includes(a),
       );
       const hasDietConflict = userDiets.some((d) => !dishDiets.includes(d));
 
       if (hasAllergenConflict || hasDietConflict) {
         // Check if all conflicts are removable
         const nonRemovableAllergens = userAllergens.filter(
-          (a) =>
-            dishAllergens.includes(a.toLowerCase()) &&
-            !removable.includes(a.toLowerCase()),
+          (a) => dishAllergens.includes(a) && !removable.includes(a),
         );
         if (nonRemovableAllergens.length > 0 || hasDietConflict) {
           dishStatus = "unsafe";
@@ -4764,7 +4762,6 @@ function renderEditor() {
     normalizeDietLabel,
     normalizeAllergen,
     ALLERGENS,
-    ALLERGEN_ALIASES,
     DIETS,
     esc,
     norm,
@@ -5616,7 +5613,7 @@ function renderEditor() {
         );
         // Collect mayContain/cross-contamination allergens
         mayContainAllergens.forEach((al) => {
-          const key = norm(al);
+          const key = normalizeAllergen(al);
           if (key) activeMayContainAllergens.add(key);
         });
         // Collect mayContain/cross-contamination diets
@@ -5637,7 +5634,7 @@ function renderEditor() {
             : brand
           : label;
         allergens.forEach((al) => {
-          const key = normalizeAllergen(al) || norm(al);
+          const key = normalizeAllergen(al);
           if (!key) return;
           activeAllergens.add(key);
           if (labelWithBrand) {
@@ -5721,7 +5718,7 @@ function renderEditor() {
       list.querySelectorAll(".algRow").forEach((row) => {
         const btn = row.querySelector(".algBtn");
         const allergen = btn.dataset.a;
-        const key = norm(allergen);
+        const key = normalizeAllergen(allergen);
         const input = row.querySelector(".algInput");
         const labels = row.querySelectorAll(".algChk");
         const remLabel = labels[0];

@@ -563,8 +563,18 @@
     let allergenConfig = {};
     let ALLERGENS = [];
     let DIETS = [];
-    let normalizeAllergen = (value) => (value || '').toString().trim().toLowerCase();
-    let normalizeDietLabel = (value) => value;
+    let normalizeAllergen = (value) => {
+      const raw = String(value ?? '').trim();
+      if (!raw) return '';
+      if (!ALLERGENS.length) return raw;
+      return ALLERGENS.includes(raw) ? raw : '';
+    };
+    let normalizeDietLabel = (value) => {
+      const raw = String(value ?? '').trim();
+      if (!raw) return '';
+      if (!DIETS.length) return raw;
+      return DIETS.includes(raw) ? raw : '';
+    };
     let formatAllergenLabel = (value) => value;
     let getAllergenEmoji = () => '';
     let getDietEmoji = () => '';
@@ -577,10 +587,20 @@
       DIETS = Array.isArray(allergenConfig.DIETS) ? allergenConfig.DIETS : [];
       normalizeAllergen = typeof allergenConfig.normalizeAllergen === 'function'
         ? allergenConfig.normalizeAllergen
-        : (value) => (value || '').toString().trim().toLowerCase();
+        : (value) => {
+            const raw = String(value ?? '').trim();
+            if (!raw) return '';
+            if (!ALLERGENS.length) return raw;
+            return ALLERGENS.includes(raw) ? raw : '';
+          };
       normalizeDietLabel = typeof allergenConfig.normalizeDietLabel === 'function'
         ? allergenConfig.normalizeDietLabel
-        : (value) => value;
+        : (value) => {
+            const raw = String(value ?? '').trim();
+            if (!raw) return '';
+            if (!DIETS.length) return raw;
+            return DIETS.includes(raw) ? raw : '';
+          };
       formatAllergenLabel = typeof allergenConfig.formatAllergenLabel === 'function'
         ? allergenConfig.formatAllergenLabel
         : (value) => value;

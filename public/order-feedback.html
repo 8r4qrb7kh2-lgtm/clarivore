@@ -384,20 +384,44 @@
     const { createClient } = supabase;
     const supabaseClient = createClient(SUPABASE_URL, SUPABASE_KEY);
     let allergenConfig = {};
-    let normalizeAllergen = (value) => (value || '').toString().trim().toLowerCase();
-    let normalizeDietLabel = (value) => value;
+    let ALLERGENS = [];
+    let DIETS = [];
+    let normalizeAllergen = (value) => {
+      const raw = String(value ?? '').trim();
+      if (!raw) return '';
+      if (!ALLERGENS.length) return raw;
+      return ALLERGENS.includes(raw) ? raw : '';
+    };
+    let normalizeDietLabel = (value) => {
+      const raw = String(value ?? '').trim();
+      if (!raw) return '';
+      if (!DIETS.length) return raw;
+      return DIETS.includes(raw) ? raw : '';
+    };
     let getDietAllergenConflicts = () => [];
 
     async function loadAllergenConfig() {
       allergenConfig = window.loadAllergenDietConfig
         ? await window.loadAllergenDietConfig({ supabaseClient })
         : (window.ALLERGEN_DIET_CONFIG || {});
+      ALLERGENS = Array.isArray(allergenConfig.ALLERGENS) ? allergenConfig.ALLERGENS : [];
+      DIETS = Array.isArray(allergenConfig.DIETS) ? allergenConfig.DIETS : [];
       normalizeAllergen = typeof allergenConfig.normalizeAllergen === 'function'
         ? allergenConfig.normalizeAllergen
-        : (value) => (value || '').toString().trim().toLowerCase();
+        : (value) => {
+            const raw = String(value ?? '').trim();
+            if (!raw) return '';
+            if (!ALLERGENS.length) return raw;
+            return ALLERGENS.includes(raw) ? raw : '';
+          };
       normalizeDietLabel = typeof allergenConfig.normalizeDietLabel === 'function'
         ? allergenConfig.normalizeDietLabel
-        : (value) => value;
+        : (value) => {
+            const raw = String(value ?? '').trim();
+            if (!raw) return '';
+            if (!DIETS.length) return raw;
+            return DIETS.includes(raw) ? raw : '';
+          };
       getDietAllergenConflicts = typeof allergenConfig.getDietAllergenConflicts === 'function'
         ? allergenConfig.getDietAllergenConflicts
         : () => [];
@@ -440,10 +464,6 @@
     const selectedDishesSection = document.getElementById('selected-dishes');
     const selectedDishesList = document.getElementById('selected-dishes-list');
     const submitBtn = document.getElementById('submit-btn');
-
-    function norm(str) {
-      return (str || '').toString().toLowerCase().trim();
-    }
 
     function computeStatus(item, allergens, diets) {
       const hasAllergenReqs = allergens && allergens.length > 0;

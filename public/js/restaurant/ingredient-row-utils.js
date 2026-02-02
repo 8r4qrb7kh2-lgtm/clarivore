@@ -2,28 +2,24 @@ export function createIngredientNormalizer(options = {}) {
   const normalizeAllergen =
     typeof options.normalizeAllergen === "function"
       ? options.normalizeAllergen
-      : (value) => String(value ?? "").trim().toLowerCase();
+      : (value) => String(value ?? "").trim();
   const normalizeDietLabel =
     typeof options.normalizeDietLabel === "function"
       ? options.normalizeDietLabel
       : (value) => String(value ?? "").trim();
   const allergenKeys = Array.isArray(options.ALLERGENS)
-    ? options.ALLERGENS.map((item) => String(item ?? "").trim().toLowerCase())
+    ? options.ALLERGENS.map((item) => String(item ?? "").trim())
     : [];
   const dietLabels = Array.isArray(options.DIETS)
     ? options.DIETS.map((item) => String(item ?? "").trim())
     : [];
   const allergenSet = new Set(allergenKeys.filter(Boolean));
-  const dietLabelMap = new Map();
-  dietLabels.forEach((label) => {
-    const lower = label.toLowerCase();
-    if (lower) dietLabelMap.set(lower, label);
-  });
+  const dietLabelSet = new Set(dietLabels.filter(Boolean));
 
   const normalizeAllergenKey = (value) => {
     const normalized = normalizeAllergen(value);
     if (!normalized) return "";
-    const key = String(normalized).trim().toLowerCase();
+    const key = String(normalized).trim();
     if (!key) return "";
     if (allergenSet.size && !allergenSet.has(key)) return "";
     return key;
@@ -34,8 +30,8 @@ export function createIngredientNormalizer(options = {}) {
     if (!normalized) return "";
     const label = String(normalized).trim();
     if (!label) return "";
-    if (!dietLabelMap.size) return label;
-    return dietLabelMap.get(label.toLowerCase()) || "";
+    if (!dietLabelSet.size) return label;
+    return dietLabelSet.has(label) ? label : "";
   };
 
   const normalizeStringArray = (list, normalizer) => {

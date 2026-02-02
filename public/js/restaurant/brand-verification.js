@@ -32,29 +32,27 @@ export function initBrandVerification(deps = {}) {
   const normalizeDietLabel =
     typeof deps.normalizeDietLabel === "function"
       ? deps.normalizeDietLabel
-      : (value) => value;
+      : (value) => {
+          const raw = String(value ?? "").trim();
+          if (!raw) return "";
+          if (!DIETS.length) return raw;
+          return DIETS.includes(raw) ? raw : "";
+        };
   const esc =
     typeof deps.esc === "function"
       ? deps.esc
       : (value) => String(value ?? "");
-  const norm =
-    typeof deps.norm === "function"
-      ? deps.norm
-      : (value) => String(value ?? "").toLowerCase().trim();
   const ALLERGENS = Array.isArray(deps.ALLERGENS) ? deps.ALLERGENS : [];
   const DIETS = Array.isArray(deps.DIETS) ? deps.DIETS : [];
-  const ALLERGEN_ALIASES =
-    deps.ALLERGEN_ALIASES && typeof deps.ALLERGEN_ALIASES === "object"
-      ? deps.ALLERGEN_ALIASES
-      : {};
   const normalizeAllergen =
     typeof deps.normalizeAllergen === "function"
       ? deps.normalizeAllergen
       : (value) => {
-          const lower = String(value ?? "").trim().toLowerCase();
-          if (!lower) return "";
-          return ALLERGEN_ALIASES[lower] || lower;
-        };
+        const raw = String(value ?? "").trim();
+        if (!raw) return "";
+        if (!ALLERGENS.length) return raw;
+        return ALLERGENS.includes(raw) ? raw : "";
+      };
   const ingredientNormalizer = createIngredientNormalizer({
     normalizeAllergen,
     normalizeDietLabel,

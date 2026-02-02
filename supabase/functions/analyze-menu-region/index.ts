@@ -64,6 +64,9 @@ IMPORTANT:
 - Coordinates are 0-100% relative to the cropped region you see
 - Be generous with allergens if unsure - better safe than sorry
 - Only include diets if you're confident (e.g., clear vegetarian dish)
+- Use ONLY these exact names in output:
+  - Allergens: ${allergenKeys.join(", ")}
+  - Diets: ${dietLabels.join(", ")}
 - If the dish has toppings or modifiers listed, include those in details`
 
     // Call Claude API directly

@@ -56,10 +56,20 @@
         : {};
     const normalizeAllergen = typeof allergenConfig.normalizeAllergen === 'function'
       ? allergenConfig.normalizeAllergen
-      : (value) => String(value || '').toLowerCase().trim();
+      : (value) => {
+          const raw = String(value ?? '').trim();
+          if (!raw) return '';
+          if (!ALLERGENS.length) return raw;
+          return ALLERGENS.includes(raw) ? raw : '';
+        };
     const normalizeDietLabel = typeof allergenConfig.normalizeDietLabel === 'function'
       ? allergenConfig.normalizeDietLabel
-      : (value) => value;
+      : (value) => {
+          const raw = String(value ?? '').trim();
+          if (!raw) return '';
+          if (!DIETS.length) return raw;
+          return DIETS.includes(raw) ? raw : '';
+        };
     const formatAllergenLabel = typeof allergenConfig.formatAllergenLabel === 'function'
       ? allergenConfig.formatAllergenLabel
       : (value) => String(value || '');
@@ -1161,24 +1171,30 @@
       });
     }
 
-    function normalizeTagList(list) {
+    function normalizeTagList(list, normalizer) {
       const seen = new Set();
       return (Array.isArray(list) ? list : [])
-        .map(value => String(value || '').trim())
+        .map(value => String(value ?? '').trim())
+        .map(value => normalizer ? normalizer(value) : value)
         .filter(Boolean)
         .filter((value) => {
-          const key = value.toLowerCase();
-          if (seen.has(key)) return false;
-          seen.add(key);
+          if (seen.has(value)) return false;
+          seen.add(value);
           return true;
         });
     }
 
     function applyBrandDetections(ingredient, newBrand) {
-      const brandAllergens = normalizeTagList(newBrand?.allergens);
-      const brandDiets = normalizeTagList(newBrand?.diets);
-      const brandMayContainAllergens = normalizeTagList(newBrand?.mayContainAllergens);
-      const brandMayContainDiets = normalizeTagList(newBrand?.mayContainDiets);
+      const brandAllergens = normalizeTagList(newBrand?.allergens, normalizeAllergen);
+      const brandDiets = normalizeTagList(newBrand?.diets, normalizeDietLabel);
+      const brandMayContainAllergens = normalizeTagList(
+        newBrand?.mayContainAllergens,
+        normalizeAllergen,
+      );
+      const brandMayContainDiets = normalizeTagList(
+        newBrand?.mayContainDiets,
+        normalizeDietLabel,
+      );
       ingredient.allergens = brandAllergens.slice();
       ingredient.diets = brandDiets.slice();
       ingredient.mayContainAllergens = brandMayContainAllergens.slice();
@@ -1485,7 +1501,7 @@
           ${relevantDiets.map(diet =>
             renderDualBarRow(
               diet,
-              DIET_EMOJI[diet.toLowerCase()] || '🍽️',
+              DIET_EMOJI[diet] || '🍽️',
               dietDishStats[diet],
               dietViewStats[diet],
               totalDishes,
@@ -1594,7 +1610,7 @@
         .map(d => ({
           name: d,
           count: dietUserCounts[d].size,
-          emoji: DIET_EMOJI[d.toLowerCase()]
+          emoji: DIET_EMOJI[d]
         }))
         .filter(d => d.count > 0)
         .sort((a, b) => b.count - a.count);
@@ -1966,7 +1982,7 @@
           return `<span class="accommodation-tag">${emoji} ${formatAllergenLabel(a)}</span>`;
         }).join('');
         const dietTagsHtml = cannotAccommodateDiets.map(d => {
-          const emoji = DIET_EMOJI[d.toLowerCase()] || '🍽️';
+          const emoji = DIET_EMOJI[d] || '🍽️';
           return `<span class="accommodation-tag">${emoji} ${d}</span>`;
         }).join('');
         cannotTags.innerHTML = allergenTagsHtml + dietTagsHtml;
@@ -2218,7 +2234,7 @@
         dietBarsEl.innerHTML = Object.entries(dietConflictCounts)
           .sort((a, b) => b[1] - a[1]) // Sort by count descending
           .map(([diet, count]) => {
-            const emoji = DIET_EMOJI[diet.toLowerCase()] || '🍽️';
+            const emoji = DIET_EMOJI[diet] || '🍽️';
             const widthPercent = (count / maxConflict) * 100;
             return `
               <div class="conflict-bar-row">
@@ -2620,7 +2636,7 @@
           if (topAllergen && topAllergen[1] >= 2) {
             suggestions.push({
               title: `Add ${formatAllergenLabel(topAllergen[0])}-free option for "${dishName}"`,
-              description: `${topAllergen[1]} users have requested a ${formatAllergenLabel(topAllergen[0]).toLowerCase()}-free version of this dish. Consider adding a substitution option.`,
+              description: `${topAllergen[1]} users have requested a ${formatAllergenLabel(topAllergen[0])}-free version of this dish. Consider adding a substitution option.`,
               potentialUsers: topAllergen[1] * 5, // Estimated impact
               priority: topAllergen[1] >= 5 ? 'high' : topAllergen[1] >= 3 ? 'medium' : 'low'
             });
@@ -2629,7 +2645,7 @@
           if (topDiet && topDiet[1] >= 2) {
             suggestions.push({
               title: `Make "${dishName}" available for ${topDiet[0]} diners`,
-              description: `${topDiet[1]} ${topDiet[0].toLowerCase()} users have requested this dish. Consider creating a ${topDiet[0].toLowerCase()} version.`,
+              description: `${topDiet[1]} ${topDiet[0]} users have requested this dish. Consider creating a ${topDiet[0]} version.`,
               potentialUsers: topDiet[1] * 5,
               priority: topDiet[1] >= 5 ? 'high' : topDiet[1] >= 3 ? 'medium' : 'low'
             });

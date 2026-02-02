@@ -38,7 +38,7 @@ serve(async (req) => {
     const dietLabelMap: Record<string, string> = {}
     ;(config.diets || []).forEach((diet) => {
       if (diet?.key && diet?.label) {
-        dietLabelMap[diet.key.toLowerCase()] = diet.label
+        dietLabelMap[diet.key] = diet.label
       }
     })
     const veganLabel = dietLabelMap.vegan || 'Vegan'
@@ -67,6 +67,9 @@ IMPORTANT INSTRUCTIONS:
 4. INCLUDE optional ingredients, garnishes, and toppings - they still need allergen awareness!
 5. For each ingredient, identify allergens from this list: ${allergenListText}
 6. Also determine which dietary options the overall dish meets from this list: ${dietListText}
+Use ONLY these exact names in your output:
+- Allergens: ${allergenListText}
+- Diets: ${dietListText}
 7. Even if the image format is unexpected, extract food items mentioned and return valid JSON
 8. If the image is unclear, indicate that in imageQuality but STILL return valid JSON
 
@@ -120,6 +123,9 @@ Analyze the dish description and extract:
 2. Likely brands (if mentioned)
 3. Potential allergens from this list: ${allergenListText}
 4. Dietary options the dish meets from this list: ${dietListText}
+Use ONLY these exact names in your output:
+- Allergens: ${allergenListText}
+- Diets: ${dietListText}
 
 IMPORTANT: Include ALL mentioned ingredients, even if they are:
 - Optional ("optionally add paprika")

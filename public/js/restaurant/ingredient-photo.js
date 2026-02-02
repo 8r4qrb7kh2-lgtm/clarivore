@@ -24,7 +24,12 @@ export function initIngredientPhotoAnalysis(deps = {}) {
   const normalizeDietLabel =
     typeof deps.normalizeDietLabel === "function"
       ? deps.normalizeDietLabel
-      : (value) => value;
+      : (value) => {
+          const raw = String(value ?? "").trim();
+          if (!raw) return "";
+          if (!DIETS.length) return raw;
+          return DIETS.includes(raw) ? raw : "";
+        };
   const compressImage =
     typeof deps.compressImage === "function"
       ? deps.compressImage
@@ -35,18 +40,14 @@ export function initIngredientPhotoAnalysis(deps = {}) {
       : () => ({});
   const ALLERGENS = Array.isArray(deps.ALLERGENS) ? deps.ALLERGENS : [];
   const DIETS = Array.isArray(deps.DIETS) ? deps.DIETS : [];
-  const ALLERGEN_ALIASES =
-    deps.ALLERGEN_ALIASES && typeof deps.ALLERGEN_ALIASES === "object"
-      ? deps.ALLERGEN_ALIASES
-      : {};
   const normalizeAllergen =
     typeof deps.normalizeAllergen === "function"
       ? deps.normalizeAllergen
       : (value) => {
-          const raw = String(value || "").toLowerCase().trim();
+          const raw = String(value || "").trim();
           if (!raw) return "";
-          const resolved = ALLERGEN_ALIASES[raw] || raw;
-          return ALLERGENS.includes(resolved) ? resolved : "";
+          if (!ALLERGENS.length) return raw;
+          return ALLERGENS.includes(raw) ? raw : "";
         };
   const formatAllergenLabel =
     typeof deps.formatAllergenLabel === "function"

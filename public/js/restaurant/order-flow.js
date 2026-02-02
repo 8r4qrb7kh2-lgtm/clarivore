@@ -17,7 +17,6 @@ import {
 } from "../tablet-sync.js";
 import { saveTabletOrder, fetchTabletOrders } from "../tablet-orders-api.js";
 
-const norm = (s) => (s || "").toString().trim().toLowerCase();
 const esc = (s) =>
   (s ?? "").toString().replace(
     /[&<>"']/g,
@@ -37,14 +36,28 @@ const allergenConfig =
     : typeof window !== "undefined"
       ? window.ALLERGEN_DIET_CONFIG || {}
       : {};
+const ALLERGENS = Array.isArray(allergenConfig.ALLERGENS)
+  ? allergenConfig.ALLERGENS
+  : [];
+const DIETS = Array.isArray(allergenConfig.DIETS) ? allergenConfig.DIETS : [];
 const normalizeAllergen =
   typeof allergenConfig.normalizeAllergen === "function"
     ? allergenConfig.normalizeAllergen
-    : (value) => norm(value);
+    : (value) => {
+        const raw = String(value ?? "").trim();
+        if (!raw) return "";
+        if (!ALLERGENS.length) return raw;
+        return ALLERGENS.includes(raw) ? raw : "";
+      };
 const normalizeDietLabel =
   typeof allergenConfig.normalizeDietLabel === "function"
     ? allergenConfig.normalizeDietLabel
-    : (value) => value;
+    : (value) => {
+        const raw = String(value ?? "").trim();
+        if (!raw) return "";
+        if (!DIETS.length) return raw;
+        return DIETS.includes(raw) ? raw : "";
+      };
 const formatPreferenceLabel =
   typeof allergenConfig.formatPreferenceLabel === "function"
     ? allergenConfig.formatPreferenceLabel
@@ -2090,7 +2103,7 @@ export function initOrderFlow({
         } else if (removableAllergens.has(normalized)) {
           details.allergenMessages.push({
             type: "warn",
-            text: `Can be made ${friendly.toLowerCase()}-free`,
+            text: `Can be made ${friendly}-free`,
           });
           trackSeverity("warn");
         } else {
@@ -2129,25 +2142,25 @@ export function initOrderFlow({
         if (dishDietSet.has(diet)) {
           details.dietMessages.push({
             type: "success",
-            text: `Meets ${friendlyDiet.toLowerCase()}`,
+            text: `Meets ${friendlyDiet}`,
           });
         } else if (allBlockingRemovable) {
           details.dietMessages.push({
             type: "warn",
-            text: `Can be made ${friendlyDiet.toLowerCase()}`,
+            text: `Can be made ${friendlyDiet}`,
           });
           trackSeverity("warn");
         } else if (blockingAllergens.length > 0) {
           details.dietMessages.push({
             type: "danger",
-            text: `Not ${friendlyDiet.toLowerCase()}`,
+            text: `Not ${friendlyDiet}`,
           });
           trackSeverity("danger");
           details.issues.diets.push(friendlyDiet);
         } else {
           details.dietMessages.push({
             type: "danger",
-            text: `Not ${friendlyDiet.toLowerCase()}`,
+            text: `Not ${friendlyDiet}`,
           });
           trackSeverity("danger");
           details.issues.diets.push(friendlyDiet);
@@ -2233,7 +2246,7 @@ export function initOrderFlow({
       parts.push(`${dishName} contains ${list} that cannot be accommodated.`);
     }
     if (details.issues?.diets?.length) {
-      const list = details.issues.diets.map((d) => d.toLowerCase()).join(", ");
+      const list = details.issues.diets.join(", ");
       parts.push(
         `${dishName} does not meet your ${list} preference${details.issues.diets.length > 1 ? "s" : ""}.`,
       );
@@ -2672,7 +2685,7 @@ export function initOrderFlow({
           const allBlockingRemovable =
             blockingAllergens.length > 0 &&
             blockingAllergens.every((allergen) =>
-              removableAllergens.has(norm(allergen)),
+              removableAllergens.has(allergen),
             );
 
           // Match the exact logic from getDishCompatibilityDetails:

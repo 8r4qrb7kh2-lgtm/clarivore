@@ -611,10 +611,20 @@
     const DIETS = Array.isArray(allergenConfig.DIETS) ? allergenConfig.DIETS : [];
     const normalizeAllergen = typeof allergenConfig.normalizeAllergen === 'function'
       ? allergenConfig.normalizeAllergen
-      : (value) => (value || '').toString().toLowerCase().trim();
+      : (value) => {
+          const raw = String(value ?? '').trim();
+          if (!raw) return '';
+          if (!ALLERGENS.length) return raw;
+          return ALLERGENS.includes(raw) ? raw : '';
+        };
     const normalizeDietLabel = typeof allergenConfig.normalizeDietLabel === 'function'
       ? allergenConfig.normalizeDietLabel
-      : (value) => value;
+      : (value) => {
+          const raw = String(value ?? '').trim();
+          if (!raw) return '';
+          if (!DIETS.length) return raw;
+          return DIETS.includes(raw) ? raw : '';
+        };
     const formatAllergenLabel = typeof allergenConfig.formatAllergenLabel === 'function'
       ? allergenConfig.formatAllergenLabel
       : (value) => value;
@@ -785,10 +795,9 @@
         userDiets.forEach(userDiet => {
           const isDietMet = itemDietSet.has(userDiet);
           const emoji = getDietEmoji(userDiet) || '✓';
-          const dietLower = userDiet.toLowerCase();
 
           if (isDietMet) {
-            html += `<div class="dish-allergen-line"><span class="dish-allergen-emoji">${emoji}</span><span class="dish-allergen-text safe">This dish is <strong>${escapeHtml(dietLower)}</strong></span></div>`;
+            html += `<div class="dish-allergen-line"><span class="dish-allergen-emoji">${emoji}</span><span class="dish-allergen-text safe">This dish is <strong>${escapeHtml(userDiet)}</strong></span></div>`;
           } else {
             const conflicts = getDietAllergenConflicts(userDiet);
             const conflictingAllergens = conflicts.filter(allergen => allergens.includes(allergen));
@@ -796,9 +805,9 @@
                              conflictingAllergens.every(allergen => removableAllergens.has(allergen));
 
             if (canBeMade) {
-              html += `<div class="dish-allergen-line"><span class="dish-allergen-emoji">${emoji}</span><span class="dish-allergen-text warn">This dish can be made <strong>${escapeHtml(dietLower)}</strong></span></div>`;
+              html += `<div class="dish-allergen-line"><span class="dish-allergen-emoji">${emoji}</span><span class="dish-allergen-text warn">This dish can be made <strong>${escapeHtml(userDiet)}</strong></span></div>`;
             } else {
-              html += `<div class="dish-allergen-line"><span class="dish-allergen-emoji">${emoji}</span><span class="dish-allergen-text danger">This dish is not <strong>${escapeHtml(dietLower)}</strong></span></div>`;
+              html += `<div class="dish-allergen-line"><span class="dish-allergen-emoji">${emoji}</span><span class="dish-allergen-text danger">This dish is not <strong>${escapeHtml(userDiet)}</strong></span></div>`;
             }
           }
         });

@@ -8,13 +8,24 @@ const allergenConfig = window.loadAllergenDietConfig
   'use strict';
 
   const allergenConfig = config || {};
+  const ALLERGENS = Array.isArray(allergenConfig.ALLERGENS) ? allergenConfig.ALLERGENS : [];
   const DIETS = Array.isArray(allergenConfig.DIETS) ? allergenConfig.DIETS : [];
   const normalizeAllergen = typeof allergenConfig.normalizeAllergen === 'function'
     ? allergenConfig.normalizeAllergen
-    : (value) => String(value || '').toLowerCase().trim();
+    : (value) => {
+        const raw = String(value ?? '').trim();
+        if (!raw) return '';
+        if (!ALLERGENS.length) return raw;
+        return ALLERGENS.includes(raw) ? raw : '';
+      };
   const normalizeDietLabel = typeof allergenConfig.normalizeDietLabel === 'function'
     ? allergenConfig.normalizeDietLabel
-    : (value) => value;
+    : (value) => {
+        const raw = String(value ?? '').trim();
+        if (!raw) return '';
+        if (!DIETS.length) return raw;
+        return DIETS.includes(raw) ? raw : '';
+      };
   const getDietAllergenConflicts =
     typeof allergenConfig.getDietAllergenConflicts === 'function'
       ? allergenConfig.getDietAllergenConflicts
@@ -1671,8 +1682,7 @@ Output ONLY the JSON object, nothing else.`;
 
       const dietOptions = DIETS;
       const normalizeAllergenKey = (value) => normalizeAllergen(value);
-      const normalizeDietName = (diet) =>
-        normalizeDietLabel(diet) || String(diet || '').trim();
+      const normalizeDietName = (diet) => normalizeDietLabel(diet);
       const addMayContainDiets = (list) => {
         (Array.isArray(list) ? list : []).forEach((diet) => {
           const normalized = normalizeDietName(diet);

@@ -789,37 +789,45 @@ export function initEditorSaveFlow(deps = {}) {
                   if (oldIng) {
                     // Detect if smart detection ran by comparing old vs new AI detection arrays
                     const oldAiDetectedAllergens = new Set(
-                      (oldIng.aiDetectedAllergens || []).map((a) =>
-                        a.toLowerCase(),
-                      ),
+                      (oldIng.aiDetectedAllergens || [])
+                        .map((a) => String(a ?? "").trim())
+                        .filter(Boolean),
                     );
                     const oldAiDetectedMayContainAllergens = new Set(
-                      (oldIng.aiDetectedMayContainAllergens || []).map((a) =>
-                        a.toLowerCase(),
-                      ),
+                      (oldIng.aiDetectedMayContainAllergens || [])
+                        .map((a) => String(a ?? "").trim())
+                        .filter(Boolean),
                     );
                     const oldAiDetectedDiets = new Set(
-                      oldIng.aiDetectedDiets || [],
+                      (oldIng.aiDetectedDiets || [])
+                        .map((a) => String(a ?? "").trim())
+                        .filter(Boolean),
                     );
                     const oldAiDetectedMayContainDiets = new Set(
-                      oldIng.aiDetectedMayContainDiets || [],
+                      (oldIng.aiDetectedMayContainDiets || [])
+                        .map((a) => String(a ?? "").trim())
+                        .filter(Boolean),
                     );
 
                     const newAiDetectedAllergens = new Set(
-                      (newIng.aiDetectedAllergens || []).map((a) =>
-                        a.toLowerCase(),
-                      ),
+                      (newIng.aiDetectedAllergens || [])
+                        .map((a) => String(a ?? "").trim())
+                        .filter(Boolean),
                     );
                     const newAiDetectedMayContainAllergens = new Set(
-                      (newIng.aiDetectedMayContainAllergens || []).map((a) =>
-                        a.toLowerCase(),
-                      ),
+                      (newIng.aiDetectedMayContainAllergens || [])
+                        .map((a) => String(a ?? "").trim())
+                        .filter(Boolean),
                     );
                     const newAiDetectedDiets = new Set(
-                      newIng.aiDetectedDiets || [],
+                      (newIng.aiDetectedDiets || [])
+                        .map((a) => String(a ?? "").trim())
+                        .filter(Boolean),
                     );
                     const newAiDetectedMayContainDiets = new Set(
-                      newIng.aiDetectedMayContainDiets || [],
+                      (newIng.aiDetectedMayContainDiets || [])
+                        .map((a) => String(a ?? "").trim())
+                        .filter(Boolean),
                     );
 
                     // Smart detection ran if any AI detection arrays changed
@@ -867,24 +875,33 @@ export function initEditorSaveFlow(deps = {}) {
 
                     // Build complete state maps for old and new to detect transitions
                     const getItemState = (item, itemType, ing) => {
-                      const lowerItem =
-                        itemType === "allergen" ? item.toLowerCase() : item;
+                      const key = String(item ?? "").trim();
+                      if (!key) return "none";
                       if (itemType === "allergen") {
                         if (
                           (ing.allergens || [])
-                            .map((a) => a.toLowerCase())
-                            .includes(lowerItem)
+                            .map((a) => String(a ?? "").trim())
+                            .includes(key)
                         )
                           return "contains";
                         if (
                           (ing.mayContainAllergens || [])
-                            .map((a) => a.toLowerCase())
-                            .includes(lowerItem)
+                            .map((a) => String(a ?? "").trim())
+                            .includes(key)
                         )
                           return "cross-contam";
                       } else {
-                        if ((ing.diets || []).includes(item)) return "compliant";
-                        if ((ing.mayContainDiets || []).includes(item))
+                        if (
+                          (ing.diets || [])
+                            .map((a) => String(a ?? "").trim())
+                            .includes(key)
+                        )
+                          return "compliant";
+                        if (
+                          (ing.mayContainDiets || [])
+                            .map((a) => String(a ?? "").trim())
+                            .includes(key)
+                        )
                           return "cross-contam";
                       }
                       return "none";
@@ -892,22 +909,34 @@ export function initEditorSaveFlow(deps = {}) {
 
                     // Get all unique allergens from both old and new
                     const allAllergens = new Set([
-                      ...(oldIng.allergens || []).map((a) => a.toLowerCase()),
-                      ...(oldIng.mayContainAllergens || []).map((a) =>
-                        a.toLowerCase(),
-                      ),
-                      ...(newIng.allergens || []).map((a) => a.toLowerCase()),
-                      ...(newIng.mayContainAllergens || []).map((a) =>
-                        a.toLowerCase(),
-                      ),
+                      ...(oldIng.allergens || [])
+                        .map((a) => String(a ?? "").trim())
+                        .filter(Boolean),
+                      ...(oldIng.mayContainAllergens || [])
+                        .map((a) => String(a ?? "").trim())
+                        .filter(Boolean),
+                      ...(newIng.allergens || [])
+                        .map((a) => String(a ?? "").trim())
+                        .filter(Boolean),
+                      ...(newIng.mayContainAllergens || [])
+                        .map((a) => String(a ?? "").trim())
+                        .filter(Boolean),
                     ]);
 
                     // Get all unique diets from both old and new
                     const allDiets = new Set([
-                      ...(oldIng.diets || []),
-                      ...(oldIng.mayContainDiets || []),
-                      ...(newIng.diets || []),
-                      ...(newIng.mayContainDiets || []),
+                      ...(oldIng.diets || [])
+                        .map((a) => String(a ?? "").trim())
+                        .filter(Boolean),
+                      ...(oldIng.mayContainDiets || [])
+                        .map((a) => String(a ?? "").trim())
+                        .filter(Boolean),
+                      ...(newIng.diets || [])
+                        .map((a) => String(a ?? "").trim())
+                        .filter(Boolean),
+                      ...(newIng.mayContainDiets || [])
+                        .map((a) => String(a ?? "").trim())
+                        .filter(Boolean),
                     ]);
 
                     // Track allergen state changes

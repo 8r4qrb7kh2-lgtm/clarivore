@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  const norm = (value) => String(value ?? "").trim().toLowerCase();
+  const asText = (value) => String(value ?? "").trim();
   const titleCase = (value) =>
     String(value || "")
       .split(" ")
@@ -13,18 +13,15 @@
   const buildConfig = ({
     allergens = [],
     diets = [],
-    allergenAliases = [],
-    dietAliases = [],
     dietConflicts = [],
   } = {}) => {
     const ALLERGENS = [];
     const ALLERGEN_LABELS = {};
     const ALLERGEN_EMOJI = {};
-    const ALLERGEN_ALIASES = {};
     const allergenOrder = new Map();
 
     allergens.forEach((row) => {
-      const key = norm(row?.key);
+      const key = asText(row?.key);
       if (!key) return;
       if (!ALLERGENS.includes(key)) {
         allergenOrder.set(key, ALLERGENS.length);
@@ -37,45 +34,23 @@
       }
     });
 
-    allergenAliases.forEach((row) => {
-      const alias = norm(row?.alias);
-      const target = norm(row?.allergen?.key || row?.allergen_key || row?.allergen);
-      if (alias && target) {
-        ALLERGEN_ALIASES[alias] = target;
-      }
-    });
-
     const DIETS = [];
     const DIET_EMOJI = {};
-    const DIET_ALIASES = {};
     const DIET_ALLERGEN_CONFLICTS = {};
 
     diets.forEach((row) => {
-      const label = row?.label ? String(row.label) : "";
-      const key = norm(row?.key || label);
+      const label = asText(row?.label);
       if (label && row?.is_supported !== false) {
         DIETS.push(label);
       }
-      if (row?.emoji) {
-        DIET_EMOJI[key] = String(row.emoji);
-        const labelKey = norm(label);
-        if (labelKey && !DIET_EMOJI[labelKey]) {
-          DIET_EMOJI[labelKey] = String(row.emoji);
-        }
-      }
-    });
-
-    dietAliases.forEach((row) => {
-      const alias = norm(row?.alias);
-      const target = row?.diet?.label || row?.diet_label || row?.diet;
-      if (alias && target) {
-        DIET_ALIASES[alias] = String(target);
+      if (row?.emoji && label) {
+        DIET_EMOJI[label] = String(row.emoji);
       }
     });
 
     dietConflicts.forEach((row) => {
-      const dietLabel = row?.diet?.label || row?.diet_label || row?.diet;
-      const allergenKey = norm(
+      const dietLabel = asText(row?.diet?.label || row?.diet_label || row?.diet);
+      const allergenKey = asText(
         row?.allergen?.key || row?.allergen_key || row?.allergen,
       );
       if (!dietLabel || !allergenKey) return;
@@ -96,21 +71,15 @@
     });
 
     const normalizeAllergen = (value) => {
-      const raw = norm(value);
+      const raw = asText(value);
       if (!raw) return "";
-      const alias = ALLERGEN_ALIASES[raw];
-      if (alias) return alias;
-      if (ALLERGENS.includes(raw)) return raw;
-      return "";
+      return ALLERGENS.includes(raw) ? raw : "";
     };
 
     const normalizeDietLabel = (value) => {
-      const raw = norm(value);
+      const raw = asText(value);
       if (!raw) return "";
-      const alias = DIET_ALIASES[raw];
-      if (alias) return alias;
-      const match = DIETS.find((diet) => diet.toLowerCase() === raw);
-      return match || "";
+      return DIETS.includes(raw) ? raw : "";
     };
 
     const formatAllergenLabel = (value) => {
@@ -141,9 +110,8 @@
     };
 
     const getDietEmoji = (value) => {
-      const normalized = normalizeDietLabel(value) || value;
-      const key = norm(normalized);
-      return DIET_EMOJI[key] || "";
+      const normalized = normalizeDietLabel(value);
+      return normalized ? DIET_EMOJI[normalized] || "" : "";
     };
 
     const getDietAllergenConflicts = (diet) => {
@@ -151,21 +119,15 @@
       if (normalized && DIET_ALLERGEN_CONFLICTS[normalized]) {
         return DIET_ALLERGEN_CONFLICTS[normalized];
       }
-      const raw = norm(diet);
-      const entry = Object.keys(DIET_ALLERGEN_CONFLICTS).find(
-        (key) => key.toLowerCase() === raw,
-      );
-      return entry ? DIET_ALLERGEN_CONFLICTS[entry] : [];
+      return [];
     };
 
     return {
       ALLERGENS,
       ALLERGEN_LABELS,
       ALLERGEN_EMOJI,
-      ALLERGEN_ALIASES,
       DIETS,
       DIET_EMOJI,
-      DIET_ALIASES,
       DIET_ALLERGEN_CONFLICTS,
       normalizeAllergen,
       normalizeDietLabel,
@@ -204,21 +166,12 @@
     });
 
   const fetchConfigRows = async (client) => {
-    const [
-      allergensRes,
-      allergenAliasesRes,
-      dietsRes,
-      dietAliasesRes,
-      dietConflictsRes,
-    ] = await Promise.all([
+    const [allergensRes, dietsRes, dietConflictsRes] = await Promise.all([
       client
         .from("allergens")
         .select("key, label, emoji, sort_order, is_active")
         .eq("is_active", true)
         .order("sort_order", { ascending: true }),
-      client
-        .from("allergen_aliases")
-        .select("alias, allergen:allergen_id ( key )"),
       client
         .from("diets")
         .select(
@@ -226,7 +179,6 @@
         )
         .eq("is_active", true)
         .order("sort_order", { ascending: true }),
-      client.from("diet_aliases").select("alias, diet:diet_id ( label, key )"),
       client
         .from("diet_allergen_conflicts")
         .select("diet:diet_id ( label ), allergen:allergen_id ( key )"),
@@ -234,22 +186,14 @@
 
     const errors = [
       allergensRes.error,
-      allergenAliasesRes.error,
       dietsRes.error,
-      dietAliasesRes.error,
       dietConflictsRes.error,
     ].filter(Boolean);
 
     return {
       data: {
         allergens: Array.isArray(allergensRes.data) ? allergensRes.data : [],
-        allergenAliases: Array.isArray(allergenAliasesRes.data)
-          ? allergenAliasesRes.data
-          : [],
         diets: Array.isArray(dietsRes.data) ? dietsRes.data : [],
-        dietAliases: Array.isArray(dietAliasesRes.data)
-          ? dietAliasesRes.data
-          : [],
         dietConflicts: Array.isArray(dietConflictsRes.data)
           ? dietConflictsRes.data
           : [],

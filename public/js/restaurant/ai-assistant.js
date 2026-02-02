@@ -10,14 +10,15 @@ export function initAiAssistant(deps = {}) {
   const normalizeDietLabel =
     typeof deps.normalizeDietLabel === "function"
       ? deps.normalizeDietLabel
-      : (value) => value;
+      : (value) => {
+          const raw = String(value ?? "").trim();
+          if (!raw) return "";
+          if (!DIETS.length) return raw;
+          return DIETS.includes(raw) ? raw : "";
+        };
   const getIssueReportMeta =
     typeof deps.getIssueReportMeta === "function" ? deps.getIssueReportMeta : () => ({});
   const ALLERGENS = Array.isArray(deps.ALLERGENS) ? deps.ALLERGENS : [];
-  const ALLERGEN_ALIASES =
-    deps.ALLERGEN_ALIASES && typeof deps.ALLERGEN_ALIASES === "object"
-      ? deps.ALLERGEN_ALIASES
-      : {};
   const ALLERGEN_EMOJI =
     deps.ALLERGEN_EMOJI && typeof deps.ALLERGEN_EMOJI === "object"
       ? deps.ALLERGEN_EMOJI
@@ -28,7 +29,12 @@ export function initAiAssistant(deps = {}) {
   const normalizeAllergen =
     typeof deps.normalizeAllergen === "function"
       ? deps.normalizeAllergen
-      : (value) => String(value ?? "").toLowerCase().trim();
+      : (value) => {
+          const raw = String(value ?? "").trim();
+          if (!raw) return "";
+          if (!ALLERGENS.length) return raw;
+          return ALLERGENS.includes(raw) ? raw : "";
+        };
   const getDietAllergenConflicts =
     typeof deps.getDietAllergenConflicts === "function"
       ? deps.getDietAllergenConflicts
@@ -503,7 +509,6 @@ export function initAiAssistant(deps = {}) {
     activePhotoAnalyses,
     ALLERGENS,
     DIETS,
-    ALLERGEN_ALIASES,
     getSupabaseKey: () =>
       typeof window !== "undefined" ? window.SUPABASE_KEY : "",
   });
@@ -2109,7 +2114,7 @@ export function initAiAssistant(deps = {}) {
     rows.forEach((row) => {
       if (Array.isArray(row.allergens)) {
         row.allergens.forEach((allergen) => {
-          const key = norm(allergen);
+          const key = normalizeAllergen(allergen);
           if (key && !tempOverlay.allergens.includes(key)) {
             tempOverlay.allergens.push(key);
           }
@@ -2258,7 +2263,7 @@ export function initAiAssistant(deps = {}) {
     rows.forEach((row) => {
       if (Array.isArray(row.mayContainAllergens)) {
         row.mayContainAllergens.forEach((allergen) => {
-          const key = norm(allergen);
+          const key = normalizeAllergen(allergen);
           if (key) mayContainFromRows.add(key);
         });
       }
@@ -3047,7 +3052,7 @@ export function initAiAssistant(deps = {}) {
               <div style="flex:1">
                 <div class="aiAllergenChecklist">
                   ${ALLERGENS.map((allergen) => {
-                    const allergenNorm = norm(allergen);
+                    const allergenNorm = allergen;
                     // Determine state: contains > maycontain > off (contains is more severe)
                     const isContains = allAllergens.has(allergenNorm);
                     const isMayContain =
@@ -3221,7 +3226,7 @@ export function initAiAssistant(deps = {}) {
                     const disabledClass = selectionsLocked
                       ? " selectionsDisabled"
                       : "";
-                    const dietEmoji = DIET_EMOJI[diet.toLowerCase()] || "🍽️";
+                    const dietEmoji = DIET_EMOJI[diet] || "🍽️";
                     return `<label class="${aiDetectedClass} ${overrideClass} ${stateClass}${disabledClass}" data-state="${state}" data-ai-state="${aiState}" ${tooltipAttr}><input type="checkbox" class="aiDietCheckbox" value="${esc(diet)}" data-ai-detected="${aiWasSelected}" data-ai-state="${aiState}" data-state="${state}" ${checked} ${disabledAttr}>${dietEmoji} ${esc(diet)}${stateIcon}</label>`;
                   }).join("")}
                 </div>
@@ -3240,7 +3245,7 @@ export function initAiAssistant(deps = {}) {
               const overriddenItems = [];
 
               ALLERGENS.forEach((allergen) => {
-                const allergenNorm = norm(allergen);
+                const allergenNorm = allergen;
                 const aiWasSelectedAsContains =
                   aiDetectedAllergens.has(allergenNorm);
                 const aiWasSelectedAsMayContain =
@@ -5207,11 +5212,8 @@ export function initAiAssistant(deps = {}) {
     }
 
     const normalizeAllergenLabel = (allergen) => {
-      const lower = (allergen || "").toString().trim().toLowerCase();
-      if (!lower) return "";
-      if (ALLERGEN_ALIASES[lower]) return ALLERGEN_ALIASES[lower];
-      if (ALLERGENS.includes(lower)) return lower;
-      return lower;
+      const normalized = normalizeAllergen(allergen);
+      return normalized || "";
     };
 
     // Add new brand to the array
@@ -5321,26 +5323,14 @@ export function initAiAssistant(deps = {}) {
 
     // Merge base ingredient allergens/diets with brand allergens/diets (union)
     if (allData[rowIdx]) {
-      const baseAllergens = new Set(
-        (allData[rowIdx].allergens || []).map((a) => norm(a)),
-      );
-      const baseDiets = new Set(allData[rowIdx].diets || []);
-      const baseAiDetectedAllergens = new Set(
-        (allData[rowIdx].aiDetectedAllergens || []).map((a) => norm(a)),
-      );
-      const baseAiDetectedDiets = new Set(allData[rowIdx].aiDetectedDiets || []);
-
       // OVERWRITE base allergens/diets with brand allergens/diets
       // This clears any previous AI-detected allergens from the text (e.g. "sesame seeds")
       // and ensures only the brand's allergens are present.
       allData[rowIdx].allergens = Array.from(brandAllergens);
 
-      // Normalize diets to match DIETS constant casing
-      const normalizedBrandDiets = Array.from(brandDiets).map((d) => {
-        const lower = d.toLowerCase().trim();
-        const proper = DIETS.find((pd) => pd.toLowerCase() === lower);
-        return proper || d;
-      });
+      const normalizedBrandDiets = Array.from(brandDiets)
+        .map((diet) => normalizeDietLabel(diet))
+        .filter(Boolean);
       debugLog("Applying brand diets (normalized):", normalizedBrandDiets);
 
       allData[rowIdx].diets = normalizedBrandDiets;

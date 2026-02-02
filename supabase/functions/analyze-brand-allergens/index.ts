@@ -46,7 +46,7 @@ serve(async (req) => {
     const dietLabelMap: Record<string, string> = {}
     ;(config.diets || []).forEach((diet) => {
       if (diet?.key && diet?.label) {
-        dietLabelMap[diet.key.toLowerCase()] = diet.label
+        dietLabelMap[diet.key] = diet.label
       }
     })
     const veganLabel = dietLabelMap.vegan || 'Vegan'
@@ -70,6 +70,9 @@ TASK:
 Analyze the ingredient list and determine:
 1. Which allergens are present from this list ONLY: ${allergenListText}
 2. Which dietary preferences this product is compatible with: ${dietListText}
+Use ONLY these exact names in your JSON output:
+- Allergens: ${allergenListText}
+- Diets: ${dietListText}
 
 CRITICAL ALLERGEN RULES:
 - ONLY flag allergens from the top 9 list above
@@ -116,6 +119,9 @@ TASK:
 Analyze a SINGLE ingredient or product name (not a full ingredient list) and infer:
 1. Which allergens are present from this list ONLY: ${allergenListText}
 2. Which dietary preferences this item is compatible with: ${dietListText}
+Use ONLY these exact names in your JSON output:
+- Allergens: ${allergenListText}
+- Diets: ${dietListText}
 
 CRITICAL ALLERGEN RULES:
 - ONLY flag allergens from the top 9 list above

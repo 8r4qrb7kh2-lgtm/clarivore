@@ -131,12 +131,24 @@
     const allergenConfig = window.loadAllergenDietConfig
       ? await window.loadAllergenDietConfig({ supabaseClient })
       : (window.ALLERGEN_DIET_CONFIG || {});
+    const ALLERGENS = Array.isArray(allergenConfig.ALLERGENS) ? allergenConfig.ALLERGENS : [];
+    const DIETS = Array.isArray(allergenConfig.DIETS) ? allergenConfig.DIETS : [];
     const normalizeAllergen = typeof allergenConfig.normalizeAllergen === 'function'
       ? allergenConfig.normalizeAllergen
-      : (value) => (value || '').toString().toLowerCase().trim();
+      : (value) => {
+          const raw = String(value ?? '').trim();
+          if (!raw) return '';
+          if (!ALLERGENS.length) return raw;
+          return ALLERGENS.includes(raw) ? raw : '';
+        };
     const normalizeDietLabel = typeof allergenConfig.normalizeDietLabel === 'function'
       ? allergenConfig.normalizeDietLabel
-      : (value) => value;
+      : (value) => {
+          const raw = String(value ?? '').trim();
+          if (!raw) return '';
+          if (!DIETS.length) return raw;
+          return DIETS.includes(raw) ? raw : '';
+        };
     const getDietAllergenConflicts = typeof allergenConfig.getDietAllergenConflicts === 'function'
       ? allergenConfig.getDietAllergenConflicts
       : () => [];
