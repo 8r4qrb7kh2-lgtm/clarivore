@@ -39,6 +39,7 @@ export function initMobileOverlayZoom(deps = {}) {
   let zoomedOverlayItem = null;
   let preZoomScrollPos = { x: 0, y: 0 };
   let currentZoomScale = 1;
+  let isZoomingOut = false;
   let currentZoomTransform = {
     menuInner: null,
     translateX: 0,
@@ -310,66 +311,91 @@ export function initMobileOverlayZoom(deps = {}) {
 
   function zoomOutOverlay() {
     const menuWrap = document.querySelector(".menuWrap");
-    if (!menuWrap) return;
+    if (!menuWrap || isZoomingOut) return;
+    isZoomingOut = true;
+
+    const activeInner =
+      currentZoomTransform.menuInner ||
+      menuWrap.querySelector(".menuSection.zoomed-active .menuInner");
+    const allMenuInners = menuWrap.querySelectorAll(".menuInner");
+    const zoomOutDuration = 320;
 
     currentZoomScale = 1;
     document.documentElement.style.setProperty("--overlay-zoom-scale", 1);
-    currentZoomTransform = {
-      menuInner: null,
-      translateX: 0,
-      translateY: 0,
-      scale: 1,
-    };
 
-    const allMenuInners = menuWrap.querySelectorAll(".menuInner");
-    allMenuInners.forEach((inner) => {
-      inner.style.transition = "none";
-      inner.style.transform = "";
-    });
+    const finishZoomOut = () => {
+      currentZoomTransform = {
+        menuInner: null,
+        translateX: 0,
+        translateY: 0,
+        scale: 1,
+      };
 
-    menuWrap.classList.remove("zoomed");
+      allMenuInners.forEach((inner) => {
+        inner.style.transition = "none";
+        inner.style.transform = "";
+      });
 
-    document
-      .querySelectorAll(".menuSection.zoomed-active")
-      .forEach((s) => s.classList.remove("zoomed-active"));
+      menuWrap.classList.remove("zoomed");
 
-    allMenuInners.forEach((inner) => void inner.offsetWidth);
+      document
+        .querySelectorAll(".menuSection.zoomed-active")
+        .forEach((s) => s.classList.remove("zoomed-active"));
 
-    allMenuInners.forEach((inner) => (inner.style.transition = ""));
+      allMenuInners.forEach((inner) => void inner.offsetWidth);
 
-    const backBtn = document.getElementById("zoomBackButton");
-    if (backBtn) backBtn.classList.remove("show");
-    const topOverlay = document.getElementById("zoomTopOverlay");
-    if (topOverlay) topOverlay.classList.remove("show");
+      allMenuInners.forEach((inner) => (inner.style.transition = ""));
 
-    const dishInfo = document.getElementById("zoomedDishInfo");
-    if (dishInfo) dishInfo.classList.remove("show");
+      const backBtn = document.getElementById("zoomBackButton");
+      if (backBtn) backBtn.classList.remove("show");
+      const topOverlay = document.getElementById("zoomTopOverlay");
+      if (topOverlay) topOverlay.classList.remove("show");
 
-    document.body.style.overflow = "";
-    document.body.classList.remove("menuZoomed");
+      const dishInfo = document.getElementById("zoomedDishInfo");
+      if (dishInfo) dishInfo.classList.remove("show");
 
-    document
-      .querySelectorAll(".overlay.selected")
-      .forEach((ov) => ov.classList.remove("selected"));
+      document.body.style.overflow = "";
+      document.body.classList.remove("menuZoomed");
 
-    updateZoomState(false, null);
+      document
+        .querySelectorAll(".overlay.selected")
+        .forEach((ov) => ov.classList.remove("selected"));
 
-    requestAnimationFrame(() => {
-      void document.body.offsetHeight;
+      updateZoomState(false, null);
 
       requestAnimationFrame(() => {
-        if (typeof window.__rerenderLayer__ === "function") {
-          window.__rerenderLayer__();
-        }
+        void document.body.offsetHeight;
 
-        window.scrollTo(preZoomScrollPos.x, preZoomScrollPos.y);
+        requestAnimationFrame(() => {
+          if (typeof window.__rerenderLayer__ === "function") {
+            window.__rerenderLayer__();
+          }
 
-        const menuState = getMenuState();
-        if (menuState && typeof menuState.updateMiniMapViewport === "function") {
-          menuState.updateMiniMapViewport();
-        }
+          window.scrollTo(preZoomScrollPos.x, preZoomScrollPos.y);
+
+          const menuState = getMenuState();
+          if (menuState && typeof menuState.updateMiniMapViewport === "function") {
+            menuState.updateMiniMapViewport();
+          }
+
+          isZoomingOut = false;
+        });
       });
+    };
+
+    if (!activeInner) {
+      finishZoomOut();
+      return;
+    }
+
+    activeInner.style.transition = "transform 0.32s ease-out";
+    activeInner.style.transformOrigin = "0 0";
+
+    requestAnimationFrame(() => {
+      activeInner.style.transform = "translate(0px, 0px) scale(1)";
     });
+
+    setTimeout(finishZoomOut, zoomOutDuration);
   }
 
   document.getElementById("zoomBackButton")?.addEventListener("click", () => {
