@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Generate Manager Invitations - Clarivore Admin</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body class="page-shell">
+  <header class="simple-topbar">
+    <div class="simple-topbar-inner">
+      <a class="simple-brand" href="home.html">
+        <img src="https://static.wixstatic.com/media/945e9d_2b97098295d341d493e4a07d80d6b57c~mv2.png" alt="Clarivore logo">
+        <span>Clarivore</span>
+      </a>
+    </div>
+  </header>
+
+  <main class="page-main">
+    <div class="page-content">
+      <div class="account-layout">
+        <section class="auth-card">
+          <h2 style="margin:0 0 12px;">Generate Manager Invitation</h2>
+          <p class="muted-text" style="margin-bottom:20px;">Create a one-time invitation link for a restaurant manager.</p>
+
+          <label style="display:block;margin-bottom:8px;font-weight:600;">Select Restaurant</label>
+          <select id="restaurant-select" style="width:100%;padding:10px;background:#0c1230;color:var(--ink);border:1px solid #31407f;border-radius:8px;margin-bottom:16px;">
+            <option value="">Loading restaurants...</option>
+          </select>
+
+          <button class="primary-btn" id="generate-btn" type="button" style="width:100%;">Generate Invitation Link</button>
+
+          <div id="invitation-result" style="display:none;margin-top:20px;padding:16px;background:rgba(76,175,80,0.1);border:1px solid #4caf50;border-radius:8px;">
+            <p style="margin:0 0 12px;font-weight:600;color:#4caf50;">✓ Invitation link generated!</p>
+            <p style="margin:0 0 8px;color:#8891b0;font-size:0.9rem;">Share this link with the manager:</p>
+            <div style="display:flex;gap:8px;align-items:center;">
+              <input type="text" id="invitation-link" readonly style="flex:1;padding:10px;background:#0c1230;color:var(--ink);border:1px solid #31407f;border-radius:8px;font-family:monospace;font-size:0.85rem;">
+              <button class="secondary-btn" id="copy-btn" type="button">Copy</button>
+            </div>
+            <p style="margin:12px 0 0;color:#8891b0;font-size:0.85rem;">⚠️ This link can only be used once and will expire if not used.</p>
+          </div>
+
+          <p id="status-message" class="status-text"></p>
+        </section>
+
+        <section class="auth-card">
+          <h2 style="margin:0 0 12px;">Active Invitations</h2>
+          <div id="invitations-list"></div>
+        </section>
+      </div>
+    </div>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/auth-redirect.js" defer></script>
+  <script type="module">
+    import supabaseClient from './js/supabase-client.js';
+    import { setupTopbar } from './js/shared-nav.js';
+    import { fetchManagerRestaurants } from './js/manager-context.js';
+
+    const restaurantSelect = document.getElementById('restaurant-select');
+    const generateBtn = document.getElementById('generate-btn');
+    const invitationResult = document.getElementById('invitation-result');
+    const invitationLink = document.getElementById('invitation-link');
+    const copyBtn = document.getElementById('copy-btn');
+    const statusMessage = document.getElementById('status-message');
+    const invitationsList = document.getElementById('invitations-list');
+
+    async function initTopbar() {
+      const { data: { user } } = await supabaseClient.auth.getUser();
+      let managerRestaurants = [];
+      if (user) {
+        const isOwner = user.email === 'matt.29.ds@gmail.com';
+        const isManager = user.user_metadata?.role === 'manager';
+        if (isOwner || isManager) {
+          managerRestaurants = await fetchManagerRestaurants(supabaseClient, user.id);
+        }
+      }
+      setupTopbar('admin', user, { managerRestaurants });
+    }
+
+    // Load restaurants
+    async function loadRestaurants() {
+      try {
+        const { data, error } = await supabaseClient
+          .from('restaurants')
+          .select('id, name')
+          .order('name');
+
+        if (error) throw error;
+
+        restaurantSelect.innerHTML = '<option value="">Select a restaurant...</option>';
+        data.forEach(restaurant => {
+          const option = document.createElement('option');
+          option.value = restaurant.id;
+          option.textContent = restaurant.name;
+          restaurantSelect.appendChild(option);
+        });
+      } catch (error) {
+        console.error('Error loading restaurants:', error);
+        statusMessage.textContent = 'Failed to load restaurants.';
+        statusMessage.classList.add('error');
+      }
+    }
+
+    // Generate invitation
+    generateBtn.addEventListener('click', async () => {
+      const restaurantId = restaurantSelect.value;
+      statusMessage.textContent = '';
+      statusMessage.classList.remove('error', 'success');
+
+      if (!restaurantId) {
+        statusMessage.textContent = 'Please select a restaurant.';
+        statusMessage.classList.add('error');
+        return;
+      }
+
+      try {
+        // Get restaurant name for logging
+        const selectedOption = restaurantSelect.options[restaurantSelect.selectedIndex];
+        const restaurantName = selectedOption.textContent;
+        console.log('[DEBUG] Generating invitation for restaurant:', restaurantName, 'ID:', restaurantId);
+
+        // Generate a unique token
+        const token = generateToken();
+        console.log('[DEBUG] Generated token:', token);
+
+        // Insert invitation into database
+        const { data, error } = await supabaseClient
+          .from('manager_invitations')
+          .insert({
+            restaurant_id: restaurantId,
+            token: token,
+            created_at: new Date().toISOString(),
+            used: false
+          })
+          .select();
+
+        console.log('[DEBUG] Invitation insert result:', data, 'error:', error);
+
+        if (error) throw error;
+
+        // Display the invitation link
+        const baseUrl = window.location.origin;
+        const link = `${baseUrl}/account.html?invite=${token}`;
+        invitationLink.value = link;
+        invitationResult.style.display = 'block';
+
+        console.log('[DEBUG] Generated invitation link:', link);
+
+        // Reload invitations list
+        loadInvitations();
+      } catch (error) {
+        console.error('Error generating invitation:', error);
+        statusMessage.textContent = 'Failed to generate invitation.';
+        statusMessage.classList.add('error');
+      }
+    });
+
+    // Copy link to clipboard
+    copyBtn.addEventListener('click', () => {
+      invitationLink.select();
+      document.execCommand('copy');
+      copyBtn.textContent = 'Copied!';
+      setTimeout(() => {
+        copyBtn.textContent = 'Copy';
+      }, 2000);
+    });
+
+    // Generate random token
+    function generateToken() {
+      return Array.from(crypto.getRandomValues(new Uint8Array(32)))
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('');
+    }
+
+    // Load active invitations
+    async function loadInvitations() {
+      try {
+        const { data, error } = await supabaseClient
+          .from('manager_invitations')
+          .select(`
+            id,
+            token,
+            restaurant_id,
+            created_at,
+            used,
+            used_at,
+            restaurants (name)
+          `)
+          .order('created_at', { ascending: false })
+          .limit(20);
+
+        console.log('[DEBUG] Loaded invitations:', data);
+
+        if (error) throw error;
+
+        if (data.length === 0) {
+          invitationsList.innerHTML = '<p class="muted-text">No invitations yet.</p>';
+          return;
+        }
+
+        invitationsList.innerHTML = data.map(inv => `
+          <div style="padding:12px;background:rgba(255,255,255,0.02);border-radius:8px;margin-bottom:8px;">
+            <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:8px;">
+              <div>
+                <strong>${inv.restaurants?.name || 'Unknown Restaurant'}</strong>
+                <p style="margin:4px 0;font-size:0.85rem;color:#8891b0;">
+                  Created: ${new Date(inv.created_at).toLocaleDateString()}
+                </p>
+              </div>
+              <span style="padding:4px 8px;border-radius:4px;font-size:0.8rem;${inv.used ? 'background:rgba(220,38,38,0.2);color:#dc2626;' : 'background:rgba(76,175,80,0.2);color:#4caf50;'}">
+                ${inv.used ? 'Used' : 'Active'}
+              </span>
+            </div>
+            ${!inv.used ? `
+              <div style="font-family:monospace;font-size:0.75rem;color:#8891b0;word-break:break-all;">
+                ${window.location.origin}/account.html?invite=${inv.token}
+              </div>
+            ` : `
+              <p style="margin:0;font-size:0.85rem;color:#8891b0;">
+                Used: ${new Date(inv.used_at).toLocaleDateString()}
+              </p>
+            `}
+          </div>
+        `).join('');
+      } catch (error) {
+        console.error('Error loading invitations:', error);
+      }
+    }
+
+    // Initialize
+    initTopbar();
+    loadRestaurants();
+    loadInvitations();
+  </script>
+</body>
+</html>

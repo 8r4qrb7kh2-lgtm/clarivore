@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="favicon.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="favicon.png">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>QR Code Generator - Clarivore</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial;
+      max-width: 800px;
+      margin: 40px auto;
+      padding: 20px;
+      background: #0b1020;
+      color: #e9ecff;
+    }
+    .card {
+      background: #111630;
+      border: 1px solid #2a3261;
+      border-radius: 12px;
+      padding: 24px;
+      margin: 20px 0;
+    }
+    h1 { color: #7c9cff; margin-top: 0; }
+    h2 { color: #7c9cff; border-bottom: 2px solid #2a3261; padding-bottom: 8px; }
+    .btn {
+      background: #3651ff;
+      color: white;
+      border: none;
+      padding: 12px 20px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 16px;
+      margin: 8px 8px 8px 0;
+    }
+    .btn:hover { background: #4e65ff; }
+    .btn-secondary {
+      background: #1a2351;
+      border: 1px solid #2a3261;
+    }
+    .success { color: #22c55e; }
+    .error { color: #ef4444; }
+    .qr-container {
+      text-align: center;
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      margin: 20px 0;
+      display: inline-block;
+    }
+    .qr-code {
+      margin: 0 auto;
+    }
+    .url-display {
+      background: #0d132a;
+      padding: 12px;
+      border-radius: 8px;
+      border: 1px solid #2a3261;
+      margin: 12px 0;
+      word-break: break-all;
+      font-family: monospace;
+      font-size: 14px;
+    }
+    select, input {
+      width: 100%;
+      padding: 12px;
+      background: #0d132a;
+      border: 1px solid #2a3261;
+      border-radius: 8px;
+      color: #e9ecff;
+      font-size: 16px;
+      margin: 8px 0;
+    }
+    .note {
+      background: #1a2351;
+      border: 1px solid #2a3261;
+      padding: 12px;
+      border-radius: 8px;
+      margin: 12px 0;
+    }
+    .info-box {
+      background: #351b1b;
+      border: 1px solid #5b2c2c;
+      padding: 12px;
+      border-radius: 8px;
+      margin: 12px 0;
+    }
+  </style>
+</head>
+<body>
+  <h1>🔲 QR Code Generator</h1>
+
+  <div class="card">
+    <h2>What is This?</h2>
+    <p>Generate QR codes for your restaurant that customers can scan to view the allergy-safe menu. When customers scan the QR code:</p>
+    <ul>
+      <li>✅ They can select their allergies without creating an account</li>
+      <li>✅ Menu items are color-coded based on their allergen selections</li>
+      <li>✅ They see a prompt to create an account for a better experience</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h2>Generate QR Code</h2>
+
+    <div class="note">
+      <strong>Step 1:</strong> Select your restaurant
+    </div>
+
+    <label for="restaurant-select">Choose Restaurant:</label>
+    <select id="restaurant-select">
+      <option value="">Loading restaurants...</option>
+    </select>
+
+    <div class="note" style="margin-top: 20px;">
+      <strong>Step 2:</strong> Choose where the QR code will link
+    </div>
+
+    <label>
+      <input type="radio" name="urlType" value="production" checked>
+      Production Site (Vercel - for real customers)
+    </label>
+    <br>
+    <label>
+      <input type="radio" name="urlType" value="local">
+      Local Testing (localhost:8080 - for testing only)
+    </label>
+
+    <div style="margin-top: 20px;">
+      <button class="btn" onclick="generateQR()">Generate QR Code</button>
+    </div>
+
+    <div id="qr-output"></div>
+  </div>
+
+  <div class="card">
+    <h2>📱 How to Use the QR Code</h2>
+    <ol>
+      <li><strong>Download</strong> - Right-click the QR code and "Save image as..."</li>
+      <li><strong>Print</strong> - Add it to table tents, menus, or window signs</li>
+      <li><strong>Test</strong> - Scan it with your phone camera to test</li>
+      <li><strong>Place</strong> - Put it where customers can easily scan it</li>
+    </ol>
+
+    <div class="info-box">
+      <strong>💡 Pro Tips:</strong>
+      <ul>
+        <li>Print QR codes at least 2x2 inches for easy scanning</li>
+        <li>Add text like "Scan for Allergy Info" below the code</li>
+        <li>Test the QR code before printing many copies</li>
+        <li>Place QR codes at eye level or on tables</li>
+      </ul>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/auth-redirect.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+  <script>
+    const SUPABASE_URL = 'https://fgoiyycctnwnghrvsilt.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZnb2l5eWNjdG53bmdocnZzaWx0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA0MzY1MjYsImV4cCI6MjA3NjAxMjUyNn0.xlSSXr0Gl7j-vsckrj-2anpPmp4BG2SUIdN-_dquSA8';
+    const PRODUCTION_URL = 'https://cle-allergy-aware-5brm2sqvf-matt-davis-projects-68e3715e.vercel.app';
+    const LOCAL_URL = 'http://127.0.0.1:8080';
+
+    const { createClient } = supabase;
+    const supabaseClient = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    async function loadRestaurants() {
+      const select = document.getElementById('restaurant-select');
+
+      try {
+        const { data, error } = await supabaseClient
+          .from('restaurants')
+          .select('*')
+          .order('name');
+
+        if (error) throw error;
+
+        if (!data || data.length === 0) {
+          select.innerHTML = '<option value="">No restaurants found</option>';
+          return;
+        }
+
+        select.innerHTML = data.map(r =>
+          `<option value="${r.slug}">${r.name}</option>`
+        ).join('');
+
+      } catch (err) {
+        select.innerHTML = `<option value="">Error loading restaurants</option>`;
+        console.error(err);
+      }
+    }
+
+    async function generateQR() {
+      const slug = document.getElementById('restaurant-select').value;
+      const urlType = document.querySelector('input[name="urlType"]:checked').value;
+      const output = document.getElementById('qr-output');
+
+      if (!slug) {
+        output.innerHTML = '<p class="error">Please select a restaurant</p>';
+        return;
+      }
+
+      const baseURL = urlType === 'production' ? PRODUCTION_URL : LOCAL_URL;
+      const url = `${baseURL}/restaurant.html?slug=${slug}&qr=true`;
+
+      output.innerHTML = '<p>Generating QR code...</p>';
+
+      try {
+        const canvas = document.createElement('canvas');
+        await QRCode.toCanvas(canvas, url, {
+          width: 400,
+          margin: 2,
+          color: {
+            dark: '#0b1020',
+            light: '#ffffff'
+          }
+        });
+
+        const restaurantName = document.getElementById('restaurant-select').options[document.getElementById('restaurant-select').selectedIndex].text;
+
+        output.innerHTML = `
+          <div style="margin-top: 20px;">
+            <h3 class="success">✅ QR Code Generated!</h3>
+            <p><strong>Restaurant:</strong> ${restaurantName}</p>
+            <div class="url-display">
+              <strong>URL:</strong> ${url}
+            </div>
+            <div style="text-align: center; margin: 20px 0;">
+              <div class="qr-container">
+                <div style="color: #0b1020; font-weight: bold; margin-bottom: 12px; font-size: 18px;">
+                  ${restaurantName}
+                </div>
+                <div style="color: #0b1020; margin-bottom: 8px; font-size: 14px;">
+                  Scan for Allergy Information
+                </div>
+              </div>
+            </div>
+            <div style="text-align: center;">
+              <button class="btn" onclick="downloadQR('${slug}', '${restaurantName}')">Download QR Code</button>
+              <button class="btn btn-secondary" onclick="testURL('${url}')">Test URL</button>
+            </div>
+          </div>
+        `;
+
+        // Append the canvas to the QR container
+        document.querySelector('.qr-container').appendChild(canvas);
+        canvas.className = 'qr-code';
+
+      } catch (err) {
+        output.innerHTML = `<p class="error">Error generating QR code: ${err.message}</p>`;
+        console.error(err);
+      }
+    }
+
+    function downloadQR(slug, restaurantName) {
+      const canvas = document.querySelector('.qr-code');
+      const link = document.createElement('a');
+      link.download = `qr-${slug}-allergy-aware.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    }
+
+    function testURL(url) {
+      window.open(url, '_blank');
+    }
+
+    // Load restaurants on page load
+    window.addEventListener('load', loadRestaurants);
+  </script>
+</body>
+</html>

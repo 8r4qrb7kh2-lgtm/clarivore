@@ -1,0 +1,767 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="favicon.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="favicon.png">
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no, maximum-scale=1">
+  <title>Tutorial: How to Use Clarivore</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <style>
+    :root{
+      --bg:#0b1020; --panel:#111630; --ink:#e9ecff; --muted:#a8b2d6;
+      --brand:#7c9cff; --ok:#22c55e; --warn:#facc15; --bad:#ef4444;
+      --border:#2a3261; --hover:#4c5ad4; --shadow:0 10px 30px rgba(0,0,0,.35);
+    }
+
+    /* Progress bar */
+    .tutorial-progress {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: rgba(76,90,212,0.2);
+      z-index: 1000;
+    }
+    .tutorial-progress-fill {
+      height: 100%;
+      background: var(--brand);
+      width: 0%;
+      transition: width 0.5s ease;
+    }
+
+    /* Skip button */
+    .skip-tutorial {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 999;
+      background: rgba(18,24,58,0.9);
+      border: 1px solid var(--border);
+      color: var(--ink);
+      padding: 10px 20px;
+      border-radius: 999px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    .skip-tutorial:hover {
+      border-color: var(--hover);
+      box-shadow: 0 0 0 3px rgba(124,156,255,0.2);
+    }
+
+    /* Section layout */
+    .tutorial-section {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 80px 20px;
+      opacity: 0.3;
+      transition: opacity 0.6s ease;
+    }
+    .tutorial-section.active {
+      opacity: 1;
+    }
+
+    .section-content {
+      max-width: 1100px;
+      width: 100%;
+    }
+
+    .section-header {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+    .section-header h2 {
+      font-size: clamp(1.8rem, 4vw, 3rem);
+      margin-bottom: 16px;
+    }
+    .section-header p {
+      font-size: clamp(1rem, 2vw, 1.3rem);
+      color: var(--muted);
+      max-width: 700px;
+      margin: 0 auto;
+    }
+
+    /* Restaurant cards (real style from restaurants.html) */
+    .cards {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      justify-content: center;
+      margin: 40px 0;
+    }
+    .card {
+      background: var(--panel);
+      border: 1px solid #1a2042;
+      border-radius: 16px;
+      box-shadow: var(--shadow);
+      width: 330px;
+      overflow: hidden;
+      cursor: pointer;
+      transition: all 0.3s;
+      opacity: 0.7;
+    }
+    .card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 15px 40px rgba(0,0,0,0.45);
+      border-color: var(--brand);
+    }
+    .card.selected {
+      border-color: var(--ok);
+      box-shadow: 0 0 0 3px rgba(34,197,94,0.3);
+      opacity: 1;
+    }
+    .card img {
+      display: block;
+      width: 100%;
+      height: 160px;
+      object-fit: cover;
+    }
+    .card .pad {
+      padding: 16px;
+    }
+    .card h3 {
+      margin-bottom: 8px;
+    }
+
+    /* Allergen selector (real style from account.html) */
+    .allergen-select {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: center;
+      margin: 30px 0;
+    }
+    .chip {
+      padding: 10px 16px;
+      border: 1px solid var(--border);
+      background: #12183a;
+      border-radius: 999px;
+      font-size: 15px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .chip:hover {
+      border-color: var(--hover);
+      box-shadow: 0 0 0 3px rgba(124,156,255,0.2);
+    }
+    .chip.active {
+      border-color: #4c5ad4;
+      box-shadow: 0 0 0 3px rgba(124,156,255,0.3) inset, 0 0 10px rgba(36,48,122,0.4);
+      background: #1a2351;
+    }
+
+    /* Menu viewer (real style from restaurant.html) */
+    .menuWrap {
+      background: #0d132a;
+      border-radius: 14px;
+      position: relative;
+      overflow: visible;
+      min-height: 400px;
+      margin: 40px auto;
+      max-width: 800px;
+    }
+    .menuInner {
+      position: relative;
+      display: inline-block;
+      user-select: none;
+      line-height: 0;
+      width: 100%;
+    }
+    .menuImg {
+      display: block;
+      width: 100%;
+      height: auto;
+      border-radius: 14px;
+    }
+    .overlayLayer {
+      position: absolute;
+      left: 0;
+      top: 0;
+      pointer-events: none;
+      line-height: normal;
+      width: 100%;
+      height: 100%;
+    }
+    .overlay {
+      position: absolute;
+      border: 2px solid;
+      border-radius: 6px;
+      background: transparent;
+      pointer-events: auto;
+      box-sizing: border-box;
+      cursor: pointer;
+      transition: background-color 0.2s ease, border 0.2s ease, transform 0.2s ease;
+    }
+    .overlay:hover {
+      background-color: rgba(255, 255, 255, 0.08);
+      border-width: 2px;
+      transform: scale(1.02);
+    }
+    .overlay.selected {
+      background-color: rgba(124, 156, 255, 0.25);
+      border-width: 3px;
+    }
+    .overlay.safe { border-color: var(--ok); }
+    .overlay.caution { border-color: var(--warn); }
+    .overlay.unsafe { border-color: var(--bad); }
+
+    /* Hover states with color-specific tints */
+    .overlay.safe:hover {
+      background-color: rgba(34, 197, 94, 0.12);
+    }
+    .overlay.caution:hover {
+      background-color: rgba(250, 204, 21, 0.12);
+    }
+    .overlay.unsafe:hover {
+      background-color: rgba(239, 68, 68, 0.12);
+    }
+
+    .ovBadge {
+      position: absolute;
+      top: 4px;
+      right: 4px;
+      width: 20px;
+      height: 20px;
+      background: #3651ff;
+      border: 2px solid #dbe2ff;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      font-weight: bold;
+      cursor: pointer;
+      z-index: 10;
+      pointer-events: auto;
+      line-height: 1;
+    }
+
+    /* Tooltip (real style from restaurant.html) */
+    .tip {
+      position: absolute;
+      z-index: 3400;
+      pointer-events: auto;
+      background: rgba(15,21,52,0.98);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid #2a3466;
+      border-radius: 12px;
+      padding: 14px;
+      box-shadow: var(--shadow);
+      display: none;
+      max-width: 320px;
+    }
+    .tip.show {
+      display: block;
+    }
+    .tipHead {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    .tTitle {
+      font-weight: 800;
+      font-size: 16px;
+    }
+    .tClose {
+      border: 1px solid #2a3466;
+      background: #16205a;
+      color: #fff;
+      border-radius: 8px;
+      padding: 4px 10px;
+      cursor: pointer;
+      line-height: 1;
+      font-size: 13px;
+    }
+    .tClose:hover {
+      border-color: var(--hover);
+    }
+    .tooltipList {
+      margin: 6px 0 0 20px;
+      padding: 0;
+      list-style: disc;
+      font-size: 14px;
+    }
+    .tooltipList li {
+      margin: 4px 0;
+    }
+    .tooltipDangerText {
+      color: var(--bad);
+      font-weight: 500;
+    }
+    .tooltipWarnText {
+      color: var(--warn);
+      font-weight: 500;
+    }
+
+    /* Continue button */
+    .continue-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 16px 32px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: var(--brand);
+      color: white;
+      cursor: pointer;
+      font-size: 18px;
+      font-weight: 600;
+      margin: 40px auto;
+      opacity: 0.5;
+      pointer-events: none;
+      transition: all 0.3s;
+    }
+    .continue-btn.enabled {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .continue-btn.enabled:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(124,156,255,0.4);
+    }
+
+    .checkpoint-status {
+      text-align: center;
+      margin-top: 20px;
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--muted);
+    }
+    .checkpoint-status.completed {
+      color: var(--ok);
+    }
+
+    /* Completion section */
+    .completion-badge {
+      display: inline-block;
+      background: linear-gradient(135deg, var(--ok), #38a169);
+      color: white;
+      padding: 20px 40px;
+      border-radius: 999px;
+      font-size: 24px;
+      font-weight: bold;
+      margin: 20px 0;
+      box-shadow: 0 6px 20px rgba(34,197,94,0.3);
+    }
+
+    .feature-list {
+      list-style: none;
+      margin: 30px 0;
+      max-width: 600px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .feature-list li {
+      padding: 12px 0;
+      padding-left: 40px;
+      position: relative;
+      font-size: 18px;
+      color: var(--ink);
+    }
+    .feature-list li:before {
+      content: "✓";
+      position: absolute;
+      left: 0;
+      color: var(--ok);
+      font-weight: bold;
+      font-size: 24px;
+    }
+  </style>
+</head>
+<body class="page-shell">
+  <div class="tutorial-progress">
+    <div class="tutorial-progress-fill" id="progressFill"></div>
+  </div>
+
+  <button class="skip-tutorial" onclick="skipTutorial()">Skip Tutorial</button>
+
+  <div class="wrap">
+    <div class="content">
+
+      <!-- Section 1: Welcome -->
+      <div class="tutorial-section active" id="section1">
+        <div class="section-content">
+          <div class="section-header">
+            <h2>Welcome to Clarivore! 🛡️</h2>
+            <p>
+              Clarivore helps you dine safely at restaurants by showing you which menu items
+              contain your allergens. Let's learn how it works!
+            </p>
+          </div>
+          <div style="text-align: center;">
+            <button class="continue-btn enabled" onclick="goToSection(2)">
+              Get Started →
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 2: Select Allergens -->
+      <div class="tutorial-section" id="section2">
+        <div class="section-content">
+          <div class="section-header">
+            <h2>Step 1: Select Your Allergens</h2>
+            <p>
+              First, tell us which allergens you avoid. Click on the allergens below to select them.
+            </p>
+          </div>
+
+          <div class="allergen-select" id="allergenSelector">
+            <button class="chip" data-allergen="milk">🥛 Milk</button>
+            <button class="chip" data-allergen="egg">🥚 Egg</button>
+            <button class="chip" data-allergen="peanut">🥜 Peanut</button>
+            <button class="chip" data-allergen="tree nut">🌰 Tree nut</button>
+            <button class="chip" data-allergen="shellfish">🦐 Shellfish</button>
+            <button class="chip" data-allergen="fish">🐟 Fish</button>
+            <button class="chip" data-allergen="soy">🫛 Soy</button>
+            <button class="chip" data-allergen="sesame">🫘 Sesame</button>
+            <button class="chip" data-allergen="wheat">🌾 Wheat</button>
+          </div>
+
+          <div class="checkpoint-status" id="status2">
+            ⏳ Select at least one allergen to continue
+          </div>
+
+          <div style="text-align: center;">
+            <button class="continue-btn" id="continue2" onclick="goToSection(3)">
+              Continue →
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 3: Find Restaurant -->
+      <div class="tutorial-section" id="section3">
+        <div class="section-content">
+          <div class="section-header">
+            <h2>Step 2: Find a Restaurant</h2>
+            <p>
+              Browse participating restaurants and click on one to view its menu.
+            </p>
+          </div>
+
+          <div class="cards">
+            <div class="card" onclick="selectRestaurant(this)">
+              <img src="https://static.wixstatic.com/media/945e9d_acac35ccf1a94d4d879e7a8e7f3fc8a6~mv2.jpg" alt="Falafel Cafe">
+              <div class="pad">
+                <h3>Falafel Cafe</h3>
+                <p style="color: var(--muted); font-size: 14px;">Middle Eastern • Cleveland</p>
+              </div>
+            </div>
+            <div class="card" onclick="selectRestaurant(this)">
+              <img src="https://static.wixstatic.com/media/945e9d_c5c4b2c8a0164eb1a8f7c8b3a8e7f3fc~mv2.jpg" alt="Mama Santa's">
+              <div class="pad">
+                <h3>Mama Santa's</h3>
+                <p style="color: var(--muted); font-size: 14px;">Italian • Mayfield</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="checkpoint-status" id="status3">
+            ⏳ Click on a restaurant to continue
+          </div>
+
+          <div style="text-align: center;">
+            <button class="continue-btn" id="continue3" onclick="goToSection(4)">
+              Continue →
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 4: View Menu with Overlays -->
+      <div class="tutorial-section" id="section4">
+        <div class="section-content">
+          <div class="section-header">
+            <h2>Step 3: View the Menu</h2>
+            <p>
+              Menu items are color-coded based on your allergen selection.
+              <span style="color: var(--ok); font-weight: 600;">Green = Safe</span>,
+              <span style="color: var(--warn); font-weight: 600;">Yellow = Caution</span>,
+              <span style="color: var(--bad); font-weight: 600;">Red = Contains Your Allergens</span>
+            </p>
+          </div>
+
+          <div class="menuWrap">
+            <div class="menuInner">
+              <img class="menuImg" src="https://static.wixstatic.com/media/945e9d_acac35ccf1a94d4d879e7a8e7f3fc8a6~mv2.jpg" alt="Menu">
+              <div class="overlayLayer">
+                <!-- Falafel Wrap - safe -->
+                <div class="overlay safe" style="left: 10%; top: 15%; width: 35%; height: 12%;" onclick="showTooltip(event, 'falafel')">
+                  <div class="ovBadge">ℹ️</div>
+                </div>
+                <!-- Hummus Plate - safe -->
+                <div class="overlay safe" style="left: 55%; top: 15%; width: 35%; height: 12%;" onclick="showTooltip(event, 'hummus')">
+                  <div class="ovBadge">ℹ️</div>
+                </div>
+                <!-- Gyros - caution (can remove milk tzatziki) -->
+                <div class="overlay caution" style="left: 10%; top: 35%; width: 35%; height: 12%;" onclick="showTooltip(event, 'gyros')">
+                  <div class="ovBadge">ℹ️</div>
+                </div>
+                <!-- Baklava - unsafe (contains nuts) -->
+                <div class="overlay unsafe" style="left: 55%; top: 35%; width: 35%; height: 12%;" onclick="showTooltip(event, 'baklava')">
+                  <div class="ovBadge">ℹ️</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tooltip -->
+          <div class="tip" id="tooltip">
+            <div class="tipHead">
+              <div class="tTitle" id="tooltipTitle">Dish Name</div>
+              <button class="tClose" onclick="hideTooltip()">×</button>
+            </div>
+            <div id="tooltipContent"></div>
+          </div>
+
+          <div class="checkpoint-status" id="status4">
+            ℹ️ Click on any menu item to see allergen details
+          </div>
+
+          <div style="text-align: center;">
+            <button class="continue-btn" id="continue4" onclick="goToSection(5)">
+              Continue →
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 5: Completion -->
+      <div class="tutorial-section" id="section5">
+        <div class="section-content">
+          <div class="section-header">
+            <h2>You're All Set! 🎉</h2>
+            <div style="text-align: center;">
+              <div class="completion-badge">✓ Tutorial Complete</div>
+            </div>
+            <p style="margin-top: 30px;">
+              You now know how to use Clarivore to dine safely! Here's what you learned:
+            </p>
+          </div>
+
+          <ul class="feature-list">
+            <li>Select your allergens to personalize your experience</li>
+            <li>Browse participating restaurants</li>
+            <li>View color-coded menus (Green, Yellow, Red)</li>
+            <li>Click menu items to see detailed allergen information</li>
+            <li>Identify which ingredients can be removed</li>
+          </ul>
+
+          <div style="text-align: center; margin-top: 40px;">
+            <button class="continue-btn enabled" onclick="window.location.href='restaurants.html'" style="font-size: 20px;">
+              Start Exploring Restaurants →
+            </button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    // State
+    let selectedAllergens = [];
+    let currentSection = 1;
+    let checkpointsCompleted = {
+      allergens: false,
+      restaurant: false,
+      overlay: false
+    };
+
+    // Allergen selector
+    document.querySelectorAll('#allergenSelector .chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        const allergen = chip.dataset.allergen;
+        chip.classList.toggle('active');
+
+        if (chip.classList.contains('active')) {
+          selectedAllergens.push(allergen);
+        } else {
+          selectedAllergens = selectedAllergens.filter(a => a !== allergen);
+        }
+
+        // Check completion
+        if (selectedAllergens.length > 0 && !checkpointsCompleted.allergens) {
+          checkpointsCompleted.allergens = true;
+          document.getElementById('status2').textContent = '✅ Great! You selected ' + selectedAllergens.length + ' allergen(s)';
+          document.getElementById('status2').classList.add('completed');
+          document.getElementById('continue2').classList.add('enabled');
+          updateProgress();
+        } else if (selectedAllergens.length === 0) {
+          checkpointsCompleted.allergens = false;
+          document.getElementById('status2').textContent = '⏳ Select at least one allergen to continue';
+          document.getElementById('status2').classList.remove('completed');
+          document.getElementById('continue2').classList.remove('enabled');
+          updateProgress();
+        }
+
+        // Update overlay colors based on selection
+        updateOverlayColors();
+      });
+    });
+
+    // Restaurant selector
+    function selectRestaurant(card) {
+      document.querySelectorAll('.card').forEach(c => c.classList.remove('selected'));
+      card.classList.add('selected');
+
+      if (!checkpointsCompleted.restaurant) {
+        checkpointsCompleted.restaurant = true;
+        document.getElementById('status3').textContent = '✅ Perfect! Now let\'s view the menu';
+        document.getElementById('status3').classList.add('completed');
+        document.getElementById('continue3').classList.add('enabled');
+        updateProgress();
+      }
+    }
+
+    // Tooltip data
+    const dishData = {
+      falafel: {
+        name: 'Falafel Wrap',
+        safe: true,
+        allergens: ['sesame', 'wheat'],
+        removable: [],
+        crossContam: []
+      },
+      hummus: {
+        name: 'Hummus Plate',
+        safe: true,
+        allergens: ['sesame'],
+        removable: [],
+        crossContam: []
+      },
+      gyros: {
+        name: 'Gyros Wrap',
+        safe: false,
+        allergens: ['milk', 'wheat'],
+        removable: ['milk'],
+        crossContam: []
+      },
+      baklava: {
+        name: 'Baklava',
+        safe: false,
+        allergens: ['tree nut', 'wheat', 'milk'],
+        removable: [],
+        crossContam: []
+      }
+    };
+
+    // Show tooltip
+    function showTooltip(event, dishId) {
+      const dish = dishData[dishId];
+      const tooltip = document.getElementById('tooltip');
+      const overlay = event.currentTarget;
+
+      // Mark overlay as selected
+      document.querySelectorAll('.overlay').forEach(o => o.classList.remove('selected'));
+      overlay.classList.add('selected');
+
+      // Update content
+      document.getElementById('tooltipTitle').textContent = dish.name;
+
+      let content = '';
+
+      // Show allergens that user selected
+      const userAllergens = dish.allergens.filter(a => selectedAllergens.includes(a));
+      const removableByUser = dish.removable.filter(a => selectedAllergens.includes(a));
+
+      if (userAllergens.length > 0) {
+        content += '<ul class="tooltipList">';
+        content += '<li class="tooltipDangerText">Contains: ' + userAllergens.map(a => a.charAt(0).toUpperCase() + a.slice(1)).join(', ') + '</li>';
+        content += '</ul>';
+      } else {
+        content += '<p style="color: var(--ok); font-weight: 600;">✓ Safe based on your allergen selection!</p>';
+      }
+
+      if (removableByUser.length > 0) {
+        content += '<ul class="tooltipList">';
+        content += '<li class="tooltipWarnText">Can be removed: ' + removableByUser.map(a => a.charAt(0).toUpperCase() + a.slice(1)).join(', ') + '</li>';
+        content += '</ul>';
+      }
+
+      document.getElementById('tooltipContent').innerHTML = content;
+
+      // Position tooltip
+      const rect = overlay.getBoundingClientRect();
+      tooltip.style.left = (rect.left + rect.width / 2 - 160) + 'px';
+      tooltip.style.top = (rect.bottom + 10) + 'px';
+      tooltip.classList.add('show');
+
+      // Mark checkpoint
+      if (!checkpointsCompleted.overlay) {
+        checkpointsCompleted.overlay = true;
+        document.getElementById('status4').textContent = '✅ Excellent! You can now see detailed allergen information';
+        document.getElementById('status4').classList.add('completed');
+        document.getElementById('continue4').classList.add('enabled');
+        updateProgress();
+      }
+    }
+
+    function hideTooltip() {
+      document.getElementById('tooltip').classList.remove('show');
+    }
+
+    // Update overlay colors based on selection
+    function updateOverlayColors() {
+      document.querySelectorAll('.overlay').forEach(overlay => {
+        const onClick = overlay.getAttribute('onclick');
+        const match = onClick.match(/'([^']+)'/);
+        if (match) {
+          const dishId = match[1];
+          const dish = dishData[dishId];
+
+          // Remove all color classes
+          overlay.classList.remove('safe', 'caution', 'unsafe');
+
+          // Determine color
+          const hasUserAllergens = dish.allergens.some(a => selectedAllergens.includes(a));
+          const canBeRemoved = dish.removable.some(a => selectedAllergens.includes(a));
+
+          if (!hasUserAllergens) {
+            overlay.classList.add('safe');
+          } else if (canBeRemoved) {
+            overlay.classList.add('caution');
+          } else {
+            overlay.classList.add('unsafe');
+          }
+        }
+      });
+    }
+
+    // Navigation
+    function goToSection(num) {
+      document.querySelectorAll('.tutorial-section').forEach(s => s.classList.remove('active'));
+      document.getElementById('section' + num).classList.add('active');
+      document.getElementById('section' + num).scrollIntoView({ behavior: 'smooth', block: 'center' });
+      currentSection = num;
+    }
+
+    function skipTutorial() {
+      if (confirm('Skip tutorial and go to restaurants?')) {
+        window.location.href = 'restaurants.html';
+      }
+    }
+
+    // Progress bar
+    function updateProgress() {
+      const completed = Object.values(checkpointsCompleted).filter(Boolean).length;
+      const total = Object.keys(checkpointsCompleted).length;
+      const percent = (completed / total) * 100;
+      document.getElementById('progressFill').style.width = percent + '%';
+    }
+
+    // Initialize
+    updateProgress();
+    updateOverlayColors();
+  </script>
+</body>
+</html>

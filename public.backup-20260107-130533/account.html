@@ -1,0 +1,1131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="favicon.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="favicon.png">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Account Settings - Clarivore</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body class="page-shell">
+  <header class="simple-topbar">
+    <div class="simple-topbar-inner">
+      <a class="simple-brand" href="restaurants.html">
+        <img src="https://static.wixstatic.com/media/945e9d_2b97098295d341d493e4a07d80d6b57c~mv2.png" alt="Clarivore logo">
+        <span>Clarivore</span>
+      </a>
+      <div class="simple-nav">
+        <!-- Navigation populated by shared-nav.js -->
+        <button id="navReturnMenu" type="button" style="display:none;">Back to menu</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="page-main">
+    <div class="page-content">
+      <div class="account-layout">
+        <!-- Sign-in card -->
+        <section id="auth-section" class="auth-card">
+          <h2>Manage your allergy profile</h2>
+          <p class="muted-text">Sign in to manage your saved allergens and view participating restaurants.</p>
+
+          <!-- OAuth Buttons -->
+          <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:16px;">
+            <button class="secondary-btn" id="apple-signin-btn" type="button" style="display:flex;align-items:center;justify-content:center;gap:8px;background:#000;color:#fff;border-color:#000;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09l.01-.01zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
+              </svg>
+              Sign in with Apple
+            </button>
+            <button class="secondary-btn" id="google-signin-btn" type="button" style="display:flex;align-items:center;justify-content:center;gap:8px;">
+              <svg width="18" height="18" viewBox="0 0 24 24">
+                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+              </svg>
+              Sign in with Google
+            </button>
+          </div>
+
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+            <div style="flex:1;height:1px;background:rgba(255,255,255,0.1);"></div>
+            <span style="color:#8891b0;font-size:0.9rem;">or</span>
+            <div style="flex:1;height:1px;background:rgba(255,255,255,0.1);"></div>
+          </div>
+
+          <input type="email" id="email" placeholder="Email" autocomplete="email">
+          <input type="password" id="password" placeholder="Password" autocomplete="current-password">
+          <div class="auth-actions">
+            <button class="primary-btn" id="login-btn">Sign in</button>
+            <button class="secondary-btn" id="start-signup-btn" type="button">Create an account</button>
+          </div>
+          <button class="link-btn" id="forgot-password-btn" type="button">Forgot your password?</button>
+          <p id="auth-message" class="status-text"></p>
+        </section>
+
+        <!-- Sign-up card -->
+        <section id="signup-view" class="auth-card" style="display:none;">
+          <div class="auth-actions" style="justify-content:space-between;">
+            <h2 style="margin:0;">Create your account</h2>
+            <button class="secondary-btn" id="signup-back-btn" type="button">← Back</button>
+          </div>
+
+          <!-- OAuth Buttons for Signup -->
+          <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:16px;">
+            <button class="secondary-btn" id="apple-signup-btn" type="button" style="display:flex;align-items:center;justify-content:center;gap:8px;background:#000;color:#fff;border-color:#000;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09l.01-.01zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
+              </svg>
+              Sign up with Apple
+            </button>
+            <button class="secondary-btn" id="google-signup-btn" type="button" style="display:flex;align-items:center;justify-content:center;gap:8px;">
+              <svg width="18" height="18" viewBox="0 0 24 24">
+                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+              </svg>
+              Sign up with Google
+            </button>
+          </div>
+
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+            <div style="flex:1;height:1px;background:rgba(255,255,255,0.1);"></div>
+            <span style="color:#8891b0;font-size:0.9rem;">or</span>
+            <div style="flex:1;height:1px;background:rgba(255,255,255,0.1);"></div>
+          </div>
+
+          <input type="email" id="signup-email" placeholder="Email" autocomplete="email">
+          <input type="password" id="signup-password" placeholder="Password" autocomplete="new-password">
+          <div class="auth-actions">
+            <button class="primary-btn" id="signup-submit-btn" type="button">Create account</button>
+          </div>
+          <p id="signup-message" class="status-text"></p>
+        </section>
+
+        <!-- Personal details -->
+        <section id="details-section" class="auth-card" style="display:none;">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
+            <h2 style="margin:0;">Your information</h2>
+            <button class="primary-btn" id="details-save-btn" type="button" style="display:none;">Save changes</button>
+          </div>
+          <div class="form-row">
+            <input type="text" id="profile-first-name" placeholder="First name" autocomplete="given-name">
+            <input type="text" id="profile-last-name" placeholder="Last name" autocomplete="family-name">
+          </div>
+          <input type="email" id="profile-email" placeholder="Email" autocomplete="email">
+          <p class="muted-text">Updating your email will send a confirmation message.</p>
+          <p id="details-status" class="status-text"></p>
+        </section>
+
+        <!-- Allergen settings (shown when logged in) -->
+        <section id="allergen-section" class="auth-card" style="display:none;">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
+            <h2 style="margin:0;">My Allergens</h2>
+            <button class="primary-btn" id="save-btn" type="button" style="display:none;">Save changes</button>
+          </div>
+          <div id="allergen-pills" class="allergen-select"></div>
+          <p id="allergen-status" class="status-text" style="display:none;"></p>
+        </section>
+
+        <!-- Dietary Preferences settings (shown when logged in) -->
+        <section id="diet-section" class="auth-card" style="display:none;">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
+            <h2 style="margin:0;">My Dietary Preferences</h2>
+            <button class="primary-btn" id="save-diet-btn" type="button" style="display:none;">Save changes</button>
+          </div>
+          <div id="diet-pills" class="allergen-select"></div>
+          <p id="diet-status" class="status-text" style="display:none;"></p>
+        </section>
+
+        <!-- Onboarding wizard (shown for new OAuth users) -->
+        <section id="onboarding-section" class="auth-card" style="display:none;">
+          <h2 style="margin:0 0 12px;">Welcome to Clarivore!</h2>
+          <p class="muted-text" style="margin-bottom:20px;">Let's set up your allergy profile to get started.</p>
+
+          <h3 style="margin:16px 0 8px;font-size:1.1rem;">Your name</h3>
+          <div class="form-row">
+            <input type="text" id="onboarding-first-name" placeholder="First name" autocomplete="given-name">
+            <input type="text" id="onboarding-last-name" placeholder="Last name" autocomplete="family-name">
+          </div>
+
+          <h3 style="margin:20px 0 8px;font-size:1.1rem;">Select your allergens</h3>
+          <p class="muted-text" style="margin-bottom:12px;">Choose all allergens you need to avoid.</p>
+          <div id="onboarding-allergen-pills" class="allergen-select"></div>
+
+          <h3 style="margin:20px 0 8px;font-size:1.1rem;">Dietary preferences</h3>
+          <p class="muted-text" style="margin-bottom:12px;">Select any that apply to you.</p>
+          <div id="onboarding-diet-pills" class="allergen-select"></div>
+
+          <div class="auth-actions" style="margin-top:24px;">
+            <button class="primary-btn" id="onboarding-complete-btn" type="button">Complete setup</button>
+          </div>
+          <p id="onboarding-status" class="status-text"></p>
+        </section>
+
+        <!-- Sign out section (shown when logged in) -->
+        <section id="sign-out-section" class="auth-card" style="display:none;">
+          <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
+            <button class="secondary-btn" id="sign-out-btn" type="button">Sign out</button>
+            <button class="secondary-btn" id="delete-account-btn" type="button" style="background:#dc2626;border-color:#dc2626;color:white;">Delete account</button>
+          </div>
+          <div id="delete-account-warning" style="display:none;margin-top:16px;padding:16px;background:rgba(220,38,38,0.1);border:1px solid #dc2626;border-radius:8px;">
+            <p style="margin:0 0 12px;font-weight:600;color:#dc2626;">⚠️ Are you sure you want to delete your account?</p>
+            <p style="margin:0 0 16px;color:#8891b0;font-size:0.9rem;">This will permanently delete your account and all your data. This action cannot be undone.</p>
+            <div style="display:flex;gap:12px;justify-content:center;">
+              <button class="secondary-btn" id="cancel-delete-btn" type="button">Cancel</button>
+              <button class="primary-btn" id="confirm-delete-btn" type="button" style="background:#dc2626;border-color:#dc2626;">Yes, delete my account</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- Password reset -->
+        <section id="password-reset-section" class="auth-card" style="display:none;">
+          <h2 style="margin:0 0 12px;">Set a new password</h2>
+          <p class="muted-text" style="margin-bottom:12px;">Enter a new password for your Clarivore account.</p>
+          <input type="password" id="reset-password" placeholder="New password" autocomplete="new-password">
+          <input type="password" id="reset-password-confirm" placeholder="Confirm new password" autocomplete="new-password">
+          <div class="auth-actions">
+            <button class="primary-btn" id="reset-password-btn" type="button">Update password</button>
+            <button class="secondary-btn" id="reset-cancel-btn" type="button">Cancel</button>
+          </div>
+          <p id="reset-message" class="status-text"></p>
+        </section>
+      </div>
+    </div>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    // Initialize Supabase client for this page
+    const SUPABASE_URL = 'https://fgoiyycctnwnghrvsilt.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZnb2l5eWNjdG53bmdocnZzaWx0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA0MzY1MjYsImV4cCI6MjA3NjAxMjUyNn0.xlSSXr0Gl7j-vsckrj-2anpPmp4BG2SUIdN-_dquSA8';
+    const { createClient } = supabase;
+    window.supabaseClient = window.supabaseClient || createClient(SUPABASE_URL, SUPABASE_KEY);
+  </script>
+  <script type="module">
+    import supabaseClient from './js/supabase-client.js';
+    import { setupNav, attachSignOutHandler } from './js/shared-nav.js';
+
+    const ALLERGENS = ["milk", "egg", "peanut", "tree nut", "shellfish", "fish", "soy", "sesame", "wheat"];
+    const DIETS = ["Vegan", "Vegetarian", "Pescatarian"];
+    const ALLERGEN_EMOJI = {
+      'milk': '🥛',
+      'egg': '🥚',
+      'peanut': '🥜',
+      'tree nut': '🌰',
+      'shellfish': '🦐',
+      'fish': '🐟',
+      'soy': '🫛',
+      'sesame': '🫘',
+      'wheat': '🌾'
+    };
+    const DIET_EMOJI = {
+      'Vegan': '🌱',
+      'Vegetarian': '🥬',
+      'Pescatarian': '🐟'
+    };
+    let selectedAllergies = [];
+    let selectedDiets = [];
+    let initialAllergies = []; // Track initial state for change detection
+    let initialDiets = []; // Track initial state for change detection
+    let initialFirstName = ''; // Track initial first name for change detection
+    let initialLastName = ''; // Track initial last name for change detection
+    let initialEmail = ''; // Track initial email for change detection
+    let signupAllergies = [];
+    let signupDiets = [];
+    let onboardingAllergies = []; // Track allergens selected during onboarding
+    let onboardingDiets = []; // Track diets selected during onboarding
+    let currentUser = null;
+    const params = new URLSearchParams(window.location.search);
+    const redirectParam = params.get('redirect') || null;
+    const returnSlug = params.get('returnSlug');
+    const inviteToken = params.get('invite'); // Check for manager invitation token
+    const hashParams = new URLSearchParams((window.location.hash || '').replace(/^#/, ''));
+    let isRecoveryMode = hashParams.get('type') === 'recovery';
+    if (isRecoveryMode) {
+      window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
+    }
+
+    const navReturnMenu = document.getElementById('navReturnMenu');
+    const authSection = document.getElementById('auth-section');
+    const signupView = document.getElementById('signup-view');
+    const detailsSection = document.getElementById('details-section');
+    const allergenSection = document.getElementById('allergen-section');
+    const dietSection = document.getElementById('diet-section');
+    const signOutSection = document.getElementById('sign-out-section');
+    const authMessage = document.getElementById('auth-message');
+    const signupMessage = document.getElementById('signup-message');
+    const allergenStatus = document.getElementById('allergen-status');
+    const dietStatus = document.getElementById('diet-status');
+    const detailsStatus = document.getElementById('details-status');
+    const profileFirstName = document.getElementById('profile-first-name');
+    const profileLastName = document.getElementById('profile-last-name');
+    const profileEmail = document.getElementById('profile-email');
+    const forgotPasswordBtn = document.getElementById('forgot-password-btn');
+    const passwordResetSection = document.getElementById('password-reset-section');
+    const resetPasswordInput = document.getElementById('reset-password');
+    const resetPasswordConfirmInput = document.getElementById('reset-password-confirm');
+    const resetPasswordBtn = document.getElementById('reset-password-btn');
+    const resetCancelBtn = document.getElementById('reset-cancel-btn');
+    const resetMessage = document.getElementById('reset-message');
+
+    function setNavState(user) {
+      const fromQr = !!returnSlug;
+      const showBackToMenu = fromQr && !user;
+
+      navReturnMenu.style.display = showBackToMenu ? 'inline-flex' : 'none';
+      if (showBackToMenu) {
+        navReturnMenu.onclick = () => {
+          const url = `restaurant.html?slug=${encodeURIComponent(returnSlug)}&qr=1`;
+          window.location.href = url;
+        };
+      }
+
+      // Setup navigation with current page indicator
+      if (!isRecoveryMode) {
+        setupNav('account', user);
+        attachSignOutHandler(supabaseClient);
+      }
+    }
+
+    async function checkAuth() {
+      const { data: { user } } = await supabaseClient.auth.getUser();
+      currentUser = user;
+      setNavState(user);
+
+      if (user) {
+        if (isRecoveryMode) {
+          authSection.style.display = 'none';
+          signupView.style.display = 'none';
+          detailsSection.style.display = 'none';
+          allergenSection.style.display = 'none';
+          dietSection.style.display = 'none';
+          signOutSection.style.display = 'none';
+          document.getElementById('onboarding-section').style.display = 'none';
+          passwordResetSection.style.display = 'flex';
+          resetPasswordInput.value = '';
+          resetPasswordConfirmInput.value = '';
+          resetMessage.textContent = '';
+          resetMessage.classList.remove('error','success');
+          return;
+        }
+
+        // Check if user needs onboarding (incomplete profile)
+        const needsOnboarding = await checkIfNeedsOnboarding(user);
+
+        if (needsOnboarding) {
+          // Show onboarding wizard
+          authSection.style.display = 'none';
+          signupView.style.display = 'none';
+          detailsSection.style.display = 'none';
+          allergenSection.style.display = 'none';
+          dietSection.style.display = 'none';
+          signOutSection.style.display = 'none';
+          passwordResetSection.style.display = 'none';
+          document.getElementById('onboarding-section').style.display = 'flex';
+          setupOnboarding(user);
+        } else {
+          // Show normal account page
+          authSection.style.display = 'none';
+          signupView.style.display = 'none';
+          detailsSection.style.display = 'flex';
+          allergenSection.style.display = 'flex';
+          dietSection.style.display = 'flex';
+          signOutSection.style.display = 'flex';
+          passwordResetSection.style.display = 'none';
+          document.getElementById('onboarding-section').style.display = 'none';
+          populateDetails(user);
+          await loadAllergies();
+          await loadDiets();
+          if (!returnSlug && redirectParam === 'restaurants') {
+            window.location.href = 'restaurants.html';
+            return;
+          }
+          if (!returnSlug && redirectParam === 'favorites') {
+            window.location.href = 'favorites.html';
+            return;
+          }
+        }
+      } else {
+        allergenSection.style.display = 'none';
+        dietSection.style.display = 'none';
+        signOutSection.style.display = 'none';
+        detailsSection.style.display = 'none';
+        signupView.style.display = 'none';
+        authSection.style.display = 'flex';
+        passwordResetSection.style.display = 'none';
+        document.getElementById('onboarding-section').style.display = 'none';
+        if (isRecoveryMode) {
+          isRecoveryMode = false;
+        }
+      }
+    }
+
+    async function checkIfNeedsOnboarding(user) {
+      // Check if user has first name and last name
+      const firstName = user?.user_metadata?.first_name || '';
+      const lastName = user?.user_metadata?.last_name || '';
+
+      if (!firstName || !lastName) {
+        return true;
+      }
+
+      // Check if user has set up allergens
+      const { data } = await supabaseClient
+        .from('user_allergies')
+        .select('allergens, diets')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      // If no record exists, needs onboarding
+      if (!data) {
+        return true;
+      }
+
+      // User has completed onboarding
+      return false;
+    }
+
+    function setupOnboarding(user) {
+      // Pre-fill name fields if available from OAuth
+      const onboardingFirstName = document.getElementById('onboarding-first-name');
+      const onboardingLastName = document.getElementById('onboarding-last-name');
+
+      onboardingFirstName.value = user?.user_metadata?.first_name || '';
+      onboardingLastName.value = user?.user_metadata?.last_name || '';
+
+      // Reset selections
+      onboardingAllergies = [];
+      onboardingDiets = [];
+
+      // Render allergen and diet pills
+      renderOnboardingAllergens();
+      renderOnboardingDiets();
+    }
+
+    function renderOnboardingAllergens() {
+      const container = document.getElementById('onboarding-allergen-pills');
+      container.innerHTML = '';
+      ALLERGENS.forEach(allergen => {
+        const pill = document.createElement('button');
+        pill.type = 'button';
+        pill.className = 'chip' + (onboardingAllergies.includes(allergen) ? ' active' : '');
+        const emoji = ALLERGEN_EMOJI[allergen] || '';
+        pill.textContent = emoji + ' ' + allergen.charAt(0).toUpperCase() + allergen.slice(1);
+        pill.onclick = () => {
+          if (onboardingAllergies.includes(allergen)) {
+            onboardingAllergies = onboardingAllergies.filter(a => a !== allergen);
+          } else {
+            onboardingAllergies.push(allergen);
+          }
+          renderOnboardingAllergens();
+        };
+        container.appendChild(pill);
+      });
+    }
+
+    function renderOnboardingDiets() {
+      const container = document.getElementById('onboarding-diet-pills');
+      container.innerHTML = '';
+      DIETS.forEach(diet => {
+        const pill = document.createElement('button');
+        pill.type = 'button';
+        pill.className = 'chip' + (onboardingDiets.includes(diet) ? ' active' : '');
+        const emoji = DIET_EMOJI[diet] || '';
+        pill.textContent = emoji + ' ' + diet;
+        pill.onclick = () => {
+          if (onboardingDiets.includes(diet)) {
+            onboardingDiets = onboardingDiets.filter(d => d !== diet);
+          } else {
+            onboardingDiets.push(diet);
+          }
+          renderOnboardingDiets();
+        };
+        container.appendChild(pill);
+      });
+    }
+
+    async function loadAllergies() {
+      if (!currentUser) return;
+      allergenStatus.textContent = '';
+      allergenStatus.classList.remove('error','success');
+      const { data } = await supabaseClient
+        .from('user_allergies')
+        .select('allergens')
+        .eq('user_id', currentUser.id)
+        .maybeSingle();
+      // Filter out any allergens not in current ALLERGENS list (removes legacy data like 'gluten')
+      const dbAllergens = data?.allergens || [];
+      selectedAllergies = dbAllergens.filter(a => ALLERGENS.includes(a));
+      // Save initial state for change detection
+      initialAllergies = [...selectedAllergies];
+      // If we filtered anything out, save the cleaned list back to the database
+      if (dbAllergens.length !== selectedAllergies.length) {
+        await saveAllergies(selectedAllergies);
+      }
+      renderAllergens();
+    }
+
+    function renderAllergens() {
+      const container = document.getElementById('allergen-pills');
+      container.innerHTML = '';
+      ALLERGENS.forEach(allergen => {
+        const pill = document.createElement('button');
+        pill.type = 'button';
+        pill.className = 'chip' + (selectedAllergies.includes(allergen) ? ' active' : '');
+        const emoji = ALLERGEN_EMOJI[allergen] || '';
+        pill.textContent = emoji + ' ' + allergen.charAt(0).toUpperCase() + allergen.slice(1);
+        pill.onclick = () => {
+          if (selectedAllergies.includes(allergen)) {
+            selectedAllergies = selectedAllergies.filter(a => a !== allergen);
+          } else {
+            selectedAllergies.push(allergen);
+          }
+          renderAllergens();
+        };
+        container.appendChild(pill);
+      });
+
+      // Show/hide save button based on whether changes were made
+      const saveBtn = document.getElementById('save-btn');
+      const hasChanges = JSON.stringify([...selectedAllergies].sort()) !== JSON.stringify([...initialAllergies].sort());
+      saveBtn.style.display = hasChanges ? 'block' : 'none';
+    }
+
+    async function loadDiets() {
+      if (!currentUser) return;
+      dietStatus.textContent = '';
+      dietStatus.classList.remove('error','success');
+      const { data } = await supabaseClient
+        .from('user_allergies')
+        .select('diets')
+        .eq('user_id', currentUser.id)
+        .maybeSingle();
+      selectedDiets = data?.diets || [];
+      // Save initial state for change detection
+      initialDiets = [...selectedDiets];
+      renderDiets();
+    }
+
+    function renderDiets() {
+      const container = document.getElementById('diet-pills');
+      container.innerHTML = '';
+      DIETS.forEach(diet => {
+        const pill = document.createElement('button');
+        pill.type = 'button';
+        pill.className = 'chip' + (selectedDiets.includes(diet) ? ' active' : '');
+        const emoji = DIET_EMOJI[diet] || '';
+        pill.textContent = emoji + ' ' + diet;
+        pill.onclick = () => {
+          if (selectedDiets.includes(diet)) {
+            selectedDiets = selectedDiets.filter(d => d !== diet);
+          } else {
+            selectedDiets.push(diet);
+          }
+          renderDiets();
+        };
+        container.appendChild(pill);
+      });
+
+      // Show/hide save button based on whether changes were made
+      const saveDietBtn = document.getElementById('save-diet-btn');
+      const hasChanges = JSON.stringify([...selectedDiets].sort()) !== JSON.stringify([...initialDiets].sort());
+      saveDietBtn.style.display = hasChanges ? 'block' : 'none';
+    }
+
+    async function saveDiets(diets) {
+      if (!currentUser) return;
+      // Get current allergens to preserve them
+      const { data: current } = await supabaseClient
+        .from('user_allergies')
+        .select('allergens, diets')
+        .eq('user_id', currentUser.id)
+        .maybeSingle();
+
+      const payload = {
+        user_id: currentUser.id,
+        allergens: current?.allergens || [],
+        updated_at: new Date().toISOString()
+      };
+
+      // Only include diets if the column exists
+      if (current && 'diets' in current) {
+        payload.diets = diets;
+      } else {
+        // If diets column doesn't exist, throw a helpful error
+        throw new Error('Dietary preferences feature requires a database update. Please contact support.');
+      }
+
+      const { error } = await supabaseClient
+        .from('user_allergies')
+        .upsert(payload, { onConflict: 'user_id' });
+      if (error) throw error;
+    }
+
+    function renderSignupAllergens() {
+      const container = document.getElementById('signup-allergen-pills');
+      container.innerHTML = '';
+      ALLERGENS.forEach(allergen => {
+        const pill = document.createElement('button');
+        pill.type = 'button';
+        pill.className = 'chip' + (signupAllergies.includes(allergen) ? ' active' : '');
+        const emoji = ALLERGEN_EMOJI[allergen] || '';
+        pill.textContent = emoji + ' ' + allergen.charAt(0).toUpperCase() + allergen.slice(1);
+        pill.onclick = () => {
+          if (signupAllergies.includes(allergen)) {
+            signupAllergies = signupAllergies.filter(a => a !== allergen);
+          } else {
+            signupAllergies.push(allergen);
+          }
+          renderSignupAllergens();
+        };
+        container.appendChild(pill);
+      });
+    }
+
+    function renderSignupDiets() {
+      const container = document.getElementById('signup-diet-pills');
+      container.innerHTML = '';
+      DIETS.forEach(diet => {
+        const pill = document.createElement('button');
+        pill.type = 'button';
+        pill.className = 'chip' + (signupDiets.includes(diet) ? ' active' : '');
+        const emoji = DIET_EMOJI[diet] || '';
+        pill.textContent = emoji + ' ' + diet;
+        pill.onclick = () => {
+          if (signupDiets.includes(diet)) {
+            signupDiets = signupDiets.filter(d => d !== diet);
+          } else {
+            signupDiets.push(diet);
+          }
+          renderSignupDiets();
+        };
+        container.appendChild(pill);
+      });
+    }
+
+    async function saveAllergies(allergies) {
+      if (!currentUser) return;
+      // Get current diets to preserve them
+      const { data: current } = await supabaseClient
+        .from('user_allergies')
+        .select('diets')
+        .eq('user_id', currentUser.id)
+        .maybeSingle();
+
+      const payload = {
+        user_id: currentUser.id,
+        allergens: allergies,
+        updated_at: new Date().toISOString()
+      };
+
+      // Only include diets if the column exists in the response
+      if (current && 'diets' in current) {
+        payload.diets = current.diets || [];
+      }
+
+      const { error } = await supabaseClient
+        .from('user_allergies')
+        .upsert(payload, { onConflict: 'user_id' });
+      if (error) throw error;
+    }
+
+    function populateDetails(user) {
+      profileFirstName.value = user?.user_metadata?.first_name || '';
+      profileLastName.value = user?.user_metadata?.last_name || '';
+      profileEmail.value = user?.email || '';
+
+      // Save initial values for change detection
+      initialFirstName = profileFirstName.value;
+      initialLastName = profileLastName.value;
+      initialEmail = profileEmail.value;
+
+      detailsStatus.textContent = '';
+      detailsStatus.classList.remove('error','success');
+
+      // Check for changes immediately in case values were set
+      checkDetailsChanged();
+    }
+
+    function checkDetailsChanged() {
+      const saveBtn = document.getElementById('details-save-btn');
+      const hasChanges =
+        profileFirstName.value !== initialFirstName ||
+        profileLastName.value !== initialLastName ||
+        profileEmail.value !== initialEmail;
+      saveBtn.style.display = hasChanges ? 'block' : 'none';
+    }
+
+    // Add event listeners to profile fields to detect changes
+    if(profileFirstName) profileFirstName.addEventListener('input', checkDetailsChanged);
+    if(profileLastName) profileLastName.addEventListener('input', checkDetailsChanged);
+    if(profileEmail) profileEmail.addEventListener('input', checkDetailsChanged);
+
+    document.getElementById('save-btn').onclick = async () => {
+      if (!currentUser) return;
+      const saveBtn = document.getElementById('save-btn');
+      const originalText = saveBtn.textContent;
+      allergenStatus.textContent = '';
+      allergenStatus.style.display = 'none';
+      try {
+        await saveAllergies(selectedAllergies);
+        // Update initial state to match saved state
+        initialAllergies = [...selectedAllergies];
+        saveBtn.textContent = 'Saved!';
+        saveBtn.style.background = '#22c55e';
+        setTimeout(() => {
+          saveBtn.textContent = originalText;
+          saveBtn.style.background = '';
+          // Hide button after save success
+          saveBtn.style.display = 'none';
+        }, 2000);
+      } catch (error) {
+        allergenStatus.textContent = error.message || 'Failed to save.';
+        allergenStatus.classList.remove('success');
+        allergenStatus.classList.add('error');
+        allergenStatus.style.display = 'block';
+      }
+    };
+
+    document.getElementById('save-diet-btn').onclick = async () => {
+      if (!currentUser) return;
+      const saveDietBtn = document.getElementById('save-diet-btn');
+      const originalText = saveDietBtn.textContent;
+      dietStatus.textContent = '';
+      dietStatus.style.display = 'none';
+      try {
+        await saveDiets(selectedDiets);
+        // Update initial state to match saved state
+        initialDiets = [...selectedDiets];
+        saveDietBtn.textContent = 'Saved!';
+        saveDietBtn.style.background = '#22c55e';
+        setTimeout(() => {
+          saveDietBtn.textContent = originalText;
+          saveDietBtn.style.background = '';
+          // Hide button after save success
+          saveDietBtn.style.display = 'none';
+        }, 2000);
+      } catch (error) {
+        dietStatus.textContent = error.message || 'Failed to save.';
+        dietStatus.classList.remove('success');
+        dietStatus.classList.add('error');
+        dietStatus.style.display = 'block';
+      }
+    };
+
+    document.getElementById('login-btn').onclick = async () => {
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+      authMessage.textContent = '';
+      authMessage.classList.remove('error', 'success');
+
+      if (!email || !password) {
+        authMessage.textContent = 'Please enter your email and password.';
+        authMessage.classList.add('error');
+        return;
+      }
+
+      const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+      if (error) {
+        authMessage.textContent = error.message;
+        authMessage.classList.add('error');
+      } else {
+        authMessage.textContent = '';
+        await checkAuth();
+      }
+    };
+
+    forgotPasswordBtn.addEventListener('click', async () => {
+      const email = document.getElementById('email').value.trim();
+      authMessage.textContent = '';
+      authMessage.classList.remove('error','success');
+      if (!email) {
+        authMessage.textContent = 'Enter your email first, then tap "Forgot your password?"';
+        authMessage.classList.add('error');
+        return;
+      }
+      try {
+        const redirectTo = `${window.location.origin}/account.html#type=recovery`;
+        const { error } = await supabaseClient.auth.resetPasswordForEmail(email, { redirectTo });
+        if (error) throw error;
+        authMessage.textContent = 'Password reset email sent! Check your inbox.';
+        authMessage.classList.add('success');
+      } catch (error) {
+        authMessage.textContent = error.message || 'Unable to send reset email.';
+        authMessage.classList.add('error');
+      }
+    });
+
+    document.getElementById('start-signup-btn').onclick = () => {
+      authMessage.textContent = '';
+      authSection.style.display = 'none';
+      signupView.style.display = 'flex';
+      signupAllergies = [];
+      signupDiets = [];
+      signupMessage.textContent = '';
+      signupMessage.classList.remove('error','success');
+    };
+
+    document.getElementById('signup-back-btn').onclick = () => {
+      signupMessage.textContent = '';
+      signupView.style.display = 'none';
+      authSection.style.display = 'flex';
+      signupAllergies = [];
+      signupDiets = [];
+    };
+
+    document.getElementById('signup-submit-btn').onclick = async () => {
+      const email = document.getElementById('signup-email').value.trim();
+      const password = document.getElementById('signup-password').value;
+      signupMessage.textContent = '';
+      signupMessage.classList.remove('error', 'success');
+
+      if (!email || !password) {
+        signupMessage.textContent = 'Please enter both email and password.';
+        signupMessage.classList.add('error');
+        return;
+      }
+
+      const { error } = await supabaseClient.auth.signUp({
+        email,
+        password
+      });
+
+      if (error) {
+        signupMessage.textContent = error.message;
+        signupMessage.classList.add('error');
+        return;
+      }
+
+      signupMessage.textContent = 'Account created! Check your email to confirm.';
+      signupMessage.classList.add('success');
+
+      // Attempt immediate login if session returned (email confirmations disabled)
+      const { data: { session } } = await supabaseClient.auth.getSession();
+      if (session) {
+        // User will be directed to onboarding wizard to complete profile
+        await checkAuth();
+      } else {
+        setTimeout(() => {
+          signupView.style.display = 'none';
+          authSection.style.display = 'flex';
+        }, 1500);
+      }
+    };
+
+    document.getElementById('details-save-btn').onclick = async () => {
+      if (!currentUser) return;
+      const saveBtn = document.getElementById('details-save-btn');
+      const originalText = saveBtn.textContent;
+      const firstName = profileFirstName.value.trim();
+      const lastName = profileLastName.value.trim();
+      const email = profileEmail.value.trim();
+      detailsStatus.textContent = '';
+      detailsStatus.classList.remove('error','success');
+
+      if (!firstName || !lastName || !email) {
+        detailsStatus.textContent = 'Please fill in your first name, last name, and email.';
+        detailsStatus.classList.add('error');
+        return;
+      }
+
+      const payload = {
+        data: { first_name: firstName, last_name: lastName }
+      };
+      if (email !== currentUser.email) {
+        payload.email = email;
+      }
+
+      const { data, error } = await supabaseClient.auth.updateUser(payload);
+      if (error) {
+        detailsStatus.textContent = error.message;
+        detailsStatus.classList.add('error');
+        return;
+      }
+
+      currentUser = data.user;
+
+      // Update initial state to match saved state
+      initialFirstName = firstName;
+      initialLastName = lastName;
+      initialEmail = email;
+
+      // Show success feedback
+      saveBtn.textContent = 'Saved!';
+      saveBtn.style.background = '#22c55e';
+      setTimeout(() => {
+        saveBtn.textContent = originalText;
+        saveBtn.style.background = '';
+        // Hide button after save success
+        saveBtn.style.display = 'none';
+      }, 2000);
+
+      setNavState(currentUser);
+    };
+
+    // Onboarding complete button handler
+    document.getElementById('onboarding-complete-btn').addEventListener('click', async () => {
+      const onboardingFirstName = document.getElementById('onboarding-first-name').value.trim();
+      const onboardingLastName = document.getElementById('onboarding-last-name').value.trim();
+      const onboardingStatus = document.getElementById('onboarding-status');
+
+      onboardingStatus.textContent = '';
+      onboardingStatus.classList.remove('error', 'success');
+
+      // Validate required fields
+      if (!onboardingFirstName || !onboardingLastName) {
+        onboardingStatus.textContent = 'Please enter your first and last name.';
+        onboardingStatus.classList.add('error');
+        return;
+      }
+
+      try {
+        let userRole = 'customer';
+        let restaurantId = null;
+
+        // Check if user has a manager invitation token
+        if (inviteToken) {
+          console.log('[DEBUG] Processing invitation token:', inviteToken);
+
+          // Validate invitation token and get restaurant info
+          const { data: invitation, error: inviteError } = await supabaseClient
+            .from('manager_invitations')
+            .select('restaurant_id, used')
+            .eq('token', inviteToken)
+            .maybeSingle();
+
+          console.log('[DEBUG] Invitation query result:', invitation, 'error:', inviteError);
+
+          if (inviteError) {
+            console.error('Invitation lookup error:', inviteError);
+          } else if (!invitation) {
+            console.log('[DEBUG] No invitation found for token');
+            onboardingStatus.textContent = 'Invalid invitation link. Continuing as regular user.';
+            onboardingStatus.classList.add('error');
+          } else if (invitation.used) {
+            console.log('[DEBUG] Invitation already used');
+            onboardingStatus.textContent = 'This invitation has already been used. Continuing as regular user.';
+            onboardingStatus.classList.add('error');
+          } else {
+            // Valid invitation - mark as manager
+            userRole = 'manager';
+            restaurantId = invitation.restaurant_id;
+            console.log('[DEBUG] Valid invitation! Setting userRole=manager, restaurantId=', restaurantId);
+          }
+        }
+
+        // Update user metadata with name and role
+        const { data: userData, error: userError } = await supabaseClient.auth.updateUser({
+          data: {
+            first_name: onboardingFirstName,
+            last_name: onboardingLastName,
+            role: userRole
+          }
+        });
+
+        if (userError) throw userError;
+
+        // Save allergens and diets
+        await supabaseClient
+          .from('user_allergies')
+          .upsert({
+            user_id: currentUser.id,
+            allergens: onboardingAllergies,
+            diets: onboardingDiets,
+            updated_at: new Date().toISOString()
+          }, { onConflict: 'user_id' });
+
+        // If manager, link to restaurant and mark invitation as used
+        if (userRole === 'manager' && restaurantId) {
+          console.log('[DEBUG] Linking manager to restaurant. user_id:', currentUser.id, 'restaurant_id:', restaurantId);
+
+          // Link user to restaurant
+          const { data: linkData, error: linkError } = await supabaseClient
+            .from('restaurant_managers')
+            .insert({
+              user_id: currentUser.id,
+              restaurant_id: restaurantId,
+              created_at: new Date().toISOString()
+            });
+
+          console.log('[DEBUG] Restaurant manager link result:', linkData, 'error:', linkError);
+
+          // Mark invitation as used
+          const { error: updateError } = await supabaseClient
+            .from('manager_invitations')
+            .update({ used: true, used_by: currentUser.id, used_at: new Date().toISOString() })
+            .eq('token', inviteToken);
+
+          console.log('[DEBUG] Invitation marked as used. error:', updateError);
+        }
+
+        // Redirect to restaurants page
+        window.location.href = 'restaurants.html';
+      } catch (error) {
+        console.error('Onboarding error:', error);
+        onboardingStatus.textContent = error.message || 'Failed to complete setup. Please try again.';
+        onboardingStatus.classList.add('error');
+      }
+    });
+
+    // Sign out button handler
+    const signOutBtn = document.getElementById('sign-out-btn');
+    if (signOutBtn) {
+      signOutBtn.addEventListener('click', async () => {
+        await supabaseClient.auth.signOut();
+        selectedAllergies = [];
+        selectedDiets = [];
+        signupAllergies = [];
+        signupDiets = [];
+        onboardingAllergies = [];
+        onboardingDiets = [];
+        await checkAuth();
+      });
+    }
+
+    // Delete account button handlers
+    const deleteAccountBtn = document.getElementById('delete-account-btn');
+    const deleteAccountWarning = document.getElementById('delete-account-warning');
+    const cancelDeleteBtn = document.getElementById('cancel-delete-btn');
+    const confirmDeleteBtn = document.getElementById('confirm-delete-btn');
+
+    if (deleteAccountBtn) {
+      deleteAccountBtn.addEventListener('click', () => {
+        deleteAccountWarning.style.display = 'block';
+        deleteAccountWarning.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      });
+    }
+
+    if (cancelDeleteBtn) {
+      cancelDeleteBtn.addEventListener('click', () => {
+        deleteAccountWarning.style.display = 'none';
+      });
+    }
+
+    if (confirmDeleteBtn) {
+      confirmDeleteBtn.addEventListener('click', async () => {
+        if (!currentUser) return;
+
+        try {
+          // Call the delete_user RPC function which handles all cleanup
+          const { error: rpcError } = await supabaseClient.rpc('delete_user');
+
+          if (rpcError) {
+            console.error('RPC delete error:', rpcError);
+
+            // Fallback: delete data manually
+            await supabaseClient
+              .from('user_allergies')
+              .delete()
+              .eq('user_id', currentUser.id);
+
+            await supabaseClient
+              .from('restaurant_managers')
+              .delete()
+              .eq('user_id', currentUser.id);
+          }
+
+          // Sign out
+          await supabaseClient.auth.signOut();
+          alert('Your account has been deleted successfully.');
+          window.location.href = '/';
+        } catch (error) {
+          console.error('Account deletion error:', error);
+          alert('Failed to delete account: ' + (error.message || 'Please contact support.'));
+        }
+      });
+    }
+
+    resetPasswordBtn.addEventListener('click', async () => {
+      resetMessage.textContent = '';
+      resetMessage.classList.remove('error','success');
+      const password = resetPasswordInput.value;
+      const confirm = resetPasswordConfirmInput.value;
+      if (!password || !confirm) {
+        resetMessage.textContent = 'Enter and confirm your new password.';
+        resetMessage.classList.add('error');
+        return;
+      }
+      if (password !== confirm) {
+        resetMessage.textContent = 'Passwords do not match.';
+        resetMessage.classList.add('error');
+        return;
+      }
+      if (password.length < 8) {
+        resetMessage.textContent = 'Use at least 8 characters for your new password.';
+        resetMessage.classList.add('error');
+        return;
+      }
+      try {
+        const { error } = await supabaseClient.auth.updateUser({ password });
+        if (error) throw error;
+        resetMessage.textContent = 'Password updated! You are signed in.';
+        resetMessage.classList.add('success');
+        isRecoveryMode = false;
+        setTimeout(() => {
+          checkAuth();
+        }, 1200);
+      } catch (error) {
+        resetMessage.textContent = error.message || 'Unable to update password.';
+        resetMessage.classList.add('error');
+      }
+    });
+
+    resetCancelBtn.addEventListener('click', async () => {
+      resetMessage.textContent = '';
+      resetMessage.classList.remove('error','success');
+      resetPasswordInput.value = '';
+      resetPasswordConfirmInput.value = '';
+      isRecoveryMode = false;
+      await checkAuth();
+    });
+
+    // OAuth handlers
+    async function handleOAuthSignIn(provider) {
+      try {
+        const redirectTo = `${window.location.origin}/account.html${redirectParam ? '?redirect=' + redirectParam : ''}`;
+        const { error } = await supabaseClient.auth.signInWithOAuth({
+          provider: provider,
+          options: {
+            redirectTo: redirectTo
+          }
+        });
+        if (error) {
+          authMessage.textContent = error.message;
+          authMessage.classList.add('error');
+        }
+      } catch (error) {
+        authMessage.textContent = error.message || 'OAuth sign-in failed';
+        authMessage.classList.add('error');
+      }
+    }
+
+    // Sign in with Apple (sign-in page)
+    document.getElementById('apple-signin-btn')?.addEventListener('click', () => {
+      handleOAuthSignIn('apple');
+    });
+
+    // Sign in with Google (sign-in page)
+    document.getElementById('google-signin-btn')?.addEventListener('click', () => {
+      handleOAuthSignIn('google');
+    });
+
+    // Sign up with Apple (signup page)
+    document.getElementById('apple-signup-btn')?.addEventListener('click', () => {
+      handleOAuthSignIn('apple');
+    });
+
+    // Sign up with Google (signup page)
+    document.getElementById('google-signup-btn')?.addEventListener('click', () => {
+      handleOAuthSignIn('google');
+    });
+
+    checkAuth();
+  </script>
+  <script type="module" src="js/report-modal.js"></script>
+</body>
+</html>

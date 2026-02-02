@@ -1,0 +1,17 @@
+# Supabase Configuration
+
+[api]
+enabled = true
+port = 54321
+
+[functions.ai-ingredient-assistant]
+verify_jwt = false
+
+[functions.analyze-ingredient-scan]
+verify_jwt = false
+
+[functions.spelling-corrector]
+verify_jwt = false
+
+[functions.monitor-menus]
+verify_jwt = false

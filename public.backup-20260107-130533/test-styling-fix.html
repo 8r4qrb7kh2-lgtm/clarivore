@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Test Dietary Preferences Styling Fix</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      padding: 40px;
+      max-width: 1200px;
+      margin: 0 auto;
+      background: #f5f5f5;
+    }
+    .test-container {
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      margin-bottom: 30px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    h1 { color: #333; margin-top: 0; }
+    h2 { color: #666; margin-top: 30px; }
+    .dish-info {
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid #e0e0e0;
+      display: flex;
+      flex-direction: row;
+      gap: 16px;
+      align-items: flex-start;
+    }
+    .dish-info-section {
+      margin-bottom: 0;
+      min-width: 0;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      overflow: visible;
+      flex: 1;
+    }
+    .dish-info-section strong {
+      display: block;
+      margin-bottom: 8px;
+      color: #333;
+      font-size: 0.95rem;
+    }
+    .dish-info-section .note > div,
+    .dish-info-section > div {
+      width: 100%;
+      display: block;
+      box-sizing: border-box;
+      white-space: nowrap;
+      overflow: visible;
+    }
+    .tooltipDangerText { color: #e85d5d; }
+    .tooltipWarnText { color: #facc15; }
+    .note {
+      font-size: 0.9rem;
+      line-height: 1.6;
+      width: 100%;
+      display: block;
+    }
+    .status {
+      padding: 15px;
+      background: #e8f5e9;
+      border-left: 4px solid #4caf50;
+      margin: 20px 0;
+      border-radius: 4px;
+    }
+    .status.success { background: #e8f5e9; border-color: #4caf50; }
+    .status.info { background: #e3f2fd; border-color: #2196f3; }
+  </style>
+</head>
+<body>
+  <h1>✅ Dietary Preferences & Allergen Information Styling Fix Test</h1>
+  
+  <div class="status success">
+    <strong>✅ Fix Applied:</strong> Text in dietary preferences and allergen information sections now displays on a single line and fills the available horizontal space.
+  </div>
+
+  <div class="test-container">
+    <h2>Test 1: Dietary Preferences (Vegan Example)</h2>
+    <div class="dish-info">
+      <div class="dish-info-section" style="flex:1;min-width:0;">
+        <strong>Dietary Preferences</strong>
+        <div style="margin-bottom:6px;color:#4cc85a;font-size:0.9rem;width:100%;display:block;white-space:nowrap;overflow:visible">🌱 This dish is <strong>vegan</strong></div>
+      </div>
+    </div>
+    <p><strong>Expected:</strong> "🌱 This dish is <strong>vegan</strong>" should be on ONE line</p>
+  </div>
+
+  <div class="test-container">
+    <h2>Test 2: Allergen Information</h2>
+    <div class="dish-info">
+      <div class="dish-info-section" style="flex:1;min-width:0;">
+        <strong>Allergen Information</strong>
+        <div class="note tooltipDangerText">
+          <div style="margin-bottom:4px;width:100%;display:block;white-space:nowrap;overflow:visible">⚠️ Contains <strong>milk</strong> (cannot be substituted out)</div>
+        </div>
+        <div class="note tooltipWarnText">
+          <div style="margin-bottom:4px;width:100%;display:block;white-space:nowrap;overflow:visible">⚠️ Contains <strong>egg</strong> (can be substituted out)</div>
+        </div>
+      </div>
+    </div>
+    <p><strong>Expected:</strong> Both allergen messages should each be on ONE line</p>
+  </div>
+
+  <div class="test-container">
+    <h2>Test 3: Side-by-Side Layout (Actual Page Structure)</h2>
+    <div class="dish-info">
+      <div class="dish-info-section" style="flex:1;min-width:0;">
+        <strong>Allergen Information</strong>
+        <div class="note tooltipDangerText">
+          <div style="margin-bottom:4px;width:100%;display:block;white-space:nowrap;overflow:visible">⚠️ Contains <strong>milk</strong> (cannot be substituted out)</div>
+        </div>
+      </div>
+      <div class="dish-info-section" style="flex:1;min-width:0;">
+        <strong>Dietary Preferences</strong>
+        <div style="margin-bottom:6px;color:#4cc85a;font-size:0.9rem;width:100%;display:block;white-space:nowrap;overflow:visible">🌱 This dish is <strong>vegan</strong></div>
+        <div style="margin-bottom:6px;color:#facc15;font-size:0.9rem;width:100%;display:block;white-space:nowrap;overflow:visible">🥬 This dish can be made <strong>vegetarian</strong></div>
+        <div style="margin-bottom:6px;color:#e85d5d;font-size:0.9rem;width:100%;display:block;white-space:nowrap;overflow:visible">🐟 This dish is not <strong>pescatarian</strong></div>
+      </div>
+    </div>
+    <p><strong>Expected:</strong> All messages should be on ONE line each, filling available space</p>
+  </div>
+
+  <div class="status info">
+    <strong>Note:</strong> If you see any text wrapping to multiple lines, there may be a browser cache issue. Try hard refresh (Ctrl+Shift+R or Cmd+Shift+R) or clear your browser cache.
+  </div>
+</body>
+</html>

@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="favicon.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="favicon.png">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Favorite Restaurants - Clarivore</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <style>
+    .favorite-container {
+      margin-top: 24px;
+    }
+  </style>
+</head>
+<body class="page-shell">
+  <header class="simple-topbar">
+    <div class="simple-topbar-inner">
+      <a class="simple-brand" href="restaurants.html">
+        <img src="https://static.wixstatic.com/media/945e9d_2b97098295d341d493e4a07d80d6b57c~mv2.png" alt="Clarivore logo">
+        <span>Clarivore</span>
+      </a>
+      <div class="simple-nav">
+        <!-- Navigation populated by shared-nav.js -->
+      </div>
+    </div>
+  </header>
+
+  <main class="page-main">
+    <div class="page-content favorite-container">
+      <h1 style="text-align:center;margin-bottom:8px;">Favorite restaurants</h1>
+      <p id="favorites-status" class="status-text" style="text-align:center;margin-bottom:16px;"></p>
+      <div id="favorite-grid" class="restaurant-grid">
+        <p style="color: var(--muted); text-align: center; grid-column: 1/-1;">Loading favorites...</p>
+      </div>
+    </div>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script type="module">
+    import supabaseClient from './js/supabase-client.js';
+    import { setupNav, attachSignOutHandler } from './js/shared-nav.js';
+
+    const statusEl = document.getElementById('favorites-status');
+    const grid = document.getElementById('favorite-grid');
+    let favoriteIds = new Set();
+    let statusTimer = null;
+
+    function setStatus(message = '', variant = '') {
+      if (!statusEl) return;
+      statusEl.textContent = message || '';
+      statusEl.classList.remove('error','success');
+      if (message && variant) statusEl.classList.add(variant);
+      if (statusTimer) {
+        clearTimeout(statusTimer);
+        statusTimer = null;
+      }
+      if (message) {
+        statusTimer = setTimeout(() => {
+          statusEl.textContent = '';
+          statusEl.classList.remove('error','success');
+          statusTimer = null;
+        }, 3000);
+      }
+    }
+
+    const DAY_MS = 24 * 60 * 60 * 1000;
+    function formatRelativeDate(value){
+      if(!value) return 'Never';
+      const date = new Date(value);
+      if(Number.isNaN(date.getTime())) return 'Never';
+      const today = new Date();
+      const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+      const targetStart = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+      let diff = Math.round((todayStart - targetStart) / DAY_MS);
+      if(diff <= 0) return 'Today';
+      if(diff === 1) return 'Yesterday';
+      return diff + ' days ago';
+    }
+
+    function updateFavoriteButton(btn, isActive) {
+      btn.classList.toggle('is-active', isActive);
+      btn.textContent = isActive ? '★' : '☆';
+      btn.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+      btn.setAttribute('aria-label', isActive ? 'Remove from favorites' : 'Add to favorites');
+    }
+
+    function attachFavoriteHandlers(user) {
+      document.querySelectorAll('.favorite-toggle').forEach(btn => {
+        btn.addEventListener('click', async (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          const restaurantId = btn.getAttribute('data-id');
+          if (!restaurantId || !user) return;
+          await toggleFavorite(user, restaurantId, btn);
+        });
+      });
+    }
+
+    async function toggleFavorite(user, restaurantId, btn) {
+      const isFavorite = favoriteIds.has(String(restaurantId));
+      btn.disabled = true;
+      setStatus('');
+      try {
+        if (isFavorite) {
+          const { error } = await supabaseClient
+            .from('user_favorites')
+            .delete()
+            .eq('user_id', user.id)
+            .eq('restaurant_id', restaurantId);
+          if (error) throw error;
+          favoriteIds.delete(String(restaurantId));
+          updateFavoriteButton(btn, false);
+          setStatus('Removed from favorites.', 'success');
+          const card = btn.closest('.restaurant-card');
+          if (card) {
+            card.remove();
+          }
+          if (!document.querySelector('.restaurant-card')) {
+            grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1;">No favorites yet. Add favorites from the All restaurants page.</div>';
+          }
+        } else {
+          const { error } = await supabaseClient
+            .from('user_favorites')
+            .upsert(
+              { user_id: user.id, restaurant_id: restaurantId },
+              { onConflict: 'user_id,restaurant_id' }
+            );
+          if (error) throw error;
+          favoriteIds.add(String(restaurantId));
+          updateFavoriteButton(btn, true);
+          setStatus('Added to favorites!', 'success');
+        }
+      } catch (error) {
+        console.error('Favorite toggle failed', error);
+        setStatus(error.message || 'Unable to update favorite.', 'error');
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    async function requireAuth() {
+      const { data: { user } } = await supabaseClient.auth.getUser();
+      if (!user) {
+        window.location.href = 'account.html?redirect=favorites';
+        return null;
+      }
+      return user;
+    }
+
+    async function loadFavoriteRestaurants() {
+      const user = await requireAuth();
+      if (!user) return;
+
+      // Setup navigation with current page indicator
+      setupNav('favorites', user);
+      attachSignOutHandler(supabaseClient);
+
+      const { data: favorites, error: favoritesError } = await supabaseClient
+        .from('user_favorites')
+        .select('restaurant_id')
+        .eq('user_id', user.id);
+
+      if (favoritesError) {
+        console.error('Failed to load favorites', favoritesError);
+        grid.innerHTML = '<p style="color: var(--bad); grid-column:1/-1;">Unable to load favorites.</p>';
+        setStatus('Unable to load favorites.', 'error');
+        return;
+      }
+
+      const ids = (favorites || []).map(row => row.restaurant_id).filter(Boolean);
+      favoriteIds = new Set(ids.map(String));
+
+      if (!ids.length) {
+        grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1;">No favorites yet. Add favorites from the All restaurants page.</div>';
+        return;
+      }
+
+      const { data: restaurants, error } = await supabaseClient
+        .from('restaurants')
+        .select('*')
+        .in('id', ids)
+        .order('name');
+
+      if (error) {
+        console.error('Failed to load restaurant details', error);
+        grid.innerHTML = '<p style="color: var(--bad); grid-column:1/-1;">Unable to load favorite restaurants.</p>';
+        setStatus('Unable to load favorite restaurants.', 'error');
+        return;
+      }
+
+      if (!restaurants.length) {
+        grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1;">No favorites yet. Add favorites from the All restaurants page.</div>';
+        favoriteIds.clear();
+        return;
+      }
+
+      grid.innerHTML = restaurants.map(r => {
+        const restaurantKey = r.id ? String(r.id) : '';
+        const isFavorite = restaurantKey && favoriteIds.has(restaurantKey);
+        const favoriteButton = restaurantKey ? `
+          <button class="favorite-toggle${isFavorite ? ' is-active' : ''}" type="button" data-id="${restaurantKey}" aria-label="${isFavorite ? 'Remove from favorites' : 'Add to favorites'}" aria-pressed="${isFavorite ? 'true' : 'false'}">
+            ${isFavorite ? '★' : '☆'}
+          </button>
+        ` : '';
+        return `
+          <div class="restaurant-card" data-id="${restaurantKey}" data-slug="${r.slug || ''}">
+            <div class="restaurant-card-media">
+              ${favoriteButton}
+              <img src="${r.menu_image || 'https://via.placeholder.com/400x300'}" alt="${r.name}">
+            </div>
+            <div class="restaurant-card-content">
+              <h3>${r.name}</h3>
+              <p class="meta">Last confirmed by staff: ${formatRelativeDate(r.last_confirmed)}</p>
+              <a href="restaurant.html?slug=${r.slug}" class="cta-button" style="padding: 10px 20px; font-size: 0.9rem;">View menu</a>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      attachFavoriteHandlers(user);
+    }
+
+    loadFavoriteRestaurants();
+  </script>
+  <script type="module" src="js/report-modal.js"></script>
+</body>
+</html>

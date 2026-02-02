@@ -1,0 +1,829 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="favicon.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="favicon.png">
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no, maximum-scale=1">
+  <title>Manager Tutorial - Clarivore</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <style>
+    :root{
+      --bg:#0b1020; --panel:#111630; --ink:#e9ecff; --muted:#a8b2d6;
+      --brand:#7c9cff; --ok:#22c55e; --warn:#facc15; --bad:#ef4444;
+      --border:#2a3261; --hover:#4c5ad4; --shadow:0 10px 30px rgba(0,0,0,.35);
+    }
+
+    /* Progress bar */
+    .tutorial-progress {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: rgba(76,90,212,0.2);
+      z-index: 1000;
+    }
+    .tutorial-progress-fill {
+      height: 100%;
+      background: var(--brand);
+      width: 0%;
+      transition: width 0.5s ease;
+    }
+
+    /* Skip button */
+    .skip-tutorial {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 999;
+      background: rgba(18,24,58,0.9);
+      border: 1px solid var(--border);
+      color: var(--ink);
+      padding: 10px 20px;
+      border-radius: 999px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    .skip-tutorial:hover {
+      border-color: var(--hover);
+      box-shadow: 0 0 0 3px rgba(124,156,255,0.2);
+    }
+
+    /* Section layout */
+    .tutorial-section {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 80px 20px;
+      opacity: 0.3;
+      transition: opacity 0.6s ease;
+    }
+    .tutorial-section.active {
+      opacity: 1;
+    }
+
+    .section-content {
+      max-width: 1100px;
+      width: 100%;
+    }
+
+    .section-header {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+    .section-header h2 {
+      font-size: clamp(1.8rem, 4vw, 3rem);
+      margin-bottom: 16px;
+    }
+    .section-header p {
+      font-size: clamp(1rem, 2vw, 1.3rem);
+      color: var(--muted);
+      max-width: 700px;
+      margin: 0 auto;
+    }
+
+    /* Manager buttons (real style) */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 10px 14px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: #1a2351;
+      cursor: pointer;
+      color: #fff;
+      font-size: 15px;
+      transition: all 0.2s;
+    }
+    .btn:hover {
+      border-color: var(--hover);
+      box-shadow: 0 0 0 3px rgba(124,156,255,0.2), 0 2px 10px rgba(11,27,96,0.67);
+    }
+    .btnPrimary {
+      background: #3651ff;
+      border-color: #4e65ff;
+    }
+
+    /* Menu viewer with editable overlays */
+    .menuWrap {
+      background: #0d132a;
+      border-radius: 14px;
+      position: relative;
+      overflow: visible;
+      min-height: 400px;
+      margin: 40px auto;
+      max-width: 800px;
+    }
+    .menuInner {
+      position: relative;
+      display: inline-block;
+      user-select: none;
+      line-height: 0;
+      width: 100%;
+    }
+    .menuImg {
+      display: block;
+      width: 100%;
+      height: auto;
+      border-radius: 14px;
+    }
+    .overlayLayer {
+      position: absolute;
+      left: 0;
+      top: 0;
+      pointer-events: none;
+      line-height: normal;
+      width: 100%;
+      height: 100%;
+    }
+
+    /* Editable overlays */
+    .editBox {
+      position: absolute;
+      border: 2px solid var(--warn);
+      border-radius: 6px;
+      background: transparent;
+      cursor: pointer;
+      box-sizing: border-box;
+      pointer-events: auto;
+      transition: background-color 0.2s ease, border 0.2s ease, transform 0.2s ease;
+    }
+    .editBox:hover {
+      background-color: rgba(250, 204, 21, 0.12);
+      border-width: 2px;
+      transform: scale(1.02);
+    }
+    .editBox.selected {
+      background-color: rgba(124, 156, 255, 0.25);
+      border-color: var(--brand);
+      border-width: 3px;
+    }
+    .editBox.active {
+      background-color: rgba(76, 175, 80, 0.12);
+      border-color: var(--ok);
+    }
+    .editBadge {
+      position: absolute;
+      top: 2px;
+      right: 2px;
+      width: 18px;
+      height: 18px;
+      background: #3651ff;
+      border: 1.5px solid #dbe2ff;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      cursor: pointer;
+      z-index: 10;
+      line-height: 1;
+    }
+    .editBadge:hover {
+      background: #4e65ff;
+      box-shadow: 0 0 6px #3651ff;
+    }
+
+    /* Modal (real style from restaurant.html) */
+    .modalBack {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.53);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 3000;
+      overflow: auto;
+      padding: 20px;
+    }
+    .modalBack.show {
+      display: flex;
+    }
+    .modal {
+      background: #0f1534;
+      border: 1px solid #2a3466;
+      border-radius: 14px;
+      width: min(680px, 96vw);
+      max-height: 82vh;
+      overflow: auto;
+      box-shadow: var(--shadow);
+      position: relative;
+    }
+    .modal .head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 14px 18px;
+      border-bottom: 1px solid #2a3466;
+    }
+    .modal .body {
+      padding: 20px;
+    }
+    .modalCloseBtn {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      width: 32px;
+      height: 32px;
+      background: #16205a;
+      border: 2px solid #2a3466;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      color: #fff;
+      font-weight: bold;
+      z-index: 10;
+    }
+    .modalCloseBtn:hover {
+      background: #1a2660;
+      border-color: var(--hover);
+    }
+
+    /* Allergen row inputs */
+    .algRow {
+      display: grid;
+      grid-template-columns: 180px minmax(180px, 300px) max-content max-content;
+      column-gap: 12px;
+      row-gap: 6px;
+      align-items: center;
+      margin: 6px 0;
+    }
+    .algBtn {
+      padding: 8px 12px;
+      border-radius: 999px;
+      border: 1px solid #2a3261;
+      background: #12183a;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.2s;
+    }
+    .algBtn:hover {
+      border-color: var(--hover);
+      box-shadow: 0 0 0 3px rgba(124,156,255,0.2), 0 2px 10px rgba(11,27,96,0.67);
+    }
+    .algBtn.active {
+      background: #1a2351;
+      box-shadow: 0 0 0 3px rgba(124,156,255,0.2) inset;
+      border-color: #4c5ad4;
+    }
+    .algInput {
+      background: #0c1230;
+      color: var(--ink);
+      border: 1px solid #31407f;
+      border-radius: 8px;
+      padding: 8px 10px;
+      width: 100%;
+    }
+    .algChk {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      white-space: nowrap;
+      justify-self: end;
+    }
+
+    /* AI Assistant Panel */
+    .aiAssistBackdrop {
+      position: fixed;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      background: rgba(7,11,28,0.85);
+      z-index: 3600;
+    }
+    .aiAssistBackdrop.show {
+      display: flex;
+    }
+    .aiAssistPanel {
+      width: min(960px, calc(100% - 32px));
+      max-height: 90vh;
+      overflow: auto;
+      background: linear-gradient(180deg, #111a3c, #0d132a);
+      border: 1px solid #2a3466;
+      border-radius: 20px;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+      padding: 26px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+    .aiAssistHead {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+    .aiAssistHead h2 {
+      margin: 0;
+      font-size: clamp(1.1rem, 1rem + 1vw, 1.6rem);
+    }
+    .aiAssistClose {
+      background: rgba(22,32,90,0.9);
+      border: 1px solid rgba(76,90,212,0.4);
+      color: var(--ink);
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      line-height: 1;
+      touch-action: manipulation;
+    }
+    .aiAssistClose:hover {
+      border-color: var(--hover);
+      box-shadow: 0 0 8px #3651ff;
+    }
+    .aiAssistInput {
+      width: 100%;
+      min-height: 140px;
+      border-radius: 16px;
+      border: 1px solid rgba(76,90,212,0.35);
+      background: rgba(10,16,36,0.95);
+      color: var(--ink);
+      padding: 16px;
+      font-size: 1rem;
+      resize: vertical;
+    }
+
+    /* Continue button */
+    .continue-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 16px 32px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: var(--brand);
+      color: white;
+      cursor: pointer;
+      font-size: 18px;
+      font-weight: 600;
+      margin: 40px auto;
+      opacity: 0.5;
+      pointer-events: none;
+      transition: all 0.3s;
+    }
+    .continue-btn.enabled {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .continue-btn.enabled:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(124,156,255,0.4);
+    }
+
+    .checkpoint-status {
+      text-align: center;
+      margin-top: 20px;
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--muted);
+    }
+    .checkpoint-status.completed {
+      color: var(--ok);
+    }
+
+    /* Completion section */
+    .completion-badge {
+      display: inline-block;
+      background: linear-gradient(135deg, var(--ok), #38a169);
+      color: white;
+      padding: 20px 40px;
+      border-radius: 999px;
+      font-size: 24px;
+      font-weight: bold;
+      margin: 20px 0;
+      box-shadow: 0 6px 20px rgba(34,197,94,0.3);
+    }
+
+    .feature-list {
+      list-style: none;
+      margin: 30px 0;
+      max-width: 600px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .feature-list li {
+      padding: 12px 0;
+      padding-left: 40px;
+      position: relative;
+      font-size: 18px;
+      color: var(--ink);
+    }
+    .feature-list li:before {
+      content: "✓";
+      position: absolute;
+      left: 0;
+      color: var(--ok);
+      font-weight: bold;
+      font-size: 24px;
+    }
+
+    @media (max-width: 768px) {
+      .algRow {
+        grid-template-columns: 1fr;
+      }
+      .algChk {
+        justify-self: start;
+      }
+    }
+  </style>
+</head>
+<body class="page-shell">
+  <div class="tutorial-progress">
+    <div class="tutorial-progress-fill" id="progressFill"></div>
+  </div>
+
+  <button class="skip-tutorial" onclick="skipTutorial()">Skip Tutorial</button>
+
+  <div class="wrap">
+    <div class="content">
+
+      <!-- Section 1: Welcome -->
+      <div class="tutorial-section active" id="section1">
+        <div class="section-content">
+          <div class="section-header">
+            <h2>Welcome, Restaurant Manager! 👨‍💼</h2>
+            <p>
+              As a Clarivore partner, you help diners with food allergies eat safely at your restaurant.
+              This tutorial will show you how to manage your menu's allergen information.
+            </p>
+          </div>
+          <div style="text-align: center;">
+            <button class="continue-btn enabled" onclick="goToSection(2)">
+              Get Started →
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 2: Manager Edit Mode -->
+      <div class="tutorial-section" id="section2">
+        <div class="section-content">
+          <div class="section-header">
+            <h2>Step 1: Enter Manager Edit Mode</h2>
+            <p>
+              When viewing your restaurant's page, click the "Manager Edit" button to modify allergen information.
+            </p>
+          </div>
+
+          <div style="text-align: center; margin: 30px 0;">
+            <button class="btn btnPrimary" style="font-size: 18px; padding: 14px 28px;" onclick="enterEditMode()">
+              🔒 Manager Edit
+            </button>
+          </div>
+
+          <div class="checkpoint-status" id="status2">
+            ⏳ Click the Manager Edit button to continue
+          </div>
+
+          <div style="text-align: center;">
+            <button class="continue-btn" id="continue2" onclick="goToSection(3)">
+              Continue →
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 3: Click Overlay -->
+      <div class="tutorial-section" id="section3">
+        <div class="section-content">
+          <div class="section-header">
+            <h2>Step 2: Select a Menu Item</h2>
+            <p>
+              In edit mode, you'll see editable overlays on your menu items.
+              Click on any overlay to open the dish editor.
+            </p>
+          </div>
+
+          <div class="menuWrap">
+            <div class="menuInner">
+              <img class="menuImg" src="https://static.wixstatic.com/media/945e9d_acac35ccf1a94d4d879e7a8e7f3fc8a6~mv2.jpg" alt="Menu">
+              <div class="overlayLayer">
+                <div class="editBox" style="left: 10%; top: 15%; width: 35%; height: 12%;" onclick="openDishEditor('Falafel Wrap')">
+                  <div class="editBadge">✏️</div>
+                </div>
+                <div class="editBox" style="left: 55%; top: 15%; width: 35%; height: 12%;" onclick="openDishEditor('Hummus Plate')">
+                  <div class="editBadge">✏️</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="checkpoint-status" id="status3">
+            ⏳ Click on a menu item to open the editor
+          </div>
+
+          <div style="text-align: center;">
+            <button class="continue-btn" id="continue3" onclick="goToSection(4)">
+              Continue →
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 4: Dish Editor -->
+      <div class="tutorial-section" id="section4">
+        <div class="section-content">
+          <div class="section-header">
+            <h2>Step 3: Edit Allergen Information</h2>
+            <p>
+              In the dish editor, you can specify which allergens are present and which can be removed upon request.
+            </p>
+          </div>
+
+          <div style="text-align: center; margin: 30px 0;">
+            <button class="btn btnPrimary" style="font-size: 16px; padding: 12px 24px;" onclick="openMockEditor()">
+              📝 Open Dish Editor
+            </button>
+          </div>
+
+          <div class="checkpoint-status" id="status4">
+            ⏳ Open the dish editor and try editing
+          </div>
+
+          <div style="text-align: center;">
+            <button class="continue-btn" id="continue4" onclick="goToSection(5)">
+              Continue →
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 5: AI Assistant -->
+      <div class="tutorial-section" id="section5">
+        <div class="section-content">
+          <div class="section-header">
+            <h2>Step 4: Use AI Ingredient Helper</h2>
+            <p>
+              Clarivore's AI can analyze your dish ingredients and automatically detect allergens.
+              This saves you time and helps ensure accuracy.
+            </p>
+          </div>
+
+          <div style="text-align: center; margin: 30px 0;">
+            <button class="btn btnPrimary" style="font-size: 16px; padding: 12px 24px;" onclick="openAIAssist()">
+              ✨ AI Ingredient Helper
+            </button>
+          </div>
+
+          <div class="checkpoint-status" id="status5">
+            ⏳ Try the AI Ingredient Helper
+          </div>
+
+          <div style="text-align: center;">
+            <button class="continue-btn" id="continue5" onclick="goToSection(6)">
+              Continue →
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 6: Completion -->
+      <div class="tutorial-section" id="section6">
+        <div class="section-content">
+          <div class="section-header">
+            <h2>You're All Set! 🎉</h2>
+            <div style="text-align: center;">
+              <div class="completion-badge">✓ Tutorial Complete</div>
+            </div>
+            <p style="margin-top: 30px;">
+              You now know how to manage allergen information for your restaurant! Here's what you learned:
+            </p>
+          </div>
+
+          <ul class="feature-list">
+            <li>Access Manager Edit mode from your restaurant page</li>
+            <li>Click on menu overlays to edit dishes</li>
+            <li>Specify allergens and removable ingredients</li>
+            <li>Use AI to automatically detect allergens</li>
+            <li>Keep information updated when your menu changes</li>
+          </ul>
+
+          <div style="text-align: center; margin-top: 40px;">
+            <button class="continue-btn enabled" onclick="window.location.href='restaurant.html'" style="font-size: 20px;">
+              Go to My Restaurant →
+            </button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Dish Editor Modal -->
+  <div class="modalBack" id="dishEditorModal">
+    <div class="modal">
+      <button class="modalCloseBtn" onclick="closeDishEditor()">×</button>
+      <div class="head">
+        <h2 style="margin: 0;">Edit Dish: <span id="dishName">Falafel Wrap</span></h2>
+      </div>
+      <div class="body">
+        <p style="color: var(--muted); margin-bottom: 20px;">
+          Select which allergens are present in this dish and which can be removed upon request.
+        </p>
+
+        <div class="algRow">
+          <div style="font-weight: 600;">🥛 Milk</div>
+          <input type="text" class="algInput" placeholder="e.g., Feta cheese">
+          <button class="algBtn" onclick="toggleAllergen(this)">Contains</button>
+          <div class="algChk">
+            <input type="checkbox" id="milk-removable">
+            <label for="milk-removable">Removable</label>
+          </div>
+        </div>
+
+        <div class="algRow">
+          <div style="font-weight: 600;">🌾 Wheat</div>
+          <input type="text" class="algInput" placeholder="e.g., Pita bread">
+          <button class="algBtn active" onclick="toggleAllergen(this)">Contains</button>
+          <div class="algChk">
+            <input type="checkbox" id="wheat-removable">
+            <label for="wheat-removable">Removable</label>
+          </div>
+        </div>
+
+        <div class="algRow">
+          <div style="font-weight: 600;">🫘 Sesame</div>
+          <input type="text" class="algInput" placeholder="e.g., Tahini">
+          <button class="algBtn active" onclick="toggleAllergen(this)">Contains</button>
+          <div class="algChk">
+            <input type="checkbox" id="sesame-removable">
+            <label for="sesame-removable">Removable</label>
+          </div>
+        </div>
+
+        <div style="margin-top: 30px; display: flex; gap: 12px; justify-content: flex-end;">
+          <button class="btn" onclick="closeDishEditor()">Cancel</button>
+          <button class="btn btnPrimary" onclick="saveDish()">Save Changes</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- AI Assistant Modal -->
+  <div class="aiAssistBackdrop" id="aiAssistModal">
+    <div class="aiAssistPanel">
+      <div class="aiAssistHead">
+        <h2>✨ AI Ingredient Helper</h2>
+        <button class="aiAssistClose" onclick="closeAIAssist()">×</button>
+      </div>
+
+      <p style="margin: 0; color: var(--muted); font-size: 0.95rem;">
+        Enter the ingredients for this dish, and AI will automatically detect allergens for you.
+      </p>
+
+      <textarea class="aiAssistInput" id="aiIngredients" placeholder="Example: Chickpeas, tahini, pita bread, lettuce, tomato, cucumber, onion, olive oil, lemon juice, garlic, parsley"></textarea>
+
+      <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+        <button class="btn btnPrimary" onclick="runAIDetection()">🔍 Detect Allergens</button>
+      </div>
+
+      <div id="aiResults" style="display: none; padding: 16px; background: rgba(9,13,30,0.9); border: 1px solid rgba(76,90,212,0.35); border-radius: 16px; margin-top: 12px;">
+        <h3 style="margin: 0 0 12px 0; font-size: 1.1rem; color: var(--ok);">✓ Allergens Detected:</h3>
+        <ul style="margin: 0; padding-left: 24px; color: var(--ink);">
+          <li>Sesame (from tahini)</li>
+          <li>Wheat (from pita bread)</li>
+        </ul>
+        <p style="margin: 12px 0 0 0; color: var(--muted); font-size: 0.9rem;">
+          These allergens have been automatically added to your dish.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // State
+    let currentSection = 1;
+    let checkpointsCompleted = {
+      editMode: false,
+      openedEditor: false,
+      editedDish: false,
+      usedAI: false
+    };
+
+    // Enter edit mode
+    function enterEditMode() {
+      if (!checkpointsCompleted.editMode) {
+        checkpointsCompleted.editMode = true;
+        document.getElementById('status2').textContent = '✅ Perfect! You\'re now in Manager Edit mode';
+        document.getElementById('status2').classList.add('completed');
+        document.getElementById('continue2').classList.add('enabled');
+        updateProgress();
+      }
+    }
+
+    // Open dish editor
+    function openDishEditor(dishName) {
+      document.getElementById('dishName').textContent = dishName;
+      document.getElementById('dishEditorModal').classList.add('show');
+
+      if (!checkpointsCompleted.openedEditor) {
+        checkpointsCompleted.openedEditor = true;
+        document.getElementById('status3').textContent = '✅ Great! You opened the dish editor';
+        document.getElementById('status3').classList.add('completed');
+        document.getElementById('continue3').classList.add('enabled');
+        updateProgress();
+      }
+    }
+
+    function closeDishEditor() {
+      document.getElementById('dishEditorModal').classList.remove('show');
+    }
+
+    function openMockEditor() {
+      document.getElementById('dishEditorModal').classList.add('show');
+
+      if (!checkpointsCompleted.editedDish) {
+        checkpointsCompleted.editedDish = true;
+        document.getElementById('status4').textContent = '✅ Excellent! You can now edit allergen information';
+        document.getElementById('status4').classList.add('completed');
+        document.getElementById('continue4').classList.add('enabled');
+        updateProgress();
+      }
+    }
+
+    function toggleAllergen(button) {
+      button.classList.toggle('active');
+    }
+
+    function saveDish() {
+      closeDishEditor();
+      alert('Changes saved! In the real system, this would update your restaurant\'s allergen information.');
+    }
+
+    // AI Assistant
+    function openAIAssist() {
+      document.getElementById('aiAssistModal').classList.add('show');
+
+      if (!checkpointsCompleted.usedAI) {
+        checkpointsCompleted.usedAI = true;
+        document.getElementById('status5').textContent = '✅ Amazing! AI can save you time detecting allergens';
+        document.getElementById('status5').classList.add('completed');
+        document.getElementById('continue5').classList.add('enabled');
+        updateProgress();
+      }
+    }
+
+    function closeAIAssist() {
+      document.getElementById('aiAssistModal').classList.remove('show');
+    }
+
+    function runAIDetection() {
+      document.getElementById('aiResults').style.display = 'block';
+    }
+
+    // Navigation
+    function goToSection(num) {
+      document.querySelectorAll('.tutorial-section').forEach(s => s.classList.remove('active'));
+      document.getElementById('section' + num).classList.add('active');
+      document.getElementById('section' + num).scrollIntoView({ behavior: 'smooth', block: 'center' });
+      currentSection = num;
+    }
+
+    function skipTutorial() {
+      if (confirm('Skip tutorial and go to your restaurant page?')) {
+        window.location.href = 'restaurant.html';
+      }
+    }
+
+    // Progress bar
+    function updateProgress() {
+      const completed = Object.values(checkpointsCompleted).filter(Boolean).length;
+      const total = Object.keys(checkpointsCompleted).length;
+      const percent = (completed / total) * 100;
+      document.getElementById('progressFill').style.width = percent + '%';
+    }
+
+    // Close modals on backdrop click
+    document.getElementById('dishEditorModal').addEventListener('click', (e) => {
+      if (e.target === document.getElementById('dishEditorModal')) {
+        closeDishEditor();
+      }
+    });
+
+    document.getElementById('aiAssistModal').addEventListener('click', (e) => {
+      if (e.target === document.getElementById('aiAssistModal')) {
+        closeAIAssist();
+      }
+    });
+
+    // Initialize
+    updateProgress();
+  </script>
+</body>
+</html>

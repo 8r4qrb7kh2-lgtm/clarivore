@@ -1,0 +1,6412 @@
+# Public Folder Code Reference
+
+Generated: 2026-01-20 15:19 UTC
+Each block covers up to 10 lines of code and includes a short explanation of what it does and why it exists.
+
+## public/account.html
+
+- Lines 1-10: Links stylesheets. Purpose: apply site styles.
+- Lines 11-20: Elements: body .page-shell, header .simple-topbar, div .simple-topbar-inner, a .simple-brand href=home.html, img src=https://static.wixstatic.com/media/945e9d_2b97098295d341d493e4a07d80d6b57c~mv2.png, span, .... Text: Clarivore. Purpose: structure layout and content.
+- Lines 21-30: Elements: button #navReturnMenu type=button, div #modeToggleContainer .mode-toggle-container, main .page-main, div .page-content, div .account-layout. Text: Back to menu. Purpose: collect user input and actions.
+- Lines 31-40: Elements: div #invite-banner .auth-card, h3, p, section #auth-section .auth-card, h2, p .muted-text. Text: You've been invited as a Manager; Create an account or sign in to get manager access to your restaurant(s).; Manage your allergy profile; .... Purpose: structure layout and content.
+- Lines 41-50: Elements: div, button #apple-signin-btn .secondary-btn type=button, svg, path, button #google-signin-btn .secondary-btn type=button. Text: Sign in with Apple. Purpose: collect user input and actions.
+- Lines 51-60: Elements: path, div. Text: Sign in with Google. Purpose: build page structure.
+- Lines 61-70: Elements: div, span, input #email type=email, input #password type=password, div .auth-actions, button #login-btn .primary-btn, .... Text: or; Sign in; Create an account. Purpose: collect user input and actions.
+- Lines 71-80: Elements: button #forgot-password-btn .link-btn type=button, p #auth-message .status-text, section #signup-view .auth-card, div .auth-actions, h2, button #signup-back-btn .secondary-btn type=button. Text: Forgot your password?; Create your account; ← Back. Purpose: collect user input and actions.
+- Lines 81-90: Elements: div, button #apple-signup-btn .secondary-btn type=button, svg, path. Text: Sign up with Apple. Purpose: collect user input and actions.
+- Lines 91-100: Elements: button #google-signup-btn .secondary-btn type=button, svg, path. Text: Sign up with Google. Purpose: collect user input and actions.
+- Lines 101-110: Elements: div, span, input #signup-email type=email, input #signup-password type=password, div .auth-actions. Text: or. Purpose: collect user input and actions.
+- Lines 111-120: Elements: button #signup-submit-btn .primary-btn type=button, p #signup-message .status-text, section #details-section .auth-card, div, h2, button #details-save-btn .primary-btn type=button. Text: Create account; Your information; Save changes. Purpose: collect user input and actions.
+- Lines 121-130: Elements: div .form-row, input #profile-first-name type=text, input #profile-last-name type=text, input #profile-email type=email, p .muted-text, p #details-status .status-text. Text: Updating your email will send a confirmation message.. Purpose: collect user input and actions.
+- Lines 131-140: Elements: section #allergen-section .auth-card, div, h2, button #save-btn .primary-btn type=button, div #allergen-pills .allergen-select, p #allergen-status .status-text. Text: My Allergens; Save changes. Purpose: collect user input and actions.
+- Lines 141-150: Elements: section #diet-section .auth-card, div, h2, button #save-diet-btn .primary-btn type=button, div #diet-pills .allergen-select, p #diet-status .status-text. Text: My Dietary Preferences; Save changes. Purpose: collect user input and actions.
+- Lines 151-160: Elements: section #onboarding-section .auth-card, h2, p #onboarding-intro .muted-text, h3, div .form-row, input #onboarding-first-name type=text, .... Text: Welcome to Clarivore!; Let's set up your allergy profile to get started.; Your name. Purpose: collect user input and actions.
+- Lines 161-170: Elements: div #onboarding-allergen-block, h3, p .muted-text, div #onboarding-allergen-pills .allergen-select, div #onboarding-diet-block. Text: Select your allergens; Choose all allergens you need to avoid.; Dietary preferences; .... Purpose: build page structure.
+- Lines 171-180: Elements: div #onboarding-diet-pills .allergen-select, div .auth-actions, button #onboarding-complete-btn .primary-btn type=button, p #onboarding-status .status-text. Text: Complete setup. Purpose: collect user input and actions.
+- Lines 181-190: Elements: section #sign-out-section .auth-card, div, button #sign-out-btn .secondary-btn type=button, button #delete-account-btn .secondary-btn type=button, div #delete-account-warning, p, .... Text: Sign out; Delete account; ⚠️ Are you sure you want to delete your account?; .... Purpose: collect user input and actions.
+- Lines 191-200: Elements: button #confirm-delete-btn .primary-btn type=button, section #password-reset-section .auth-card, h2, p .muted-text, input #reset-password type=password. Text: Yes, delete my account; Set a new password; Enter a new password for your Clarivore account.. Purpose: collect user input and actions.
+- Lines 201-210: Elements: input #reset-password-confirm type=password, div .auth-actions, button #reset-password-btn .primary-btn type=button, button #reset-cancel-btn .secondary-btn type=button, p #reset-message .status-text. Text: Update password; Cancel. Purpose: collect user input and actions.
+- Lines 211-220: Links external scripts. Purpose: load JavaScript for page behavior.
+- Lines 221-230: Defines inline script. Purpose: run page-specific logic.
+- Lines 231-240: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 241-250: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 251-260: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 261-270: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 271-280: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 281-290: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 291-300: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 301-310: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 311-320: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 321-330: Elements: span .mode-toggle-label, div #modeToggle .mode-toggle ${isEditorMode ? 'active' : ''}. Text: ${isEditorMode ? 'Editor mode' : 'Customer mode'}. Purpose: build page structure.
+- Lines 331-340: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 341-350: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 351-360: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 361-370: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 371-380: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 381-390: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 391-400: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 401-410: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 411-420: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 421-430: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 431-440: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 441-450: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 451-460: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 461-470: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 471-480: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 481-490: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 491-500: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 501-510: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 511-520: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 521-530: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 531-540: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 541-550: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 551-560: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 561-570: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 571-580: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 581-590: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 591-600: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 601-610: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 611-620: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 621-630: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 631-640: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 641-650: Elements: div, h3, p. Text: Apply manager invite. Purpose: build page structure.
+- Lines 651-660: Elements: button .invite-use-current type=button, button .invite-create-new type=button. Text: Use current account; Create a new account. Purpose: collect user input and actions.
+- Lines 661-670: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 671-680: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 681-690: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 691-700: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 701-710: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 711-720: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 721-730: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 731-740: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 741-750: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 751-760: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 761-770: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 771-780: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 781-790: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 791-800: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 801-810: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 811-820: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 821-830: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 831-840: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 841-850: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 851-860: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 861-870: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 871-880: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 881-890: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 891-900: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 901-910: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 911-920: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 921-930: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 931-940: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 941-950: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 951-960: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 961-970: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 971-980: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 981-990: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 991-1000: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1001-1010: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1011-1020: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1021-1030: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1031-1040: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1041-1050: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1051-1060: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1061-1070: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1071-1080: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1081-1090: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1091-1100: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1101-1110: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1111-1120: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1121-1130: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1131-1140: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1141-1150: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1151-1160: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1161-1170: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1171-1180: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1181-1190: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1191-1200: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1201-1210: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1211-1220: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1221-1230: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1231-1240: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1241-1250: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1251-1260: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1261-1270: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1271-1280: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1281-1290: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1291-1300: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1301-1310: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1311-1320: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1321-1330: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1331-1340: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1341-1350: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1351-1360: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1361-1370: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1371-1380: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1381-1390: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1391-1400: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1401-1410: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1411-1420: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1421-1430: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1431-1440: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1441-1450: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1451-1460: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1461-1464: Links external scripts. Purpose: load JavaScript for page behavior.
+
+## public/admin-dashboard.html
+
+- Lines 1-10: Links stylesheets. Purpose: apply site styles.
+- Lines 11-20: Links external scripts. Purpose: load JavaScript for page behavior.
+- Lines 21-30: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 31-40: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 41-50: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 51-60: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 61-70: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 71-80: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 81-90: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 91-100: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 101-110: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 111-120: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 121-130: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 131-140: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 141-150: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 151-160: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 161-170: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 171-180: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 181-190: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 191-200: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 201-210: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 211-220: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 221-230: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 231-240: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 241-250: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 251-260: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 261-270: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 271-280: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 281-290: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 291-300: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 301-310: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 311-320: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 321-330: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 331-340: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 341-350: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 351-360: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 361-370: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 371-380: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 381-390: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 391-400: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 401-410: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 411-420: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 421-430: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 431-440: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 441-450: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 451-460: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 461-470: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 471-480: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 481-490: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 491-500: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 501-510: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 511-520: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 521-530: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 531-540: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 541-550: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 551-560: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 561-570: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 571-580: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 581-590: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 591-600: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 601-610: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 611-620: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 621-630: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 631-640: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 641-650: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 651-660: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 661-670: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 671-680: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 681-690: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 691-700: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 701-710: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 711-720: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 721-730: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 731-740: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 741-750: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 751-760: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 761-770: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 771-780: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 781-790: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 791-800: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 801-810: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 811-820: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 821-830: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 831-840: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 841-850: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 851-860: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 861-870: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 871-880: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 881-890: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 891-900: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 901-910: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 911-920: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 921-930: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 931-940: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 941-950: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 951-960: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 961-970: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 971-980: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 981-990: Elements: body .page-shell, header .simple-topbar. Purpose: structure layout and content.
+- Lines 991-1000: Elements: div .simple-topbar-inner, a .simple-brand href=home.html, img src=https://static.wixstatic.com/media/945e9d_2b97098295d341d493e4a07d80d6b57c~mv2.png, span, div .simple-nav, div #modeToggleContainer .mode-toggle-container. Text: Clarivore. Purpose: display images.
+- Lines 1001-1010: Elements: main .admin-container, div #access-denied .access-denied, h1, p, button .btn-primary, div #admin-content. Text: 🔒 Access Denied; You must be logged in as an administrator to access this page.; Go to Account. Purpose: collect user input and actions.
+- Lines 1011-1020: Elements: div .admin-header, h1, p, div .tab-buttons, button .tab-btn active data=data-tab, button .tab-btn data=data-tab. Text: 🛡️ Admin Dashboard; Manage restaurants and review appeals; Restaurants; .... Purpose: collect user input and actions.
+- Lines 1021-1030: Elements: button .tab-btn data=data-tab, div #tab-restaurants .tab-content active, div .admin-grid, div .admin-card, h2, form #add-restaurant-form, .... Text: 📋 Issue Reports; Add New Restaurant. Purpose: collect user input and actions.
+- Lines 1031-1040: Elements: label, input #restaurant-name type=text, div .form-group, input #restaurant-website type=url. Text: Restaurant Name *; Website. Purpose: collect user input and actions.
+- Lines 1041-1050: Elements: label, textarea #restaurant-description, div .form-group, input #menu-image type=file, img #image-preview .image-preview. Text: Description; Menu Image *. Purpose: collect user input and actions.
+- Lines 1051-1060: Elements: button #submit-btn .btn-primary type=submit, div #status-message .status-message, div .admin-card, h2, div #restaurants-list .restaurants-list, p. Text: Add Restaurant; Existing Restaurants; Loading restaurants.... Purpose: collect user input and actions.
+- Lines 1061-1070: Elements: div #tab-manager-invites .tab-content, div .admin-card admin-card-full, h2, p. Text: 🔗 Create Manager Invite Link. Purpose: build page structure.
+- Lines 1071-1080: Elements: div .invite-form, div .form-group, label, p, div #invite-restaurants-list .restaurant-checkboxes. Text: Select Restaurants for Manager Access *; Choose which restaurants this manager will have access to; Loading restaurants.... Purpose: build page structure.
+- Lines 1081-1090: Elements: label, p, div .entry-page-options, div .entry-page-option selected, input type=radio name=entry-page, div .option-info, .... Text: Entry Page When Link is Opened *; Where should the user be directed after signing up?; Homepage; .... Purpose: collect user input and actions.
+- Lines 1091-1100: Elements: div .entry-page-option, input type=radio name=entry-page, div .option-info, div .option-title, div .option-desc, div #qr-restaurant-select .restaurant-select-for-qr, .... Text: Restaurant QR Code Page; User will be redirected to a specific restaurant's page; Select restaurant:. Purpose: collect user input and actions.
+- Lines 1101-1110: Elements: select #entry-restaurant, option, div .form-group, label, div .expiration-options, select #invite-expiration. Text: -- Select a restaurant --; Link Expiration. Purpose: collect user input and actions.
+- Lines 1111-1120: Elements: option, button #generate-invite-btn .btn-primary type=button. Text: 1 day; 7 days; 30 days; .... Purpose: collect user input and actions.
+- Lines 1121-1130: Elements: div #generated-link-container .generated-link-container, h3, p, div .generated-link, input #generated-link-input type=text, button .btn-copy. Text: ✓ Invite Link Generated!; Share this link with the person you want to invite:; Copy Link. Purpose: collect user input and actions.
+- Lines 1131-1140: Elements: div .invites-list, h3, div #invites-list-container, p. Text: Existing Invites; Loading invites.... Purpose: build page structure.
+- Lines 1141-1150: Elements: div #tab-appeals .tab-content, div .admin-card admin-card-full, h2, p, div .appeals-filters, button .filter-btn active data=data-filter, .... Text: 📷 Ingredient Scan Appeals; Review and approve or deny manager appeals for ingredient scanning requirements; All Appeals; .... Purpose: collect user input and actions.
+- Lines 1151-1160: Elements: button .filter-btn data=data-filter, div #loading-appeals .loading, p, div #no-appeals .no-appeals, h3. Text: Approved; Rejected; Loading appeals...; .... Purpose: collect user input and actions.
+- Lines 1161-1170: Elements: p, div #appeals-list .appeals-list, div #tab-feedback .tab-content, div .admin-card admin-card-full. Text: There are no appeals matching your current filter.. Purpose: build page structure.
+- Lines 1171-1180: Elements: h2, p, div #feedback-list .feedback-list, div #tab-product-reports .tab-content. Text: 🗣️ Anonymous Feedback; Feedback submitted without an email address.; Loading feedback.... Purpose: build page structure.
+- Lines 1181-1190: Elements: div .admin-card admin-card-full, h2, p, div .appeals-filters, button .filter-btn-reports active data=data-filter-reports, button .filter-btn-reports data=data-filter-reports. Text: 📋 Issue Reports; All Reports; Pending; .... Purpose: collect user input and actions.
+- Lines 1191-1200: Elements: div #loading-reports .loading, p, div #no-reports .no-appeals, h3. Text: Loading reports...; No reports found; There are no product issue reports matching your current filter.. Purpose: build page structure.
+- Lines 1201-1210: Elements: div #reports-list .appeals-list, div #photo-modal .photo-modal, img #modal-photo. Purpose: display images.
+- Lines 1211-1220: Links external scripts. Purpose: load JavaScript for page behavior.
+- Lines 1221-1230: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1231-1240: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1241-1250: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1251-1260: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1261-1270: Elements: span .mode-toggle-label, div #modeToggle .mode-toggle ${isEditorMode ? 'active' : ''}. Text: ${isEditorMode ? 'Editor mode' : 'Customer mode'}. Purpose: build page structure.
+- Lines 1271-1280: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1281-1290: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1291-1300: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1301-1310: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1311-1320: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1321-1330: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1331-1340: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1341-1350: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1351-1360: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1361-1370: Elements: p, div .restaurant-item, div .restaurant-item-header. Text: No restaurants found.; `. Purpose: build page structure.
+- Lines 1371-1380: Elements: div, div .restaurant-title-row, div .restaurant-title-left, h3, span #restaurant-unread-${r.id} .chat-badge, button #${r.id} .btn-warning acknowledge-btn name=${escapeHtml(r.name)} data=data-action,data-id,data-name, .... Text: ${escapeHtml(r.name)}; 0; Acknowledge message(s); .... Purpose: collect user input and actions.
+- Lines 1381-1390: Elements: button #${r.id} .btn-secondary name=${escapeHtml(r.name)} data=data-action,data-id,data-name, button #${r.id} .btn-danger name=${escapeHtml(r.name)} data=data-action,data-id,data-name, details #chat-details-${r.id} .restaurant-chat-preview, summary, div .restaurant-chat-body, div #chat-preview-${r.id} .restaurant-chat-messages, .... Text: Direct chat; Delete; Direct chat preview; .... Purpose: collect user input and actions.
+- Lines 1391-1400: Elements: div .restaurant-chat-compose, input .restaurant-chat-input type=text name=${escapeHtml(r.name)} data=data-chat-input,data-chat-name, button #${r.id} .btn-secondary name=${escapeHtml(r.name)} data=data-action,data-id,data-name. Text: Send. Purpose: collect user input and actions.
+- Lines 1401-1410: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1411-1420: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1421-1430: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1431-1440: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1441-1450: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1451-1460: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1461-1470: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1471-1480: Elements: chat. Purpose: build page structure.
+- Lines 1481-1490: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1491-1500: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1501-1510: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1511-1520: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1521-1530: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1531-1540: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1541-1550: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1551-1560: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1561-1570: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1571-1580: Elements: div .restaurant-chat-empty. Text: Loading chat.... Purpose: build page structure.
+- Lines 1581-1590: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1591-1600: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1601-1610: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1611-1620: Elements: div .restaurant-chat-empty. Text: ${escapeHtml(emptyMessage)}. Purpose: build page structure.
+- Lines 1621-1630: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1631-1640: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1641-1650: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1651-1660: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1661-1670: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1671-1680: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1681-1690: Elements: div .chat-ack, div .restaurant-chat-message ${isOutgoing ? 'chat-outgoing' : 'chat-incoming'}, div .restaurant-chat-bubble, div .restaurant-chat-text, div .restaurant-chat-meta. Text: `; }) .join(''); return `; ${formatChatMessage(message.message)}; ${escapeHtml(senderLabel)}${timestamp ? ` · ${escapeHtml(timestamp)}` : ''}. Purpose: build page structure.
+- Lines 1691-1700: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1701-1710: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1711-1720: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1721-1730: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1731-1740: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1741-1750: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1751-1760: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1761-1770: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1771-1780: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1781-1790: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1791-1800: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1801-1810: Elements: p. Text: Loading feedback.... Purpose: build page structure.
+- Lines 1811-1820: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1821-1830: Elements: p. Text: No anonymous feedback yet.. Purpose: build page structure.
+- Lines 1831-1840: Elements: div .feedback-card, div .feedback-meta, span, div .feedback-text, strong. Text: ${escapeHtml(restaurantName)}; ${escapeHtml(createdAt)}; ${restaurantFeedback ? `; .... Purpose: build page structure.
+- Lines 1841-1850: Elements: p. Text: Error loading feedback: ${error.message}. Purpose: build page structure.
+- Lines 1851-1860: Elements: div .restaurant-checkbox, input #invite-r-${r.id} type=checkbox name=${escapeHtml(r.name)} data=data-name,data-slug, label. Text: `; ${escapeHtml(r.name)}. Purpose: collect user input and actions.
+- Lines 1861-1870: Elements: option. Text: -- Select a restaurant --; ' + restaurants.map(r => `; ${escapeHtml(r.name)}. Purpose: build page structure.
+- Lines 1871-1880: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1881-1890: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1891-1900: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1901-1910: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1911-1920: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1921-1930: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1931-1940: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1941-1950: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1951-1960: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1961-1970: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1971-1980: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1981-1990: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1991-2000: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 2001-2010: Elements: p. Text: Error loading invites: ${error.message}. Purpose: build page structure.
+- Lines 2011-2020: Elements: p. Text: No invites created yet.. Purpose: build page structure.
+- Lines 2021-2030: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 2031-2040: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 2041-2050: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 2051-2060: Elements: div .invite-item ${statusClass}, div .invite-header, div, strong, div .invite-restaurants, span .invite-restaurant-tag. Text: Entry: ${entryPageDisplay}; ${restaurantNames.map(name => `; ${escapeHtml(name)}. Purpose: build page structure.
+- Lines 2061-2070: Elements: span .invite-restaurant-tag, span .invite-status-badge ${statusClass}, div .invite-meta, span, strong. Text: 0 ? `; +${moreCount} more; ` : ''}; .... Purpose: build page structure.
+- Lines 2071-2080: Elements: div .invite-actions, button .btn-copy-small, button .btn-revoke, input type=text. Text: Copy Link; Revoke; ` : ''}. Purpose: collect user input and actions.
+- Lines 2081-2090: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 2091-2100: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 2101-2110: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 2111-2120: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 2121-2130: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 2131-2140: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 2141-2150: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 2151-2160: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 2161-2170: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 2171-2180: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 2181-2190: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 2191-2200: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 2201-2210: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 2211-2220: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 2221-2230: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 2231-2240: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 2241-2250: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 2251-2260: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 2261-2270: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 2271-2280: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 2281-2290: Elements: p. Text: Error loading appeals: ${error.message}. Purpose: build page structure.
+- Lines 2291-2300: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 2301-2310: Elements: div .appeal-card ${status}, div .appeal-header. Purpose: build page structure.
+- Lines 2311-2320: Elements: div .appeal-info, h3, div .appeal-meta, span, strong, span .appeal-status ${status}. Text: ${escapeHtml(appeal.ingredient_name)}; Restaurant:; ${escapeHtml(restaurant.name || 'Unknown')}; .... Purpose: build page structure.
+- Lines 2321-2330: Elements: div .appeal-message, strong, div. Text: ${appeal.manager_message ? `; Manager Message:; ${escapeHtml(appeal.manager_message)}; .... Purpose: build page structure.
+- Lines 2331-2340: Elements: img .appeal-photo src=${appeal.photo_url}, div .review-notes, label, strong, textarea #notes-${appeal.id}, div .appeal-actions. Text: ` : ''} ${status === 'pending' ? `; Review Notes (optional):. Purpose: collect user input and actions.
+- Lines 2341-2350: Elements: button .btn-approve, button .btn-deny, a .btn-view-restaurant href=restaurant.html?slug=${restaurant.slug}, div .appeal-actions, p, strong. Text: ✓ Approve; ✗ Deny; ${restaurant.slug ? `; .... Purpose: collect user input and actions.
+- Lines 2351-2360: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 2361-2370: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 2371-2380: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 2381-2390: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 2391-2400: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 2401-2410: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 2411-2420: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 2421-2430: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 2431-2440: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 2441-2450: Elements: p. Text: Error loading issues: ${error.message}. Purpose: build page structure.
+- Lines 2451-2460: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 2461-2470: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 2471-2480: Elements: div .appeal-card ${status}, div .appeal-header, div .appeal-info. Purpose: build page structure.
+- Lines 2481-2490: Elements: h3, div .appeal-meta, span, strong, span .appeal-status ${status}. Text: ${escapeHtml(issue.product_name)}; Restaurant:; ${escapeHtml(issue.restaurant_name || 'Unknown')}; .... Purpose: build page structure.
+- Lines 2491-2500: Elements: div, strong, p. Text: Manager Comment:; ${escapeHtml(issue.manager_comment)}; ${issue.ingredient_list ? `; .... Purpose: build page structure.
+- Lines 2501-2510: Elements: div, strong, span. Text: Detected Allergens:; 0 ? issue.detected_allergens.join(', ') : 'None'}; Detected Diets:; .... Purpose: build page structure.
+- Lines 2511-2520: Elements: div .review-notes, label, strong, textarea #resolution-notes-${issue.id}, div .appeal-actions, button .btn-approve, .... Text: ${status === 'pending' ? `; Resolution Notes (optional):; ✓ Mark Resolved; .... Purpose: collect user input and actions.
+- Lines 2521-2530: Elements: a .btn-view-restaurant href=restaurant.html?slug=${issue.restaurant_slug}, div .appeal-actions, p, strong. Text: View Restaurant; ` : ''}; ` : `; .... Purpose: build page structure.
+- Lines 2531-2540: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 2541-2550: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 2551-2560: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 2561-2570: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 2571-2580: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 2581-2590: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 2591-2600: Elements: p. Text: Error loading reports: ${error.message}. Purpose: build page structure.
+- Lines 2601-2610: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 2611-2620: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 2621-2630: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 2631-2640: Elements: div .appeal-card ${status}, div .appeal-header, div .appeal-info, div, h3, span, .... Text: ${escapeHtml(report.product_name || report.restaurant_name || 'Unknown')}; ${reportTypeLabel ? `; ${escapeHtml(reportTypeLabel)}; .... Purpose: build page structure.
+- Lines 2641-2650: Elements: span, strong, a href=${escapeHtml(pageUrl)}, span .appeal-status ${status}. Text: Submitted by:; ${escapeHtml(reporterEmail)}; ` : ''} ${displayAccountName ? `; .... Purpose: build page structure.
+- Lines 2651-2660: Elements: div, strong, p. Text: User Message:; ${escapeHtml(report.message)}; ${analysisDetails.ingredientList ? `; .... Purpose: build page structure.
+- Lines 2661-2670: Elements: div, strong, span. Text: 0 ? `; Detected Allergens:; typeof a === 'object' ? a.name : a).join(', ')}. Purpose: build page structure.
+- Lines 2671-2680: Elements: div, strong, span. Text: 0 ? `; Detected Diets:; ${analysisDetails.diets.join(', ')}; .... Purpose: build page structure.
+- Lines 2681-2690: Elements: div, a href=${escapeHtml(s.url || s)}, div .review-notes, label, strong, textarea #report-notes-${report.id}. Text: ${analysisDetails.sources.map(s => `; •; ${escapeHtml(s.title || s.url || s)}; .... Purpose: collect user input and actions.
+- Lines 2691-2700: Elements: div .appeal-actions, button .btn-approve, button .btn-deny, p, strong. Text: ✓ Mark Resolved; ✗ Dismiss; ` : `; .... Purpose: collect user input and actions.
+- Lines 2701-2710: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 2711-2720: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 2721-2730: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 2731-2740: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 2741-2750: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 2751-2760: Elements: a href=$1. Text: $1. Purpose: build page structure.
+- Lines 2761-2770: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 2771-2774: Defines markup container or closes tags. Purpose: build page structure.
+
+## public/admin-invites.html
+
+- Lines 1-10: Links stylesheets. Purpose: apply site styles.
+- Lines 11-20: Elements: div .simple-topbar-inner, a .simple-brand href=home.html, img src=https://static.wixstatic.com/media/945e9d_2b97098295d341d493e4a07d80d6b57c~mv2.png, span, main .page-main, div .page-content. Text: Clarivore. Purpose: structure layout and content.
+- Lines 21-30: Elements: div .account-layout, section .auth-card, h2, p .muted-text, label, select #restaurant-select, .... Text: Generate Manager Invitation; Create a one-time invitation link for a restaurant manager.; Select Restaurant; .... Purpose: collect user input and actions.
+- Lines 31-40: Elements: button #generate-btn .primary-btn type=button, div #invitation-result, p, div, input #invitation-link type=text, button #copy-btn .secondary-btn type=button. Text: Generate Invitation Link; ✓ Invitation link generated!; Share this link with the manager:; .... Purpose: collect user input and actions.
+- Lines 41-50: Elements: p #status-message .status-text, section .auth-card, h2, div #invitations-list. Text: Active Invitations. Purpose: structure layout and content.
+- Lines 51-60: Links external scripts. Purpose: load JavaScript for page behavior.
+- Lines 61-70: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 71-80: Elements: option. Text: Select a restaurant.... Purpose: build page structure.
+- Lines 81-90: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 91-100: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 101-110: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 111-120: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 121-130: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 131-140: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 141-150: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 151-160: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 161-170: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 171-180: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 181-190: Elements: p .muted-text, div. Text: No invitations yet.; `. Purpose: build page structure.
+- Lines 191-200: Elements: div, strong, p, span. Text: ${inv.restaurants?.name || 'Unknown Restaurant'}; Created: ${new Date(inv.created_at).toLocaleDateString()}; ${inv.used ? 'Used' : 'Active'}. Purpose: build page structure.
+- Lines 201-210: Elements: div, p. Text: ${window.location.origin}/account.html?invite=${inv.token}; ` : `; Used: ${new Date(inv.used_at).toLocaleDateString()}; .... Purpose: build page structure.
+- Lines 211-220: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 221-222: Defines markup container or closes tags. Purpose: build page structure.
+
+## public/admin-restaurant-view.html
+
+- Lines 1-10: Links stylesheets. Purpose: apply site styles.
+- Lines 11-20: Elements: style. Purpose: build page structure.
+- Lines 21-30: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 31-40: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 41-50: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 51-60: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 61-70: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 71-80: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 81-90: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 91-100: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 101-110: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 111-120: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 121-130: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 131-140: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 141-150: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 151-160: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 161-170: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 171-180: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 181-190: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 191-200: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 201-210: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 211-220: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 221-230: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 231-240: Elements: body .page-shell, header .simple-topbar, div .simple-topbar-inner. Purpose: structure layout and content.
+- Lines 241-250: Elements: a .simple-brand href=home.html, img src=https://static.wixstatic.com/media/945e9d_2b97098295d341d493e4a07d80d6b57c~mv2.png, span, div .simple-nav, div #modeToggleContainer .mode-toggle-container. Text: Clarivore. Purpose: display images.
+- Lines 251-260: Elements: main .admin-restaurant-container, div #access-denied .access-denied, h1, p, button .view-restaurant-btn, div #admin-content, .... Text: 🔒 Access Denied; You must be logged in as an administrator to access this page.; Go to Account; .... Purpose: collect user input and actions.
+- Lines 261-270: Elements: div .admin-header, h1 #restaurant-name, p #restaurant-info, div .admin-card, div .section-header, h2, .... Text: Loading...; Loading restaurant information...; 📝 Anonymous Feedback. Purpose: build page structure.
+- Lines 271-280: Elements: div #feedback-list .item-list, div .loading, div .admin-card, div .section-header, h2, span #appeals-badge .badge empty. Text: Loading feedback...; 📷 Barcode Scan Appeals; Loading.... Purpose: build page structure.
+- Lines 281-290: Elements: div #appeals-list .item-list, div .loading, div, a #view-restaurant-link .view-restaurant-btn href=#. Text: Loading appeals...; View Restaurant Page. Purpose: build page structure.
+- Lines 291-300: Defines inline script. Purpose: run page-specific logic.
+- Lines 301-310: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 311-320: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 321-330: Elements: div .error-state, strong. Text: Error:. Purpose: build page structure.
+- Lines 331-340: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 341-350: Elements: span .mode-toggle-label, div #modeToggle .mode-toggle ${isEditorMode ? 'active' : ''}. Text: ${isEditorMode ? 'Editor mode' : 'Customer mode'}. Purpose: build page structure.
+- Lines 351-360: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 361-370: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 371-380: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 381-390: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 391-400: Elements: div .error-state. Purpose: build page structure.
+- Lines 401-410: Elements: strong. Text: Error loading restaurant:; ${error.message}. Purpose: build page structure.
+- Lines 411-420: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 421-430: Elements: div .empty-state. Text: No anonymous feedback has been submitted for this restaurant.. Purpose: build page structure.
+- Lines 431-440: Elements: div .item-card has-content, div .item-meta, span, strong, div .item-content. Text: Submitted:; ${date}; ${escapeHtml(f.feedback_text)}. Purpose: build page structure.
+- Lines 441-450: Elements: div .error-state. Text: Error loading feedback: ${error.message}. Purpose: build page structure.
+- Lines 451-460: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 461-470: Elements: div .empty-state. Text: No barcode scan appeals have been submitted for this restaurant.. Purpose: build page structure.
+- Lines 471-480: Elements: div .item-card has-content. Purpose: build page structure.
+- Lines 481-490: Elements: div .item-meta, span, strong, span .appeal-status ${status}, div .item-content. Text: ${appeal.dish_name ? `; Dish:; ${escapeHtml(appeal.dish_name)}; .... Purpose: build page structure.
+- Lines 491-500: Elements: div, strong, img .appeal-photo src=${appeal.photo_url}, div .item-content. Text: ` : ''} ${appeal.photo_url ? `; Photo:; ` : ''} ${appeal.review_notes ? `. Purpose: display images.
+- Lines 501-510: Elements: strong, div, textarea #notes-${appeal.id}, button .btn-approve, button .btn-deny. Text: Review Notes:; ${escapeHtml(appeal.review_notes)}; ` : ''} ${isPending ? `; .... Purpose: collect user input and actions.
+- Lines 511-520: Elements: div .error-state. Text: ` : ''}; Error loading appeals: ${error.message}. Purpose: build page structure.
+- Lines 521-530: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 531-540: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 541-550: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 551-560: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 561-570: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 571-580: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 581-590: Elements: aiingredients. Text: = 0 && ingredientRowIndex. Purpose: build page structure.
+- Lines 591-600: Text: = 0 && ingredientIndex. Purpose: build page structure.
+- Lines 601-610: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 611-620: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 621-630: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 631-640: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 641-650: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 651-660: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 661-670: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 671-678: Defines markup container or closes tags. Purpose: build page structure.
+
+## public/admin.html
+
+- Lines 1-10: Links stylesheets. Purpose: apply site styles.
+- Lines 11-20: Elements: style. Purpose: build page structure.
+- Lines 21-30: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 31-40: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 41-50: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 51-60: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 61-70: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 71-80: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 81-90: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 91-100: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 101-110: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 111-120: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 121-130: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 131-140: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 141-150: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 151-160: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 161-170: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 171-180: Elements: body .page-shell, header .simple-topbar, div .simple-topbar-inner, a .simple-brand href=home.html, img src=https://static.wixstatic.com/media/945e9d_2b97098295d341d493e4a07d80d6b57c~mv2.png. Purpose: structure layout and content.
+- Lines 181-190: Elements: span, div .simple-nav, main .admin-container, div #access-denied .access-denied. Text: Clarivore. Purpose: structure layout and content.
+- Lines 191-200: Elements: h1, p, button .btn-primary, div #admin-content, div .admin-card, h2, .... Text: 🔒 Access Denied; You must be logged in as an administrator to access this page.; Go to Account; .... Purpose: collect user input and actions.
+- Lines 201-210: Elements: label, input #restaurant-name type=text, div .form-group, input #restaurant-website type=url. Text: Restaurant Name *; Website. Purpose: collect user input and actions.
+- Lines 211-220: Elements: label, textarea #restaurant-description, div .form-group, input #menu-image type=file, img #image-preview .image-preview. Text: Description; Menu Image *. Purpose: collect user input and actions.
+- Lines 221-230: Elements: button #submit-btn .btn-primary type=submit, div #status-message .status-message, div .admin-card, h2, div #restaurants-list .restaurants-list, p. Text: Add Restaurant; Existing Restaurants; Loading restaurants.... Purpose: collect user input and actions.
+- Lines 231-240: Elements: div .admin-card, h2, p, a .btn-primary href=appeals-review.html. Text: Appeals Review; Review and manage ingredient scan appeals from restaurant managers.; 📷 Review Appeals. Purpose: build page structure.
+- Lines 241-250: Defines inline script. Purpose: run page-specific logic.
+- Lines 251-260: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 261-270: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 271-280: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 281-290: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 291-300: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 301-310: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 311-320: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 321-330: Elements: p. Text: No restaurants found.. Purpose: build page structure.
+- Lines 331-340: Elements: div .restaurant-item, div, h3, p, button .btn-secondary. Text: ${r.name}; ${r.slug || 'no-slug'}; View. Purpose: collect user input and actions.
+- Lines 341-350: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 351-360: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 361-370: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 371-380: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 381-390: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 391-400: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 401-410: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 411-420: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 421-427: Defines markup container or closes tags. Purpose: build page structure.
+
+## public/css/styles.css
+
+- Lines 1-10: Defines CSS variables (--bg=#0b1020; --panel=#111630; --ink=#e9ecff; --muted=#a8b2d6; --brand=#7c9cff; --ok=#22c55e). Purpose: centralize theme values.
+- Lines 11-20: Styles * with --hover=#4c5ad4, --shadow=0 10px 30px rgba(0, 0, 0, 0.35), box-sizing=border-box, margin=0, padding=0. Purpose: control the element's appearance and layout.
+- Lines 21-30: Styles body with overflow-x=hidden, font-family=-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif, background=var(--bg), color=var(--ink), line-height=1.6. Purpose: control the element's appearance and layout.
+- Lines 31-40: Styles .container with color=inherit, text-decoration=none, max-width=1200px, margin=0 auto. Purpose: control the element's appearance and layout.
+- Lines 41-50: Styles .logo with padding=20px, text-align=center, padding=40px 0, width=60px. Purpose: control the element's appearance and layout.
+- Lines 51-60: Styles h1 with height=60px, border-radius=10px, margin-bottom=20px, font-size=2.5rem, margin-bottom=10px. Purpose: control the element's appearance and layout.
+- Lines 61-70: Styles nav a with display=flex, gap=20px, justify-content=center, margin=30px 0, padding=10px 20px. Purpose: control the element's appearance and layout.
+- Lines 71-80: Styles nav a:hover with color=var(--ink), text-decoration=none, border-radius=8px, border=1px solid var(--border), transition=all 0.3s. Purpose: control the element's appearance and layout.
+- Lines 81-90: Styles .hero with text-align=center, padding=60px 20px, background=var(--panel), border-radius=16px, border=1px solid var(--border). Purpose: control the element's appearance and layout.
+- Lines 91-100: Styles .cta-button with font-size=2rem, margin-bottom=20px, display=inline-block, margin-top=30px, padding=15px 40px. Purpose: control the element's appearance and layout.
+- Lines 101-110: Styles .cta-button:hover with background=var(--brand), color=white, text-decoration=none, border-radius=10px, font-weight=bold. Purpose: control the element's appearance and layout.
+- Lines 111-120: Styles .allergen-chips with display=flex, gap=8px, flex-wrap=wrap, margin=15px 0. Purpose: control the element's appearance and layout.
+- Lines 121-130: Styles .chip with padding=8px 12px, border=1px solid var(--border), background=#12183a, border-radius=20px, font-size=14px. Purpose: control the element's appearance and layout.
+- Lines 131-140: Styles .chip.active with border-color=var(--hover), border-color=var(--brand), background=#1a2351, box-shadow=0 0 0 3px rgba(124, 156, 255, 0.2). Purpose: control the element's appearance and layout.
+- Lines 141-150: Styles .panel with background=var(--panel), border=1px solid var(--border), border-radius=16px, padding=20px, margin=20px 0. Purpose: control the element's appearance and layout.
+- Lines 151-160: Styles .restaurant-grid with margin-top=0, display=grid, grid-template-columns=repeat(auto-fill, minmax(300px, 1fr)), gap=20px. Purpose: control the element's appearance and layout.
+- Lines 161-170: Styles .restaurant-card with margin=40px 0, background=var(--panel), border=1px solid var(--border), border-radius=16px, overflow=hidden. Purpose: control the element's appearance and layout.
+- Lines 171-180: Styles .restaurant-card-media with transform=translateY(-5px), border-color=var(--hover), position=relative. Purpose: control the element's appearance and layout.
+- Lines 181-190: Styles .favorite-toggle with width=100%, height=200px, object-fit=cover, position=absolute, top=12px. Purpose: control the element's appearance and layout.
+- Lines 191-200: Styles .favorite-toggle with background=rgba(11, 16, 32, 0.78), border=1px solid var(--border), color=rgba(255, 255, 255, 0.85), width=42px, height=42px. Purpose: control the element's appearance and layout.
+- Lines 201-210: Styles .favorite-toggle:hover with cursor=pointer, backdrop-filter=blur(6px), transition=transform 0.15s, color 0.15s, border-color 0.15s, background 0.15s, transform=scale(1.05), border-color=var(--hover). Purpose: control the element's appearance and layout.
+- Lines 211-220: Styles .favorite-toggle.is-active:hover with color=#facc15, border-color=#facc15, background=rgba(58, 47, 0, 0.88), color=#ffe580. Purpose: control the element's appearance and layout.
+- Lines 221-230: Styles .restaurant-card .meta with padding=20px, margin=0 0 10px 0. Purpose: control the element's appearance and layout.
+- Lines 231-240: Styles .text-center with color=var(--muted), font-size=0.9rem, margin-bottom=15px, text-align=center. Purpose: control the element's appearance and layout.
+- Lines 241-250: Styles .page-shell with margin-top=20px, margin-bottom=20px. Purpose: control the element's appearance and layout.
+- Lines 251-260: Styles .simple-topbar with min-height=100vh, background=var(--bg), color=var(--ink), display=flex, flex-direction=column. Purpose: control the element's appearance and layout.
+- Lines 261-270: Styles .mode-toggle-container with background=linear-gradient(180deg, #0f1530, #0b1020), border-bottom=1px solid #1c2347, box-shadow=0 10px 30px rgba(0, 0, 0, 0.35), z-index=2200, overflow=visible. Purpose: control the element's appearance and layout.
+- Lines 271-280: Styles .mode-toggle-label with top=12px, left=16px, display=flex, align-items=center, gap=8px. Purpose: control the element's appearance and layout.
+- Lines 281-290: Styles .mode-toggle with color=var(--muted), white-space=nowrap, position=relative, width=56px, height=30px. Purpose: control the element's appearance and layout.
+- Lines 291-300: Styles .mode-toggle.active with border-radius=15px, cursor=pointer, transition=all 0.2s ease, background=#3651ff, border-color=#4e65ff. Purpose: control the element's appearance and layout.
+- Lines 301-310: Styles .mode-toggle::after with content='', position=absolute, top=3px, left=3px, width=22px. Purpose: control the element's appearance and layout.
+- Lines 311-320: Styles .mode-toggle:hover with transform=translateX(26px), border-color=var(--hover), box-shadow=0 0 0 3px rgba(124, 156, 255, 0.2). Purpose: control the element's appearance and layout.
+- Lines 321-330: Defines responsive rules for (max-width: 600px). Purpose: adjust layout or styles for this breakpoint.
+- Lines 331-340: Styles .mode-toggle::after with text-align=center, line-height=1, width=48px, height=26px, width=18px. Purpose: control the element's appearance and layout.
+- Lines 341-350: Styles .simple-topbar-inner with transform=translateX(22px), max-width=none, width=calc(100% - 24px), margin=0 auto. Purpose: control the element's appearance and layout.
+- Lines 351-360: Styles .simple-brand with padding=12px 0 16px, display=flex, flex-direction=column, align-items=center, gap=10px. Purpose: control the element's appearance and layout.
+- Lines 361-370: Styles .simple-brand img with align-items=center, gap=16px, text-decoration=none, color=inherit, font-weight=800. Purpose: control the element's appearance and layout.
+- Lines 371-380: Styles .simple-nav with height=52px, border-radius=8px, display=flex, gap=clamp(4px, 1.4vw, 10px), flex-wrap=nowrap. Purpose: control the element's appearance and layout.
+- Lines 381-390: Styles .simple-nav with width=100%, padding=10px 12px 14px, overflow-x=auto, overflow-y=visible, scroll-padding-inline=12px. Purpose: control the element's appearance and layout.
+- Lines 391-400: Styles .simple-nav::-webkit-scrollbar with justify-content=center, overflow-x=visible, display=none. Purpose: control the element's appearance and layout.
+- Lines 401-410: Styles .simple-nav a with display=inline-flex, align-items=center, justify-content=center, padding=clamp(4px, 1.2vw, 8px) clamp(6px, 2.2vw, 14px), border=1px solid var(--border). Purpose: control the element's appearance and layout.
+- Lines 411-420: Defines responsive rules for (max-width: 900px). Purpose: adjust layout or styles for this breakpoint.
+- Lines 421-430: Defines responsive rules for (min-width: 960px). Purpose: adjust layout or styles for this breakpoint.
+- Lines 431-440: Defines responsive rules for (max-width: 720px). Purpose: adjust layout or styles for this breakpoint.
+- Lines 441-450: Styles .simple-nav a:hover with padding=10px 6px 14px, border-color=var(--hover), box-shadow=0 0 0 3px rgba(124, 156, 255, 0.2), 0 6px 14px rgba(15, 26, 80, 0.35). Purpose: control the element's appearance and layout.
+- Lines 451-460: Styles .simple-nav a.current-page with opacity=0.55, cursor=default, border-color=var(--hover), box-shadow=0 0 0 2px var(--brand). Purpose: control the element's appearance and layout.
+- Lines 461-470: Styles .nav-dropdown-trigger with position=relative, display=inline-flex, align-items=center, position=relative. Purpose: control the element's appearance and layout.
+- Lines 471-480: Styles .nav-dropdown-trigger with padding=clamp(4px, 1.2vw, 8px) clamp(6px, 2.2vw, 14px), border=1px solid var(--border), border-radius=999px, background=#12183a, color=inherit. Purpose: control the element's appearance and layout.
+- Lines 481-490: Styles .nav-dropdown-label with gap=6px, transition=all 0.2s, white-space=nowrap, line-height=1.1, white-space=nowrap. Purpose: control the element's appearance and layout.
+- Lines 491-500: Styles .nav-dropdown-caret with display=inline-block, width=0, height=0, border-left=4px solid transparent, border-right=4px solid transparent. Purpose: control the element's appearance and layout.
+- Lines 501-510: Styles .nav-dropdown-content with border-color=var(--hover), box-shadow=0 0 0 3px rgba(124, 156, 255, 0.2), display=none, position=fixed. Purpose: control the element's appearance and layout.
+- Lines 511-520: Styles .nav-dropdown-content with top=var(--dropdown-top, 100%), left=var(--dropdown-left, 0), background=var(--panel), min-width=var(--dropdown-width, 200px), box-shadow=0 8px 24px rgba(0, 0, 0, 0.4). Purpose: control the element's appearance and layout.
+- Lines 521-530: Styles .nav-dropdown-content::before with content='', position=absolute, top=-4px, left=0, right=0. Purpose: control the element's appearance and layout.
+- Lines 531-540: Styles .nav-dropdown-content a with display=block, animation=fadeIn 0.2s ease, display=block. Purpose: control the element's appearance and layout.
+- Lines 541-550: Styles .nav-dropdown-content a with padding=10px 16px, color=var(--ink), text-decoration=none, border-radius=8px, border=none. Purpose: control the element's appearance and layout.
+- Lines 551-560: Defines keyframes for fadeIn. Purpose: control animation steps.
+- Lines 561-570: Styles to with opacity=0, transform=translateY(-10px), opacity=1, transform=translateY(0). Purpose: control the element's appearance and layout.
+- Lines 571-580: Styles .page-content with flex=1, width=100%, display=flex, justify-content=center, padding=20px 20px 110px. Purpose: control the element's appearance and layout.
+- Lines 581-590: Styles .account-layout with max-width=1100px, color=var(--muted), display=grid. Purpose: control the element's appearance and layout.
+- Lines 591-600: Styles .auth-card with gap=24px, max-width=740px, margin=0 auto, background=var(--panel), border=1px solid var(--border). Purpose: control the element's appearance and layout.
+- Lines 601-610: Styles .auth-card h2 with display=flex, flex-direction=column, gap=16px, box-shadow=0 18px 40px rgba(0, 0, 0, 0.4), margin=0. Purpose: control the element's appearance and layout.
+- Lines 611-620: Styles .form-row>* with display=flex, gap=12px, flex-wrap=wrap, flex=1 1 200px. Purpose: control the element's appearance and layout.
+- Lines 621-630: Styles .auth-card textarea with width=100%, border-radius=12px, border=1px solid var(--border), background=#101739, color=var(--ink). Purpose: control the element's appearance and layout.
+- Lines 631-640: Styles .auth-actions with min-height=44px, max-height=44px, height=44px, display=flex, gap=12px. Purpose: control the element's appearance and layout.
+- Lines 641-650: Styles .primary-btn with background=#3651ff, border=1px solid #4e65ff, color=#fff, padding=10px 22px, border-radius=12px. Purpose: control the element's appearance and layout.
+- Lines 651-660: Styles .secondary-btn with transition=box-shadow 0.2s, background=transparent, border=1px solid var(--border), color=var(--ink), padding=10px 22px. Purpose: control the element's appearance and layout.
+- Lines 661-670: Styles .link-btn with cursor=pointer, background=none, border=none, color=var(--brand), font-size=0.95rem. Purpose: control the element's appearance and layout.
+- Lines 671-680: Styles .secondary-btn:hover with padding=0, align-self=flex-start, color=#9eb3ff. Purpose: control the element's appearance and layout.
+- Lines 681-690: Styles .allergen-select .chip with box-shadow=0 6px 20px rgba(54, 81, 255, 0.25), display=flex, flex-wrap=wrap, gap=8px. Purpose: control the element's appearance and layout.
+- Lines 691-700: Styles .status-text with border-radius=16px, color=var(--ink), color=var(--ink), font-size=0.95rem. Purpose: control the element's appearance and layout.
+- Lines 701-710: Styles .status-text.success with min-height=18px, color=var(--bad), color=var(--ok). Purpose: control the element's appearance and layout.
+- Lines 711-720: Defines responsive rules for (max-width: 640px). Purpose: adjust layout or styles for this breakpoint.
+- Lines 721-730: Styles .simple-brand img with gap=12px, gap=12px, width=40px, height=40px. Purpose: control the element's appearance and layout.
+- Lines 731-740: Styles .nav-dropdown-content with flex-wrap=nowrap, padding=10px 6px 14px, max-width=calc(100vw - 32px). Purpose: control the element's appearance and layout.
+- Lines 741-750: Styles .auth-card with padding=40px 16px 100px, padding=22px. Purpose: control the element's appearance and layout.
+- Lines 751-760: Styles .form-row with font-size=16px, line-height=1.3, padding=12px 14px, min-height=44px, max-height=44px. Purpose: control the element's appearance and layout.
+- Lines 761-770: Defines responsive rules for (max-width: 420px). Purpose: adjust layout or styles for this breakpoint.
+- Lines 771-780: Defines responsive rules for (max-width: 360px). Purpose: adjust layout or styles for this breakpoint.
+- Lines 781-790: Styles .simulation-header with gap=28px, align-items=flex-start, display=flex, flex-direction=column, gap=12px. Purpose: control the element's appearance and layout.
+- Lines 791-800: Styles .order-form with box-shadow=0 12px 32px rgba(4, 7, 20, 0.35), display=flex, flex-direction=column, gap=18px. Purpose: control the element's appearance and layout.
+- Lines 801-810: Styles .order-form textarea with display=flex, flex-direction=column, gap=8px, font-size=0.95rem. Purpose: control the element's appearance and layout.
+- Lines 811-820: Styles .order-form textarea with border-radius=12px, border=1px solid var(--border), background=#11183a, color=inherit, padding=12px 14px. Purpose: control the element's appearance and layout.
+- Lines 821-830: Styles .dining-mode with resize=vertical, display=grid, grid-template-columns=repeat(auto-fit, minmax(220px, 1fr)), gap=16px. Purpose: control the element's appearance and layout.
+- Lines 831-840: Styles .dining-mode legend with border=1px solid var(--border), border-radius=14px, padding=14px 16px, display=flex, flex-direction=column. Purpose: control the element's appearance and layout.
+- Lines 841-850: Styles .dining-mode label with font-weight=600, display=flex, gap=10px, align-items=center, font-size=0.95rem. Purpose: control the element's appearance and layout.
+- Lines 851-860: Styles .field-label with display=grid, gap=16px, font-weight=600, font-size=0.95rem. Purpose: control the element's appearance and layout.
+- Lines 861-870: Styles .form-actions with display=flex, flex-wrap=wrap, gap=8px, display=flex, align-items=center. Purpose: control the element's appearance and layout.
+- Lines 871-880: Styles .code-entry with flex-wrap=wrap, border-top=1px dashed var(--border), padding-top=16px, display=flex, flex-direction=column. Purpose: control the element's appearance and layout.
+- Lines 881-890: Styles .panel-heading with display=flex, justify-content=space-between, align-items=center, gap=16px, flex-wrap=wrap. Purpose: control the element's appearance and layout.
+- Lines 891-900: Styles .order-card with display=grid, gap=14px, background=rgba(16, 22, 48, 0.9), border=1px solid var(--border), border-radius=16px. Purpose: control the element's appearance and layout.
+- Lines 901-910: Styles .order-card:focus-visible with display=flex, flex-direction=column, gap=8px, cursor=pointer, transition=border-color 0.2s, box-shadow 0.2s. Purpose: control the element's appearance and layout.
+- Lines 911-920: Styles .order-detail with box-shadow=0 6px 20px rgba(12, 18, 48, 0.5), border-color=var(--hover), box-shadow=0 0 0 2px rgba(124, 156, 255, 0.5), margin-top=18px. Purpose: control the element's appearance and layout.
+- Lines 921-930: Styles .order-detail with background=rgba(12, 18, 40, 0.9), border=1px solid var(--border), border-radius=16px, padding=20px, display=flex. Purpose: control the element's appearance and layout.
+- Lines 931-940: Styles .order-summary dl with display=flex, align-items=center, justify-content=space-between, gap=16px, flex-wrap=wrap. Purpose: control the element's appearance and layout.
+- Lines 941-950: Styles .order-summary dt with gap=12px, grid-template-columns=repeat(auto-fit, minmax(180px, 1fr)), font-weight=600, font-size=0.85rem, color=var(--muted). Purpose: control the element's appearance and layout.
+- Lines 951-960: Styles .timeline with margin=4px 0 0, list-style=none, position=relative, padding-left=0, display=grid. Purpose: control the element's appearance and layout.
+- Lines 961-970: Styles .timeline::before with content='', position=absolute, left=10px, top=0, bottom=0. Purpose: control the element's appearance and layout.
+- Lines 971-980: Styles .timeline-marker with position=relative, padding-left=32px, position=absolute, left=4px. Purpose: control the element's appearance and layout.
+- Lines 981-990: Styles .timeline-actor with top=4px, width=14px, height=14px, border-radius=50%, background=var(--brand). Purpose: control the element's appearance and layout.
+- Lines 991-1000: Styles .timeline time with font-size=0.9rem, display=block, font-size=0.8rem, color=var(--muted), margin-top=4px. Purpose: control the element's appearance and layout.
+- Lines 1001-1010: Styles .user-response-block with border-radius=14px, border=1px solid rgba(124, 156, 255, 0.35), background=rgba(13, 19, 46, 0.8), padding=16px, display=flex. Purpose: control the element's appearance and layout.
+- Lines 1011-1020: Styles .empty-state with display=flex, gap=12px, flex-wrap=wrap, border=1px dashed var(--border), border-radius=14px. Purpose: control the element's appearance and layout.
+- Lines 1021-1030: Styles .tablet-sidebar with text-align=center, color=var(--muted), background=rgba(9, 14, 32, 0.7), display=flex, flex-direction=column. Purpose: control the element's appearance and layout.
+- Lines 1031-1040: Styles .tablet-panel with top=110px, background=linear-gradient(180deg, rgba(19, 26, 52, 0.95), rgba(11, 16, 32, 0.95)), border=1px solid rgba(80, 100, 190, 0.35), border-radius=20px, padding=20px. Purpose: control the element's appearance and layout.
+- Lines 1041-1050: Styles .tablet-orders with flex-direction=column, gap=18px, margin=0, display=grid. Purpose: control the element's appearance and layout.
+- Lines 1051-1060: Styles .tablet-order with gap=16px, background=rgba(9, 15, 34, 0.85), border=1px solid rgba(73, 86, 160, 0.35), border-radius=16px, padding=16px. Purpose: control the element's appearance and layout.
+- Lines 1061-1070: Styles .tablet-order header with gap=12px, box-shadow=inset 0 1px 0 rgba(255, 255, 255, 0.02), display=flex, flex-direction=column, gap=4px. Purpose: control the element's appearance and layout.
+- Lines 1071-1080: Styles .tablet-order-body with font-size=0.85rem, color=var(--muted), display=flex, flex-direction=column, gap=16px. Purpose: control the element's appearance and layout.
+- Lines 1081-1090: Styles .hardware-panel with font-size=1.4rem, letter-spacing=2px, color=var(--brand), display=flex, gap=12px. Purpose: control the element's appearance and layout.
+- Lines 1091-1100: Styles .hardware-btn with flex-wrap=wrap, background=rgba(8, 13, 30, 0.9), padding=12px, border-radius=14px, border=1px solid rgba(74, 90, 200, 0.35). Purpose: control the element's appearance and layout.
+- Lines 1101-1110: Styles .hardware-btn with min-height=56px, border-radius=18px, border=2px solid rgba(74, 90, 200, 0.4), background=linear-gradient(180deg, rgba(18, 24, 60, 0.95), rgba(10, 14, 36, 0.95)), color=var(--ink). Purpose: control the element's appearance and layout.
+- Lines 1111-1120: Styles .hardware-btn:disabled with padding=0 18px, transform=translateY(-2px), box-shadow=0 12px 28px rgba(10, 18, 46, 0.45), border-color=var(--hover). Purpose: control the element's appearance and layout.
+- Lines 1121-1130: Styles .hardware-btn--primary with opacity=0.6, cursor=default, transform=none, background=linear-gradient(180deg, rgba(78, 98, 255, 0.95), rgba(42, 60, 210, 0.95)), border-color=rgba(124, 156, 255, 0.7). Purpose: control the element's appearance and layout.
+- Lines 1131-1140: Styles .status-badge with display=inline-flex, align-items=center, justify-content=center, padding=6px 12px, border-radius=999px. Purpose: control the element's appearance and layout.
+- Lines 1141-1150: Styles .status-badge[data-tone="info"] with background=rgba(120, 130, 190, 0.25), border=1px solid rgba(120, 130, 190, 0.4), color=var(--ink), width=fit-content, background=rgba(94, 220, 255, 0.18). Purpose: control the element's appearance and layout.
+- Lines 1151-1160: Styles .status-badge[data-tone="active"] with background=rgba(250, 204, 21, 0.18), border-color=rgba(250, 204, 21, 0.4), background=rgba(124, 156, 255, 0.25), border-color=rgba(124, 156, 255, 0.45). Purpose: control the element's appearance and layout.
+- Lines 1161-1170: Styles .status-badge[data-tone="muted"] with background=rgba(34, 197, 94, 0.18), border-color=rgba(34, 197, 94, 0.45), opacity=0.8. Purpose: control the element's appearance and layout.
+- Lines 1171-1180: Styles .faceid-prompt with border-radius=14px, border=1px solid rgba(78, 98, 255, 0.35), background=rgba(12, 18, 46, 0.92), padding=16px, display=flex. Purpose: control the element's appearance and layout.
+- Lines 1181-1190: Styles .faceid-option with display=grid, gap=12px, border-radius=14px, border=1px solid rgba(124, 156, 255, 0.35), background=rgba(20, 26, 60, 0.9). Purpose: control the element's appearance and layout.
+- Lines 1191-1200: Styles .faceid-option:hover with display=flex, flex-direction=column, align-items=flex-start, gap=4px, cursor=pointer. Purpose: control the element's appearance and layout.
+- Lines 1201-1210: Styles .faceid-role with border-color=rgba(124, 156, 255, 0.7), box-shadow=0 10px 24px rgba(14, 20, 48, 0.45), font-weight=700, font-size=0.85rem. Purpose: control the element's appearance and layout.
+- Lines 1211-1220: Styles .question-composer with color=var(--muted), font-size=0.8rem, color=rgba(124, 156, 255, 0.8), border-radius=14px. Purpose: control the element's appearance and layout.
+- Lines 1221-1230: Styles .question-composer textarea with border=1px solid rgba(124, 156, 255, 0.3), background=rgba(11, 18, 42, 0.85), padding=16px, display=flex, flex-direction=column. Purpose: control the element's appearance and layout.
+- Lines 1231-1240: Styles .question-composer button with border=1px solid rgba(124, 156, 255, 0.3), background=rgba(9, 15, 32, 0.9), color=inherit, padding=12px, resize=vertical. Purpose: control the element's appearance and layout.
+- Lines 1241-1250: Styles .question-card with border-radius=14px, border=1px solid rgba(124, 156, 255, 0.25), background=rgba(14, 20, 46, 0.8), padding=16px, display=flex. Purpose: control the element's appearance and layout.
+- Lines 1251-1260: Styles .faceid-audit ul with border-top=1px solid rgba(124, 156, 255, 0.2), padding-top=12px, list-style=none, padding=0, margin=8px 0 0. Purpose: control the element's appearance and layout.
+- Lines 1261-1270: Styles .simulation-footer ul with display=grid, gap=6px, font-size=0.85rem, color=var(--muted), margin=12px 0 0 18px. Purpose: control the element's appearance and layout.
+- Lines 1271-1280: Defines responsive rules for (max-width: 1100px). Purpose: adjust layout or styles for this breakpoint.
+- Lines 1281-1290: Defines responsive rules for (max-width: 640px). Purpose: adjust layout or styles for this breakpoint.
+- Lines 1291-1300: Styles .help-assistant-drawer with padding-left=26px, position=fixed, left=12px, right=12px. Purpose: control the element's appearance and layout.
+- Lines 1301-1310: Styles .help-assistant-drawer with bottom=12px, background=#111630, border=1px solid #2a3261, border-radius=18px, box-shadow=0 20px 40px rgba(0, 0, 0, 0.45). Purpose: control the element's appearance and layout.
+- Lines 1311-1320: Styles .help-assistant-reopen with transition=transform 0.2s ease, z-index=5000, transform=translateY(0), position=fixed. Purpose: control the element's appearance and layout.
+- Lines 1321-1330: Styles .help-assistant-handle with right=18px, bottom=18px, z-index=4999, padding=10px 16px, border-radius=999px. Purpose: control the element's appearance and layout.
+- Lines 1331-1340: Styles .help-assistant-header with width=60px, height=6px, border-radius=999px, background=rgba(255, 255, 255, 0.25), margin=2px auto 4px. Purpose: control the element's appearance and layout.
+- Lines 1341-1350: Styles .help-assistant-subtitle with align-items=center, justify-content=space-between, gap=12px, color=#e9ecff, display=block. Purpose: control the element's appearance and layout.
+- Lines 1351-1360: Styles .help-assistant-conversation with display=flex, gap=8px, flex=1, overflow=auto. Purpose: control the element's appearance and layout.
+- Lines 1361-1370: Styles .help-message with display=flex, flex-direction=column, gap=8px, padding-right=4px, background=rgba(15, 20, 45, 0.85). Purpose: control the element's appearance and layout.
+- Lines 1371-1380: Styles .help-message.user with padding=10px 12px, font-size=0.95rem, line-height=1.4, color=#e9ecff, max-width=92%. Purpose: control the element's appearance and layout.
+- Lines 1381-1390: Styles .help-message.empty with border-color=rgba(124, 156, 255, 0.35), align-self=flex-start, align-self=center, text-align=center. Purpose: control the element's appearance and layout.
+- Lines 1391-1400: Styles .help-heading with background=transparent, border=1px dashed rgba(124, 156, 255, 0.25), color=#a8b2d6, font-size=1.2rem, font-weight=700. Purpose: control the element's appearance and layout.
+- Lines 1401-1410: Styles .help-line.spacer with color=#e9ecff, margin=10px 0 6px, margin=0 0 6px, margin=4px 0. Purpose: control the element's appearance and layout.
+- Lines 1411-1420: Styles .help-code with background=rgba(9, 12, 26, 0.9), border=1px solid rgba(124, 156, 255, 0.2), border-radius=12px, padding=10px 12px, font-family=ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace. Purpose: control the element's appearance and layout.
+- Lines 1421-1430: Styles .help-action-link with color=#d6ddff, white-space=pre-wrap, font-family=inherit. Purpose: control the element's appearance and layout.
+- Lines 1431-1440: Styles .help-assistant-input-row with color=#9fb2ff, text-decoration=underline, display=flex, gap=10px, align-items=center. Purpose: control the element's appearance and layout.
+- Lines 1441-1450: Styles .help-assistant-input-row textarea with flex=1 1 auto, min-height=28px, max-height=160px, resize=none, border-radius=12px. Purpose: control the element's appearance and layout.
+- Lines 1451-1460: Styles .help-assistant-input-row textarea:focus with line-height=1.2, overflow=hidden, outline=none, border-color=#7c9cff, box-shadow=0 0 0 3px rgba(124, 156, 255, 0.2). Purpose: control the element's appearance and layout.
+- Lines 1461-1470: Styles .btn with min-height=18px, font-size=0.85rem, color=#a8b2d6, background=rgba(76, 90, 212, 0.2), border=1px solid rgba(124, 156, 255, 0.4). Purpose: control the element's appearance and layout.
+- Lines 1471-1480: Styles .btn:hover with padding=8px 14px, border-radius=999px, font-size=0.9rem, cursor=pointer, transition=all 0.2s ease. Purpose: control the element's appearance and layout.
+- Lines 1481-1490: Styles .btnPrimary:hover with background=#4c5ad4, border-color=#4c5ad4, color=#fff, background=#5a69e6. Purpose: control the element's appearance and layout.
+- Lines 1491-1500: Styles .btnGhost:hover with background=transparent, border-color=rgba(124, 156, 255, 0.35), color=#c9d5ff, background=rgba(124, 156, 255, 0.15). Purpose: control the element's appearance and layout.
+- Lines 1501-1510: Defines keyframes for helpPulse. Purpose: control animation steps.
+- Lines 1511-1520: Styles 100% with box-shadow=0 0 0 8px rgba(255, 255, 255, 0.4), box-shadow=0 0 0 4px rgba(255, 255, 255, 0.25). Purpose: control the element's appearance and layout.
+- Lines 1521-1530: Styles body with min-height=100%, width=100%, overflow-y=auto, -webkit-overflow-scrolling=touch, touch-action=pan-x pan-y. Purpose: control the element's appearance and layout.
+- Lines 1531-1540: Styles body.menuScrollLocked with width=100%, overflow-y=auto, -webkit-overflow-scrolling=touch, touch-action=pan-x pan-y, height=100%. Purpose: control the element's appearance and layout.
+- Lines 1541-1550: Styles body.menuScrollLocked with overflow=hidden, overscroll-behavior=none, position=fixed, inset=0, touch-action=none. Purpose: control the element's appearance and layout.
+- Lines 1551-1560: Styles body.menuScrollLocked .topbar with touch-action=pan-y, position=fixed, top=0, left=0, right=0. Purpose: control the element's appearance and layout.
+- Lines 1561-1570: Styles body.menuScrollLocked .menuWrap with z-index=3200, touch-action=none, touch-action=pan-y. Purpose: control the element's appearance and layout.
+- Lines 1571-1580: Styles .wrap with touch-action=pan-x pan-y, min-height=100%. Purpose: control the element's appearance and layout.
+- Lines 1581-1590: Styles .content with display=flex, flex-direction=column, width=100%, flex=1, max-width=1100px. Purpose: control the element's appearance and layout.
+- Lines 1591-1600: Styles .topbar with padding-bottom=100px, width=100%, box-sizing=border-box, position=relative, background=linear-gradient(180deg, #0f1530, #0b1020). Purpose: control the element's appearance and layout.
+- Lines 1601-1610: Styles .topin with width=100%, z-index=2200, overflow=visible, max-width=none, width=100%. Purpose: control the element's appearance and layout.
+- Lines 1611-1620: Styles .topin with flex-direction=column, align-items=center, gap=10px, padding=10px calc(12px + env(safe-area-inset-right)) 12px
+    calc(12px + env(safe-area-inset-left)), justify-content=center. Purpose: control the element's appearance and layout.
+- Lines 1621-1630: Styles .brand with display=flex, align-items=center, gap=16px, font-weight=800, flex-shrink=0. Purpose: control the element's appearance and layout.
+- Lines 1631-1640: Styles .brand span with width=46px, height=46px, border-radius=8px, font-size=clamp(1.5rem, 1.3rem + 1vw, 2.1rem). Purpose: control the element's appearance and layout.
+- Lines 1641-1650: Styles .topNav with --nav-gap=clamp(4px, 1.4vw, 10px), --nav-pad-y=clamp(4px, 1.2vw, 8px), --nav-pad-x=clamp(6px, 2.2vw, 14px), --nav-font=clamp(0.6rem, 2.1vw, 0.9rem), display=flex. Purpose: control the element's appearance and layout.
+- Lines 1651-1660: Styles .topNav with justify-content=center, width=100%, padding=6px calc(12px + env(safe-area-inset-right)) 10px
+    calc(12px + env(safe-area-inset-left)), box-sizing=border-box, overflow=visible. Purpose: control the element's appearance and layout.
+- Lines 1661-1670: Styles .tabs with display=flex, gap=8px, flex-wrap=nowrap, justify-content=center, align-items=center. Purpose: control the element's appearance and layout.
+- Lines 1671-1680: Styles .tab with width=100%, box-sizing=border-box, display=inline-flex, align-items=center, justify-content=center. Purpose: control the element's appearance and layout.
+- Lines 1681-1690: Styles .tab with background=#12183a, border-radius=999px, cursor=pointer, white-space=nowrap, font-size=var(--nav-font). Purpose: control the element's appearance and layout.
+- Lines 1691-1700: Styles .tab.current-page with color=inherit, text-decoration=none, border-color=var(--hover), box-shadow=0 0 0 2px var(--brand). Purpose: control the element's appearance and layout.
+- Lines 1701-1710: Styles .acctBtn with display=inline-flex, align-items=center, justify-content=center, padding=8px 14px, border=1px solid var(--border). Purpose: control the element's appearance and layout.
+- Lines 1711-1720: Styles .acctBtn with font-size=0.9rem, line-height=1.1, flex-shrink=0, text-align=center, transition=border-color 0.2s,
+    box-shadow 0.2s. Purpose: control the element's appearance and layout.
+- Lines 1721-1730: Styles .algBtn:hover with border-color=var(--hover), box-shadow=0 0 0 3px rgba(124, 156, 255, 0.2),
+    0 6px 14px rgba(15, 26, 80, 0.35). Purpose: control the element's appearance and layout.
+- Lines 1731-1740: Styles .legendSwatch with color=var(--muted), width=16px, height=16px. Purpose: control the element's appearance and layout.
+- Lines 1741-1750: Styles .legendSwatchGreen with border-radius=5px, display=inline-block, margin-right=6px, background=transparent, border=2px solid transparent. Purpose: control the element's appearance and layout.
+- Lines 1751-1760: Styles .legendSwatchRed with border-color=#facc15, border-color=#ef4444. Purpose: control the element's appearance and layout.
+- Lines 1761-1770: Styles .editorMiniMapSlot with display=flex, gap=16px, align-items=flex-start, flex-wrap=wrap, margin-bottom=12px. Purpose: control the element's appearance and layout.
+- Lines 1771-1780: Styles .editorControlColumn with flex-shrink=0, align-items=flex-start, min-width=130px, flex=1, min-width=240px. Purpose: control the element's appearance and layout.
+- Lines 1781-1790: Styles .editorGroup with gap=8px, display=grid, grid-template-columns=repeat(auto-fit, minmax(220px, 1fr)), gap=12px. Purpose: control the element's appearance and layout.
+- Lines 1791-1800: Styles .editorGroupLabel with background=rgba(12, 18, 56, 0.6), border=1px solid #24306a, border-radius=12px, padding=10px, display=flex. Purpose: control the element's appearance and layout.
+- Lines 1801-1810: Styles .editorGroupButtons with font-size=0.7rem, text-transform=uppercase, letter-spacing=0.08em, color=#a8b2d6, display=flex. Purpose: control the element's appearance and layout.
+- Lines 1811-1820: Styles .editorNoteRow with align-items=center, display=flex, justify-content=space-between, align-items=center, gap=12px. Purpose: control the element's appearance and layout.
+- Lines 1821-1830: Defines responsive rules for (max-width: 768px). Purpose: adjust layout or styles for this breakpoint.
+- Lines 1831-1840: Styles .editorToolbar with align-items=stretch, min-width=110px, min-width=0, grid-template-columns=1fr. Purpose: control the element's appearance and layout.
+- Lines 1841-1850: Styles .saveReviewBackdrop with position=fixed, inset=0, background=rgba(6, 10, 24, 0.8), z-index=10030, display=flex. Purpose: control the element's appearance and layout.
+- Lines 1851-1860: Styles .saveReviewModal with justify-content=center, padding=20px, width=100%, max-width=840px, background=#0c132f. Purpose: control the element's appearance and layout.
+- Lines 1861-1870: Styles .saveReviewModal with padding=24px, color=var(--ink), max-height=85vh, overflow=hidden, display=flex. Purpose: control the element's appearance and layout.
+- Lines 1871-1880: Styles .saveReviewList with display=flex, justify-content=space-between, align-items=flex-start, gap=12px, display=flex. Purpose: control the element's appearance and layout.
+- Lines 1881-1890: Styles .saveReviewItem with gap=10px, overflow-y=auto, padding-right=4px, display=flex, align-items=flex-start. Purpose: control the element's appearance and layout.
+- Lines 1891-1900: Styles .saveReviewItemText with border=1px solid rgba(76, 90, 212, 0.35), background=rgba(17, 24, 58, 0.6), border-radius=12px, padding=12px 14px, font-size=0.95rem. Purpose: control the element's appearance and layout.
+- Lines 1901-1910: Styles .saveReviewActions with flex=1, display=flex, gap=10px, justify-content=flex-end, flex-wrap=wrap. Purpose: control the element's appearance and layout.
+- Lines 1911-1920: Styles .chips with display=flex, gap=8px, flex-wrap=wrap. Purpose: control the element's appearance and layout.
+- Lines 1921-1930: Styles .pill with cursor=pointer, touch-action=manipulation, -webkit-tap-highlight-color=transparent, padding=10px 14px, border=1px dashed #33408c. Purpose: control the element's appearance and layout.
+- Lines 1931-1940: Styles .btnSecondary with background=#4c5ad4, border-color=#5c6ce8. Purpose: control the element's appearance and layout.
+- Lines 1941-1950: Styles .btnSuccess with background=#8b1d1d, border-color=#a12525, background=#17663a, border-color=#1a7b46. Purpose: control the element's appearance and layout.
+- Lines 1951-1960: Styles .cards with display=flex, justify-content=flex-end, margin=12px 0, gap=10px, flex-wrap=wrap. Purpose: control the element's appearance and layout.
+- Lines 1961-1970: Styles .card with display=flex, flex-wrap=wrap, gap=16px, justify-content=center, background=var(--panel). Purpose: control the element's appearance and layout.
+- Lines 1971-1980: Styles .card img with box-shadow=var(--shadow), width=330px, overflow=hidden, display=block, width=100%. Purpose: control the element's appearance and layout.
+- Lines 1981-1990: Styles .banner with padding=12px, display=flex, align-items=center, justify-content=space-between. Purpose: control the element's appearance and layout.
+- Lines 1991-2000: Styles .legend with gap=10px, background=#351b1b, border=1px solid #5b2c2c, border-radius=12px, padding=10px 12px. Purpose: control the element's appearance and layout.
+- Lines 2001-2010: Styles .key with gap=16px, align-items=center, flex-wrap=wrap, color=var(--muted), margin=10px 0 16px. Purpose: control the element's appearance and layout.
+- Lines 2011-2020: Styles .key.warn with height=14px, border-radius=4px, border=2px solid currentColor, color=var(--ok). Purpose: control the element's appearance and layout.
+- Lines 2021-2030: Styles .ackBtn with color=var(--warn), color=var(--bad), padding=8px 12px, border-radius=10px. Purpose: control the element's appearance and layout.
+- Lines 2031-2040: Defines keyframes for ackPulse. Purpose: control animation steps.
+- Lines 2041-2050: Styles .ackBtn.off with box-shadow=0 0 0 8px rgba(255, 180, 180, 0), box-shadow=0 0 0 0 rgba(255, 180, 180, 0), background=#8b1d1d. Purpose: control the element's appearance and layout.
+- Lines 2051-2060: Styles .ackBtn.on with border-color=#a12525, animation=ackPulse 1.8s ease-in-out infinite, background=#17663a, border-color=#1a7b46, animation=none. Purpose: control the element's appearance and layout.
+- Lines 2061-2070: Defines responsive rules for (max-width: 640px). Purpose: adjust layout or styles for this breakpoint.
+- Lines 2071-2080: Styles .tabs with width=40px, height=40px, gap=6px 8px, flex-wrap=nowrap, justify-content=center. Purpose: control the element's appearance and layout.
+- Lines 2081-2090: Styles .topNav with padding=0, width=100%, --nav-gap=4px, --nav-pad-y=5px, --nav-pad-x=8px. Purpose: control the element's appearance and layout.
+- Lines 2091-2100: Styles .tab with display=none, font-size=var(--nav-font), padding=var(--nav-pad-y) var(--nav-pad-x). Purpose: control the element's appearance and layout.
+- Lines 2101-2110: Defines responsive rules for (max-width: 420px). Purpose: adjust layout or styles for this breakpoint.
+- Lines 2111-2120: Styles .menuWrap with display=none, background=#0d132a, border-radius=14px, position=relative, overflow=hidden. Purpose: control the element's appearance and layout.
+- Lines 2121-2130: Styles .menuWrap.show with transform-origin=top left, touch-action=pan-y, display=block, flex=1 1 auto, min-height=300px. Purpose: control the element's appearance and layout.
+- Lines 2131-2140: Styles .menuInner with -webkit-overflow-scrolling=touch, overscroll-behavior=contain, touch-action=pan-x pan-y, position=relative, display=block. Purpose: control the element's appearance and layout.
+- Lines 2141-2150: Styles .menuImg with transform-origin=top left, width=100%, display=block, max-width=100%, height=auto. Purpose: control the element's appearance and layout.
+- Lines 2151-2160: Styles .overlayLayer with user-drag=none, -webkit-touch-callout=none, touch-action=none, pointer-events=none, position=absolute. Purpose: control the element's appearance and layout.
+- Lines 2161-2170: Styles .overlay with pointer-events=none, line-height=normal, width=100%, height=100%, position=absolute. Purpose: control the element's appearance and layout.
+- Lines 2171-2180: Styles .overlay:hover with background=transparent, pointer-events=auto, box-sizing=border-box, touch-action=manipulation, --pulse-rgb=255, 255, 255. Purpose: control the element's appearance and layout.
+- Lines 2181-2190: Styles .overlay.selected with box-shadow=none, animation=overlayPulse 1.8s cubic-bezier(0.4, 0, 0.2, 1) infinite, background=transparent !important, box-shadow=0 0 0 0 rgba(var(--pulse-rgb, 255, 255, 255), 0), will-change=box-shadow. Purpose: control the element's appearance and layout.
+- Lines 2191-2200: Defines keyframes for overlayPulse. Purpose: control animation steps.
+- Lines 2201-2210: Styles .menuWrap.zoomed .overlay.selected with box-shadow=0 0 0 var(--pulse-spread-max)
+      rgba(var(--pulse-rgb, 255, 255, 255), 0), --pulse-spread=calc(6px / var(--overlay-zoom-scale, 1)), --pulse-spread-max=calc(12px / var(--overlay-zoom-scale, 1)). Purpose: control the element's appearance and layout.
+- Lines 2211-2220: Styles .menuWrap.zoomed with overflow=hidden, position=fixed, top=0, left=0, right=0. Purpose: control the element's appearance and layout.
+- Lines 2221-2230: Styles body.menuZoomed #root > *:not(.menuWrap) with background=#0b1020, z-index=9999, touch-action=none, -webkit-overflow-scrolling=auto. Purpose: control the element's appearance and layout.
+- Lines 2231-2240: Styles .menuWrap.zoomed .menuInner with display=none !important, overflow=hidden, transition=transform 0.3s ease-out, touch-action=none. Purpose: control the element's appearance and layout.
+- Lines 2241-2250: Styles .menuWrap.zoomed .menuSection.zoomed-active with visibility=hidden, visibility=visible. Purpose: control the element's appearance and layout.
+- Lines 2251-2260: Styles .zoomTopOverlay with position=fixed, top=0, left=0, right=0, height=calc(env(safe-area-inset-top, 0px) + 60px). Purpose: control the element's appearance and layout.
+- Lines 2261-2270: Styles .zoomTopOverlay.show with z-index=10000, pointer-events=none, opacity=0, transition=opacity 0.3s ease. Purpose: control the element's appearance and layout.
+- Lines 2271-2280: Styles .zoomBackButton with opacity=1, background=rgba(255, 255, 255, 0.15), border=1px solid rgba(255, 255, 255, 0.2), border-radius=8px, padding=8px. Purpose: control the element's appearance and layout.
+- Lines 2281-2290: Styles .zoomBackButton:active with -webkit-backdrop-filter=blur(8px), display=flex, align-items=center, justify-content=center, flex-shrink=0. Purpose: control the element's appearance and layout.
+- Lines 2291-2300: Styles .zoomBackButton svg with transform=scale(0.92), width=20px, height=20px, stroke=rgba(255, 255, 255, 0.9). Purpose: control the element's appearance and layout.
+- Lines 2301-2310: Styles .zoomedDishInfo with position=fixed, bottom=0, left=0, right=0. Purpose: control the element's appearance and layout.
+- Lines 2311-2320: Styles .zoomedDishInfo with padding=50px 16px calc(8px + env(safe-area-inset-bottom, 0px)) 16px, z-index=10000, display=none. Purpose: control the element's appearance and layout.
+- Lines 2321-2330: Styles .zoomedDishInfo h3 with display=block, font-size=1.3rem, font-weight=600, color=var(--ink). Purpose: control the element's appearance and layout.
+- Lines 2331-2340: Styles .zoomedDishInfo .allergenChip with display=block, display=inline-block, padding=6px 12px, border-radius=20px, font-size=0.85rem. Purpose: control the element's appearance and layout.
+- Lines 2341-2350: Styles .zoomedDishInfo .allergenChip.danger with line-height=1.4, text-align=left, background=rgba(239, 68, 68, 0.2), border=1px solid rgba(239, 68, 68, 0.4), color=#fca5a5. Purpose: control the element's appearance and layout.
+- Lines 2351-2360: Styles .zoomedDishInfo .allergenChip.caution with background=rgba(34, 197, 94, 0.15), border=1px solid rgba(34, 197, 94, 0.3), color=#86efac, background=rgba(250, 204, 21, 0.15), border=1px solid rgba(250, 204, 21, 0.3). Purpose: control the element's appearance and layout.
+- Lines 2361-2370: Styles .zoomedDishActionRow with margin-top=12px, display=flex, flex-direction=column, gap=12px. Purpose: control the element's appearance and layout.
+- Lines 2371-2380: Styles .zoomedDishActions .addToOrderBtn with display=flex, gap=12px, align-items=center, flex=1, margin-top=0. Purpose: control the element's appearance and layout.
+- Lines 2381-2390: Styles .mobileMenuNotice with margin=16px 0, display=flex, flex-direction=column, gap=12px, align-items=stretch. Purpose: control the element's appearance and layout.
+- Lines 2391-2400: Styles #mobileViewerChrome with width=100%, position=fixed, inset=0, z-index=3400, display=none. Purpose: control the element's appearance and layout.
+- Lines 2401-2410: Styles #mobileViewerChrome .chromeTop with display=block, position=fixed, top=calc(env(safe-area-inset-top, 0) + 12px), left=0. Purpose: control the element's appearance and layout.
+- Lines 2411-2420: Styles #mobileViewerChrome .chromeTop with right=0, display=flex, flex-direction=column, align-items=stretch, gap=10px. Purpose: control the element's appearance and layout.
+- Lines 2421-2430: Styles .mobileViewerSummaryInner with pointer-events=auto, display=none !important, display=inline-flex. Purpose: control the element's appearance and layout.
+- Lines 2431-2440: Styles .mobileViewerSummaryInner with flex-direction=column, align-items=flex-start, gap=6px, padding=10px 16px, border-radius=14px. Purpose: control the element's appearance and layout.
+- Lines 2441-2450: Styles .mobileViewerSummaryInner .label with color=var(--muted), max-width=min(800px, calc(100% - 24px)), font-weight=600, color=var(--ink), white-space=nowrap. Purpose: control the element's appearance and layout.
+- Lines 2451-2460: Styles .mobileInfoPanel with color=var(--ink), position=fixed !important, left=0, right=0, bottom=0. Purpose: control the element's appearance and layout.
+- Lines 2461-2470: Styles .mobileInfoPanel with z-index=2200, padding=16px 18px calc(28px + env(safe-area-inset-bottom, 0)), background=rgba(11, 16, 32, 0.98), border-top=1px solid var(--border), box-shadow=0 -12px 32px rgba(0, 0, 0, 0.45). Purpose: control the element's appearance and layout.
+- Lines 2471-2480: Styles body.mobileViewerActive .mobileInfoPanel with overflow-y=auto, width=100vw, backdrop-filter=blur(12px), -webkit-backdrop-filter=blur(12px), text-align=center. Purpose: control the element's appearance and layout.
+- Lines 2481-2490: Styles .mobileInfoPanel.show with max-height=75vh, padding=20px 24px calc(32px + env(safe-area-inset-bottom, 0)), transform=translateY(0), opacity=1, pointer-events=auto. Purpose: control the element's appearance and layout.
+- Lines 2491-2500: Styles .mobileInfoPanel .mobileInfoPlaceholder with color=var(--muted), font-size=0.95rem, text-align=center, display=inline-block, padding=10px 14px. Purpose: control the element's appearance and layout.
+- Lines 2501-2510: Styles .mobileInfoPanel .note with display=block, margin=10px auto, padding=12px 16px, background=rgba(10, 18, 48, 0.82), border-radius=14px. Purpose: control the element's appearance and layout.
+- Lines 2511-2520: Defines responsive rules for (min-width: 769px). Purpose: adjust layout or styles for this breakpoint.
+- Lines 2521-2530: Styles .mobileInfoHeaderRow with display=none !important, display=flex, align-items=center, justify-content=space-between, gap=12px. Purpose: control the element's appearance and layout.
+- Lines 2531-2540: Styles .mobileInfoHeader with padding=12px 16px 8px, border-bottom=1px solid rgba(76, 90, 212, 0.2), font-weight=700, font-size=1.1rem, color=var(--ink). Purpose: control the element's appearance and layout.
+- Lines 2541-2550: Styles .mobileInfoClose with background=rgba(76, 90, 212, 0.3), border=1px solid rgba(76, 90, 212, 0.5), color=var(--ink), width=36px, height=36px. Purpose: control the element's appearance and layout.
+- Lines 2551-2560: Styles .mobileInfoClose:hover with align-items=center, justify-content=center, font-size=24px, line-height=1, flex-shrink=0. Purpose: control the element's appearance and layout.
+- Lines 2561-2570: Styles .mobileInfoContent with outline=2px solid var(--hover), outline-offset=2px, padding=0 16px 16px 16px !important. Purpose: control the element's appearance and layout.
+- Lines 2571-2580: Styles .mobileInfoColumn with display=flex, gap=8px, width=100%, align-items=stretch, flex=0 0 50%. Purpose: control the element's appearance and layout.
+- Lines 2581-2590: Styles .mobileInfoActions with min-width=0, display=flex, flex-direction=column, gap=12px, padding=0 16px 16px. Purpose: control the element's appearance and layout.
+- Lines 2591-2600: Styles .mobileFavoriteBtn with display=flex, gap=12px, align-items=center, flex=1, display=inline-flex. Purpose: control the element's appearance and layout.
+- Lines 2601-2610: Styles .mobileFavoriteBtn with justify-content=center, gap=8px, padding=8px 12px, border-radius=8px, border=1px solid #2a3466. Purpose: control the element's appearance and layout.
+- Lines 2611-2620: Styles .mobileFavoriteBtn img with transition=border-color 0.2s,
+    box-shadow 0.2s, width=16px, height=16px, display=block. Purpose: control the element's appearance and layout.
+- Lines 2621-2630: Styles .mobileFavoriteBtn.loved with border-color=var(--hover), box-shadow=0 0 0 3px rgba(124, 156, 255, 0.2), background=rgba(236, 72, 153, 0.2), border-color=#ec4899, color=#f9a8d4. Purpose: control the element's appearance and layout.
+- Lines 2631-2640: Styles .mobileInfoActions .addToOrderConfirm with flex=1, margin-top=0, margin-top=0. Purpose: control the element's appearance and layout.
+- Lines 2641-2650: Styles .mobileViewerControlBtn with background=rgba(18, 24, 58, 0.9), border=1px solid rgba(76, 90, 212, 0.5), color=var(--ink), padding=10px 18px, border-radius=999px. Purpose: control the element's appearance and layout.
+- Lines 2651-2660: Styles .mobileZoomGroup with display=inline-flex, align-items=center, gap=14px, background=rgba(18, 24, 58, 0.9), border=1px solid rgba(76, 90, 212, 0.4). Purpose: control the element's appearance and layout.
+- Lines 2661-2670: Styles .mobileZoomGroup button with box-shadow=0 10px 28px rgba(0, 0, 0, 0.3), background=transparent, border=none, color=var(--ink), font-size=1.3rem. Purpose: control the element's appearance and layout.
+- Lines 2671-2680: Styles .mobileZoomGroup span with border-radius=50%, cursor=pointer, display=flex, align-items=center, justify-content=center. Purpose: control the element's appearance and layout.
+- Lines 2681-2690: Styles body.mobileViewerActive .menuWrap with min-width=60px, text-align=center, font-size=0.95rem, overflow=hidden. Purpose: control the element's appearance and layout.
+- Lines 2691-2700: Styles body.mobileViewerActive .menuWrap with pointer-events=auto, position=fixed, inset=0, margin=0, border-radius=0. Purpose: control the element's appearance and layout.
+- Lines 2701-2710: Styles body.mobileViewerActive .menuWrap with overflow-y=auto, -webkit-overflow-scrolling=touch, touch-action=pan-y, display=flex, flex-direction=column. Purpose: control the element's appearance and layout.
+- Lines 2711-2720: Styles body.mobileViewerActive .mobileMenuNotice with margin=0 auto, touch-action=pan-y, -webkit-user-drag=none, display=none !important. Purpose: control the element's appearance and layout.
+- Lines 2721-2730: Styles .ovBadge with display=none !important, position=absolute. Purpose: control the element's appearance and layout.
+- Lines 2731-2740: Styles .ovBadge with top=3px, right=3px, width=18px, height=18px, background=#3651ff. Purpose: control the element's appearance and layout.
+- Lines 2741-2750: Styles .ovBadge:hover with font-size=12px, font-weight=bold, cursor=pointer, z-index=10, pointer-events=auto. Purpose: control the element's appearance and layout.
+- Lines 2751-2760: Styles .ovWarning with position=absolute, top=3px, left=3px, width=18px, height=18px. Purpose: control the element's appearance and layout.
+- Lines 2761-2770: Styles .ovWarning with border-radius=50%, display=flex, align-items=center, justify-content=center, font-size=12px. Purpose: control the element's appearance and layout.
+- Lines 2771-2780: Styles .tip with color=#000, background=#fbbf24, box-shadow=0 0 6px #facc15. Purpose: control the element's appearance and layout.
+- Lines 2781-2790: Styles .tip with position=absolute, z-index=3400, pointer-events=auto, background=rgba(15, 21, 52, 0.98), backdrop-filter=blur(12px). Purpose: control the element's appearance and layout.
+- Lines 2791-2800: Styles .tipHead with display=none, max-width=280px, transform-origin=top left, display=flex, align-items=center. Purpose: control the element's appearance and layout.
+- Lines 2801-2810: Styles .tClose with gap=8px, margin-bottom=6px, font-weight=800, border=1px solid #2a3466. Purpose: control the element's appearance and layout.
+- Lines 2811-2820: Styles .tClose:hover with background=#16205a, color=#fff, border-radius=8px, padding=4px 8px, cursor=pointer. Purpose: control the element's appearance and layout.
+- Lines 2821-2830: Styles .love-button-tooltip with border=1px solid #2a3466, background=#16205a, color=#fff, border-radius=8px, padding=4px 8px. Purpose: control the element's appearance and layout.
+- Lines 2831-2840: Styles .love-button-tooltip:hover with margin-right=8px, touch-action=manipulation, -webkit-tap-highlight-color=transparent, pointer-events=auto, position=relative. Purpose: control the element's appearance and layout.
+- Lines 2841-2850: Styles .tipHoverMessage with background=rgba(236, 72, 153, 0.2), border-color=#ec4899, color=#ec4899, font-size=0.85rem. Purpose: control the element's appearance and layout.
+- Lines 2851-2860: Defines keyframes for pulseText. Purpose: control animation steps.
+- Lines 2861-2870: Styles .addToOrderBtn with opacity=0.6, opacity=1, width=100%. Purpose: control the element's appearance and layout.
+- Lines 2871-2880: Styles .addToOrderBtn with padding=8px 12px, background=#4c5ad4, border=1px solid #6b7ce6, border-radius=6px, color=#fff. Purpose: control the element's appearance and layout.
+- Lines 2881-2890: Styles .addToOrderBtn:disabled with background=#5a6ae6, background=#6b7280, border-color=#6b7280, cursor=not-allowed. Purpose: control the element's appearance and layout.
+- Lines 2891-2900: Styles .addToOrderConfirm with opacity=0.6, margin-top=12px, padding=12px, background=rgba(248, 113, 113, 0.12), border=1px solid rgba(248, 113, 113, 0.35). Purpose: control the element's appearance and layout.
+- Lines 2901-2910: Styles .addToOrderConfirm p with flex-direction=column, gap=12px, margin=0, color=#fecaca, font-size=0.88rem. Purpose: control the element's appearance and layout.
+- Lines 2911-2920: Styles .addToOrderConfirmActions button with display=flex, gap=10px, justify-content=center, padding=8px 12px, border-radius=8px. Purpose: control the element's appearance and layout.
+- Lines 2921-2930: Styles .addToOrderConfirmCancel with font-size=0.85rem, font-weight=600, border=1px solid transparent, cursor=pointer, background=#475569. Purpose: control the element's appearance and layout.
+- Lines 2931-2940: Styles .addToOrderConfirmProceed with background=#64748b, border-color=#64748b, background=#f87171, border-color=#f87171. Purpose: control the element's appearance and layout.
+- Lines 2941-2950: Styles .addToOrderConfirmProceed:hover with color=#fff, background=#facc15, border-color=#facc15, color=#0b1020. Purpose: control the element's appearance and layout.
+- Lines 2951-2960: Styles .appPromptBackdrop with opacity=0.9, position=fixed, inset=0, background=rgba(6, 11, 34, 0.68), backdrop-filter=blur(12px). Purpose: control the element's appearance and layout.
+- Lines 2961-2970: Styles .appPromptModal with align-items=center, justify-content=center, z-index=5000, padding=24px, width=min(420px, 100%). Purpose: control the element's appearance and layout.
+- Lines 2971-2980: Styles .appPromptModal h3 with border-radius=18px, padding=24px, display=flex, flex-direction=column, gap=16px. Purpose: control the element's appearance and layout.
+- Lines 2981-2990: Styles .appPromptModal p with font-size=1.1rem, color=#fff, margin=0, color=#cbd5f5, font-size=0.95rem. Purpose: control the element's appearance and layout.
+- Lines 2991-3000: Styles .appPromptModal textarea with width=100%, min-height=120px, resize=vertical, background=rgba(9, 14, 36, 0.95), border=1px solid rgba(76, 90, 212, 0.35). Purpose: control the element's appearance and layout.
+- Lines 3001-3010: Styles .appPromptModalActions with font-size=0.95rem, font-family=inherit, outline=2px solid rgba(102, 126, 255, 0.7), outline-offset=2px. Purpose: control the element's appearance and layout.
+- Lines 3011-3020: Styles .appPromptModalActions button with display=flex, justify-content=flex-end, gap=12px, padding=10px 16px, border-radius=10px. Purpose: control the element's appearance and layout.
+- Lines 3021-3030: Styles .appPromptCancel with font-weight=600, cursor=pointer, background=transparent, border-color=rgba(148, 163, 184, 0.4), color=#cbd5f5. Purpose: control the element's appearance and layout.
+- Lines 3031-3040: Styles .appPromptConfirm with background=rgba(148, 163, 184, 0.15), background=#4c5ad4, border-color=#6b7ce6, color=#fff. Purpose: control the element's appearance and layout.
+- Lines 3041-3050: Styles .orderSidebar with transform=translateY(-1px), box-shadow=0 10px 20px rgba(76, 90, 212, 0.25), position=fixed, left=0, right=0. Purpose: control the element's appearance and layout.
+- Lines 3051-3060: Styles .orderSidebar with top=auto, width=100%, max-width=100vw, height=var(--order-sidebar-height, 75vh), background=rgba(15, 21, 52, 0.98). Purpose: control the element's appearance and layout.
+- Lines 3061-3070: Styles .orderSidebar.open with flex-direction=column, border-radius=16px 16px 0 0, transform=translateY(100%), transition=transform 0.3s ease-in-out, box-shadow=0 -8px 24px rgba(0, 0, 0, 0.35). Purpose: control the element's appearance and layout.
+- Lines 3071-3080: Styles .orderSidebar.minimized with height=var(--order-sidebar-collapsed-height), bottom=0, left=0, right=0, width=100%. Purpose: control the element's appearance and layout.
+- Lines 3081-3090: Styles .orderSidebar.minimized .orderSidebarHeader with display=none, padding=4px 16px 8px, border-bottom=none. Purpose: control the element's appearance and layout.
+- Lines 3091-3100: Styles .orderSidebarHeader with transition=none, position=relative, display=flex, flex-direction=column. Purpose: control the element's appearance and layout.
+- Lines 3101-3110: Styles .orderSidebarHeaderRow with align-items=stretch, gap=4px, padding=4px 16px 8px, border-bottom=1px solid #2a3466, display=flex. Purpose: control the element's appearance and layout.
+- Lines 3111-3120: Styles .orderSidebarTitle with gap=12px, display=inline-flex, align-items=center, gap=10px. Purpose: control the element's appearance and layout.
+- Lines 3121-3130: Styles .orderSidebarDragHandle with font-weight=800, font-size=1.1rem, color=#fff, margin=0, display=flex. Purpose: control the element's appearance and layout.
+- Lines 3131-3140: Styles .orderSidebarHeader with width=100%, height=24px, pointer-events=none, opacity=0.9, user-select=none. Purpose: control the element's appearance and layout.
+- Lines 3141-3150: Styles .orderSidebarDragHandle:active with cursor=grabbing, cursor=pointer. Purpose: control the element's appearance and layout.
+- Lines 3151-3160: Styles .orderSidebarDragBar with cursor=grabbing, width=64px, height=6px, border-radius=999px, background=rgba(148, 163, 184, 0.7). Purpose: control the element's appearance and layout.
+- Lines 3161-3170: Styles .orderSidebarToggle with display=none, background=#4c5ad4, border=1px solid #6b7ce6, border-radius=6px, padding=8px 16px. Purpose: control the element's appearance and layout.
+- Lines 3171-3180: Styles .orderSidebarToggle with color=#fff, cursor=pointer, font-size=0.9rem, font-weight=600, display=inline-flex. Purpose: control the element's appearance and layout.
+- Lines 3181-3190: Styles .orderSidebarBadge with pointer-events=none, position=static, min-width=18px, height=18px, padding=0 6px. Purpose: control the element's appearance and layout.
+- Lines 3191-3200: Styles .orderSidebarBadge with border-radius=999px, background=#ef4444, color=#fff, font-size=0.7rem, font-weight=700. Purpose: control the element's appearance and layout.
+- Lines 3201-3210: Styles .orderSidebar.minimized .orderSidebarToggle with background=#5a6ae6, border-color=#7c8ff0, display=inline-flex. Purpose: control the element's appearance and layout.
+- Lines 3211-3220: Styles body.orderSidebarOpen .menuWrap with overflow=hidden, touch-action=none, touch-action=none. Purpose: control the element's appearance and layout.
+- Lines 3221-3230: Styles .orderSidebarStatus with flex=1, overflow-y=auto, padding=16px, display=flex, flex-direction=column. Purpose: control the element's appearance and layout.
+- Lines 3231-3240: Styles .orderSidebarStatusHeader with background=rgba(12, 18, 44, 0.9), border=1px solid rgba(76, 90, 212, 0.25), border-radius=12px, padding=14px, display=flex. Purpose: control the element's appearance and layout.
+- Lines 3241-3250: Styles .orderSidebarStatusTitle with display=flex, flex-direction=column, gap=8px, font-weight=600, color=#f1f5ff. Purpose: control the element's appearance and layout.
+- Lines 3251-3260: Styles .orderSidebarCard with letter-spacing=0.05em, background=rgba(14, 20, 50, 0.92), border=1px solid rgba(76, 90, 212, 0.3), border-radius=12px, padding=14px. Purpose: control the element's appearance and layout.
+- Lines 3261-3270: Styles .orderSidebarCard .orderItem with gap=12px, background=rgba(24, 32, 78, 0.95), border-color=rgba(124, 138, 255, 0.5), box-shadow=0 18px 40px rgba(10, 16, 52, 0.55). Purpose: control the element's appearance and layout.
+- Lines 3271-3280: Styles .orderSidebarCard .orderItemRemove with background=transparent, border=none, padding=0, margin=0, border-color=#f87171. Purpose: control the element's appearance and layout.
+- Lines 3281-3290: Styles .orderSidebarPendingLabel with background=#f87171, color=#fff, font-size=0.78rem, letter-spacing=0.1em, text-transform=uppercase. Purpose: control the element's appearance and layout.
+- Lines 3291-3300: Styles .orderSidebarPendingBadge with color=#a5b4fc, font-weight=700, font-size=0.9rem, color=#e2e8f0. Purpose: control the element's appearance and layout.
+- Lines 3301-3310: Styles .orderSidebarPendingBadge .orderConfirmStatusBadge with margin=8px 0 12px, display=flex, width=100%, justify-content=center, word-wrap=break-word. Purpose: control the element's appearance and layout.
+- Lines 3311-3320: Styles .orderSidebarKitchenQuestion with text-align=center, padding=8px 12px, min-height=auto, margin=16px 0, padding=16px. Purpose: control the element's appearance and layout.
+- Lines 3321-3330: Styles .orderSidebarKitchenQuestionLabel with border-radius=12px, font-size=0.75rem, letter-spacing=0.1em, text-transform=uppercase, color=#fbbf24. Purpose: control the element's appearance and layout.
+- Lines 3331-3340: Styles .orderSidebarKitchenQuestionText with font-size=1rem, color=#fff, font-weight=600, margin-bottom=12px, line-height=1.4. Purpose: control the element's appearance and layout.
+- Lines 3341-3350: Styles .orderSidebarQuestionBtn with display=flex, gap=10px, flex=1, padding=12px 16px, border-radius=8px. Purpose: control the element's appearance and layout.
+- Lines 3351-3360: Styles .orderSidebarQuestionYes with font-weight=700, cursor=pointer, border=none, transition=all 0.2s, background=#4caf50. Purpose: control the element's appearance and layout.
+- Lines 3361-3370: Styles .orderSidebarQuestionNo with background=#5cbf60, transform=translateY(-1px), box-shadow=0 4px 12px rgba(76, 175, 80, 0.4), background=#ef4444. Purpose: control the element's appearance and layout.
+- Lines 3371-3380: Styles .orderSidebarQuestionNo:hover with color=#fff, border=2px solid #f87171, background=#f87171, transform=translateY(-1px), box-shadow=0 4px 12px rgba(239, 68, 68, 0.4). Purpose: control the element's appearance and layout.
+- Lines 3381-3390: Styles .orderSidebarTimestamp with margin-top=12px, padding-top=12px, border-top=1px solid rgba(76, 90, 212, 0.25), display=flex, flex-direction=column. Purpose: control the element's appearance and layout.
+- Lines 3391-3400: Styles .orderSidebarTimestampActor with font-size=0.85rem, color=#cbd5f5, line-height=1.4, font-weight=600, color=#a5b4fc. Purpose: control the element's appearance and layout.
+- Lines 3401-3410: Styles .orderSidebarRescindBtn with color=#94a3b8, margin-left=4px, width=100%, padding=10px 14px, background=rgba(239, 68, 68, 0.15). Purpose: control the element's appearance and layout.
+- Lines 3411-3420: Styles .orderSidebarRescindBtn:hover with border-radius=8px, color=#fca5a5, font-size=0.9rem, font-weight=600, cursor=pointer. Purpose: control the element's appearance and layout.
+- Lines 3421-3430: Styles .orderSidebarRescindConfirm with background=rgba(239, 68, 68, 0.25), border-color=rgba(239, 68, 68, 0.6), color=#f87171, margin-top=12px, padding=12px. Purpose: control the element's appearance and layout.
+- Lines 3431-3440: Styles .orderSidebarRescindPrompt with border=1px solid rgba(239, 68, 68, 0.35), display=flex, flex-direction=column, gap=10px, font-size=0.85rem. Purpose: control the element's appearance and layout.
+- Lines 3441-3450: Styles .orderSidebarRescindCancelBtn with display=flex, gap=10px, flex-wrap=wrap. Purpose: control the element's appearance and layout.
+- Lines 3451-3460: Styles .orderSidebarRescindCancelBtn with flex=1, min-width=140px, padding=8px 12px, border-radius=8px, font-size=0.85rem. Purpose: control the element's appearance and layout.
+- Lines 3461-3470: Styles .orderSidebarRescindConfirmBtn:hover with background=rgba(239, 68, 68, 0.3), border=1px solid rgba(239, 68, 68, 0.7), color=#fee2e2, background=rgba(239, 68, 68, 0.4), border-color=rgba(239, 68, 68, 0.9). Purpose: control the element's appearance and layout.
+- Lines 3471-3480: Styles .orderSidebarRescindCancelBtn:hover with background=rgba(76, 90, 212, 0.18), border=1px solid rgba(76, 90, 212, 0.45), color=#e0e7ff, background=rgba(76, 90, 212, 0.3), border-color=rgba(99, 117, 255, 0.7). Purpose: control the element's appearance and layout.
+- Lines 3481-3490: Styles .orderSidebarClearBtn with width=100%, padding=10px 14px, background=rgba(76, 90, 212, 0.15), border=1px solid rgba(76, 90, 212, 0.5), border-radius=8px. Purpose: control the element's appearance and layout.
+- Lines 3491-3500: Styles .orderSidebarClearBtn:hover with font-weight=600, cursor=pointer, margin-top=12px, transition=all 0.2s, background=rgba(76, 90, 212, 0.3). Purpose: control the element's appearance and layout.
+- Lines 3501-3510: Styles .orderSidebarDishList with margin=0, padding-left=18px, display=flex, flex-direction=column, gap=6px. Purpose: control the element's appearance and layout.
+- Lines 3511-3520: Styles .orderSidebarEmpty.small with margin=0, padding=12px, font-size=0.9rem. Purpose: control the element's appearance and layout.
+- Lines 3521-3530: Styles .orderItem with background=rgba(42, 52, 102, 0.5), border=1px solid #2a3466, border-radius=8px, padding=12px, display=flex. Purpose: control the element's appearance and layout.
+- Lines 3531-3540: Styles .orderItemSelect with width=20px, height=20px, border=1.5px solid #6b7ce6, border-radius=4px, background=transparent. Purpose: control the element's appearance and layout.
+- Lines 3541-3550: Styles .orderItemSelect.is-selected with justify-content=center, flex-shrink=0, cursor=pointer, color=#fff, font-size=0.85rem. Purpose: control the element's appearance and layout.
+- Lines 3551-3560: Styles .orderItemName with border-color=#7c9cff, content="✓", font-weight=600, color=#fff. Purpose: control the element's appearance and layout.
+- Lines 3561-3570: Styles .orderItemRemove with flex=1, background=none, border=1px solid #ef4444, border-radius=4px, padding=4px 8px. Purpose: control the element's appearance and layout.
+- Lines 3571-3580: Styles .orderSidebarActions with font-size=0.85rem, background=#ef4444, color=#fff, border-top=1px solid #2a3466. Purpose: control the element's appearance and layout.
+- Lines 3581-3590: Styles .confirmOrderBtn with padding-top=16px, display=flex, flex-direction=column, gap=10px, width=100%. Purpose: control the element's appearance and layout.
+- Lines 3591-3600: Styles .confirmOrderBtn:hover with border=1px solid #4caf50, border-radius=6px, color=#fff, cursor=pointer, font-size=1rem. Purpose: control the element's appearance and layout.
+- Lines 3601-3610: Styles .confirmOrderBtn:disabled with background=#475569, border-color=#64748b, color=#cbd5f5, cursor=not-allowed, opacity=0.7. Purpose: control the element's appearance and layout.
+- Lines 3611-3620: Styles .confirmOrderHint span with text-align=center, color=#94a3b8, font-size=0.85rem, line-height=1.4, width=100%. Purpose: control the element's appearance and layout.
+- Lines 3621-3630: Styles .orderSidebarEmpty with display=block, color=#a8b2d6, font-size=clamp(0.6rem, 1.9vw, 0.9rem), margin-top=6px, width=100%. Purpose: control the element's appearance and layout.
+- Lines 3631-3640: Defines responsive rules for (max-width: 768px). Purpose: adjust layout or styles for this breakpoint.
+- Lines 3641-3650: Styles .orderSidebar with left=0, right=0, border-left=none, border-radius=16px 16px 0 0, top=auto. Purpose: control the element's appearance and layout.
+- Lines 3651-3660: Styles .orderSidebar.minimized with transform=translateY(0), --order-sidebar-collapsed-height=calc(72px + env(safe-area-inset-bottom)), left=0. Purpose: control the element's appearance and layout.
+- Lines 3661-3670: Styles .orderSidebar.minimized .orderSidebarHeader with right=0, bottom=0, width=100%, border-radius=16px 16px 0 0, height=var(--order-sidebar-collapsed-height). Purpose: control the element's appearance and layout.
+- Lines 3671-3680: Styles .orderSidebarContent with padding-top=4px, padding-bottom=calc(16px + env(safe-area-inset-bottom)). Purpose: control the element's appearance and layout.
+- Lines 3681-3690: Styles .orderConfirmDrawer with position=fixed, inset=0, background=rgba(6, 11, 34, 0.85), backdrop-filter=blur(16px), -webkit-backdrop-filter=blur(16px). Purpose: control the element's appearance and layout.
+- Lines 3691-3700: Styles .orderConfirmPanel with padding=32px, z-index=4200, display=flex, width=min(1180px, calc(100vw - 64px)). Purpose: control the element's appearance and layout.
+- Lines 3701-3710: Styles .orderConfirmPanel with max-width=100%, max-height=90vh, background=linear-gradient(180deg, #0b1020, #050815), border=1px solid rgba(76, 90, 212, 0.35), border-radius=24px. Purpose: control the element's appearance and layout.
+- Lines 3711-3720: Styles .orderConfirmHeader with overflow=hidden, display=flex, align-items=center, justify-content=space-between. Purpose: control the element's appearance and layout.
+- Lines 3721-3730: Styles .orderConfirmHeader h2 with padding=24px 28px 18px, border-bottom=1px solid rgba(76, 90, 212, 0.25), margin=0, font-size=clamp(1.2rem, 1rem + 1vw, 1.6rem), color=#fff. Purpose: control the element's appearance and layout.
+- Lines 3731-3740: Styles .orderConfirmClose with background=rgba(22, 32, 90, 0.9), border=1px solid rgba(76, 90, 212, 0.4), color=#fff, width=42px, height=42px. Purpose: control the element's appearance and layout.
+- Lines 3741-3750: Styles .orderConfirmClose:hover with display=flex, align-items=center, justify-content=center, border-color=var(--hover), box-shadow=0 0 10px rgba(102, 126, 255, 0.6). Purpose: control the element's appearance and layout.
+- Lines 3751-3760: Styles .orderConfirmPrimary with display=flex, gap=32px, padding=22px 28px 30px, overflow-x=hidden, overflow-y=auto. Purpose: control the element's appearance and layout.
+- Lines 3761-3770: Styles .orderConfirmAside with flex=1, min-width=0, max-width=800px, display=flex, flex-direction=column. Purpose: control the element's appearance and layout.
+- Lines 3771-3780: Styles .orderConfirmAside[hidden] with min-width=280px, display=flex, flex-direction=column, gap=18px, display=none !important. Purpose: control the element's appearance and layout.
+- Lines 3781-3790: Styles .orderConfirmSection with background=rgba(21, 28, 66, 0.9), border=1px solid rgba(76, 90, 212, 0.25), border-radius=18px, padding=20px, display=flex. Purpose: control the element's appearance and layout.
+- Lines 3791-3800: Styles .orderConfirmSummaryList with margin=0, font-size=1.05rem, color=#fff, margin=0. Purpose: control the element's appearance and layout.
+- Lines 3801-3810: Styles .orderConfirmSummaryList li with padding=0, list-style=none, display=flex, flex-direction=column, gap=18px. Purpose: control the element's appearance and layout.
+- Lines 3811-3820: Styles .orderConfirmForm label with list-style=none, display=none, display=flex, flex-direction=column. Purpose: control the element's appearance and layout.
+- Lines 3821-3830: Styles .orderConfirmForm select with gap=6px, font-size=0.92rem, color=#cbd5f5, background=rgba(11, 16, 40, 0.95), border=1px solid rgba(76, 90, 212, 0.35). Purpose: control the element's appearance and layout.
+- Lines 3831-3840: Styles .orderConfirmForm textarea with border-radius=10px, padding=10px 12px, color=#fff, font-size=1rem, resize=vertical. Purpose: control the element's appearance and layout.
+- Lines 3841-3850: Styles .orderConfirmRadioGroup with outline=2px solid rgba(102, 126, 255, 0.7), outline-offset=2px, display=flex. Purpose: control the element's appearance and layout.
+- Lines 3851-3860: Styles .orderConfirmRadioGroup label with gap=12px, flex-wrap=wrap, flex-direction=row, align-items=center, gap=8px. Purpose: control the element's appearance and layout.
+- Lines 3861-3870: Styles .orderConfirmRadioGroup input with border=1px solid rgba(76, 90, 212, 0.25), border-radius=12px, font-weight=600, cursor=pointer, margin=0. Purpose: control the element's appearance and layout.
+- Lines 3871-3880: Styles .orderConfirmConditional [data-mode] with display=flex, flex-direction=column, gap=12px, display=flex, flex-direction=column. Purpose: control the element's appearance and layout.
+- Lines 3881-3890: Styles .orderConfirmChips with display=none, display=flex, flex-wrap=wrap, gap=8px. Purpose: control the element's appearance and layout.
+- Lines 3891-3900: Styles .orderConfirmChip with margin-top=8px, padding=6px 10px, border-radius=999px, background=rgba(76, 90, 212, 0.25), border=1px solid rgba(102, 126, 255, 0.4). Purpose: control the element's appearance and layout.
+- Lines 3901-3910: Styles .orderConfirmDishCard with background=rgba(80, 90, 120, 0.35), border-color=rgba(120, 130, 160, 0.5), color=#cbd5f5, background=rgba(12, 18, 44, 0.95). Purpose: control the element's appearance and layout.
+- Lines 3911-3920: Styles .orderConfirmDishCardHeader with border=1px solid rgba(76, 90, 212, 0.3), border-radius=16px, padding=18px, display=flex, flex-direction=column. Purpose: control the element's appearance and layout.
+- Lines 3921-3930: Styles .orderConfirmDishName with align-items=flex-start, justify-content=space-between, gap=12px, font-size=1.05rem, font-weight=600. Purpose: control the element's appearance and layout.
+- Lines 3931-3940: Styles .orderConfirmDishBadge with padding=6px 12px, border-radius=999px, font-size=0.78rem, font-weight=700, letter-spacing=0.05em. Purpose: control the element's appearance and layout.
+- Lines 3941-3950: Styles .orderConfirmDishBadge--warn with background=rgba(34, 197, 94, 0.16), border-color=rgba(34, 197, 94, 0.35), color=#4ade80, background=rgba(250, 204, 21, 0.15). Purpose: control the element's appearance and layout.
+- Lines 3951-3960: Styles .orderConfirmDishBadge--danger with border-color=rgba(250, 204, 21, 0.4), color=#facc15, background=rgba(248, 113, 113, 0.15), border-color=rgba(248, 113, 113, 0.35), color=#f87171. Purpose: control the element's appearance and layout.
+- Lines 3961-3970: Styles .orderConfirmDishSection with background=rgba(96, 165, 250, 0.15), border-color=rgba(96, 165, 250, 0.35), color=#93c5fd, display=flex, flex-direction=column. Purpose: control the element's appearance and layout.
+- Lines 3971-3980: Styles .orderDishStatusList with font-size=0.8rem, text-transform=uppercase, letter-spacing=0.08em, color=rgba(203, 213, 255, 0.7). Purpose: control the element's appearance and layout.
+- Lines 3981-3990: Styles .orderDishStatusList li with margin=6px 0 0 0, padding-left=18px, display=flex, flex-direction=column, gap=4px. Purpose: control the element's appearance and layout.
+- Lines 3991-4000: Styles .orderDishStatusList li.warn with color=#dbe2ff, color=#34d399, color=#facc15. Purpose: control the element's appearance and layout.
+- Lines 4001-4010: Styles .orderConfirmDishNote with color=#f87171, color=#9ca9e2. Purpose: control the element's appearance and layout.
+- Lines 4011-4020: Styles .orderConfirmServerTabs with margin=0, font-size=0.9rem, color=#cbd5f5, display=flex, flex-wrap=wrap. Purpose: control the element's appearance and layout.
+- Lines 4021-4030: Styles .orderConfirmServerTab with padding=8px 14px, border-radius=999px, background=rgba(15, 22, 48, 0.9), border=1px solid rgba(102, 126, 255, 0.35), color=#cbd5f5. Purpose: control the element's appearance and layout.
+- Lines 4031-4040: Styles .orderConfirmServerTab.is-active with cursor=pointer, transition=all 0.15s, border-color=rgba(102, 126, 255, 0.8), color=#fff. Purpose: control the element's appearance and layout.
+- Lines 4041-4050: Styles .orderConfirmServerOrders with background=rgba(76, 90, 212, 0.25), border-color=rgba(102, 126, 255, 0.75), color=#fff, display=flex, flex-direction=column. Purpose: control the element's appearance and layout.
+- Lines 4051-4060: Styles .serverOrderCard with background=rgba(12, 18, 44, 0.95), border=1px solid rgba(76, 90, 212, 0.3), border-radius=16px, padding=18px, display=flex. Purpose: control the element's appearance and layout.
+- Lines 4061-4070: Styles .serverOrderTitle with display=flex, justify-content=space-between, align-items=flex-start, gap=12px, font-size=1rem. Purpose: control the element's appearance and layout.
+- Lines 4071-4080: Styles .serverOrderMeta with font-weight=600, color=#fff, font-size=0.9rem, color=#9ca3c7, margin-top=4px. Purpose: control the element's appearance and layout.
+- Lines 4081-4090: Styles .serverOrderActions with display=flex, flex-direction=column, gap=8px, font-size=0.92rem, color=#dbe2ff. Purpose: control the element's appearance and layout.
+- Lines 4091-4100: Styles .serverOrderActions button with flex-wrap=wrap, gap=10px, padding=10px 14px, border-radius=10px, border=1px solid transparent. Purpose: control the element's appearance and layout.
+- Lines 4101-4110: Styles .serverOrderActions button[data-server-action="reject"] with cursor=pointer, background=#4ade80, border-color=#4ade80, color=#052e16. Purpose: control the element's appearance and layout.
+- Lines 4111-4120: Styles .serverOrderActions button[data-server-action="dispatch"] with background=rgba(248, 113, 113, 0.18), border-color=rgba(248, 113, 113, 0.4), color=#fecaca, background=#60a5fa, border-color=#60a5fa. Purpose: control the element's appearance and layout.
+- Lines 4121-4130: Styles .serverOrderEmpty with opacity=0.9, color=#9ca3c7, font-style=italic, font-size=0.9rem. Purpose: control the element's appearance and layout.
+- Lines 4131-4140: Styles .kitchenOrderCard with display=flex, flex-direction=column, gap=16px, background=rgba(11, 18, 40, 0.95), border=1px solid rgba(76, 90, 212, 0.25). Purpose: control the element's appearance and layout.
+- Lines 4141-4150: Styles .kitchenOrderHeader with border-radius=16px, padding=18px, display=flex, flex-direction=column, gap=12px. Purpose: control the element's appearance and layout.
+- Lines 4151-4160: Styles .kitchenOrderTitle with align-items=flex-start, gap=12px, font-size=1rem, font-weight=600, color=#fff. Purpose: control the element's appearance and layout.
+- Lines 4161-4170: Styles .kitchenOrderActions with font-size=0.9rem, color=#9ca3c7, margin-top=4px, display=flex, flex-wrap=wrap. Purpose: control the element's appearance and layout.
+- Lines 4171-4180: Styles .kitchenOrderActions button with padding=10px 14px, border-radius=10px, border=1px solid transparent, font-size=0.87rem, font-weight=600. Purpose: control the element's appearance and layout.
+- Lines 4181-4190: Styles .kitchenOrderActions button[data-kitchen-action="message"] with background=#4ade80, border-color=#4ade80, color=#052e16, background=#60a5fa, border-color=#60a5fa. Purpose: control the element's appearance and layout.
+- Lines 4191-4200: Styles .kitchenOrderNotes with color=#031633, opacity=0.9, font-size=0.9rem, color=#dbe2ff. Purpose: control the element's appearance and layout.
+- Lines 4201-4210: Styles .orderConfirmStatusText with display=flex, flex-wrap=wrap, gap=12px, align-items=center. Purpose: control the element's appearance and layout.
+- Lines 4211-4220: Styles .orderConfirmStatusText.success with font-size=0.9rem, color=#f87171, color=#34d399. Purpose: control the element's appearance and layout.
+- Lines 4221-4230: Styles .orderConfirmAuthText with margin=16px 0, padding=16px, background=rgba(234, 179, 8, 0.15), border=1px solid rgba(234, 179, 8, 0.4), border-radius=12px. Purpose: control the element's appearance and layout.
+- Lines 4231-4240: Styles .orderConfirmAuthButtons with margin=0 0 12px, color=#facc15, font-size=0.95rem, text-align=center, display=flex. Purpose: control the element's appearance and layout.
+- Lines 4241-4250: Styles .orderConfirmAuthBtn with padding=10px 20px, border-radius=8px, font-size=0.95rem, font-weight=600, cursor=pointer. Purpose: control the element's appearance and layout.
+- Lines 4251-4260: Styles .orderConfirmSignInBtn:hover with background=#4c5ad4, color=#fff, border=2px solid #6b7ce6, background=#6b7ce6. Purpose: control the element's appearance and layout.
+- Lines 4261-4270: Styles .orderConfirmSignUpBtn with transform=translateY(-1px), box-shadow=0 4px 12px rgba(76, 90, 212, 0.4), background=#10b981, color=#fff, border=2px solid #34d399. Purpose: control the element's appearance and layout.
+- Lines 4271-4280: Styles .orderConfirmSecondaryBtn with background=#34d399, transform=translateY(-1px), box-shadow=0 4px 12px rgba(16, 185, 129, 0.4), padding=12px 18px, border-radius=10px. Purpose: control the element's appearance and layout.
+- Lines 4281-4290: Styles .orderConfirmPrimaryBtn with border=1px solid transparent, font-size=0.95rem, font-weight=600, cursor=pointer, transition=transform 0.15s,
+    box-shadow 0.15s. Purpose: control the element's appearance and layout.
+- Lines 4291-4300: Styles .orderConfirmPrimaryBtn:hover:not(:disabled) with background=#4c5ad4, border-color=#6b7ce6, color=#fff, transform=translateY(-1px), box-shadow=0 10px 20px rgba(76, 90, 212, 0.25). Purpose: control the element's appearance and layout.
+- Lines 4301-4310: Styles .orderConfirmSecondaryBtn with background=#475569, border-color=#64748b, color=#94a3b8, cursor=not-allowed, opacity=0.6. Purpose: control the element's appearance and layout.
+- Lines 4311-4320: Styles .orderConfirmCodeBlock with border-color=rgba(102, 126, 255, 0.35), color=#cbd5f5, transform=translateY(-1px), box-shadow=0 10px 20px rgba(8, 12, 30, 0.4). Purpose: control the element's appearance and layout.
+- Lines 4321-4330: Styles .orderConfirmCodeValue with padding=18px, border-radius=16px, background=rgba(14, 20, 48, 0.9), border=1px solid rgba(76, 90, 212, 0.25), display=flex. Purpose: control the element's appearance and layout.
+- Lines 4331-4340: Styles .orderConfirmCodeValue with font-size=1.6rem, font-weight=800, letter-spacing=4px, color=#fff, background=rgba(76, 90, 212, 0.2). Purpose: control the element's appearance and layout.
+- Lines 4341-4350: Styles .orderConfirmStatusBadge with justify-content=center, min-width=140px, align-self=flex-start, padding=6px 12px, border-radius=999px. Purpose: control the element's appearance and layout.
+- Lines 4351-4360: Styles .orderConfirmStatusBadge[data-tone="success"] with text-transform=uppercase, letter-spacing=0.04em, background=rgba(102, 126, 255, 0.18), color=#9db2ff, border=1px solid rgba(102, 126, 255, 0.35). Purpose: control the element's appearance and layout.
+- Lines 4361-4370: Styles .orderConfirmStatusBadge[data-tone="danger"] with border-color=rgba(45, 212, 191, 0.4), background=rgba(234, 179, 8, 0.18), color=#facc15, border-color=rgba(250, 204, 21, 0.4). Purpose: control the element's appearance and layout.
+- Lines 4371-4380: Styles .orderConfirmStatusBadge[data-tone="idle"] with background=rgba(248, 113, 113, 0.18), color=#fca5a5, border-color=rgba(248, 113, 113, 0.35), background=rgba(148, 163, 184, 0.18), color=#e2e8f0. Purpose: control the element's appearance and layout.
+- Lines 4381-4390: Styles .orderConfirmTablet with font-size=0.95rem, color=#94a3b8, text-align=center, padding=24px, display=flex. Purpose: control the element's appearance and layout.
+- Lines 4391-4400: Styles .orderConfirmTabletHeader with flex-direction=column, gap=14px, display=flex, align-items=center, justify-content=space-between. Purpose: control the element's appearance and layout.
+- Lines 4401-4410: Styles .orderConfirmTabletBody with margin=0, font-size=1rem, color=#fff, display=flex, flex-direction=column. Purpose: control the element's appearance and layout.
+- Lines 4411-4420: Styles .orderConfirmHardwareGroup with font-size=0.92rem, color=#cbd5f5, align-self=stretch, justify-content=center. Purpose: control the element's appearance and layout.
+- Lines 4421-4430: Styles .orderConfirmHardwareBtn with display=flex, flex-direction=column, gap=10px, padding=11px 14px, border-radius=12px. Purpose: control the element's appearance and layout.
+- Lines 4431-4440: Styles .orderConfirmHardwareBtn[class*="--primary"] with color=#e0e7ff, font-size=0.92rem, font-weight=600, cursor=pointer, background=#4c5ad4. Purpose: control the element's appearance and layout.
+- Lines 4441-4450: Styles .orderConfirmReset with opacity=0.5, cursor=not-allowed, margin-left=auto. Purpose: control the element's appearance and layout.
+- Lines 4451-4460: Defines responsive rules for (max-width: 1100px). Purpose: adjust layout or styles for this breakpoint.
+- Lines 4461-4470: Defines responsive rules for (max-width: 640px). Purpose: adjust layout or styles for this breakpoint.
+- Lines 4471-4480: Styles .orderConfirmLayout with border-radius=16px, padding=18px 18px 12px, gap=18px, padding=16px. Purpose: control the element's appearance and layout.
+- Lines 4481-4490: Styles .orderConfirmDishCardHeader with padding=16px, flex-direction=column, align-items=flex-start. Purpose: control the element's appearance and layout.
+- Lines 4491-4500: Styles .orderConfirmDishBadge with word-break=break-word, white-space=normal, max-width=100%, text-align=left. Purpose: control the element's appearance and layout.
+- Lines 4501-4510: Defines responsive rules for (max-width: 640px). Purpose: adjust layout or styles for this breakpoint.
+- Lines 4511-4520: Styles .tooltipList li with margin=4px 0 0 18px, padding=0, list-style=disc. Purpose: control the element's appearance and layout.
+- Lines 4521-4530: Styles .tooltipWarnText with margin=3px 0, color=var(--bad), font-weight=500, color=var(--warn). Purpose: control the element's appearance and layout.
+- Lines 4531-4540: Styles .how-tour-coach with font-weight=500, color=#cbd5f5, position=fixed, bottom=24px. Purpose: control the element's appearance and layout.
+- Lines 4541-4550: Styles .how-tour-coach with right=24px, width=min(340px, calc(100% - 32px)), background=rgba(11, 16, 40, 0.96), border=1px solid rgba(124, 156, 255, 0.35), border-radius=24px. Purpose: control the element's appearance and layout.
+- Lines 4551-4560: Styles .how-tour-chip with gap=12px, backdrop-filter=blur(12px), -webkit-backdrop-filter=blur(12px), display=none. Purpose: control the element's appearance and layout.
+- Lines 4561-4570: Styles .how-tour-chip with display=inline-flex, align-items=center, gap=6px, font-size=0.75rem, text-transform=uppercase. Purpose: control the element's appearance and layout.
+- Lines 4571-4580: Styles .how-tour-header with color=#dbe2ff, display=flex, align-items=center, justify-content=space-between, gap=12px. Purpose: control the element's appearance and layout.
+- Lines 4581-4590: Styles .how-tour-close with background=rgba(18, 24, 64, 0.8), border=1px solid rgba(124, 156, 255, 0.4), color=#e9ecff, width=32px, height=32px. Purpose: control the element's appearance and layout.
+- Lines 4591-4600: Styles .how-tour-title with border-color=var(--hover), box-shadow=0 0 8px rgba(124, 156, 255, 0.35), margin=0, font-size=1.15rem. Purpose: control the element's appearance and layout.
+- Lines 4601-4610: Styles .how-tour-progress with margin=0, color=var(--muted), line-height=1.5, font-size=0.85rem. Purpose: control the element's appearance and layout.
+- Lines 4611-4620: Styles .how-tour-controls button with color=var(--muted), display=flex, gap=12px, flex-wrap=wrap. Purpose: control the element's appearance and layout.
+- Lines 4621-4630: Styles .how-tour-controls button with flex=1, min-width=120px, padding=10px 14px, border-radius=12px, border=1px solid transparent. Purpose: control the element's appearance and layout.
+- Lines 4631-4640: Styles .how-tour-next with background=rgba(124, 156, 255, 0.15), border-color=rgba(124, 156, 255, 0.4), color=#dbe2ff, background=#54b17a, border-color=#6bd397. Purpose: control the element's appearance and layout.
+- Lines 4641-4650: Styles .how-tour-next:disabled with opacity=0.4, cursor=not-allowed, opacity=0.4, cursor=not-allowed. Purpose: control the element's appearance and layout.
+- Lines 4651-4660: Styles .how-tour-replay with position=fixed, bottom=24px, right=24px, background=#54b17a, color=#04150d. Purpose: control the element's appearance and layout.
+- Lines 4661-4670: Styles .how-tour-replay.show with padding=10px 18px, font-weight=600, cursor=pointer, box-shadow=0 20px 40px rgba(0, 0, 0, 0.45), z-index=4000. Purpose: control the element's appearance and layout.
+- Lines 4671-4680: Styles .how-tour-spotlight with position=absolute, border=2px solid rgba(124, 156, 255, 0.95), border-radius=24px, box-shadow=0 0 40px rgba(124, 156, 255, 0.55), background=rgba(124, 156, 255, 0.08). Purpose: control the element's appearance and layout.
+- Lines 4681-4690: Defines responsive rules for (max-width: 640px). Purpose: adjust layout or styles for this breakpoint.
+- Lines 4691-4700: Styles .how-tour-replay with right=12px, bottom=12px, width=auto, padding=18px, left=12px. Purpose: control the element's appearance and layout.
+- Lines 4701-4710: Styles .aiAssistBackdrop with justify-content=center, position=fixed, inset=0, display=none, align-items=center. Purpose: control the element's appearance and layout.
+- Lines 4711-4720: Styles .aiAssistBackdrop.show with padding=20px, background=rgba(7, 11, 28, 0.85), z-index=3600, overflow=hidden, touch-action=none. Purpose: control the element's appearance and layout.
+- Lines 4721-4730: Styles .aiAssistPanel with width=min(95vw, 1200px), max-height=85vh, overflow-y=auto, overflow-x=hidden, background=linear-gradient(180deg, #111a3c, #0d132a). Purpose: control the element's appearance and layout.
+- Lines 4731-4740: Styles .aiAssistHead with padding=26px, display=flex, flex-direction=column, gap=18px, touch-action=pan-y. Purpose: control the element's appearance and layout.
+- Lines 4741-4750: Styles .aiAssistHead h2 with align-items=center, justify-content=space-between, gap=16px, margin=0, font-size=clamp(1.1rem, 1rem + 1vw, 1.6rem). Purpose: control the element's appearance and layout.
+- Lines 4751-4760: Styles .aiAssistClose with background=rgba(22, 32, 90, 0.9), border=1px solid rgba(76, 90, 212, 0.4), color=var(--ink), width=40px, height=40px. Purpose: control the element's appearance and layout.
+- Lines 4761-4770: Styles .aiAssistClose:hover with justify-content=center, font-size=22px, line-height=1, touch-action=manipulation, border-color=var(--hover). Purpose: control the element's appearance and layout.
+- Lines 4771-4780: Styles .aiAssistIntro with outline=2px solid var(--hover), outline-offset=2px, margin=0, color=var(--muted), font-size=0.95rem. Purpose: control the element's appearance and layout.
+- Lines 4781-4790: Styles .aiAssistInput with width=100%, min-height=160px, border-radius=16px, border=1px solid rgba(76, 90, 212, 0.35), background=rgba(10, 16, 36, 0.95). Purpose: control the element's appearance and layout.
+- Lines 4791-4800: Styles .aiAssistControls with font-size=1rem, resize=vertical, display=flex, flex-wrap=wrap, gap=12px. Purpose: control the element's appearance and layout.
+- Lines 4801-4810: Styles .aiAssistStatus[data-tone="warn"] with font-size=0.9rem, color=var(--muted), color=var(--warn). Purpose: control the element's appearance and layout.
+- Lines 4811-4820: Styles .aiProgressBar with color=var(--bad), color=var(--ok), display=none. Purpose: control the element's appearance and layout.
+- Lines 4821-4830: Styles .aiProgressBar.show with width=100%, height=4px, background=rgba(76, 90, 212, 0.2), border-radius=2px, overflow=hidden. Purpose: control the element's appearance and layout.
+- Lines 4831-4840: Styles .aiProgressBarFill with height=100%, background=linear-gradient(90deg, #4c5ad4, #8b5cf6), border-radius=2px, transition=width 0.3s ease, animation=shimmer 1.5s infinite. Purpose: control the element's appearance and layout.
+- Lines 4841-4850: Defines keyframes for shimmer. Purpose: control animation steps.
+- Lines 4851-4860: Defines keyframes for pulse-glow. Purpose: control animation steps.
+- Lines 4861-4870: Styles .aiProgressBarFill with opacity=0.7, box-shadow=0 0 16px rgba(139, 92, 246, 0.8), background-size=200% 100%. Purpose: control the element's appearance and layout.
+- Lines 4871-4880: Styles .aiAssistMedia button with display=flex, flex-wrap=wrap, gap=12px, align-items=center, margin-top=6px. Purpose: control the element's appearance and layout.
+- Lines 4881-4890: Styles .aiAssistMedia button:hover with border=1px solid rgba(76, 90, 212, 0.4), color=var(--ink), padding=10px 14px, border-radius=12px, cursor=pointer. Purpose: control the element's appearance and layout.
+- Lines 4891-4900: Styles .aiAssistMediaPreview.show with display=none, flex-direction=column, gap=12px, display=flex. Purpose: control the element's appearance and layout.
+- Lines 4901-4910: Styles .aiAssistMediaPreview img with max-width=320px, border-radius=12px, border=1px solid rgba(76, 90, 212, 0.35), background=#000. Purpose: control the element's appearance and layout.
+- Lines 4911-4920: Styles .aiAssistPhotoControls button with display=flex, gap=10px, flex-wrap=wrap, background=#16205a, border=1px solid rgba(76, 90, 212, 0.4). Purpose: control the element's appearance and layout.
+- Lines 4921-4930: Styles .aiAssistPhotoControls button:hover with padding=8px 12px, border-radius=10px, cursor=pointer, border-color=var(--hover), box-shadow=0 0 8px #3651ff. Purpose: control the element's appearance and layout.
+- Lines 4931-4940: Styles .aiAssistResults with display=none !important, display=none, flex-direction=column, gap=16px. Purpose: control the element's appearance and layout.
+- Lines 4941-4950: Styles .aiAssistTableWrapper with display=flex, overflow-x=auto, border=1px solid rgba(76, 90, 212, 0.35), border-radius=16px, background=rgba(9, 13, 30, 0.9). Purpose: control the element's appearance and layout.
+- Lines 4951-4960: Styles #aiAssistTable td with width=100%, border-collapse=collapse, min-width=720px, font-size=0.95rem. Purpose: control the element's appearance and layout.
+- Lines 4961-4970: Styles #aiAssistTable tbody tr:first-child td with padding=12px, border-bottom=1px solid rgba(76, 90, 212, 0.2), vertical-align=top, padding-top=0. Purpose: control the element's appearance and layout.
+- Lines 4971-4980: Styles .aiAssistTableWrapper tr:last-child td with padding-top=12px, text-align=left, background=rgba(17, 26, 60, 0.75), border-bottom=none. Purpose: control the element's appearance and layout.
+- Lines 4981-4990: Styles .aiBrandCell with display=flex, flex-direction=column, gap=10px, min-width=0, overflow=hidden. Purpose: control the element's appearance and layout.
+- Lines 4991-5000: Styles .aiBrandItem with display=flex, flex-direction=column, gap=10px, background=#12183a, border=1px solid rgba(76, 90, 212, 0.3). Purpose: control the element's appearance and layout.
+- Lines 5001-5010: Styles .aiBrandItemHeader with padding=10px, display=flex, justify-content=space-between, align-items=center, margin-bottom=8px. Purpose: control the element's appearance and layout.
+- Lines 5011-5020: Styles .aiRemoveBrand with font-size=0.9rem, background=#301424, border=1px solid #4c2138, padding=2px 8px, font-size=1.2rem. Purpose: control the element's appearance and layout.
+- Lines 5021-5030: Styles .aiNoBrands with border-color=#a12525, box-shadow=0 0 8px rgba(220, 82, 120, 0.55), color=var(--muted), font-size=0.85rem. Purpose: control the element's appearance and layout.
+- Lines 5031-5040: Styles .aiBrandCell .aiBrandActions .btn with font-style=italic, display=flex, gap=8px, flex-wrap=wrap. Purpose: control the element's appearance and layout.
+- Lines 5041-5050: Styles .btnLink with padding=8px 12px, font-size=0.9rem, padding=4px 8px !important, font-size=0.85rem !important. Purpose: control the element's appearance and layout.
+- Lines 5051-5060: Styles .btnLink with background=transparent, border=none, color=#6b7cff, font-size=0.85rem, padding=4px 0. Purpose: control the element's appearance and layout.
+- Lines 5061-5070: Styles .filterToggleBtn with color=#8b9aff, background=transparent, border=none, color=#6b7cff, font-size=0.6rem. Purpose: control the element's appearance and layout.
+- Lines 5071-5080: Styles .filterToggleBtn.save with text-decoration=underline, text-underline-offset=2px, cursor=pointer, flex-shrink=0, background=#3651ff. Purpose: control the element's appearance and layout.
+- Lines 5081-5090: Styles .aiBrandPreview with padding=2px 10px, border-radius=999px, text-decoration=none, display=flex, gap=10px. Purpose: control the element's appearance and layout.
+- Lines 5091-5100: Styles .aiBrandPreview img with width=150px, height=150px, object-fit=contain, border-radius=12px, border=1px solid rgba(76, 90, 212, 0.35). Purpose: control the element's appearance and layout.
+- Lines 5101-5110: Styles .imageModal with border-color=rgba(76, 90, 212, 0.7), box-shadow=0 0 12px rgba(76, 90, 212, 0.4), transform=scale(1.02), display=none. Purpose: control the element's appearance and layout.
+- Lines 5111-5120: Styles .imageModal with position=fixed, top=0, left=0, right=0, bottom=0. Purpose: control the element's appearance and layout.
+- Lines 5121-5130: Styles .imageModal img with display=flex, max-width=90vw, max-height=90vh, object-fit=contain. Purpose: control the element's appearance and layout.
+- Lines 5131-5140: Styles .imageModal .closeModal with border-radius=12px, border=2px solid rgba(76, 90, 212, 0.5), box-shadow=0 10px 50px rgba(0, 0, 0, 0.8), position=absolute, top=20px. Purpose: control the element's appearance and layout.
+- Lines 5141-5150: Styles .imageModal .closeModal with color=white, border=none, border-radius=50%, width=48px, height=48px. Purpose: control the element's appearance and layout.
+- Lines 5151-5160: Styles .aiIngredientList with background=rgba(76, 90, 212, 1), color=var(--muted), font-size=0.85rem. Purpose: control the element's appearance and layout.
+- Lines 5161-5170: Styles .aiIngredientRowWrapper::before with position=relative, --ai-row-divider-gap=24px, --ai-row-divider-height=5px, padding-top=var(--ai-row-divider-gap), content="". Purpose: control the element's appearance and layout.
+- Lines 5171-5180: Styles .aiIngredientRowWrapper::before with position=absolute, top=0, left=-12px, right=-12px, transform=translateY(-50%). Purpose: control the element's appearance and layout.
+- Lines 5181-5190: Styles .aiIngredientRow with padding-top=0, display=none, display=flex. Purpose: control the element's appearance and layout.
+- Lines 5191-5200: Styles .aiIngredientRow.is-loading with flex-direction=column, gap=12px, transition=opacity 0.2s ease,
+    filter 0.2s ease, opacity=0.3, filter=saturate(0.2). Purpose: control the element's appearance and layout.
+- Lines 5201-5210: Styles .aiRowLoadingOverlay with pointer-events=none, min-height=200px, position=absolute, inset=0. Purpose: control the element's appearance and layout.
+- Lines 5211-5220: Styles .aiRowLoadingOverlay with display=flex, flex-direction=column, align-items=center, justify-content=center, gap=12px. Purpose: control the element's appearance and layout.
+- Lines 5221-5230: Styles .aiRowLoadingBar with padding=16px 16px 60px 16px, text-align=center, width=80%, max-width=420px, height=8px. Purpose: control the element's appearance and layout.
+- Lines 5231-5240: Styles .aiRowLoadingBar span with overflow=hidden, display=block, width=40%, height=100%, border-radius=999px. Purpose: control the element's appearance and layout.
+- Lines 5241-5250: Defines keyframes for aiRowLoadingSlide. Purpose: control animation steps.
+- Lines 5251-5260: Styles 100% with transform=translateX(-100%), transform=translateX(50%), transform=translateX(220%). Purpose: control the element's appearance and layout.
+- Lines 5261-5270: Styles .aiIngredientNameCol with display=grid, grid-template-columns=1.5fr 2fr 1.5fr 1fr auto, gap=12px, align-items=start. Purpose: control the element's appearance and layout.
+- Lines 5271-5280: Styles .aiRowBrandResults with display=flex, flex-direction=column, gap=8px, display=none, flex-direction=column. Purpose: control the element's appearance and layout.
+- Lines 5281-5290: Styles .aiRowBrandResults.show with border=1px solid rgba(76, 90, 212, 0.35), border-radius=16px, background=rgba(9, 13, 30, 0.9), margin-top=8px, display=flex. Purpose: control the element's appearance and layout.
+- Lines 5291-5300: Styles .aiAllergenChecklist label with display=flex, flex-direction=column, gap=8px, display=flex, align-items=center. Purpose: control the element's appearance and layout.
+- Lines 5301-5310: Styles .aiAllergenChecklist label.aiDetected with background=#12183a, border=1px solid rgba(76, 90, 212, 0.3), border-radius=999px, padding=6px 10px, font-size=0.85rem. Purpose: control the element's appearance and layout.
+- Lines 5311-5320: Styles .aiAllergenChecklist label.aiDetected.manuallyOverridden with background=rgba(34, 139, 34, 0.25) !important, border-color=rgba(76, 175, 80, 0.7) !important, background=rgba(239, 68, 68, 0.15) !important, border-color=#ef4444 !important. Purpose: control the element's appearance and layout.
+- Lines 5321-5330: Styles .aiAllergenChecklist input with border-color=#ef4444 !important, border-width=2px !important, margin=0. Purpose: control the element's appearance and layout.
+- Lines 5331-5340: Styles .aiDietChecklist label with display=flex, flex-direction=column, gap=8px, display=flex, align-items=center. Purpose: control the element's appearance and layout.
+- Lines 5341-5350: Styles .aiDietChecklist label.aiDetected with gap=6px, background=#12183a, border=1px solid rgba(76, 90, 212, 0.3), border-radius=999px, padding=6px 10px. Purpose: control the element's appearance and layout.
+- Lines 5351-5360: Styles .aiDietChecklist label.aiDetected.manuallyOverridden with border-color=rgba(76, 175, 80, 0.5) !important, background=rgba(34, 139, 34, 0.25) !important, border-color=rgba(76, 175, 80, 0.7) !important, background=rgba(239, 68, 68, 0.15) !important. Purpose: control the element's appearance and layout.
+- Lines 5361-5370: Styles .aiDietChecklist input with border-color=#ef4444 !important, border-color=#ef4444 !important, border-width=2px !important, margin=0. Purpose: control the element's appearance and layout.
+- Lines 5371-5380: Styles .aiDietChecklist label.aiDetected.state-contains:not(.stateOverridden) with background=rgba(59, 130, 246, 0.25) !important, border-color=#3b82f6 !important, border-width=2px !important. Purpose: control the element's appearance and layout.
+- Lines 5381-5390: Styles .aiDietChecklist label.aiDetected.state-maycontain:not(.stateOverridden) with background=rgba(59, 130, 246, 0.15) !important, border-color=#3b82f6 !important, border-style=dashed !important, border-width=2px !important. Purpose: control the element's appearance and layout.
+- Lines 5391-5400: Styles .aiDietChecklist label.aiDetected.state-maycontain.stateOverridden with background=rgba(239, 68, 68, 0.15) !important, border-color=#ef4444 !important, border-style=dashed !important, border-width=2px !important. Purpose: control the element's appearance and layout.
+- Lines 5401-5410: Styles .aiDietChecklist label.aiDetected.state-contains.stateOverridden with background=rgba(239, 68, 68, 0.25) !important, border-color=#ef4444 !important, border-style=solid !important, border-width=2px !important. Purpose: control the element's appearance and layout.
+- Lines 5411-5420: Styles label.aiDetected.stateOverridden:not(.state-contains):not(.state-maycontain) with background=rgba(239, 68, 68, 0.25) !important, border-color=#ef4444 !important, border-style=solid !important, border-width=2px !important. Purpose: control the element's appearance and layout.
+- Lines 5421-5430: Styles .aiDietChecklist label.state-maycontain.stateOverridden:not(.aiDetected) with background=rgba(239, 68, 68, 0.25) !important, border-color=#ef4444 !important, border-width=2px !important. Purpose: control the element's appearance and layout.
+- Lines 5431-5440: Styles .aiDietChecklist label.aiDetected.state-contains:not(.stateOverridden):hover with background=rgba(239, 68, 68, 0.15) !important, border-color=#ef4444 !important, border-style=dashed !important, border-width=2px !important, background=rgba(59, 130, 246, 0.35) !important. Purpose: control the element's appearance and layout.
+- Lines 5441-5450: Styles .aiDietChecklist label.stateOverridden.state-maycontain:hover with background=rgba(239, 68, 68, 0.35) !important, background=rgba(239, 68, 68, 0.25) !important. Purpose: control the element's appearance and layout.
+- Lines 5451-5460: Styles .aiDietConflictMessage with font-size=0.75rem, margin-left=2px, margin-top=8px. Purpose: control the element's appearance and layout.
+- Lines 5461-5470: Styles .aiDietConflictMessage strong with padding=8px 12px, border-radius=8px, background=rgba(248, 113, 113, 0.08), border=1px solid rgba(248, 113, 113, 0.3), color=#fda4af. Purpose: control the element's appearance and layout.
+- Lines 5471-5480: Styles .aiAssistTableActions with color=#fff, display=flex, align-items=center, gap=12px, flex-wrap=wrap. Purpose: control the element's appearance and layout.
+- Lines 5481-5490: Styles .aiAssistBrandResults with flex=1 1 auto, display=none, flex-direction=column, gap=12px, padding=16px. Purpose: control the element's appearance and layout.
+- Lines 5491-5500: Styles .aiAssistBrandResults.show with border-radius=16px, background=rgba(9, 13, 30, 0.9), max-height=320px, overflow=auto, display=flex. Purpose: control the element's appearance and layout.
+- Lines 5501-5510: Styles .aiBrandSuggestion with border=1px solid rgba(76, 90, 212, 0.35), border-radius=12px, padding=12px, display=flex, gap=12px. Purpose: control the element's appearance and layout.
+- Lines 5511-5520: Styles .aiBrandSuggestion img with border-color=var(--hover), box-shadow=0 0 8px #3651ff, width=72px, height=72px, border-radius=10px. Purpose: control the element's appearance and layout.
+- Lines 5521-5530: Styles .aiBrandSuggestion p with object-fit=cover, border=1px solid rgba(76, 90, 212, 0.35), margin=0, font-size=1rem. Purpose: control the element's appearance and layout.
+- Lines 5531-5540: Styles .modalBack with margin=4px 0 0, font-size=0.85rem, color=var(--muted), position=fixed, inset=0. Purpose: control the element's appearance and layout.
+- Lines 5541-5550: Styles .modal with display=none, align-items=center, justify-content=center, z-index=3000, overflow=auto. Purpose: control the element's appearance and layout.
+- Lines 5551-5560: Styles .modal .head with border=1px solid #2a3466, border-radius=14px, width=min(980px, 96vw), max-height=82vh, overflow=auto. Purpose: control the element's appearance and layout.
+- Lines 5561-5570: Styles .modal .body with display=flex, justify-content=space-between, align-items=center, padding=12px 14px, border-bottom=1px solid #2a3466. Purpose: control the element's appearance and layout.
+- Lines 5571-5580: Styles .modalCloseBtn with position=absolute, top=12px, right=12px, width=32px, height=32px. Purpose: control the element's appearance and layout.
+- Lines 5581-5590: Styles .modalCloseBtn with cursor=pointer, display=flex, align-items=center, justify-content=center, font-size=20px. Purpose: control the element's appearance and layout.
+- Lines 5591-5600: Styles .editorLockBackdrop with background=#1a2660, border-color=var(--hover), position=fixed, inset=0, background=rgba(0, 0, 0, 0.85). Purpose: control the element's appearance and layout.
+- Lines 5601-5610: Styles .editorLockModal with display=flex, align-items=center, justify-content=center, z-index=9999, padding=20px. Purpose: control the element's appearance and layout.
+- Lines 5611-5620: Styles .editorLockIcon with border-radius=16px, padding=32px, max-width=420px, width=100%, text-align=center. Purpose: control the element's appearance and layout.
+- Lines 5621-5630: Styles .editorLockMessage with margin-bottom=16px, margin=0 0 16px, font-size=1.4rem, color=#fff. Purpose: control the element's appearance and layout.
+- Lines 5631-5640: Styles .editorLockMessage span with margin=0 0 8px, color=var(--muted), font-size=1rem, color=var(--brand), font-weight=600. Purpose: control the element's appearance and layout.
+- Lines 5641-5650: Styles .editorLockSince span with margin=0 0 16px, color=var(--muted), font-size=0.9rem, color=var(--ink). Purpose: control the element's appearance and layout.
+- Lines 5651-5660: Styles .editorLockActions with margin=0 0 24px, color=#8892b0, font-size=0.85rem, line-height=1.5, display=flex. Purpose: control the element's appearance and layout.
+- Lines 5661-5670: Styles .photoCapture with justify-content=center, padding=10px 20px, font-size=0.95rem, display=flex. Purpose: control the element's appearance and layout.
+- Lines 5671-5680: Styles .photoPreview with flex-direction=column, gap=12px, align-items=center, padding=20px, background=#12183a. Purpose: control the element's appearance and layout.
+- Lines 5681-5690: Styles .videoPreview with max-width=100%, max-height=400px, border-radius=8px, border=1px solid #2a3466, max-width=100%. Purpose: control the element's appearance and layout.
+- Lines 5691-5700: Styles .logEntry with border=1px solid #2a3466, background=#000, background=#12183a, border=1px solid #2a3466, border-radius=12px. Purpose: control the element's appearance and layout.
+- Lines 5701-5710: Styles .logEntry .logHeader with display=flex, justify-content=space-between, align-items=center, margin-bottom=8px, flex-wrap=wrap. Purpose: control the element's appearance and layout.
+- Lines 5711-5720: Styles .logEntry .logType with color=var(--muted), font-size=13px, padding=4px 8px, border-radius=6px, font-size=12px. Purpose: control the element's appearance and layout.
+- Lines 5721-5730: Styles .logType.update with font-weight=600, background=#17663a, color=#fff, background=#3651ff. Purpose: control the element's appearance and layout.
+- Lines 5731-5740: Styles .logEntry .logImage with color=#fff, max-width=100%, border-radius=8px, margin-top=8px, cursor=pointer. Purpose: control the element's appearance and layout.
+- Lines 5741-5750: Styles .logEntry .logThumbnail with opacity=0.8, max-width=120px, max-height=80px, object-fit=cover, border-radius=6px. Purpose: control the element's appearance and layout.
+- Lines 5751-5760: Styles .logAuthor with cursor=pointer, border=1px solid #2a3466, opacity=0.85, box-shadow=0 0 8px #3651ff. Purpose: control the element's appearance and layout.
+- Lines 5761-5770: Styles .logItem with font-weight=600, font-size=1.1rem, margin-bottom=8px, margin-top=10px, font-weight=500. Purpose: control the element's appearance and layout.
+- Lines 5771-5780: Styles .logList with margin=6px 0 0 18px, padding=0, list-style=disc, color=var(--muted), font-size=13px. Purpose: control the element's appearance and layout.
+- Lines 5781-5790: Styles .logDetailsExpanded.show with margin=4px 0, display=none !important, display=block !important. Purpose: control the element's appearance and layout.
+- Lines 5791-5800: Styles .photoModal with background=rgba(75, 85, 99, 0.3) !important, border-color=#6b7280 !important, position=fixed. Purpose: control the element's appearance and layout.
+- Lines 5801-5810: Styles .photoModal img with inset=0, background=#000c, display=none, align-items=center, justify-content=center. Purpose: control the element's appearance and layout.
+- Lines 5811-5820: Styles .photoModalClose with max-width=90%, max-height=90%, border-radius=8px, box-shadow=0 10px 40px rgba(0, 0, 0, 0.5), position=absolute. Purpose: control the element's appearance and layout.
+- Lines 5821-5830: Styles .photoModalClose with width=40px, height=40px, background=#16205a, border=2px solid #2a3466, border-radius=50%. Purpose: control the element's appearance and layout.
+- Lines 5831-5840: Styles .algRow with color=#fff, font-weight=bold, background=#1a2660, border-color=var(--hover). Purpose: control the element's appearance and layout.
+- Lines 5841-5850: Styles .algBtn with display=grid, grid-template-columns=180px minmax(180px, 300px) max-content max-content, column-gap=12px, row-gap=6px, align-items=center. Purpose: control the element's appearance and layout.
+- Lines 5851-5860: Styles .algBtn.active with border-radius=999px, border=1px solid #2a3261, background=#12183a, cursor=pointer, text-align=center. Purpose: control the element's appearance and layout.
+- Lines 5861-5870: Styles .algInput with border-color=#4c5ad4, background=#0c1230, color=var(--ink), border=1px solid #31407f, border-radius=8px. Purpose: control the element's appearance and layout.
+- Lines 5871-5880: Styles .algChk with display=flex, align-items=center, gap=8px, white-space=nowrap, justify-self=end. Purpose: control the element's appearance and layout.
+- Lines 5881-5890: Styles .editBox with position=absolute, border=2px solid var(--warn), border-radius=6px, background=transparent, cursor=move. Purpose: control the element's appearance and layout.
+- Lines 5891-5900: Styles .editBox.active with background=rgba(255, 193, 7, 0.08), border-color=#ffc107, background=rgba(76, 175, 80, 0.12), border-color=#4caf50. Purpose: control the element's appearance and layout.
+- Lines 5901-5910: Styles .editBadge with position=absolute, top=2px, right=2px, width=18px, height=18px. Purpose: control the element's appearance and layout.
+- Lines 5911-5920: Styles .editBadge:hover with display=flex, align-items=center, justify-content=center, font-size=12px, cursor=pointer. Purpose: control the element's appearance and layout.
+- Lines 5921-5930: Styles .handle with background=#4e65ff, position=absolute, width=14px, height=14px, background=#3651ff. Purpose: control the element's appearance and layout.
+- Lines 5931-5940: Styles .handle.ne with right=-7px, bottom=-7px, cursor=nwse-resize, right=-7px. Purpose: control the element's appearance and layout.
+- Lines 5941-5950: Styles .handle.nw with top=-7px, cursor=nesw-resize, left=-7px, top=-7px, cursor=nwse-resize. Purpose: control the element's appearance and layout.
+- Lines 5951-5960: Styles textarea with left=-7px, bottom=-7px, cursor=nesw-resize. Purpose: control the element's appearance and layout.
+- Lines 5961-5970: Styles textarea::placeholder with color=var(--ink) !important, caret-color=var(--ink), background=#12183a, border=1px solid #2a3261, border-radius=14px. Purpose: control the element's appearance and layout.
+- Lines 5971-5980: Styles .qrPromoBackdrop with color=#cfd5ff88, position=fixed, inset=0, display=none, align-items=center. Purpose: control the element's appearance and layout.
+- Lines 5981-5990: Styles .qrPromo with padding=20px, background=rgba(8, 12, 32, 0.85), z-index=2500, display=flex. Purpose: control the element's appearance and layout.
+- Lines 5991-6000: Styles .qrPromo with width=min(420px, calc(100% - 40px)), background=linear-gradient(180deg, #121a3f, #0d132a), border=1px solid #2a3466, border-radius=20px, box-shadow=0 18px 50px rgba(0, 0, 0, 0.45). Purpose: control the element's appearance and layout.
+- Lines 6001-6010: Styles .qrPromo p with text-align=center, margin=0 0 6px, font-size=clamp(1.1rem, 1rem + 1vw, 1.6rem), margin=0. Purpose: control the element's appearance and layout.
+- Lines 6011-6020: Styles .qrPromoClose with color=var(--muted), font-size=0.95rem, line-height=1.5, position=absolute, top=12px. Purpose: control the element's appearance and layout.
+- Lines 6021-6030: Styles .qrPromoClose with height=44px, border=1px solid #2a3466, background=#16205a, border-radius=8px, cursor=pointer. Purpose: control the element's appearance and layout.
+- Lines 6031-6040: Styles .qrPromoClose:hover with line-height=1, touch-action=manipulation, z-index=10, border-color=var(--hover), box-shadow=0 0 8px #3651ff. Purpose: control the element's appearance and layout.
+- Lines 6041-6050: Styles .managerInviteBanner with background=#1e2870, position=fixed, left=0, right=0, top=0. Purpose: control the element's appearance and layout.
+- Lines 6051-6060: Styles .managerInviteBanner with z-index=2300, background=linear-gradient(135deg, #4c5ad4, #6366f1), padding=14px 20px, display=flex, gap=16px. Purpose: control the element's appearance and layout.
+- Lines 6061-6070: Styles .managerInviteBanner-icon with display=flex, align-items=center, gap=12px, font-size=1.5rem. Purpose: control the element's appearance and layout.
+- Lines 6071-6080: Styles .managerInviteBanner-text strong with display=flex, flex-direction=column, gap=2px, color=#fff, font-size=1rem. Purpose: control the element's appearance and layout.
+- Lines 6081-6090: Styles .managerInviteBanner .btn with color=rgba(255, 255, 255, 0.85), font-size=0.85rem, background=#fff, color=#4c5ad4. Purpose: control the element's appearance and layout.
+- Lines 6091-6100: Styles .managerInviteBanner .btn:hover with font-weight=600, padding=10px 20px, border-radius=8px, border=none, cursor=pointer. Purpose: control the element's appearance and layout.
+- Lines 6101-6110: Styles body.managerInviteBannerVisible.menuScrollLocked .topbar with padding-top=76px, top=76px. Purpose: control the element's appearance and layout.
+- Lines 6111-6120: Defines responsive rules for (max-width: 640px). Purpose: adjust layout or styles for this breakpoint.
+- Lines 6121-6130: Styles .managerInviteBanner-text strong with gap=6px, font-size=1.2rem, font-size=0.95rem. Purpose: control the element's appearance and layout.
+- Lines 6131-6140: Styles body.managerInviteBannerVisible.menuScrollLocked .topbar with font-size=0.8rem, padding-top=120px. Purpose: control the element's appearance and layout.
+- Lines 6141-6150: Styles body.qrMode .topin with top=120px, border-bottom=none, box-shadow=none. Purpose: control the element's appearance and layout.
+- Lines 6151-6160: Defines responsive rules for (max-width: 640px). Purpose: adjust layout or styles for this breakpoint.
+- Lines 6161-6170: Styles .brand img with gap=10px, width=36px, height=36px. Purpose: control the element's appearance and layout.
+- Lines 6171-6180: Styles .tabs with padding=10px calc(10px + env(safe-area-inset-right)) 10px
+      calc(10px + env(safe-area-inset-left)), gap=10px, gap=6px. Purpose: control the element's appearance and layout.
+- Lines 6181-6190: Styles .acctBtn with padding=var(--nav-pad-y) var(--nav-pad-x), font-size=var(--nav-font), padding=5px 8px, font-size=clamp(0.56rem, 3.2vw, 0.78rem). Purpose: control the element's appearance and layout.
+- Lines 6191-6200: Styles .legend with padding=10px, padding-bottom=160px, gap=10px. Purpose: control the element's appearance and layout.
+- Lines 6201-6210: Styles .card img with gap=12px, width=calc(100% - 20px), max-width=400px. Purpose: control the element's appearance and layout.
+- Lines 6211-6220: Styles .card .pad > div:first-child with height=140px, padding=10px, font-size=16px, margin-bottom=4px. Purpose: control the element's appearance and layout.
+- Lines 6221-6230: Styles .ovWarning with font-size=12px, top=1px, width=6px. Purpose: control the element's appearance and layout.
+- Lines 6231-6240: Styles .ovBadge with height=6px, border=0.5px solid, font-size=5px, right=1px, border-color=#dbe2ff. Purpose: control the element's appearance and layout.
+- Lines 6241-6250: Styles .banner with left=1px, border-color=#fef08a, box-shadow=0 0 4px #facc15. Purpose: control the element's appearance and layout.
+- Lines 6251-6254: Styles .banner with flex-direction=column, align-items=stretch. Purpose: control the element's appearance and layout.
+
+## public/dish-search.html
+
+- Lines 1-10: Defines metadata and viewport settings. Purpose: control browser rendering and page info.
+- Lines 11-20: Links stylesheets. Purpose: apply site styles.
+- Lines 21-30: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 31-40: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 41-50: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 51-60: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 61-70: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 71-80: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 81-90: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 91-100: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 101-110: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 111-120: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 121-130: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 131-140: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 141-150: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 151-160: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 161-170: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 171-180: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 181-190: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 191-200: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 201-210: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 211-220: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 221-230: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 231-240: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 241-250: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 251-260: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 261-270: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 271-280: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 281-290: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 291-300: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 301-310: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 311-320: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 321-330: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 331-340: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 341-350: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 351-360: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 361-370: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 371-380: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 381-390: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 391-400: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 401-410: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 411-420: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 421-430: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 431-440: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 441-450: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 451-460: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 461-470: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 471-480: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 481-490: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 491-500: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 501-510: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 511-520: Elements: body .page-shell, header .simple-topbar. Purpose: structure layout and content.
+- Lines 521-530: Elements: div .simple-topbar-inner, a .simple-brand href=home.html, img src=https://static.wixstatic.com/media/945e9d_2b97098295d341d493e4a07d80d6b57c~mv2.png, span, div .simple-nav, div #modeToggleContainer .mode-toggle-container. Text: Clarivore. Purpose: display images.
+- Lines 531-540: Elements: main .page-main, div .page-content, h1, div #user-preferences-display, div .preference-row, div .preference-panel. Text: Dish search. Purpose: structure layout and content.
+- Lines 541-550: Elements: div .preference-header, div .preference-title, a .preference-edit href=account.html, div #display-allergens .preference-chips, div .preference-panel. Text: Saved allergens; Edit saved allergens; Saved diets; .... Purpose: build page structure.
+- Lines 551-560: Elements: div #display-diets .preference-chips, div .search-controls, input #search-input type=text, button #search-button .cta-button. Text: Search. Purpose: collect user input and actions.
+- Lines 561-570: Elements: div #search-filters, label, span, div .toggle-switch, input #filter-include-accommodated type=checkbox, span .toggle-slider. Text: Include accommodated. Purpose: collect user input and actions.
+- Lines 571-580: Elements: div, button #restaurant-dropdown-btn type=button, span #restaurant-dropdown-label, svg, path, div #restaurant-dropdown-menu. Text: All restaurants. Purpose: collect user input and actions.
+- Lines 581-590: Elements: button #select-all-restaurants type=button, button #clear-all-restaurants type=button, button #select-favorites-restaurants type=button, div #restaurant-checkboxes, p #status-message .status-text. Text: Select All; Clear All; ⭐ Favorites. Purpose: collect user input and actions.
+- Lines 591-600: Links external scripts. Purpose: load JavaScript for page behavior.
+- Lines 601-610: Defines inline script. Purpose: run page-specific logic.
+- Lines 611-620: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 621-630: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 631-640: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 641-650: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 651-660: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 661-670: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 671-680: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 681-690: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 691-700: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 701-710: Elements: div .dish-allergen-line, span .dish-allergen-text. Text: No dietary preferences saved. Sign in to save your preferences.. Purpose: build page structure.
+- Lines 711-720: Elements: div .dish-section-header. Text: Allergens:. Purpose: build page structure.
+- Lines 721-730: Elements: div .dish-allergen-line, span .dish-allergen-emoji, span .dish-allergen-text warn, strong. Text: ${emoji}; Contains; ${escapeHtml(a.toLowerCase())}; .... Purpose: build page structure.
+- Lines 731-740: Elements: div .dish-allergen-line, span .dish-allergen-emoji, span .dish-allergen-text danger, strong, span .dish-allergen-text safe. Text: ${emoji}; Contains; ${escapeHtml(a.toLowerCase())}; .... Purpose: build page structure.
+- Lines 741-750: Elements: div .dish-section-divider, div .dish-section-header. Text: 0) { if (userAllergens.length) { html += '; '; } html += '; Diets:. Purpose: build page structure.
+- Lines 751-760: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 761-770: Elements: div .dish-allergen-line, span .dish-allergen-emoji, span .dish-allergen-text safe, strong. Text: ${emoji}; This dish is; ${escapeHtml(dietLower)}. Purpose: build page structure.
+- Lines 771-780: Elements: div .dish-allergen-line, span .dish-allergen-emoji, span .dish-allergen-text warn, strong. Text: ${emoji}; This dish can be made; ${escapeHtml(dietLower)}. Purpose: build page structure.
+- Lines 781-790: Elements: div .dish-allergen-line, span .dish-allergen-emoji, span .dish-allergen-text danger, strong. Text: ${emoji}; This dish is not; ${escapeHtml(dietLower)}. Purpose: build page structure.
+- Lines 791-800: Elements: strong, div .dish-section-divider, div .dish-allergen-line, span .dish-allergen-emoji, span .dish-allergen-text warn. Text: ${escapeHtml(a.toLowerCase())}; `; }).join(', '); html += '; '; html += `; .... Purpose: build page structure.
+- Lines 801-810: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 811-820: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 821-830: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 831-840: Elements: span .preference-chip, span. Text: ${emoji} ${escapeHtml(a)}; `; }).join(''); } else { allergensEl.innerHTML = '; None saved. Purpose: build page structure.
+- Lines 841-850: Elements: span .preference-chip. Text: { const emoji = dietEmoji[d] || '✓'; return `; ${emoji} ${escapeHtml(d)}. Purpose: build page structure.
+- Lines 851-860: Elements: span. Text: None saved. Purpose: build page structure.
+- Lines 861-870: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 871-880: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 881-890: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 891-900: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 901-910: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 911-920: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 921-930: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 931-940: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 941-950: Elements: label .restaurant-checkbox-item, input type=checkbox. Text: 0) { checkboxContainer.innerHTML = restaurantsData.map(r => `. Purpose: collect user input and actions.
+- Lines 951-960: Elements: span. Text: ${escapeHtml(r.name)}. Purpose: build page structure.
+- Lines 961-970: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 971-980: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 981-990: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 991-1000: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1001-1010: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1011-1020: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1021-1030: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1031-1040: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1041-1050: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1051-1060: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1061-1070: Elements: div, p, a href=account.html. Text: Set up your allergens and dietary preferences in your; account; to see dishes you can eat.. Purpose: build page structure.
+- Lines 1071-1080: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1081-1090: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1091-1100: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1101-1110: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1111-1120: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1121-1130: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1131-1140: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1141-1150: Elements: div, p. Text: No restaurants selected. Use the dropdown above to select restaurants.; `; } else { dishResultsList.innerHTML = `. Purpose: build page structure.
+- Lines 1151-1160: Elements: p. Text: No dishes found matching your dietary preferences in the selected restaurants.. Purpose: build page structure.
+- Lines 1161-1170: Elements: div .restaurant-dish-item name=${escapeHtml(dish.name)} data=data-restaurant-slug,data-dish-name, span .restaurant-dish-name, span .restaurant-dish-views, svg, path, circle. Text: ${escapeHtml(dish.name)}. Purpose: build page structure.
+- Lines 1171-1180: Elements: a .dish-launch-link href=${dishUrl}, svg, path, polyline, line. Text: ${dish.views}. Purpose: build page structure.
+- Lines 1181-1190: Elements: div .restaurant-section-column, div .restaurant-section-column-title, span .accommodated-dot. Text: 0 ? `; Can be accommodated (${accommodatedDishes.length}). Purpose: build page structure.
+- Lines 1191-1200: Elements: p, div .restaurant-section, div .restaurant-section-header, h3 .restaurant-section-name, a href=restaurant.html?slug=${encodeURIComponent(restaurant.slug)}. Text: 10 ? `; + ${accommodatedDishes.length - 10} more; ` : ''}; .... Purpose: build page structure.
+- Lines 1201-1210: Elements: span, div .restaurant-section-columns, div .restaurant-section-column, div .restaurant-section-column-title, span .safe-dot. Text: Safe (${safeDishes.length}). Purpose: build page structure.
+- Lines 1211-1220: Elements: p .no-dishes-message, p. Text: No safe dishes; ' } ${safeDishes.length > 10 ? `; + ${safeDishes.length - 10} more; .... Purpose: build page structure.
+- Lines 1221-1230: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1231-1240: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1241-1250: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1251-1260: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1261-1270: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1271-1280: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1281-1290: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1291-1300: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1301-1310: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1311-1320: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1321-1330: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1331-1340: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1341-1350: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1351-1360: Elements: div .restaurant-dish-item name=${escapeHtml(dish.name)} data=data-restaurant-slug,data-dish-name, span .restaurant-dish-name, span .restaurant-dish-views, svg, path, circle, .... Text: ${escapeHtml(dish.name)}; ${dish.views || 0}. Purpose: build page structure.
+- Lines 1361-1370: Elements: svg, path, polyline, line. Purpose: build page structure.
+- Lines 1371-1380: Elements: div .restaurant-section-column, div .restaurant-section-column-title, span .accommodated-dot. Text: 0 ? `; Can be accommodated (${accommodatedDishes.length}); ${accommodatedDishes.map(renderDishItem).join('')}. Purpose: build page structure.
+- Lines 1381-1390: Elements: div .restaurant-section-column, div .restaurant-section-column-title, span .search-match-dot. Text: 0 ? `; Matches search (${searchMatchDishes.length}); ${searchMatchDishes.map(renderDishItem).join('')}. Purpose: build page structure.
+- Lines 1391-1400: Elements: div .restaurant-section, div .restaurant-section-header, h3 .restaurant-section-name, a href=restaurant.html?slug=${encodeURIComponent(section.slug || '')}. Text: ${escapeHtml(section.name)}. Purpose: build page structure.
+- Lines 1401-1410: Elements: span, div .restaurant-section-columns, div .restaurant-section-column, div .restaurant-section-column-title, span .safe-dot. Text: ${totalDishes} dish${totalDishes !== 1 ? 'es' : ''} found; 0 || (!accommodatedColumnHTML && !searchMatchColumnHTML) ? `; Safe (${safeDishes.length}). Purpose: build page structure.
+- Lines 1411-1420: Elements: p .no-dishes-message. Text: No safe dishes found; ' }. Purpose: build page structure.
+- Lines 1421-1430: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1431-1440: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1441-1450: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1451-1460: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1461-1470: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1471-1480: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1481-1490: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1491-1500: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1501-1510: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1511-1520: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1521-1530: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1531-1540: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1541-1550: Elements: span .mode-toggle-label, div #modeToggle .mode-toggle ${isEditorMode ? 'active' : ''}. Text: ${isEditorMode ? 'Editor mode' : 'Customer mode'}. Purpose: build page structure.
+- Lines 1551-1560: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1561-1570: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1571-1580: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1581-1590: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1591-1593: Links external scripts. Purpose: load JavaScript for page behavior.
+
+## public/favorites.html
+
+- Lines 1-10: Links stylesheets. Purpose: apply site styles.
+- Lines 11-20: Elements: style, body .page-shell, header .simple-topbar, div .simple-topbar-inner, a .simple-brand href=home.html. Text: .favorite-container { margin-top: 24px; }. Purpose: structure layout and content.
+- Lines 21-30: Elements: img src=https://static.wixstatic.com/media/945e9d_2b97098295d341d493e4a07d80d6b57c~mv2.png, span, div .simple-nav, div #modeToggleContainer .mode-toggle-container. Text: Clarivore. Purpose: display images.
+- Lines 31-40: Elements: main .page-main, div .page-content favorite-container, h1, p #favorites-status .status-text, div #favorite-grid .restaurant-grid, p. Text: My restaurants; Loading favorites.... Purpose: structure layout and content.
+- Lines 41-50: Links external scripts. Purpose: load JavaScript for page behavior.
+- Lines 51-60: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 61-70: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 71-80: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 81-90: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 91-100: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 101-110: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 111-120: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 121-130: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 131-140: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 141-150: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 151-160: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 161-170: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 171-180: Elements: div .empty-state. Text: No favorites yet. Add favorites from the All restaurants page.. Purpose: build page structure.
+- Lines 181-190: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 191-200: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 201-210: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 211-220: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 221-230: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 231-240: Elements: span .mode-toggle-label, div #modeToggle .mode-toggle ${isEditorMode ? 'active' : ''}. Text: ${isEditorMode ? 'Editor mode' : 'Customer mode'}. Purpose: build page structure.
+- Lines 241-250: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 251-260: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 261-270: Elements: p. Text: Unable to load favorites.. Purpose: build page structure.
+- Lines 271-280: Elements: div .empty-state. Text: No favorites yet. Add favorites from the All restaurants page.. Purpose: build page structure.
+- Lines 281-290: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 291-300: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 301-310: Elements: p, div .empty-state. Text: Unable to load my restaurants.; No favorites yet. Add favorites from the All restaurants page.. Purpose: build page structure.
+- Lines 311-320: Elements: button #${restaurantKey} .favorite-toggle${isFavorite ? ' is-active' : ''} type=button data=data-id. Text: ${isFavorite ? '★' : '☆'}. Purpose: collect user input and actions.
+- Lines 321-330: Elements: div #${restaurantKey} .restaurant-card data=data-id,data-slug, div .restaurant-card-media, img src=${r.menu_image || 'https://via.placeholder.com/400x300'}, div .restaurant-card-content, h3. Text: ${favoriteButton}; ${r.name}. Purpose: display images.
+- Lines 331-340: Elements: p .meta, a .cta-button href=restaurant.html?slug=${r.slug}. Text: Last confirmed by staff: ${info.text}; `; })()}; View menu. Purpose: build page structure.
+- Lines 341-350: Links external scripts. Purpose: load JavaScript for page behavior.
+
+## public/help-contact.html
+
+- Lines 1-10: Links stylesheets. Purpose: apply site styles.
+- Lines 11-20: Elements: style. Purpose: build page structure.
+- Lines 21-30: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 31-40: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 41-50: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 51-60: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 61-70: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 71-80: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 81-90: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 91-100: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 101-110: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 111-120: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 121-130: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 131-140: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 141-150: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 151-160: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 161-170: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 171-180: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 181-190: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 191-200: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 201-210: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 211-220: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 221-230: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 231-240: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 241-250: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 251-260: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 261-270: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 271-280: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 281-290: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 291-300: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 301-310: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 311-320: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 321-330: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 331-340: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 341-350: Elements: body .page-shell, header .simple-topbar, div .simple-topbar-inner, a .simple-brand href=home.html, img src=https://static.wixstatic.com/media/945e9d_2b97098295d341d493e4a07d80d6b57c~mv2.png. Purpose: structure layout and content.
+- Lines 351-360: Elements: span, div .simple-nav, div #modeToggleContainer .mode-toggle-container, main .help-main. Text: Clarivore. Purpose: structure layout and content.
+- Lines 361-370: Elements: div .help-container, div .help-header, h1, p, section #helpSearchPanel .help-panel, div .help-search-row, .... Text: Help; Ask how to use Clarivore, or send feedback and issues to the team.; Ask. Purpose: collect user input and actions.
+- Lines 371-380: Elements: button #helpNewConversationBtn .btn btnGhost, div #helpSearchStatus .help-status, div #helpConversation .help-conversation, section #helpGrid .help-grid. Text: New conversation. Purpose: collect user input and actions.
+- Lines 381-390: Links external scripts. Purpose: load JavaScript for page behavior.
+- Lines 391-400: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 401-410: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 411-420: Elements: a href=$1. Text: $1. Purpose: build page structure.
+- Lines 421-430: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 431-440: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 441-450: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 451-460: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 461-470: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 471-480: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 481-490: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 491-500: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 501-510: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 511-520: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 521-530: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 531-540: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 541-550: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 551-560: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 561-570: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 571-580: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 581-590: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 591-600: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 601-610: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 611-620: Elements: div .help-card, h3, p. Text: Anonymous feedback; Share your experience privately. This feedback is anonymous.. Purpose: build page structure.
+- Lines 621-630: Elements: textarea #helpFeedbackText, div #helpFeedbackStatus .help-status, button #helpFeedbackSend .btn btnPrimary, div .help-card, h3, p, .... Text: Send feedback; Report an issue; Let us know about errors or problems you found.; .... Purpose: collect user input and actions.
+- Lines 631-640: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 641-650: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 651-660: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 661-670: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 671-680: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 681-690: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 691-700: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 701-710: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 711-720: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 721-730: Elements: div .chat-preview-empty. Text: No restaurant linked yet.. Purpose: build page structure.
+- Lines 731-740: Elements: div .chat-preview-empty. Text: No messages yet. Purpose: build page structure.
+- Lines 741-750: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 751-760: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 761-770: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 771-780: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 781-790: Elements: div .chat-ack. Text: ${escapeHtml(entry.name)} acknowledged · ${escapeHtml(ackTimestamp)}. Purpose: build page structure.
+- Lines 791-800: Elements: div .chat-preview-item ${isOutgoing ? 'outgoing' : 'incoming'}, div, div .chat-preview-meta. Text: ${formatChatMessage(message.message)}; ${escapeHtml(senderLabel)}${timestamp ? ` · ${escapeHtml(timestamp)}` : ''}. Purpose: build page structure.
+- Lines 801-810: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 811-820: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 821-830: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 831-840: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 841-850: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 851-860: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 861-870: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 871-880: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 881-890: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 891-900: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 901-910: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 911-920: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 921-930: Elements: div .help-card, div .chat-header-row, div .chat-title-wrap, h3, span #chat-unread-badge .chat-badge, button #chat-ack-btn .btn btnWarning, .... Text: Direct chat with Clarivore administrator; 0; Acknowledge message(s). Purpose: collect user input and actions.
+- Lines 931-940: Elements: div .chat-preview-empty, div .chat-preview-compose, input #chat-message-input .chat-preview-input type=text, button #chat-send-btn .btn, div .help-card, h3, .... Text: Loading chat...; Send; Report an issue; .... Purpose: collect user input and actions.
+- Lines 941-950: Elements: textarea #helpIssueText, div #helpIssueStatus .help-status, button #helpIssueSend .btn btnPrimary. Text: Send report. Purpose: collect user input and actions.
+- Lines 951-960: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 961-970: Elements: span .mode-toggle-label, div #modeToggle .mode-toggle ${isEditorMode ? 'active' : ''}. Text: ${isEditorMode ? 'Editor mode' : 'Customer mode'}. Purpose: build page structure.
+- Lines 971-980: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 981-990: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 991-1000: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1001-1010: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1011-1020: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1021-1030: Defines markup container or closes tags. Purpose: build page structure.
+
+## public/home.html
+
+- Lines 1-10: Defines metadata and viewport settings. Purpose: control browser rendering and page info.
+- Lines 11-20: Links stylesheets. Purpose: apply site styles.
+- Lines 21-30: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 31-40: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 41-50: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 51-60: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 61-70: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 71-80: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 81-90: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 91-100: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 101-110: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 111-120: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 121-130: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 131-140: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 141-150: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 151-160: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 161-170: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 171-180: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 181-190: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 191-200: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 201-210: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 211-220: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 221-230: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 231-240: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 241-250: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 251-260: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 261-270: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 271-280: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 281-290: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 291-300: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 301-310: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 311-320: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 321-330: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 331-340: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 341-350: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 351-360: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 361-370: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 371-380: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 381-390: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 391-400: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 401-410: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 411-420: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 421-430: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 431-440: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 441-450: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 451-460: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 461-470: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 471-480: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 481-490: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 491-500: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 501-510: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 511-520: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 521-530: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 531-540: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 541-550: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 551-560: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 561-570: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 571-580: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 581-590: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 591-600: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 601-610: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 611-620: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 621-630: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 631-640: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 641-650: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 651-660: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 661-670: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 671-680: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 681-690: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 691-700: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 701-710: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 711-720: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 721-730: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 731-740: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 741-750: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 751-760: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 761-770: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 771-780: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 781-790: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 791-800: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 801-810: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 811-820: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 821-830: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 831-840: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 841-850: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 851-860: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 861-870: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 871-880: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 881-890: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 891-900: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 901-910: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 911-920: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 921-930: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 931-940: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 941-950: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 951-960: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 961-970: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 971-980: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 981-990: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 991-1000: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1001-1010: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1011-1020: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1021-1030: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1031-1040: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1041-1050: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1051-1060: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1061-1070: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1071-1080: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1081-1090: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1091-1100: Elements: body .page-shell, div #progressBar .progress-bar, svg. Purpose: build page structure.
+- Lines 1101-1110: Elements: defs, lineargradient #brandGradient, stop, header .simple-topbar, div .simple-topbar-inner. Purpose: structure layout and content.
+- Lines 1111-1120: Elements: a .simple-brand href=home.html, img src=https://static.wixstatic.com/media/945e9d_2b97098295d341d493e4a07d80d6b57c~mv2.png, span, div .simple-nav, div #modeToggleContainer .mode-toggle-container. Text: Clarivore. Purpose: display images.
+- Lines 1121-1130: Elements: main .page-main, div .page-content, section #recently-viewed-section .recently-viewed-section, h2, div #recently-viewed-grid .recently-viewed-grid. Text: Recently Viewed Restaurants. Purpose: structure layout and content.
+- Lines 1131-1140: Elements: div #manager-dashboard-content, div .dashboard-header, h1, p, div #manager-stats-container. Text: Statistics Dashboard; View engagement metrics for your restaurant. Purpose: build page structure.
+- Lines 1141-1150: Elements: p, div #customer-content, section .hero-section, h1, br, p .hero-tagline. Text: Loading statistics...; The Challenge of Eating Out; With Food Restrictions. Purpose: structure layout and content.
+- Lines 1151-1160: Elements: div .scroll-indicator, span, section .content-section, div .section-header, span .section-label, h2. Text: The Scale; Food Restrictions Affect Millions of Americans. Purpose: structure layout and content.
+- Lines 1161-1170: Elements: div .infographic-card, div .prevalence-stats, div .prevalence-breakdown, div .prevalence-group, div .prevalence-group-number, div .prevalence-group-label, .... Text: 16M; Adults; 6.2%. Purpose: build page structure.
+- Lines 1171-1180: Elements: div .prevalence-divider, div .prevalence-group, div .prevalence-group-number, div .prevalence-group-label, div .prevalence-group-percent, div .quote-block mb-40, .... Text: +; 4M; Children; .... Purpose: build page structure.
+- Lines 1181-1190: Elements: span .quote-source, a href=https://aafa.org/wp-content/uploads/2025/04/aafa-allergy-facts-and-figures.pdf, div .infographic-card, h3, div .big-stat, div .big-stat-number brand, .... Text: —; Asthma and Allergy Foundation of America, 2025; Beyond Allergies: Dietary Restrictions; .... Purpose: build page structure.
+- Lines 1191-1200: Elements: div .big-stat-sublabel, div, h4, div #dietary-breakdown-chart .bar-chart, div .bar-chart-item, div .bar-chart-label, .... Text: whether for health, ethics, or personal preference; Common Dietary Patterns; Gluten-Free. Purpose: build page structure.
+- Lines 1201-1210: Elements: span .brand, div .bar-chart-track, div .bar-chart-fill brand, div .bar-chart-item, div .bar-chart-label, span. Text: 12%; Vegetarian; 10%. Purpose: build page structure.
+- Lines 1211-1220: Elements: div .bar-chart-track, div .bar-chart-fill brand, div .bar-chart-item, div .bar-chart-label, span, span .brand. Text: Intermittent Fasting; 10%. Purpose: build page structure.
+- Lines 1221-1230: Elements: div .bar-chart-track, div .bar-chart-fill brand, div .bar-chart-item, div .bar-chart-label, span, span .brand. Text: Pescatarian; 6%. Purpose: build page structure.
+- Lines 1231-1240: Elements: div .bar-chart-fill brand, div .bar-chart-item, div .bar-chart-label, span, span .brand, div .bar-chart-track. Text: Low-Carb / Keto; 5%. Purpose: build page structure.
+- Lines 1241-1250: Elements: div .bar-chart-item, div .bar-chart-label, span, span .brand, div .bar-chart-track, div .bar-chart-fill brand. Text: Vegan; 4%. Purpose: build page structure.
+- Lines 1251-1260: Elements: p, div .quote-block, span .quote-source, a href=https://www.foodnavigator-usa.com/Article/2019/03/12/The-downside-of-exclusion-diets-From-paying-more-to-dampened-social-life. Text: Many individuals follow multiple dietary patterns; —; FoodNavigator-USA / Spoon Guru Survey, 2019. Purpose: build page structure.
+- Lines 1261-1270: Elements: div .section-divider, section .content-section, div .section-header, span .section-label danger, h2, br. Text: The Risk; The Challenge of; Dining Out. Purpose: structure layout and content.
+- Lines 1271-1280: Elements: div .infographic-card, div #reactions-chart .bar-chart, div .bar-chart-item, div .bar-chart-label, span, span .danger, .... Text: Adult allergic reactions while dining out; 31%. Purpose: build page structure.
+- Lines 1281-1290: Elements: div .bar-chart-item, div .bar-chart-label, span, span .danger, div .bar-chart-track, div .bar-chart-fill danger. Text: Pediatric allergic reactions while dining out; 13%. Purpose: build page structure.
+- Lines 1291-1300: Elements: div .quote-block danger, span .highlight-danger, span .quote-source, a href=https://www.sciencedirect.com/science/article/pii/S2213219820313507, div .infographic-card. Text: "In the United States, between 2017 and 2019,; 31% of adult; and; .... Purpose: build page structure.
+- Lines 1301-1310: Elements: h3, div .bar-chart, div .bar-chart-item, div .bar-chart-label, span, span .danger, .... Text: Gluten-Free? Not Always.; Restaurant foods labeled "gluten-free" contain gluten; 32%. Purpose: build page structure.
+- Lines 1311-1320: Elements: div .bar-chart-item, div .bar-chart-label, span, span .danger, div .bar-chart-track, div .bar-chart-fill danger. Text: "Gluten-free" pizza tests positive for gluten; 53%. Purpose: build page structure.
+- Lines 1321-1330: Elements: div .bar-chart-item, div .bar-chart-label, span, span .danger, div .bar-chart-track, div .bar-chart-fill danger. Text: "Gluten-free" pasta tests positive for gluten; 51%. Purpose: build page structure.
+- Lines 1331-1340: Elements: div .quote-block danger, span .highlight-danger, span .quote-source, a href=https://pubmed.ncbi.nlm.nih.gov/30920417/, div .infographic-card, div .big-stat, .... Text: "Of 5,624 'gluten-free' food items tested,; 32% contained detectable gluten; . Pizza and pasta were the worst offenders."; .... Purpose: build page structure.
+- Lines 1341-1350: Elements: div .big-stat-label, div .big-stat-sublabel, div .quote-block danger, span .highlight-danger, span .quote-source, a href=https://www.restaurantdive.com/news/52-of-us-diners-with-exclusion-diets-struggle-to-order-at-restaurants/550279/. Text: of diners with dietary restrictions struggle to find compliant meals; at restaurants; "; .... Purpose: build page structure.
+- Lines 1351-1360: Elements: div .section-divider, section .content-section, div .section-header, span .section-label danger, h2, div .infographic-card. Text: The Consequences; When Dining Out Goes Wrong. Purpose: structure layout and content.
+- Lines 1361-1370: Elements: div .infographic-visual, div .big-stat, div .big-stat-number danger, span .counter data=data-target, div .big-stat-label, span .highlight-orange, .... Text: 0; %; of; .... Purpose: build page structure.
+- Lines 1371-1380: Elements: div .infographic-card, h3, div .stats-row, div .stat-card, div .stat-card-number danger, span .counter data=data-target, .... Text: Celiac Reactions: Not Deadly, But Debilitating; 0; %; .... Purpose: build page structure.
+- Lines 1381-1390: Elements: div .stat-card-description, div .stat-card-source, a href=https://pmc.ncbi.nlm.nih.gov/articles/PMC5283559/, div .stat-card, div .stat-card-number danger, div .stat-card-label. Text: to suspected gluten exposure while on a gluten-free diet; Alimentary Pharmacology & Therapeutics, 2017; 24h; .... Purpose: build page structure.
+- Lines 1391-1400: Elements: div .quote-block danger, span .highlight-danger, span .quote-source, a href=https://pmc.ncbi.nlm.nih.gov/articles/PMC7312081/, div .section-divider. Text: "; Repeated gluten exposure increases risk; —; .... Purpose: build page structure.
+- Lines 1401-1410: Elements: section .content-section, div .section-header, span .section-label danger, h2, br, p, .... Text: The Breakdown; Why "Just Tell Your Server"; Doesn't Work; .... Purpose: structure layout and content.
+- Lines 1411-1420: Elements: div .stat-card-number danger, span .counter data=data-target, div .stat-card-label, div .stat-card-description, div .stat-card-source, a href=https://www.sciencedirect.com/science/article/pii/S2213219820313507, .... Text: 0; %; Reactions despite informing staff; .... Purpose: build page structure.
+- Lines 1421-1430: Elements: div .quote-block danger, span .highlight-danger, span .quote-source, a href=https://www.sciencedirect.com/science/article/pii/S2213219820313507, div .infographic-card. Text: "; Informing restaurant staff in the absence of allergenic ingredients; declared on the menu only; .... Purpose: build page structure.
+- Lines 1431-1440: Elements: h3, div .big-stat, div .big-stat-number danger, div .big-stat-label, div .quote-block danger, span .highlight-danger, .... Text: The Training Gap; 50%+; "; .... Purpose: build page structure.
+- Lines 1441-1450: Elements: div .section-divider, section .content-section, div .section-header, span .section-label, h2, br. Text: The Silent Struggle; The Alarming Reluctance; to Speak Up. Purpose: structure layout and content.
+- Lines 1451-1460: Elements: div .infographic-card, div .big-stat mb-40, div .big-stat-number danger, span .counter data=data-target, div .big-stat-label, div .big-stat-sublabel, .... Text: 0; %; Don't consistently alert staff about their allergy; .... Purpose: build page structure.
+- Lines 1461-1470: Elements: div .quote-block danger, span .highlight-danger, span .quote-source, a href=https://www.sciencedirect.com/science/article/abs/pii/S0956713519304475, div .section-divider. Text: "Two major constraints to risk conversations were identified:; being seen as 'fussy'; or as; .... Purpose: build page structure.
+- Lines 1471-1480: Elements: section .content-section, div .section-header, span .section-label success, h2, br, p, .... Text: The Evidence; What Research Shows; Actually Works; .... Purpose: structure layout and content.
+- Lines 1481-1490: Elements: div .quote-block mb-40, span .highlight-success, span .quote-source, a href=https://www.sciencedirect.com/science/article/pii/S2213219820313507, div .quote-block, a href=https://pubmed.ncbi.nlm.nih.gov/27118875/. Text: "; Choosing restaurants that declare allergenic ingredients on their menu; was shown to be; .... Purpose: build page structure.
+- Lines 1491-1500: Elements: div .infographic-card, h3, div .quote-block, span .highlight-success, span .quote-source, a href=https://pmc.ncbi.nlm.nih.gov/articles/PMC7257391/. Text: What Actually Works in Restaurants; "Restaurants with; a designated person to answer dietary questions; .... Purpose: build page structure.
+- Lines 1501-1510: Elements: div .section-divider, section .content-section, div .section-header, span .section-label, h2, br, .... Text: The Gap; The Information; Restaurants Don't Have. Purpose: structure layout and content.
+- Lines 1511-1520: Elements: div .big-stat mb-40, div .big-stat-number danger, span .counter data=data-target, div .big-stat-label, div .big-stat-sublabel, div .quote-block, .... Text: 0; %; of restaurants lack complete ingredient lists; .... Purpose: build page structure.
+- Lines 1521-1530: Elements: div .infographic-card, h3, div .big-stat, div .big-stat-number danger, span .counter data=data-target, div .big-stat-label, .... Text: The Menu Gap; 0; %; .... Purpose: build page structure.
+- Lines 1531-1540: Elements: span .quote-source, a href=https://www.ift.org/news-and-publications/food-technology-magazine/issues/2018/august/features/gluten-free-is-here-to-stay, div .section-divider, section .content-section, div .section-header. Text: Datassential / IFT Food Technology Magazine, 2018. Purpose: structure layout and content.
+- Lines 1541-1550: Elements: span .section-label success, h2, br, div .infographic-card, h3, img .study-figure src=canadian%20study%20figure%201.png, .... Text: The Reality; People With Food Restrictions; Dine Out Just As Much—Or More; .... Purpose: display images.
+- Lines 1551-1560: Elements: span .quote-source, a href=https://foodallergycanada.ca/wp-content/uploads/Recipe-for-Success-Consumer-Experience-Report.pdf, div .infographic-card, h3, div .comparison-visual, div .comparison-group, .... Text: —; Food Allergy Canada, "Recipe for Success" Consumer Experience Report; Vegans & Vegetarians Actually Dine Out More. Purpose: build page structure.
+- Lines 1561-1570: Elements: div .comparison-bar brand, span .comparison-bar-value, div .comparison-label, br, div .comparison-group, div .comparison-bar-container, .... Text: 30%; Vegan/Vegetarian; Casual Dining Weekly; .... Purpose: build page structure.
+- Lines 1571-1580: Elements: div .comparison-label, br, div .comparison-group, div .comparison-bar-container, div .comparison-bar brand, span .comparison-bar-value. Text: All Adults; Casual Dining Weekly; 21%. Purpose: build page structure.
+- Lines 1581-1590: Elements: div .comparison-label, br, div .comparison-group, div .comparison-bar-container, div .comparison-bar muted, span .comparison-bar-value. Text: Vegan/Vegetarian; Fine Dining Weekly; 9%; .... Purpose: build page structure.
+- Lines 1591-1600: Elements: div .quote-block, span .highlight-success, span .quote-source, a href=https://business.yougov.com/content/52577-dining-out-habits-of-us-vegans-and-vegetarians, div .infographic-card, div .big-stat. Text: "; Vegans and vegetarians dine out MORE than average Americans; —; .... Purpose: build page structure.
+- Lines 1601-1610: Elements: div .big-stat-number danger, span .counter data=data-target, div .big-stat-label, div .big-stat-sublabel, div .quote-block danger, span .highlight-danger, .... Text: 0; %; of people with celiac disease report being unable to eat at restaurants; .... Purpose: build page structure.
+- Lines 1611-1620: Elements: div .section-divider, section .content-section, div .section-header, span .section-label success, h2, br. Text: The Business Case; How Food Restrictions Shape; Restaurant Choices. Purpose: structure layout and content.
+- Lines 1621-1630: Elements: div .infographic-card, h3, img .study-figure src=canadian%20study%20figure%202.png, div .quote-block, span .highlight, span .quote-source, .... Text: Allergies Drive Restaurant Choices; "In fact,; two-thirds of food allergic consumers; .... Purpose: display images.
+- Lines 1631-1640: Elements: div .infographic-card, h3, img .study-figure src=canadian%20study%20figure%203.png, div .quote-source, a href=https://foodallergycanada.ca/wp-content/uploads/Recipe-for-Success-Consumer-Experience-Report.pdf. Text: Allergic Diners Prioritize Allergy Safety Over Food Cost; —; Food Allergy Canada, "Recipe for Success" Consumer Experience Report. Purpose: display images.
+- Lines 1641-1650: Elements: div .infographic-card, h3, div .comparison-visual, div .comparison-group, div .comparison-bar-container, div .comparison-bar muted, .... Text: The Satisfaction Gap; 35. Purpose: build page structure.
+- Lines 1651-1660: Elements: div .comparison-label, br, div .comparison-group, div .comparison-bar-container, div .comparison-bar brand, span .comparison-bar-value. Text: Vegan/Vegetarian; Satisfaction Score; 43; .... Purpose: build page structure.
+- Lines 1661-1670: Elements: div .quote-block danger, span .highlight-danger, span .quote-source, a href=https://business.yougov.com/content/52577-dining-out-habits-of-us-vegans-and-vegetarians, div .infographic-card, div .quote-block. Text: "; Despite dining out more, vegans and vegetarians report lower satisfaction; than average diners—scoring 35 vs. 43 at casual dining establishments."; .... Purpose: build page structure.
+- Lines 1671-1680: Elements: span .highlight, div .section-divider, section .content-section, div .section-header. Text: The 'vegan veto vote'; : When one person in a group can't eat somewhere,; entire groups choose different restaurants. Purpose: structure layout and content.
+- Lines 1681-1690: Elements: span .section-label success, h2, br, div .infographic-card, h3, img .study-figure src=canadian%20study%20figure%204.png, .... Text: Customer Loyalty; Accommodating Restaurants; Earn Exceptional Loyalty; .... Purpose: display images.
+- Lines 1691-1700: Elements: span .quote-source, a href=https://foodallergycanada.ca/wp-content/uploads/Recipe-for-Success-Consumer-Experience-Report.pdf, div .infographic-card, div .big-stat, div .big-stat-number success, span .counter data=data-target, .... Text: —; Food Allergy Canada, "Recipe for Success" Consumer Experience Report; 0; .... Purpose: build page structure.
+- Lines 1701-1710: Elements: div .quote-block, span .highlight-success, span .quote-source, a href=https://www.pmq.com/learn-how-to-earn-the-gluten-free-communitys-lucrative-business/, div .infographic-card, h3, .... Text: "; — Shelley Case, RD, gluten-free diet expert, via; PMQ Pizza / Gluten Intolerance Group; .... Purpose: build page structure.
+- Lines 1711-1720: Elements: div .stat-card, div .stat-card-number success, div .stat-card-label, div .stat-card-description, div .stat-card-source, a href=https://plantbasedfoods.org/2021-retail-sales-data-plant-based-food. Text: $8.1B; U.S. Plant-Based Food Market; And growing year over year; .... Purpose: build page structure.
+- Lines 1721-1730: Elements: div .stat-card-source, a href=https://www.grandviewresearch.com/industry-analysis/gluten-free-products-market, div .section-divider, section .content-section. Text: Grand View Research. Purpose: structure layout and content.
+- Lines 1731-1740: Elements: div .section-header, span .section-label success, h2, br, p, div .solution-grid, .... Text: The Solution; How Clarivore Makes; Dining Out Easier; .... Purpose: build page structure.
+- Lines 1741-1750: Elements: p .tagline, p, div .solution-card, div .solution-icon, h3. Text: Use the label you can see.; ✅; Manager Updates; .... Purpose: build page structure.
+- Lines 1751-1760: Elements: div .solution-icon, h3, p .tagline, p, div .solution-card. Text: 🎯; Clarity & Consistency; Same clear format, every restaurant, every dish.; .... Purpose: build page structure.
+- Lines 1761-1770: Elements: section .cta-section, h2, p, div .cta-buttons, a .cta-btn primary href=restaurants.html. Text: Ready to Dine with Confidence?; Browse Restaurants. Purpose: structure layout and content.
+- Lines 1771-1780: Links external scripts. Purpose: load JavaScript for page behavior.
+- Lines 1781-1790: Defines inline script. Purpose: run page-specific logic.
+- Lines 1791-1800: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1801-1810: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1811-1820: Elements: span .mode-toggle-label, div #modeToggle .mode-toggle ${isEditorMode ? 'active' : ''}. Text: ${isEditorMode ? 'Editor mode' : 'Customer mode'}. Purpose: build page structure.
+- Lines 1821-1830: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1831-1840: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1841-1850: Elements: p. Text: No restaurants assigned.. Purpose: build page structure.
+- Lines 1851-1860: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1861-1870: Elements: div. Text: ${totalInteractions}; Total Interactions. Purpose: build page structure.
+- Lines 1871-1880: Elements: div. Text: ${totalUniqueUsers}; Unique Users; ${totalDishes}; .... Purpose: build page structure.
+- Lines 1881-1890: Elements: div, h2, table, thead, tr, th. Text: Top Dishes by Interactions; Dish; Interactions. Purpose: build page structure.
+- Lines 1891-1900: Elements: th, tbody. Text: Unique Users. Purpose: build page structure.
+- Lines 1901-1910: Elements: tr, td, div. Text: ${dish.dish_name}; ${restaurant?.name || ''}; ${dish.total_interactions || 0}; .... Purpose: build page structure.
+- Lines 1911-1920: Elements: tr, td. Text: No dish interaction data available yet; '; } statsHTML += '. Purpose: build page structure.
+- Lines 1921-1930: Elements: p. Text: Error loading statistics: ' + err.message + '. Purpose: build page structure.
+- Lines 1931-1940: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1941-1950: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1951-1960: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1961-1970: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1971-1980: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1981-1990: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1991-2000: Elements: a .recently-viewed-card href=restaurant.html?slug=${r.slug}, img src=${r.menu_image || 'https://via.placeholder.com/400x300'}, div .recently-viewed-card-content, h3, p .meta. Text: ${r.name}; Last confirmed: ${info.text}. Purpose: display images.
+- Lines 2001-2010: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 2011-2020: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 2021-2030: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 2031-2040: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 2041-2050: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 2051-2060: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 2061-2070: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 2071-2080: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 2081-2090: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 2091-2100: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 2101-2110: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 2111-2113: Defines markup container or closes tags. Purpose: build page structure.
+
+## public/images/heart-icon.svg
+
+- Lines 1-3: Defines vector graphic markup. Purpose: render a scalable icon or image asset.
+
+## public/index.html
+
+- Lines 1-10: Defines metadata and viewport settings. Purpose: control browser rendering and page info.
+- Lines 11-20: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 21-30: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 31-40: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 41-50: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 51-60: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 61-70: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 71-80: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 81-90: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 91-100: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 101-110: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 111-120: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 121-130: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 131-140: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 141-150: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 151-160: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 161-170: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 171-180: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 181-190: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 191-200: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 201-210: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 211-220: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 221-230: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 231-240: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 241-250: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 251-260: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 261-270: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 271-280: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 281-290: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 291-300: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 301-310: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 311-320: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 321-330: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 331-340: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 341-350: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 351-360: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 361-370: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 371-380: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 381-390: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 391-400: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 401-410: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 411-420: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 421-430: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 431-440: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 441-450: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 451-460: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 461-470: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 471-480: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 481-490: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 491-500: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 501-510: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 511-520: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 521-530: Elements: body, div #root. Purpose: build page structure.
+- Lines 531-540: Elements: div #qrPromoBackdrop .qrPromoBackdrop, div .qrPromo, button #qrPromoClose .qrPromoClose type=button, h2 #qrPromoTitle, p, button #qrPromoSignup .btn btnPrimary type=button. Text: ×; Check out all restaurants part of Clarivore; Creating an account takes less than a minute and is completely free.; .... Purpose: collect user input and actions.
+- Lines 541-550: Links external scripts. Purpose: load JavaScript for page behavior.
+- Lines 551-560: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 561-570: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 571-580: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 581-590: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 591-600: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 601-610: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 611-620: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 621-630: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 631-640: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 641-650: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 651-660: Text: (s ?? '').toString().replace(/[&; "']/g, m => ({ '&': '&amp;', '. Purpose: build page structure.
+- Lines 661-670: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 671-680: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 681-690: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 691-700: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 701-710: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 711-720: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 721-730: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 731-740: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 741-750: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 751-760: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 761-770: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 771-780: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 781-790: Elements: div .restaurant-loading. Text: No restaurants found. Purpose: build page structure.
+- Lines 791-800: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 801-810: Elements: img src=${esc(menuImage)}, div .card-body, h3, div .card-meta. Text: ${esc(r.name)}; View menu. Purpose: display images.
+- Lines 811-820: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 821-830: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 831-840: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 841-850: Elements: img src=${esc(image)}, h3. Text: ${esc(name)}. Purpose: display images.
+- Lines 851-860: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 861-870: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 871-880: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 881-890: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 891-900: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 901-910: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 911-920: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 921-930: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 931-940: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 941-950: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 951-960: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 961-970: Elements: img src=https://static.wixstatic.com/media/945e9d_2b97098295d341d493e4a07d80d6b57c~mv2.png, span. Text: Clarivore. Purpose: display images.
+- Lines 971-980: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 981-990: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 991-1000: Elements: div #topbar .topin, div, div .restaurant-directory, h2, p. Text: Choose a restaurant; Search or browse every menu, then tell us about your allergies and diets.. Purpose: build page structure.
+- Lines 1001-1010: Elements: div #restaurantSearchWrap, input #restaurantSearch .search-input type=text, div #restaurantGrid .restaurant-grid, div .restaurant-loading, p #restaurantError .error-text, div #preferencesPanel .preferences-panel. Text: Loading restaurants...; Please select a restaurant. Purpose: collect user input and actions.
+- Lines 1011-1020: Elements: div #selectedRestaurant .selected-restaurant, div .pill, div, div #savedChips. Text: Select Your Allergens; Dietary Preferences. Purpose: build page structure.
+- Lines 1021-1030: Elements: div #dietChips, p #allergyError .error-text, div #disclaimerBanner .banner, span, button #ackBtn .ackBtn off. Text: Please select at least one allergen or dietary preference; I understand. Purpose: collect user input and actions.
+- Lines 1031-1040: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1041-1050: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1051-1060: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1061-1061: Defines markup container or closes tags. Purpose: build page structure.
+
+## public/js/auth-redirect.js
+
+- Lines 1-10: Defines function waitForSupabase. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 11-20: Continues waitForSupabase. Schedules timed work. Branches on conditions. Purpose: implement module logic.
+- Lines 21-30: Continues waitForSupabase. Declares currentPath, currentPage, urlParams, isQRUser. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 31-40: Continues waitForSupabase. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 41-50: Continues waitForSupabase. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 51-51: Continues waitForSupabase. Purpose: implement module logic.
+
+## public/js/help-assistant-drawer.js
+
+- Lines 1-10: Declares HELP_ASSISTANT_MODE_KEY, HELP_ASSISTANT_CONVO_PREFIX, HELP_ASSISTANT_OPEN_KEY, HELP_ASSISTANT_HEIGHT_KEY, HELP_ASSISTANT_PENDING_KEY, HELP_ASSISTANT_RESTAURANT_KEY, .... Purpose: implement module logic.
+- Lines 11-20: Defines function getModeKey. Branches on conditions. Returns values from this block. Exports module members. Purpose: expose helpers to other modules.
+- Lines 21-30: Defines function loadConversation. Declares stored, fallback, key, raw. Uses storage keys: getItem:clarivoreManagerMode. Branches on conditions. Returns values from this block. Exports module members. Purpose: expose helpers to other modules.
+- Lines 31-40: Defines function saveConversation. Declares parsed, key. Serializes or parses JSON. Iterates collections. Branches on conditions. Returns values from this block. Exports module members. Purpose: expose helpers to other modules.
+- Lines 41-50: Defines function clearConversation. Declares trimmed, div. Serializes or parses JSON. Exports module members. Purpose: expose helpers to other modules.
+- Lines 51-60: Defines function autoGrowInput. Sets inline styles: height=0px, height=`${textArea.scrollHeight}px`. Sets element properties: textContent=text || ''. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 61-70: Defines function normalizePageText. Declares deduped, seen, value, text. Iterates collections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 71-80: Defines function collectPageContext. Declares headings. Selects elements: h1, h2, h3. Iterates collections. Branches on conditions. Returns values from this block. Purpose: connect logic to DOM elements.
+- Lines 81-90: Continues collectPageContext. Declares buttons, labels. Selects elements: button, label. Iterates collections. Purpose: connect logic to DOM elements.
+- Lines 91-100: Continues collectPageContext. Declares inputs. Selects elements: input, textarea, select. Iterates collections. Returns values from this block. Purpose: connect logic to DOM elements.
+- Lines 101-110: Defines function extractHeadingLine. Declares trimmed. Purpose: implement module logic.
+- Lines 111-120: Continues extractHeadingLine. Declares boldMatch, suffix, hashMatch. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 121-130: Continues extractHeadingLine. Declares isListItem, isShort, nextTrimmed, nextIsList. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 131-140: Defines function formatAssistantAnswer. Declares escaped, lines, linkify. Returns values from this block. Exports module members. Purpose: expose helpers to other modules.
+- Lines 141-150: Continues formatAssistantAnswer. Declares safeUrl, normalizedUrl, label. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 151-160: Continues formatAssistantAnswer. Declares normalizedUrl, label. Returns values from this block. Purpose: implement module logic.
+- Lines 161-170: Defines function flushCodeBlock. Declares renderedLines, inCodeBlock, codeBuffer, codeText. Purpose: implement module logic.
+- Lines 171-180: Continues flushCodeBlock. Declares index, line. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 181-190: Continues flushCodeBlock. Declares headingText. Branches on conditions. Purpose: implement module logic.
+- Lines 191-200: Continues flushCodeBlock. Branches on conditions. Purpose: implement module logic.
+- Lines 201-210: Defines function normalizeText. Returns values from this block. Purpose: implement module logic.
+- Lines 211-220: Defines function isElementVisible. Declares style, targetLabel. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 221-230: Continues isElementVisible. Declares selectors. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 231-240: Continues isElementVisible. Declares nodes. Purpose: implement module logic.
+- Lines 241-250: Continues isElementVisible. Declares matches, text, placeholder, aria, title, value. Iterates collections. Returns values from this block. Purpose: implement module logic.
+- Lines 251-260: Continues isElementVisible. Declares exactVisible, exactHidden. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 261-270: Defines function highlightElement. Declares partialVisible, partialHidden. Updates classes (add: help-target-highlight). Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 271-280: Defines function parseHelpLink. Declares parsed, type. Updates classes (remove: help-target-highlight). Schedules timed work. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 281-290: Continues parseHelpLink. Declares label, selector, role, reserved, extraParams, rawUrl, .... Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 291-300: Continues parseHelpLink. Declares tail, base. Branches on conditions. Purpose: implement module logic.
+- Lines 301-310: Defines function resolveRestaurantSlug. Declares params, slug. Returns values from this block. Purpose: implement module logic.
+- Lines 311-320: Continues resolveRestaurantSlug. Declares stored, recent. Uses storage keys: getItem:recentlyViewedRestaurants. Serializes or parses JSON. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 321-330: Defines function resolveRestaurantUrl. Declares slug. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 331-340: Defines function ensureRestaurantMenuUrl. Declares parsed. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 341-350: Continues ensureRestaurantMenuUrl. Declares path, slugParam, idParam. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 351-360: Defines function resolveDashboardUrl. Declares slug, nextParams. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 361-370: Continues resolveDashboardUrl. Declares mode, normalizedLabel. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 371-380: Defines function normalizePageUrl. Declares parsed, path. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 381-390: Defines function isSamePageUrl. Declares target, current. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 391-400: Defines function persistPendingAction. Serializes or parses JSON. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 401-410: Defines function applyPendingAction. Declares raw, action. Serializes or parses JSON. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 411-420: Continues applyPendingAction. Declares target. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 421-430: Continues applyPendingAction. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 431-440: Defines function handleHelpLink. Schedules timed work. Branches on conditions. Returns values from this block. Exports module members. Purpose: expose helpers to other modules.
+- Lines 441-450: Defines function handleHelpLinkWithLabel. Declares action, effectiveLabel. Branches on conditions. Returns values from this block. Exports module members. Purpose: expose helpers to other modules.
+- Lines 451-460: Continues handleHelpLinkWithLabel. Declares nextUrl. Sets element properties: href=nextUrl. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 461-470: Continues handleHelpLinkWithLabel. Declares target. Branches on conditions. Purpose: implement module logic.
+- Lines 471-480: Continues handleHelpLinkWithLabel. Declares target. Sets element properties: href=nextUrl. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 481-490: Continues handleHelpLinkWithLabel. Branches on conditions. Purpose: implement module logic.
+- Lines 491-500: Defines function attachHelpLinkHandlers. Declares target, link. Binds events: click. Branches on conditions. Returns values from this block. Exports module members. Purpose: respond to user actions.
+- Lines 501-510: Defines function requestHelpAssistant. Declares encoded, decoded, encodedLabel, label. Exports module members. Purpose: expose helpers to other modules.
+- Lines 511-520: Continues requestHelpAssistant. Declares payload, data, client, invokeRes. Branches on conditions. Purpose: implement module logic.
+- Lines 521-530: Continues requestHelpAssistant. Declares res. Fetches: /api/ai-proxy. Serializes or parses JSON. Branches on conditions. Purpose: load or persist data for the page.
+- Lines 531-540: Continues requestHelpAssistant. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 541-550: Defines function renderConversation. Declares content. Sets element properties: innerHTML='<div class="help-message empty">Ask Clarivore a question..., innerHTML=messages.map((msg) => {. Iterates collections. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 551-560: Continues renderConversation. Returns values from this block. Purpose: implement module logic.
+- Lines 561-570: Defines function buildMessageList. Declares history. Branches on conditions. Returns values from this block. Exports module members. Purpose: expose helpers to other modules.
+- Lines 571-580: Continues buildMessageList. Declares currentMode, messages. Binds events: input, click. Branches on conditions. Purpose: respond to user actions.
+- Lines 581-590: Defines function send. Declares query. Sets element properties: textContent=. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 591-600: Continues send. Sets inline styles: color=#ef4444, color=var(--muted). Sets element properties: textContent=Type a question to get help., textContent=Asking Clarivore assistant.... Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 601-610: Continues send. Declares result. Sets element properties: disabled=true. Purpose: update UI state and presentation.
+- Lines 611-620: Continues send. Declares answer. Sets element properties: textContent=. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 621-630: Continues send. Sets inline styles: color=#ef4444. Sets element properties: textContent=Help assistant is unavailable right now., value=, disabled=false. Purpose: update UI state and presentation.
+- Lines 631-640: Defines function initHelpAssistantDrawer. Binds events: click, keydown. Branches on conditions. Exports module members. Purpose: respond to user actions.
+- Lines 641-650: Continues initHelpAssistantDrawer. Declares existingDrawer, reopenBtn. Selects elements: helpAssistantDrawer, helpAssistantReopen. Sets inline styles: display=existingDrawer.classList.contains('open') ? 'none' : 'inl.... Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 651-660: Continues initHelpAssistantDrawer. Declares drawer. Sets element properties: innerHTML=`. Purpose: update UI state and presentation.
+- Lines 661-670: Continues initHelpAssistantDrawer. Purpose: implement module logic.
+- Lines 671-680: Continues initHelpAssistantDrawer. Declares reopenBtn. Sets element properties: textContent=Help. Purpose: update UI state and presentation.
+- Lines 681-690: Continues initHelpAssistantDrawer. Declares open, heightValue, mode, conversationEl, input. Selects elements: #helpAssistantConversation, #helpAssistantInput. Updates classes (toggle: open). Sets inline styles: height=`${Math.min(Math.max(heightValue, 200), window.innerHeigh..., display=open ? 'none' : 'inline-flex'. Purpose: update UI state and presentation.
+- Lines 691-700: Continues initHelpAssistantDrawer. Declares sendBtn, newBtn, statusEl, closeBtn. Selects elements: #helpAssistantSend, #helpAssistantNew, #helpAssistantStatus, #helpAssistantClose. Purpose: connect logic to DOM elements.
+- Lines 701-710: Continues initHelpAssistantDrawer. Binds events: click. Updates classes (remove: open). Sets inline styles: display=inline-flex. Purpose: respond to user actions.
+- Lines 711-720: Defines function onPointerMove. Declares handle, startY, startHeight, delta, nextHeight, onPointerUp. Selects elements: #helpAssistantHandle. Sets inline styles: height=`${nextHeight}px`. Purpose: update UI state and presentation.
+- Lines 721-730: Continues onPointerMove. Declares finalHeight. Binds events: pointerdown, pointermove, pointerup. Purpose: respond to user actions.
+- Lines 731-740: Defines function openHelpAssistantDrawer. Binds events: click. Exports module members. Purpose: respond to user actions.
+- Lines 741-749: Continues openHelpAssistantDrawer. Declares drawer, reopenBtn. Selects elements: helpAssistantDrawer, helpAssistantReopen. Updates classes (add: open). Sets inline styles: display=none. Branches on conditions. Purpose: update UI state and presentation.
+
+## public/js/ingredient-allergen-analysis.js
+
+- Lines 1-10: Defines function getApiKey. Declares apiKey. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 11-20: Continues getApiKey. Declares requestBody, useExtendedThinking = false, model = "claude-sonnet-4-5-20250929". Branches on conditions. Purpose: implement module logic.
+- Lines 21-30: Continues getApiKey. Branches on conditions. Purpose: implement module logic.
+- Lines 31-40: Continues getApiKey. Declares response. Fetches: https://api.anthropic.com/v1/messages. Serializes or parses JSON. Purpose: load or persist data for the page.
+- Lines 41-50: Continues getApiKey. Declares err, data, block. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 51-60: Continues getApiKey. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 61-70: Defines function analyzeAllergensWithLabelCropper. Declares wordList, line, words. Iterates collections. Exports module members. Purpose: expose helpers to other modules.
+- Lines 71-80: Continues analyzeAllergensWithLabelCropper. Declares word, indexedWordList. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 81-90: Continues analyzeAllergensWithLabelCropper. Declares userPrompt. Iterates collections. Purpose: implement module logic.
+- Lines 91-100: Continues analyzeAllergensWithLabelCropper. Iterates collections. Purpose: implement module logic.
+- Lines 101-110: Continues analyzeAllergensWithLabelCropper. Purpose: implement module logic.
+- Lines 111-120: Continues analyzeAllergensWithLabelCropper. Purpose: implement module logic.
+- Lines 121-130: Continues analyzeAllergensWithLabelCropper. Declares response. Purpose: implement module logic.
+- Lines 131-140: Continues analyzeAllergensWithLabelCropper. Declares responseText, lines. Branches on conditions. Purpose: implement module logic.
+- Lines 141-150: Continues analyzeAllergensWithLabelCropper. Declares jsonMatch. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 151-160: Continues analyzeAllergensWithLabelCropper. Declares parsed. Serializes or parses JSON. Returns values from this block. Purpose: implement module logic.
+- Lines 161-162: Continues analyzeAllergensWithLabelCropper. Purpose: implement module logic.
+
+## public/js/ingredient-label-capture.js
+
+- Lines 1-10: Defines function esc. Declares div. Sets element properties: textContent=text || ''. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 11-20: Defines function getApiKey. Returns values from this block. Purpose: implement module logic.
+- Lines 21-30: Continues getApiKey. Declares anthropicKey, googleKey, setupModal. Sets inline styles: cssText=[. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 31-40: Continues getApiKey. Purpose: implement module logic.
+- Lines 41-50: Continues getApiKey. Sets element properties: innerHTML=`. Purpose: update UI state and presentation.
+- Lines 51-60: Continues getApiKey. Purpose: implement module logic.
+- Lines 61-70: Continues getApiKey. Declares aKey, gKey. Selects elements: #setupSaveBtn, #setupAnthropicKey, #setupGoogleKey. Branches on conditions. Purpose: connect logic to DOM elements.
+- Lines 71-80: Continues getApiKey. Selects elements: #setupCancelBtn. Purpose: connect logic to DOM elements.
+- Lines 81-90: Defines function callClaudeForAnalysis. Declares apiKey. Branches on conditions. Purpose: implement module logic.
+- Lines 91-100: Continues callClaudeForAnalysis. Declares requestBody, useExtendedThinking = false, model = 'claude-sonnet-4-5-20250929'. Purpose: implement module logic.
+- Lines 101-110: Continues callClaudeForAnalysis. Branches on conditions. Purpose: implement module logic.
+- Lines 111-120: Continues callClaudeForAnalysis. Declares response. Fetches: https://api.anthropic.com/v1/messages. Serializes or parses JSON. Purpose: load or persist data for the page.
+- Lines 121-130: Continues callClaudeForAnalysis. Declares err, data. Branches on conditions. Purpose: implement module logic.
+- Lines 131-140: Continues callClaudeForAnalysis. Declares block. Iterates collections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 141-150: Defines function getClaudeTranscription. Declares systemPrompt. Purpose: implement module logic.
+- Lines 151-160: Continues getClaudeTranscription. Declares response. Purpose: implement module logic.
+- Lines 161-170: Continues getClaudeTranscription. Purpose: implement module logic.
+- Lines 171-180: Continues getClaudeTranscription. Declares jsonMatch. Branches on conditions. Purpose: implement module logic.
+- Lines 181-190: Defines function getVisionWords. Declares googleApiKey. Serializes or parses JSON. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 191-200: Continues getVisionWords. Declares response. Serializes or parses JSON. Purpose: implement module logic.
+- Lines 201-210: Continues getVisionWords. Declares err, data, annotation. Branches on conditions. Purpose: implement module logic.
+- Lines 211-220: Continues getVisionWords. Declares words. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 221-230: Continues getVisionWords. Declares text, vertices, x0, y0, x1, y1. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 231-240: Continues getVisionWords. Purpose: implement module logic.
+- Lines 241-250: Defines function matchLinesToVisualLines. Declares systemPrompt. Returns values from this block. Purpose: implement module logic.
+- Lines 251-260: Continues matchLinesToVisualLines. Purpose: implement module logic.
+- Lines 261-270: Continues matchLinesToVisualLines. Declares transcriptDesc, visualDesc. Iterates collections. Purpose: implement module logic.
+- Lines 271-280: Continues matchLinesToVisualLines. Declares response, jsonMatch. Branches on conditions. Purpose: implement module logic.
+- Lines 281-290: Defines function findMissingWordsAndBuildLines. Declares cleanWord, transcriptWords. Serializes or parses JSON. Iterates collections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 291-300: Continues findMissingWordsAndBuildLines. Declares lines. Iterates collections. Returns values from this block. Purpose: implement module logic.
+- Lines 301-310: Continues findMissingWordsAndBuildLines. Declares visualIdx, vl, transcriptText, matchingWords, transcriptWords. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 311-320: Continues findMissingWordsAndBuildLines. Declares transcriptWordCounts, matchedWordCounts, clean. Iterates collections. Purpose: implement module logic.
+- Lines 321-330: Continues findMissingWordsAndBuildLines. Declares missingWords, matchedCount, missing. Iterates collections. Purpose: implement module logic.
+- Lines 331-340: Continues findMissingWordsAndBuildLines. Declares usedBboxes, vlYMin, vlYMax, vlHeight, yTolerance, missingWord, .... Iterates collections. Purpose: implement module logic.
+- Lines 341-350: Continues findMissingWordsAndBuildLines. Declares bboxKey, isExactMatch, isCloseMatch, notUsed, withinYRange. Returns values from this block. Purpose: implement module logic.
+- Lines 351-360: Continues findMissingWordsAndBuildLines. Declares avgY, bestMatch. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 361-370: Continues findMissingWordsAndBuildLines. Declares wordsForBbox, x0, y0. Iterates collections. Purpose: implement module logic.
+- Lines 371-380: Continues findMissingWordsAndBuildLines. Declares x1, y1. Iterates collections. Purpose: implement module logic.
+- Lines 381-390: Defines function analyzeWithLabelCropper. Declares base64Data, mediaType, claudeLines. Returns values from this block. Purpose: implement module logic.
+- Lines 391-400: Continues analyzeWithLabelCropper. Declares visionWords, sortedWords, yGroups, currentYGroup, groupStartY. Purpose: implement module logic.
+- Lines 401-410: Continues analyzeWithLabelCropper. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 411-420: Continues analyzeWithLabelCropper. Declares visualLines, wordWidths, medianWidth, gapThreshold. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 421-430: Continues analyzeWithLabelCropper. Declares currentLine, lastX1, gap, text, x0. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 431-440: Continues analyzeWithLabelCropper. Declares y0, x1, y1. Iterates collections. Purpose: implement module logic.
+- Lines 441-450: Continues analyzeWithLabelCropper. Declares text, x0, y0, x1, y1. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 451-460: Continues analyzeWithLabelCropper. Declares lineMapping, lines, img. Purpose: implement module logic.
+- Lines 461-470: Continues analyzeWithLabelCropper. Declares imgWidth, imgHeight, data. Sets element properties: src=imageDataUrl. Iterates collections. Purpose: update UI state and presentation.
+- Lines 471-480: Continues analyzeWithLabelCropper. Iterates collections. Purpose: implement module logic.
+- Lines 481-490: Continues analyzeWithLabelCropper. Returns values from this block. Purpose: implement module logic.
+- Lines 491-500: Defines function analyzeIngredientPhoto. Declares skipAllergenAnalysis, keysConfigured. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 501-510: Continues analyzeIngredientPhoto. Declares correctedImage, slantAngle, analysisResult. Branches on conditions. Purpose: implement module logic.
+- Lines 511-520: Continues analyzeIngredientPhoto. Declares lines, transcript. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 521-530: Continues analyzeIngredientPhoto. Declares allergenFlags, allergenResult. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 531-540: Defines function rotateImage. Declares img. Returns values from this block. Purpose: implement module logic.
+- Lines 541-550: Continues rotateImage. Declares canvas, ctx, angleRad, sin, cos, newWidth, .... Purpose: implement module logic.
+- Lines 551-560: Continues rotateImage. Purpose: implement module logic.
+- Lines 561-570: Defines function waitForOpenCvReady. Declares resolved. Sets element properties: src=imgSrc. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 571-580: Continues waitForOpenCvReady. Declares timer. Schedules timed work. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 581-590: Defines function detectSlantAngle. Declares ready. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 591-600: Continues detectSlantAngle. Declares img, maxDim, scale, w, h. Returns values from this block. Purpose: implement module logic.
+- Lines 601-610: Continues detectSlantAngle. Declares canvas, ctx, src, gray. Purpose: implement module logic.
+- Lines 611-620: Continues detectSlantAngle. Declares cx, cy, roiW, roiH, roiX, roiY, .... Purpose: implement module logic.
+- Lines 621-630: Continues detectSlantAngle. Declares thresh, lines, angles. Purpose: implement module logic.
+- Lines 631-640: Continues detectSlantAngle. Declares i, x1, y1, x2, y2, angle. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 641-650: Continues detectSlantAngle. Branches on conditions. Purpose: implement module logic.
+- Lines 651-660: Continues detectSlantAngle. Declares medianAngle. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 661-670: Continues detectSlantAngle. Sets element properties: src=imageDataUrl. Purpose: update UI state and presentation.
+- Lines 671-680: Defines function compressImage. Declares img, canvas, width, height. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 681-690: Continues compressImage. Declares ctx. Purpose: implement module logic.
+- Lines 691-700: Defines function showIngredientPhotoUploadModal. Declares rowIdx, ingredientName, resolvedOptions, resolvedPreloaded. Sets element properties: src=dataUrl. Purpose: update UI state and presentation.
+- Lines 701-710: Continues showIngredientPhotoUploadModal. Branches on conditions. Purpose: implement module logic.
+- Lines 711-720: Continues showIngredientPhotoUploadModal. Declares inlineResults, hasRowUpdates, skipRowUpdates, onApplyResults. Purpose: implement module logic.
+- Lines 721-730: Continues showIngredientPhotoUploadModal. Declares capturedPhoto, analysisResult, mediaStream, lineConfirmations, lineCardMap, lineConfirmButtons, .... Purpose: implement module logic.
+- Lines 731-740: Continues showIngredientPhotoUploadModal. Declares activeWordEditor, nextGlobalWordIndex, lineLayoutHandlers, resizeHandler, reanalysisRequestId, analysisOverlay, .... Purpose: implement module logic.
+- Lines 741-750: Continues showIngredientPhotoUploadModal. Sets inline styles: cssText=[. Purpose: update UI state and presentation.
+- Lines 751-760: Continues showIngredientPhotoUploadModal. Sets element properties: innerHTML=`. Purpose: update UI state and presentation.
+- Lines 761-770: Continues showIngredientPhotoUploadModal. Purpose: implement module logic.
+- Lines 771-780: Continues showIngredientPhotoUploadModal. Purpose: implement module logic.
+- Lines 781-790: Continues showIngredientPhotoUploadModal. Purpose: implement module logic.
+- Lines 791-800: Continues showIngredientPhotoUploadModal. Purpose: implement module logic.
+- Lines 801-810: Continues showIngredientPhotoUploadModal. Purpose: implement module logic.
+- Lines 811-820: Continues showIngredientPhotoUploadModal. Purpose: implement module logic.
+- Lines 821-830: Continues showIngredientPhotoUploadModal. Declares video, canvas, preview, statusDiv, buttonsContainer, cameraBtn, .... Selects elements: #ingredientCameraVideo, #ingredientCameraCanvas, #ingredientPhotoPreview, #photoStatusDiv, #photoButtonsContainer, .ingredientCameraBtn, .... Purpose: connect logic to DOM elements.
+- Lines 831-840: Continues showIngredientPhotoUploadModal. Declares captureBtn, analyzeBtn, cancelBtn, fileInput, fullImageSection, fullImageContainer, .... Selects elements: .ingredientCaptureBtn, .ingredientAnalyzeBtn, .ingredientCancelBtn, #ingredientFileInput, #fullImageSection, #fullImageContainer, .... Purpose: connect logic to DOM elements.
+- Lines 841-850: Defines function stopCamera. Declares allergenResultsContainer, applyButtonContainer, applyBtn, retakeBtn, reportPhotoIssueBtn. Selects elements: #allergenResultsContainer, #applyButtonContainer, .applyResultsBtn, .retakePhotoBtn, .reportPhotoIssueBtn. Iterates collections. Branches on conditions. Purpose: connect logic to DOM elements.
+- Lines 851-860: Defines function closeModal. Branches on conditions. Purpose: implement module logic.
+- Lines 861-870: Continues closeModal. Declares showButtons. Sets inline styles: display='none'), display='inline-block'). Iterates collections. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 871-880: Continues closeModal. Declares correctedPreview, pendingAnalysis. Sets inline styles: display=block. Sets element properties: src=correctedPreview. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 881-890: Continues closeModal. Sets inline styles: color=#4ade80, color=#a8b2d6. Sets element properties: textContent=Allergen and diet analysis complete!, textContent=Text extracted. Running allergen and diet analysis.... Branches on conditions. Purpose: update UI state and presentation.
+- Lines 891-900: Continues closeModal. Binds events: click. Sets inline styles: display=none, display=flex. Purpose: respond to user actions.
+- Lines 901-910: Continues closeModal. Binds events: click. Sets inline styles: display=block, display=none, color=#ef4444. Sets element properties: textContent='Camera access denied: ' + err.message. Purpose: respond to user actions.
+- Lines 911-920: Continues closeModal. Sets inline styles: display=none, display=block. Sets element properties: textContent=Photo captured. Click Analyze to process., src=capturedPhoto. Purpose: update UI state and presentation.
+- Lines 921-930: Continues closeModal. Declares file, reader. Binds events: click, change. Sets inline styles: color=#a8b2d6. Branches on conditions. Returns values from this block. Purpose: respond to user actions.
+- Lines 931-940: Continues closeModal. Declares tempImg. Sets inline styles: display=block, display=none. Sets element properties: src=capturedPhoto. Purpose: update UI state and presentation.
+- Lines 941-950: Defines function runInlineIngredientAnalysis. Sets element properties: textContent=Photo loaded. Click Analyze to process., textContent=Analyzing..., src=evt.target.result. Purpose: update UI state and presentation.
+- Lines 951-960: Continues runInlineIngredientAnalysis. Declares result, correctedPreview. Sets inline styles: color=#a8b2d6, display=block. Sets element properties: textContent=status, src=correctedPreview. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 961-970: Continues runInlineIngredientAnalysis. Declares pendingAnalysis. Sets inline styles: color=#4ade80. Sets element properties: textContent=Allergen and diet analysis complete!. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 971-980: Continues runInlineIngredientAnalysis. Sets inline styles: color=#a8b2d6, display=none, display=flex, color=#ef4444. Sets element properties: textContent=Text extracted. Running allergen and diet analysis..., textContent='Analysis failed: ' + err.message. Purpose: update UI state and presentation.
+- Lines 981-990: Continues runInlineIngredientAnalysis. Declares canRunBackground, useInlineResults. Binds events: click. Branches on conditions. Returns values from this block. Purpose: respond to user actions.
+- Lines 991-1000: Continues runInlineIngredientAnalysis. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 1001-1010: Defines function updateConfirmationUI. Declares result. Purpose: implement module logic.
+- Lines 1011-1020: Continues updateConfirmationUI. Declares confirmedCount, allConfirmed, readyToApply. Sets inline styles: color=allConfirmed ? '#22c55e' : '#f59e0b', opacity=1. Sets element properties: textContent=`${confirmedCount}/${totalLines} lines confirmed`, disabled=false. Iterates collections. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 1021-1030: Defines function setLineConfirmationState. Sets inline styles: cursor=pointer, opacity=0.5, cursor=not-allowed. Sets element properties: disabled=true. Purpose: update UI state and presentation.
+- Lines 1031-1040: Continues setLineConfirmationState. Declares confirmBtn, lineDiv. Sets inline styles: background=#17663a, borderColor=#22c55e, color=#fff, background=#f59e0b. Sets element properties: textContent=✓ Confirmed. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 1041-1050: Continues setLineConfirmationState. Declares totalLines. Sets inline styles: borderColor=#d97706, color=#fff, border=isConfirmed ? '2px solid #22c55e' : 'none'. Sets element properties: textContent=Confirm. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 1051-1060: Defines function refreshTranscriptFromWords. Declares transcript, words, updated. Iterates collections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 1061-1070: Defines function reindexWordData. Declares globalIndex. Returns values from this block. Purpose: implement module logic.
+- Lines 1071-1080: Continues reindexWordData. Declares lineIndices, wordData, sorted. Iterates collections. Purpose: implement module logic.
+- Lines 1081-1090: Defines function ensureAnalysisOverlay. Declares styleTag. Sets element properties: textContent='@keyframes labelAnalysisSpin { from { transform: rotate(.... Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 1091-1100: Continues ensureAnalysisOverlay. Sets inline styles: cssText=[. Purpose: update UI state and presentation.
+- Lines 1101-1110: Continues ensureAnalysisOverlay. Sets element properties: innerHTML=`. Purpose: update UI state and presentation.
+- Lines 1111-1120: Defines function showAnalysisOverlay. Selects elements: #labelAnalysisOverlayMessage. Sets inline styles: display=flex. Sets element properties: textContent=message || 'Updating analysis...'. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 1121-1130: Defines function hideAnalysisOverlay. Sets inline styles: display=none. Sets element properties: innerHTML=`<div style="color:#a8b2d6. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 1131-1140: Defines function runAllergenReanalysis. Declares transcript. Sets inline styles: display=block. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 1141-1150: Continues runAllergenReanalysis. Declares requestId. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 1151-1160: Continues runAllergenReanalysis. Declares result, flags. Sets inline styles: color=#a8b2d6. Sets element properties: textContent=statusMessage. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 1161-1170: Continues runAllergenReanalysis. Sets inline styles: color=#4ade80, color=#f59e0b. Sets element properties: textContent=Allergen and diet analysis complete!, textContent=Analysis update failed. Using previous results.. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 1171-1180: Continues runAllergenReanalysis. Branches on conditions. Purpose: implement module logic.
+- Lines 1181-1190: Defines function cancelPendingReanalysis. Purpose: implement module logic.
+- Lines 1191-1200: Defines function buildLineText. Declares wordData. Iterates collections. Returns values from this block. Purpose: implement module logic.
+- Lines 1201-1210: Defines function layoutLineWords. Declares container. Iterates collections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 1211-1220: Continues layoutLineWords. Declares textDiv, wordData, totalChars, availableWidth, baseFontSize, computedSize, .... Selects elements: span[data-word-idx="${idx}"]. Iterates collections. Branches on conditions. Returns values from this block. Purpose: connect logic to DOM elements.
+- Lines 1221-1230: Defines function renderLineWords. Declares container. Sets inline styles: left=`${word.centerPct}%`, transform=translateX(-50%), top=0px, fontSize=`${fontSize}px`, height=`${Math.round(fontSize * 1.6)}px`. Purpose: update UI state and presentation.
+- Lines 1231-1240: Continues renderLineWords. Declares textDiv, wordData, span. Sets inline styles: cssText='position:absolute. Sets element properties: textContent=word.text, innerHTML=, dataset.globalIndex=word.globalIndex, dataset.wordIdx=idx. Iterates collections. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 1241-1250: Continues renderLineWords. Binds events: click. Schedules timed work. Branches on conditions. Returns values from this block. Purpose: respond to user actions.
+- Lines 1251-1260: Defines function renderAllLineWords. Declares lineIdx. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 1261-1270: Defines function openWordEditor. Declares container, textDiv, safeCenter. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 1271-1280: Continues openWordEditor. Declares editorWrap. Sets inline styles: cssText=[. Purpose: update UI state and presentation.
+- Lines 1281-1290: Continues openWordEditor. Declares originalRawText, hasTrailingComma, editableText, input. Binds events: click. Purpose: respond to user actions.
+- Lines 1291-1300: Continues openWordEditor. Declares actionRow, saveBtn. Binds events: click. Sets inline styles: cssText='min-width:70px, cssText='display:flex. Sets element properties: value=wordIdx !== null ? editableText : '', placeholder=wordIdx !== null ? 'Edit word' : 'Add word'. Purpose: respond to user actions.
+- Lines 1301-1310: Continues openWordEditor. Declares cancelBtn. Sets inline styles: cssText='padding:4px 10px. Sets element properties: textContent=Save, textContent=Cancel. Purpose: update UI state and presentation.
+- Lines 1311-1320: Defines function finish. Declares originalPadding. Sets inline styles: paddingBottom=28px. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 1321-1330: Continues finish. Declares value, didChange, cleanedValue, nextText. Sets inline styles: paddingBottom=originalPadding. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 1331-1340: Continues finish. Branches on conditions. Purpose: implement module logic.
+- Lines 1341-1350: Continues finish. Branches on conditions. Purpose: implement module logic.
+- Lines 1351-1360: Continues finish. Binds events: click, keydown. Branches on conditions. Purpose: respond to user actions.
+- Lines 1361-1370: Defines function displayCroppedLines. Sets element properties: innerHTML=. Purpose: update UI state and presentation.
+- Lines 1371-1380: Continues displayCroppedLines. Sets element properties: innerHTML=. Purpose: update UI state and presentation.
+- Lines 1381-1390: Continues displayCroppedLines. Declares globalWordIndex. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 1391-1400: Continues displayCroppedLines. Declares sourceImg, fullCanvas, ctx. Sets element properties: src=imageDataUrl. Purpose: update UI state and presentation.
+- Lines 1401-1410: Continues displayCroppedLines. Declares boxColor, coords, x, w, h. Iterates collections. Purpose: implement module logic.
+- Lines 1411-1420: Continues displayCroppedLines. Purpose: implement module logic.
+- Lines 1421-1430: Continues displayCroppedLines. Declares fullImg, coords, x. Sets inline styles: cssText='width:100%, display=block. Sets element properties: src=fullCanvas.toDataURL('image/png'). Iterates collections. Purpose: update UI state and presentation.
+- Lines 1431-1440: Continues displayCroppedLines. Declares w, h, cropCanvas, lineDiv. Sets inline styles: cssText='background:#1a1f35. Purpose: update UI state and presentation.
+- Lines 1441-1450: Continues displayCroppedLines. Declares lineContent, lineLabel. Sets inline styles: cssText='flex:1, cssText='color:#a8b2d6. Sets element properties: innerHTML=`<span style="display:inline-block, dataset.lineIdx=lineIdx. Purpose: update UI state and presentation.
+- Lines 1451-1460: Continues displayCroppedLines. Declares lineContentWrapper, cropImg, transcriptWords. Sets inline styles: cssText='display:inline-block, cssText='width:100%. Sets element properties: src=cropCanvas.toDataURL('image/png'). Iterates collections. Purpose: update UI state and presentation.
+- Lines 1461-1470: Continues displayCroppedLines. Declares visionWords, textDiv, rect. Binds events: click. Sets inline styles: cssText='margin-top:8px. Sets element properties: dataset.lineIdx=lineIdx. Branches on conditions. Returns values from this block. Purpose: respond to user actions.
+- Lines 1471-1480: Continues displayCroppedLines. Declares clickPct, cropXStart, cropXEnd, cropWidth, usedVisionIndices, wordData. Iterates collections. Purpose: implement module logic.
+- Lines 1481-1490: Continues displayCroppedLines. Declares cleanTranscript, bestMatch, bestScore, cleanVision, score. Iterates collections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 1491-1500: Continues displayCroppedLines. Branches on conditions. Purpose: implement module logic.
+- Lines 1501-1510: Continues displayCroppedLines. Declares wordCenterPct, centerPctInCrop. Returns values from this block. Purpose: implement module logic.
+- Lines 1511-1520: Continues displayCroppedLines. Schedules timed work. Purpose: implement module logic.
+- Lines 1521-1530: Continues displayCroppedLines. Declares confirmBtn. Sets inline styles: cssText=`. Sets element properties: dataset.lineIdx=lineIdx. Purpose: update UI state and presentation.
+- Lines 1531-1540: Continues displayCroppedLines. Sets element properties: textContent=Confirm. Purpose: update UI state and presentation.
+- Lines 1541-1550: Continues displayCroppedLines. Declares idx. Binds events: click. Purpose: respond to user actions.
+- Lines 1551-1560: Continues displayCroppedLines. Declares resolvedFlags. Binds events: resize. Iterates collections. Branches on conditions. Purpose: respond to user actions.
+- Lines 1561-1570: Continues displayCroppedLines. Declares shouldReanalyze. Sets inline styles: display=block, display=none. Schedules timed work. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 1571-1580: Defines function applyAllergenHighlighting. Declares indices, isContained. Iterates collections. Purpose: implement module logic.
+- Lines 1581-1590: Continues applyAllergenHighlighting. Declares color, span. Sets inline styles: textDecoration=underline, textDecorationColor=color, textDecorationThickness=2px, fontWeight=600. Iterates collections. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 1591-1600: Defines function displayAllergenResults. Sets inline styles: display=block. Sets element properties: innerHTML='<div style="color:#4ade80. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 1601-1610: Continues displayAllergenResults. Declares html, isContained, bgColor, borderColor, riskLabel, types. Iterates collections. Purpose: implement module logic.
+- Lines 1611-1620: Continues displayAllergenResults. Sets inline styles: display=block. Sets element properties: innerHTML=html. Purpose: update UI state and presentation.
+- Lines 1621-1630: Continues displayAllergenResults. Binds events: click. Sets inline styles: display=none, display=flex. Purpose: respond to user actions.
+- Lines 1631-1640: Defines function applyAnalysisResults. Declares flags, containedAllergens, mayContainAllergens. Sets element properties: textContent=. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 1641-1650: Continues applyAnalysisResults. Declares violatedDiets, mayContainDiets, confirmedLines, fallbackLines, ingredientText, ingredientLines. Iterates collections. Purpose: implement module logic.
+- Lines 1651-1660: Continues applyAnalysisResults. Declares labelImage, dietOptions, allergenAliases. Iterates collections. Purpose: implement module logic.
+- Lines 1661-1670: Continues applyAnalysisResults. Purpose: implement module logic.
+- Lines 1671-1680: Continues applyAnalysisResults. Purpose: implement module logic.
+- Lines 1681-1690: Defines function normalizeAllergenKey. Declares allergenList, lower. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 1691-1700: Defines function detectAllergensFromText. Declares lower, found. Iterates collections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 1701-1710: Defines function normalizeDietName. Declares lower, match, addMayContainDiets, normalized. Iterates collections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 1711-1720: Continues normalizeDietName. Declares allergenToDiets. Purpose: implement module logic.
+- Lines 1721-1730: Defines function resolveFlagAllergens. Declares values, flagAllergens, flagDiets, isContained, resolvedAllergens. Iterates collections. Returns values from this block. Purpose: implement module logic.
+- Lines 1731-1740: Continues resolveFlagAllergens. Declares normalized, affectedDiets. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 1741-1750: Continues resolveFlagAllergens. Declares normalized, affectedDiets. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 1751-1760: Continues resolveFlagAllergens. Iterates collections. Purpose: implement module logic.
+- Lines 1761-1770: Continues resolveFlagAllergens. Declares compliantDiets, compressedImage. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 1771-1780: Continues resolveFlagAllergens. Purpose: implement module logic.
+- Lines 1781-1790: Continues resolveFlagAllergens. Declares data. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 1791-1800: Continues resolveFlagAllergens. Branches on conditions. Purpose: implement module logic.
+- Lines 1801-1810: Continues resolveFlagAllergens. Declares newBrand. Branches on conditions. Purpose: implement module logic.
+- Lines 1811-1820: Continues resolveFlagAllergens. Branches on conditions. Purpose: implement module logic.
+- Lines 1821-1830: Continues resolveFlagAllergens. Purpose: implement module logic.
+- Lines 1831-1840: Continues resolveFlagAllergens. Declares frontModal. Binds events: click. Sets inline styles: cssText=[. Branches on conditions. Returns values from this block. Purpose: respond to user actions.
+- Lines 1841-1850: Continues resolveFlagAllergens. Purpose: implement module logic.
+- Lines 1851-1860: Continues resolveFlagAllergens. Sets element properties: innerHTML=`. Iterates collections. Purpose: update UI state and presentation.
+- Lines 1861-1870: Continues resolveFlagAllergens. Purpose: implement module logic.
+- Lines 1871-1880: Continues resolveFlagAllergens. Purpose: implement module logic.
+- Lines 1881-1890: Continues resolveFlagAllergens. Purpose: implement module logic.
+- Lines 1891-1900: Continues resolveFlagAllergens. Declares frontVideo. Selects elements: #frontCameraVideo. Purpose: connect logic to DOM elements.
+- Lines 1901-1910: Continues resolveFlagAllergens. Declares frontPreview, frontPlaceholder, frontCameraBtn, frontUploadBtn, frontCaptureBtn, frontFileInput, .... Selects elements: #frontPhotoPreview, #frontPlaceholder, .frontCameraBtn, .frontUploadBtn, .frontCaptureBtn, #frontFileInput, .... Purpose: connect logic to DOM elements.
+- Lines 1911-1920: Continues resolveFlagAllergens. Declares frontAnalyzingArea, frontProductNameArea, frontProductNameInput, frontProductNameHint, frontAnalyzingText, frontStream, .... Selects elements: .frontAnalyzingArea, .frontProductNameArea, .frontProductNameInput, .frontProductNameHint, span. Purpose: connect logic to DOM elements.
+- Lines 1921-1930: Defines function analyzeFrontImage. Declares response. Sets inline styles: display=block, display=none. Fetches: https://fgoiyycctnwnghrvsilt.supabase.co/functions/v1/analyze-product-front. Serializes or parses JSON. Purpose: load or persist data for the page.
+- Lines 1931-1940: Continues analyzeFrontImage. Declares result, confidence. Branches on conditions. Purpose: implement module logic.
+- Lines 1941-1950: Continues analyzeFrontImage. Sets inline styles: display=none, display=flex, color=confidence === 'high' ? '#22c55e' : '#f59e0b'. Sets element properties: textContent=confidence === 'high', value=detectedProductName. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 1951-1960: Continues analyzeFrontImage. Sets inline styles: color=#ef4444, display=none, display=flex. Sets element properties: textContent=Could not identify product - please enter the name, value=. Purpose: update UI state and presentation.
+- Lines 1961-1970: Defines function closeFrontModal. Sets inline styles: color=#ef4444. Sets element properties: textContent=Could not analyze image - please enter product name, value=. Iterates collections. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 1971-1980: Continues closeFrontModal. Binds events: click. Branches on conditions. Purpose: respond to user actions.
+- Lines 1981-1990: Continues closeFrontModal. Sets inline styles: display=block, display=none, display=inline-block. Purpose: update UI state and presentation.
+- Lines 1991-2000: Continues closeFrontModal. Declares canvas. Binds events: click. Iterates collections. Branches on conditions. Purpose: respond to user actions.
+- Lines 2001-2010: Continues closeFrontModal. Sets inline styles: display=none, display=block. Sets element properties: src=frontCapturedPhoto. Purpose: update UI state and presentation.
+- Lines 2011-2020: Continues closeFrontModal. Declares file, reader. Binds events: click, change. Branches on conditions. Returns values from this block. Purpose: respond to user actions.
+- Lines 2021-2030: Continues closeFrontModal. Sets inline styles: display=block, display=none. Sets element properties: src=frontCapturedPhoto. Purpose: update UI state and presentation.
+- Lines 2031-2040: Continues closeFrontModal. Declares productName. Binds events: click. Sets element properties: disabled=true. Purpose: respond to user actions.
+- Lines 2041-2050: Continues closeFrontModal. Sets inline styles: display=block. Sets element properties: textContent=Saving..., textContent=Applying results.... Branches on conditions. Purpose: update UI state and presentation.
+- Lines 2051-2060: Continues closeFrontModal. Sets inline styles: display=none, color=#f87171. Sets element properties: textContent=Failed to apply results. Please try again., textContent=✓ Save & Apply Results, disabled=false. Purpose: update UI state and presentation.
+- Lines 2061-2070: Continues closeFrontModal. Binds events: click. Sets inline styles: display=none, display=flex. Sets element properties: src=. Purpose: respond to user actions.
+- Lines 2071-2080: Continues closeFrontModal. Binds events: click. Sets inline styles: display=none, display=inline-block. Sets element properties: value=. Purpose: respond to user actions.
+- Lines 2081-2090: Continues closeFrontModal. Declares reportModal. Binds events: click. Sets inline styles: cssText=[. Branches on conditions. Purpose: respond to user actions.
+- Lines 2091-2100: Continues closeFrontModal. Purpose: implement module logic.
+- Lines 2101-2110: Continues closeFrontModal. Sets element properties: innerHTML=`. Purpose: update UI state and presentation.
+- Lines 2111-2120: Continues closeFrontModal. Declares msg. Selects elements: .cancelReportBtn, .sendReportBtn, textarea. Branches on conditions. Returns values from this block. Purpose: connect logic to DOM elements.
+- Lines 2121-2130: Continues closeFrontModal. Declares client, payload. Sets element properties: textContent=Sending..., disabled=true. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 2131-2140: Continues closeFrontModal. Declares error. Branches on conditions. Purpose: implement module logic.
+- Lines 2141-2150: Continues closeFrontModal. Sets element properties: textContent=Send Report, disabled=false. Purpose: update UI state and presentation.
+- Lines 2151-2153: Continues closeFrontModal. Purpose: implement module logic.
+
+## public/js/kitchen-tablet.js
+
+- Lines 1-10: Runs general logic. Purpose: implement module logic.
+- Lines 11-20: Declares OWNER_EMAIL, queueContainer. Selects elements: kitchen-queue. Purpose: connect logic to DOM elements.
+- Lines 21-30: Declares refreshBtn, completedToggle, promptBackdrop, promptTitle, promptMessage, promptInput, .... Selects elements: refresh-btn, kitchen-show-completed, kitchenPromptBackdrop, kitchenPromptTitle, kitchenPromptMessage, kitchenPromptInput, .... Purpose: connect logic to DOM elements.
+- Lines 31-40: Declares tabletState. Purpose: implement module logic.
+- Lines 41-50: Declares defaultSimulationState, managedRestaurantIds, isOwner. Branches on conditions. Purpose: implement module logic.
+- Lines 51-60: Defines function closeKitchenPrompt. Declares unsubscribeRealtime, previousOrderStatuses, AUTO_REFRESH_INTERVAL_MS, autoRefreshTimerId, showCompleted, promptResolve. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 61-70: Defines function openKitchenPrompt. Declares resolve. Updates classes (remove: show). Branches on conditions. Purpose: update UI state and presentation.
+- Lines 71-80: Continues openKitchenPrompt. Sets element properties: textContent=options.title || 'Add note', textContent=options.message || '', value=options.value || ''. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 81-90: Continues openKitchenPrompt. Updates classes (add: show). Sets element properties: textContent=options.confirmText || 'Confirm', placeholder=options.placeholder || ''. Schedules timed work. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 91-100: Continues openKitchenPrompt. Binds events: click. Branches on conditions. Purpose: respond to user actions.
+- Lines 101-110: Continues openKitchenPrompt. Binds events: click, keydown. Branches on conditions. Purpose: respond to user actions.
+- Lines 111-120: Continues openKitchenPrompt. Branches on conditions. Purpose: implement module logic.
+- Lines 121-130: Continues openKitchenPrompt. Declares completedStatuses. Binds events: change. Sets element properties: checked=false. Branches on conditions. Purpose: respond to user actions.
+- Lines 131-140: Defines function formatStatusBadge. Declares descriptor. Returns values from this block. Purpose: implement module logic.
+- Lines 141-150: Defines function getOrderTimestamps. Declares date, history, submittedEntry, submittedTime. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 151-160: Defines function renderKitchenQueue. Declares updates. Iterates collections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 161-170: Continues renderKitchenQueue. Declares relevantStatuses. Purpose: implement module logic.
+- Lines 171-180: Continues renderKitchenQueue. Declares activeOrders. Sets element properties: innerHTML=`. Iterates collections. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 181-190: Continues renderKitchenQueue. Declares cards, allergies, dishes. Iterates collections. Returns values from this block. Purpose: implement module logic.
+- Lines 191-200: Continues renderKitchenQueue. Declares chefOptions, faceIdControls. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 201-210: Continues renderKitchenQueue. Branches on conditions. Purpose: implement module logic.
+- Lines 211-220: Continues renderKitchenQueue. Branches on conditions. Purpose: implement module logic.
+- Lines 221-230: Continues renderKitchenQueue. Branches on conditions. Purpose: implement module logic.
+- Lines 231-240: Continues renderKitchenQueue. Purpose: implement module logic.
+- Lines 241-250: Continues renderKitchenQueue. Declares questionControls. Branches on conditions. Purpose: implement module logic.
+- Lines 251-260: Continues renderKitchenQueue. Branches on conditions. Purpose: implement module logic.
+- Lines 261-270: Continues renderKitchenQueue. Branches on conditions. Purpose: implement module logic.
+- Lines 271-280: Continues renderKitchenQueue. Purpose: implement module logic.
+- Lines 281-290: Continues renderKitchenQueue. Declares rejectControls. Branches on conditions. Purpose: implement module logic.
+- Lines 291-300: Continues renderKitchenQueue. Declares faceIdLog, items. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 301-310: Continues renderKitchenQueue. Declares submittedTimeStr, updatesHtml, submittedTime, updates. Purpose: implement module logic.
+- Lines 311-320: Continues renderKitchenQueue. Iterates collections. Returns values from this block. Purpose: implement module logic.
+- Lines 321-330: Continues renderKitchenQueue. Purpose: implement module logic.
+- Lines 331-340: Defines function findOrder. Sets element properties: innerHTML=cards. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 341-350: Defines function setOrders. Declares orders, order, previousStatus. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 351-360: Defines function refreshOrders. Purpose: implement module logic.
+- Lines 361-370: Defines function startRealtime. Declares orders. Purpose: implement module logic.
+- Lines 371-380: Continues startRealtime. Iterates collections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 381-390: Continues startRealtime. Declares previousStatus, idx. Branches on conditions. Purpose: implement module logic.
+- Lines 391-400: Continues startRealtime. Purpose: implement module logic.
+- Lines 401-410: Defines function stopRealtime. Schedules timed work. Branches on conditions. Purpose: implement module logic.
+- Lines 411-420: Defines function stopAutoRefresh. Branches on conditions. Purpose: implement module logic.
+- Lines 421-430: Defines function handleAcknowledge. Declares select, chefId. Selects elements: [data-role="chef-select"]. Branches on conditions. Purpose: connect logic to DOM elements.
+- Lines 431-440: Continues handleAcknowledge. Declares fallbackChef. Sets element properties: value=chefId. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 441-450: Continues handleAcknowledge. Returns values from this block. Purpose: implement module logic.
+- Lines 451-460: Defines function handleQuestion. Declares question. Purpose: implement module logic.
+- Lines 461-470: Continues handleQuestion. Declares text. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 471-480: Continues handleQuestion. Purpose: implement module logic.
+- Lines 481-490: Defines function handleReject. Declares reason. Iterates collections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 491-500: Continues handleReject. Binds events: click. Purpose: respond to user actions.
+- Lines 501-510: Continues handleReject. Declares button, action, orderId. Selects elements: [data-action]. Branches on conditions. Returns values from this block. Purpose: connect logic to DOM elements.
+- Lines 511-520: Defines class name. Declares card, order. Selects elements: .kitchen-card. Branches on conditions. Returns values from this block. Purpose: connect logic to DOM elements.
+- Lines 521-530: Continues name. Binds events: click. Sets element properties: disabled=true. Branches on conditions. Purpose: respond to user actions.
+- Lines 531-540: Defines function requireAuth. Sets element properties: textContent=Refreshing..., textContent=Refresh orders, disabled=false. Purpose: update UI state and presentation.
+- Lines 541-550: Continues requireAuth. Declares user, data, error. Sets element properties: href=account.html?redirect=kitchen-tablet. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 551-560: Defines function showUnauthorized. Sets element properties: innerHTML=`. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 561-570: Defines function bootstrap. Declares user, role, isManager. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 571-580: Continues bootstrap. Declares managerRestaurants. Branches on conditions. Purpose: implement module logic.
+- Lines 581-590: Continues bootstrap. Iterates collections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 591-600: Continues bootstrap. Binds events: beforeunload. Purpose: respond to user actions.
+- Lines 601-601: Continues bootstrap. Purpose: implement module logic.
+
+## public/js/manager-context.js
+
+- Lines 1-10: Defines function fetchManagerRestaurants. Declares OWNER_EMAIL, isOwner. Branches on conditions. Returns values from this block. Exports module members. Purpose: expose helpers to other modules.
+- Lines 11-20: Continues fetchManagerRestaurants. Declares data, error. Supabase tables: restaurants (select). Iterates collections. Branches on conditions. Returns values from this block. Purpose: load or persist data for the page.
+- Lines 21-30: Continues fetchManagerRestaurants. Iterates collections. Returns values from this block. Purpose: implement module logic.
+- Lines 31-40: Continues fetchManagerRestaurants. Declares data, error. Supabase tables: restaurant_managers (select). Branches on conditions. Returns values from this block. Purpose: load or persist data for the page.
+- Lines 41-50: Continues fetchManagerRestaurants. Declares restaurantIds, data, error. Supabase tables: restaurants (select). Iterates collections. Branches on conditions. Returns values from this block. Purpose: load or persist data for the page.
+- Lines 51-60: Continues fetchManagerRestaurants. Iterates collections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 61-70: Continues fetchManagerRestaurants. Returns values from this block. Purpose: implement module logic.
+- Lines 71-71: Continues fetchManagerRestaurants. Purpose: implement module logic.
+
+## public/js/manager-dashboard.js
+
+- Lines 1-10: Declares currentUser, managedRestaurants, selectedRestaurantId, dishAnalytics, accommodationRequests. Purpose: implement module logic.
+- Lines 11-20: Declares currentRequestId, currentRestaurantData, recentChangeLogs, recentChatMessages, chatReadState, chatUnreadCount, .... Iterates collections. Purpose: implement module logic.
+- Lines 21-30: Declares rawInteractions, rawLoves, userLovedSet, userOrderCounts, brandItemsCache, activeBrandReplaceItem, .... Selects elements: loading-state. Iterates collections. Purpose: connect logic to DOM elements.
+- Lines 31-40: Declares authRequired, notManager, dashboardContent, restaurantSelect, restaurantSelectorContainer, brandItemsSearchInput, .... Selects elements: auth-required, not-manager, dashboard-content, restaurant-select, restaurant-selector-container, brand-items-search. Purpose: connect logic to DOM elements.
+- Lines 41-50: Defines function init. Declares CONFIRM_REMINDER_DAYS, sentReminderKeys. Branches on conditions. Purpose: implement module logic.
+- Lines 51-60: Continues init. Declares isOwner, isManager, navRestaurants. Iterates collections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 61-70: Continues init. Declares modeToggleContainer, currentMode. Selects elements: modeToggleContainer. Uses storage keys: getItem:clarivoreManagerMode. Branches on conditions. Purpose: connect logic to DOM elements.
+- Lines 71-80: Continues init. Declares isEditorMode. Sets inline styles: display=flex. Sets element properties: innerHTML=`. Uses storage keys: setItem:clarivoreManagerMode. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 81-90: Continues init. Declares toggle. Selects elements: modeToggle. Sets element properties: href=home.html. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 91-100: Continues init. Sets element properties: href=home.html, href=manager-dashboard.html. Uses storage keys: setItem:clarivoreManagerMode. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 101-110: Continues init. Sets inline styles: display=isOwner ? 'block' : 'none'. Purpose: update UI state and presentation.
+- Lines 111-120: Defines function showAuthRequired. Sets inline styles: display=none, display=block. Purpose: update UI state and presentation.
+- Lines 121-130: Defines function loadManagedRestaurants. Declares isOwner, restaurants. Sets inline styles: display=block, display=none. Purpose: update UI state and presentation.
+- Lines 131-140: Continues loadManagedRestaurants. Declares data, error. Supabase tables: restaurants (select). Branches on conditions. Purpose: load or persist data for the page.
+- Lines 141-150: Continues loadManagedRestaurants. Declares data, error. Supabase tables: restaurant_managers (select). Iterates collections. Branches on conditions. Purpose: load or persist data for the page.
+- Lines 151-160: Continues loadManagedRestaurants. Sets element properties: innerHTML=managedRestaurants.map(r =>. Iterates collections. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 161-170: Continues loadManagedRestaurants. Branches on conditions. Purpose: implement module logic.
+- Lines 171-180: Defines function loadDashboardData. Sets inline styles: display=block, display=none. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 181-190: Continues loadDashboardData. Declares data, error. Supabase tables: restaurants (select). Iterates collections. Branches on conditions. Purpose: load or persist data for the page.
+- Lines 191-200: Continues loadDashboardData. Declares data, error. Supabase tables: change_logs (select). Purpose: load or persist data for the page.
+- Lines 201-210: Continues loadDashboardData. Declares data, error. Supabase tables: dish_analytics (select). Branches on conditions. Purpose: load or persist data for the page.
+- Lines 211-220: Continues loadDashboardData. Declares data, error. Supabase tables: accommodation_requests (select). Branches on conditions. Purpose: load or persist data for the page.
+- Lines 221-230: Continues loadDashboardData. Declares data, error. Supabase tables: dish_interactions (select). Iterates collections. Purpose: load or persist data for the page.
+- Lines 231-240: Continues loadDashboardData. Declares data, error. Supabase tables: user_loved_dishes (select). Iterates collections. Branches on conditions. Purpose: load or persist data for the page.
+- Lines 241-250: Continues loadDashboardData. Declares data, error. Supabase tables: tablet_orders (select). Iterates collections. Branches on conditions. Purpose: load or persist data for the page.
+- Lines 251-260: Continues loadDashboardData. Declares payload, dishes. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 261-270: Continues loadDashboardData. Declares dishName. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 271-280: Continues loadDashboardData. Declares userId. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 281-290: Continues loadDashboardData. Purpose: implement module logic.
+- Lines 291-300: Continues loadDashboardData. Sets inline styles: display=none, display=block. Purpose: update UI state and presentation.
+- Lines 301-310: Defines function loadChatMessages. Schedules timed work. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 311-320: Continues loadChatMessages. Declares data, error. Supabase tables: restaurant_direct_messages (select). Branches on conditions. Purpose: load or persist data for the page.
+- Lines 321-330: Continues loadChatMessages. Purpose: implement module logic.
+- Lines 331-340: Defines function loadChatReadState. Declares data, error. Supabase tables: restaurant_direct_message_reads (select). Branches on conditions. Purpose: load or persist data for the page.
+- Lines 341-350: Continues loadChatReadState. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 351-360: Defines function getUnreadCountForManager. Declares query. Supabase tables: restaurant_direct_messages (select). Branches on conditions. Purpose: load or persist data for the page.
+- Lines 361-370: Continues getUnreadCountForManager. Declares count, error. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 371-380: Defines function buildConfirmLink. Declares url. Returns values from this block. Purpose: implement module logic.
+- Lines 381-390: Defines function maybeSendConfirmReminder. Declares dueLabel. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 391-400: Continues maybeSendConfirmReminder. Declares reminderTag, reminderKey, data, error. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 401-410: Continues maybeSendConfirmReminder. Supabase tables: restaurant_direct_messages (select). Branches on conditions. Purpose: load or persist data for the page.
+- Lines 411-420: Continues maybeSendConfirmReminder. Declares confirmLink, message, error. Supabase tables: restaurant_direct_messages (insert). Returns values from this block. Purpose: load or persist data for the page.
+- Lines 421-430: Continues maybeSendConfirmReminder. Branches on conditions. Purpose: implement module logic.
+- Lines 431-440: Defines function renderDashboard. Purpose: implement module logic.
+- Lines 441-450: Defines function syncDashboardPanelHeights. Declares referenceBtn, referencePanel, height. Selects elements: viewFullLogBtn, .dashboard-panel. Schedules timed work. Branches on conditions. Returns values from this block. Purpose: connect logic to DOM elements.
+- Lines 451-460: Defines function renderQuickActions. Declares getChangeText. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 461-470: Continues renderQuickActions. Declares changesList. Selects elements: recent-changes-list. Branches on conditions. Returns values from this block. Purpose: connect logic to DOM elements.
+- Lines 471-480: Continues renderQuickActions. Declares html, timestamp. Sets element properties: innerHTML='<div class="no-changes-message">No changes recorded yet<.... Iterates collections. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 481-490: Continues renderQuickActions. Declares author, detailsHtml, parsed. Serializes or parses JSON. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 491-500: Continues renderQuickActions. Declares changeText. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 501-510: Continues renderQuickActions. Branches on conditions. Purpose: implement module logic.
+- Lines 511-520: Continues renderQuickActions. Declares changeText. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 521-530: Continues renderQuickActions. Branches on conditions. Purpose: implement module logic.
+- Lines 531-540: Continues renderQuickActions. Sets element properties: innerHTML=html. Purpose: update UI state and presentation.
+- Lines 541-550: Continues renderQuickActions. Declares confirmStatus, lastConfirmed, now, dueDateClass, nextDue. Selects elements: confirmation-status. Branches on conditions. Purpose: connect logic to DOM elements.
+- Lines 551-560: Continues renderQuickActions. Declares daysUntilDue. Branches on conditions. Purpose: implement module logic.
+- Lines 561-570: Continues renderQuickActions. Branches on conditions. Purpose: implement module logic.
+- Lines 571-580: Continues renderQuickActions. Declares lastConfirmedText. Sets element properties: innerHTML=`. Purpose: update UI state and presentation.
+- Lines 581-590: Continues renderQuickActions. Branches on conditions. Purpose: implement module logic.
+- Lines 591-600: Continues renderQuickActions. Declares confirmBtn, slug. Selects elements: confirmNowBtn. Iterates collections. Branches on conditions. Returns values from this block. Purpose: connect logic to DOM elements.
+- Lines 601-610: Continues renderQuickActions. Declares params. Sets element properties: href=`restaurant.html?${params.toString()}`. Purpose: update UI state and presentation.
+- Lines 611-620: Continues renderQuickActions. Declares viewLogBtn, slug. Selects elements: viewFullLogBtn. Sets element properties: href=`restaurant.html?slug=${encodeURIComponent(slug)}&edit=1&.... Branches on conditions. Purpose: update UI state and presentation.
+- Lines 621-630: Defines function formatChatTimestamp. Declares date. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 631-640: Defines function renderChatPreview. Declares chatList. Selects elements: chat-preview-list. Branches on conditions. Returns values from this block. Purpose: connect logic to DOM elements.
+- Lines 641-650: Continues renderChatPreview. Declares messages, lastIndexByRole. Sets element properties: innerHTML=<div class="chat-preview-empty">No messages yet</div>. Iterates collections. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 651-660: Defines function findAckIndex. Declares ackTime, idx, msgTime. Iterates collections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 661-670: Continues findAckIndex. Declares ackEntries, ackIndex. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 671-680: Continues findAckIndex. Declares ackIndex, restaurantAckName. Branches on conditions. Purpose: implement module logic.
+- Lines 681-690: Continues findAckIndex. Declares messageHtml, isOutgoing, rawSenderName. Iterates collections. Purpose: implement module logic.
+- Lines 691-700: Continues findAckIndex. Declares senderLabel, timestamp, appendAck, ackTimestamp. Iterates collections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 701-710: Continues findAckIndex. Returns values from this block. Purpose: implement module logic.
+- Lines 711-720: Continues findAckIndex. Declares badge. Selects elements: chat-unread-badge. Sets inline styles: display=inline-flex. Sets element properties: textContent=chatUnreadCount, innerHTML=messageHtml. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 721-730: Continues findAckIndex. Declares ackBtn. Selects elements: chat-ack-btn. Sets inline styles: display=none, display=chatUnreadCount > 0 ? 'inline-flex' : 'none'. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 731-740: Continues findAckIndex. Declares sendBtn, input. Selects elements: chat-send-btn, chat-message-input. Branches on conditions. Purpose: connect logic to DOM elements.
+- Lines 741-750: Continues findAckIndex. Schedules timed work. Purpose: implement module logic.
+- Lines 751-760: Defines function sendChatMessage. Declares input, message, sendBtn. Selects elements: chat-message-input, chat-send-btn. Sets element properties: disabled=true. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 761-770: Continues sendChatMessage. Declares senderName, error. Sets element properties: textContent=Sending.... Supabase tables: restaurant_direct_messages (insert). Purpose: load or persist data for the page.
+- Lines 771-780: Continues sendChatMessage. Sets element properties: value=. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 781-790: Continues sendChatMessage. Sets element properties: textContent=Send, disabled=false. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 791-800: Defines function getManagerDisplayName. Declares user, meta, rawMeta, first, last, combined. Purpose: implement module logic.
+- Lines 801-810: Continues getManagerDisplayName. Declares fallbackEmail. Returns values from this block. Purpose: implement module logic.
+- Lines 811-820: Defines function acknowledgeChat. Declares error. Supabase tables: restaurant_direct_message_reads. Branches on conditions. Returns values from this block. Purpose: load or persist data for the page.
+- Lines 821-830: Continues acknowledgeChat. Branches on conditions. Purpose: implement module logic.
+- Lines 831-840: Continues acknowledgeChat. Purpose: implement module logic.
+- Lines 841-850: Defines function escapeHtml. Declares div. Sets element properties: textContent=text || ''. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 851-860: Defines function formatChatMessage. Declares escaped. Returns values from this block. Purpose: implement module logic.
+- Lines 861-870: Defines function collectBrandItemsFromOverlays. Declares items, dishName, ingredients. Serializes or parses JSON. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 871-880: Continues collectBrandItemsFromOverlays. Iterates collections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 881-890: Continues collectBrandItemsFromOverlays. Declares barcodeKey, nameKey, key. Iterates collections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 891-900: Continues collectBrandItemsFromOverlays. Purpose: implement module logic.
+- Lines 901-910: Continues collectBrandItemsFromOverlays. Declares item. Branches on conditions. Purpose: implement module logic.
+- Lines 911-920: Continues collectBrandItemsFromOverlays. Branches on conditions. Purpose: implement module logic.
+- Lines 921-930: Continues collectBrandItemsFromOverlays. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 931-940: Continues collectBrandItemsFromOverlays. Iterates collections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 941-950: Continues collectBrandItemsFromOverlays. Iterates collections. Returns values from this block. Purpose: implement module logic.
+- Lines 951-960: Defines function renderBrandItemsSection. Declares list. Selects elements: brand-items-list. Sets element properties: innerHTML='<div class="chat-preview-empty">Select a restaurant to v.... Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 961-970: Continues renderBrandItemsSection. Sets element properties: innerHTML='<div class="chat-preview-empty">No brand items found yet.... Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 971-980: Continues renderBrandItemsSection. Declares query, filteredItems, haystack. Iterates collections. Returns values from this block. Purpose: implement module logic.
+- Lines 981-990: Defines function renderTags. Sets element properties: innerHTML='<div class="chat-preview-empty">No brand items match you.... Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 991-1000: Defines function renderDishList. Declares ingredientsForDish. Iterates collections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 1001-1010: Continues renderDishList. Declares ingredientName. Returns values from this block. Purpose: implement module logic.
+- Lines 1011-1020: Continues renderDishList. Declares ingredientLabel, dishCount. Sets element properties: innerHTML=filteredItems.map((item, index) => {. Iterates collections. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 1021-1030: Continues renderDishList. Purpose: implement module logic.
+- Lines 1031-1040: Continues renderDishList. Purpose: implement module logic.
+- Lines 1041-1050: Continues renderDishList. Purpose: implement module logic.
+- Lines 1051-1060: Continues renderDishList. Declares idx, item. Selects elements: [data-action="replace-brand"]. Binds events: click. Iterates collections. Branches on conditions. Purpose: respond to user actions.
+- Lines 1061-1070: Continues renderDishList. Declares idx, cards, card. Selects elements: [data-action="toggle-brand"], .brand-item-card. Binds events: click. Iterates collections. Branches on conditions. Returns values from this block. Purpose: respond to user actions.
+- Lines 1071-1080: Continues renderDishList. Declares isExpanded. Selects elements: [data-action="open-dish-editor"]. Sets element properties: textContent=isExpanded ? 'More options' : 'Minimize', dataset.expanded=== 'true', dataset.expanded=isExpanded ? 'false' : 'true'. Iterates collections. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 1081-1090: Continues renderDishList. Declares slug, dishName, ingredientName, params. Binds events: click. Branches on conditions. Returns values from this block. Purpose: respond to user actions.
+- Lines 1091-1100: Defines function applyBrandReplacementFromCapture. Sets element properties: href=`restaurant.html?${params.toString()}`. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 1101-1110: Continues applyBrandReplacementFromCapture. Declares ingredientText, newBrandName, newBrand. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 1111-1120: Continues applyBrandReplacementFromCapture. Declares updatedOverlays. Purpose: implement module logic.
+- Lines 1121-1130: Continues applyBrandReplacementFromCapture. Declares error. Supabase tables: restaurants (update). Branches on conditions. Purpose: load or persist data for the page.
+- Lines 1131-1140: Defines function openBrandReplaceModal. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 1141-1150: Continues openBrandReplaceModal. Declares ingredientLabel. Iterates collections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 1151-1160: Defines function normalizeTagList. Declares seen. Iterates collections. Returns values from this block. Purpose: implement module logic.
+- Lines 1161-1170: Defines function applyBrandDetections. Declares key, brandAllergens, brandDiets. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 1171-1180: Continues applyBrandDetections. Declares brandMayContainAllergens, brandMayContainDiets. Purpose: implement module logic.
+- Lines 1181-1190: Defines function replaceBrandInOverlays. Declares updatedOverlays, oldBarcode, oldName, ingredients, hasAiIngredients. Serializes or parses JSON. Iterates collections. Purpose: implement module logic.
+- Lines 1191-1200: Continues replaceBrandInOverlays. Serializes or parses JSON. Branches on conditions. Purpose: implement module logic.
+- Lines 1201-1210: Continues replaceBrandInOverlays. Declares updated, replacedInIngredient. Iterates collections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 1211-1220: Continues replaceBrandInOverlays. Declares brandBarcode, brandName, matches. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 1221-1230: Continues replaceBrandInOverlays. Serializes or parses JSON. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 1231-1240: Continues replaceBrandInOverlays. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 1241-1250: Defines function renderMenuAccommodationBreakdown. Declares container, allergenContainer, dietContainer, overlays. Selects elements: menu-accommodation-breakdown, menu-allergen-breakdown, menu-diet-breakdown. Sets inline styles: display=none. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 1251-1260: Continues renderMenuAccommodationBreakdown. Declares allAllergens, allDiets, allergenEmojis. Sets inline styles: display=block. Purpose: update UI state and presentation.
+- Lines 1261-1270: Continues renderMenuAccommodationBreakdown. Declares dietEmojis, dishOverlayMap, name. Iterates collections. Purpose: implement module logic.
+- Lines 1271-1280: Continues renderMenuAccommodationBreakdown. Declares allergenDishStats, dietDishStats. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 1281-1290: Continues renderMenuAccommodationBreakdown. Declares totalDishes, dishAllergens, removableList, removableAllergens. Iterates collections. Purpose: implement module logic.
+- Lines 1291-1300: Continues renderMenuAccommodationBreakdown. Declares dishDiets, allergenLower. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 1301-1310: Continues renderMenuAccommodationBreakdown. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 1311-1320: Continues renderMenuAccommodationBreakdown. Declares allergenViewStats. Iterates collections. Purpose: implement module logic.
+- Lines 1321-1330: Continues renderMenuAccommodationBreakdown. Declares dietViewStats, categorizedViewCount, dishName, overlay. Iterates collections. Purpose: implement module logic.
+- Lines 1331-1340: Continues renderMenuAccommodationBreakdown. Declares userAllergens, userDiets, dishAllergens, removableAllergens, dishDietsSet. Iterates collections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 1341-1350: Continues renderMenuAccommodationBreakdown. Declares allergenLower, dishHasAllergen, userHasAllergen. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 1351-1360: Continues renderMenuAccommodationBreakdown. Declares userHasDiet, dishMeetsDiet. Iterates collections. Purpose: implement module logic.
+- Lines 1361-1370: Continues renderMenuAccommodationBreakdown. Branches on conditions. Purpose: implement module logic.
+- Lines 1371-1380: Defines function renderBar. Declares safePercent, accommodatedPercent, cannotPercent. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 1381-1390: Continues renderBar. Returns values from this block. Purpose: implement module logic.
+- Lines 1391-1400: Defines function renderDualBarRow. Returns values from this block. Purpose: implement module logic.
+- Lines 1401-1410: Continues renderDualBarRow. Declares totalViews, relevantAllergens. Iterates collections. Purpose: implement module logic.
+- Lines 1411-1420: Continues renderDualBarRow. Declares relevantDiets. Sets element properties: innerHTML=`. Iterates collections. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 1421-1430: Continues renderDualBarRow. Purpose: implement module logic.
+- Lines 1431-1440: Continues renderDualBarRow. Iterates collections. Purpose: implement module logic.
+- Lines 1441-1450: Continues renderDualBarRow. Sets element properties: innerHTML='<p style="font-size:0.85rem. Purpose: update UI state and presentation.
+- Lines 1451-1460: Continues renderDualBarRow. Sets element properties: innerHTML=`. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 1461-1470: Continues renderDualBarRow. Iterates collections. Purpose: implement module logic.
+- Lines 1471-1480: Defines function renderUserDietaryProfilePieCharts. Declares section, allergenContainer. Selects elements: user-dietary-profile-section, user-allergen-pie. Sets element properties: innerHTML='<p style="font-size:0.85rem. Purpose: update UI state and presentation.
+- Lines 1481-1490: Continues renderUserDietaryProfilePieCharts. Declares dietContainer. Selects elements: user-diet-pie. Sets inline styles: display=none, display=block. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 1491-1500: Continues renderUserDietaryProfilePieCharts. Declares allAllergens, allDiets, allergenEmojis, dietEmojis. Purpose: implement module logic.
+- Lines 1501-1510: Continues renderUserDietaryProfilePieCharts. Declares pieColors, allergenUserCounts. Iterates collections. Purpose: implement module logic.
+- Lines 1511-1520: Continues renderUserDietaryProfilePieCharts. Declares dietUserCounts, usersWithNoAllergens, usersWithNoDiets, allUniqueUsers. Iterates collections. Purpose: implement module logic.
+- Lines 1521-1530: Continues renderUserDietaryProfilePieCharts. Declares userId, userAllergens, userDiets. Iterates collections. Purpose: implement module logic.
+- Lines 1531-1540: Continues renderUserDietaryProfilePieCharts. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 1541-1550: Continues renderUserDietaryProfilePieCharts. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 1551-1560: Continues renderUserDietaryProfilePieCharts. Declares allergenData. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 1561-1570: Continues renderUserDietaryProfilePieCharts. Declares dietData. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 1571-1580: Defines function renderPieChart. Declares total. Iterates collections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 1581-1590: Continues renderPieChart. Declares displayUserCount, size, radius, centerX, centerY, labelRadius, .... Purpose: implement module logic.
+- Lines 1591-1600: Continues renderPieChart. Declares percentage, angle, color, startAngle, endAngle, startRad. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 1601-1610: Continues renderPieChart. Declares endRad, x1, y1, x2, y2, largeArc. Branches on conditions. Purpose: implement module logic.
+- Lines 1611-1620: Continues renderPieChart. Declares midAngle, midRad, labelX, labelY. Branches on conditions. Purpose: implement module logic.
+- Lines 1621-1630: Continues renderPieChart. Declares legendItems, percentage, color, label. Iterates collections. Purpose: implement module logic.
+- Lines 1631-1640: Continues renderPieChart. Returns values from this block. Purpose: implement module logic.
+- Lines 1641-1650: Continues renderPieChart. Purpose: implement module logic.
+- Lines 1651-1660: Defines function renderHeatmap. Declares loadingEl. Selects elements: menu-heatmap-loading. Sets element properties: innerHTML=renderPieChart('User Allergens', allergenData, pieColors,..., innerHTML=renderPieChart('User Diets', dietData, pieColors, allUniq.... Purpose: update UI state and presentation.
+- Lines 1661-1670: Continues renderHeatmap. Declares contentEl, emptyEl, imgEl, overlaysEl, pageNavEl, pageIndicatorEl, .... Selects elements: menu-heatmap-content, menu-heatmap-empty, menu-heatmap-img, menu-heatmap-overlays, heatmap-page-nav, heatmap-page-indicator, .... Branches on conditions. Purpose: connect logic to DOM elements.
+- Lines 1671-1680: Continues renderHeatmap. Declares menuImages, overlays. Sets inline styles: display=none. Iterates collections. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 1681-1690: Continues renderHeatmap. Sets inline styles: display=none, display=flex. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 1691-1700: Continues renderHeatmap. Sets inline styles: display=flex, display=none. Sets element properties: textContent=`Page ${currentHeatmapPage + 1} of ${menuImages.length}`, disabled=currentHeatmapPage === 0, disabled=currentHeatmapPage === menuImages.length - 1. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 1701-1710: Continues renderHeatmap. Declares menuImage. Sets inline styles: display=none, display=flex. Sets element properties: src=menuImage. Purpose: update UI state and presentation.
+- Lines 1711-1720: Defines function renderHeatmapOverlays. Declares overlaysEl, overlays. Selects elements: menu-heatmap-overlays. Sets inline styles: display=none, display=flex. Purpose: update UI state and presentation.
+- Lines 1721-1730: Continues renderHeatmapOverlays. Declares pageOverlays, overlayPage, metricByDish, metricLabel. Iterates collections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 1731-1740: Continues renderHeatmapOverlays. Declares dishName. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 1741-1750: Continues renderHeatmapOverlays. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 1751-1760: Continues renderHeatmapOverlays. Declares dishName. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 1761-1770: Continues renderHeatmapOverlays. Declares overlays, dishOverlayMap, name, dishViewCounts, dishAccommodatedCounts. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 1771-1780: Continues renderHeatmapOverlays. Declares dishName, overlay, userAllergens. Iterates collections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 1781-1790: Continues renderHeatmapOverlays. Declares userDiets, dishAllergens, removableAllergens, dishDietsSet, hasUnsafeAllergen. Iterates collections. Purpose: implement module logic.
+- Lines 1791-1800: Continues renderHeatmapOverlays. Declares meetsDiet, diet. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 1801-1810: Continues renderHeatmapOverlays. Declares total. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 1811-1820: Continues renderHeatmapOverlays. Declares accommodated, metricValues, maxMetric, minMetric. Iterates collections. Purpose: implement module logic.
+- Lines 1821-1830: Continues renderHeatmapOverlays. Declares dishName, metricValue, normalizedValue. Sets element properties: innerHTML=pageOverlays.map((overlay, index) => {. Iterates collections. Purpose: update UI state and presentation.
+- Lines 1831-1840: Continues renderHeatmapOverlays. Declares color, width, height. Returns values from this block. Purpose: implement module logic.
+- Lines 1841-1850: Continues renderHeatmapOverlays. Purpose: implement module logic.
+- Lines 1851-1860: Defines function goToHeatmapPage. Declares menuImages. Branches on conditions. Purpose: implement module logic.
+- Lines 1861-1870: Defines function getHeatmapColor. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 1871-1880: Continues getHeatmapColor. Purpose: implement module logic.
+- Lines 1881-1890: Defines function showDishAnalytics. Declares dish, dishRequests, overlays, dishOverlay. Iterates collections. Returns values from this block. Purpose: implement module logic.
+- Lines 1891-1900: Continues showDishAnalytics. Declares allergenEmojis, dietEmojis. Selects elements: dish-analytics-title. Sets element properties: textContent=dishName. Purpose: update UI state and presentation.
+- Lines 1901-1910: Continues showDishAnalytics. Declares dishAllergens, dishDiets, removableList, removableAllergens. Iterates collections. Purpose: implement module logic.
+- Lines 1911-1920: Continues showDishAnalytics. Declares cannotAccommodateAllergens, canAccommodateAllergens, allDiets, cannotAccommodateDiets, cannotRow. Selects elements: cannot-accommodate-row. Iterates collections. Purpose: connect logic to DOM elements.
+- Lines 1921-1930: Continues showDishAnalytics. Declares cannotTags, hasCannotAccommodate, allergenTagsHtml, emoji, dietTagsHtml. Selects elements: cannot-accommodate-tags. Iterates collections. Branches on conditions. Returns values from this block. Purpose: connect logic to DOM elements.
+- Lines 1931-1940: Continues showDishAnalytics. Declares canRow, canTags. Selects elements: can-accommodate-row, can-accommodate-tags. Sets inline styles: display=flex, display=none. Sets element properties: innerHTML=allergenTagsHtml + dietTagsHtml. Purpose: update UI state and presentation.
+- Lines 1941-1950: Continues showDishAnalytics. Declares emoji. Sets inline styles: display=flex, display=none. Sets element properties: innerHTML=canAccommodateAllergens.map(a => {. Iterates collections. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 1951-1960: Continues showDishAnalytics. Declares userProfileMap. Selects elements: analytics-requests. Sets element properties: textContent=dishRequests.length. Iterates collections. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 1961-1970: Continues showDishAnalytics. Declares viewsSafe, status. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 1971-1980: Continues showDishAnalytics. Declares viewsTotal, uniqueSafe, seenUsers. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 1981-1990: Continues showDishAnalytics. Declares profile, status. Branches on conditions. Purpose: implement module logic.
+- Lines 1991-2000: Continues showDishAnalytics. Declares uniqueTotal, lovesSafe, profile, status. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 2001-2010: Continues showDishAnalytics. Declares lovesTotal, ordersTotal, allDishNames. Iterates collections. Purpose: implement module logic.
+- Lines 2011-2020: Continues showDishAnalytics. Declares numDishes, totalAllViews, totalAllSafe, dishOv. Iterates collections. Purpose: implement module logic.
+- Lines 2021-2030: Continues showDishAnalytics. Declares status, avgViews. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 2031-2040: Defines function renderStatusBar. Declares avgSafe, avgRemovable, avgUnsafe, avgTotal, stackedChart. Selects elements: analytics-stacked-chart. Purpose: connect logic to DOM elements.
+- Lines 2041-2050: Continues renderStatusBar. Declares safePercent, removablePercent, unsafePercent, opacity, hasData. Returns values from this block. Purpose: implement module logic.
+- Lines 2051-2060: Continues renderStatusBar. Purpose: implement module logic.
+- Lines 2061-2070: Defines function renderViewsBar. Declares widthPercent, opacity. Returns values from this block. Purpose: implement module logic.
+- Lines 2071-2080: Continues renderViewsBar. Iterates collections. Purpose: implement module logic.
+- Lines 2081-2090: Continues renderViewsBar. Declares maxViewsForScale. Sets element properties: innerHTML=`. Purpose: update UI state and presentation.
+- Lines 2091-2100: Continues renderViewsBar. Purpose: implement module logic.
+- Lines 2101-2110: Continues renderViewsBar. Declares allergenConflictCounts, dietConflictCounts. Iterates collections. Purpose: implement module logic.
+- Lines 2111-2120: Continues renderViewsBar. Declares userAllergens, userDiets. Iterates collections. Purpose: implement module logic.
+- Lines 2121-2130: Continues renderViewsBar. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 2131-2140: Continues renderViewsBar. Declares allergenValues, dietValues, maxConflict, allergenBarsEl. Selects elements: conflict-allergen-bars. Iterates collections. Purpose: connect logic to DOM elements.
+- Lines 2141-2150: Continues renderViewsBar. Declares canAccommodateAllergensLower, emoji, widthPercent, barColor. Sets element properties: innerHTML=Object.entries(allergenConflictCounts). Iterates collections. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 2151-2160: Continues renderViewsBar. Returns values from this block. Purpose: implement module logic.
+- Lines 2161-2170: Continues renderViewsBar. Declares dietBarsEl. Selects elements: conflict-diet-bars. Sets element properties: innerHTML=<div class="conflict-no-data">No allergen conflicts</div>, innerHTML=Object.entries(dietConflictCounts). Iterates collections. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 2171-2180: Continues renderViewsBar. Declares emoji, widthPercent. Returns values from this block. Purpose: implement module logic.
+- Lines 2181-2190: Continues renderViewsBar. Selects elements: dish-analytics-modal. Updates classes (add: show). Sets element properties: innerHTML=<div class="conflict-no-data">No diet conflicts</div>. Purpose: update UI state and presentation.
+- Lines 2191-2200: Defines function computeDishStatus. Declares dishAllergens, removableAllergens, dishDiets, conflictingAllergens. Iterates collections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 2201-2210: Continues computeDishStatus. Declares unsafeAllergens, removableConflicts, unmetDiets. Iterates collections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 2211-2220: Defines function closeDishAnalyticsModal. Selects elements: dish-analytics-modal. Updates classes (remove: show). Iterates collections. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 2221-2230: Defines function getFilteredUserProfiles. Declares filterViews, filterLoves, filterOrders, weightMode. Selects elements: input[name="weight-mode"]:checked, filter-views, filter-loves, filter-orders. Purpose: connect logic to DOM elements.
+- Lines 2231-2240: Continues getFilteredUserProfiles. Declares viewedUsers, lovedUsers, orderedUsers, matchingUsers. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 2241-2250: Continues getFilteredUserProfiles. Declares userProfiles. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 2251-2260: Continues getFilteredUserProfiles. Declares userId. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 2261-2270: Continues getFilteredUserProfiles. Declares result, weight. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 2271-2280: Defines function renderAllergenChart. Declares container, allergensList. Selects elements: allergens-chart. Returns values from this block. Purpose: connect logic to DOM elements.
+- Lines 2281-2290: Continues renderAllergenChart. Declares allergenLabels, userProfiles, totals, count. Iterates collections. Purpose: implement module logic.
+- Lines 2291-2300: Continues renderAllergenChart. Declares maxCount. Iterates collections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 2301-2310: Continues renderAllergenChart. Sets element properties: innerHTML='<div style="color:var(--muted), innerHTML=totals.map(t => `. Iterates collections. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 2311-2320: Defines function renderDietChart. Declares container, dietsList, userProfiles. Selects elements: diets-chart. Purpose: connect logic to DOM elements.
+- Lines 2321-2330: Continues renderDietChart. Declares totals, count. Iterates collections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 2331-2340: Continues renderDietChart. Declares maxCount. Sets element properties: innerHTML='<div style="color:var(--muted), innerHTML=totals.map(t => `. Iterates collections. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 2341-2350: Defines function renderDishTable. Declares tbody. Selects elements: dish-analytics-body. Sets element properties: innerHTML=`. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 2351-2360: Continues renderDishTable. Declares sortedDishes. Returns values from this block. Purpose: implement module logic.
+- Lines 2361-2370: Continues renderDishTable. Declares topAllergens, allergenKeys. Sets element properties: innerHTML=sortedDishes.map(dish => {. Iterates collections. Purpose: update UI state and presentation.
+- Lines 2371-2380: Continues renderDishTable. Declares top3Allergens. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 2381-2390: Continues renderDishTable. Iterates collections. Returns values from this block. Purpose: implement module logic.
+- Lines 2391-2400: Defines function renderRequests. Declares container, filteredRequests. Selects elements: requests-list. Iterates collections. Purpose: connect logic to DOM elements.
+- Lines 2401-2410: Continues renderRequests. Sets element properties: innerHTML=`. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 2411-2420: Continues renderRequests. Declares allergenBadges. Sets element properties: innerHTML=filteredRequests.map(req => {. Iterates collections. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 2421-2430: Continues renderRequests. Declares dietBadges, date. Iterates collections. Purpose: implement module logic.
+- Lines 2431-2440: Continues renderRequests. Returns values from this block. Purpose: implement module logic.
+- Lines 2441-2450: Continues renderRequests. Purpose: implement module logic.
+- Lines 2451-2460: Continues renderRequests. Purpose: implement module logic.
+- Lines 2461-2470: Continues renderRequests. Purpose: implement module logic.
+- Lines 2471-2480: Defines function renderSuggestions. Purpose: implement module logic.
+- Lines 2481-2490: Continues renderSuggestions. Declares container, suggestions. Selects elements: suggestions-list. Sets element properties: innerHTML=`. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 2491-2500: Continues renderSuggestions. Sets element properties: innerHTML=suggestions.map(s => `. Iterates collections. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 2501-2510: Continues renderSuggestions. Purpose: implement module logic.
+- Lines 2511-2520: Continues renderSuggestions. Purpose: implement module logic.
+- Lines 2521-2530: Defines function generateSuggestions. Declares suggestions, requestsByDish. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 2531-2540: Continues generateSuggestions. Iterates collections. Purpose: implement module logic.
+- Lines 2541-2550: Continues generateSuggestions. Declares topAllergen, topDiet. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 2551-2560: Continues generateSuggestions. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 2561-2570: Continues generateSuggestions. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 2571-2580: Continues generateSuggestions. Declares total, unsafe, topAllergens. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 2581-2590: Continues generateSuggestions. Declares topAllergen. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 2591-2600: Continues generateSuggestions. Declares priorityOrder, priorityDiff. Purpose: implement module logic.
+- Lines 2601-2610: Defines function openResponseModal. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 2611-2620: Continues openResponseModal. Declares titles. Selects elements: modal-dish, response-text, response-modal. Updates classes (add: show). Sets element properties: textContent=`Dish: ${dishName}`, value=. Purpose: update UI state and presentation.
+- Lines 2621-2630: Defines function submitResponse. Declares response. Selects elements: modal-title, response-modal, response-text. Sets element properties: textContent=titles[action] || 'Respond to Request', dataset.action=action. Iterates collections. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 2631-2640: Continues submitResponse. Declares error. Supabase tables: accommodation_requests (update). Purpose: load or persist data for the page.
+- Lines 2641-2650: Continues submitResponse. Branches on conditions. Purpose: implement module logic.
+- Lines 2651-2660: Defines function closeModal. Selects elements: response-modal. Updates classes (remove: show). Purpose: update UI state and presentation.
+- Lines 2661-2670: Continues closeModal. Declares tab. Selects elements: .tabs .tab-btn[data-tab]. Binds events: change, click. Iterates collections. Purpose: respond to user actions.
+- Lines 2671-2680: Continues closeModal. Selects elements: .tabs .tab-btn[data-tab], allergens-chart, diets-chart. Updates classes (add: active; remove: active). Sets inline styles: display=tab === 'allergens' ? 'flex' : 'none', display=tab === 'diets' ? 'flex' : 'none'. Iterates collections. Purpose: update UI state and presentation.
+- Lines 2681-2690: Continues closeModal. Declares el. Binds events: change. Branches on conditions. Purpose: respond to user actions.
+- Lines 2691-2700: Continues closeModal. Selects elements: input[name="weight-mode"], .tabs .tab-btn[data-filter]. Binds events: change, click. Iterates collections. Purpose: respond to user actions.
+- Lines 2701-2710: Continues closeModal. Declares filter. Selects elements: .tabs .tab-btn[data-filter], modal-cancel, modal-implement. Binds events: click. Updates classes (add: active; remove: active). Iterates collections. Purpose: respond to user actions.
+- Lines 2711-2720: Continues closeModal. Selects elements: modal-decline, response-modal. Binds events: click, input. Branches on conditions. Purpose: respond to user actions.
+- Lines 2721-2730: Continues closeModal. Selects elements: dish-analytics-close. Binds events: resize, click. Schedules timed work. Branches on conditions. Purpose: respond to user actions.
+- Lines 2731-2740: Continues closeModal. Selects elements: .heatmap-metric-btn, dish-analytics-modal, heatmap-prev-btn, heatmap-next-btn. Binds events: click. Iterates collections. Branches on conditions. Purpose: respond to user actions.
+- Lines 2741-2750: Continues closeModal. Declares metric. Selects elements: .heatmap-metric-btn. Binds events: click. Updates classes (add: active; remove: active). Iterates collections. Branches on conditions. Purpose: respond to user actions.
+- Lines 2751-2760: Continues closeModal. Declares tooltip, wasActive. Selects elements: .info-tooltip-popup.active. Updates classes (remove: active). Iterates collections. Purpose: update UI state and presentation.
+- Lines 2761-2770: Continues closeModal. Binds events: click. Updates classes (add: active). Branches on conditions. Purpose: respond to user actions.
+- Lines 2771-2780: Continues closeModal. Selects elements: .info-tooltip-popup.active, .info-tooltip-container. Updates classes (remove: active). Iterates collections. Branches on conditions. Purpose: update UI state and presentation.
+
+## public/js/order-notifications.js
+
+- Lines 1-10: Declares notificationContainer, activeNotifications, STATUS_MESSAGES. Iterates collections. Purpose: implement module logic.
+- Lines 11-20: Iterates collections. Purpose: implement module logic.
+- Lines 21-30: Declares STATUS_TONES. Purpose: implement module logic.
+- Lines 31-40: Defines function ensureNotificationContainer. Sets inline styles: cssText=`. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 41-50: Continues ensureNotificationContainer. Purpose: implement module logic.
+- Lines 51-60: Defines function createNotificationBanner. Declares message, tone, banner. Sets element properties: dataset.orderId=orderId. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 61-70: Continues createNotificationBanner. Sets inline styles: cssText=`. Sets element properties: dataset.tone=tone. Purpose: update UI state and presentation.
+- Lines 71-80: Continues createNotificationBanner. Declares header. Sets inline styles: cssText=`. Purpose: update UI state and presentation.
+- Lines 81-90: Continues createNotificationBanner. Declares content, closeBtn. Sets element properties: innerHTML=`. Purpose: update UI state and presentation.
+- Lines 91-100: Continues createNotificationBanner. Sets inline styles: cssText=`. Sets element properties: textContent=×. Purpose: update UI state and presentation.
+- Lines 101-110: Continues createNotificationBanner. Binds events: click. Purpose: respond to user actions.
+- Lines 111-120: Continues createNotificationBanner. Declares actions, viewBtn. Sets inline styles: cssText=`. Purpose: update UI state and presentation.
+- Lines 121-130: Continues createNotificationBanner. Binds events: click. Sets inline styles: cssText=`. Sets element properties: textContent=View order, href=tablet-simulation.html. Purpose: respond to user actions.
+- Lines 131-140: Continues createNotificationBanner. Declares dismissBtn. Sets inline styles: cssText=`. Sets element properties: textContent=Dismiss. Purpose: update UI state and presentation.
+- Lines 141-150: Continues createNotificationBanner. Selects elements: notification-animations. Binds events: click. Branches on conditions. Purpose: respond to user actions.
+- Lines 151-160: Continues createNotificationBanner. Declares style. Sets element properties: textContent=`. Purpose: update UI state and presentation.
+- Lines 161-170: Continues createNotificationBanner. Purpose: implement module logic.
+- Lines 171-180: Continues createNotificationBanner. Returns values from this block. Purpose: implement module logic.
+- Lines 181-190: Defines function showOrderNotification. Declares existing. Sets element properties: dataset.status=== status) {. Branches on conditions. Returns values from this block. Exports module members. Purpose: update UI state and presentation.
+- Lines 191-200: Continues showOrderNotification. Declares container, banner. Sets element properties: dataset.status=status. Schedules timed work. Purpose: update UI state and presentation.
+- Lines 201-210: Defines function dismissNotification. Declares banner. Sets inline styles: animation=slideOutRight 0.3s ease-out. Schedules timed work. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 211-219: Defines function clearAllNotifications. Declares orderId. Iterates collections. Exports module members. Purpose: expose helpers to other modules.
+
+## public/js/report-modal.js
+
+- Lines 1-10: Defines function getSupabaseClient. Declares check. Schedules timed work. Iterates collections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 11-20: Continues getSupabaseClient. Declares resolveAccountName, firstName. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 21-30: Continues getSupabaseClient. Declares lastName, fullName. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 31-40: Continues getSupabaseClient. Declares STYLE_ID, style. Sets element properties: textContent=`. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 41-50: Continues getSupabaseClient. Purpose: implement module logic.
+- Lines 51-60: Continues getSupabaseClient. Purpose: implement module logic.
+- Lines 61-70: Continues getSupabaseClient. Purpose: implement module logic.
+- Lines 71-80: Continues getSupabaseClient. Purpose: implement module logic.
+- Lines 81-90: Continues getSupabaseClient. Purpose: implement module logic.
+- Lines 91-100: Continues getSupabaseClient. Purpose: implement module logic.
+- Lines 101-110: Continues getSupabaseClient. Purpose: implement module logic.
+- Lines 111-120: Continues getSupabaseClient. Purpose: implement module logic.
+- Lines 121-130: Continues getSupabaseClient. Purpose: implement module logic.
+- Lines 131-140: Continues getSupabaseClient. Purpose: implement module logic.
+- Lines 141-150: Continues getSupabaseClient. Declares overlay. Purpose: implement module logic.
+- Lines 151-160: Continues getSupabaseClient. Sets element properties: innerHTML=`. Purpose: update UI state and presentation.
+- Lines 161-170: Continues getSupabaseClient. Declares trigger. Purpose: implement module logic.
+- Lines 171-180: Continues getSupabaseClient. Declares footer, nameInput. Selects elements: #reportName. Sets element properties: innerHTML=Report an issue. Purpose: update UI state and presentation.
+- Lines 181-190: Defines function openModal. Declares emailInput, messageInput, statusEl, submitBtn, closeBtn. Selects elements: #reportEmail, #reportMessage, #reportStatus, #reportSubmit, .reportClose. Updates classes (add: show). Sets attributes: aria-hidden=false. Sets element properties: textContent=. Purpose: update UI state and presentation.
+- Lines 191-200: Defines function closeModal. Updates classes (remove: error, success, show). Sets attributes: aria-hidden=true. Schedules timed work. Purpose: update UI state and presentation.
+- Lines 201-210: Continues closeModal. Binds events: click, keydown. Branches on conditions. Purpose: respond to user actions.
+- Lines 211-220: Defines function submitReport. Declares email, name, message. Updates classes (remove: error, success). Sets element properties: textContent=. Purpose: update UI state and presentation.
+- Lines 221-230: Continues submitReport. Updates classes (add: error). Sets element properties: textContent=Please enter your email so we can follow up., textContent=Please describe the issue.. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 231-240: Continues submitReport. Declares originalLabel, client. Sets element properties: textContent=Sending…, disabled=true. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 241-250: Continues submitReport. Declares accountName, payload. Purpose: implement module logic.
+- Lines 251-260: Continues submitReport. Declares error. Updates classes (add: success). Sets element properties: textContent=Thanks! We’ll reach out soon., textContent=, value=. Schedules timed work. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 261-270: Continues submitReport. Updates classes (add: error; remove: success). Sets element properties: textContent=Something went wrong. Please try again or email us directly., textContent=originalLabel, disabled=false. Purpose: update UI state and presentation.
+- Lines 271-280: Continues submitReport. Declares banner. Selects elements: form, .qrBanner. Binds events: submit. Branches on conditions. Purpose: respond to user actions.
+- Lines 281-288: Defines function adjustFooter. Declares observer. Sets inline styles: marginBottom=banner.classList.contains('show') ? '140px' : ''. Purpose: update UI state and presentation.
+
+## public/js/restaurant/ai-assistant-extraction.js
+
+- Lines 1-10: Defines function requestAiExtraction. Declares DEFAULT_SUPABASE_URL, DEFAULT_SUPABASE_ANON_KEY, endpoint, proxyUrl, supabaseClient, supabaseUrl, .... Exports module members. Purpose: expose helpers to other modules.
+- Lines 11-20: Continues requestAiExtraction. Declares log, warn, error, res. Serializes or parses JSON. Branches on conditions. Purpose: implement module logic.
+- Lines 21-30: Continues requestAiExtraction. Declares text, response. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 31-40: Continues requestAiExtraction. Serializes or parses JSON. Purpose: implement module logic.
+- Lines 41-50: Continues requestAiExtraction. Declares contentType, errorText. Branches on conditions. Purpose: implement module logic.
+- Lines 51-60: Continues requestAiExtraction. Declares isProxyUnavailable. Returns values from this block. Purpose: implement module logic.
+- Lines 61-70: Continues requestAiExtraction. Branches on conditions. Purpose: implement module logic.
+- Lines 71-80: Continues requestAiExtraction. Declares data, error. Branches on conditions. Purpose: implement module logic.
+- Lines 81-90: Continues requestAiExtraction. Purpose: implement module logic.
+- Lines 91-100: Continues requestAiExtraction. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 101-110: Continues requestAiExtraction. Branches on conditions. Purpose: implement module logic.
+- Lines 111-120: Continues requestAiExtraction. Declares directResponse. Serializes or parses JSON. Purpose: implement module logic.
+- Lines 121-130: Continues requestAiExtraction. Declares text. Branches on conditions. Purpose: implement module logic.
+- Lines 131-140: Continues requestAiExtraction. Declares data, errorMsg. Returns values from this block. Purpose: implement module logic.
+- Lines 141-150: Continues requestAiExtraction. Branches on conditions. Purpose: implement module logic.
+- Lines 151-158: Continues requestAiExtraction. Branches on conditions. Purpose: implement module logic.
+
+## public/js/restaurant/ai-assistant-photos.js
+
+- Lines 1-10: Defines function initAiAssistantPhotos. Declares ensureAiAssistElements, aiAssistState, compressImage. Exports module members. Purpose: expose helpers to other modules.
+- Lines 11-20: Defines function renderPhotoPreviews. Declares aiAssistSetStatus, updateAiAssistMediaPreview, getVideoEl. Purpose: implement module logic.
+- Lines 21-30: Continues renderPhotoPreviews. Declares container, photosList. Selects elements: aiAssistPhotosContainer, aiAssistPhotosList. Sets inline styles: display=none, display=block. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 31-40: Continues renderPhotoPreviews. Declares photoDiv. Sets inline styles: cssText="position:relative. Sets element properties: innerHTML=, innerHTML=`. Iterates collections. Purpose: update UI state and presentation.
+- Lines 41-50: Defines function removePhotoAtIndex. Branches on conditions. Purpose: implement module logic.
+- Lines 51-60: Defines function handleMultipleRecipePhotoUpload. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 61-70: Continues handleMultipleRecipePhotoUpload. Declares file, reader, compressed. Purpose: implement module logic.
+- Lines 71-80: Defines function handleRecipePhotoCamera. Declares stream. Purpose: implement module logic.
+- Lines 81-90: Continues handleRecipePhotoCamera. Declares video. Branches on conditions. Purpose: implement module logic.
+- Lines 91-100: Continues handleRecipePhotoCamera. Returns values from this block. Purpose: implement module logic.
+- Lines 101-104: Continues handleRecipePhotoCamera. Purpose: implement module logic.
+
+## public/js/restaurant/ai-assistant.js
+
+- Lines 1-10: Defines function initAiAssistant. Declares esc, state, detectAllergensInText. Exports module members. Purpose: expose helpers to other modules.
+- Lines 11-20: Continues initAiAssistant. Declares normalizeDietLabel, getIssueReportMeta, ALLERGENS, ALLERGEN_ALIASES. Purpose: implement module logic.
+- Lines 21-30: Continues initAiAssistant. Declares ALLERGEN_EMOJI, DIETS, DIET_EMOJI. Purpose: implement module logic.
+- Lines 31-40: Continues initAiAssistant. Declares cap, norm, tooltipBodyHTML, send, SINGLE_INGREDIENT_EXEMPTIONS. Purpose: implement module logic.
+- Lines 41-50: Defines function requiresLabelScan. Declares PROCESSED_INGREDIENT_PATTERN, PROCESSED_MEATS_PATTERN, CONDIMENT_PATTERN, lower. Purpose: implement module logic.
+- Lines 51-60: Continues requiresLabelScan. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 61-70: Defines function enforceDietAllergenConsistency. Declares allergenSet, aiAllergenSet, diets, aiDiets, conflictMap. Iterates collections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 71-80: Continues enforceDietAllergenConsistency. Declares conflicts, restricted, hits. Iterates collections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 81-90: Continues enforceDietAllergenConsistency. Purpose: implement module logic.
+- Lines 91-100: Continues enforceDietAllergenConsistency. Declares aiAssistBackdrop, aiAssistPanel, aiAssistCloseBtn, aiAssistInput, aiAssistDictateBtn, aiAssistGenerateBtn, .... Purpose: implement module logic.
+- Lines 101-110: Continues enforceDietAllergenConsistency. Declares aiAssistTableBody, aiAssistAddRowBtn, aiAssistApplyBtn, aiAssistBrandResults, aiAssistUploadBtn, aiAssistCameraBtn, .... Purpose: implement module logic.
+- Lines 111-120: Defines function renderPhotoPreviews. Declares aiAssistCancelCameraBtn, aiAssistClearImageBtn, aiAssistMediaPreview, aiAssistElementsBound, handleMultipleRecipePhotoUpload, handleRecipePhotoCamera, .... Purpose: implement module logic.
+- Lines 121-130: Continues renderPhotoPreviews. Branches on conditions. Purpose: implement module logic.
+- Lines 131-140: Defines function openBrandIdentificationChoice. Declares AI_BRAND_LIMIT, AI_BRAND_MEMORY_KEY, activePhotoAnalyses. Purpose: implement module logic.
+- Lines 141-150: Defines function showIngredientPhotoUploadModal. Declares showPhotoAnalysisLoadingInRow, hidePhotoAnalysisLoadingInRow, updatePhotoAnalysisLoadingStatus, showPhotoAnalysisResultButton, ingredientPhotoApi. Purpose: implement module logic.
+- Lines 151-160: Continues showIngredientPhotoUploadModal. Purpose: implement module logic.
+- Lines 161-170: Continues showIngredientPhotoUploadModal. Purpose: implement module logic.
+- Lines 171-180: Continues showIngredientPhotoUploadModal. Branches on conditions. Purpose: implement module logic.
+- Lines 181-190: Defines function requestAiExtractionWithConfig. Purpose: implement module logic.
+- Lines 191-200: Continues requestAiExtractionWithConfig. Declares aiBrandMemoryCache. Purpose: implement module logic.
+- Lines 201-210: Defines function loadAiBrandMemory. Declares raw. Serializes or parses JSON. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 211-220: Defines function persistAiBrandMemory. Serializes or parses JSON. Purpose: implement module logic.
+- Lines 221-230: Defines function normalizeIngredientKey. Declares key. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 231-240: Continues normalizeIngredientKey. Declares store, brand. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 241-250: Continues normalizeIngredientKey. Purpose: implement module logic.
+- Lines 251-260: Defines function getRememberedBrand. Declares key, store. Iterates collections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 261-270: Continues getRememberedBrand. Declares searchWords, storeKeys, bestMatch, bestScore. Iterates collections. Returns values from this block. Purpose: implement module logic.
+- Lines 271-280: Continues getRememberedBrand. Declares storeKey, storeWords, matchedStoreWords. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 281-290: Continues getRememberedBrand. Declares score. Branches on conditions. Purpose: implement module logic.
+- Lines 291-300: Continues getRememberedBrand. Iterates collections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 301-310: Defines function rebuildBrandMemoryFromRestaurant. Iterates collections. Returns values from this block. Purpose: implement module logic.
+- Lines 311-320: Continues rebuildBrandMemoryFromRestaurant. Serializes or parses JSON. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 321-330: Continues rebuildBrandMemoryFromRestaurant. Declares dishName, ingredients. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 331-340: Continues rebuildBrandMemoryFromRestaurant. Serializes or parses JSON. Branches on conditions. Purpose: implement module logic.
+- Lines 341-350: Continues rebuildBrandMemoryFromRestaurant. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 351-360: Continues rebuildBrandMemoryFromRestaurant. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 361-370: Continues rebuildBrandMemoryFromRestaurant. Iterates collections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 371-380: Continues rebuildBrandMemoryFromRestaurant. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 381-390: Continues rebuildBrandMemoryFromRestaurant. Purpose: implement module logic.
+- Lines 391-400: Defines function aiAssistSetStatus. Serializes or parses JSON. Purpose: implement module logic.
+- Lines 401-410: Defines function ensureAiAssistElements. Sets element properties: textContent=message. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 411-420: Continues ensureAiAssistElements. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 421-430: Continues ensureAiAssistElements. Purpose: implement module logic.
+- Lines 431-440: Continues ensureAiAssistElements. Declares backdrop. Sets attributes: aria-hidden=true. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 441-450: Continues ensureAiAssistElements. Sets element properties: innerHTML=`. Purpose: update UI state and presentation.
+- Lines 451-460: Continues ensureAiAssistElements. Purpose: implement module logic.
+- Lines 461-470: Continues ensureAiAssistElements. Purpose: implement module logic.
+- Lines 471-480: Continues ensureAiAssistElements. Purpose: implement module logic.
+- Lines 481-490: Continues ensureAiAssistElements. Iterates collections. Purpose: implement module logic.
+- Lines 491-500: Continues ensureAiAssistElements. Purpose: implement module logic.
+- Lines 501-510: Continues ensureAiAssistElements. Purpose: implement module logic.
+- Lines 511-520: Continues ensureAiAssistElements. Purpose: implement module logic.
+- Lines 521-530: Continues ensureAiAssistElements. Purpose: implement module logic.
+- Lines 531-540: Continues ensureAiAssistElements. Purpose: implement module logic.
+- Lines 541-550: Continues ensureAiAssistElements. Purpose: implement module logic.
+- Lines 551-560: Continues ensureAiAssistElements. Purpose: implement module logic.
+- Lines 561-570: Continues ensureAiAssistElements. Purpose: implement module logic.
+- Lines 571-580: Continues ensureAiAssistElements. Purpose: implement module logic.
+- Lines 581-590: Continues ensureAiAssistElements. Declares modal. Selects elements: #aiAssistPanel, imageModal. Sets element properties: innerHTML=`. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 591-600: Continues ensureAiAssistElements. Selects elements: #aiAssistClose, #aiAssistInput. Binds events: click. Branches on conditions. Purpose: respond to user actions.
+- Lines 601-610: Continues ensureAiAssistElements. Selects elements: #aiAssistDictateBtn, #aiAssistGenerateBtn, #aiAssistProcessBtn, #aiAssistStatus, #aiAssistResults, #aiAssistTableBody, .... Purpose: connect logic to DOM elements.
+- Lines 611-620: Continues ensureAiAssistElements. Selects elements: #aiAssistCaptureBtn, #aiAssistCancelCameraBtn, #aiAssistMediaPreview. Branches on conditions. Purpose: connect logic to DOM elements.
+- Lines 621-630: Continues ensureAiAssistElements. Binds events: click. Branches on conditions. Purpose: respond to user actions.
+- Lines 631-640: Defines function updateGenerateButtonText. Declares nameInput, dishName. Selects elements: aiAssistNameInput. Sets element properties: textContent=`✨ Generate generic ${dishName} recipe`. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 641-650: Continues updateGenerateButtonText. Declares nameInput, saveNameBtn. Selects elements: #aiAssistNameInput, #aiAssistSaveNameBtn. Branches on conditions. Purpose: connect logic to DOM elements.
+- Lines 651-660: Defines function checkForChanges. Declares originalDishName, currentValue. Branches on conditions. Purpose: implement module logic.
+- Lines 661-670: Continues checkForChanges. Sets inline styles: display=block, display=none. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 671-680: Continues checkForChanges. Declares newDishName, wasChanged. Binds events: click. Branches on conditions. Purpose: respond to user actions.
+- Lines 681-690: Continues checkForChanges. Sets inline styles: display=none. Purpose: update UI state and presentation.
+- Lines 691-700: Continues checkForChanges. Declares paste. Binds events: input, change, keyup, paste. Schedules timed work. Iterates collections. Purpose: respond to user actions.
+- Lines 701-710: Continues checkForChanges. Iterates collections. Purpose: implement module logic.
+- Lines 711-720: Continues checkForChanges. Declares uploadRecipeBtn, cameraRecipeBtn. Selects elements: #aiAssistUploadRecipeBtn. Binds events: click. Purpose: respond to user actions.
+- Lines 721-730: Continues checkForChanges. Declares recipeFileInput. Selects elements: #aiAssistRecipeFileInput. Binds events: click. Sets element properties: value=. Branches on conditions. Purpose: respond to user actions.
+- Lines 731-740: Continues checkForChanges. Declares files. Binds events: change, click. Branches on conditions. Purpose: respond to user actions.
+- Lines 741-750: Continues checkForChanges. Declares clearAllPhotosBtn. Selects elements: #aiAssistClearAllPhotosBtn. Binds events: click. Branches on conditions. Purpose: respond to user actions.
+- Lines 751-760: Continues checkForChanges. Declares data. Binds events: click. Purpose: respond to user actions.
+- Lines 761-770: Continues checkForChanges. Purpose: implement module logic.
+- Lines 771-780: Continues checkForChanges. Binds events: click. Branches on conditions. Purpose: respond to user actions.
+- Lines 781-790: Continues checkForChanges. Declares file. Binds events: change, click. Sets element properties: value=. Branches on conditions. Purpose: respond to user actions.
+- Lines 791-800: Continues checkForChanges. Binds events: click. Branches on conditions. Purpose: respond to user actions.
+- Lines 801-810: Continues checkForChanges. Declares rowIdx, data, tr. Selects elements: .aiIngredientApply. Binds events: click. Branches on conditions. Purpose: respond to user actions.
+- Lines 811-820: Continues checkForChanges. Declares nameInput, ingredientName. Selects elements: .aiIngredientName. Branches on conditions. Returns values from this block. Purpose: connect logic to DOM elements.
+- Lines 821-830: Continues checkForChanges. Declares lower, computedNeedsScan. Branches on conditions. Purpose: implement module logic.
+- Lines 831-840: Continues checkForChanges. Purpose: implement module logic.
+- Lines 841-850: Continues checkForChanges. Declares data, error. Iterates collections. Purpose: implement module logic.
+- Lines 851-860: Continues checkForChanges. Declares errored. Branches on conditions. Purpose: implement module logic.
+- Lines 861-870: Continues checkForChanges. Declares aiAllergens. Iterates collections. Returns values from this block. Purpose: implement module logic.
+- Lines 871-880: Continues checkForChanges. Declares aiDiets, aiNeedsScan, refreshed. Purpose: implement module logic.
+- Lines 881-890: Continues checkForChanges. Branches on conditions. Purpose: implement module logic.
+- Lines 891-900: Continues checkForChanges. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 901-910: Continues checkForChanges. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 911-920: Continues checkForChanges. Declares errored. Branches on conditions. Purpose: implement module logic.
+- Lines 921-930: Continues checkForChanges. Iterates collections. Purpose: implement module logic.
+- Lines 931-940: Continues checkForChanges. Declares row, idx, data. Selects elements: tr, .aiDeleteRow. Branches on conditions. Returns values from this block. Purpose: connect logic to DOM elements.
+- Lines 941-950: Continues checkForChanges. Selects elements: .aiBrandSearchBtn. Branches on conditions. Returns values from this block. Purpose: connect logic to DOM elements.
+- Lines 951-960: Continues checkForChanges. Selects elements: .aiBrandAddBtn. Branches on conditions. Returns values from this block. Purpose: connect logic to DOM elements.
+- Lines 961-970: Continues checkForChanges. Declares rowIdx. Selects elements: .aiAppealScanBtn. Branches on conditions. Purpose: connect logic to DOM elements.
+- Lines 971-980: Continues checkForChanges. Declares rowIdx. Selects elements: .aiRemoveAppealBtn. Branches on conditions. Returns values from this block. Purpose: connect logic to DOM elements.
+- Lines 981-990: Continues checkForChanges. Declares brandIdx. Selects elements: .aiRemoveBrand. Branches on conditions. Returns values from this block. Purpose: connect logic to DOM elements.
+- Lines 991-1000: Continues checkForChanges. Declares data. Selects elements: .aiRemoveBrand. Serializes or parses JSON. Branches on conditions. Purpose: connect logic to DOM elements.
+- Lines 1001-1010: Continues checkForChanges. Iterates collections. Purpose: implement module logic.
+- Lines 1011-1020: Continues checkForChanges. Purpose: implement module logic.
+- Lines 1021-1030: Continues checkForChanges. Declares checkboxLabel. Selects elements: .aiAllergenChecklist label, .aiDietChecklist label. Iterates collections. Branches on conditions. Returns values from this block. Purpose: connect logic to DOM elements.
+- Lines 1031-1040: Continues checkForChanges. Declares checkbox, currentState, nextState. Selects elements: input[type="checkbox"]. Branches on conditions. Returns values from this block. Purpose: connect logic to DOM elements.
+- Lines 1041-1050: Continues checkForChanges. Declares wasAiDetected, aiState. Sets element properties: checked=nextState !== "off", dataset.aiDetected=== "true", dataset.state=nextState. Purpose: update UI state and presentation.
+- Lines 1051-1060: Defines class checkboxLabel. Declares isOverridden. Updates classes (add: state-${nextState}; remove: state-contains, state-maycontain). Sets element properties: dataset.state=nextState. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 1061-1070: Continues checkboxLabel. Updates classes (add: stateOverridden; remove: stateOverridden). Branches on conditions. Purpose: update UI state and presentation.
+- Lines 1071-1080: Continues checkboxLabel. Declares icon, tooltipParts. Selects elements: .state-icon. Branches on conditions. Purpose: connect logic to DOM elements.
+- Lines 1081-1090: Continues checkboxLabel. Branches on conditions. Purpose: implement module logic.
+- Lines 1091-1100: Continues checkboxLabel. Sets element properties: title=tooltipParts.join(" • "). Branches on conditions. Purpose: update UI state and presentation.
+- Lines 1101-1110: Continues checkboxLabel. Returns values from this block. Purpose: implement module logic.
+- Lines 1111-1120: Continues checkboxLabel. Declares data, ingredientName, memory. Selects elements: .aiAddRememberedBrand. Branches on conditions. Purpose: connect logic to DOM elements.
+- Lines 1121-1130: Continues checkboxLabel. Declares brandExists. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 1131-1140: Continues checkboxLabel. Branches on conditions. Purpose: implement module logic.
+- Lines 1141-1150: Continues checkboxLabel. Iterates collections. Purpose: implement module logic.
+- Lines 1151-1160: Continues checkboxLabel. Purpose: implement module logic.
+- Lines 1161-1170: Continues checkboxLabel. Declares btn. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 1171-1180: Continues checkboxLabel. Declares isConfirmed. Sets element properties: dataset.confirmed=== "true". Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 1181-1190: Continues checkboxLabel. Updates classes (add: unconfirmed; remove: confirmed, unconfirmed). Sets inline styles: background=#f59e0b, borderColor=#f59e0b. Sets element properties: textContent=Confirm, dataset.confirmed=false, dataset.confirmed=true. Purpose: update UI state and presentation.
+- Lines 1191-1200: Continues checkboxLabel. Declares saveErrorEl. Selects elements: aiAssistSaveError. Updates classes (add: confirmed). Sets inline styles: background=#4caf50, borderColor=#4caf50, display=none. Sets element properties: textContent=✓ Confirmed. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 1201-1210: Continues checkboxLabel. Declares row. Selects elements: tr. Binds events: input. Branches on conditions. Returns values from this block. Purpose: respond to user actions.
+- Lines 1211-1220: Continues checkboxLabel. Declares row. Selects elements: tr. Binds events: change. Purpose: respond to user actions.
+- Lines 1221-1230: Continues checkboxLabel. Declares data. Schedules timed work. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 1231-1240: Continues checkboxLabel. Purpose: implement module logic.
+- Lines 1241-1250: Continues checkboxLabel. Declares card, rowIdx, suggestionIdx. Selects elements: .aiBrandSuggestion. Binds events: click. Branches on conditions. Returns values from this block. Purpose: respond to user actions.
+- Lines 1251-1260: Defines function toggleAiAssistBackdrop. Declares scrollLockPosition. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 1261-1270: Continues toggleAiAssistBackdrop. Declares nameInput, dishName. Selects elements: aiAssistNameInput. Sets element properties: textContent=`✨ Generate generic ${dishName} recipe`. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 1271-1280: Continues toggleAiAssistBackdrop. Declares applyBtn. Selects elements: aiAssistApplyBtn. Branches on conditions. Purpose: connect logic to DOM elements.
+- Lines 1281-1290: Continues toggleAiAssistBackdrop. Declares newApplyBtn. Binds events: click. Purpose: respond to user actions.
+- Lines 1291-1300: Continues toggleAiAssistBackdrop. Updates classes (add: show). Sets attributes: aria-hidden=false. Sets inline styles: position=fixed, top=`-${scrollLockPosition}px`, width=100%, overflow=hidden. Purpose: update UI state and presentation.
+- Lines 1301-1310: Continues toggleAiAssistBackdrop. Updates classes (remove: show). Sets attributes: aria-hidden=true. Sets inline styles: position=, top=, width=, overflow=. Purpose: update UI state and presentation.
+- Lines 1311-1320: Defines function updateAiAssistMediaPreview. Declares hasImage, hasStream. Updates classes (toggle: show). Branches on conditions. Purpose: update UI state and presentation.
+- Lines 1321-1330: Continues updateAiAssistMediaPreview. Updates classes (remove: aiAssistHidden). Branches on conditions. Purpose: update UI state and presentation.
+- Lines 1331-1340: Continues updateAiAssistMediaPreview. Updates classes (add: aiAssistHidden; toggle: aiAssistHidden). Branches on conditions. Purpose: update UI state and presentation.
+- Lines 1341-1350: Continues updateAiAssistMediaPreview. Updates classes (add: aiAssistHidden; remove: aiAssistHidden). Sets element properties: src=aiAssistState.imageData, src=. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 1351-1360: Defines function compressImage. Declares img, canvas. Updates classes (toggle: aiAssistHidden). Returns values from this block. Purpose: update UI state and presentation.
+- Lines 1361-1370: Continues compressImage. Declares width, height. Branches on conditions. Purpose: implement module logic.
+- Lines 1371-1380: Continues compressImage. Declares ctx. Sets element properties: src=dataUrl. Purpose: update UI state and presentation.
+- Lines 1381-1390: Continues compressImage. Declares photoApi. Purpose: implement module logic.
+- Lines 1391-1400: Defines function handleAiFileSelection. Declares reader. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 1401-1410: Continues handleAiFileSelection. Purpose: implement module logic.
+- Lines 1411-1420: Defines function startAiCamera. Branches on conditions. Purpose: implement module logic.
+- Lines 1421-1430: Continues startAiCamera. Declares stream. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 1431-1440: Continues startAiCamera. Purpose: implement module logic.
+- Lines 1441-1450: Continues startAiCamera. Purpose: implement module logic.
+- Lines 1451-1460: Defines function stopAiCamera. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 1461-1470: Continues stopAiCamera. Branches on conditions. Purpose: implement module logic.
+- Lines 1471-1480: Defines function captureAiPhoto. Declares width, height. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 1481-1490: Continues captureAiPhoto. Declares canvas, ctx. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 1491-1500: Continues captureAiPhoto. Declares rawImage, compressed. Iterates collections. Returns values from this block. Purpose: implement module logic.
+- Lines 1501-1510: Defines function clearAiImage. Branches on conditions. Purpose: implement module logic.
+- Lines 1511-1520: Defines function getRowIngredientsList. Sets element properties: value=. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 1521-1530: Defines function updateAiBrandPreview. Declares parsed. Serializes or parses JSON. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 1531-1540: Continues updateAiBrandPreview. Declares brandPreview, parts, brandImage. Selects elements: .aiBrandPreview. Branches on conditions. Returns values from this block. Purpose: connect logic to DOM elements.
+- Lines 1541-1550: Continues updateAiBrandPreview. Declares listNote, list. Selects elements: .aiIngredientList. Sets element properties: textContent=list.length, innerHTML=parts.join(""). Branches on conditions. Purpose: update UI state and presentation.
+- Lines 1551-1560: Defines function collectAiTableData. Declares data, idx, name, allergens. Selects elements: tr, .aiIngredientName. Iterates collections. Branches on conditions. Returns values from this block. Purpose: connect logic to DOM elements.
+- Lines 1561-1570: Continues collectAiTableData. Declares mayContainAllergens. Selects elements: .aiAllergenChecklist input:checked, .aiAllergenChecklist input[data-state="maycontain"]. Iterates collections. Purpose: connect logic to DOM elements.
+- Lines 1571-1580: Continues collectAiTableData. Declares diets, mayContainDiets, confirmed. Selects elements: .aiDietChecklist input:checked, .aiDietChecklist input[data-state="maycontain"], .aiConfirmBtn. Sets element properties: dataset.confirmed=== "true". Iterates collections. Purpose: update UI state and presentation.
+- Lines 1581-1590: Continues collectAiTableData. Declares removableCheckbox, removable. Selects elements: .aiRemovableCheckbox. Purpose: connect logic to DOM elements.
+- Lines 1591-1600: Continues collectAiTableData. Declares brands, parsed. Serializes or parses JSON. Branches on conditions. Purpose: implement module logic.
+- Lines 1601-1610: Continues collectAiTableData. Declares aiDetectedAllergens, aiDetectedDiets. Serializes or parses JSON. Iterates collections. Purpose: implement module logic.
+- Lines 1611-1620: Continues collectAiTableData. Declares aiDetectedMayContainAllergens, aiDetectedMayContainDiets. Serializes or parses JSON. Purpose: implement module logic.
+- Lines 1621-1630: Continues collectAiTableData. Declares needsScan, userOverriddenScan, appealReviewStatus, appealReviewNotes, scanDecisionSource, analysisPending, .... Sets element properties: dataset.needsScan=== "true" || row.dataset.needsScan === true, dataset.userOverriddenScan=== "true" ||, dataset.userOverriddenScan=== true, dataset.analysisPending=== "true". Purpose: update UI state and presentation.
+- Lines 1631-1640: Continues collectAiTableData. Declares requiresApply, issueReported, brandImage. Sets element properties: dataset.requiresApply=== "true", dataset.issueReported=== "true". Branches on conditions. Purpose: update UI state and presentation.
+- Lines 1641-1650: Defines function normalizeAllergen. Declares lower. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 1651-1660: Defines function normalizeDiet. Declares lower, properDiet. Returns values from this block. Purpose: implement module logic.
+- Lines 1661-1670: Continues normalizeDiet. Declares allCheckboxStates, state. Selects elements: .aiAllergenChecklist input. Iterates collections. Purpose: connect logic to DOM elements.
+- Lines 1671-1680: Continues normalizeDiet. Declares state. Selects elements: .aiDietChecklist input. Iterates collections. Purpose: connect logic to DOM elements.
+- Lines 1681-1690: Continues normalizeDiet. Declares allAllergens, allDiets, allMayContainAllergens, allMayContainDiets. Iterates collections. Purpose: implement module logic.
+- Lines 1691-1700: Continues normalizeDiet. Declares normalized, stateInfo. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 1701-1710: Continues normalizeDiet. Branches on conditions. Purpose: implement module logic.
+- Lines 1711-1720: Continues normalizeDiet. Purpose: implement module logic.
+- Lines 1721-1730: Continues normalizeDiet. Declares normalized, stateInfo. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 1731-1740: Continues normalizeDiet. Purpose: implement module logic.
+- Lines 1741-1750: Continues normalizeDiet. Declares mergedAllergens, mergedDiets. Purpose: implement module logic.
+- Lines 1751-1760: Continues normalizeDiet. Declares mergedMayContainAllergens, mergedMayContainDiets. Purpose: implement module logic.
+- Lines 1761-1770: Continues normalizeDiet. Declares entry. Purpose: implement module logic.
+- Lines 1771-1780: Continues normalizeDiet. Purpose: implement module logic.
+- Lines 1781-1790: Continues normalizeDiet. Purpose: implement module logic.
+- Lines 1791-1800: Defines function resetConfirmButton. Iterates collections. Returns values from this block. Purpose: implement module logic.
+- Lines 1801-1810: Continues resetConfirmButton. Declares btn, wasConfirmed. Selects elements: .aiConfirmBtn. Updates classes (remove: confirmed). Sets element properties: dataset.confirmed=== "true", dataset.confirmed=false. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 1811-1820: Defines function updateAiPreview. Declares previewBox. Selects elements: aiAssistPreviewBox. Updates classes (add: unconfirmed). Sets inline styles: background=#f59e0b, borderColor=#f59e0b. Sets element properties: textContent=Confirm. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 1821-1830: Continues updateAiPreview. Declares rows, tempOverlay. Selects elements: aiAssistNameInput. Sets element properties: innerHTML='<div style="color:#8891b0. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 1831-1840: Continues updateAiPreview. Purpose: implement module logic.
+- Lines 1841-1850: Continues updateAiPreview. Declares allergenDetails, allergenIngredientInfo, key. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 1851-1860: Continues updateAiPreview. Declares ingredientLabel, brandLabel, fullLabel. Branches on conditions. Purpose: implement module logic.
+- Lines 1861-1870: Continues updateAiPreview. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 1871-1880: Continues updateAiPreview. Branches on conditions. Purpose: implement module logic.
+- Lines 1881-1890: Continues updateAiPreview. Declares detail. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 1891-1900: Continues updateAiPreview. Declares dishDiets. Branches on conditions. Purpose: implement module logic.
+- Lines 1901-1910: Continues updateAiPreview. Declares ingredientsBlockingDiets, dishCrossContaminationDiets. Purpose: implement module logic.
+- Lines 1911-1920: Continues updateAiPreview. Declares ingredientDiets, hasGlutenAllergen, key. Iterates collections. Purpose: implement module logic.
+- Lines 1921-1930: Continues updateAiPreview. Declares isIngredientRemovable, ingredientName. Iterates collections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 1931-1940: Continues updateAiPreview. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 1941-1950: Continues updateAiPreview. Iterates collections. Purpose: implement module logic.
+- Lines 1951-1960: Continues updateAiPreview. Declares removableAllergenSet, allergenConflicts. Iterates collections. Purpose: implement module logic.
+- Lines 1961-1970: Continues updateAiPreview. Declares conflicts, conflictingAllergens, normalizedAllergen, blockingIngredients. Iterates collections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 1971-1980: Continues updateAiPreview. Declares allBlockingIngredientsRemovable, allConflictingAllergensRemovable. Branches on conditions. Purpose: implement module logic.
+- Lines 1981-1990: Continues updateAiPreview. Declares hasBlockers, allBlockersRemovable. Branches on conditions. Purpose: implement module logic.
+- Lines 1991-2000: Continues updateAiPreview. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 2001-2010: Continues updateAiPreview. Declares items, mayContainFromRows. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 2011-2020: Continues updateAiPreview. Declares key. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 2021-2030: Continues updateAiPreview. Declares allAllergens, allDiets, html. Iterates collections. Purpose: implement module logic.
+- Lines 2031-2040: Defines function updateOverrideWarningMessage. Declares allergenChecklist. Selects elements: .aiAllergenChecklist. Sets element properties: innerHTML=html ||. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 2041-2050: Continues updateOverrideWarningMessage. Declares warningDiv, overriddenItems, aiState. Selects elements: .overrideWarningMessage, .aiAllergenChecklist input. Iterates collections. Purpose: connect logic to DOM elements.
+- Lines 2051-2060: Continues updateOverrideWarningMessage. Declares currentState, allergen, capAllergen, aiLabel, userLabel. Purpose: implement module logic.
+- Lines 2061-2070: Continues updateOverrideWarningMessage. Branches on conditions. Purpose: implement module logic.
+- Lines 2071-2080: Continues updateOverrideWarningMessage. Branches on conditions. Purpose: implement module logic.
+- Lines 2081-2090: Continues updateOverrideWarningMessage. Declares aiState, currentState, diet, aiLabel. Selects elements: .aiDietChecklist input. Iterates collections. Purpose: connect logic to DOM elements.
+- Lines 2091-2100: Continues updateOverrideWarningMessage. Declares userLabel. Purpose: implement module logic.
+- Lines 2101-2110: Continues updateOverrideWarningMessage. Branches on conditions. Purpose: implement module logic.
+- Lines 2111-2120: Continues updateOverrideWarningMessage. Declares checklistFlexContainer. Selects elements: [style*=. Branches on conditions. Purpose: connect logic to DOM elements.
+- Lines 2121-2130: Continues updateOverrideWarningMessage. Declares messageHtml. Branches on conditions. Purpose: implement module logic.
+- Lines 2131-2140: Defines function updateDietConflictMessage. Declares allergenInputs. Selects elements: .aiAllergenChecklist input. Branches on conditions. Returns values from this block. Purpose: connect logic to DOM elements.
+- Lines 2141-2150: Continues updateDietConflictMessage. Declares dietInputs, selectedAllergens, state, key. Selects elements: .aiDietChecklist input. Iterates collections. Branches on conditions. Returns values from this block. Purpose: connect logic to DOM elements.
+- Lines 2151-2160: Continues updateDietConflictMessage. Declares selectedDiets, state, diet. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 2161-2170: Continues updateDietConflictMessage. Declares conflictMap, conflicts, restricted. Iterates collections. Purpose: implement module logic.
+- Lines 2171-2180: Continues updateDietConflictMessage. Declares hits, existing, rowContainer. Selects elements: .aiDietConflictMessage, tr. Iterates collections. Branches on conditions. Returns values from this block. Purpose: connect logic to DOM elements.
+- Lines 2181-2190: Continues updateDietConflictMessage. Declares details, dietLabel, allergenList. Iterates collections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 2191-2200: Continues updateDietConflictMessage. Declares messageHtml. Sets element properties: innerHTML=details. Iterates collections. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 2201-2210: Continues updateDietConflictMessage. Declares overrideMessage, selectionGuard, checklistFlexContainer, insertAfter. Selects elements: .overrideWarningMessage, .aiSelectionGuard, .aiAllergenChecklist, [style*=. Branches on conditions. Purpose: connect logic to DOM elements.
+- Lines 2211-2220: Defines function renderAiTable. Sets element properties: dataset.dietConflicts=JSON.stringify(conflicts). Serializes or parses JSON. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 2221-2230: Continues renderAiTable. Declares source, data, copy. Iterates collections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 2231-2240: Continues renderAiTable. Branches on conditions. Purpose: implement module logic.
+- Lines 2241-2250: Continues renderAiTable. Branches on conditions. Purpose: implement module logic.
+- Lines 2251-2260: Continues renderAiTable. Branches on conditions. Purpose: implement module logic.
+- Lines 2261-2270: Continues renderAiTable. Iterates collections. Returns values from this block. Purpose: implement module logic.
+- Lines 2271-2280: Continues renderAiTable. Sets element properties: innerHTML=. Iterates collections. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 2281-2290: Continues renderAiTable. Iterates collections. Purpose: implement module logic.
+- Lines 2291-2300: Continues renderAiTable. Declares tr, allergens, brands. Sets element properties: dataset.index=idx, dataset.brands=JSON.stringify(brands). Serializes or parses JSON. Iterates collections. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 2301-2310: Continues renderAiTable. Declares baseAiDetectedAllergens, baseAiDetectedDiets, baseAiDetectedMayContainAllergens. Branches on conditions. Purpose: implement module logic.
+- Lines 2311-2320: Continues renderAiTable. Declares baseAiDetectedMayContainDiets. Sets element properties: dataset.aiDetectedAllergens=JSON.stringify(baseAiDetectedAllergens), dataset.aiDetectedDiets=JSON.stringify(baseAiDetectedDiets), dataset.aiDetectedMayContainAllergens=JSON.stringify(, dataset.aiDetectedMayContainDiets=JSON.stringify(. Serializes or parses JSON. Purpose: update UI state and presentation.
+- Lines 2321-2330: Continues renderAiTable. Sets element properties: dataset.needsScan=String(row.needsScan), dataset.userOverriddenScan=String(row.userOverriddenScan). Branches on conditions. Purpose: update UI state and presentation.
+- Lines 2331-2340: Continues renderAiTable. Sets element properties: dataset.scanDecisionSource=row.scanDecisionSource, dataset.analysisPending=true. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 2341-2350: Continues renderAiTable. Sets element properties: dataset.analysisMessage=row.analysisMessage, dataset.appealReviewStatus=row.appealReviewStatus, dataset.appealReviewNotes=row.appealReviewNotes. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 2351-2360: Continues renderAiTable. Declares requiresApply. Sets element properties: dataset.dietConflicts=JSON.stringify(row.dietAllergenConflicts), dataset.requiresApply=true. Serializes or parses JSON. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 2361-2370: Continues renderAiTable. Sets element properties: dataset.issueReported=true, dataset.brandImage=row.brandImage. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 2371-2380: Continues renderAiTable. Declares disableSelections, detectionCompleted. Sets element properties: dataset.aiDetectionCompleted=true. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 2381-2390: Defines function normalizeAllergen. Declares lower. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 2391-2400: Defines function normalizeDiet. Declares lower, properDiet. Returns values from this block. Purpose: implement module logic.
+- Lines 2401-2410: Continues normalizeDiet. Declares aiDetectedAllergens, aiDetectedDiets, aiDetectedMayContainAllergens. Iterates collections. Purpose: implement module logic.
+- Lines 2411-2420: Continues normalizeDiet. Declares aiDetectedMayContainDiets. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 2421-2430: Continues normalizeDiet. Declares normalized. Iterates collections. Purpose: implement module logic.
+- Lines 2431-2440: Continues normalizeDiet. Declares normalized. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 2441-2450: Continues normalizeDiet. Declares brandsHTML. Purpose: implement module logic.
+- Lines 2451-2460: Continues normalizeDiet. Declares brandImages, seenImageUrls. Iterates collections. Purpose: implement module logic.
+- Lines 2461-2470: Continues normalizeDiet. Branches on conditions. Purpose: implement module logic.
+- Lines 2471-2480: Continues normalizeDiet. Declares imgTag. Purpose: implement module logic.
+- Lines 2481-2490: Continues normalizeDiet. Declares ingredientsNote, imagesDisplay. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 2491-2500: Continues normalizeDiet. Declares brandItemHTML. Purpose: implement module logic.
+- Lines 2501-2510: Continues normalizeDiet. Purpose: implement module logic.
+- Lines 2511-2520: Continues normalizeDiet. Returns values from this block. Purpose: implement module logic.
+- Lines 2521-2530: Continues normalizeDiet. Declares isConfirmed, needsScan, needsScanDefined, userOverriddenScan, issueReported. Iterates collections. Purpose: implement module logic.
+- Lines 2531-2540: Continues normalizeDiet. Declares hasPendingPhotoResult, hasActivePhotoAnalysis. Branches on conditions. Purpose: implement module logic.
+- Lines 2541-2550: Continues normalizeDiet. Branches on conditions. Purpose: implement module logic.
+- Lines 2551-2560: Continues normalizeDiet. Declares showScanRecommendation, hasBrandsOrOverridden, scanRequirementSatisfied, canConfirm. Branches on conditions. Purpose: implement module logic.
+- Lines 2561-2570: Continues normalizeDiet. Declares allAllergens, allDiets, mayContainAllergens, mayContainDiets. Iterates collections. Purpose: implement module logic.
+- Lines 2571-2580: Continues normalizeDiet. Declares rememberedBrand, brandAlreadyAdded. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 2581-2590: Continues normalizeDiet. Declares rememberBrandHTML. Purpose: implement module logic.
+- Lines 2591-2600: Continues normalizeDiet. Purpose: implement module logic.
+- Lines 2601-2610: Continues normalizeDiet. Declares scanDecisionNote, selectionGuardMessage. Purpose: implement module logic.
+- Lines 2611-2620: Continues normalizeDiet. Declares rowLoadingClass, rowLoadingOverlay. Purpose: implement module logic.
+- Lines 2621-2630: Continues normalizeDiet. Sets element properties: innerHTML=`. Purpose: update UI state and presentation.
+- Lines 2631-2640: Continues normalizeDiet. Purpose: implement module logic.
+- Lines 2641-2650: Continues normalizeDiet. Purpose: implement module logic.
+- Lines 2651-2660: Continues normalizeDiet. Purpose: implement module logic.
+- Lines 2661-2670: Continues normalizeDiet. Purpose: implement module logic.
+- Lines 2671-2680: Continues normalizeDiet. Purpose: implement module logic.
+- Lines 2681-2690: Continues normalizeDiet. Purpose: implement module logic.
+- Lines 2691-2700: Continues normalizeDiet. Purpose: implement module logic.
+- Lines 2701-2710: Continues normalizeDiet. Purpose: implement module logic.
+- Lines 2711-2720: Continues normalizeDiet. Purpose: implement module logic.
+- Lines 2721-2730: Continues normalizeDiet. Purpose: implement module logic.
+- Lines 2731-2740: Continues normalizeDiet. Purpose: implement module logic.
+- Lines 2741-2750: Continues normalizeDiet. Purpose: implement module logic.
+- Lines 2751-2760: Continues normalizeDiet. Purpose: implement module logic.
+- Lines 2761-2770: Continues normalizeDiet. Purpose: implement module logic.
+- Lines 2771-2780: Continues normalizeDiet. Purpose: implement module logic.
+- Lines 2781-2790: Continues normalizeDiet. Purpose: implement module logic.
+- Lines 2791-2800: Continues normalizeDiet. Declares allergenNorm, isContains, isMayContain. Iterates collections. Purpose: implement module logic.
+- Lines 2801-2810: Continues normalizeDiet. Declares state, checked, stateClass, stateIcon, aiWasSelectedAsContains. Branches on conditions. Purpose: implement module logic.
+- Lines 2811-2820: Continues normalizeDiet. Declares aiWasSelectedAsMayContain, aiWasSelected, aiDetectedClass, aiState. Branches on conditions. Purpose: implement module logic.
+- Lines 2821-2830: Continues normalizeDiet. Declares currentlySelected, hasAiDetections. Branches on conditions. Purpose: implement module logic.
+- Lines 2831-2840: Continues normalizeDiet. Declares stateOverridden, overrideClass, overrideReason. Branches on conditions. Purpose: implement module logic.
+- Lines 2841-2850: Continues normalizeDiet. Declares tooltipParts. Branches on conditions. Purpose: implement module logic.
+- Lines 2851-2860: Continues normalizeDiet. Branches on conditions. Purpose: implement module logic.
+- Lines 2861-2870: Continues normalizeDiet. Declares tooltipAttr. Branches on conditions. Purpose: implement module logic.
+- Lines 2871-2880: Continues normalizeDiet. Declares disabledAttr, disabledClass, allergenEmoji. Returns values from this block. Purpose: implement module logic.
+- Lines 2881-2890: Continues normalizeDiet. Declares isContains, isMayContain, state. Iterates collections. Purpose: implement module logic.
+- Lines 2891-2900: Continues normalizeDiet. Declares checked, stateClass, stateIcon, aiWasSelectedAsContains, aiWasSelectedAsMayContain, aiWasSelected. Branches on conditions. Purpose: implement module logic.
+- Lines 2901-2910: Continues normalizeDiet. Declares aiDetectedClass, aiState, currentlySelected, hasAiDetections. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 2911-2920: Continues normalizeDiet. Declares stateOverridden, overrideClass. Branches on conditions. Purpose: implement module logic.
+- Lines 2921-2930: Continues normalizeDiet. Declares overrideReason. Purpose: implement module logic.
+- Lines 2931-2940: Continues normalizeDiet. Declares tooltipParts. Branches on conditions. Purpose: implement module logic.
+- Lines 2941-2950: Continues normalizeDiet. Branches on conditions. Purpose: implement module logic.
+- Lines 2951-2960: Continues normalizeDiet. Declares tooltipAttr, disabledAttr, disabledClass, dietEmoji. Purpose: implement module logic.
+- Lines 2961-2970: Continues normalizeDiet. Declares hasAiDetections. Iterates collections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 2971-2980: Continues normalizeDiet. Declares overriddenItems, allergenNorm, aiWasSelectedAsContains. Iterates collections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 2981-2990: Continues normalizeDiet. Declares aiWasSelectedAsMayContain, aiWasSelected, currentlySelectedAsContains, currentlySelectedAsMayContain, currentlySelected. Purpose: implement module logic.
+- Lines 2991-3000: Continues normalizeDiet. Declares currentState, aiState. Branches on conditions. Purpose: implement module logic.
+- Lines 3001-3010: Continues normalizeDiet. Declares aiStateLabel. Branches on conditions. Purpose: implement module logic.
+- Lines 3011-3020: Continues normalizeDiet. Declares userStateLabel. Branches on conditions. Purpose: implement module logic.
+- Lines 3021-3030: Continues normalizeDiet. Declares aiStateLabel. Branches on conditions. Purpose: implement module logic.
+- Lines 3031-3040: Continues normalizeDiet. Declares userStateLabel. Purpose: implement module logic.
+- Lines 3041-3050: Continues normalizeDiet. Declares aiWasSelectedAsContains, aiWasSelectedAsMayContain, aiWasSelected, currentlySelectedAsContains, currentlySelectedAsMayContain, currentlySelected. Iterates collections. Purpose: implement module logic.
+- Lines 3051-3060: Continues normalizeDiet. Declares currentState, aiState. Branches on conditions. Purpose: implement module logic.
+- Lines 3061-3070: Continues normalizeDiet. Declares aiStateLabel. Branches on conditions. Purpose: implement module logic.
+- Lines 3071-3080: Continues normalizeDiet. Declares userStateLabel. Branches on conditions. Purpose: implement module logic.
+- Lines 3081-3090: Continues normalizeDiet. Declares aiStateLabel. Branches on conditions. Purpose: implement module logic.
+- Lines 3091-3100: Continues normalizeDiet. Declares userStateLabel. Branches on conditions. Purpose: implement module logic.
+- Lines 3101-3110: Continues normalizeDiet. Iterates collections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 3111-3120: Continues normalizeDiet. Declares details, dietLabel, allergenList. Iterates collections. Returns values from this block. Purpose: implement module logic.
+- Lines 3121-3130: Continues normalizeDiet. Purpose: implement module logic.
+- Lines 3131-3140: Continues normalizeDiet. Updates classes (toggle: show). Purpose: update UI state and presentation.
+- Lines 3141-3150: Continues normalizeDiet. Updates classes (remove: show). Sets element properties: innerHTML=. Iterates collections. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 3151-3160: Continues normalizeDiet. Iterates collections. Purpose: implement module logic.
+- Lines 3161-3170: Continues normalizeDiet. Declares completedResults, rowIdx. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 3171-3180: Continues normalizeDiet. Purpose: implement module logic.
+- Lines 3181-3190: Continues normalizeDiet. Declares pendingIngredient. Schedules timed work. Branches on conditions. Purpose: implement module logic.
+- Lines 3191-3200: Defines function scrollAiAssistantToIngredient. Declares target, rows, row. Selects elements: tr[data-index]. Iterates collections. Branches on conditions. Returns values from this block. Purpose: connect logic to DOM elements.
+- Lines 3201-3210: Continues scrollAiAssistantToIngredient. Declares nameInput. Selects elements: .aiIngredientName. Sets inline styles: transition=background-color 0.3s, backgroundColor=rgba(76,90,212,0.2), backgroundColor=, transition=. Schedules timed work. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 3211-3220: Defines function normalizeIngredientName. Returns values from this block. Purpose: implement module logic.
+- Lines 3221-3230: Continues normalizeIngredientName. Declares lower, aliases. Purpose: implement module logic.
+- Lines 3231-3240: Continues normalizeIngredientName. Returns values from this block. Purpose: implement module logic.
+- Lines 3241-3250: Defines function heuristicallyExtractIngredients. Declares tokens, unique. Iterates collections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 3251-3260: Continues heuristicallyExtractIngredients. Declares cleaned. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 3261-3270: Continues heuristicallyExtractIngredients. Declares normalized, key, detectedAllergens. Iterates collections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 3271-3280: Defines function openAiAssistant. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 3281-3290: Continues openAiAssistant. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 3291-3300: Continues openAiAssistant. Declares titleEl. Selects elements: aiAssistTitle. Purpose: connect logic to DOM elements.
+- Lines 3301-3310: Continues openAiAssistant. Declares dishName. Sets element properties: textContent=Dish editor. Iterates collections. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 3311-3320: Continues openAiAssistant. Declares nameInput. Selects elements: aiAssistNameInput. Sets element properties: value=. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 3321-3330: Continues openAiAssistant. Sets element properties: value=dishName. Schedules timed work. Purpose: update UI state and presentation.
+- Lines 3331-3340: Continues openAiAssistant. Declares replacementProgressCard, replacementProgressText. Selects elements: aiAssistReplacementProgress, aiAssistReplacementProgressText. Branches on conditions. Purpose: connect logic to DOM elements.
+- Lines 3341-3350: Continues openAiAssistant. Sets inline styles: display=block. Sets element properties: textContent=`Dish ${context.dishNumber} of ${context.totalDishes}`. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 3351-3360: Continues openAiAssistant. Declares deleteBtn, deleteWarning, confirmDeleteBtn, cancelDeleteBtn. Selects elements: aiAssistDeleteBtn, aiAssistDeleteWarning, aiAssistConfirmDeleteBtn, aiAssistCancelDeleteBtn. Sets inline styles: display=none. Purpose: update UI state and presentation.
+- Lines 3361-3370: Continues openAiAssistant. Sets inline styles: display=block. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 3371-3380: Continues openAiAssistant. Sets inline styles: display=none. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 3381-3390: Continues openAiAssistant. Sets inline styles: display=none. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 3391-3400: Continues openAiAssistant. Declares existingIngredients, hasExistingData. Branches on conditions. Purpose: implement module logic.
+- Lines 3401-3410: Continues openAiAssistant. Declares restaurantId, appealsQuery. Supabase tables: ingredient_scan_appeals (select). Iterates collections. Branches on conditions. Purpose: load or persist data for the page.
+- Lines 3411-3420: Continues openAiAssistant. Branches on conditions. Purpose: implement module logic.
+- Lines 3421-3430: Continues openAiAssistant. Declares appealMap, key, data. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 3431-3440: Continues openAiAssistant. Declares ingredientName, appealData. Iterates collections. Purpose: implement module logic.
+- Lines 3441-3450: Continues openAiAssistant. Declares alreadyHasAppealState. Branches on conditions. Purpose: implement module logic.
+- Lines 3451-3460: Continues openAiAssistant. Branches on conditions. Purpose: implement module logic.
+- Lines 3461-3470: Continues openAiAssistant. Declares hasBrands. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 3471-3480: Continues openAiAssistant. Iterates collections. Purpose: implement module logic.
+- Lines 3481-3490: Continues openAiAssistant. Declares hasBrands. Branches on conditions. Purpose: implement module logic.
+- Lines 3491-3500: Continues openAiAssistant. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 3501-3510: Continues openAiAssistant. Iterates collections. Purpose: implement module logic.
+- Lines 3511-3520: Continues openAiAssistant. Branches on conditions. Purpose: implement module logic.
+- Lines 3521-3530: Continues openAiAssistant. Updates classes (add: show). Sets element properties: value=context?.seedText || "". Serializes or parses JSON. Iterates collections. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 3531-3540: Continues openAiAssistant. Sets element properties: value=context?.seedText || "". Schedules timed work. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 3541-3550: Defines function openImageModal. Declares modal, img. Selects elements: imageModal, imageModalImg. Purpose: connect logic to DOM elements.
+- Lines 3551-3560: Defines function closeImageModal. Declares modal. Selects elements: imageModal. Updates classes (add: show). Sets inline styles: overflow=hidden. Sets element properties: src=imageSrc. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 3561-3570: Defines function closeAiAssistant. Updates classes (remove: show). Sets inline styles: overflow=. Purpose: update UI state and presentation.
+- Lines 3571-3580: Continues closeAiAssistant. Declares replacementProgressCard. Selects elements: aiAssistReplacementProgress. Sets inline styles: display=none. Iterates collections. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 3581-3590: Continues closeAiAssistant. Declares data, hasData, dataChanged, currentData. Serializes or parses JSON. Branches on conditions. Purpose: implement module logic.
+- Lines 3591-3600: Continues closeAiAssistant. Declares nameInput, dishNameHasUnsavedChanges. Selects elements: aiAssistNameInput. Branches on conditions. Purpose: connect logic to DOM elements.
+- Lines 3601-3610: Continues closeAiAssistant. Branches on conditions. Purpose: implement module logic.
+- Lines 3611-3620: Continues closeAiAssistant. Declares currentDishName. Branches on conditions. Purpose: implement module logic.
+- Lines 3621-3630: Continues closeAiAssistant. Declares hasUnsavedChanges, warningEl. Selects elements: aiAssistUnsavedWarning. Sets inline styles: display=block. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 3631-3640: Continues closeAiAssistant. Declares saveAndExitBtn, exitWithoutSavingBtn, cancelExitBtn. Selects elements: aiAssistSaveAndExitBtn, aiAssistExitWithoutSavingBtn, aiAssistCancelExitBtn. Purpose: connect logic to DOM elements.
+- Lines 3641-3650: Defines function handleSaveAndExit. Declares currentDishName, saveNameBtn. Selects elements: aiAssistSaveNameBtn. Sets inline styles: display=none. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 3651-3660: Continues handleSaveAndExit. Branches on conditions. Purpose: implement module logic.
+- Lines 3661-3670: Continues handleSaveAndExit. Sets inline styles: display=none. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 3671-3680: Defines function handleExitWithoutSaving. Declares handleCancelExit. Sets inline styles: display=none. Purpose: update UI state and presentation.
+- Lines 3681-3690: Continues handleExitWithoutSaving. Selects elements: aiAssistSaveAndExitBtn, aiAssistExitWithoutSavingBtn. Branches on conditions. Purpose: connect logic to DOM elements.
+- Lines 3691-3700: Continues handleExitWithoutSaving. Selects elements: aiAssistCancelExitBtn. Branches on conditions. Returns values from this block. Purpose: connect logic to DOM elements.
+- Lines 3701-3710: Defines function performAiAssistClose. Declares warningEl. Selects elements: aiAssistUnsavedWarning. Sets inline styles: display=none. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 3711-3720: Continues performAiAssistClose. Branches on conditions. Purpose: implement module logic.
+- Lines 3721-3730: Continues performAiAssistClose. Updates classes (remove: show). Branches on conditions. Purpose: update UI state and presentation.
+- Lines 3731-3740: Continues performAiAssistClose. Declares finalConfirmation. Selects elements: aiAssistFinalConfirmation. Updates classes (remove: show). Sets element properties: innerHTML=. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 3741-3750: Defines function toggleAiDictation. Updates classes (add: aiAssistHidden). Sets element properties: textContent=🎙 Dictate. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 3751-3760: Continues toggleAiDictation. Sets element properties: textContent=🎙 Dictate. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 3761-3770: Continues toggleAiDictation. Declares SpeechRecognition, recognition. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 3771-3780: Continues toggleAiDictation. Declares transcript. Sets element properties: value=transcript.trim(). Iterates collections. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 3781-3790: Continues toggleAiDictation. Sets element properties: textContent=🎙 Dictate. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 3791-3800: Continues toggleAiDictation. Sets element properties: textContent=⏹ Stop dictation. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 3801-3810: Defines function generateRecipeDescription. Declares nameInput, dishName. Selects elements: aiAssistNameInput. Branches on conditions. Returns values from this block. Purpose: connect logic to DOM elements.
+- Lines 3811-3820: Continues generateRecipeDescription. Sets element properties: disabled=true. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 3821-3830: Continues generateRecipeDescription. Declares payload. Sets element properties: textContent=Generating recipe.... Iterates collections. Purpose: update UI state and presentation.
+- Lines 3831-3840: Continues generateRecipeDescription. Declares result, generatedDescription. Branches on conditions. Purpose: implement module logic.
+- Lines 3841-3850: Continues generateRecipeDescription. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 3851-3860: Continues generateRecipeDescription. Sets element properties: value=generatedDescription.trim(). Branches on conditions. Purpose: update UI state and presentation.
+- Lines 3861-3870: Continues generateRecipeDescription. Branches on conditions. Purpose: implement module logic.
+- Lines 3871-3880: Continues generateRecipeDescription. Declares nameInput. Selects elements: aiAssistNameInput. Branches on conditions. Purpose: connect logic to DOM elements.
+- Lines 3881-3890: Defines function fetchBrandSuggestions. Declares dishName. Sets element properties: textContent=`✨ Generate generic ${dishName} recipe`, disabled=false. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 3891-3900: Defines function if. Declares brandQuery. Branches on conditions. Purpose: implement module logic.
+- Lines 3901-3910: Continues if. Declares response. Iterates collections. Purpose: implement module logic.
+- Lines 3911-3920: Continues if. Declares products, aiReasoning, searchCount, totalFound, withImages. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 3921-3930: Continues if. Branches on conditions. Purpose: implement module logic.
+- Lines 3931-3940: Continues if. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 3941-3950: Continues if. Declares filteredProducts, hasImage. Iterates collections. Purpose: implement module logic.
+- Lines 3951-3960: Continues if. Declares hasIngredientsList. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 3961-3970: Continues if. Declares progressBar, progressBarFill. Selects elements: aiProgressBar, aiProgressBarFill. Updates classes (add: show). Sets inline styles: width=30%. Iterates collections. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 3971-3980: Continues if. Declares analyzedProducts, allergens, diets, analysisResult. Iterates collections. Purpose: implement module logic.
+- Lines 3981-3990: Continues if. Purpose: implement module logic.
+- Lines 3991-4000: Continues if. Declares allergens, diets. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 4001-4010: Continues if. Purpose: implement module logic.
+- Lines 4011-4020: Continues if. Returns values from this block. Purpose: implement module logic.
+- Lines 4021-4030: Continues if. Sets inline styles: width=100%. Schedules timed work. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 4031-4040: Continues if. Updates classes (remove: show). Sets inline styles: width=0%. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 4041-4050: Defines function openAiBrandSearch. Declares rows, ingredientName. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 4051-4060: Continues openAiBrandSearch. Declares rowElement. Iterates collections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 4061-4070: Continues openAiBrandSearch. Declares rowBrandResults. Selects elements: .aiRowBrandResults. Updates classes (add: show). Sets element properties: innerHTML=`. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 4071-4080: Continues openAiBrandSearch. Purpose: implement module logic.
+- Lines 4081-4090: Defines function performSearch. Declares searchInput, submitBtn, cancelBtn, brandFilter, query. Selects elements: .aiBrandSearchInput, .aiBrandSearchSubmit, .aiBrandSearchCancel. Purpose: connect logic to DOM elements.
+- Lines 4091-4100: Continues performSearch. Sets element properties: innerHTML=`. Iterates collections. Purpose: update UI state and presentation.
+- Lines 4101-4110: Defines function updateProgress. Declares progressBar, statusEl, subtextEl. Selects elements: brandSearchProgress, brandSearchStatus, brandSearchSubtext. Sets inline styles: width=percent + "%". Sets element properties: textContent=status, textContent=subtext. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 4111-4120: Continues updateProgress. Declares DOM. Schedules timed work. Iterates collections. Purpose: implement module logic.
+- Lines 4121-4130: Continues updateProgress. Declares suggestions. Branches on conditions. Purpose: implement module logic.
+- Lines 4131-4140: Continues updateProgress. Selects elements: .aiBrandSearchAgain. Binds events: click. Sets element properties: innerHTML=`. Purpose: respond to user actions.
+- Lines 4141-4150: Continues updateProgress. Sets element properties: innerHTML=`. Iterates collections. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 4151-4160: Continues updateProgress. Purpose: implement module logic.
+- Lines 4161-4170: Continues updateProgress. Iterates collections. Purpose: implement module logic.
+- Lines 4171-4180: Continues updateProgress. Declares suggestionIdx. Selects elements: .aiBrandApply, .aiBrandSearchAgain. Binds events: click. Iterates collections. Purpose: respond to user actions.
+- Lines 4181-4190: Continues updateProgress. Binds events: click. Purpose: respond to user actions.
+- Lines 4191-4200: Continues updateProgress. Binds events: click. Updates classes (remove: show). Sets element properties: innerHTML=<div>Could not retrieve brand information.</div>, innerHTML=. Purpose: respond to user actions.
+- Lines 4201-4210: Continues updateProgress. Binds events: keypress. Schedules timed work. Branches on conditions. Purpose: respond to user actions.
+- Lines 4211-4220: Defines function applyExistingBrandToRow. Declares suggestion. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 4221-4230: Continues applyExistingBrandToRow. Purpose: implement module logic.
+- Lines 4231-4240: Defines function openExistingBrandSearchModal. Purpose: implement module logic.
+- Lines 4241-4250: Continues openExistingBrandSearchModal. Declares rows, getBrandItems. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 4251-4260: Continues openExistingBrandSearchModal. Declares brandItems, sortedItems, modal. Sets inline styles: cssText=`. Purpose: update UI state and presentation.
+- Lines 4261-4270: Continues openExistingBrandSearchModal. Purpose: implement module logic.
+- Lines 4271-4280: Continues openExistingBrandSearchModal. Declares modalContent. Sets inline styles: cssText=`. Purpose: update UI state and presentation.
+- Lines 4281-4290: Continues openExistingBrandSearchModal. Sets element properties: innerHTML=`. Purpose: update UI state and presentation.
+- Lines 4291-4300: Continues openExistingBrandSearchModal. Purpose: implement module logic.
+- Lines 4301-4310: Continues openExistingBrandSearchModal. Declares listEl, searchInput, renderResults, term. Selects elements: .existingBrandSearchList, .existingBrandSearchInput. Purpose: connect logic to DOM elements.
+- Lines 4311-4320: Continues openExistingBrandSearchModal. Declares results, ingredientNames, haystack. Iterates collections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 4321-4330: Continues openExistingBrandSearchModal. Sets element properties: innerHTML=`. Iterates collections. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 4331-4340: Continues openExistingBrandSearchModal. Sets element properties: innerHTML=results. Iterates collections. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 4341-4350: Continues openExistingBrandSearchModal. Purpose: implement module logic.
+- Lines 4351-4360: Continues openExistingBrandSearchModal. Iterates collections. Purpose: implement module logic.
+- Lines 4361-4370: Continues openExistingBrandSearchModal. Purpose: implement module logic.
+- Lines 4371-4380: Continues openExistingBrandSearchModal. Declares applyBtn, idx, item. Selects elements: .useExistingBrandBtn. Binds events: click. Branches on conditions. Returns values from this block. Purpose: respond to user actions.
+- Lines 4381-4390: Continues openExistingBrandSearchModal. Declares viewBtn, src. Selects elements: .viewExistingLabelBtn. Binds events: input. Schedules timed work. Branches on conditions. Purpose: respond to user actions.
+- Lines 4391-4400: Defines function closeModal. Selects elements: .closeExistingBrandModal. Binds events: click. Iterates collections. Branches on conditions. Purpose: respond to user actions.
+- Lines 4401-4410: Defines function removeAppeal. Declares rows. Branches on conditions. Purpose: implement module logic.
+- Lines 4411-4420: Continues removeAppeal. Declares ingredientName. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 4421-4430: Continues removeAppeal. Declares restaurantId. Iterates collections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 4431-4440: Continues removeAppeal. Declares dishName, deleteQuery. Supabase tables: ingredient_scan_appeals (delete). Branches on conditions. Purpose: load or persist data for the page.
+- Lines 4441-4450: Continues removeAppeal. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 4451-4460: Continues removeAppeal. Declares error. Branches on conditions. Purpose: implement module logic.
+- Lines 4461-4470: Continues removeAppeal. Declares data. Branches on conditions. Purpose: implement module logic.
+- Lines 4471-4480: Continues removeAppeal. Iterates collections. Purpose: implement module logic.
+- Lines 4481-4490: Continues removeAppeal. Declares tableRows. Selects elements: #aiIngredientList tr. Schedules timed work. Branches on conditions. Purpose: connect logic to DOM elements.
+- Lines 4491-4500: Continues removeAppeal. Iterates collections. Purpose: implement module logic.
+- Lines 4501-4510: Defines function openAiAppealModal. Declares rows, ingredientName. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 4511-4520: Continues openAiAppealModal. Declares appealModal. Sets inline styles: cssText=`. Iterates collections. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 4521-4530: Continues openAiAppealModal. Purpose: implement module logic.
+- Lines 4531-4540: Continues openAiAppealModal. Sets element properties: innerHTML=`. Iterates collections. Purpose: update UI state and presentation.
+- Lines 4541-4550: Continues openAiAppealModal. Iterates collections. Purpose: implement module logic.
+- Lines 4551-4560: Continues openAiAppealModal. Purpose: implement module logic.
+- Lines 4561-4570: Continues openAiAppealModal. Sets inline styles: position=fixed, top=`-${scrollLockPosition}px`, width=100%, overflow=hidden. Purpose: update UI state and presentation.
+- Lines 4571-4580: Continues openAiAppealModal. Declares video, canvas, preview, placeholder, cameraBtn, uploadBtn, .... Selects elements: #appealCameraVideo, #appealCameraCanvas, #appealPhotoPreview, #appealCameraPlaceholder, .aiAppealCameraBtn, .aiAppealUploadBtn, .... Purpose: connect logic to DOM elements.
+- Lines 4581-4590: Continues openAiAppealModal. Declares cancelBtn, fileInput, statusDiv, messageTextarea, charCountDiv, mediaStream, .... Selects elements: .aiAppealCancelBtn, #appealImageUpload, #appealStatus, #appealMessage, #appealMessageCharCount. Iterates collections. Purpose: connect logic to DOM elements.
+- Lines 4591-4600: Defines function stopCamera. Declares length. Binds events: input. Sets element properties: textContent=`${length}/500`. Iterates collections. Branches on conditions. Purpose: respond to user actions.
+- Lines 4601-4610: Defines function closeModal. Branches on conditions. Purpose: implement module logic.
+- Lines 4611-4620: Defines function showPreview. Sets inline styles: position=, top=, width=, overflow=, display=none. Purpose: update UI state and presentation.
+- Lines 4621-4630: Continues showPreview. Binds events: click. Sets inline styles: display=none, display=block, display=inline-block. Sets element properties: src=dataUrl. Purpose: respond to user actions.
+- Lines 4631-4640: Continues showPreview. Declares stream. Sets inline styles: display=none, display=block. Purpose: update UI state and presentation.
+- Lines 4641-4650: Continues showPreview. Sets inline styles: display=inline-block, display=none, color=#ef4444. Sets element properties: textContent=Position the ingredient in view and click Capture, textContent="Could not access camera: " + (err.message || err). Purpose: update UI state and presentation.
+- Lines 4651-4660: Continues showPreview. Declares ctx, dataUrl. Binds events: click. Branches on conditions. Purpose: respond to user actions.
+- Lines 4661-4670: Continues showPreview. Declares file. Binds events: click, change. Purpose: respond to user actions.
+- Lines 4671-4680: Continues showPreview. Declares reader. Binds events: click. Branches on conditions. Purpose: respond to user actions.
+- Lines 4681-4690: Continues showPreview. Sets inline styles: color=#ef4444, color=#a8b2d6. Sets element properties: textContent=Please take or upload a photo first, textContent=Submitting..., textContent=Submitting appeal..., disabled=true. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 4691-4700: Continues showPreview. Declares client. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 4701-4710: Continues showPreview. Declares check. Schedules timed work. Branches on conditions. Purpose: implement module logic.
+- Lines 4711-4720: Continues showPreview. Declares restaurantId. Branches on conditions. Purpose: implement module logic.
+- Lines 4721-4730: Continues showPreview. Declares photoBlob, fileName, photoUrl, data, error. Supabase tables: ingredient-appeals. Purpose: load or persist data for the page.
+- Lines 4731-4740: Continues showPreview. Branches on conditions. Purpose: implement module logic.
+- Lines 4741-4750: Continues showPreview. Declares data. Branches on conditions. Purpose: implement module logic.
+- Lines 4751-4760: Continues showPreview. Supabase tables: ingredient-appeals. Purpose: load or persist data for the page.
+- Lines 4761-4770: Continues showPreview. Branches on conditions. Purpose: implement module logic.
+- Lines 4771-4780: Continues showPreview. Declares dbSuccess, managerMessage, dishName. Branches on conditions. Purpose: implement module logic.
+- Lines 4781-4790: Continues showPreview. Declares error. Supabase tables: ingredient_scan_appeals (insert). Purpose: load or persist data for the page.
+- Lines 4791-4800: Continues showPreview. Branches on conditions. Purpose: implement module logic.
+- Lines 4801-4810: Continues showPreview. Purpose: implement module logic.
+- Lines 4811-4820: Continues showPreview. Purpose: implement module logic.
+- Lines 4821-4830: Continues showPreview. Declares restaurantName, restaurantSlug, SUPABASE_URL. Purpose: implement module logic.
+- Lines 4831-4840: Continues showPreview. Serializes or parses JSON. Purpose: implement module logic.
+- Lines 4841-4850: Continues showPreview. Branches on conditions. Purpose: implement module logic.
+- Lines 4851-4860: Continues showPreview. Sets element properties: textContent=✓ Appeal submitted successfully! We will review it., textContent="✓ Appeal recorded locally (database save failed, but you.... Branches on conditions. Purpose: update UI state and presentation.
+- Lines 4861-4870: Continues showPreview. Declares data. Sets inline styles: color=#4caf50. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 4871-4880: Continues showPreview. Serializes or parses JSON. Purpose: implement module logic.
+- Lines 4881-4890: Continues showPreview. Declares tableRows, verifyData. Selects elements: #aiIngredientList tr. Schedules timed work. Branches on conditions. Purpose: connect logic to DOM elements.
+- Lines 4891-4900: Continues showPreview. Serializes or parses JSON. Purpose: implement module logic.
+- Lines 4901-4910: Continues showPreview. Schedules timed work. Purpose: implement module logic.
+- Lines 4911-4920: Continues showPreview. Sets inline styles: color=#ef4444. Sets element properties: textContent="Failed to submit appeal: " + (err.message || err), textContent=Submit Appeal, disabled=false. Purpose: update UI state and presentation.
+- Lines 4921-4930: Continues showPreview. Binds events: click. Branches on conditions. Purpose: respond to user actions.
+- Lines 4931-4940: Defines function applyBrandSuggestionConfirmed. Declares row, brands. Selects elements: tr[data-index="${rowIdx}"]. Serializes or parses JSON. Branches on conditions. Returns values from this block. Purpose: connect logic to DOM elements.
+- Lines 4941-4950: Defines function normalizeAllergenLabel. Declares lower. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 4951-4960: Continues normalizeAllergenLabel. Declares allergenNames. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 4961-4970: Continues normalizeAllergenLabel. Declares dietNames. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 4971-4980: Continues normalizeAllergenLabel. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 4981-4990: Continues normalizeAllergenLabel. Declares normalizedIngredientsList. Iterates collections. Purpose: implement module logic.
+- Lines 4991-5000: Continues normalizeAllergenLabel. Declares suggestionMayContainAllergens. Purpose: implement module logic.
+- Lines 5001-5010: Continues normalizeAllergenLabel. Declares suggestionMayContainDiets. Iterates collections. Purpose: implement module logic.
+- Lines 5011-5020: Continues normalizeAllergenLabel. Declares newBrand. Iterates collections. Purpose: implement module logic.
+- Lines 5021-5030: Continues normalizeAllergenLabel. Declares brandText, hasGlutenFreeClaim, hasExplicitWheat. Branches on conditions. Purpose: implement module logic.
+- Lines 5031-5040: Continues normalizeAllergenLabel. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 5041-5050: Continues normalizeAllergenLabel. Declares brandAllergens, brandDiets. Sets element properties: dataset.brands=JSON.stringify(brands). Serializes or parses JSON. Iterates collections. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 5051-5060: Continues normalizeAllergenLabel. Declares normalized. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 5061-5070: Continues normalizeAllergenLabel. Declares allData. Purpose: implement module logic.
+- Lines 5071-5080: Continues normalizeAllergenLabel. Declares baseAllergens, baseDiets, baseAiDetectedAllergens, baseAiDetectedDiets. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 5081-5090: Continues normalizeAllergenLabel. Declares normalizedBrandDiets, lower, proper. Iterates collections. Returns values from this block. Purpose: implement module logic.
+- Lines 5091-5100: Continues normalizeAllergenLabel. Declares mergedMayContainAllergens. Purpose: implement module logic.
+- Lines 5101-5110: Continues normalizeAllergenLabel. Declares mergedMayContainDiets. Branches on conditions. Purpose: implement module logic.
+- Lines 5111-5120: Continues normalizeAllergenLabel. Sets element properties: dataset.mayContainAllergens=JSON.stringify(. Serializes or parses JSON. Purpose: update UI state and presentation.
+- Lines 5121-5130: Continues normalizeAllergenLabel. Declares allergenToDiets. Sets element properties: dataset.aiDetectedMayContainAllergens=JSON.stringify(. Serializes or parses JSON. Iterates collections. Purpose: update UI state and presentation.
+- Lines 5131-5140: Continues normalizeAllergenLabel. Declares mayContainDiets, affectedDiets. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 5141-5150: Continues normalizeAllergenLabel. Sets element properties: dataset.mayContainDiets=JSON.stringify(. Serializes or parses JSON. Iterates collections. Purpose: update UI state and presentation.
+- Lines 5151-5160: Continues normalizeAllergenLabel. Sets element properties: dataset.aiDetectedMayContainDiets=JSON.stringify(. Serializes or parses JSON. Purpose: update UI state and presentation.
+- Lines 5161-5170: Continues normalizeAllergenLabel. Sets element properties: dataset.aiDetectedAllergens=JSON.stringify(, dataset.aiDetectedDiets=JSON.stringify(. Serializes or parses JSON. Purpose: update UI state and presentation.
+- Lines 5171-5180: Continues normalizeAllergenLabel. Declares rowBrandResults. Selects elements: tr[data-index="${rowIdx}"] .aiRowBrandResults. Updates classes (remove: show). Sets element properties: innerHTML=. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 5181-5190: Continues normalizeAllergenLabel. Updates classes (remove: show). Sets element properties: innerHTML=. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 5191-5200: Defines function handleAiProcess. Declares text, hasPhotos. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 5201-5210: Continues handleAiProcess. Iterates collections. Returns values from this block. Purpose: implement module logic.
+- Lines 5211-5220: Continues handleAiProcess. Declares progressBar. Selects elements: aiProgressBar. Branches on conditions. Purpose: connect logic to DOM elements.
+- Lines 5221-5230: Continues handleAiProcess. Declares progressBarFill, nameInput, dishNameForAi. Selects elements: aiProgressBarFill, aiAssistNameInput. Updates classes (add: show). Sets inline styles: width=20%. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 5231-5240: Continues handleAiProcess. Declares photoData, payload. Iterates collections. Purpose: implement module logic.
+- Lines 5241-5250: Continues handleAiProcess. Declares progress. Sets inline styles: width=progress + "%". Iterates collections. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 5251-5260: Continues handleAiProcess. Declares result, dishDietaryOptions, rows. Purpose: implement module logic.
+- Lines 5261-5270: Continues handleAiProcess. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 5271-5280: Continues handleAiProcess. Declares existingData, allRows, statusMsg. Branches on conditions. Purpose: implement module logic.
+- Lines 5281-5290: Continues handleAiProcess. Purpose: implement module logic.
+- Lines 5291-5300: Continues handleAiProcess. Updates classes (remove: show). Sets inline styles: width=100%, width=0%. Schedules timed work. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 5301-5310: Continues handleAiProcess. Declares nameInput, dishNameForAi, payload. Selects elements: aiAssistNameInput. Branches on conditions. Purpose: connect logic to DOM elements.
+- Lines 5311-5320: Continues handleAiProcess. Declares requestId. Branches on conditions. Purpose: implement module logic.
+- Lines 5321-5330: Continues handleAiProcess. Declares progressBar, progressBarFill. Selects elements: aiProgressBar, aiProgressBarFill. Updates classes (add: show). Branches on conditions. Purpose: update UI state and presentation.
+- Lines 5331-5340: Defines function startProgressAnimation. Declares progressInterval, currentProgress. Sets inline styles: width=10%. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 5341-5350: Continues startProgressAnimation. Sets inline styles: width=`${currentProgress}%`. Schedules timed work. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 5351-5360: Defines function stopProgressAnimation. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 5361-5370: Continues stopProgressAnimation. Declares result. Purpose: implement module logic.
+- Lines 5371-5380: Continues stopProgressAnimation. Declares rows. Sets inline styles: width=95%. Iterates collections. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 5381-5390: Continues stopProgressAnimation. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 5391-5400: Continues stopProgressAnimation. Declares ingredientLower. Branches on conditions. Purpose: implement module logic.
+- Lines 5401-5410: Continues stopProgressAnimation. Declares statusMsg. Purpose: implement module logic.
+- Lines 5411-5420: Continues stopProgressAnimation. Updates classes (remove: show). Sets inline styles: width=100%, width=0%. Schedules timed work. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 5421-5430: Continues stopProgressAnimation. Updates classes (remove: show). Sets inline styles: width=0%. Iterates collections. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 5431-5440: Continues stopProgressAnimation. Declares errorMsg, statusMsg. Branches on conditions. Purpose: implement module logic.
+- Lines 5441-5450: Continues stopProgressAnimation. Branches on conditions. Purpose: implement module logic.
+- Lines 5451-5460: Continues stopProgressAnimation. Declares ingredients. Branches on conditions. Purpose: implement module logic.
+- Lines 5461-5470: Continues stopProgressAnimation. Purpose: implement module logic.
+- Lines 5471-5480: Defines function handleAiAssistantResult. Declares rows. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 5481-5490: Continues handleAiAssistantResult. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 5491-5500: Continues handleAiAssistantResult. Declares ingredientLower. Branches on conditions. Purpose: implement module logic.
+- Lines 5501-5510: Continues handleAiAssistantResult. Purpose: implement module logic.
+- Lines 5511-5520: Defines function handleAiAssistantError. Purpose: implement module logic.
+- Lines 5521-5530: Defines function applyAiIngredientsToOverlay. Declares rows. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 5531-5540: Continues applyAiIngredientsToOverlay. Declares saveErrorEl, saveErrorDetailsEl, nameInput. Selects elements: aiAssistSaveError, aiAssistSaveErrorDetails, aiAssistNameInput. Sets inline styles: display=none. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 5541-5550: Continues applyAiIngredientsToOverlay. Sets inline styles: display=block, border=2px solid #dc2626. Sets element properties: textContent=Please enter a dish name before saving. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 5551-5560: Continues applyAiIngredientsToOverlay. Sets inline styles: border=1px solid rgba(76,90,212,0.35). Schedules timed work. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 5561-5570: Continues applyAiIngredientsToOverlay. Declares unconfirmed, ingredientNames. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 5571-5580: Continues applyAiIngredientsToOverlay. Sets inline styles: display=block. Sets element properties: textContent=`Please click "Confirm" for: ${ingredientNames}`. Iterates collections. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 5581-5590: Continues applyAiIngredientsToOverlay. Declares mayContainFromRows, key. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 5591-5600: Continues applyAiIngredientsToOverlay. Declares crossContaminationData. Purpose: implement module logic.
+- Lines 5601-5610: Continues applyAiIngredientsToOverlay. Iterates collections. Purpose: implement module logic.
+- Lines 5611-5620: Continues applyAiIngredientsToOverlay. Declares dataToApply. Branches on conditions. Purpose: implement module logic.
+- Lines 5621-5630: Continues applyAiIngredientsToOverlay. Purpose: implement module logic.
+- Lines 5631-5640: Continues applyAiIngredientsToOverlay. Returns values from this block. Purpose: implement module logic.
+- Lines 5641-5650: Continues applyAiIngredientsToOverlay. Purpose: implement module logic.
+- Lines 5651-5655: Continues applyAiIngredientsToOverlay. Purpose: implement module logic.
+
+## public/js/restaurant/auto-open-dish.js
+
+- Lines 1-10: Defines function initAutoOpenDish. Declares state, urlParams, openAI, dishId, dishName, ingredientName. Branches on conditions. Exports module members. Purpose: expose helpers to other modules.
+- Lines 11-20: Continues initAutoOpenDish. Purpose: implement module logic.
+- Lines 21-30: Continues initAutoOpenDish. Branches on conditions. Purpose: implement module logic.
+- Lines 31-40: Defines function tryOpenOverlay. Declares retryCount, MAX_RETRIES. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 41-50: Continues tryOpenOverlay. Schedules timed work. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 51-60: Continues tryOpenOverlay. Declares menu, pageTip. Selects elements: menu, tip. Schedules timed work. Branches on conditions. Returns values from this block. Purpose: connect logic to DOM elements.
+- Lines 61-70: Continues tryOpenOverlay. Declares menuInner, menuImg. Selects elements: .menuInner, .menuImg. Branches on conditions. Purpose: connect logic to DOM elements.
+- Lines 71-80: Continues tryOpenOverlay. Declares overlays, searchName, matchIndex, itemId. Schedules timed work. Returns values from this block. Purpose: implement module logic.
+- Lines 81-90: Continues tryOpenOverlay. Declares normalizedItem, normalizedSearch. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 91-100: Continues tryOpenOverlay. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 101-110: Continues tryOpenOverlay. Declares item, layer, boxes, showOverlayFn. Selects elements: .overlayLayer, .overlay. Branches on conditions. Purpose: connect logic to DOM elements.
+- Lines 111-120: Continues tryOpenOverlay. Declares box, fakeEvent, observer. Schedules timed work. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 121-130: Continues tryOpenOverlay. Declares panel. Selects elements: mobileInfoPanel. Branches on conditions. Purpose: connect logic to DOM elements.
+- Lines 131-140: Continues tryOpenOverlay. Purpose: implement module logic.
+- Lines 141-150: Continues tryOpenOverlay. Schedules timed work. Returns values from this block. Purpose: implement module logic.
+- Lines 151-160: Continues tryOpenOverlay. Schedules timed work. Purpose: implement module logic.
+- Lines 161-170: Continues tryOpenOverlay. Binds events: load. Schedules timed work. Branches on conditions. Purpose: respond to user actions.
+
+## public/js/restaurant/brand-verification.js
+
+- Lines 1-10: Defines function initBrandVerification. Declares overlays, rs, setDirty, drawAll, send, updateLastConfirmedText. Exports module members. Purpose: expose helpers to other modules.
+- Lines 11-20: Continues initBrandVerification. Declares getIssueReportMeta, openAiAssistant, getAiAssistTableBody. Purpose: implement module logic.
+- Lines 21-30: Continues initBrandVerification. Declares showIngredientPhotoUploadModal, renderGroupedSourcesHtml, normalizeDietLabel. Purpose: implement module logic.
+- Lines 31-40: Continues initBrandVerification. Declares esc, norm. Purpose: implement module logic.
+- Lines 41-50: Continues initBrandVerification. Declares ALLERGENS, ALLERGEN_ALIASES, configureModalClose, openImageModal. Purpose: implement module logic.
+- Lines 51-60: Continues initBrandVerification. Declares fetchProductByBarcode. Purpose: implement module logic.
+- Lines 61-70: Continues initBrandVerification. Declares showReplacementPreview, SUPABASE_KEY. Purpose: implement module logic.
+- Lines 71-80: Defines function collectAllBrandItems. Declares brandItems, currentOverlays, normalizeAllergen, lower. Serializes or parses JSON. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 81-90: Defines function mergeNormalized. Declares normalized. Iterates collections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 91-100: Continues mergeNormalized. Iterates collections. Purpose: implement module logic.
+- Lines 101-110: Continues mergeNormalized. Declares dishName, ingredients. Serializes or parses JSON. Branches on conditions. Purpose: implement module logic.
+- Lines 111-120: Continues mergeNormalized. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 121-130: Continues mergeNormalized. Iterates collections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 131-140: Continues mergeNormalized. Declares barcode, key. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 141-150: Continues mergeNormalized. Purpose: implement module logic.
+- Lines 151-160: Continues mergeNormalized. Declares brandItem. Branches on conditions. Purpose: implement module logic.
+- Lines 161-170: Continues mergeNormalized. Branches on conditions. Purpose: implement module logic.
+- Lines 171-180: Continues mergeNormalized. Purpose: implement module logic.
+- Lines 181-190: Continues mergeNormalized. Purpose: implement module logic.
+- Lines 191-200: Continues mergeNormalized. Purpose: implement module logic.
+- Lines 201-210: Continues mergeNormalized. Purpose: implement module logic.
+- Lines 211-220: Continues mergeNormalized. Branches on conditions. Purpose: implement module logic.
+- Lines 221-230: Continues mergeNormalized. Returns values from this block. Purpose: implement module logic.
+- Lines 231-240: Defines function openBrandVerification. Declares mb, body, brandItems. Selects elements: modalBack, modalBody, modalTitle. Sets element properties: textContent=Verify Brand Items, innerHTML=`. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 241-250: Continues openBrandVerification. Selects elements: modalBack. Sets inline styles: display='none'">Close</button>, display=flex. Purpose: update UI state and presentation.
+- Lines 251-260: Continues openBrandVerification. Declares verificationStatus. Sets inline styles: display=none. Iterates collections. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 261-270: Continues openBrandVerification. Declares currentScanningIdx. Iterates collections. Purpose: implement module logic.
+- Lines 271-280: Defines function renderBrandItems. Declares showingRemoveOptions, showingDishSelection, html. Purpose: implement module logic.
+- Lines 281-290: Continues renderBrandItems. Declares status, verified, verifying, verificationError, isScanning, showingOptions. Iterates collections. Purpose: implement module logic.
+- Lines 291-300: Continues renderBrandItems. Declares showingDishSel, hasOriginalImage. Branches on conditions. Purpose: implement module logic.
+- Lines 301-310: Continues renderBrandItems. Purpose: implement module logic.
+- Lines 311-320: Continues renderBrandItems. Purpose: implement module logic.
+- Lines 321-330: Continues renderBrandItems. Purpose: implement module logic.
+- Lines 331-340: Continues renderBrandItems. Iterates collections. Purpose: implement module logic.
+- Lines 341-350: Continues renderBrandItems. Purpose: implement module logic.
+- Lines 351-360: Continues renderBrandItems. Purpose: implement module logic.
+- Lines 361-370: Continues renderBrandItems. Purpose: implement module logic.
+- Lines 371-380: Continues renderBrandItems. Purpose: implement module logic.
+- Lines 381-390: Continues renderBrandItems. Purpose: implement module logic.
+- Lines 391-400: Continues renderBrandItems. Purpose: implement module logic.
+- Lines 401-410: Continues renderBrandItems. Purpose: implement module logic.
+- Lines 411-420: Continues renderBrandItems. Purpose: implement module logic.
+- Lines 421-430: Continues renderBrandItems. Purpose: implement module logic.
+- Lines 431-440: Continues renderBrandItems. Purpose: implement module logic.
+- Lines 441-450: Continues renderBrandItems. Purpose: implement module logic.
+- Lines 451-460: Continues renderBrandItems. Declares allVerified. Purpose: implement module logic.
+- Lines 461-470: Continues renderBrandItems. Sets element properties: innerHTML=html. Iterates collections. Purpose: update UI state and presentation.
+- Lines 471-480: Continues renderBrandItems. Declares scanBtn, removeBtn. Selects elements: .scanBrandBtn[data-idx="${idx}"], .removeBrandBtn[data-idx="${idx}"]. Binds events: click. Iterates collections. Branches on conditions. Purpose: respond to user actions.
+- Lines 481-490: Continues renderBrandItems. Declares mb. Selects elements: modalBack. Binds events: click. Sets inline styles: display=none. Iterates collections. Branches on conditions. Purpose: respond to user actions.
+- Lines 491-500: Continues renderBrandItems. Declares replaceBtn. Selects elements: .replaceBrandBtn[data-idx="${idx}"]. Binds events: click. Iterates collections. Branches on conditions. Purpose: respond to user actions.
+- Lines 501-510: Continues renderBrandItems. Declares clearErrorBtn. Selects elements: .clearVerificationErrorBtn[data-idx="${idx}"]. Branches on conditions. Purpose: connect logic to DOM elements.
+- Lines 511-520: Continues renderBrandItems. Declares status. Binds events: click. Branches on conditions. Purpose: respond to user actions.
+- Lines 521-530: Continues renderBrandItems. Declares reportBrandIssueBtn, reportModal. Selects elements: .reportBrandIssueBtn[data-idx="${idx}"]. Binds events: click. Sets inline styles: cssText=`. Branches on conditions. Purpose: respond to user actions.
+- Lines 531-540: Continues renderBrandItems. Sets element properties: innerHTML=`. Iterates collections. Purpose: update UI state and presentation.
+- Lines 541-550: Continues renderBrandItems. Selects elements: .cancelReportBtn. Purpose: connect logic to DOM elements.
+- Lines 551-560: Continues renderBrandItems. Declares msg. Selects elements: .sendReportBtn, textarea. Sets element properties: textContent=Sending..., disabled=true. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 561-570: Continues renderBrandItems. Declares reportMeta. Fetches: https://fgoiyycctnwnghrvsilt.supabase.co/functions/v1/report-issue. Purpose: load or persist data for the page.
+- Lines 571-580: Continues renderBrandItems. Serializes or parses JSON. Purpose: implement module logic.
+- Lines 581-590: Continues renderBrandItems. Iterates collections. Purpose: implement module logic.
+- Lines 591-600: Continues renderBrandItems. Sets element properties: textContent=Send Report, disabled=false. Purpose: update UI state and presentation.
+- Lines 601-610: Continues renderBrandItems. Declares cancelVerifyBtn, status. Selects elements: .cancelVerifyBtn[data-idx="${idx}"]. Binds events: click. Branches on conditions. Purpose: respond to user actions.
+- Lines 611-620: Continues renderBrandItems. Declares confirmBtn. Selects elements: #confirmAllBtn. Binds events: click. Branches on conditions. Purpose: respond to user actions.
+- Lines 621-630: Continues renderBrandItems. Declares cancelBtn. Selects elements: #cancelBrandVerificationBtn. Binds events: click. Sets inline styles: display=none. Branches on conditions. Purpose: respond to user actions.
+- Lines 631-640: Defines function scanBrandItem. Declares item, hasOriginalImage. Branches on conditions. Purpose: implement module logic.
+- Lines 641-650: Defines function verifyBrandWithPhoto. Purpose: implement module logic.
+- Lines 651-660: Continues verifyBrandWithPhoto. Declares photoModal. Sets inline styles: cssText=`. Purpose: update UI state and presentation.
+- Lines 661-670: Continues verifyBrandWithPhoto. Sets element properties: innerHTML=`. Purpose: update UI state and presentation.
+- Lines 671-680: Continues verifyBrandWithPhoto. Purpose: implement module logic.
+- Lines 681-690: Continues verifyBrandWithPhoto. Purpose: implement module logic.
+- Lines 691-700: Continues verifyBrandWithPhoto. Purpose: implement module logic.
+- Lines 701-710: Continues verifyBrandWithPhoto. Purpose: implement module logic.
+- Lines 711-720: Continues verifyBrandWithPhoto. Purpose: implement module logic.
+- Lines 721-730: Continues verifyBrandWithPhoto. Purpose: implement module logic.
+- Lines 731-740: Continues verifyBrandWithPhoto. Declares video, canvas, preview, statusDiv, takePhotoBtn, uploadBtn, .... Selects elements: #brandVerifyVideo, #brandVerifyCanvas, #brandVerifyPreview, #brandVerifyStatus, #brandVerifyTakePhotoBtn, #brandVerifyUploadBtn, .... Purpose: connect logic to DOM elements.
+- Lines 741-750: Defines function stopCamera. Declares cancelBtn, stream, capturedImage. Selects elements: #brandVerifyCancelBtn. Iterates collections. Branches on conditions. Purpose: connect logic to DOM elements.
+- Lines 751-760: Defines function closeModal. Branches on conditions. Purpose: implement module logic.
+- Lines 761-770: Continues closeModal. Purpose: implement module logic.
+- Lines 771-780: Continues closeModal. Binds events: click. Sets element properties: innerHTML='<div style="color:#ef4444">Camera access denied. Please .... Branches on conditions. Returns values from this block. Purpose: respond to user actions.
+- Lines 781-790: Continues closeModal. Declares ctx. Sets element properties: src=capturedImage. Purpose: update UI state and presentation.
+- Lines 791-800: Continues closeModal. Sets inline styles: display=none, display=block, display=inline-block. Purpose: update UI state and presentation.
+- Lines 801-810: Continues closeModal. Declares file. Binds events: click, change. Iterates collections. Purpose: respond to user actions.
+- Lines 811-820: Continues closeModal. Declares reader. Sets inline styles: display=none, display=block. Sets element properties: src=capturedImage. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 821-830: Continues closeModal. Sets inline styles: display=none, display=inline-block. Sets element properties: innerHTML='<div style="color:#a8b2d6">Image uploaded! Click "Verify.... Purpose: update UI state and presentation.
+- Lines 831-840: Continues closeModal. Binds events: click. Sets inline styles: display=block. Sets element properties: src=. Purpose: respond to user actions.
+- Lines 841-850: Continues closeModal. Sets inline styles: display=none, display=inline-block. Sets element properties: value=. Purpose: update UI state and presentation.
+- Lines 851-860: Continues closeModal. Binds events: click. Sets element properties: innerHTML='<div style="color:#a8b2d6">Position the product front in.... Branches on conditions. Returns values from this block. Purpose: respond to user actions.
+- Lines 861-870: Continues closeModal. Declares status, verificationId. Purpose: implement module logic.
+- Lines 871-880: Continues closeModal. Declares response. Purpose: implement module logic.
+- Lines 881-890: Continues closeModal. Declares result. Serializes or parses JSON. Purpose: implement module logic.
+- Lines 891-900: Continues closeModal. Declares currentStatus. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 901-910: Continues closeModal. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 911-920: Continues closeModal. Purpose: implement module logic.
+- Lines 921-930: Continues closeModal. Declares currentStatus. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 931-940: Continues closeModal. Binds events: click. Iterates collections. Purpose: respond to user actions.
+- Lines 941-950: Defines function scanBrandBarcode. Declares statusDiv. Sets element properties: innerHTML=<div style="color:#a8b2d6">Opening barcode scanner...</div>. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 951-960: Continues scanBrandBarcode. Declares scannerModal. Sets inline styles: cssText=`. Purpose: update UI state and presentation.
+- Lines 961-970: Continues scanBrandBarcode. Sets element properties: innerHTML=`. Purpose: update UI state and presentation.
+- Lines 971-980: Continues scanBrandBarcode. Purpose: implement module logic.
+- Lines 981-990: Continues scanBrandBarcode. Declares video, statusDiv2. Selects elements: #brandScannerVideo, #brandScannerStatus. Purpose: connect logic to DOM elements.
+- Lines 991-1000: Defines function stopScanning. Declares codeReader, scanning. Branches on conditions. Purpose: implement module logic.
+- Lines 1001-1010: Defines function closeScanner. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 1011-1020: Defines function handleBarcodeScanned. Declares status. Purpose: implement module logic.
+- Lines 1021-1030: Continues handleBarcodeScanned. Declares scannedBarcodeClean, storedBarcodeClean. Purpose: implement module logic.
+- Lines 1031-1040: Continues handleBarcodeScanned. Schedules timed work. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 1041-1050: Continues handleBarcodeScanned. Purpose: implement module logic.
+- Lines 1051-1060: Continues handleBarcodeScanned. Branches on conditions. Purpose: implement module logic.
+- Lines 1061-1070: Continues handleBarcodeScanned. Branches on conditions. Purpose: implement module logic.
+- Lines 1071-1080: Continues handleBarcodeScanned. Sets element properties: innerHTML='<div style="color:#ef4444">Camera access denied. Please .... Branches on conditions. Purpose: update UI state and presentation.
+- Lines 1081-1090: Defines function handleReplaceBrand. Selects elements: #brandScannerCancelBtn. Binds events: click. Purpose: respond to user actions.
+- Lines 1091-1100: Defines function routeToAiAssistantForDishes. Declares item. Iterates collections. Purpose: implement module logic.
+- Lines 1101-1110: Continues routeToAiAssistantForDishes. Declares dishes, mb, dish. Selects elements: modalBack. Sets inline styles: display=none. Iterates collections. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 1111-1120: Continues routeToAiAssistantForDishes. Iterates collections. Purpose: implement module logic.
+- Lines 1121-1130: Defines function openAiAssistantForDishReplacement. Iterates collections. Returns values from this block. Purpose: implement module logic.
+- Lines 1131-1140: Continues openAiAssistantForDishReplacement. Declares overlay, ingredientName. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 1141-1150: Continues openAiAssistantForDishReplacement. Declares actualDishName, existingIngredients. Serializes or parses JSON. Branches on conditions. Purpose: implement module logic.
+- Lines 1151-1160: Continues openAiAssistantForDishReplacement. Declares brandIdx. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 1161-1170: Continues openAiAssistantForDishReplacement. Branches on conditions. Purpose: implement module logic.
+- Lines 1171-1180: Continues openAiAssistantForDishReplacement. Serializes or parses JSON. Iterates collections. Purpose: implement module logic.
+- Lines 1181-1190: Continues openAiAssistantForDishReplacement. Declares context. Purpose: implement module logic.
+- Lines 1191-1200: Continues openAiAssistantForDishReplacement. Purpose: implement module logic.
+- Lines 1201-1210: Defines function scrollToIngredient. Declares aiAssistTableBody. Selects elements: tr[data-index]. Branches on conditions. Purpose: connect logic to DOM elements.
+- Lines 1211-1220: Continues scrollToIngredient. Schedules timed work. Iterates collections. Purpose: implement module logic.
+- Lines 1221-1230: Defines function checkComplete. Declares aiBackdrop. Selects elements: aiAssistBackdrop. Schedules timed work. Branches on conditions. Purpose: connect logic to DOM elements.
+- Lines 1231-1240: Defines function scrollToIngredientRow. Declares aiAssistTableBody. Schedules timed work. Iterates collections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 1241-1250: Continues scrollToIngredientRow. Declares rows, row, nameInput. Selects elements: tr[data-index], .aiIngredientName. Iterates collections. Branches on conditions. Purpose: connect logic to DOM elements.
+- Lines 1251-1260: Continues scrollToIngredientRow. Sets inline styles: transition=background-color 0.3s, backgroundColor=rgba(76,90,212,0.2), backgroundColor=. Schedules timed work. Purpose: update UI state and presentation.
+- Lines 1261-1270: Continues scrollToIngredientRow. Sets inline styles: transition=. Purpose: update UI state and presentation.
+- Lines 1271-1280: Defines function showReplacementModalForDish. Declares modal. Iterates collections. Returns values from this block. Purpose: implement module logic.
+- Lines 1281-1290: Continues showReplacementModalForDish. Sets inline styles: cssText=`. Purpose: update UI state and presentation.
+- Lines 1291-1300: Continues showReplacementModalForDish. Sets element properties: innerHTML=`. Purpose: update UI state and presentation.
+- Lines 1301-1310: Continues showReplacementModalForDish. Purpose: implement module logic.
+- Lines 1311-1320: Continues showReplacementModalForDish. Purpose: implement module logic.
+- Lines 1321-1330: Continues showReplacementModalForDish. Purpose: implement module logic.
+- Lines 1331-1340: Continues showReplacementModalForDish. Declares video, preview, placeholder. Selects elements: #dishReplacementVideo_${dish.overlayIdx}, #dishReplacementPreview_${dish.overlayIdx}, #dishReplacementPlaceholder_${dish.overlayIdx}. Purpose: connect logic to DOM elements.
+- Lines 1341-1350: Continues showReplacementModalForDish. Declares cameraBtn, uploadBtn, skipBtn. Selects elements: #dishReplacementCameraBtn_${dish.overlayIdx}, #dishReplacementUploadBtn_${dish.overlayIdx}, #dishReplacementSkipBtn_${dish.overlayIdx}. Purpose: connect logic to DOM elements.
+- Lines 1351-1360: Continues showReplacementModalForDish. Declares cancelBtn, fileInput, codeReader, scanning. Selects elements: #dishReplacementCancelBtn_${dish.overlayIdx}, #dishReplacementFileInput_${dish.overlayIdx}. Purpose: connect logic to DOM elements.
+- Lines 1361-1370: Defines function stopScanning. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 1371-1380: Defines function closeModal. Branches on conditions. Purpose: implement module logic.
+- Lines 1381-1390: Defines function handleBarcodeScanned. Declares result, brand. Branches on conditions. Purpose: implement module logic.
+- Lines 1391-1400: Continues handleBarcodeScanned. Declares productName, productImage. Purpose: implement module logic.
+- Lines 1401-1410: Continues handleBarcodeScanned. Declares suggestion. Purpose: implement module logic.
+- Lines 1411-1420: Continues handleBarcodeScanned. Purpose: implement module logic.
+- Lines 1421-1430: Continues handleBarcodeScanned. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 1431-1440: Continues handleBarcodeScanned. Purpose: implement module logic.
+- Lines 1441-1450: Continues handleBarcodeScanned. Declares stream. Binds events: click. Branches on conditions. Returns values from this block. Purpose: respond to user actions.
+- Lines 1451-1460: Continues handleBarcodeScanned. Sets inline styles: display=block, display=none. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 1461-1470: Continues handleBarcodeScanned. Branches on conditions. Purpose: implement module logic.
+- Lines 1471-1480: Continues handleBarcodeScanned. Purpose: implement module logic.
+- Lines 1481-1490: Continues handleBarcodeScanned. Binds events: click, change. Branches on conditions. Purpose: respond to user actions.
+- Lines 1491-1500: Continues handleBarcodeScanned. Declares file, reader, imageData. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 1501-1510: Continues handleBarcodeScanned. Declares codeReader, result. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 1511-1520: Continues handleBarcodeScanned. Purpose: implement module logic.
+- Lines 1521-1530: Continues handleBarcodeScanned. Binds events: click. Branches on conditions. Purpose: respond to user actions.
+- Lines 1531-1540: Defines function showReplacementSourcesForDish. Iterates collections. Purpose: implement module logic.
+- Lines 1541-1550: Continues showReplacementSourcesForDish. Declares sources, productName, ingredientList, consistencyInfo. Returns values from this block. Purpose: implement module logic.
+- Lines 1551-1560: Continues showReplacementSourcesForDish. Declares consensusDiff. Branches on conditions. Purpose: implement module logic.
+- Lines 1561-1570: Continues showReplacementSourcesForDish. Declares modal. Sets inline styles: cssText=`. Purpose: update UI state and presentation.
+- Lines 1571-1580: Continues showReplacementSourcesForDish. Purpose: implement module logic.
+- Lines 1581-1590: Continues showReplacementSourcesForDish. Declares modalContent. Sets inline styles: cssText=`. Purpose: update UI state and presentation.
+- Lines 1591-1600: Continues showReplacementSourcesForDish. Declares sourcesHtml. Sets element properties: innerHTML=`. Purpose: update UI state and presentation.
+- Lines 1601-1610: Continues showReplacementSourcesForDish. Purpose: implement module logic.
+- Lines 1611-1620: Continues showReplacementSourcesForDish. Purpose: implement module logic.
+- Lines 1621-1630: Continues showReplacementSourcesForDish. Iterates collections. Purpose: implement module logic.
+- Lines 1631-1640: Continues showReplacementSourcesForDish. Purpose: implement module logic.
+- Lines 1641-1650: Continues showReplacementSourcesForDish. Declares confirmBtn, cancelBtn. Selects elements: .confirmDishReplacementBtn, .cancelDishReplacementBtn. Purpose: connect logic to DOM elements.
+- Lines 1651-1660: Continues showReplacementSourcesForDish. Declares analysisResult. Binds events: click. Purpose: respond to user actions.
+- Lines 1661-1670: Continues showReplacementSourcesForDish. Declares allergens, diets. Purpose: implement module logic.
+- Lines 1671-1680: Continues showReplacementSourcesForDish. Purpose: implement module logic.
+- Lines 1681-1690: Continues showReplacementSourcesForDish. Branches on conditions. Purpose: implement module logic.
+- Lines 1691-1700: Continues showReplacementSourcesForDish. Binds events: click. Purpose: respond to user actions.
+- Lines 1701-1710: Defines function applyReplacementToDish. Purpose: implement module logic.
+- Lines 1711-1720: Continues applyReplacementToDish. Declares overlay, ingredients. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 1721-1730: Continues applyReplacementToDish. Serializes or parses JSON. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 1731-1740: Continues applyReplacementToDish. Declares brandIdx. Branches on conditions. Purpose: implement module logic.
+- Lines 1741-1750: Continues applyReplacementToDish. Declares newBrand. Purpose: implement module logic.
+- Lines 1751-1760: Continues applyReplacementToDish. Serializes or parses JSON. Branches on conditions. Purpose: implement module logic.
+- Lines 1761-1770: Defines function showDishSelectionForRemoval. Purpose: implement module logic.
+- Lines 1771-1780: Defines function setupDishSelectionForCard. Declares selectedDishes, card, selectionList. Selects elements: .brandItemCard[data-idx="${idx}"], #dishSelectionList_${idx}. Iterates collections. Branches on conditions. Returns values from this block. Purpose: connect logic to DOM elements.
+- Lines 1781-1790: Continues setupDishSelectionForCard. Sets element properties: innerHTML=item.dishes. Iterates collections. Purpose: update UI state and presentation.
+- Lines 1791-1800: Continues setupDishSelectionForCard. Declares dishIdx. Selects elements: .dishSelectCheckbox. Binds events: change. Iterates collections. Branches on conditions. Purpose: respond to user actions.
+- Lines 1801-1810: Continues setupDishSelectionForCard. Declares confirmBtn. Selects elements: .confirmRemoveBtn. Binds events: click. Branches on conditions. Purpose: respond to user actions.
+- Lines 1811-1820: Continues setupDishSelectionForCard. Declares dishesToUpdate. Iterates collections. Returns values from this block. Purpose: implement module logic.
+- Lines 1821-1830: Continues setupDishSelectionForCard. Declares cancelBtn. Selects elements: .cancelDishSelectionBtn. Binds events: click. Branches on conditions. Purpose: respond to user actions.
+- Lines 1831-1840: Defines function replaceBrandItem. Declares item, applyReplacement. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 1841-1850: Continues replaceBrandItem. Purpose: implement module logic.
+- Lines 1851-1860: Defines function normalizeAllergenKey. Declares lower, normalizeAllergenList. Iterates collections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 1861-1870: Defines function normalizeDietList. Declares normalizedAllergens, normalizedMayContainAllergens, normalizedDiets, normalizedMayContainDiets. Iterates collections. Purpose: implement module logic.
+- Lines 1871-1880: Continues normalizeDietList. Declares newBrand. Purpose: implement module logic.
+- Lines 1881-1890: Continues normalizeDietList. Declares indicesToUpdate, overlay, ingredients. Iterates collections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 1891-1900: Continues normalizeDietList. Serializes or parses JSON. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 1901-1910: Continues normalizeDietList. Declares brandIdx. Branches on conditions. Purpose: implement module logic.
+- Lines 1911-1920: Continues normalizeDietList. Purpose: implement module logic.
+- Lines 1921-1930: Continues normalizeDietList. Serializes or parses JSON. Purpose: implement module logic.
+- Lines 1931-1940: Continues normalizeDietList. Declares newStatus, oldIdx. Iterates collections. Purpose: implement module logic.
+- Lines 1941-1950: Continues normalizeDietList. Declares ingredientLabel. Purpose: implement module logic.
+- Lines 1951-1960: Continues normalizeDietList. Declares newBrandName, ingredientList, brandImage, ingredientsImage. Purpose: implement module logic.
+- Lines 1961-1970: Continues normalizeDietList. Purpose: implement module logic.
+- Lines 1971-1980: Defines function removeBrandItemFromDishes. Purpose: implement module logic.
+- Lines 1981-1990: Continues removeBrandItemFromDishes. Declares item, overlay, ingredients. Iterates collections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 1991-2000: Continues removeBrandItemFromDishes. Serializes or parses JSON. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 2001-2010: Continues removeBrandItemFromDishes. Declares brandIdx. Branches on conditions. Purpose: implement module logic.
+- Lines 2011-2020: Continues removeBrandItemFromDishes. Serializes or parses JSON. Purpose: implement module logic.
+- Lines 2021-2030: Continues removeBrandItemFromDishes. Declares newStatus, oldIdx. Iterates collections. Purpose: implement module logic.
+- Lines 2031-2040: Defines function finalizeBrandVerification. Declares brandVerificationPhotos. Iterates collections. Purpose: implement module logic.
+- Lines 2041-2050: Continues finalizeBrandVerification. Sets inline styles: display=none. Iterates collections. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 2051-2060: Continues finalizeBrandVerification. Sets inline styles: display=flex, display=none. Purpose: update UI state and presentation.
+- Lines 2061-2070: Defines function showReplacementLoadingInCard. Declares card, existingLoading, loadingArea. Selects elements: .brandItemCard[data-idx="${idx}"], .replacementLoadingArea. Branches on conditions. Returns values from this block. Purpose: connect logic to DOM elements.
+- Lines 2071-2080: Continues showReplacementLoadingInCard. Sets inline styles: cssText=`. Purpose: update UI state and presentation.
+- Lines 2081-2090: Continues showReplacementLoadingInCard. Sets element properties: innerHTML=`. Purpose: update UI state and presentation.
+- Lines 2091-2100: Defines function updateProgress. Declares fillBar, startTime, estimatedDuration. Selects elements: .replacementLoadingBarFill. Branches on conditions. Purpose: connect logic to DOM elements.
+- Lines 2101-2110: Continues updateProgress. Declares elapsed, progress. Branches on conditions. Purpose: implement module logic.
+- Lines 2111-2120: Continues updateProgress. Sets inline styles: width=`${progress}%`. Schedules timed work. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 2121-2130: Defines function hideReplacementLoadingInCard. Sets inline styles: width=95%. Schedules timed work. Purpose: update UI state and presentation.
+- Lines 2131-2140: Continues hideReplacementLoadingInCard. Declares card, loadingArea, fillBar. Selects elements: .brandItemCard[data-idx="${idx}"], .replacementLoadingArea, .replacementLoadingBarFill. Sets inline styles: width=100%. Schedules timed work. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 2141-2150: Defines function showReplacementBarcodeSourcesModal. Iterates collections. Purpose: implement module logic.
+- Lines 2151-2160: Continues showReplacementBarcodeSourcesModal. Declares sources, productName, ingredientList, consistencyInfo, hasConflict. Purpose: implement module logic.
+- Lines 2161-2170: Continues showReplacementBarcodeSourcesModal. Declares consensusDiff. Branches on conditions. Purpose: implement module logic.
+- Lines 2171-2180: Continues showReplacementBarcodeSourcesModal. Declares modal. Sets inline styles: cssText=`. Purpose: update UI state and presentation.
+- Lines 2181-2190: Continues showReplacementBarcodeSourcesModal. Purpose: implement module logic.
+- Lines 2191-2200: Continues showReplacementBarcodeSourcesModal. Declares modalContent. Sets inline styles: cssText=`. Purpose: update UI state and presentation.
+- Lines 2201-2210: Continues showReplacementBarcodeSourcesModal. Declares sourcesHtml. Sets element properties: innerHTML=`. Purpose: update UI state and presentation.
+- Lines 2211-2220: Continues showReplacementBarcodeSourcesModal. Iterates collections. Purpose: implement module logic.
+- Lines 2221-2230: Continues showReplacementBarcodeSourcesModal. Purpose: implement module logic.
+- Lines 2231-2240: Continues showReplacementBarcodeSourcesModal. Purpose: implement module logic.
+- Lines 2241-2250: Continues showReplacementBarcodeSourcesModal. Declares cancelBtn, confirmBtn, confirmConsensusBtn, confirmVariationBtns. Selects elements: .cancelReplacementSourcesBtn, .confirmReplacementIngredientListBtn, .confirmReplacementConsensusBtn. Purpose: connect logic to DOM elements.
+- Lines 2251-2260: Continues showReplacementBarcodeSourcesModal. Declares confirmGroupBtns. Selects elements: .confirmGroupIngredientListBtn. Binds events: click. Branches on conditions. Purpose: respond to user actions.
+- Lines 2261-2270: Defines function handleConfirm. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 2271-2280: Continues handleConfirm. Purpose: implement module logic.
+- Lines 2281-2290: Continues handleConfirm. Declares groupDiv, groupIngredientList. Selects elements: [data-ingredients-text]. Binds events: click. Sets inline styles: background=#4caf50, cursor=default. Sets element properties: innerHTML=✓ Confirmed. Iterates collections. Purpose: respond to user actions.
+- Lines 2291-2300: Continues handleConfirm. Declares consensusDiff. Binds events: click. Branches on conditions. Purpose: respond to user actions.
+- Lines 2301-2310: Continues handleConfirm. Declares variationIngredientList. Binds events: click. Iterates collections. Branches on conditions. Purpose: respond to user actions.
+- Lines 2311-2320: Continues handleConfirm. Binds events: click. Iterates collections. Branches on conditions. Purpose: respond to user actions.
+- Lines 2321-2330: Defines function showReplacementSourcesModal. Declares sources, productName, brandName, barcode, brandImage, result. Iterates collections. Purpose: implement module logic.
+- Lines 2331-2340: Continues showReplacementSourcesModal. Declares ingredientList, consistencyInfo. Purpose: implement module logic.
+- Lines 2341-2350: Continues showReplacementSourcesModal. Declares hasConflict. Purpose: implement module logic.
+- Lines 2351-2360: Continues showReplacementSourcesModal. Declares consensusDiff. Branches on conditions. Purpose: implement module logic.
+- Lines 2361-2370: Continues showReplacementSourcesModal. Declares modal. Sets inline styles: cssText=`. Purpose: update UI state and presentation.
+- Lines 2371-2380: Continues showReplacementSourcesModal. Declares modalContent. Sets inline styles: cssText=`. Purpose: update UI state and presentation.
+- Lines 2381-2390: Continues showReplacementSourcesModal. Purpose: implement module logic.
+- Lines 2391-2400: Continues showReplacementSourcesModal. Declares sourcesHtml. Sets element properties: innerHTML=`. Purpose: update UI state and presentation.
+- Lines 2401-2410: Continues showReplacementSourcesModal. Iterates collections. Purpose: implement module logic.
+- Lines 2411-2420: Continues showReplacementSourcesModal. Purpose: implement module logic.
+- Lines 2421-2430: Continues showReplacementSourcesModal. Purpose: implement module logic.
+- Lines 2431-2440: Continues showReplacementSourcesModal. Declares cancelBtn, confirmBtn. Selects elements: .cancelReplacementSourcesBtn. Purpose: connect logic to DOM elements.
+- Lines 2441-2450: Continues showReplacementSourcesModal. Declares confirmConsensusBtn, confirmGroupBtns. Selects elements: .confirmReplacementConsensusBtn, .confirmGroupIngredientListBtn. Branches on conditions. Purpose: connect logic to DOM elements.
+- Lines 2451-2460: Continues showReplacementSourcesModal. Binds events: click. Branches on conditions. Purpose: respond to user actions.
+- Lines 2461-2470: Defines function handleConfirm. Purpose: implement module logic.
+- Lines 2471-2480: Continues handleConfirm. Binds events: click. Sets inline styles: background=#4caf50, cursor=default. Sets element properties: innerHTML=✓ Confirmed. Iterates collections. Purpose: respond to user actions.
+- Lines 2481-2490: Continues handleConfirm. Declares groupDiv, groupIngredientList. Selects elements: [data-ingredients-text]. Purpose: connect logic to DOM elements.
+- Lines 2491-2500: Continues handleConfirm. Declares consensusDiff. Binds events: click. Branches on conditions. Purpose: respond to user actions.
+- Lines 2501-2510: Defines function openPhotoCapture. Binds events: click. Branches on conditions. Purpose: respond to user actions.
+- Lines 2511-2520: Continues openPhotoCapture. Declares mb, body. Selects elements: modalBack, modalBody, modalTitle. Sets element properties: textContent=Confirm Allergen Information, innerHTML=`. Purpose: update UI state and presentation.
+- Lines 2521-2530: Continues openPhotoCapture. Purpose: implement module logic.
+- Lines 2531-2540: Continues openPhotoCapture. Purpose: implement module logic.
+- Lines 2541-2550: Continues openPhotoCapture. Purpose: implement module logic.
+- Lines 2551-2560: Continues openPhotoCapture. Purpose: implement module logic.
+- Lines 2561-2570: Continues openPhotoCapture. Purpose: implement module logic.
+- Lines 2571-2580: Continues openPhotoCapture. Sets inline styles: display=flex, display=none. Iterates collections. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 2581-2590: Defines function renderPhotos. Declares stream, photoDataArray, container, wrapper. Selects elements: photosContainer. Sets element properties: innerHTML=. Iterates collections. Purpose: update UI state and presentation.
+- Lines 2591-2600: Continues renderPhotos. Declares img, removeBtn. Sets inline styles: cssText="position:relative, cssText="max-width:120px. Sets element properties: textContent=×, src=photoData. Purpose: update UI state and presentation.
+- Lines 2601-2610: Continues renderPhotos. Purpose: implement module logic.
+- Lines 2611-2620: Defines function updateButtonStates. Declares doneBtn, confirmSection. Selects elements: doneAddingBtn, confirmSection. Sets inline styles: display=inline-flex, display=none. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 2621-2630: Continues updateButtonStates. Selects elements: menuConfirmSection, startCameraBtn. Sets inline styles: display=none. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 2631-2640: Continues updateButtonStates. Declares video. Selects elements: videoStream, startCameraBtn, takePictureBtn. Sets inline styles: display=block, display=inline-flex. Sets element properties: textContent=📷 Take another. Purpose: update UI state and presentation.
+- Lines 2641-2650: Continues updateButtonStates. Declares video, canvas, ctx. Selects elements: takePictureBtn, videoStream, photoCanvas. Purpose: connect logic to DOM elements.
+- Lines 2651-2660: Continues updateButtonStates. Declares maxWidth, scale, photoData. Purpose: implement module logic.
+- Lines 2661-2670: Continues updateButtonStates. Selects elements: takePictureBtn, startCameraBtn. Sets inline styles: display=none, display=inline-flex. Purpose: update UI state and presentation.
+- Lines 2671-2680: Continues updateButtonStates. Selects elements: doneAddingBtn, videoStream. Sets inline styles: display=none. Iterates collections. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 2681-2690: Continues updateButtonStates. Selects elements: startCameraBtn, takePictureBtn, confirmSection, uploadBtn, fileInput. Sets inline styles: display=inline-flex, display=none, display=block. Purpose: update UI state and presentation.
+- Lines 2691-2700: Continues updateButtonStates. Declares files, processed, reader, img, canvas, ctx. Selects elements: photoCanvas. Iterates collections. Purpose: connect logic to DOM elements.
+- Lines 2701-2710: Continues updateButtonStates. Declares maxWidth, scale, photoData. Purpose: implement module logic.
+- Lines 2711-2720: Continues updateButtonStates. Sets element properties: src=ev.target.result. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 2721-2730: Continues updateButtonStates. Selects elements: yesVisibleBtn, confirmSection, menuConfirmSection. Sets inline styles: display=none, display=block. Sets element properties: value=. Purpose: update UI state and presentation.
+- Lines 2731-2740: Continues updateButtonStates. Selects elements: noVisibleBtn, confirmSection, menuConfirmSection, menuVerificationSection, menuVerificationStatus. Sets inline styles: display=none, display=block. Purpose: update UI state and presentation.
+- Lines 2741-2750: Continues updateButtonStates. Declares menuVerificationAborted. Selects elements: menuVerificationResult, menuVerificationActionsMatch, menuVerificationActionsMismatch, startCameraBtn. Sets inline styles: display=none. Sets element properties: textContent=📷 Take Photo. Purpose: update UI state and presentation.
+- Lines 2751-2760: Continues updateButtonStates. Selects elements: verifyMenuBtn, menuConfirmSection, menuVerificationSection, menuVerificationStatus, menuVerificationResult, menuVerificationActionsMatch, .... Sets inline styles: display=none, display=block. Purpose: update UI state and presentation.
+- Lines 2761-2770: Continues updateButtonStates. Declares originalMenuImages. Selects elements: startCameraBtn, uploadBtn, doneAddingBtn, takePictureBtn. Sets inline styles: display=none. Purpose: update UI state and presentation.
+- Lines 2771-2780: Continues updateButtonStates. Selects elements: menuVerificationStatus, menuVerificationResult. Sets inline styles: display=none, display=block. Sets element properties: innerHTML=`. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 2781-2790: Continues updateButtonStates. Declares response. Selects elements: menuVerificationActionsMatch. Sets inline styles: display=flex. Iterates collections. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 2791-2800: Continues updateButtonStates. Serializes or parses JSON. Purpose: implement module logic.
+- Lines 2801-2810: Continues updateButtonStates. Declares result. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 2811-2820: Continues updateButtonStates. Selects elements: menuVerificationStatus, menuVerificationResult, menuVerificationActionsMatch. Sets inline styles: display=none, display=block, display=flex. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 2821-2830: Continues updateButtonStates. Selects elements: menuVerificationResult, menuVerificationActionsMatch. Sets inline styles: display=none. Sets element properties: innerHTML=`. Purpose: update UI state and presentation.
+- Lines 2831-2840: Continues updateButtonStates. Selects elements: menuVerificationActionsMismatch, menuVerificationResult. Sets inline styles: display=none, display=flex. Sets element properties: innerHTML=`. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 2841-2850: Continues updateButtonStates. Selects elements: menuVerificationStatus, menuVerificationResult. Sets inline styles: display=none, display=block. Purpose: update UI state and presentation.
+- Lines 2851-2860: Continues updateButtonStates. Selects elements: menuVerificationActionsMatch, menuVerificationActionsMismatch, menuVerificationResult. Sets inline styles: display=flex, display=none. Sets element properties: innerHTML=`. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 2861-2870: Continues updateButtonStates. Declares allPhotos. Selects elements: confirmPhotoBtn. Branches on conditions. Purpose: connect logic to DOM elements.
+- Lines 2871-2880: Continues updateButtonStates. Declares confirmBtn. Selects elements: .btn.btnDanger. Updates classes (add: btnSuccess; remove: btnDanger). Sets element properties: textContent=Information confirmed. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 2881-2890: Defines function resetPhotoCapture. Sets inline styles: display=none. Iterates collections. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 2891-2900: Continues resetPhotoCapture. Selects elements: confirmSection, menuConfirmSection, menuVerificationSection, menuVerificationStatus, menuVerificationResult, menuVerificationActionsMatch, .... Sets inline styles: display=none, display=block. Purpose: update UI state and presentation.
+- Lines 2901-2910: Continues resetPhotoCapture. Selects elements: startCameraBtn, uploadBtn, retakePhotosBtn, retakePhotosBtnMismatch. Sets inline styles: display=inline-flex. Sets element properties: textContent=📷 Take Photo. Purpose: update UI state and presentation.
+- Lines 2911-2920: Continues resetPhotoCapture. Selects elements: cancelMenuVerificationBtn, updateMenuBtn. Sets inline styles: display=none. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 2921-2930: Continues resetPhotoCapture. Declares uploadMenuBtn. Selects elements: uploadMenuBtn. Iterates collections. Branches on conditions. Purpose: connect logic to DOM elements.
+- Lines 2931-2940: Continues resetPhotoCapture. Declares reportModal. Selects elements: reportMenuIssueBtn. Sets inline styles: cssText=`. Iterates collections. Purpose: update UI state and presentation.
+- Lines 2941-2950: Continues resetPhotoCapture. Sets element properties: innerHTML=`. Purpose: update UI state and presentation.
+- Lines 2951-2960: Continues resetPhotoCapture. Selects elements: .cancelReportBtn, .sendReportBtn. Purpose: connect logic to DOM elements.
+- Lines 2961-2970: Continues resetPhotoCapture. Declares msg, reportMeta. Selects elements: textarea. Sets element properties: textContent=Sending..., disabled=true. Fetches: https://fgoiyycctnwnghrvsilt.supabase.co/functions/v1/report-issue. Branches on conditions. Returns values from this block. Purpose: load or persist data for the page.
+- Lines 2971-2980: Continues resetPhotoCapture. Serializes or parses JSON. Purpose: implement module logic.
+- Lines 2981-2990: Continues resetPhotoCapture. Purpose: implement module logic.
+- Lines 2991-3000: Continues resetPhotoCapture. Sets inline styles: display=none. Sets element properties: textContent=Send Report, disabled=false. Iterates collections. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 3001-3010: Continues resetPhotoCapture. Selects elements: cancelPhotoBtn. Sets inline styles: display=none. Iterates collections. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 3011-3016: Continues resetPhotoCapture. Returns values from this block. Purpose: implement module logic.
+
+## public/js/restaurant/change-log.js
+
+- Lines 1-10: Defines function initChangeLog. Declares esc, fmtDateTime, configureModalClose. Exports module members. Purpose: expose helpers to other modules.
+- Lines 11-20: Continues initChangeLog. Declares send, state, rs, overlays, pendingChanges, setDirty, .... Purpose: implement module logic.
+- Lines 21-30: Defines function openChangeLog. Declares pushHistory, mb, body. Selects elements: modalBack, modalBody, modalTitle. Sets element properties: textContent="Change Log - " + esc(rs.name || "Restaurant"). Purpose: update UI state and presentation.
+- Lines 31-40: Continues openChangeLog. Sets inline styles: display=none. Sets element properties: innerHTML=`. Purpose: update UI state and presentation.
+- Lines 41-50: Continues openChangeLog. Sets inline styles: display=flex, display=none. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 51-60: Defines function renderChangeLogEntry. Declares normalizeEntry. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 61-70: Continues renderChangeLogEntry. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 71-80: Continues renderChangeLogEntry. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 81-90: Continues renderChangeLogEntry. Declares normalized, details, text, safeText. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 91-100: Continues renderChangeLogEntry. Declares fallback, detailsId, displayText. Serializes or parses JSON. Returns values from this block. Purpose: implement module logic.
+- Lines 101-110: Defines function formatData. Declares parts. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 111-120: Continues formatData. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 121-130: Continues formatData. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 131-140: Continues formatData. Selects elements: ${detailsId}. Updates classes (toggle: show). Returns values from this block. Purpose: update UI state and presentation.
+- Lines 141-150: Defines function displayChangeLog. Declares body. Selects elements: modalBody, modalBack. Sets inline styles: display='none'">Close</button>. Sets element properties: innerHTML=`. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 151-160: Continues displayChangeLog. Declares restaurantId. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 161-170: Continues displayChangeLog. Declares html. Selects elements: modalBack. Sets inline styles: display='none'">Close</button>. Sets element properties: innerHTML=`. Iterates collections. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 171-180: Continues displayChangeLog. Declares parsedChanges. Serializes or parses JSON. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 181-190: Continues displayChangeLog. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 191-200: Continues displayChangeLog. Declares authorName. Branches on conditions. Purpose: implement module logic.
+- Lines 201-210: Continues displayChangeLog. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 211-220: Continues displayChangeLog. Declares authorLine. Branches on conditions. Purpose: implement module logic.
+- Lines 221-230: Continues displayChangeLog. Declares changesHtml. Serializes or parses JSON. Purpose: implement module logic.
+- Lines 231-240: Continues displayChangeLog. Declares photos, photoEsc. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 241-250: Continues displayChangeLog. Declares logDataEsc. Serializes or parses JSON. Branches on conditions. Purpose: implement module logic.
+- Lines 251-260: Continues displayChangeLog. Selects elements: modalBack. Sets inline styles: display='none'">Close</button>. Purpose: update UI state and presentation.
+- Lines 261-270: Defines function showPhotoPreview. Declares modal, img. Selects elements: photoModal, photoModalImage. Sets inline styles: display=flex. Sets element properties: innerHTML=html, src=photoUrl. Purpose: update UI state and presentation.
+- Lines 271-280: Defines function restoreFromLog. Declares logData. Serializes or parses JSON. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 281-290: Continues restoreFromLog. Returns values from this block. Purpose: implement module logic.
+- Lines 291-300: Continues restoreFromLog. Declares img. Selects elements: .menuImg. Sets element properties: src=logData.menuImage. Serializes or parses JSON. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 301-310: Continues restoreFromLog. Branches on conditions. Purpose: implement module logic.
+- Lines 311-320: Continues restoreFromLog. Declares modalBack. Selects elements: modalBack. Sets inline styles: display=none. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 321-330: Defines function bindPhotoModalHandlers. Declares closeBtn, modal. Selects elements: photoModalClose, photoModal. Sets inline styles: display=none. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 331-340: Continues bindPhotoModalHandlers. Sets inline styles: display=none. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 341-349: Continues bindPhotoModalHandlers. Returns values from this block. Purpose: implement module logic.
+
+## public/js/restaurant/editor-history.js
+
+- Lines 1-10: Defines function initEditorHistory. Declares overlays, pendingChanges, setDirty, getDrawAll. Exports module members. Purpose: expose helpers to other modules.
+- Lines 11-20: Defines function clone. Declares history. Serializes or parses JSON. Purpose: implement module logic.
+- Lines 21-30: Defines function updateUndoRedoButtons. Declares historyIndex, undoBtn, redoBtn. Selects elements: undoBtn, redoBtn. Sets inline styles: opacity=historyIndex <= 0 ? "0.5" : "1". Sets element properties: disabled=historyIndex <= 0. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 31-40: Defines function pushHistory. Sets inline styles: opacity=historyIndex >= history.length - 1 ? "0.5" : "1". Sets element properties: disabled=historyIndex >= history.length - 1. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 41-50: Continues pushHistory. Branches on conditions. Purpose: implement module logic.
+- Lines 51-60: Defines function applySnapshot. Purpose: implement module logic.
+- Lines 61-70: Continues applySnapshot. Declares drawAll. Branches on conditions. Purpose: implement module logic.
+- Lines 71-80: Defines function undo. Branches on conditions. Purpose: implement module logic.
+- Lines 81-90: Continues undo. Returns values from this block. Purpose: implement module logic.
+- Lines 91-92: Continues undo. Purpose: implement module logic.
+
+## public/js/restaurant/editor-navigation.js
+
+- Lines 1-10: Defines function initEditorNavigation. Declares menu, menuImages, editorSections, updateEditorMiniMap. Exports module members. Purpose: expose helpers to other modules.
+- Lines 11-20: Continues initEditorNavigation. Declares updateMenuNavigationUI, drawAll, getImg, getCurrentPageIndex. Purpose: implement module logic.
+- Lines 21-30: Continues initEditorNavigation. Declares setCurrentPageIndex, applyCurrentPageOnLoad, zoomScale, zoomStep, minZoom. Purpose: implement module logic.
+- Lines 31-40: Defines function updateZoom. Declares maxZoom, inner, img, zoomLevelEl. Selects elements: .menuInner, zoomLevel. Sets inline styles: transform=`scale(${zoomScale})`. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 41-50: Continues updateZoom. Declares displayWidth, displayHeight. Sets inline styles: transformOrigin=top left, width=`${displayWidth * zoomScale}px`, height=`${displayHeight * zoomScale}px`. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 51-60: Continues updateZoom. Sets inline styles: width=, height=, overflow=auto. Sets element properties: textContent=`${Math.round(zoomScale * 100)}%`. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 61-70: Defines function initializeZoom. Declares zoomOutBtn, zoomInBtn. Selects elements: zoomOutBtn, zoomInBtn. Sets element properties: disabled=zoomScale <= minZoom, disabled=zoomScale >= maxZoom. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 71-80: Continues initializeZoom. Declares zoomInBtn. Selects elements: zoomInBtn. Branches on conditions. Purpose: connect logic to DOM elements.
+- Lines 81-90: Continues initializeZoom. Declares zoomOutBtn. Selects elements: zoomOutBtn. Branches on conditions. Purpose: connect logic to DOM elements.
+- Lines 91-100: Continues initializeZoom. Declares zoomResetBtn. Selects elements: zoomResetBtn. Branches on conditions. Purpose: connect logic to DOM elements.
+- Lines 101-110: Continues initializeZoom. Declares img. Branches on conditions. Purpose: implement module logic.
+- Lines 111-120: Defines function switchMenuPage. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 121-130: Continues switchMenuPage. Declares targetSection, menuImg. Selects elements: .menuImg. Branches on conditions. Purpose: connect logic to DOM elements.
+- Lines 131-140: Continues switchMenuPage. Declares prevBtn, nextBtn. Selects elements: prevPageBtn, nextPageBtn. Sets element properties: src=menuImages[pageIndex] || "". Purpose: update UI state and presentation.
+- Lines 141-150: Continues switchMenuPage. Sets inline styles: opacity=0.5, cursor=not-allowed, opacity=1, cursor=pointer. Sets element properties: disabled=pageIndex === 0. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 151-160: Continues switchMenuPage. Sets inline styles: opacity=0.5, cursor=not-allowed, opacity=1, cursor=pointer. Sets element properties: disabled=pageIndex >= menuImages.length - 1. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 161-170: Continues switchMenuPage. Declares prevPageBtn, nextPageBtn. Selects elements: prevPageBtn, nextPageBtn. Iterates collections. Purpose: connect logic to DOM elements.
+- Lines 171-180: Continues switchMenuPage. Branches on conditions. Purpose: implement module logic.
+- Lines 181-190: Continues switchMenuPage. Schedules timed work. Branches on conditions. Purpose: implement module logic.
+- Lines 191-200: Defines function handleEditorKeyDown. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 201-210: Continues handleEditorKeyDown. Binds events: keydown. Branches on conditions. Purpose: respond to user actions.
+- Lines 211-213: Continues handleEditorKeyDown. Returns values from this block. Purpose: implement module logic.
+
+## public/js/restaurant/editor-overlays.js
+
+- Lines 1-10: Defines function initEditorOverlays. Declares overlays, editorSections, getInner, getImg, setDirty, pushHistory, .... Exports module members. Purpose: expose helpers to other modules.
+- Lines 11-20: Defines function renderEditBox. Declares inner, img, originalIdx, idx, iw, box. Purpose: implement module logic.
+- Lines 21-30: Continues renderEditBox. Declares h. Iterates collections. Purpose: implement module logic.
+- Lines 31-40: Continues renderEditBox. Declares eb. Binds events: pointerdown, click. Sets element properties: innerHTML=✏️, title=Edit this item. Purpose: respond to user actions.
+- Lines 41-50: Continues renderEditBox. Declares dragging. Binds events: pointerdown. Branches on conditions. Returns values from this block. Purpose: respond to user actions.
+- Lines 51-60: Continues renderEditBox. Selects elements: .editBox. Updates classes (add: active; remove: active). Iterates collections. Purpose: update UI state and presentation.
+- Lines 61-70: Continues renderEditBox. Declares nx. Binds events: pointermove. Branches on conditions. Returns values from this block. Purpose: respond to user actions.
+- Lines 71-80: Continues renderEditBox. Declares ny, xPct. Sets inline styles: left=xPct + "%". Purpose: update UI state and presentation.
+- Lines 81-90: Continues renderEditBox. Binds events: pointerup. Sets inline styles: top=yPct + "%". Branches on conditions. Purpose: respond to user actions.
+- Lines 91-100: Defines function startResize. Declares rect, safeNum. Selects elements: .editBox. Updates classes (add: active; remove: active). Iterates collections. Purpose: update UI state and presentation.
+- Lines 101-110: Continues startResize. Declares n. Returns values from this block. Purpose: implement module logic.
+- Lines 111-120: Defines function getSnapTargets. Declares snapThreshold, targets. Iterates collections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 121-130: Defines function snapValue. Declares edge. Iterates collections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 131-140: Defines function onMove. Declares dx, x. Purpose: implement module logic.
+- Lines 141-150: Continues onMove. Branches on conditions. Purpose: implement module logic.
+- Lines 151-160: Continues onMove. Branches on conditions. Purpose: implement module logic.
+- Lines 161-170: Continues onMove. Declares snapTargets, right, bottom. Purpose: implement module logic.
+- Lines 171-180: Continues onMove. Declares snappedRight, snappedBottom. Branches on conditions. Purpose: implement module logic.
+- Lines 181-190: Continues onMove. Declares snappedRight, snappedTop. Branches on conditions. Purpose: implement module logic.
+- Lines 191-200: Continues onMove. Declares oldBottom, snappedLeft, snappedBottom. Branches on conditions. Purpose: implement module logic.
+- Lines 201-210: Continues onMove. Declares oldRight. Branches on conditions. Purpose: implement module logic.
+- Lines 211-220: Continues onMove. Declares snappedLeft, snappedTop, oldRight, oldBottom. Branches on conditions. Purpose: implement module logic.
+- Lines 221-230: Continues onMove. Purpose: implement module logic.
+- Lines 231-240: Defines function onUp. Sets inline styles: left=x + "%", top=y + "%", width=w + "%", height=h + "%". Purpose: update UI state and presentation.
+- Lines 241-250: Continues onUp. Binds events: pointermove, pointerup, click. Purpose: respond to user actions.
+- Lines 251-260: Continues onUp. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 261-270: Continues onUp. Declares sectionOverlays, overlayPageIndex. Selects elements: .editBox. Iterates collections. Returns values from this block. Purpose: connect logic to DOM elements.
+- Lines 271-280: Continues onUp. Selects elements: .editBox. Iterates collections. Branches on conditions. Returns values from this block. Purpose: connect logic to DOM elements.
+- Lines 281-290: Continues onUp. Declares sectionOverlays, overlayPageIndex. Iterates collections. Returns values from this block. Purpose: implement module logic.
+- Lines 291-293: Continues onUp. Returns values from this block. Purpose: implement module logic.
+
+## public/js/restaurant/editor-save.js
+
+- Lines 1-10: Defines function initEditorSaveFlow. Declares state, rs, overlays, menuImages, originalMenuImages, saveBtn, .... Exports module members. Purpose: expose helpers to other modules.
+- Lines 11-20: Continues initEditorSaveFlow. Declares send, setDirty, pushHistory, renderEditor, getDrawAll. Purpose: implement module logic.
+- Lines 21-30: Continues initEditorSaveFlow. Declares getPendingChanges, setPendingChanges, getOriginalOverlaysRef. Purpose: implement module logic.
+- Lines 31-40: Continues initEditorSaveFlow. Declares setOriginalOverlaysRef, getOriginalRestaurantSettings. Purpose: implement module logic.
+- Lines 41-50: Defines function setSaveState. Declares saveReviewBackdrop, saveReviewIsSaving, saveReviewHasError, lastSavePayload. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 51-60: Continues setSaveState. Updates classes (add: btn; remove: btnSuccess, btnDanger, btnPrimary). Sets element properties: textContent=Saving..., disabled=true. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 61-70: Continues setSaveState. Updates classes (add: btnSuccess; remove: btn, btnDanger, btnPrimary). Sets element properties: textContent=Saved, disabled=true. Serializes or parses JSON. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 71-80: Continues setSaveState. Updates classes (add: btnPrimary; remove: btnSuccess, btnDanger). Sets element properties: textContent=Save to site, disabled=false. Schedules timed work. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 81-90: Continues setSaveState. Updates classes (add: btnDanger; remove: btnSuccess, btnPrimary). Sets element properties: textContent=Retry save, disabled=false, title="Save failed. Click to retry. Check console (F12) for err..., dataset.retry=1. Iterates collections. Purpose: update UI state and presentation.
+- Lines 91-100: Defines function setSaveReviewSavingState. Declares confirmBtn, cancelBtn, statusEl, undoButtons. Selects elements: #saveReviewConfirmBtn, #saveReviewCancelBtn, #saveReviewStatus. Branches on conditions. Returns values from this block. Purpose: connect logic to DOM elements.
+- Lines 101-110: Continues setSaveReviewSavingState. Sets element properties: textContent=Saving..., textContent=saveReviewHasError, disabled=isSaving. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 111-120: Continues setSaveReviewSavingState. Sets inline styles: opacity=isSaving ? "0.6" : "". Sets element properties: textContent=isSaving ? "Saving..." : "Cancel save", disabled=isSaving. Iterates collections. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 121-130: Continues setSaveReviewSavingState. Sets inline styles: display=block, color=#a8b2d6, display=none. Sets element properties: textContent=message || "Saving changes...", textContent=. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 131-140: Defines function setSaveReviewErrorState. Declares statusEl. Selects elements: #saveReviewStatus. Sets inline styles: color=#f87171. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 141-150: Defines function formatChangesForLog. Declares firstName, lastName, fullName. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 151-160: Continues formatChangesForLog. Declares rawFirst, rawLast. Branches on conditions. Purpose: implement module logic.
+- Lines 161-170: Continues formatChangesForLog. Branches on conditions. Purpose: implement module logic.
+- Lines 171-180: Continues formatChangesForLog. Declares grouped, generalChanges, changeText. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 181-190: Continues formatChangesForLog. Declares colonIndex, itemName, itemChange. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 191-200: Continues formatChangesForLog. Branches on conditions. Purpose: implement module logic.
+- Lines 201-210: Continues formatChangesForLog. Branches on conditions. Purpose: implement module logic.
+- Lines 211-220: Continues formatChangesForLog. Returns values from this block. Purpose: implement module logic.
+- Lines 221-230: Defines function normalizeChangeText. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 231-240: Defines function collectSaveChanges. Declares current, filtered, entryText. Iterates collections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 241-250: Continues collectSaveChanges. Declares pending, uiChanges, comparisonChanges, renamedDishes. Serializes or parses JSON. Purpose: implement module logic.
+- Lines 251-260: Continues collectSaveChanges. Declares renameMatch. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 261-270: Continues collectSaveChanges. Declares allChanges, changeText, addedMatch. Iterates collections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 271-280: Continues collectSaveChanges. Declares dishName, removedMatch. Iterates collections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 281-290: Continues collectSaveChanges. Declares dishName, changesList, currentRestaurantSettings. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 291-300: Continues collectSaveChanges. Declares originalRestaurantSettings, restaurantSettingsChanged. Purpose: implement module logic.
+- Lines 301-310: Continues collectSaveChanges. Branches on conditions. Purpose: implement module logic.
+- Lines 311-320: Continues collectSaveChanges. Declares originalOverlays, originalById, aiIngredientChanges, original. Serializes or parses JSON. Iterates collections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 321-330: Continues collectSaveChanges. Declares currentAiIngredients, originalAiIngredients, changed, dishName. Serializes or parses JSON. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 331-340: Continues collectSaveChanges. Branches on conditions. Purpose: implement module logic.
+- Lines 341-350: Continues collectSaveChanges. Declares restaurantSettingsToSave. Branches on conditions. Purpose: implement module logic.
+- Lines 351-360: Defines function closeSaveReviewModal. Returns values from this block. Purpose: implement module logic.
+- Lines 361-370: Continues closeSaveReviewModal. Branches on conditions. Purpose: implement module logic.
+- Lines 371-380: Defines function renderSaveReviewModal. Binds events: click. Branches on conditions. Returns values from this block. Purpose: respond to user actions.
+- Lines 381-390: Continues renderSaveReviewModal. Declares modal. Sets element properties: innerHTML=, innerHTML=`. Purpose: update UI state and presentation.
+- Lines 391-400: Continues renderSaveReviewModal. Purpose: implement module logic.
+- Lines 401-410: Continues renderSaveReviewModal. Declares list. Selects elements: #saveReviewList. Sets element properties: innerHTML=reviewItems. Iterates collections. Purpose: update UI state and presentation.
+- Lines 411-420: Continues renderSaveReviewModal. Declares idx, item. Selects elements: #saveReviewCancelBtn, #saveReviewConfirmBtn, button[data-action="undo"]. Iterates collections. Purpose: connect logic to DOM elements.
+- Lines 421-430: Continues renderSaveReviewModal. Branches on conditions. Purpose: implement module logic.
+- Lines 431-440: Defines function sendSavePayload. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 441-450: Defines function openSaveReviewModal. Declares changesList. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 451-460: Continues openSaveReviewModal. Declares originalOverlays, reviewItems, changeText, item, renameMatch, addedMatch, .... Serializes or parses JSON. Iterates collections. Purpose: implement module logic.
+- Lines 461-470: Defines function replaceOverlay. Declares dishMatch, isSettings, isMenuChange, original. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 471-480: Continues replaceOverlay. Declares currentIdx, restored. Serializes or parses JSON. Branches on conditions. Purpose: implement module logic.
+- Lines 481-490: Continues replaceOverlay. Declares drawAll. Branches on conditions. Purpose: implement module logic.
+- Lines 491-500: Continues replaceOverlay. Declares originalRestaurantSettings. Branches on conditions. Purpose: implement module logic.
+- Lines 501-510: Continues replaceOverlay. Serializes or parses JSON. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 511-520: Continues replaceOverlay. Serializes or parses JSON. Returns values from this block. Purpose: implement module logic.
+- Lines 521-530: Continues replaceOverlay. Declares oldName, newName, newIdx. Branches on conditions. Purpose: implement module logic.
+- Lines 531-540: Continues replaceOverlay. Declares dishName, idx. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 541-550: Continues replaceOverlay. Declares drawAll. Branches on conditions. Purpose: implement module logic.
+- Lines 551-560: Continues replaceOverlay. Declares dishName. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 561-570: Continues replaceOverlay. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 571-580: Continues replaceOverlay. Declares changesList, restaurantSettingsToSave. Returns values from this block. Purpose: implement module logic.
+- Lines 581-590: Continues replaceOverlay. Declares formattedChanges, payload. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 591-600: Continues replaceOverlay. Purpose: implement module logic.
+- Lines 601-610: Continues replaceOverlay. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 611-620: Defines function describeOverlayChanges. Declares changes, oldList, newList, oldById. Iterates collections. Purpose: implement module logic.
+- Lines 621-630: Continues describeOverlayChanges. Declares newById, itemName, old. Iterates collections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 631-640: Continues describeOverlayChanges. Declares oldAiIngredients, newAiIngredients, hasAiIngredientsChange. Serializes or parses JSON. Branches on conditions. Purpose: implement module logic.
+- Lines 641-650: Defines function posChanged. Declares positionTolerance, moved. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 651-660: Continues posChanged. Branches on conditions. Purpose: implement module logic.
+- Lines 661-670: Defines function makeEntry. Declares newIngList, ingName. Serializes or parses JSON. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 671-680: Continues makeEntry. Purpose: implement module logic.
+- Lines 681-690: Continues makeEntry. Iterates collections. Purpose: implement module logic.
+- Lines 691-700: Continues makeEntry. Declares displayName. Iterates collections. Purpose: implement module logic.
+- Lines 701-710: Continues makeEntry. Iterates collections. Purpose: implement module logic.
+- Lines 711-720: Continues makeEntry. Iterates collections. Purpose: implement module logic.
+- Lines 721-730: Continues makeEntry. Iterates collections. Purpose: implement module logic.
+- Lines 731-740: Continues makeEntry. Branches on conditions. Purpose: implement module logic.
+- Lines 741-750: Continues makeEntry. Purpose: implement module logic.
+- Lines 751-760: Continues makeEntry. Declares oldIngList. Branches on conditions. Purpose: implement module logic.
+- Lines 761-770: Continues makeEntry. Declares newIngList, specificChanges. Serializes or parses JSON. Branches on conditions. Purpose: implement module logic.
+- Lines 771-780: Continues makeEntry. Declares oldIng, oldAiDetectedAllergens. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 781-790: Continues makeEntry. Declares oldAiDetectedMayContainAllergens, oldAiDetectedDiets, oldAiDetectedMayContainDiets. Iterates collections. Purpose: implement module logic.
+- Lines 791-800: Continues makeEntry. Declares newAiDetectedAllergens, newAiDetectedMayContainAllergens. Iterates collections. Purpose: implement module logic.
+- Lines 801-810: Continues makeEntry. Declares newAiDetectedDiets, newAiDetectedMayContainDiets. Branches on conditions. Purpose: implement module logic.
+- Lines 811-820: Continues makeEntry. Declares aiDetectionChanged. Serializes or parses JSON. Purpose: implement module logic.
+- Lines 821-830: Continues makeEntry. Declares smartPrefix. Serializes or parses JSON. Purpose: implement module logic.
+- Lines 831-840: Defines function makeChangeEntry. Purpose: implement module logic.
+- Lines 841-850: Continues makeChangeEntry. Purpose: implement module logic.
+- Lines 851-860: Defines function getItemState. Declares lowerItem. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 861-870: Continues getItemState. Iterates collections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 871-880: Continues getItemState. Declares allAllergens. Iterates collections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 881-890: Continues getItemState. Iterates collections. Purpose: implement module logic.
+- Lines 891-900: Continues getItemState. Declares allDiets, oldState. Iterates collections. Purpose: implement module logic.
+- Lines 901-910: Continues getItemState. Declares newState, displayName. Purpose: implement module logic.
+- Lines 911-920: Continues getItemState. Branches on conditions. Purpose: implement module logic.
+- Lines 921-930: Continues getItemState. Branches on conditions. Purpose: implement module logic.
+- Lines 931-940: Continues getItemState. Branches on conditions. Purpose: implement module logic.
+- Lines 941-950: Continues getItemState. Branches on conditions. Purpose: implement module logic.
+- Lines 951-960: Continues getItemState. Branches on conditions. Purpose: implement module logic.
+- Lines 961-970: Continues getItemState. Branches on conditions. Purpose: implement module logic.
+- Lines 971-980: Continues getItemState. Declares oldState, newState. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 981-990: Continues getItemState. Branches on conditions. Purpose: implement module logic.
+- Lines 991-1000: Continues getItemState. Branches on conditions. Purpose: implement module logic.
+- Lines 1001-1010: Continues getItemState. Branches on conditions. Purpose: implement module logic.
+- Lines 1011-1020: Continues getItemState. Branches on conditions. Purpose: implement module logic.
+- Lines 1021-1030: Continues getItemState. Branches on conditions. Purpose: implement module logic.
+- Lines 1031-1040: Continues getItemState. Purpose: implement module logic.
+- Lines 1041-1050: Defines function getBrandKey. Declares oldBrands, newBrands, oldBrandKeys, newBrandKeys. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 1051-1060: Continues getBrandKey. Iterates collections. Purpose: implement module logic.
+- Lines 1061-1070: Continues getBrandKey. Branches on conditions. Purpose: implement module logic.
+- Lines 1071-1080: Continues getBrandKey. Declares oldNames, newNames, addedIngs, removedIngs. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 1081-1090: Continues getBrandKey. Branches on conditions. Purpose: implement module logic.
+- Lines 1091-1100: Continues getBrandKey. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 1101-1110: Continues getBrandKey. Purpose: implement module logic.
+- Lines 1111-1120: Continues getBrandKey. Purpose: implement module logic.
+- Lines 1121-1130: Continues getBrandKey. Declares itemName. Iterates collections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 1131-1140: Continues getBrandKey. Returns values from this block. Purpose: implement module logic.
+- Lines 1141-1142: Continues getBrandKey. Purpose: implement module logic.
+
+## public/js/restaurant/editor-sections.js
+
+- Lines 1-10: Defines function initEditorSections. Declares menu, menuImages, editorSections, div. Exports module members. Purpose: expose helpers to other modules.
+- Lines 11-20: Continues initEditorSections. Declares el, getCurrentPageIndex. Sets element properties: innerHTML=html. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 21-30: Continues initEditorSections. Declares setCurrentPageIndex, getDrawAll, setRefs. Purpose: implement module logic.
+- Lines 31-40: Continues initEditorSections. Declares editorScroller, currentMiniMapPage, updateEditorMiniMap, inner, img, overlayLayer. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 41-50: Continues initEditorSections. Branches on conditions. Purpose: implement module logic.
+- Lines 51-60: Continues initEditorSections. Declares scrollWrapper, miniMap. Sets inline styles: cssText="position:relative, cssText=`. Purpose: update UI state and presentation.
+- Lines 61-70: Continues initEditorSections. Declares miniMapFrame, miniMapThumb. Sets inline styles: cssText="position:relative. Purpose: update UI state and presentation.
+- Lines 71-80: Continues initEditorSections. Declares miniMapViewport, miniMapLabel. Sets inline styles: cssText="width:100%, cssText="position:absolute. Purpose: update UI state and presentation.
+- Lines 81-90: Continues initEditorSections. Declares miniMapSlot. Selects elements: editorMiniMapSlot. Sets inline styles: display=flex. Sets element properties: textContent=`Page 1 of ${menuImages.length}`. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 91-100: Defines function updateEditorMiniMapViewport. Declares section. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 101-110: Continues updateEditorMiniMapViewport. Declares imgRect, containerRect, visibleTop, visibleBottom. Sets inline styles: display=none. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 111-120: Continues updateEditorMiniMapViewport. Declares visibleHeight, visibleLeft, visibleRight. Purpose: implement module logic.
+- Lines 121-130: Continues updateEditorMiniMapViewport. Declares visibleWidth, leftPercent, widthPercent, topPercent. Sets inline styles: display=none. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 131-140: Continues updateEditorMiniMapViewport. Declares heightPercent, miniMapRect, miniMapNaturalWidth, miniMapNaturalHeight, miniMapAspect. Sets inline styles: display=none. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 141-150: Continues updateEditorMiniMapViewport. Declares frameAspect, thumbnailLeft, thumbnailWidth, thumbnailTop, thumbnailHeight. Branches on conditions. Purpose: implement module logic.
+- Lines 151-160: Continues updateEditorMiniMapViewport. Declares vpLeft, vpTop, vpWidth, vpHeight. Purpose: implement module logic.
+- Lines 161-170: Defines function syncMiniMapHeight. Declares controlColumn, targetHeight. Selects elements: .editorControlColumn. Sets inline styles: display=block, left=`${vpLeft}px`, top=`${vpTop}px`, width=`${vpWidth}px`, height=`${vpHeight}px`. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 171-180: Continues syncMiniMapHeight. Binds events: resize. Sets inline styles: maxHeight=`${targetHeight}px`, height=`${Math.max(targetHeight - 34, 80)}px`. Branches on conditions. Purpose: respond to user actions.
+- Lines 181-190: Continues syncMiniMapHeight. Sets inline styles: cssText="display:flex. Schedules timed work. Iterates collections. Purpose: update UI state and presentation.
+- Lines 191-200: Continues syncMiniMapHeight. Declares section, sectionInner, sectionImg. Sets inline styles: cssText="position:relative. Sets element properties: src=imgSrc, dataset.sectionIndex=idx. Purpose: update UI state and presentation.
+- Lines 201-210: Continues syncMiniMapHeight. Declares sectionOverlayLayer. Binds events: dragstart. Sets inline styles: cssText="width:100%. Sets element properties: dataset.sectionIndex=idx. Purpose: respond to user actions.
+- Lines 211-220: Continues syncMiniMapHeight. Purpose: implement module logic.
+- Lines 221-230: Continues syncMiniMapHeight. Purpose: implement module logic.
+- Lines 231-240: Continues syncMiniMapHeight. Declares section. Sets element properties: textContent=`Page ${pageIndex + 1} of ${editorSections.length}`, src=section.img.src. Schedules timed work. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 241-250: Continues syncMiniMapHeight. Declares nextPage. Binds events: click. Purpose: respond to user actions.
+- Lines 251-260: Continues syncMiniMapHeight. Declares scrollContainer, scrollerRect, scrollerMidY, sectionRect. Binds events: scroll. Iterates collections. Branches on conditions. Purpose: respond to user actions.
+- Lines 261-270: Continues syncMiniMapHeight. Branches on conditions. Purpose: implement module logic.
+- Lines 271-280: Continues syncMiniMapHeight. Binds events: load. Branches on conditions. Purpose: respond to user actions.
+- Lines 281-290: Continues syncMiniMapHeight. Binds events: load. Schedules timed work. Purpose: respond to user actions.
+- Lines 291-300: Continues syncMiniMapHeight. Binds events: dragstart. Sets element properties: src=menuImages[0] || "". Purpose: respond to user actions.
+- Lines 301-310: Defines function rebuildEditorSectionsFromMenuImages. Declares section. Sets element properties: innerHTML=. Iterates collections. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 311-320: Continues rebuildEditorSectionsFromMenuImages. Declares sectionInner, sectionImg. Sets inline styles: cssText="position:relative. Sets element properties: src=imgSrc, dataset.sectionIndex=idx. Purpose: update UI state and presentation.
+- Lines 321-330: Continues rebuildEditorSectionsFromMenuImages. Declares sectionOverlayLayer. Binds events: dragstart. Sets inline styles: cssText="width:100%. Sets element properties: dataset.sectionIndex=idx. Purpose: respond to user actions.
+- Lines 331-340: Continues rebuildEditorSectionsFromMenuImages. Purpose: implement module logic.
+- Lines 341-350: Continues rebuildEditorSectionsFromMenuImages. Declares maxIndex. Branches on conditions. Purpose: implement module logic.
+- Lines 351-360: Continues rebuildEditorSectionsFromMenuImages. Declares loadedCount, drawAll. Iterates collections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 361-370: Defines function onLoad. Binds events: load. Branches on conditions. Purpose: respond to user actions.
+- Lines 371-380: Continues onLoad. Returns values from this block. Purpose: implement module logic.
+- Lines 381-381: Continues onLoad. Purpose: implement module logic.
+
+## public/js/restaurant/editor-settings.js
+
+- Lines 1-10: Defines function initEditorSettings. Declares state, esc, configureModalClose. Exports module members. Purpose: expose helpers to other modules.
+- Lines 11-20: Defines function openRestaurantSettings. Declares updateOrderConfirmModeVisibility, mb, body. Selects elements: modalBack, modalBody, modalTitle. Sets element properties: textContent=Restaurant Settings. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 21-30: Continues openRestaurantSettings. Declares rs, currentWebsite, currentPhone, currentDeliveryUrl. Sets element properties: innerHTML=`. Purpose: update UI state and presentation.
+- Lines 31-40: Continues openRestaurantSettings. Purpose: implement module logic.
+- Lines 41-50: Continues openRestaurantSettings. Iterates collections. Purpose: implement module logic.
+- Lines 51-60: Continues openRestaurantSettings. Iterates collections. Purpose: implement module logic.
+- Lines 61-70: Continues openRestaurantSettings. Selects elements: modalBack. Sets inline styles: display='none'" style="padding:10px 20px. Iterates collections. Purpose: update UI state and presentation.
+- Lines 71-80: Continues openRestaurantSettings. Purpose: implement module logic.
+- Lines 81-90: Continues openRestaurantSettings. Declares form. Selects elements: settingsForm. Sets inline styles: display=none, display=flex. Sets element properties: innerHTML=. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 91-100: Continues openRestaurantSettings. Declares form, statusDiv, websiteInput, phoneInput, deliveryUrlInput. Selects elements: settingsForm, settingsStatus, settingsWebsite, settingsPhone, settingsDeliveryUrl. Branches on conditions. Purpose: connect logic to DOM elements.
+- Lines 101-110: Continues openRestaurantSettings. Declares website, phone, deliveryUrl. Sets element properties: textContent="Please enter a valid website URL (starting with http:// .... Branches on conditions. Purpose: update UI state and presentation.
+- Lines 111-120: Continues openRestaurantSettings. Sets inline styles: color=#ef4444. Sets element properties: textContent="Please enter a valid delivery URL (starting with http://.... Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 121-130: Continues openRestaurantSettings. Selects elements: button[type="submit"]. Sets inline styles: color=#a8b2d6. Sets element properties: textContent=Saving..., disabled=true. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 131-140: Continues openRestaurantSettings. Declares client, restaurantId, data, error. Branches on conditions. Purpose: implement module logic.
+- Lines 141-150: Continues openRestaurantSettings. Supabase tables: restaurants (select, update). Purpose: load or persist data for the page.
+- Lines 151-160: Continues openRestaurantSettings. Branches on conditions. Purpose: implement module logic.
+- Lines 161-170: Continues openRestaurantSettings. Declares saveBtn. Selects elements: saveBtn. Branches on conditions. Purpose: connect logic to DOM elements.
+- Lines 171-180: Continues openRestaurantSettings. Sets inline styles: display=inline-flex, color=#22c55e. Sets element properties: textContent=✓ Settings saved successfully!. Schedules timed work. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 181-190: Continues openRestaurantSettings. Declares errorMsg. Sets inline styles: display=none. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 191-200: Continues openRestaurantSettings. Selects elements: button[type="submit"]. Sets inline styles: color=#ef4444. Sets element properties: textContent=errorMsg, disabled=false. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 201-210: Continues openRestaurantSettings. Sets inline styles: display=none. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 211-217: Continues openRestaurantSettings. Schedules timed work. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+
+## public/js/restaurant/feedback-modals.js
+
+- Lines 1-10: Defines function initFeedbackModals. Declares configureModalClose, getIssueReportMeta, state. Exports module members. Purpose: expose helpers to other modules.
+- Lines 11-20: Defines function openFeedbackModal. Declares supabaseKey, mb, body. Selects elements: modalBack, modalBody, modalTitle. Sets element properties: textContent=Share Your Experience, innerHTML=`. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 21-30: Continues openFeedbackModal. Iterates collections. Purpose: implement module logic.
+- Lines 31-40: Continues openFeedbackModal. Selects elements: modalBack. Sets inline styles: display='none'" style="padding:10px 20px. Purpose: update UI state and presentation.
+- Lines 41-50: Continues openFeedbackModal. Declares form. Selects elements: feedbackForm. Sets inline styles: display=none. Sets element properties: innerHTML=. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 51-60: Continues openFeedbackModal. Declares form, statusDiv, feedbackText. Selects elements: feedbackForm, feedbackStatus, feedbackText. Sets inline styles: display=flex. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 61-70: Continues openFeedbackModal. Declares text. Sets element properties: textContent=Please enter your feedback., textContent=Sending.... Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 71-80: Continues openFeedbackModal. Declares client, restaurantId. Selects elements: button[type="submit"]. Sets element properties: disabled=true. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 81-90: Continues openFeedbackModal. Declares data, error. Supabase tables: anonymous_feedback (insert). Iterates collections. Branches on conditions. Purpose: load or persist data for the page.
+- Lines 91-100: Continues openFeedbackModal. Branches on conditions. Purpose: implement module logic.
+- Lines 101-110: Continues openFeedbackModal. Declares restaurantName, restaurantSlug. Fetches: https://fgoiyycctnwnghrvsilt.supabase.co/functions/v1/send-notification-email. Purpose: load or persist data for the page.
+- Lines 111-120: Continues openFeedbackModal. Serializes or parses JSON. Purpose: implement module logic.
+- Lines 121-130: Continues openFeedbackModal. Sets inline styles: color=#22c55e. Sets element properties: textContent=✓ Thank you for your feedback!. Iterates collections. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 131-140: Continues openFeedbackModal. Sets inline styles: display=none. Sets element properties: value=. Schedules timed work. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 141-150: Continues openFeedbackModal. Declares errorMsg. Sets inline styles: color=#ef4444. Sets element properties: textContent=errorMsg. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 151-160: Continues openFeedbackModal. Selects elements: button[type="submit"]. Sets element properties: disabled=false. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 161-170: Continues openFeedbackModal. Sets inline styles: display=none. Schedules timed work. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 171-180: Defines function openReportIssueModal. Declares mb, body. Selects elements: modalBack, modalBody, modalTitle. Sets element properties: textContent=Report an Issue, innerHTML=`. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 181-190: Continues openReportIssueModal. Purpose: implement module logic.
+- Lines 191-200: Continues openReportIssueModal. Selects elements: modalBack. Sets inline styles: display='none'" style="padding:10px 20px. Purpose: update UI state and presentation.
+- Lines 201-210: Continues openReportIssueModal. Sets inline styles: display=none, display=flex. Purpose: update UI state and presentation.
+- Lines 211-220: Continues openReportIssueModal. Declares form, statusDiv, details. Selects elements: reportIssueForm, reportStatus, issueDetails. Branches on conditions. Purpose: connect logic to DOM elements.
+- Lines 221-230: Continues openReportIssueModal. Declares client, restaurantId. Selects elements: button[type="submit"]. Sets element properties: textContent=Please fill in all fields., textContent=Sending..., disabled=true. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 231-240: Continues openReportIssueModal. Declares reportMeta, data, error. Purpose: implement module logic.
+- Lines 241-250: Continues openReportIssueModal. Sets element properties: textContent=✓ Thank you! We will review this issue.. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 251-260: Continues openReportIssueModal. Sets inline styles: color=#22c55e, display=none. Schedules timed work. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 261-270: Continues openReportIssueModal. Selects elements: button[type="submit"]. Sets inline styles: color=#ef4444. Sets element properties: textContent=Sorry, something went wrong. Please try again., disabled=false. Purpose: update UI state and presentation.
+- Lines 271-280: Continues openReportIssueModal. Sets inline styles: display=none. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 281-282: Continues openReportIssueModal. Purpose: implement module logic.
+
+## public/js/restaurant/how-it-works-tour.js
+
+- Lines 1-10: Declares HOW_IT_WORKS_TOUR_STEPS. Purpose: implement module logic.
+- Lines 11-20: Iterates collections. Purpose: implement module logic.
+- Lines 21-30: Runs general logic. Purpose: implement module logic.
+- Lines 31-40: Defines function createHowItWorksTour. Exports module members. Purpose: expose helpers to other modules.
+- Lines 41-50: Defines function getHowItWorksTourController. Branches on conditions. Purpose: implement module logic.
+- Lines 51-60: Continues getHowItWorksTourController. Purpose: implement module logic.
+- Lines 61-70: Defines function ensureHowItWorksTourElements. Declares ctrl, container. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 71-80: Continues ensureHowItWorksTourElements. Sets element properties: innerHTML=`. Purpose: update UI state and presentation.
+- Lines 81-90: Continues ensureHowItWorksTourElements. Selects elements: .how-tour-title, .how-tour-body, .how-tour-progress, .how-tour-prev, .how-tour-next. Purpose: connect logic to DOM elements.
+- Lines 91-100: Continues ensureHowItWorksTourElements. Declares replayBtn. Selects elements: .how-tour-close. Sets element properties: textContent=Show guide. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 101-110: Continues ensureHowItWorksTourElements. Binds events: click. Updates classes (remove: show, hidden). Branches on conditions. Purpose: respond to user actions.
+- Lines 111-120: Continues ensureHowItWorksTourElements. Declares spotlight. Binds events: scroll, resize. Purpose: respond to user actions.
+- Lines 121-130: Continues ensureHowItWorksTourElements. Binds events: click. Branches on conditions. Purpose: respond to user actions.
+- Lines 131-140: Continues ensureHowItWorksTourElements. Binds events: click. Branches on conditions. Purpose: respond to user actions.
+- Lines 141-150: Continues ensureHowItWorksTourElements. Binds events: click. Branches on conditions. Purpose: respond to user actions.
+- Lines 151-160: Defines function updateHowItWorksSpotlight. Declares ctrl, spotlight. Updates classes (remove: show). Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 161-170: Continues updateHowItWorksSpotlight. Declares target, rect, pad. Updates classes (remove: show). Sets inline styles: left=`${window.scrollX + rect.left - pad}px`, top=`${window.scrollY + rect.top - pad}px`. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 171-180: Defines function setHowItWorksTourHighlight. Declares ctrl. Updates classes (add: show). Sets inline styles: width=`${rect.width + pad * 2}px`, height=`${rect.height + pad * 2}px`. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 181-190: Continues setHowItWorksTourHighlight. Declares target. Schedules timed work. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 191-200: Defines function setTrainingFilters. Declares changed. Uses storage keys: setItem:qrAllergies. Serializes or parses JSON. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 201-210: Continues setTrainingFilters. Declares chipsHost. Selects elements: savedChips. Uses storage keys: setItem:qrDiets. Serializes or parses JSON. Branches on conditions. Purpose: connect logic to DOM elements.
+- Lines 211-220: Continues setTrainingFilters. Declares dietHost. Selects elements: dietChips. Branches on conditions. Purpose: connect logic to DOM elements.
+- Lines 221-230: Defines function focusTrainingOverlay. Declares overlays, item, escaped, overlayEl. Selects elements: [data-item-id="${escaped}"]. Branches on conditions. Purpose: connect logic to DOM elements.
+- Lines 231-240: Continues focusTrainingOverlay. Branches on conditions. Purpose: implement module logic.
+- Lines 241-250: Defines function runHowItWorksTourAction. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 251-260: Continues runHowItWorksTourAction. Branches on conditions. Purpose: implement module logic.
+- Lines 261-270: Defines function renderHowItWorksTourStep. Declares ctrl, step. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 271-280: Continues renderHowItWorksTourStep. Sets element properties: textContent=step.title, textContent=step.body, textContent=`Step ${ctrl.index + 1} of ${HOW_IT_WORKS_TOUR_STEPS.leng..., textContent=ctrl.index === HOW_IT_WORKS_TOUR_STEPS.length - 1 ? "Fini..., disabled=ctrl.index === 0. Purpose: update UI state and presentation.
+- Lines 281-290: Defines function hideHowItWorksTour. Declares ctrl. Updates classes (add: hidden). Branches on conditions. Purpose: update UI state and presentation.
+- Lines 291-300: Continues hideHowItWorksTour. Updates classes (add: show; remove: show). Branches on conditions. Purpose: update UI state and presentation.
+- Lines 301-310: Defines function maybeInitHowItWorksTour. Declares ctrl. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 311-320: Continues maybeInitHowItWorksTour. Updates classes (remove: hidden, show). Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 321-329: Continues maybeInitHowItWorksTour. Returns values from this block. Purpose: implement module logic.
+
+## public/js/restaurant/ingredient-photo.js
+
+- Lines 1-10: Defines function initIngredientPhotoAnalysis. Declares esc, state, aiAssistState, activePhotoAnalyses, collectAiTableData. Exports module members. Purpose: expose helpers to other modules.
+- Lines 11-20: Continues initIngredientPhotoAnalysis. Declares renderAiTable, aiAssistSetStatus, ensureAiAssistElements. Purpose: implement module logic.
+- Lines 21-30: Continues initIngredientPhotoAnalysis. Declares detectAllergensInText, normalizeDietLabel. Purpose: implement module logic.
+- Lines 31-40: Continues initIngredientPhotoAnalysis. Declares compressImage, getIssueReportMeta, ALLERGENS, ALLERGEN_ALIASES. Purpose: implement module logic.
+- Lines 41-50: Continues initIngredientPhotoAnalysis. Declares SUPABASE_KEY. Purpose: implement module logic.
+- Lines 51-60: Defines function rotateImage. Declares img, canvas, ctx, angleRad. Iterates collections. Returns values from this block. Purpose: implement module logic.
+- Lines 61-70: Continues rotateImage. Declares sin, cos, newWidth, newHeight. Purpose: implement module logic.
+- Lines 71-80: Continues rotateImage. Sets element properties: src=imgSrc. Purpose: update UI state and presentation.
+- Lines 81-90: Defines function waitForOpenCvReady. Declares resolved, timer. Schedules timed work. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 91-100: Continues waitForOpenCvReady. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 101-110: Defines function detectSlantAngle. Declares ready. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 111-120: Continues detectSlantAngle. Declares img, maxDim, scale, w, h. Iterates collections. Returns values from this block. Purpose: implement module logic.
+- Lines 121-130: Continues detectSlantAngle. Declares canvas, ctx, src, gray. Purpose: implement module logic.
+- Lines 131-140: Continues detectSlantAngle. Declares cx, cy, roiW, roiH, roiX, roiY. Purpose: implement module logic.
+- Lines 141-150: Continues detectSlantAngle. Declares roi, thresh. Iterates collections. Purpose: implement module logic.
+- Lines 151-160: Continues detectSlantAngle. Declares lines, angles. Purpose: implement module logic.
+- Lines 161-170: Continues detectSlantAngle. Declares i, x1, y1, x2, y2, angle. Iterates collections. Purpose: implement module logic.
+- Lines 171-180: Continues detectSlantAngle. Branches on conditions. Purpose: implement module logic.
+- Lines 181-190: Continues detectSlantAngle. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 191-200: Continues detectSlantAngle. Declares medianAngle, positiveCount, negativeCount. Iterates collections. Returns values from this block. Purpose: implement module logic.
+- Lines 201-210: Continues detectSlantAngle. Purpose: implement module logic.
+- Lines 211-220: Defines function getApiKey. Sets element properties: src=imageDataUrl. Iterates collections. Purpose: update UI state and presentation.
+- Lines 221-230: Defines function setApiKey. Declares anthropicKey, googleKey. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 231-240: Continues setApiKey. Declares setupModal. Sets inline styles: cssText=`. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 241-250: Continues setApiKey. Sets element properties: innerHTML=`. Purpose: update UI state and presentation.
+- Lines 251-260: Continues setApiKey. Purpose: implement module logic.
+- Lines 261-270: Continues setApiKey. Declares aKey, gKey. Selects elements: #setupSaveBtn, #setupAnthropicKey, #setupGoogleKey. Branches on conditions. Purpose: connect logic to DOM elements.
+- Lines 271-280: Continues setApiKey. Selects elements: #setupCancelBtn. Purpose: connect logic to DOM elements.
+- Lines 281-290: Defines function callClaudeForAnalysis. Purpose: implement module logic.
+- Lines 291-300: Continues callClaudeForAnalysis. Declares apiKey, requestBody, useExtendedThinking = false, model = "claude-sonnet-4-5-20250929". Branches on conditions. Purpose: implement module logic.
+- Lines 301-310: Continues callClaudeForAnalysis. Branches on conditions. Purpose: implement module logic.
+- Lines 311-320: Continues callClaudeForAnalysis. Declares response. Fetches: https://api.anthropic.com/v1/messages. Branches on conditions. Purpose: load or persist data for the page.
+- Lines 321-330: Continues callClaudeForAnalysis. Serializes or parses JSON. Branches on conditions. Purpose: implement module logic.
+- Lines 331-340: Continues callClaudeForAnalysis. Declares err, data, block. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 341-350: Continues callClaudeForAnalysis. Returns values from this block. Purpose: implement module logic.
+- Lines 351-360: Defines function getClaudeTranscription. Declares systemPrompt. Purpose: implement module logic.
+- Lines 361-370: Continues getClaudeTranscription. Declares response. Purpose: implement module logic.
+- Lines 371-380: Continues getClaudeTranscription. Purpose: implement module logic.
+- Lines 381-390: Continues getClaudeTranscription. Purpose: implement module logic.
+- Lines 391-400: Continues getClaudeTranscription. Declares jsonMatch. Serializes or parses JSON. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 401-410: Defines function getVisionWords. Declares googleApiKey, response. Branches on conditions. Purpose: implement module logic.
+- Lines 411-420: Continues getVisionWords. Serializes or parses JSON. Purpose: implement module logic.
+- Lines 421-430: Continues getVisionWords. Declares err. Branches on conditions. Purpose: implement module logic.
+- Lines 431-440: Continues getVisionWords. Declares data, annotation, words. Branches on conditions. Purpose: implement module logic.
+- Lines 441-450: Continues getVisionWords. Declares text, vertices, x0. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 451-460: Continues getVisionWords. Declares y0, x1, y1. Iterates collections. Purpose: implement module logic.
+- Lines 461-470: Continues getVisionWords. Returns values from this block. Purpose: implement module logic.
+- Lines 471-480: Defines function matchLinesToVisualLines. Declares systemPrompt. Purpose: implement module logic.
+- Lines 481-490: Continues matchLinesToVisualLines. Purpose: implement module logic.
+- Lines 491-500: Continues matchLinesToVisualLines. Declares transcriptDesc, visualDesc. Iterates collections. Purpose: implement module logic.
+- Lines 501-510: Continues matchLinesToVisualLines. Declares response. Purpose: implement module logic.
+- Lines 511-520: Defines function findMissingWordsAndBuildLines. Declares jsonMatch. Serializes or parses JSON. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 521-530: Defines function wordMatchesTranscript. Declares cleanWord, transcriptWords. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 531-540: Continues wordMatchesTranscript. Iterates collections. Returns values from this block. Purpose: implement module logic.
+- Lines 541-550: Continues wordMatchesTranscript. Declares lines, visualIdx. Iterates collections. Purpose: implement module logic.
+- Lines 551-560: Continues wordMatchesTranscript. Declares vl, transcriptText. Branches on conditions. Purpose: implement module logic.
+- Lines 561-570: Continues wordMatchesTranscript. Declares matchingWords, transcriptWords. Iterates collections. Purpose: implement module logic.
+- Lines 571-580: Continues wordMatchesTranscript. Declares transcriptWordCounts, matchedWordCounts. Iterates collections. Purpose: implement module logic.
+- Lines 581-590: Continues wordMatchesTranscript. Declares clean, missingWords, matchedCount, missing. Iterates collections. Purpose: implement module logic.
+- Lines 591-600: Continues wordMatchesTranscript. Declares usedBboxes, vlYMin. Iterates collections. Purpose: implement module logic.
+- Lines 601-610: Continues wordMatchesTranscript. Declares vlYMax, vlHeight, yTolerance, missingWord, matches, wTextClean, .... Iterates collections. Purpose: implement module logic.
+- Lines 611-620: Continues wordMatchesTranscript. Declares isExactMatch, isCloseMatch, notUsed. Branches on conditions. Purpose: implement module logic.
+- Lines 621-630: Continues wordMatchesTranscript. Declares withinYRange, avgY. Iterates collections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 631-640: Continues wordMatchesTranscript. Declares bestMatch. Branches on conditions. Purpose: implement module logic.
+- Lines 641-650: Continues wordMatchesTranscript. Declares wordsForBbox, x0, y0, x1. Iterates collections. Purpose: implement module logic.
+- Lines 651-660: Continues wordMatchesTranscript. Declares y1. Iterates collections. Returns values from this block. Purpose: implement module logic.
+- Lines 661-670: Defines function analyzeWithLabelCropper. Declares base64Data, mediaType. Purpose: implement module logic.
+- Lines 671-680: Continues analyzeWithLabelCropper. Declares claudeLines, visionWords. Iterates collections. Purpose: implement module logic.
+- Lines 681-690: Continues analyzeWithLabelCropper. Declares sortedWords, yGroups. Iterates collections. Purpose: implement module logic.
+- Lines 691-700: Continues analyzeWithLabelCropper. Declares currentYGroup, groupStartY. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 701-710: Continues analyzeWithLabelCropper. Declares visualLines. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 711-720: Continues analyzeWithLabelCropper. Declares wordWidths, medianWidth, gapThreshold, currentLine, lastX1. Iterates collections. Purpose: implement module logic.
+- Lines 721-730: Continues analyzeWithLabelCropper. Declares gap, text, x0, y0, x1, y1. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 731-740: Continues analyzeWithLabelCropper. Purpose: implement module logic.
+- Lines 741-750: Continues analyzeWithLabelCropper. Declares text, x0, y0, x1, y1. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 751-760: Continues analyzeWithLabelCropper. Declares lineMapping. Iterates collections. Purpose: implement module logic.
+- Lines 761-770: Continues analyzeWithLabelCropper. Declares lines. Purpose: implement module logic.
+- Lines 771-780: Continues analyzeWithLabelCropper. Declares img. Sets element properties: src=imageDataUrl. Purpose: update UI state and presentation.
+- Lines 781-790: Continues analyzeWithLabelCropper. Declares imgWidth, imgHeight, data. Iterates collections. Purpose: implement module logic.
+- Lines 791-800: Continues analyzeWithLabelCropper. Purpose: implement module logic.
+- Lines 801-810: Continues analyzeWithLabelCropper. Returns values from this block. Purpose: implement module logic.
+- Lines 811-820: Defines function analyzeIngredientPhoto. Declares skipAllergenAnalysis, keysConfigured. Branches on conditions. Purpose: implement module logic.
+- Lines 821-830: Continues analyzeIngredientPhoto. Declares correctedImage, slantAngle. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 831-840: Continues analyzeIngredientPhoto. Declares analysisResult. Branches on conditions. Purpose: implement module logic.
+- Lines 841-850: Continues analyzeIngredientPhoto. Declares lines, transcript. Iterates collections. Purpose: implement module logic.
+- Lines 851-860: Continues analyzeIngredientPhoto. Declares allergenFlags, allergenResult. Branches on conditions. Purpose: implement module logic.
+- Lines 861-870: Continues analyzeIngredientPhoto. Returns values from this block. Purpose: implement module logic.
+- Lines 871-880: Defines function openBrandIdentificationChoice. Declares rows, ingredientName. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 881-890: Continues openBrandIdentificationChoice. Declares brands. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 891-900: Defines function showIngredientPhotoUploadModal. Iterates collections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 901-910: Continues showIngredientPhotoUploadModal. Declares inlineResults, skipRowUpdates, onApplyResults. Purpose: implement module logic.
+- Lines 911-920: Continues showIngredientPhotoUploadModal. Declares capturedPhoto, analysisResult, mediaStream, wordSpanMap, lineWordDataMap. Purpose: implement module logic.
+- Lines 921-930: Continues showIngredientPhotoUploadModal. Declares lineTextContainers, activeWordEditor, nextGlobalWordIndex, lineLayoutHandlers, resizeHandler, reanalysisRequestId, .... Purpose: implement module logic.
+- Lines 931-940: Continues showIngredientPhotoUploadModal. Declares photoModal. Sets inline styles: cssText=`. Purpose: update UI state and presentation.
+- Lines 941-950: Continues showIngredientPhotoUploadModal. Sets element properties: innerHTML=`. Purpose: update UI state and presentation.
+- Lines 951-960: Continues showIngredientPhotoUploadModal. Purpose: implement module logic.
+- Lines 961-970: Continues showIngredientPhotoUploadModal. Purpose: implement module logic.
+- Lines 971-980: Continues showIngredientPhotoUploadModal. Purpose: implement module logic.
+- Lines 981-990: Continues showIngredientPhotoUploadModal. Purpose: implement module logic.
+- Lines 991-1000: Continues showIngredientPhotoUploadModal. Purpose: implement module logic.
+- Lines 1001-1010: Continues showIngredientPhotoUploadModal. Purpose: implement module logic.
+- Lines 1011-1020: Continues showIngredientPhotoUploadModal. Declares video, canvas, preview. Selects elements: #ingredientCameraVideo, #ingredientCameraCanvas, #ingredientPhotoPreview. Purpose: connect logic to DOM elements.
+- Lines 1021-1030: Continues showIngredientPhotoUploadModal. Declares statusDiv, buttonsContainer, cameraBtn, uploadBtn, captureBtn, analyzeBtn, .... Selects elements: #photoStatusDiv, #photoButtonsContainer, .ingredientCameraBtn, .ingredientUploadBtn, .ingredientCaptureBtn, .ingredientAnalyzeBtn, .... Purpose: connect logic to DOM elements.
+- Lines 1031-1040: Continues showIngredientPhotoUploadModal. Declares croppedLinesSection, croppedLinesContainer, confirmationStatus, allergenResultsSection, allergenResultsContainer. Selects elements: #croppedLinesSection, #croppedLinesContainer, #confirmationStatus, #allergenResultsSection, #allergenResultsContainer. Purpose: connect logic to DOM elements.
+- Lines 1041-1050: Continues showIngredientPhotoUploadModal. Declares applyButtonContainer, applyBtn, lineConfirmations, lineCardMap, lineConfirmButtons. Selects elements: #applyButtonContainer, .applyResultsBtn. Purpose: connect logic to DOM elements.
+- Lines 1051-1060: Defines function stopCamera. Declares retakeBtn, reportPhotoIssueBtn. Selects elements: .retakePhotoBtn, .reportPhotoIssueBtn. Iterates collections. Branches on conditions. Purpose: connect logic to DOM elements.
+- Lines 1061-1070: Defines function closeModal. Branches on conditions. Purpose: implement module logic.
+- Lines 1071-1080: Continues closeModal. Declares showButtons. Sets inline styles: display="none"),, display="inline-block")). Iterates collections. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 1081-1090: Continues closeModal. Declares correctedPreview, pendingAnalysis. Branches on conditions. Purpose: implement module logic.
+- Lines 1091-1100: Continues closeModal. Sets inline styles: display=block. Sets element properties: src=correctedPreview. Purpose: update UI state and presentation.
+- Lines 1101-1110: Continues closeModal. Sets inline styles: color=#4ade80, color=#a8b2d6. Sets element properties: textContent=Allergen and diet analysis complete!, textContent=Text extracted. Running allergen and diet analysis.... Branches on conditions. Purpose: update UI state and presentation.
+- Lines 1111-1120: Continues closeModal. Binds events: click. Sets inline styles: display=none, display=flex. Purpose: respond to user actions.
+- Lines 1121-1130: Continues closeModal. Sets inline styles: display=block, display=none. Purpose: update UI state and presentation.
+- Lines 1131-1140: Continues closeModal. Binds events: click. Sets inline styles: color=#ef4444. Sets element properties: textContent="Camera access denied: " + err.message. Purpose: respond to user actions.
+- Lines 1141-1150: Continues closeModal. Sets inline styles: display=none, display=block, color=#a8b2d6. Sets element properties: textContent=Photo captured. Click Analyze to process., src=capturedPhoto. Purpose: update UI state and presentation.
+- Lines 1151-1160: Continues closeModal. Declares file, reader. Binds events: click, change. Branches on conditions. Returns values from this block. Purpose: respond to user actions.
+- Lines 1161-1170: Continues closeModal. Declares tempImg. Sets inline styles: display=block, display=none. Sets element properties: src=capturedPhoto. Purpose: update UI state and presentation.
+- Lines 1171-1180: Defines function runInlineIngredientAnalysis. Sets element properties: textContent=Photo loaded. Click Analyze to process., textContent=Analyzing..., src=evt.target.result. Purpose: update UI state and presentation.
+- Lines 1181-1190: Continues runInlineIngredientAnalysis. Declares result. Sets inline styles: color=#a8b2d6. Sets element properties: textContent=status. Purpose: update UI state and presentation.
+- Lines 1191-1200: Continues runInlineIngredientAnalysis. Declares correctedPreview. Sets inline styles: display=block. Sets element properties: src=correctedPreview. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 1201-1210: Continues runInlineIngredientAnalysis. Declares pendingAnalysis. Sets inline styles: color=#4ade80. Sets element properties: textContent=Allergen and diet analysis complete!. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 1211-1220: Continues runInlineIngredientAnalysis. Sets inline styles: color=#a8b2d6, display=none, display=flex, color=#ef4444. Sets element properties: textContent=Text extracted. Running allergen and diet analysis..., textContent="Analysis failed: " + err.message. Purpose: update UI state and presentation.
+- Lines 1221-1230: Continues runInlineIngredientAnalysis. Declares photoToAnalyze. Binds events: click. Branches on conditions. Returns values from this block. Purpose: respond to user actions.
+- Lines 1231-1240: Continues runInlineIngredientAnalysis. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 1241-1250: Continues runInlineIngredientAnalysis. Declares result. Purpose: implement module logic.
+- Lines 1251-1260: Continues runInlineIngredientAnalysis. Purpose: implement module logic.
+- Lines 1261-1270: Defines function updateConfirmationUI. Declares confirmedCount. Iterates collections. Purpose: implement module logic.
+- Lines 1271-1280: Continues updateConfirmationUI. Declares allConfirmed, readyToApply. Sets inline styles: color=allConfirmed ? "#22c55e" : "#f59e0b", opacity=1. Sets element properties: textContent=`${confirmedCount}/${totalLines} lines confirmed`, disabled=false. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 1281-1290: Defines function setLineConfirmationState. Sets inline styles: cursor=pointer, opacity=0.5, cursor=not-allowed. Sets element properties: disabled=true. Purpose: update UI state and presentation.
+- Lines 1291-1300: Continues setLineConfirmationState. Declares confirmBtn, lineDiv. Sets inline styles: background=#17663a, borderColor=#22c55e. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 1301-1310: Continues setLineConfirmationState. Sets inline styles: color=#fff, background=#f59e0b, borderColor=#d97706. Sets element properties: textContent=✓ Confirmed, textContent=Confirm. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 1311-1320: Defines function refreshTranscriptFromWords. Declares totalLines. Sets inline styles: border=isConfirmed ? "2px solid #22c55e" : "none". Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 1321-1330: Continues refreshTranscriptFromWords. Declares transcript, words, updated. Iterates collections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 1331-1340: Defines function reindexWordData. Declares globalIndex, lineIndices. Iterates collections. Returns values from this block. Purpose: implement module logic.
+- Lines 1341-1350: Continues reindexWordData. Declares wordData, sorted. Iterates collections. Purpose: implement module logic.
+- Lines 1351-1360: Defines function ensureAnalysisOverlay. Declares styleTag. Sets inline styles: cssText=[. Sets element properties: textContent="@keyframes labelAnalysisSpin { from { transform: rotate(.... Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 1361-1370: Continues ensureAnalysisOverlay. Sets element properties: innerHTML=`. Purpose: update UI state and presentation.
+- Lines 1371-1380: Continues ensureAnalysisOverlay. Selects elements: #labelAnalysisOverlayMessage. Purpose: connect logic to DOM elements.
+- Lines 1381-1390: Defines function showAnalysisOverlay. Sets inline styles: display=flex. Sets element properties: textContent=message || "Updating analysis...". Branches on conditions. Purpose: update UI state and presentation.
+- Lines 1391-1400: Defines function hideAnalysisOverlay. Sets inline styles: display=none, display=block. Sets element properties: innerHTML=`<div style="color:#a8b2d6. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 1401-1410: Defines function runAllergenReanalysis. Declares transcript. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 1411-1420: Continues runAllergenReanalysis. Declares requestId. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 1421-1430: Continues runAllergenReanalysis. Declares result, flags. Sets inline styles: color=#a8b2d6. Sets element properties: textContent=statusMessage. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 1431-1440: Continues runAllergenReanalysis. Sets inline styles: color=#4ade80. Sets element properties: textContent=Allergen and diet analysis complete!, textContent=Analysis update failed. Using previous results.. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 1441-1450: Continues runAllergenReanalysis. Sets inline styles: color=#f59e0b. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 1451-1460: Defines function cancelPendingReanalysis. Purpose: implement module logic.
+- Lines 1461-1470: Continues cancelPendingReanalysis. Purpose: implement module logic.
+- Lines 1471-1480: Defines function buildLineText. Declares wordData. Iterates collections. Returns values from this block. Purpose: implement module logic.
+- Lines 1481-1490: Defines function layoutLineWords. Declares container, textDiv, wordData, totalChars. Iterates collections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 1491-1500: Continues layoutLineWords. Declares availableWidth, baseFontSize, computedSize, fontSize, span. Selects elements: span[data-word-idx="${idx}"]. Iterates collections. Branches on conditions. Returns values from this block. Purpose: connect logic to DOM elements.
+- Lines 1501-1510: Defines function renderLineWords. Declares container. Sets inline styles: left=`${word.centerPct}%`, transform=translateX(-50%), top=0px, fontSize=`${fontSize}px`, height=`${Math.round(fontSize * 1.6)}px`. Purpose: update UI state and presentation.
+- Lines 1511-1520: Continues renderLineWords. Declares textDiv, wordData, span. Sets element properties: textContent=word.text, innerHTML=, dataset.globalIndex=word.globalIndex, dataset.wordIdx=idx. Iterates collections. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 1521-1530: Continues renderLineWords. Binds events: click. Schedules timed work. Branches on conditions. Returns values from this block. Purpose: respond to user actions.
+- Lines 1531-1540: Defines function renderAllLineWords. Declares lineIdx. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 1541-1550: Defines function openWordEditor. Declares container. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 1551-1560: Continues openWordEditor. Declares textDiv, safeCenter, editorWrap. Sets inline styles: cssText=[. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 1561-1570: Continues openWordEditor. Binds events: click. Purpose: respond to user actions.
+- Lines 1571-1580: Continues openWordEditor. Declares originalRawText, hasTrailingComma, editableText, input. Sets element properties: value=wordIdx !== null ? editableText : "". Purpose: update UI state and presentation.
+- Lines 1581-1590: Continues openWordEditor. Declares actionRow, saveBtn. Binds events: click. Sets inline styles: cssText="min-width:70px, cssText="display:flex. Sets element properties: placeholder=wordIdx !== null ? "Edit word" : "Add word". Purpose: respond to user actions.
+- Lines 1591-1600: Continues openWordEditor. Declares cancelBtn. Sets inline styles: cssText="padding:4px 10px. Sets element properties: textContent=Save, textContent=Cancel. Purpose: update UI state and presentation.
+- Lines 1601-1610: Defines function finish. Declares originalPadding. Sets inline styles: paddingBottom=28px. Purpose: update UI state and presentation.
+- Lines 1611-1620: Continues finish. Declares value, didChange, cleanedValue. Sets inline styles: paddingBottom=originalPadding. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 1621-1630: Continues finish. Declares nextText. Branches on conditions. Purpose: implement module logic.
+- Lines 1631-1640: Continues finish. Branches on conditions. Purpose: implement module logic.
+- Lines 1641-1650: Continues finish. Binds events: click, keydown. Branches on conditions. Purpose: respond to user actions.
+- Lines 1651-1660: Continues finish. Branches on conditions. Purpose: implement module logic.
+- Lines 1661-1670: Defines function displayCroppedLines. Sets element properties: innerHTML=. Purpose: update UI state and presentation.
+- Lines 1671-1680: Continues displayCroppedLines. Declares globalWordIndex. Branches on conditions. Purpose: implement module logic.
+- Lines 1681-1690: Continues displayCroppedLines. Declares sourceImg. Sets element properties: src=imageDataUrl. Iterates collections. Purpose: update UI state and presentation.
+- Lines 1691-1700: Continues displayCroppedLines. Declares fullCanvas, ctx, boxColor. Iterates collections. Purpose: implement module logic.
+- Lines 1701-1710: Continues displayCroppedLines. Declares coords, x, w, h. Purpose: implement module logic.
+- Lines 1711-1720: Continues displayCroppedLines. Purpose: implement module logic.
+- Lines 1721-1730: Continues displayCroppedLines. Declares fullImg, coords. Sets inline styles: cssText="width:100%, display=block. Sets element properties: src=fullCanvas.toDataURL("image/png"). Iterates collections. Purpose: update UI state and presentation.
+- Lines 1731-1740: Continues displayCroppedLines. Declares x, w, h, cropCanvas. Purpose: implement module logic.
+- Lines 1741-1750: Continues displayCroppedLines. Declares lineDiv. Sets inline styles: cssText="background:#1a1f35. Sets element properties: dataset.lineIdx=lineIdx. Purpose: update UI state and presentation.
+- Lines 1751-1760: Continues displayCroppedLines. Declares lineContent, lineLabel. Sets inline styles: cssText="flex:1, cssText="color:#a8b2d6. Sets element properties: innerHTML=`<span style="display:inline-block. Purpose: update UI state and presentation.
+- Lines 1761-1770: Continues displayCroppedLines. Declares lineContentWrapper, cropImg. Sets inline styles: cssText="display:inline-block, cssText="width:100%. Sets element properties: src=cropCanvas.toDataURL("image/png"). Purpose: update UI state and presentation.
+- Lines 1771-1780: Continues displayCroppedLines. Declares transcriptWords, visionWords. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 1781-1790: Continues displayCroppedLines. Declares textDiv, rect, clickPct. Binds events: click. Sets inline styles: cssText="margin-top:8px. Sets element properties: dataset.lineIdx=lineIdx. Branches on conditions. Returns values from this block. Purpose: respond to user actions.
+- Lines 1791-1800: Continues displayCroppedLines. Declares cropXStart, cropXEnd, cropWidth. Iterates collections. Purpose: implement module logic.
+- Lines 1801-1810: Continues displayCroppedLines. Declares usedVisionIndices, wordData, cleanTranscript, bestMatch, bestScore. Iterates collections. Purpose: implement module logic.
+- Lines 1811-1820: Continues displayCroppedLines. Declares cleanVision, score. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 1821-1830: Continues displayCroppedLines. Branches on conditions. Purpose: implement module logic.
+- Lines 1831-1840: Continues displayCroppedLines. Declares wordCenterPct, centerPctInCrop. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 1841-1850: Continues displayCroppedLines. Returns values from this block. Purpose: implement module logic.
+- Lines 1851-1860: Continues displayCroppedLines. Schedules timed work. Purpose: implement module logic.
+- Lines 1861-1870: Continues displayCroppedLines. Declares confirmBtn. Sets inline styles: cssText=`. Sets element properties: dataset.lineIdx=lineIdx. Purpose: update UI state and presentation.
+- Lines 1871-1880: Continues displayCroppedLines. Purpose: implement module logic.
+- Lines 1881-1890: Continues displayCroppedLines. Declares idx. Binds events: click. Sets element properties: textContent=Confirm. Purpose: respond to user actions.
+- Lines 1891-1900: Continues displayCroppedLines. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 1901-1910: Continues displayCroppedLines. Declares resolvedFlags, shouldReanalyze. Binds events: resize. Purpose: respond to user actions.
+- Lines 1911-1920: Continues displayCroppedLines. Sets inline styles: display=block, display=none. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 1921-1930: Continues displayCroppedLines. Schedules timed work. Purpose: implement module logic.
+- Lines 1931-1940: Defines function applyAllergenHighlighting. Declares indices, isContained, color. Iterates collections. Purpose: implement module logic.
+- Lines 1941-1950: Continues applyAllergenHighlighting. Declares span. Sets inline styles: textDecoration=underline, textDecorationColor=color, textDecorationThickness=2px, fontWeight=600. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 1951-1960: Defines function displayAllergenResults. Declares html, isContained. Sets element properties: innerHTML='<div style="color:#4ade80. Iterates collections. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 1961-1970: Continues displayAllergenResults. Declares bgColor, borderColor, riskLabel, types. Purpose: implement module logic.
+- Lines 1971-1980: Continues displayAllergenResults. Purpose: implement module logic.
+- Lines 1981-1990: Continues displayAllergenResults. Binds events: click. Sets inline styles: display=block. Sets element properties: innerHTML=html. Purpose: respond to user actions.
+- Lines 1991-2000: Continues displayAllergenResults. Sets inline styles: display=none, display=flex. Sets element properties: textContent=. Purpose: update UI state and presentation.
+- Lines 2001-2010: Defines function applyAnalysisResults. Declares flags, containedAllergens, mayContainAllergens. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 2011-2020: Continues applyAnalysisResults. Declares violatedDiets, mayContainDiets, confirmedLines, fallbackLines, ingredientText. Iterates collections. Purpose: implement module logic.
+- Lines 2021-2030: Continues applyAnalysisResults. Declares ingredientLines, labelImage. Iterates collections. Purpose: implement module logic.
+- Lines 2031-2040: Defines function normalizeAllergenKey. Declares lower. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 2041-2050: Defines function addMayContainDiets. Declares normalized, allergenToDiets. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 2051-2060: Defines function resolveFlagAllergens. Declares values. Iterates collections. Returns values from this block. Purpose: implement module logic.
+- Lines 2061-2070: Continues resolveFlagAllergens. Declares flagAllergens, flagDiets, isContained, resolvedAllergens. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 2071-2080: Continues resolveFlagAllergens. Declares normalized, affectedDiets. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 2081-2090: Continues resolveFlagAllergens. Declares normalized, affectedDiets. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 2091-2100: Continues resolveFlagAllergens. Declares allDiets, compliantDiets. Iterates collections. Purpose: implement module logic.
+- Lines 2101-2110: Continues resolveFlagAllergens. Declares compressedImage. Branches on conditions. Purpose: implement module logic.
+- Lines 2111-2120: Continues resolveFlagAllergens. Purpose: implement module logic.
+- Lines 2121-2130: Continues resolveFlagAllergens. Declares data. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 2131-2140: Continues resolveFlagAllergens. Purpose: implement module logic.
+- Lines 2141-2150: Continues resolveFlagAllergens. Branches on conditions. Purpose: implement module logic.
+- Lines 2151-2160: Continues resolveFlagAllergens. Declares newBrand. Purpose: implement module logic.
+- Lines 2161-2170: Continues resolveFlagAllergens. Branches on conditions. Purpose: implement module logic.
+- Lines 2171-2180: Continues resolveFlagAllergens. Purpose: implement module logic.
+- Lines 2181-2190: Continues resolveFlagAllergens. Declares frontModal. Binds events: click. Branches on conditions. Returns values from this block. Purpose: respond to user actions.
+- Lines 2191-2200: Continues resolveFlagAllergens. Sets inline styles: cssText=`. Sets element properties: innerHTML=`. Purpose: update UI state and presentation.
+- Lines 2201-2210: Continues resolveFlagAllergens. Iterates collections. Purpose: implement module logic.
+- Lines 2211-2220: Continues resolveFlagAllergens. Purpose: implement module logic.
+- Lines 2221-2230: Continues resolveFlagAllergens. Purpose: implement module logic.
+- Lines 2231-2240: Continues resolveFlagAllergens. Purpose: implement module logic.
+- Lines 2241-2250: Continues resolveFlagAllergens. Declares frontVideo, frontPreview, frontPlaceholder, frontCameraBtn. Selects elements: #frontCameraVideo, #frontPhotoPreview, #frontPlaceholder, .frontCameraBtn. Purpose: connect logic to DOM elements.
+- Lines 2251-2260: Continues resolveFlagAllergens. Declares frontUploadBtn, frontCaptureBtn, frontFileInput, frontApplyBtn, frontRetakeBtn, frontCancelBtn, .... Selects elements: .frontUploadBtn, .frontCaptureBtn, #frontFileInput, .frontApplyBtn, .frontRetakeBtn, .frontCancelBtn, .... Purpose: connect logic to DOM elements.
+- Lines 2261-2270: Continues resolveFlagAllergens. Declares frontProductNameInput, frontProductNameHint, frontAnalyzingText, frontStream. Selects elements: .frontProductNameInput, .frontProductNameHint, span. Purpose: connect logic to DOM elements.
+- Lines 2271-2280: Defines function analyzeFrontImage. Declares frontCapturedPhoto, detectedProductName. Sets inline styles: display=block, display=none. Purpose: update UI state and presentation.
+- Lines 2281-2290: Continues analyzeFrontImage. Declares response. Fetches: https://fgoiyycctnwnghrvsilt.supabase.co/functions/v1/analyze-product-front. Serializes or parses JSON. Branches on conditions. Purpose: load or persist data for the page.
+- Lines 2291-2300: Continues analyzeFrontImage. Declares result, confidence. Sets inline styles: display=none, display=flex. Purpose: update UI state and presentation.
+- Lines 2301-2310: Continues analyzeFrontImage. Sets inline styles: color=confidence === "high" ? "#22c55e" : "#f59e0b". Sets element properties: textContent=confidence === "high", value=detectedProductName. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 2311-2320: Continues analyzeFrontImage. Sets inline styles: color=#ef4444, display=none, display=flex. Sets element properties: textContent=Could not identify product - please enter the name, value=. Purpose: update UI state and presentation.
+- Lines 2321-2330: Defines function closeFrontModal. Sets inline styles: display=flex, color=#ef4444. Sets element properties: textContent=Could not analyze image - please enter product name, value=. Purpose: update UI state and presentation.
+- Lines 2331-2340: Continues closeFrontModal. Binds events: click. Iterates collections. Branches on conditions. Purpose: respond to user actions.
+- Lines 2341-2350: Continues closeFrontModal. Sets inline styles: display=block, display=none. Purpose: update UI state and presentation.
+- Lines 2351-2360: Continues closeFrontModal. Binds events: click. Sets inline styles: display=none, display=inline-block. Purpose: respond to user actions.
+- Lines 2361-2370: Continues closeFrontModal. Declares canvas. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 2371-2380: Continues closeFrontModal. Sets inline styles: display=none, display=block. Sets element properties: src=frontCapturedPhoto. Purpose: update UI state and presentation.
+- Lines 2381-2390: Continues closeFrontModal. Declares file, reader. Binds events: click, change. Branches on conditions. Returns values from this block. Purpose: respond to user actions.
+- Lines 2391-2400: Continues closeFrontModal. Sets inline styles: display=block, display=none. Sets element properties: src=frontCapturedPhoto. Purpose: update UI state and presentation.
+- Lines 2401-2410: Continues closeFrontModal. Declares productName. Binds events: click. Sets element properties: disabled=true. Purpose: respond to user actions.
+- Lines 2411-2420: Continues closeFrontModal. Sets inline styles: display=block. Sets element properties: textContent=Saving..., textContent=Applying results..., disabled=true. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 2421-2430: Continues closeFrontModal. Sets inline styles: display=none, color=#f87171. Sets element properties: textContent=Failed to apply results. Please try again., textContent=✓ Save & Apply Results, disabled=false. Purpose: update UI state and presentation.
+- Lines 2431-2440: Continues closeFrontModal. Binds events: click. Sets inline styles: display=none. Sets element properties: disabled=false. Purpose: respond to user actions.
+- Lines 2441-2450: Continues closeFrontModal. Sets inline styles: display=flex, display=none, display=inline-block. Sets element properties: value=, src=. Purpose: update UI state and presentation.
+- Lines 2451-2460: Continues closeFrontModal. Binds events: click. Iterates collections. Purpose: respond to user actions.
+- Lines 2461-2470: Continues closeFrontModal. Declares reportModal. Sets inline styles: cssText=`. Sets element properties: innerHTML=`. Purpose: update UI state and presentation.
+- Lines 2471-2480: Continues closeFrontModal. Purpose: implement module logic.
+- Lines 2481-2490: Continues closeFrontModal. Declares msg. Selects elements: .cancelReportBtn, .sendReportBtn, textarea. Sets element properties: textContent=Sending..., disabled=true. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 2491-2500: Continues closeFrontModal. Declares reportMeta. Fetches: https://fgoiyycctnwnghrvsilt.supabase.co/functions/v1/report-issue. Purpose: load or persist data for the page.
+- Lines 2501-2510: Continues closeFrontModal. Serializes or parses JSON. Purpose: implement module logic.
+- Lines 2511-2520: Continues closeFrontModal. Declares data. Branches on conditions. Purpose: implement module logic.
+- Lines 2521-2530: Continues closeFrontModal. Sets element properties: textContent=Error. Purpose: update UI state and presentation.
+- Lines 2531-2540: Continues closeFrontModal. Binds events: click. Schedules timed work. Purpose: respond to user actions.
+- Lines 2541-2550: Defines function showPhotoAnalysisLoadingInRow. Branches on conditions. Purpose: implement module logic.
+- Lines 2551-2560: Continues showPhotoAnalysisLoadingInRow. Declares aiAssistTable, trElement, rowElement. Selects elements: tr[data-index="${rowIdx}"], .aiIngredientRow, aiAssistTable. Branches on conditions. Returns values from this block. Purpose: connect logic to DOM elements.
+- Lines 2561-2570: Continues showPhotoAnalysisLoadingInRow. Declares allDivs, brandIdCard. Selects elements: div. Iterates collections. Branches on conditions. Purpose: connect logic to DOM elements.
+- Lines 2571-2580: Continues showPhotoAnalysisLoadingInRow. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 2581-2590: Continues showPhotoAnalysisLoadingInRow. Branches on conditions. Purpose: implement module logic.
+- Lines 2591-2600: Continues showPhotoAnalysisLoadingInRow. Updates classes (add: photoAnalysisLoadingArea). Sets inline styles: cssText="padding:12px 16px. Sets element properties: innerHTML=`, dataset.originalHtml=brandIdCard.innerHTML, dataset.originalStyle=brandIdCard.style.cssText. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 2601-2610: Continues showPhotoAnalysisLoadingInRow. Purpose: implement module logic.
+- Lines 2611-2620: Defines function hidePhotoAnalysisLoadingInRow. Declares aiAssistTable, trElement. Selects elements: tr[data-index="${rowIdx}"], aiAssistTable. Branches on conditions. Returns values from this block. Purpose: connect logic to DOM elements.
+- Lines 2621-2630: Continues hidePhotoAnalysisLoadingInRow. Declares loadingArea. Selects elements: .photoAnalysisLoadingArea. Updates classes (remove: photoAnalysisLoadingArea). Sets inline styles: cssText=loadingArea.dataset.originalStyle || "". Sets element properties: innerHTML=loadingArea.dataset.originalHtml. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 2631-2640: Defines function updatePhotoAnalysisLoadingStatus. Declares existing, aiAssistTable. Selects elements: aiAssistTable. Branches on conditions. Purpose: connect logic to DOM elements.
+- Lines 2641-2650: Continues updatePhotoAnalysisLoadingStatus. Declares trElement, statusEl. Selects elements: tr[data-index="${rowIdx}"], .photoAnalysisLoadingStatus. Sets element properties: textContent=statusText. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 2651-2660: Defines function showPhotoAnalysisResultButton. Declares aiAssistTable, trElement. Selects elements: tr[data-index="${rowIdx}"], aiAssistTable. Branches on conditions. Returns values from this block. Purpose: connect logic to DOM elements.
+- Lines 2661-2670: Continues showPhotoAnalysisResultButton. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 2671-2680: Continues showPhotoAnalysisResultButton. Declares analysisPending, existingLoading. Selects elements: .photoAnalysisLoadingArea. Branches on conditions. Purpose: connect logic to DOM elements.
+- Lines 2681-2690: Continues showPhotoAnalysisResultButton. Declares statusEl. Selects elements: .photoAnalysisLoadingStatus. Sets element properties: textContent=Analyzing ingredients. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 2691-2700: Continues showPhotoAnalysisResultButton. Declares transcript. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 2701-2710: Continues showPhotoAnalysisResultButton. Declares flags. Branches on conditions. Purpose: implement module logic.
+- Lines 2711-2720: Continues showPhotoAnalysisResultButton. Purpose: implement module logic.
+- Lines 2721-2730: Continues showPhotoAnalysisResultButton. Purpose: implement module logic.
+- Lines 2731-2740: Continues showPhotoAnalysisResultButton. Returns values from this block. Purpose: implement module logic.
+- Lines 2741-2750: Continues showPhotoAnalysisResultButton. Declares loadingArea, brandCell. Selects elements: .photoAnalysisLoadingArea, .aiBrandCell. Branches on conditions. Purpose: connect logic to DOM elements.
+- Lines 2751-2760: Continues showPhotoAnalysisResultButton. Declares rowElement, nameCol. Selects elements: .aiIngredientRow, .aiIngredientNameCol. Branches on conditions. Purpose: connect logic to DOM elements.
+- Lines 2761-2770: Continues showPhotoAnalysisResultButton. Declares flagCount, flagText. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 2771-2780: Continues showPhotoAnalysisResultButton. Declares statusText, statusColor, statusBg, statusBorder, statusIcon. Sets inline styles: cssText=`margin-bottom:12px. Sets element properties: innerHTML=`. Purpose: update UI state and presentation.
+- Lines 2781-2790: Continues showPhotoAnalysisResultButton. Purpose: implement module logic.
+- Lines 2791-2800: Continues showPhotoAnalysisResultButton. Selects elements: .viewPhotoResultsBtn. Binds events: click. Purpose: respond to user actions.
+- Lines 2801-2810: Continues showPhotoAnalysisResultButton. Declares api. Purpose: implement module logic.
+- Lines 2811-2815: Continues showPhotoAnalysisResultButton. Returns values from this block. Purpose: implement module logic.
+
+## public/js/restaurant/ingredient-sources.js
+
+- Lines 1-10: Defines function initIngredientSources. Declares esc. Returns values from this block. Exports module members. Purpose: expose helpers to other modules.
+- Lines 11-20: Defines function areIngredientsSimilar. Declares n1, n2, w1, w2, intersection, union. Iterates collections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 21-30: Defines function groupSourcesByIngredientSimilarity. Declares groups, source, addedToGroup. Iterates collections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 31-40: Continues groupSourcesByIngredientSimilarity. Branches on conditions. Purpose: implement module logic.
+- Lines 41-50: Defines function parseIngredientsToBullets. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 51-60: Continues parseIngredientsToBullets. Declares text, ingredients, current, parenDepth, char. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 61-70: Continues parseIngredientsToBullets. Declares trimmed. Branches on conditions. Purpose: implement module logic.
+- Lines 71-80: Continues parseIngredientsToBullets. Declares beforePeriod, isBacterialAbbrev. Branches on conditions. Purpose: implement module logic.
+- Lines 81-90: Continues parseIngredientsToBullets. Declares trimmed. Branches on conditions. Purpose: implement module logic.
+- Lines 91-100: Continues parseIngredientsToBullets. Declares trimmed. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 101-110: Defines function findDifferingIngredients. Declares normalizedPrimary, differing, normalized, found. Iterates collections. Purpose: implement module logic.
+- Lines 111-120: Continues findDifferingIngredients. Declares pNorm. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 121-130: Defines function renderGroupedSourcesHtml. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 131-140: Continues renderGroupedSourcesHtml. Declares groups, showConfirmButtons, aiIngredientNames, primaryIngredients. Purpose: implement module logic.
+- Lines 141-150: Continues renderGroupedSourcesHtml. Declares representativeIngredients, groupColor, groupBgColor. Iterates collections. Returns values from this block. Purpose: implement module logic.
+- Lines 151-160: Continues renderGroupedSourcesHtml. Declares groupHeaderColor, differingIngredients. Purpose: implement module logic.
+- Lines 161-170: Continues renderGroupedSourcesHtml. Returns values from this block. Purpose: implement module logic.
+- Lines 171-180: Continues renderGroupedSourcesHtml. Purpose: implement module logic.
+- Lines 181-190: Continues renderGroupedSourcesHtml. Purpose: implement module logic.
+- Lines 191-200: Continues renderGroupedSourcesHtml. Purpose: implement module logic.
+- Lines 201-210: Continues renderGroupedSourcesHtml. Purpose: implement module logic.
+- Lines 211-220: Continues renderGroupedSourcesHtml. Purpose: implement module logic.
+- Lines 221-230: Continues renderGroupedSourcesHtml. Declares isDifferent. Iterates collections. Returns values from this block. Purpose: implement module logic.
+- Lines 231-240: Continues renderGroupedSourcesHtml. Iterates collections. Purpose: implement module logic.
+- Lines 241-250: Continues renderGroupedSourcesHtml. Declares urlObj, domain. Returns values from this block. Purpose: implement module logic.
+- Lines 251-260: Continues renderGroupedSourcesHtml. Declares faviconUrl. Returns values from this block. Purpose: implement module logic.
+- Lines 261-270: Continues renderGroupedSourcesHtml. Sets inline styles: display=none. Purpose: update UI state and presentation.
+- Lines 271-280: Continues renderGroupedSourcesHtml. Purpose: implement module logic.
+- Lines 281-290: Continues renderGroupedSourcesHtml. Purpose: implement module logic.
+- Lines 291-300: Continues renderGroupedSourcesHtml. Purpose: implement module logic.
+- Lines 301-310: Continues renderGroupedSourcesHtml. Purpose: implement module logic.
+- Lines 311-320: Continues renderGroupedSourcesHtml. Purpose: implement module logic.
+- Lines 321-330: Continues renderGroupedSourcesHtml. Purpose: implement module logic.
+- Lines 331-340: Continues renderGroupedSourcesHtml. Purpose: implement module logic.
+- Lines 341-350: Continues renderGroupedSourcesHtml. Purpose: implement module logic.
+- Lines 351-360: Continues renderGroupedSourcesHtml. Purpose: implement module logic.
+- Lines 361-370: Continues renderGroupedSourcesHtml. Returns values from this block. Purpose: implement module logic.
+- Lines 371-373: Continues renderGroupedSourcesHtml. Purpose: implement module logic.
+
+## public/js/restaurant/menu-dish-detection.js
+
+- Lines 1-10: Defines function detectDishesOnMenu. Declares response. Fetches: https://fgoiyycctnwnghrvsilt.supabase.co/functions/v1/detect-menu-dishes. Exports module members. Purpose: load or persist data for the page.
+- Lines 11-20: Continues detectDishesOnMenu. Declares errorText. Serializes or parses JSON. Branches on conditions. Purpose: implement module logic.
+- Lines 21-28: Continues detectDishesOnMenu. Declares result. Returns values from this block. Purpose: implement module logic.
+
+## public/js/restaurant/menu-image-utils.js
+
+- Lines 1-10: Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 11-20: Defines function analyzeBoxSizes. Branches on conditions. Returns values from this block. Exports module members. Purpose: expose helpers to other modules.
+- Lines 21-30: Continues analyzeBoxSizes. Declares contentW, contentH, aspectRatio. Purpose: implement module logic.
+- Lines 31-40: Continues analyzeBoxSizes. Declares displayHeight, smallestBoxHeight, totalBoxHeight, boxHeightRatio, boxPixelHeight. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 41-50: Continues analyzeBoxSizes. Declares avgBoxHeight. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 51-60: Continues analyzeBoxSizes. Declares scaleNeeded, stripCount. Purpose: implement module logic.
+- Lines 61-70: Continues analyzeBoxSizes. Returns values from this block. Purpose: implement module logic.
+- Lines 71-80: Defines function splitImageIntoStrips. Returns values from this block. Exports module members. Purpose: expose helpers to other modules.
+- Lines 81-90: Continues splitImageIntoStrips. Declares img, strips, stripHeight, canvas. Iterates collections. Purpose: implement module logic.
+- Lines 91-100: Continues splitImageIntoStrips. Declares sourceY, actualStripHeight, ctx. Purpose: implement module logic.
+- Lines 101-110: Continues splitImageIntoStrips. Purpose: implement module logic.
+- Lines 111-120: Continues splitImageIntoStrips. Purpose: implement module logic.
+- Lines 121-130: Continues splitImageIntoStrips. Sets element properties: src=imageDataUrl. Iterates collections. Purpose: update UI state and presentation.
+- Lines 131-140: Defines function detectColumns. Declares normalizedOverlays. Iterates collections. Branches on conditions. Returns values from this block. Exports module members. Purpose: expose helpers to other modules.
+- Lines 141-150: Continues detectColumns. Declares maxCoord, scale, coverage. Iterates collections. Returns values from this block. Purpose: implement module logic.
+- Lines 151-160: Continues detectColumns. Declares startX, endX, x, gaps, gapStart, minGapWidth. Iterates collections. Purpose: implement module logic.
+- Lines 161-170: Continues detectColumns. Declares x, gapWidth. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 171-180: Continues detectColumns. Declares significantGaps. Purpose: implement module logic.
+- Lines 181-190: Continues detectColumns. Declares splitPoints, columnCount. Iterates collections. Purpose: implement module logic.
+- Lines 191-200: Continues detectColumns. Returns values from this block. Purpose: implement module logic.
+- Lines 201-210: Defines function splitImageIntoSections. Iterates collections. Exports module members. Purpose: expose helpers to other modules.
+- Lines 211-220: Continues splitImageIntoSections. Declares img, sections, colBoundaries, numCols. Returns values from this block. Purpose: implement module logic.
+- Lines 221-230: Continues splitImageIntoSections. Declares sectionIndex, col, colStartPct, colEndPct, colStartPx, colEndPx, .... Iterates collections. Purpose: implement module logic.
+- Lines 231-240: Continues splitImageIntoSections. Declares row, rowStartPx, rowEndPx, actualStripHeight, canvas, ctx. Iterates collections. Purpose: implement module logic.
+- Lines 241-250: Continues splitImageIntoSections. Purpose: implement module logic.
+- Lines 251-260: Continues splitImageIntoSections. Purpose: implement module logic.
+- Lines 261-270: Continues splitImageIntoSections. Purpose: implement module logic.
+- Lines 271-280: Continues splitImageIntoSections. Purpose: implement module logic.
+- Lines 281-285: Continues splitImageIntoSections. Sets element properties: src=imageDataUrl. Iterates collections. Purpose: update UI state and presentation.
+
+## public/js/restaurant/menu-images.js
+
+- Lines 1-10: Defines function initMenuImageEditor. Declares state, rs, overlays, menuImages, pendingChanges, setDirty, .... Exports module members. Purpose: expose helpers to other modules.
+- Lines 11-20: Continues initMenuImageEditor. Declares applyPendingMenuIndexRemap, syncEditorMenuImages. Purpose: implement module logic.
+- Lines 21-30: Continues initMenuImageEditor. Declares switchMenuPage, analyzeBoxSizes, splitImageIntoSections. Purpose: implement module logic.
+- Lines 31-40: Continues initMenuImageEditor. Declares getCurrentPageIndex, setCurrentPageIndex. Purpose: implement module logic.
+- Lines 41-50: Defines function detectCorners. Declares pendingMenuImages, pendingMenuImageIndices, currentUploadIndex, lastUploadedIndex, menuImagesEditMode. Iterates collections. Purpose: implement module logic.
+- Lines 51-60: Continues detectCorners. Declares result. Branches on conditions. Purpose: implement module logic.
+- Lines 61-70: Defines function clamp. Branches on conditions. Purpose: implement module logic.
+- Lines 71-80: Continues clamp. Returns values from this block. Purpose: implement module logic.
+- Lines 81-90: Defines function warpImage. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 91-100: Defines function map. Declares src, dst, w, h, tl, tr. Purpose: implement module logic.
+- Lines 101-110: Continues map. Declares br, bl, widthA, widthB, maxWidth, heightA, .... Purpose: implement module logic.
+- Lines 111-120: Continues map. Declares maxHeight, srcTri. Purpose: implement module logic.
+- Lines 121-130: Continues map. Declares dstTri. Purpose: implement module logic.
+- Lines 131-140: Continues map. Declares M, outCanvas, outData. Purpose: implement module logic.
+- Lines 141-150: Continues map. Purpose: implement module logic.
+- Lines 151-160: Defines function showCornerEditor. Declares debugMeta, mapForWarp, warpImageData. Purpose: implement module logic.
+- Lines 161-170: Continues showCornerEditor. Declares modal, container. Sets inline styles: cssText="display:flex, cssText="position:relative. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 171-180: Continues showCornerEditor. Declares title, instr. Sets inline styles: color=#fff, color=#ccc. Sets element properties: innerText=Adjust Crop, innerText=Drag green corners to fit the menu borders.. Purpose: update UI state and presentation.
+- Lines 181-190: Continues showCornerEditor. Declares canvasBox, canvas. Sets inline styles: cssText="position:relative, maxWidth=100%, height=auto. Purpose: update UI state and presentation.
+- Lines 191-200: Continues showCornerEditor. Declares ctx, img, corners. Purpose: implement module logic.
+- Lines 201-210: Continues showCornerEditor. Declares maxDisp, scale. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 211-220: Defines function draw. Declares pt. Purpose: implement module logic.
+- Lines 221-230: Continues draw. Declares tl, tr, br, bl. Purpose: implement module logic.
+- Lines 231-240: Continues draw. Iterates collections. Purpose: implement module logic.
+- Lines 241-250: Defines function getPos. Declares dragging. Purpose: implement module logic.
+- Lines 251-260: Continues getPos. Declares rect, clientX, clientY, x, y. Returns values from this block. Purpose: implement module logic.
+- Lines 261-270: Defines function handleStart. Declares dist, x, y. Branches on conditions. Purpose: implement module logic.
+- Lines 271-280: Defines function handleMove. Declares x, y. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 281-290: Defines function handleEnd. Purpose: implement module logic.
+- Lines 291-300: Continues handleEnd. Declares btnRow. Sets element properties: src=imageData. Purpose: update UI state and presentation.
+- Lines 301-310: Continues handleEnd. Declares confirmBtn, skipBtn. Sets inline styles: marginTop=15px, cssText="background:#22c55e. Sets element properties: innerText=Confirm & Crop, innerText=Skip (Use Original). Purpose: update UI state and presentation.
+- Lines 311-320: Continues handleEnd. Declares resetBtn. Sets inline styles: cssText="background:#334. Sets element properties: innerText=Reset to Full. Purpose: update UI state and presentation.
+- Lines 321-330: Continues handleEnd. Sets inline styles: cssText="background:#4c5ad4. Purpose: update UI state and presentation.
+- Lines 331-340: Continues handleEnd. Declares cornerImg, cornersToUse, warped. Sets element properties: src=warpImageData. Purpose: update UI state and presentation.
+- Lines 341-350: Continues handleEnd. Purpose: implement module logic.
+- Lines 351-360: Defines function resizeImageForAI. Declares img, canvas. Iterates collections. Returns values from this block. Purpose: implement module logic.
+- Lines 361-370: Continues resizeImageForAI. Declares ctx, scale. Purpose: implement module logic.
+- Lines 371-380: Continues resizeImageForAI. Declares w, h, x, y. Purpose: implement module logic.
+- Lines 381-390: Continues resizeImageForAI. Sets element properties: src=dataUrl. Iterates collections. Purpose: update UI state and presentation.
+- Lines 391-400: Defines function processImageFile. Declares reader, originalData. Iterates collections. Returns values from this block. Purpose: implement module logic.
+- Lines 401-410: Continues processImageFile. Declares aiInfo, aiResult. Iterates collections. Purpose: implement module logic.
+- Lines 411-420: Defines function mapCoord. Declares relativePos. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 421-430: Defines function unmapCorner. Declares mappedCorners. Purpose: implement module logic.
+- Lines 431-440: Continues unmapCorner. Purpose: implement module logic.
+- Lines 441-450: Continues unmapCorner. Declares warpedData. Iterates collections. Purpose: implement module logic.
+- Lines 451-460: Continues unmapCorner. Declares img. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 461-470: Continues unmapCorner. Declares canvas, ctx, maxWidth, scale. Purpose: implement module logic.
+- Lines 471-480: Continues unmapCorner. Declares imageData. Sets element properties: src=originalData. Purpose: update UI state and presentation.
+- Lines 481-490: Defines function showMenuPreviewModal. Declares mode, initialIndex, hasImage, skipAdd, shouldUpdatePending. Purpose: implement module logic.
+- Lines 491-500: Continues showMenuPreviewModal. Branches on conditions. Purpose: implement module logic.
+- Lines 501-510: Continues showMenuPreviewModal. Declares modal. Purpose: implement module logic.
+- Lines 511-520: Continues showMenuPreviewModal. Declares modalContent. Sets inline styles: display=flex, zIndex=10000, cssText="max-width:90vw. Purpose: update UI state and presentation.
+- Lines 521-530: Continues showMenuPreviewModal. Declares currentImageIndex. Branches on conditions. Purpose: implement module logic.
+- Lines 531-540: Continues showMenuPreviewModal. Declares thumbnailsHTML. Iterates collections. Purpose: implement module logic.
+- Lines 541-550: Continues showMenuPreviewModal. Purpose: implement module logic.
+- Lines 551-560: Continues showMenuPreviewModal. Purpose: implement module logic.
+- Lines 561-570: Continues showMenuPreviewModal. Purpose: implement module logic.
+- Lines 571-580: Continues showMenuPreviewModal. Purpose: implement module logic.
+- Lines 581-590: Continues showMenuPreviewModal. Sets element properties: innerHTML=`. Purpose: update UI state and presentation.
+- Lines 591-600: Continues showMenuPreviewModal. Purpose: implement module logic.
+- Lines 601-610: Continues showMenuPreviewModal. Purpose: implement module logic.
+- Lines 611-620: Continues showMenuPreviewModal. Purpose: implement module logic.
+- Lines 621-630: Continues showMenuPreviewModal. Purpose: implement module logic.
+- Lines 631-640: Continues showMenuPreviewModal. Purpose: implement module logic.
+- Lines 641-650: Continues showMenuPreviewModal. Purpose: implement module logic.
+- Lines 651-660: Defines function removePage. Branches on conditions. Purpose: implement module logic.
+- Lines 661-670: Continues removePage. Returns values from this block. Purpose: implement module logic.
+- Lines 671-680: Continues removePage. Declares newCurrentIndex. Branches on conditions. Purpose: implement module logic.
+- Lines 681-690: Continues removePage. Branches on conditions. Purpose: implement module logic.
+- Lines 691-700: Continues removePage. Declares savedCurrentUploadIndex. Purpose: implement module logic.
+- Lines 701-710: Defines function switchPage. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 711-720: Continues switchPage. Declares mainImage. Selects elements: #previewMainImage. Sets element properties: src=pendingMenuImages[newIndex]. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 721-730: Continues switchPage. Declares pageIndicator, thumbnails. Selects elements: #previewPageIndicator, .preview-thumbnail. Sets inline styles: border=3px solid #4c5ad4. Sets element properties: textContent=`Page ${newIndex + 1} of ${pendingMenuImages.length} `. Iterates collections. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 731-740: Continues switchPage. Declares prevBtn, nextBtn. Selects elements: #previewPrevBtn, #previewNextBtn. Sets inline styles: boxShadow=0 0 0 2px rgba(76,90,212,0.5), border=3px solid rgba(76,90,212,0.3), boxShadow=none. Purpose: update UI state and presentation.
+- Lines 741-750: Continues switchPage. Declares isFirst. Sets inline styles: background=isFirst ? "rgba(76,90,212,0.2)" : "#4c5ad4", borderColor=isFirst, cursor=isFirst ? "not-allowed" : "pointer", opacity=isFirst ? "0.5" : "1". Sets element properties: disabled=isFirst. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 751-760: Continues switchPage. Declares isLast. Sets inline styles: background=isLast ? "rgba(76,90,212,0.2)" : "#4c5ad4", borderColor=isLast, cursor=isLast ? "not-allowed" : "pointer". Sets element properties: disabled=isLast. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 761-770: Continues switchPage. Declares thumbnails. Selects elements: .preview-thumbnail. Sets inline styles: opacity=isLast ? "0.5" : "1". Iterates collections. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 771-780: Continues switchPage. Declares prevBtn. Selects elements: #previewPrevBtn. Branches on conditions. Returns values from this block. Purpose: connect logic to DOM elements.
+- Lines 781-790: Continues switchPage. Declares nextBtn. Selects elements: #previewNextBtn. Branches on conditions. Purpose: connect logic to DOM elements.
+- Lines 791-800: Continues switchPage. Declares removeThumbnailBtns. Selects elements: .preview-remove-thumbnail. Branches on conditions. Purpose: connect logic to DOM elements.
+- Lines 801-810: Continues switchPage. Declares pageIndex. Iterates collections. Purpose: implement module logic.
+- Lines 811-820: Continues switchPage. Declares removeCurrentBtn. Selects elements: #previewRemoveCurrentBtn. Branches on conditions. Purpose: connect logic to DOM elements.
+- Lines 821-830: Defines function handleKeyDown. Branches on conditions. Purpose: implement module logic.
+- Lines 831-840: Defines function cleanupKeyboardHandler. Binds events: keydown. Purpose: respond to user actions.
+- Lines 841-850: Continues cleanupKeyboardHandler. Declares saveBtn, originalBtnText, oldMenuImages, pageIndexMap. Selects elements: #previewSaveBtn. Sets element properties: textContent=Processing..., disabled=true. Purpose: update UI state and presentation.
+- Lines 851-860: Continues cleanupKeyboardHandler. Declares pagesToProcess. Iterates collections. Purpose: implement module logic.
+- Lines 861-870: Defines function getNormalizedImage. Declares img, canvas, ctx. Purpose: implement module logic.
+- Lines 871-880: Continues getNormalizedImage. Declares scale, w, h, x. Purpose: implement module logic.
+- Lines 881-890: Continues getNormalizedImage. Declares y. Exports module members. Purpose: expose helpers to other modules.
+- Lines 891-900: Continues getNormalizedImage. Sets element properties: src=src. Iterates collections. Purpose: update UI state and presentation.
+- Lines 901-910: Continues getNormalizedImage. Declares sourceIndex, oldImg, newImg. Iterates collections. Purpose: implement module logic.
+- Lines 911-920: Defines function getImageDims. Declares pageOverlays, pIdx. Iterates collections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 921-930: Continues getImageDims. Declares img, promises. Sets element properties: src=src. Purpose: update UI state and presentation.
+- Lines 931-940: Continues getImageDims. Declares oldImagePromise. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 941-950: Continues getImageDims. Declares results, normResultNew, dims, normResultOld. Branches on conditions. Purpose: implement module logic.
+- Lines 951-960: Defines function toCanvas. Declares transformedOverlays, m. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 961-970: Continues toCanvas. Branches on conditions. Purpose: implement module logic.
+- Lines 971-980: Continues toCanvas. Branches on conditions. Purpose: implement module logic.
+- Lines 981-990: Continues toCanvas. Declares originalBtnText. Sets element properties: textContent=AI Processing.... Iterates collections. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 991-1000: Defines function mapCoord. Declares INFLATION_PCT, applyBalancedPadding. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 1001-1010: Continues mapCoord. Declares baseX, baseY, baseW, baseH, baseRight, baseBottom, .... Returns values from this block. Purpose: implement module logic.
+- Lines 1011-1020: Continues mapCoord. Declares paddedTop, paddedRight, paddedBottom, clampedLeft, clampedTop, clampedRight, .... Purpose: implement module logic.
+- Lines 1021-1030: Continues mapCoord. Declares rightPad, topPad, bottomPad, balancedPadX, balancedPadY, finalX, .... Purpose: implement module logic.
+- Lines 1031-1040: Continues mapCoord. Declares finalH. Returns values from this block. Purpose: implement module logic.
+- Lines 1041-1050: Continues mapCoord. Declares pageIndexOffset, pIdx, effectivePageIndex, sourcePageIndex, effectiveSourceIndex. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 1051-1060: Continues mapCoord. Declares result. Sets element properties: textContent=`Analyzing page ${p.pageIndex + 1}...`. Purpose: update UI state and presentation.
+- Lines 1061-1070: Continues mapCoord. Purpose: implement module logic.
+- Lines 1071-1080: Continues mapCoord. Declares allDetectedOverlays, tm, analysis, updatedOverlays, newOverlays. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 1081-1090: Continues mapCoord. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 1091-1100: Continues mapCoord. Declares needsSplitting, horizontalStrips. Branches on conditions. Purpose: implement module logic.
+- Lines 1101-1110: Continues mapCoord. Purpose: implement module logic.
+- Lines 1111-1120: Continues mapCoord. Declares sections. Sets element properties: textContent=`Splitting into ${columnDetection.columnCount * horizonta.... Purpose: update UI state and presentation.
+- Lines 1121-1130: Continues mapCoord. Declares overlaysToRemove, idx. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 1131-1140: Continues mapCoord. Declares sectionImages, sectionOverlaysAll, sIdx, section, sectionNormalized. Sets element properties: textContent=`Processing section ${sIdx + 1} of ${sections.length}...`. Iterates collections. Purpose: update UI state and presentation.
+- Lines 1141-1150: Continues mapCoord. Declares sectionResult. Purpose: implement module logic.
+- Lines 1151-1160: Continues mapCoord. Branches on conditions. Purpose: implement module logic.
+- Lines 1161-1170: Continues mapCoord. Declares sectionTm, sectionPageIndex. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 1171-1180: Continues mapCoord. Returns values from this block. Purpose: implement module logic.
+- Lines 1181-1190: Continues mapCoord. Declares rawX, rawY. Purpose: implement module logic.
+- Lines 1191-1200: Continues mapCoord. Declares rawW, rawH, balanced. Purpose: implement module logic.
+- Lines 1201-1210: Continues mapCoord. Declares finalX, finalY, finalW, finalH. Branches on conditions. Purpose: implement module logic.
+- Lines 1211-1220: Continues mapCoord. Purpose: implement module logic.
+- Lines 1221-1230: Continues mapCoord. Purpose: implement module logic.
+- Lines 1231-1240: Continues mapCoord. Purpose: implement module logic.
+- Lines 1241-1250: Continues mapCoord. Iterates collections. Purpose: implement module logic.
+- Lines 1251-1260: Continues mapCoord. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 1261-1270: Continues mapCoord. Declares colInfo. Schedules timed work. Purpose: implement module logic.
+- Lines 1271-1280: Continues mapCoord. Iterates collections. Purpose: implement module logic.
+- Lines 1281-1290: Defines function processOverlaysNormally. Declares updateCount, newCount. Iterates collections. Purpose: implement module logic.
+- Lines 1291-1300: Continues processOverlaysNormally. Declares existing. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 1301-1310: Continues processOverlaysNormally. Declares rawX, rawY, rawW, rawH, balanced. Purpose: implement module logic.
+- Lines 1311-1320: Continues processOverlaysNormally. Branches on conditions. Purpose: implement module logic.
+- Lines 1321-1330: Continues processOverlaysNormally. Declares i. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 1331-1340: Continues processOverlaysNormally. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 1341-1350: Continues processOverlaysNormally. Declares rawX, rawY. Returns values from this block. Purpose: implement module logic.
+- Lines 1351-1360: Continues processOverlaysNormally. Declares rawW, rawH, balanced. Purpose: implement module logic.
+- Lines 1361-1370: Continues processOverlaysNormally. Declares finalX, finalY, finalW, finalH. Branches on conditions. Purpose: implement module logic.
+- Lines 1371-1380: Continues processOverlaysNormally. Purpose: implement module logic.
+- Lines 1381-1390: Continues processOverlaysNormally. Purpose: implement module logic.
+- Lines 1391-1400: Continues processOverlaysNormally. Branches on conditions. Purpose: implement module logic.
+- Lines 1401-1410: Continues processOverlaysNormally. Schedules timed work. Branches on conditions. Purpose: implement module logic.
+- Lines 1411-1420: Continues processOverlaysNormally. Iterates collections. Purpose: implement module logic.
+- Lines 1421-1430: Continues processOverlaysNormally. Iterates collections. Purpose: implement module logic.
+- Lines 1431-1440: Continues processOverlaysNormally. Purpose: implement module logic.
+- Lines 1441-1450: Continues processOverlaysNormally. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 1451-1460: Continues processOverlaysNormally. Branches on conditions. Purpose: implement module logic.
+- Lines 1461-1470: Continues processOverlaysNormally. Declares didRebuild. Purpose: implement module logic.
+- Lines 1471-1480: Continues processOverlaysNormally. Declares pageNav. Selects elements: #prevPageBtn. Sets inline styles: display=none. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 1481-1490: Continues processOverlaysNormally. Schedules timed work. Purpose: implement module logic.
+- Lines 1491-1500: Continues processOverlaysNormally. Declares replaceBtn. Selects elements: #previewReplaceBtn. Branches on conditions. Purpose: connect logic to DOM elements.
+- Lines 1501-1510: Continues processOverlaysNormally. Declares addAnotherBtn. Selects elements: #previewAddAnotherBtn. Iterates collections. Purpose: connect logic to DOM elements.
+- Lines 1511-1520: Continues processOverlaysNormally. Declares oldMenuImages, pageIndexMap. Iterates collections. Purpose: implement module logic.
+- Lines 1521-1530: Continues processOverlaysNormally. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 1531-1540: Continues processOverlaysNormally. Purpose: implement module logic.
+- Lines 1541-1550: Continues processOverlaysNormally. Declares nextPageIndex, didRebuild. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 1551-1560: Continues processOverlaysNormally. Schedules timed work. Purpose: implement module logic.
+- Lines 1561-1570: Defines function backdropHandler. Branches on conditions. Purpose: implement module logic.
+- Lines 1571-1580: Continues backdropHandler. Declares menuUploadModal, menuUploadVideo, menuUploadMediaStream, menuUploadFileInput, menuUploadCameraBtn, menuUploadUploadBtn, .... Purpose: implement module logic.
+- Lines 1581-1590: Defines function createMenuUploadModal. Declares menuUploadCloseBtn, modal. Sets attributes: aria-hidden=true. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 1591-1600: Continues createMenuUploadModal. Sets inline styles: display=none. Sets element properties: innerHTML=`. Purpose: update UI state and presentation.
+- Lines 1601-1610: Continues createMenuUploadModal. Purpose: implement module logic.
+- Lines 1611-1620: Continues createMenuUploadModal. Selects elements: #menuUploadVideo, #menuUploadFileInput, #menuUploadCameraBtn. Purpose: connect logic to DOM elements.
+- Lines 1621-1630: Continues createMenuUploadModal. Selects elements: #menuUploadUploadBtn, #menuUploadCaptureBtn, #menuUploadCancelBtn, #menuUploadClose. Sets element properties: value=. Purpose: update UI state and presentation.
+- Lines 1631-1640: Continues createMenuUploadModal. Declares file. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 1641-1650: Continues createMenuUploadModal. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 1651-1660: Defines function openMenuUploadModal. Declares modal. Sets attributes: aria-hidden=false. Sets inline styles: display=flex. Purpose: update UI state and presentation.
+- Lines 1661-1670: Defines function closeMenuUploadModal. Sets attributes: aria-hidden=true. Sets inline styles: display=none. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 1671-1680: Defines function updateMenuUploadPreview. Declares mediaPreview, media. Selects elements: #menuUploadMediaPreview, #menuUploadMedia. Sets inline styles: display=none. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 1681-1690: Continues updateMenuUploadPreview. Sets inline styles: display=block, display=flex, display=none. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 1691-1700: Defines function startMenuCamera. Sets inline styles: display=none. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 1701-1710: Continues startMenuCamera. Declares stream. Branches on conditions. Purpose: implement module logic.
+- Lines 1711-1720: Defines function stopMenuCamera. Branches on conditions. Purpose: implement module logic.
+- Lines 1721-1730: Continues stopMenuCamera. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 1731-1740: Defines function captureMenuPhoto. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 1741-1750: Continues captureMenuPhoto. Declares canvas, ctx, maxWidth, scale. Purpose: implement module logic.
+- Lines 1751-1760: Continues captureMenuPhoto. Declares resizedCanvas, resizedCtx. Purpose: implement module logic.
+- Lines 1761-1770: Continues captureMenuPhoto. Declares imageData. Purpose: implement module logic.
+- Lines 1771-1780: Defines function handleMenuImageFile. Declares imageData. Purpose: implement module logic.
+- Lines 1781-1790: Defines function handleMenuImageData. Declares pageNumber. Purpose: implement module logic.
+- Lines 1791-1800: Continues handleMenuImageData. Declares uploadMenuBtn. Selects elements: uploadMenuBtn. Branches on conditions. Returns values from this block. Purpose: connect logic to DOM elements.
+- Lines 1801-1810: Continues handleMenuImageData. Iterates collections. Purpose: implement module logic.
+- Lines 1811-1820: Continues handleMenuImageData. Schedules timed work. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 1821-1822: Continues handleMenuImageData. Purpose: implement module logic.
+
+## public/js/restaurant/mobile-overlay-zoom.js
+
+- Lines 1-10: Defines function initMobileOverlayZoom. Declares getMenuState, setOverlayPulseColor, esc, mobileCompactBodyHTML. Exports module members. Purpose: expose helpers to other modules.
+- Lines 11-20: Continues initMobileOverlayZoom. Declares ensureAddToOrderConfirmContainer, hideAddToOrderConfirmation, showAddToOrderConfirmation. Purpose: implement module logic.
+- Lines 21-30: Continues initMobileOverlayZoom. Declares addDishToOrder, getDishCompatibilityDetails, toggleLoveDishInTooltip. Purpose: implement module logic.
+- Lines 31-40: Continues initMobileOverlayZoom. Declares onZoomChange, state, isOverlayZoomed, zoomedOverlayItem, preZoomScrollPos. Purpose: implement module logic.
+- Lines 41-50: Defines function updateZoomState. Declares currentZoomScale, currentZoomTransform. Purpose: implement module logic.
+- Lines 51-60: Defines function showZoomedDishInfo. Declares dishInfo, nameEl, chipsEl, actionsEl. Selects elements: zoomedDishInfo, zoomedDishName, zoomedAllergenChips, zoomedDishActions. Branches on conditions. Returns values from this block. Purpose: connect logic to DOM elements.
+- Lines 61-70: Continues showZoomedDishInfo. Declares dishName, userAllergens, userDiets, restaurantId, dishKey. Sets element properties: textContent=dishName, innerHTML=mobileCompactBodyHTML(item, userAllergens, userDiets). Branches on conditions. Purpose: update UI state and presentation.
+- Lines 71-80: Continues showZoomedDishInfo. Declares isLoved, showFavorite, isInOrder. Purpose: implement module logic.
+- Lines 81-90: Continues showZoomedDishInfo. Declares addToOrderBtn, addToOrderConfirmEl. Selects elements: #zoomedAddToOrderBtn. Sets element properties: innerHTML=`. Purpose: update UI state and presentation.
+- Lines 91-100: Continues showZoomedDishInfo. Declares dishNameAttr. Binds events: click. Branches on conditions. Purpose: respond to user actions.
+- Lines 101-110: Continues showZoomedDishInfo. Declares details, hasIssues, severity. Branches on conditions. Purpose: implement module logic.
+- Lines 111-120: Continues showZoomedDishInfo. Purpose: implement module logic.
+- Lines 121-130: Continues showZoomedDishInfo. Declares result, severity. Sets element properties: textContent=Added, disabled=true. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 131-140: Continues showZoomedDishInfo. Purpose: implement module logic.
+- Lines 141-150: Defines function handleLoveClick. Declares loveBtn. Selects elements: #zoomedFavoriteBtn. Branches on conditions. Purpose: connect logic to DOM elements.
+- Lines 151-160: Continues handleLoveClick. Binds events: click, touchend. Updates classes (add: show). Purpose: respond to user actions.
+- Lines 161-170: Defines function zoomToOverlay. Declares menuWrap, menuInner, menuImg, hasActiveTransform. Selects elements: .menuWrap, .menuImg, .menuInner. Branches on conditions. Returns values from this block. Purpose: connect logic to DOM elements.
+- Lines 171-180: Continues zoomToOverlay. Declares pinchWrapper, menuState. Selects elements: .pinchZoomWrapper. Branches on conditions. Purpose: connect logic to DOM elements.
+- Lines 181-190: Continues zoomToOverlay. Sets inline styles: transform=. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 191-200: Continues zoomToOverlay. Declares screenWidth, screenHeight. Updates classes (add: zoomed). Sets inline styles: transition=none, transform=. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 201-210: Continues zoomToOverlay. Declares menuSection. Selects elements: .menuSection. Updates classes (add: zoomed-active; remove: zoomed-active). Iterates collections. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 211-220: Continues zoomToOverlay. Declares overlayLayer, liveImgRect, overlayRect. Selects elements: .overlayLayer. Sets inline styles: width=menuImg.clientWidth + "px", height=menuImg.clientHeight + "px". Branches on conditions. Purpose: update UI state and presentation.
+- Lines 221-230: Continues zoomToOverlay. Declares imgRect, relX, relY, overlayWidthPx, overlayHeightPx, unscale. Branches on conditions. Purpose: implement module logic.
+- Lines 231-240: Continues zoomToOverlay. Purpose: implement module logic.
+- Lines 241-250: Continues zoomToOverlay. Declares topPadding, bottomUIHeight, availableWidth, availableHeight. Purpose: implement module logic.
+- Lines 251-260: Continues zoomToOverlay. Declares scaleByWidth, scaleByHeight, rawScale, zoomScale, targetX. Purpose: implement module logic.
+- Lines 261-270: Continues zoomToOverlay. Declares targetY, translateX, translateY. Sets inline styles: transition=, transformOrigin=0 0. Purpose: update UI state and presentation.
+- Lines 271-280: Continues zoomToOverlay. Declares animationDelay. Sets inline styles: transform=`translate(${translateX}px, ${translateY}px) scale(${zoom.... Schedules timed work. Purpose: update UI state and presentation.
+- Lines 281-290: Continues zoomToOverlay. Selects elements: .overlay. Updates classes (remove: selected). Sets inline styles: animation=none. Iterates collections. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 291-300: Continues zoomToOverlay. Declares backBtn. Selects elements: zoomBackButton. Updates classes (add: selected). Sets inline styles: animation=. Purpose: update UI state and presentation.
+- Lines 301-310: Continues zoomToOverlay. Declares topOverlay. Selects elements: zoomTopOverlay. Updates classes (add: show, menuZoomed). Sets inline styles: overflow=hidden. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 311-320: Defines function zoomOutOverlay. Declares menuWrap. Selects elements: .menuWrap. Branches on conditions. Returns values from this block. Purpose: connect logic to DOM elements.
+- Lines 321-330: Continues zoomOutOverlay. Declares allMenuInners. Selects elements: .menuInner. Updates classes (remove: zoomed). Sets inline styles: transition=none, transform=. Iterates collections. Purpose: update UI state and presentation.
+- Lines 331-340: Continues zoomOutOverlay. Declares backBtn. Selects elements: .menuSection.zoomed-active, zoomBackButton. Updates classes (remove: zoomed-active). Sets inline styles: transition="")). Iterates collections. Purpose: update UI state and presentation.
+- Lines 341-350: Continues zoomOutOverlay. Declares topOverlay, dishInfo. Selects elements: zoomTopOverlay, zoomedDishInfo. Updates classes (remove: show, menuZoomed). Sets inline styles: overflow=. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 351-360: Continues zoomOutOverlay. Selects elements: .overlay.selected. Updates classes (remove: selected). Schedules timed work. Iterates collections. Purpose: update UI state and presentation.
+- Lines 361-370: Continues zoomOutOverlay. Declares menuState. Branches on conditions. Purpose: implement module logic.
+- Lines 371-380: Continues zoomOutOverlay. Selects elements: zoomBackButton. Binds events: click. Branches on conditions. Returns values from this block. Purpose: respond to user actions.
+- Lines 381-390: Continues zoomOutOverlay. Declares clickedOverlay, clickedBackBtn, clickedDishInfo. Selects elements: .overlay, .zoomBackButton, .zoomedDishInfo. Branches on conditions. Returns values from this block. Purpose: connect logic to DOM elements.
+- Lines 391-395: Continues zoomOutOverlay. Purpose: implement module logic.
+
+## public/js/restaurant/order-confirm-restore.js
+
+- Lines 1-10: Defines function initOrderConfirmRestore. Declares initOrderSidebar, getOrderFormStateStorageKey, checkUserAuth, restoreOrderFormState. Exports module members. Purpose: expose helpers to other modules.
+- Lines 11-20: Continues initOrderConfirmRestore. Declares updateOrderConfirmAuthState, rerenderOrderConfirmDetails. Purpose: implement module logic.
+- Lines 21-30: Continues initOrderConfirmRestore. Declares urlParams. Binds events: DOMContentLoaded. Branches on conditions. Purpose: respond to user actions.
+- Lines 31-40: Defines function waitForMenu. Declares formStateKey, hasSavedState, isAuthenticated, hasRestored. Uses storage keys: getItem:orderConfirmFormState. Branches on conditions. Purpose: implement module logic.
+- Lines 41-50: Continues waitForMenu. Declares menu. Selects elements: .overlay, menu. Schedules timed work. Branches on conditions. Purpose: connect logic to DOM elements.
+- Lines 51-60: Continues waitForMenu. Schedules timed work. Branches on conditions. Purpose: implement module logic.
+- Lines 61-69: Continues waitForMenu. Schedules timed work. Purpose: implement module logic.
+
+## public/js/restaurant/order-flow.js
+
+- Lines 1-10: Runs general logic. Purpose: implement module logic.
+- Lines 11-20: Defines function norm. Purpose: implement module logic.
+- Lines 21-30: Defines function esc. Purpose: implement module logic.
+- Lines 31-40: Continues esc. Declares TABLET_ORDER_STATUSES. Purpose: implement module logic.
+- Lines 41-50: Defines function initOrderFlow. Exports module members. Purpose: expose helpers to other modules.
+- Lines 51-60: Continues initOrderFlow. Declares supabaseClient, ORDER_STATUS_DESCRIPTORS. Iterates collections. Purpose: implement module logic.
+- Lines 61-70: Continues initOrderFlow. Iterates collections. Purpose: implement module logic.
+- Lines 71-80: Continues initOrderFlow. Purpose: implement module logic.
+- Lines 81-90: Continues initOrderFlow. Purpose: implement module logic.
+- Lines 91-100: Continues initOrderFlow. Declares ORDER_SIDEBAR_DISMISSED_KEY, ORDER_SIDEBAR_OPEN_AFTER_SUBMIT_KEY, tabletSimState. Purpose: implement module logic.
+- Lines 101-110: Continues initOrderFlow. Declares tabletSimOrderId, tabletStateUpdatedAt, persistedTabletState. Branches on conditions. Purpose: implement module logic.
+- Lines 111-120: Continues initOrderFlow. Declares activeOrders. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 121-130: Continues initOrderFlow. Declares submittedOrder, dismissedOrderIds. Branches on conditions. Purpose: implement module logic.
+- Lines 131-140: Continues initOrderFlow. Iterates collections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 141-150: Continues initOrderFlow. Declares dismissed. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 151-160: Continues initOrderFlow. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 161-170: Continues initOrderFlow. Declares orderConfirmModeBound, serverPanelState, orderConfirmDrawer, orderConfirmCloseBtn, orderConfirmSummaryList, orderConfirmEmptySummary. Selects elements: orderConfirmDrawer, orderConfirmClose, orderConfirmSummaryList. Purpose: connect logic to DOM elements.
+- Lines 171-180: Continues initOrderFlow. Declares orderConfirmStatusBadge, orderConfirmForm, orderConfirmNameInput, orderConfirmDeliveryInput. Selects elements: orderConfirmStatusBadge, orderConfirmForm, orderConfirmName, orderConfirmDelivery. Purpose: connect logic to DOM elements.
+- Lines 181-190: Continues initOrderFlow. Declares orderConfirmAllergyChips, orderConfirmDietChips, orderConfirmNotesInput, orderConfirmCodeBlock, orderConfirmCodeInput, orderConfirmSubmitBtn, .... Selects elements: orderConfirmAllergyChips, orderConfirmDietChips, orderConfirmNotes, orderConfirmCodeBlock, orderConfirmCodeInput, orderConfirmSubmitBtn, .... Purpose: connect logic to DOM elements.
+- Lines 191-200: Continues initOrderFlow. Declares orderConfirmResetBtn, orderConfirmAuthPrompt, orderConfirmSignInBtn, orderConfirmSignUpBtn, orderConfirmServerPanel. Selects elements: orderConfirmResetBtn, orderConfirmAuthPrompt, orderConfirmSignInBtn, orderConfirmSignUpBtn, orderConfirmServerPanel. Purpose: connect logic to DOM elements.
+- Lines 201-210: Continues initOrderFlow. Declares orderConfirmKitchenPanel, orderSidebarStatus, orderSidebarStatusBadge, orderSidebarItems, orderSidebarActions, confirmOrderBtn. Selects elements: orderConfirmKitchenPanel, orderSidebarStatus, orderSidebarStatusBadge, orderSidebarItems, orderSidebarActions, confirmOrderBtn. Purpose: connect logic to DOM elements.
+- Lines 211-220: Continues initOrderFlow. Declares confirmOrderHint, orderSidebarUserToggled, orderSidebarLastOrderId, orderSidebarAutoMinimizedOrderId, orderSidebarForceOpenOrderId, rescindConfirmOrderId. Selects elements: confirmOrderHint. Sets element properties: dataset.mode=cart. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 221-230: Defines function getSuggestedUserName. Declares rawName, first. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 231-240: Continues getSuggestedUserName. Declares last, combined, email, emailName. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 241-250: Defines function applyDefaultUserName. Declares current. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 251-260: Defines function checkUserAuth. Declares suggested. Sets element properties: value=suggested. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 261-270: Defines function saveOrderFormState. Declares storageKey. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 271-280: Continues saveOrderFormState. Declares formData. Selects elements: input[name="orderConfirmMode"]:checked, .chip.selected. Iterates collections. Purpose: connect logic to DOM elements.
+- Lines 281-290: Continues saveOrderFormState. Serializes or parses JSON. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 291-300: Defines function restoreOrderFormState. Declares storageKey. Uses storage keys: removeItem:orderConfirmFormState. Purpose: implement module logic.
+- Lines 301-310: Continues restoreOrderFormState. Declares saved, usedLegacyKey, formData, restaurantMatches. Uses storage keys: getItem:orderConfirmFormState. Serializes or parses JSON. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 311-320: Continues restoreOrderFormState. Uses storage keys: removeItem:orderConfirmFormState. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 321-330: Continues restoreOrderFormState. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 331-340: Continues restoreOrderFormState. Declares overlays, titleEl, title. Selects elements: .overlay, .tTitle. Updates classes (add: selected). Iterates collections. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 341-350: Continues restoreOrderFormState. Declares addBtn. Selects elements: .addToOrderBtn[data-dish-name]. Sets element properties: textContent=Added, disabled=true. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 351-360: Continues restoreOrderFormState. Branches on conditions. Purpose: implement module logic.
+- Lines 361-370: Continues restoreOrderFormState. Sets element properties: value=formData.name, value=state.user.name, value=(. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 371-380: Continues restoreOrderFormState. Declares modeRadio. Selects elements: input[name="orderConfirmMode"][value="${formData.mode}"]. Sets element properties: checked=true. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 381-390: Continues restoreOrderFormState. Declares wasAcknowledged, ackBtn. Selects elements: ackBtn. Sets element properties: value=formData.notes, value=formData.code. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 391-400: Continues restoreOrderFormState. Declares menu. Selects elements: menu. Updates classes (add: on; remove: off). Sets element properties: textContent=Acknowledged. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 401-410: Continues restoreOrderFormState. Declares actionButtonsRow, legendRow, confirmedRow. Selects elements: actionButtonsRow, legendRow, confirmedRow. Updates classes (add: show). Sets inline styles: display=flex, display=block. Schedules timed work. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 411-420: Continues restoreOrderFormState. Schedules timed work. Branches on conditions. Purpose: implement module logic.
+- Lines 421-430: Continues restoreOrderFormState. Uses storage keys: removeItem:orderConfirmFormState. Schedules timed work. Branches on conditions. Purpose: implement module logic.
+- Lines 431-440: Defines function handleSignInClick. Declares currentUrl. Returns values from this block. Purpose: implement module logic.
+- Lines 441-450: Defines function handleSignUpClick. Declares currentUrl. Sets element properties: href=`account.html?redirect=${encodeURIComponent(currentUrl)}&.... Purpose: update UI state and presentation.
+- Lines 451-460: Continues handleSignUpClick. Declares isAuthenticated. Sets inline styles: display=isAuthenticated ? "none" : "block". Sets element properties: disabled=!isAuthenticated. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 461-470: Defines function rerenderOrderConfirmDetails. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 471-480: Defines function initializeOrderConfirmDrawer. Binds events: click. Branches on conditions. Returns values from this block. Purpose: respond to user actions.
+- Lines 481-490: Continues initializeOrderConfirmDrawer. Binds events: keydown, click. Branches on conditions. Purpose: respond to user actions.
+- Lines 491-500: Continues initializeOrderConfirmDrawer. Binds events: click. Purpose: respond to user actions.
+- Lines 501-510: Defines function openOrderConfirmDrawer. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 511-520: Continues openOrderConfirmDrawer. Updates classes (add: show, orderConfirmOpen). Sets attributes: aria-hidden=false. Schedules timed work. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 521-530: Continues openOrderConfirmDrawer. Sets element properties: value=state.user.name, value=(. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 531-540: Defines function closeOrderConfirmDrawer. Updates classes (remove: show, orderConfirmOpen). Sets attributes: aria-hidden=true. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 541-550: Continues closeOrderConfirmDrawer. Declares preserveOrders. Sets element properties: value=. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 551-560: Continues closeOrderConfirmDrawer. Sets attributes: hidden=. Sets element properties: disabled=false. Iterates collections. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 561-570: Continues closeOrderConfirmDrawer. Sets element properties: value=state.user.name, value=(state.user.email.split("@")[0] || "").trim(), value=. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 571-580: Defines function renderOrderConfirmSummary. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 581-590: Continues renderOrderConfirmSummary. Declares items, li. Sets element properties: innerHTML=, innerHTML=createDishSummaryCard(item). Iterates collections. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 591-600: Defines function renderOrderConfirmAllergies. Declares allergies, chip. Sets element properties: innerHTML=. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 601-610: Continues renderOrderConfirmAllergies. Declares chip. Sets element properties: textContent=No allergens saved, textContent=formatOrderListLabel(allergen). Iterates collections. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 611-620: Defines function renderOrderConfirmDiets. Declares diets, chip. Sets element properties: innerHTML=. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 621-630: Continues renderOrderConfirmDiets. Declares chip. Sets element properties: textContent=No dietary preferences saved, textContent=formatOrderListLabel(diet). Iterates collections. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 631-640: Defines function getDismissedOrderIds. Declares raw, parsed. Serializes or parses JSON. Iterates collections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 641-650: Defines function setDismissedOrderIds. Declares unique. Iterates collections. Returns values from this block. Purpose: implement module logic.
+- Lines 651-660: Defines function dismissOrderId. Declares trimmed, ids. Serializes or parses JSON. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 661-670: Defines function pruneDismissedOrders. Declares dismissed. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 671-680: Continues pruneDismissedOrders. Declares filtered. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 681-690: Defines function getOrderSidebarOpenAfterSubmitId. Declares raw, parsed. Serializes or parses JSON. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 691-700: Defines function setOrderSidebarOpenAfterSubmit. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 701-710: Continues setOrderSidebarOpenAfterSubmit. Serializes or parses JSON. Purpose: implement module logic.
+- Lines 711-720: Defines function clearOrderSidebarOpenAfterSubmit. Purpose: implement module logic.
+- Lines 721-730: Defines function resetOrderSidebarAutoState. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 731-740: Continues resetOrderSidebarAutoState. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 741-750: Defines function shouldShowClearOrderButton. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 751-760: Defines function maybeAutoMinimizeSidebar. Declares orderId. Branches on conditions. Purpose: implement module logic.
+- Lines 761-770: Continues maybeAutoMinimizeSidebar. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 771-780: Defines function isSidebarOrderVisible. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 781-790: Defines function getSidebarOrders. Declares restaurantId, dismissed, orders. Returns values from this block. Purpose: implement module logic.
+- Lines 791-800: Continues getSidebarOrders. Iterates collections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 801-810: Defines function renderOrderSidebarStatus. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 811-820: Continues renderOrderSidebarStatus. Declares hasItems, sidebarOrders. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 821-830: Continues renderOrderSidebarStatus. Sets element properties: dataset.mode=== "cleared" &&. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 831-840: Continues renderOrderSidebarStatus. Declares activeSidebarOrders, primaryOrder. Iterates collections. Returns values from this block. Purpose: implement module logic.
+- Lines 841-850: Continues renderOrderSidebarStatus. Sets element properties: textContent=Waiting for server code, dataset.tone=idle, dataset.mode=cart. Iterates collections. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 851-860: Continues renderOrderSidebarStatus. Declares descriptor. Returns values from this block. Purpose: implement module logic.
+- Lines 861-870: Defines function getOrderTimestamps. Declares history, submittedEntry. Sets element properties: textContent=descriptor.label || "Updating status", dataset.tone=descriptor.tone || "idle". Purpose: update UI state and presentation.
+- Lines 871-880: Continues getOrderTimestamps. Declares submittedTime, updates. Iterates collections. Purpose: implement module logic.
+- Lines 881-890: Defines function buildOrderSidebarPendingOrderHtml. Declares submittedItems, dishName. Returns values from this block. Purpose: implement module logic.
+- Lines 891-900: Continues buildOrderSidebarPendingOrderHtml. Declares allergens, diets. Iterates collections. Purpose: implement module logic.
+- Lines 901-910: Continues buildOrderSidebarPendingOrderHtml. Declares metaParts, metaLine. Branches on conditions. Purpose: implement module logic.
+- Lines 911-920: Continues buildOrderSidebarPendingOrderHtml. Declares descriptor, badgeClass, submittedTimeStr, nonDinerUpdates, submittedTime, updates. Iterates collections. Purpose: implement module logic.
+- Lines 921-930: Continues buildOrderSidebarPendingOrderHtml. Declares updatesHtml, hasKitchenQuestion. Iterates collections. Purpose: implement module logic.
+- Lines 931-940: Continues buildOrderSidebarPendingOrderHtml. Declares kitchenQuestionHtml. Purpose: implement module logic.
+- Lines 941-950: Continues buildOrderSidebarPendingOrderHtml. Declares showClearBtn, showRescindConfirm, actionBtnHtml. Purpose: implement module logic.
+- Lines 951-960: Continues buildOrderSidebarPendingOrderHtml. Declares isRescinded, statusLabel. Purpose: implement module logic.
+- Lines 961-970: Continues buildOrderSidebarPendingOrderHtml. Declares statusMeta. Returns values from this block. Purpose: implement module logic.
+- Lines 971-980: Continues buildOrderSidebarPendingOrderHtml. Purpose: implement module logic.
+- Lines 981-990: Defines function renderOrderSidebarPendingOrders. Declares cartItems, cartItemsHtml. Sets element properties: dataset.mode=orders.length ? "pending" : "cart". Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 991-1000: Continues renderOrderSidebarPendingOrders. Iterates collections. Purpose: implement module logic.
+- Lines 1001-1010: Continues renderOrderSidebarPendingOrders. Declares ordersHtml. Sets element properties: innerHTML=`${ordersHtml}${cartItemsHtml}`. Iterates collections. Purpose: update UI state and presentation.
+- Lines 1011-1020: Continues renderOrderSidebarPendingOrders. Declares dishName. Selects elements: .orderItemRemove. Binds events: click. Iterates collections. Branches on conditions. Purpose: respond to user actions.
+- Lines 1021-1030: Continues renderOrderSidebarPendingOrders. Selects elements: .orderSidebarRescindBtn, .orderSidebarRescindConfirmBtn. Binds events: click. Iterates collections. Purpose: respond to user actions.
+- Lines 1031-1040: Continues renderOrderSidebarPendingOrders. Selects elements: .orderSidebarRescindCancelBtn, .orderSidebarClearBtn. Binds events: click. Iterates collections. Purpose: respond to user actions.
+- Lines 1041-1050: Defines function renderOrderSidebarPendingOrder. Selects elements: .orderSidebarQuestionBtn. Binds events: click. Iterates collections. Branches on conditions. Returns values from this block. Purpose: respond to user actions.
+- Lines 1051-1060: Defines function renderOrderSidebarRescindedNotice. Declares order. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 1061-1070: Defines function renderOrderConfirm. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 1071-1080: Continues renderOrderConfirm. Declares order. Sets attributes: hidden=. Iterates collections. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 1081-1090: Continues renderOrderConfirm. Declares descriptor. Branches on conditions. Purpose: implement module logic.
+- Lines 1091-1100: Defines function renderOrderConfirmServerPanel. Declares body, relevantStatuses. Selects elements: .orderConfirmTabletBody. Branches on conditions. Returns values from this block. Purpose: connect logic to DOM elements.
+- Lines 1101-1110: Continues renderOrderConfirmServerPanel. Declares serverGroups, serverId. Iterates collections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 1111-1120: Continues renderOrderConfirmServerPanel. Sets element properties: innerHTML='<div class="orderConfirmStatusBadge" data-tone="idle">Wa.... Iterates collections. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 1121-1130: Continues renderOrderConfirmServerPanel. Declares tabsHtml. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 1131-1140: Continues renderOrderConfirmServerPanel. Declares name, isActive, activeOrders, orderCards. Iterates collections. Returns values from this block. Purpose: implement module logic.
+- Lines 1141-1150: Defines function renderServerOrderCard. Sets element properties: innerHTML=`. Iterates collections. Purpose: update UI state and presentation.
+- Lines 1151-1160: Continues renderServerOrderCard. Declares descriptor, badgeClass, dishes, allergies. Iterates collections. Purpose: implement module logic.
+- Lines 1161-1170: Continues renderServerOrderCard. Declares diets, tableLabel. Iterates collections. Purpose: implement module logic.
+- Lines 1171-1180: Continues renderServerOrderCard. Declares codeLabel, notes, actionsHtml. Branches on conditions. Purpose: implement module logic.
+- Lines 1181-1190: Continues renderServerOrderCard. Branches on conditions. Purpose: implement module logic.
+- Lines 1191-1200: Continues renderServerOrderCard. Iterates collections. Returns values from this block. Purpose: implement module logic.
+- Lines 1201-1210: Continues renderServerOrderCard. Purpose: implement module logic.
+- Lines 1211-1220: Defines function handleServerOrderAction. Declares order. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 1221-1230: Continues handleServerOrderAction. Declares reason. Branches on conditions. Purpose: implement module logic.
+- Lines 1231-1240: Continues handleServerOrderAction. Declares rejectionReason. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 1241-1250: Defines function renderKitchenOrderCard. Declares descriptor. Purpose: implement module logic.
+- Lines 1251-1260: Continues renderKitchenOrderCard. Declares badgeClass, dishes, allergies. Iterates collections. Purpose: implement module logic.
+- Lines 1261-1270: Continues renderKitchenOrderCard. Declares diets, tableLabel, messageLog. Iterates collections. Purpose: implement module logic.
+- Lines 1271-1280: Continues renderKitchenOrderCard. Declares questionLog, actions. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 1281-1290: Continues renderKitchenOrderCard. Declares actionsHtml. Branches on conditions. Purpose: implement module logic.
+- Lines 1291-1300: Continues renderKitchenOrderCard. Returns values from this block. Purpose: implement module logic.
+- Lines 1301-1310: Continues renderKitchenOrderCard. Purpose: implement module logic.
+- Lines 1311-1320: Defines function renderOrderConfirmKitchenPanel. Declares body, activeStatuses. Selects elements: .orderConfirmTabletBody. Branches on conditions. Returns values from this block. Purpose: connect logic to DOM elements.
+- Lines 1321-1330: Continues renderOrderConfirmKitchenPanel. Declares orders. Sets element properties: innerHTML='<div class="orderConfirmStatusBadge" data-tone="idle">Ki.... Iterates collections. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 1331-1340: Defines function handleOrderConfirmSubmit. Declares cards. Sets element properties: innerHTML=`<div class="kitchenOrderList">${cards}</div>`. Iterates collections. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 1341-1350: Continues handleOrderConfirmSubmit. Sets inline styles: display=block. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 1351-1360: Continues handleOrderConfirmSubmit. Declares name. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 1361-1370: Continues handleOrderConfirmSubmit. Declares diningMode, codeValue. Branches on conditions. Purpose: implement module logic.
+- Lines 1371-1380: Continues handleOrderConfirmSubmit. Declares deliveryValue, allergies, diets, customNotes, selectedItems. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 1381-1390: Continues handleOrderConfirmSubmit. Declares dishesSummary, codeMeta, restaurantId. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 1391-1400: Continues handleOrderConfirmSubmit. Declares order, hasSubmittedOrder. Iterates collections. Returns values from this block. Purpose: implement module logic.
+- Lines 1401-1410: Continues handleOrderConfirmSubmit. Declares draft. Branches on conditions. Purpose: implement module logic.
+- Lines 1411-1420: Continues handleOrderConfirmSubmit. Branches on conditions. Purpose: implement module logic.
+- Lines 1421-1430: Continues handleOrderConfirmSubmit. Declares allergyMessage. Purpose: implement module logic.
+- Lines 1431-1440: Continues handleOrderConfirmSubmit. Declares dietsMessage. Purpose: implement module logic.
+- Lines 1441-1450: Continues handleOrderConfirmSubmit. Branches on conditions. Purpose: implement module logic.
+- Lines 1451-1460: Continues handleOrderConfirmSubmit. Purpose: implement module logic.
+- Lines 1461-1470: Continues handleOrderConfirmSubmit. Branches on conditions. Purpose: implement module logic.
+- Lines 1471-1480: Continues handleOrderConfirmSubmit. Declares submittedAt. Branches on conditions. Purpose: implement module logic.
+- Lines 1481-1490: Continues handleOrderConfirmSubmit. Branches on conditions. Purpose: implement module logic.
+- Lines 1491-1500: Continues handleOrderConfirmSubmit. Declares submitSuccessMessage. Sets element properties: disabled=true. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 1501-1510: Continues handleOrderConfirmSubmit. Declares ackBtn, submittedSet. Selects elements: ackBtn. Updates classes (add: on; remove: off). Sets element properties: textContent=Acknowledged. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 1511-1520: Continues handleOrderConfirmSubmit. Iterates collections. Purpose: implement module logic.
+- Lines 1521-1530: Continues handleOrderConfirmSubmit. Purpose: implement module logic.
+- Lines 1531-1540: Defines function handleOrderConfirmServerPanel. Declares tabBtn, id. Branches on conditions. Purpose: implement module logic.
+- Lines 1541-1550: Continues handleOrderConfirmServerPanel. Declares actionBtn, action, orderId. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 1551-1560: Defines function handleOrderConfirmKitchenPanel. Declares actionBtn. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 1561-1570: Continues handleOrderConfirmKitchenPanel. Declares action, orderId. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 1571-1580: Defines function handleKitchenOrderAction. Declares order, chefId, text. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 1581-1590: Continues handleKitchenOrderAction. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 1591-1600: Defines function handleOrderConfirmReset. Returns values from this block. Purpose: implement module logic.
+- Lines 1601-1610: Defines function handleRescindNotice. Declares btn, orderId. Selects elements: .orderSidebarRescindBtn. Branches on conditions. Returns values from this block. Purpose: connect logic to DOM elements.
+- Lines 1611-1620: Defines function handleRescindConfirm. Declares btn, orderId. Selects elements: .orderSidebarRescindConfirmBtn. Branches on conditions. Returns values from this block. Purpose: connect logic to DOM elements.
+- Lines 1621-1630: Defines function handleRescindCancel. Declares btn. Selects elements: .orderSidebarRescindCancelBtn. Branches on conditions. Returns values from this block. Purpose: connect logic to DOM elements.
+- Lines 1631-1640: Continues handleRescindCancel. Declares order, now. Branches on conditions. Purpose: implement module logic.
+- Lines 1641-1650: Continues handleRescindCancel. Declares restaurantId. Branches on conditions. Purpose: implement module logic.
+- Lines 1651-1660: Continues handleRescindCancel. Declares remainingOrders, nextOrder. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 1661-1670: Continues handleRescindCancel. Purpose: implement module logic.
+- Lines 1671-1680: Defines function handleClearOrderFromSidebar. Declares btn, orderId. Selects elements: .orderSidebarClearBtn. Branches on conditions. Returns values from this block. Purpose: connect logic to DOM elements.
+- Lines 1681-1690: Continues handleClearOrderFromSidebar. Declares remainingOrders, nextOrder. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 1691-1700: Continues handleClearOrderFromSidebar. Declares orderIndex. Branches on conditions. Purpose: implement module logic.
+- Lines 1701-1710: Defines function handleKitchenQuestionResponse. Declares btn, orderId, response. Selects elements: .orderSidebarQuestionBtn. Branches on conditions. Returns values from this block. Purpose: connect logic to DOM elements.
+- Lines 1711-1720: Continues handleKitchenQuestionResponse. Declares order, restaurantId. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 1721-1730: Defines function checkForActiveOrders. Declares restaurantId. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 1731-1740: Continues checkForActiveOrders. Declares currentOrder. Iterates collections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 1741-1750: Continues checkForActiveOrders. Branches on conditions. Purpose: implement module logic.
+- Lines 1751-1760: Continues checkForActiveOrders. Declares orders, dismissed, filteredOrders, activeOrders, activeOrder. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 1761-1770: Continues checkForActiveOrders. Declares ackBtn. Selects elements: ackBtn. Updates classes (add: on; remove: off). Sets element properties: textContent=Acknowledged. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 1771-1780: Continues checkForActiveOrders. Iterates collections. Purpose: implement module logic.
+- Lines 1781-1790: Defines function bindOrderConfirmModeSwitcher. Declares radios. Selects elements: input[name="orderConfirmMode"]. Binds events: change. Iterates collections. Branches on conditions. Returns values from this block. Purpose: respond to user actions.
+- Lines 1791-1800: Defines function updateOrderConfirmModeVisibility. Declares conditionalLabels. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 1801-1810: Continues updateOrderConfirmModeVisibility. Declares active, isDelivery, mode. Selects elements: input[name="orderConfirmMode"]:checked. Sets element properties: value=== "delivery". Iterates collections. Purpose: update UI state and presentation.
+- Lines 1811-1820: Continues updateOrderConfirmModeVisibility. Declares deliveryButtonContainer, deliveryLinkButton. Selects elements: deliveryButtonContainer, deliveryLinkButton. Branches on conditions. Purpose: connect logic to DOM elements.
+- Lines 1821-1830: Continues updateOrderConfirmModeVisibility. Sets inline styles: display=inline-flex, opacity=1, cursor=pointer. Sets element properties: href=state.restaurant.delivery_url, href=#. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 1831-1840: Continues updateOrderConfirmModeVisibility. Sets inline styles: opacity=0.5, cursor=not-allowed, display=none. Purpose: update UI state and presentation.
+- Lines 1841-1850: Continues updateOrderConfirmModeVisibility. Declares dineInCodeSection, deliveryMessageSection. Selects elements: dineInCodeSection, deliveryMessageSection. Sets inline styles: display=isDelivery ? "none" : "block". Branches on conditions. Purpose: update UI state and presentation.
+- Lines 1851-1860: Defines function getTabletOrder. Declares restaurantId, order. Sets inline styles: display=isDelivery ? "block" : "none". Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 1861-1870: Continues getTabletOrder. Declares activeOrders. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 1871-1880: Continues getTabletOrder. Declares index. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 1881-1890: Defines function setOrderConfirmStatusBadge. Sets element properties: dataset.tone=tone || "idle". Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 1891-1900: Defines function setStatusMessage. Updates classes (add: error; remove: error, success). Sets element properties: textContent=label, textContent=message || "". Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 1901-1910: Defines function deepCloneArray. Updates classes (add: success). Serializes or parses JSON. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 1911-1920: Defines function persistTabletStateSnapshot. Declares payload. Returns values from this block. Purpose: implement module logic.
+- Lines 1921-1930: Defines function persistTabletStateAndRender. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 1931-1940: Defines function formatOrderListLabel. Iterates collections. Returns values from this block. Purpose: implement module logic.
+- Lines 1941-1950: Continues formatOrderListLabel. Declares overlays, target, candidate. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 1951-1960: Defines function renderCompatibilityList. Declares className. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 1961-1970: Continues renderCompatibilityList. Declares items, type. Iterates collections. Returns values from this block. Purpose: implement module logic.
+- Lines 1971-1980: Defines function getDishCompatibilityDetails. Declares userAllergies, userDiets, dish, details. Purpose: implement module logic.
+- Lines 1981-1990: Defines function trackSeverity. Declares severityRank, highestRank. Purpose: implement module logic.
+- Lines 1991-2000: Continues trackSeverity. Declares rank. Branches on conditions. Purpose: implement module logic.
+- Lines 2001-2010: Continues trackSeverity. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 2011-2020: Continues trackSeverity. Branches on conditions. Purpose: implement module logic.
+- Lines 2021-2030: Continues trackSeverity. Purpose: implement module logic.
+- Lines 2031-2040: Continues trackSeverity. Declares dishAllergens, dishDietSet, removableAllergens. Iterates collections. Returns values from this block. Purpose: implement module logic.
+- Lines 2041-2050: Continues trackSeverity. Declares normalized, friendly, hasAllergen. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 2051-2060: Continues trackSeverity. Branches on conditions. Purpose: implement module logic.
+- Lines 2061-2070: Continues trackSeverity. Declares allergenConflicts. Purpose: implement module logic.
+- Lines 2071-2080: Continues trackSeverity. Branches on conditions. Purpose: implement module logic.
+- Lines 2081-2090: Continues trackSeverity. Declares friendlyDiet, conflicts, blockingAllergens, allBlockingRemovable. Iterates collections. Purpose: implement module logic.
+- Lines 2091-2100: Continues trackSeverity. Branches on conditions. Purpose: implement module logic.
+- Lines 2101-2110: Continues trackSeverity. Branches on conditions. Purpose: implement module logic.
+- Lines 2111-2120: Continues trackSeverity. Purpose: implement module logic.
+- Lines 2121-2130: Continues trackSeverity. Branches on conditions. Purpose: implement module logic.
+- Lines 2131-2140: Continues trackSeverity. Returns values from this block. Purpose: implement module logic.
+- Lines 2141-2150: Defines function renderCompatibilitySection. Declares list. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 2151-2160: Continues renderCompatibilitySection. Declares details, severityClass, allergenSection. Purpose: implement module logic.
+- Lines 2161-2170: Continues renderCompatibilitySection. Declares dietSection, sections, body. Iterates collections. Purpose: implement module logic.
+- Lines 2171-2180: Continues renderCompatibilitySection. Returns values from this block. Purpose: implement module logic.
+- Lines 2181-2190: Defines function getBadgeClassForTone. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 2191-2200: Defines function buildAddToOrderWarningMessage. Declares parts, list. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 2201-2210: Continues buildAddToOrderWarningMessage. Declares list, intro. Iterates collections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 2211-2220: Defines function ensureAddToOrderConfirmContainer. Declares container. Selects elements: .addToOrderConfirm. Sets inline styles: display=none. Sets element properties: innerHTML=`. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 2221-2230: Continues ensureAddToOrderConfirmContainer. Declares cancelBtn, proceedBtn. Selects elements: .addToOrderConfirmCancel, .addToOrderConfirmProceed. Binds events: click. Branches on conditions. Purpose: respond to user actions.
+- Lines 2231-2240: Continues ensureAddToOrderConfirmContainer. Binds events: click. Branches on conditions. Purpose: respond to user actions.
+- Lines 2241-2250: Continues ensureAddToOrderConfirmContainer. Declares dishName, result, btn. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 2251-2260: Defines function showAddToOrderConfirmation. Sets element properties: textContent=Added, disabled=true. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 2261-2270: Continues showAddToOrderConfirmation. Declares messageEl, proceedBtn. Selects elements: [data-role="message"], .addToOrderConfirmProceed. Sets element properties: textContent=buildAddToOrderWarningMessage(dishName, details), dataset.dishName=dishName, dataset.severity=details.severity || "warn". Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 2271-2280: Defines function hideAddToOrderConfirmation. Declares isWarn. Updates classes (toggle: warn). Sets inline styles: display=flex, display=none. Sets element properties: textContent=isWarn ? "Add with adjustments" : "Add anyway". Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 2281-2290: Defines function parseServerCode. Declares SERVER_CODE_PREFIX_LENGTH, raw. Sets element properties: dataset.dishName=, dataset.severity=. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 2291-2300: Continues parseServerCode. Declares prefix, remainder. Returns values from this block. Purpose: implement module logic.
+- Lines 2301-2310: Defines function ensureOrderServerMetadata. Declares parsed. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 2311-2320: Defines function getTabletOrderById. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 2321-2330: Defines function recordKitchenMessage. Declares text, entry. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 2331-2340: Continues recordKitchenMessage. Purpose: implement module logic.
+- Lines 2341-2350: Defines function showTextPrompt. Declares backdrop. Returns values from this block. Purpose: implement module logic.
+- Lines 2351-2360: Continues showTextPrompt. Declares modal, heading, desc. Sets element properties: textContent=title, textContent=message. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 2361-2370: Continues showTextPrompt. Declares textarea, actions, cancelBtn, confirmBtn. Sets element properties: textContent=cancelLabel, placeholder=placeholder. Purpose: update UI state and presentation.
+- Lines 2371-2380: Defines function cleanup. Sets element properties: textContent=confirmLabel. Purpose: update UI state and presentation.
+- Lines 2381-2390: Continues cleanup. Declares value. Binds events: click. Purpose: respond to user actions.
+- Lines 2391-2400: Continues cleanup. Binds events: click, keydown. Branches on conditions. Purpose: respond to user actions.
+- Lines 2401-2410: Continues cleanup. Declares value. Branches on conditions. Purpose: implement module logic.
+- Lines 2411-2420: Defines function formatTabletTimestamp. Declares date. Schedules timed work. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 2421-2430: Defines function escapeConfirmationHtml. Returns values from this block. Purpose: implement module logic.
+- Lines 2431-2440: Defines function getRestaurantSlug. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 2441-2450: Defines function getOrderItemsStorageKey. Declares restaurantSlug. Returns values from this block. Purpose: implement module logic.
+- Lines 2451-2460: Defines function persistOrderItems. Declares storageKey. Branches on conditions. Purpose: implement module logic.
+- Lines 2461-2470: Continues persistOrderItems. Serializes or parses JSON. Purpose: implement module logic.
+- Lines 2471-2480: Defines function restoreOrderItems. Uses storage keys: removeItem:orderItems. Branches on conditions. Purpose: implement module logic.
+- Lines 2481-2490: Continues restoreOrderItems. Declares storageKey, saved, usedLegacyKey, data. Uses storage keys: getItem:orderItems. Serializes or parses JSON. Branches on conditions. Purpose: implement module logic.
+- Lines 2491-2500: Continues restoreOrderItems. Declares isValidArray, isFresh. Uses storage keys: removeItem:orderItems. Branches on conditions. Purpose: implement module logic.
+- Lines 2501-2510: Continues restoreOrderItems. Uses storage keys: removeItem:orderItems. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 2511-2520: Defines function getOrderItemSelections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 2521-2530: Defines function clearOrderItemSelections. Declares selections, items, itemSet. Iterates collections. Purpose: implement module logic.
+- Lines 2531-2540: Defines function isOrderItemSelected. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 2541-2550: Defines function toggleOrderItemSelection. Declares selections. Branches on conditions. Purpose: implement module logic.
+- Lines 2551-2560: Defines function getSelectedOrderItems. Declares selections, items. Iterates collections. Returns values from this block. Purpose: implement module logic.
+- Lines 2561-2570: Defines function closeDishDetailsAfterAdd. Declares dishInfo, mobilePanel. Selects elements: zoomedDishInfo, mobileInfoPanel. Updates classes (remove: show). Branches on conditions. Purpose: update UI state and presentation.
+- Lines 2571-2580: Defines function addDishToOrder. Updates classes (remove: show). Sets inline styles: display=none. Sets element properties: innerHTML=. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 2581-2590: Continues addDishToOrder. Declares force, userAllergies, userDiets, issues. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 2591-2600: Continues addDishToOrder. Declares dish, dishAllergens, removableAllergens. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 2601-2610: Continues addDishToOrder. Declares nonAccommodatableAllergens, normalizedAllergen, hasAllergen. Iterates collections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 2611-2620: Continues addDishToOrder. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 2621-2630: Continues addDishToOrder. Declares dishDietSet, allergenConflicts, conflicts. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 2631-2640: Continues addDishToOrder. Declares blockingAllergens, friendlyDiet, meetsDiet, allBlockingRemovable. Iterates collections. Purpose: implement module logic.
+- Lines 2641-2650: Continues addDishToOrder. Branches on conditions. Purpose: implement module logic.
+- Lines 2651-2660: Continues addDishToOrder. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 2661-2670: Continues addDishToOrder. Branches on conditions. Purpose: implement module logic.
+- Lines 2671-2680: Defines function removeDishFromOrder. Declares index. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 2681-2690: Continues removeDishFromOrder. Declares addBtn. Selects elements: .addToOrderBtn[data-dish-name="${esc(dishName)}"]. Sets element properties: disabled=false. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 2691-2700: Defines function bindOrderItemSelectButtons. Selects elements: .orderItemSelect. Sets element properties: textContent=Add to order. Iterates collections. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 2701-2710: Continues bindOrderItemSelectButtons. Declares dishName, isSelected. Binds events: click. Updates classes (toggle: is-selected). Branches on conditions. Returns values from this block. Purpose: respond to user actions.
+- Lines 2711-2720: Defines function updateOrderSidebar. Declares sidebarItemsContainer. Selects elements: orderSidebarItems. Branches on conditions. Returns values from this block. Purpose: connect logic to DOM elements.
+- Lines 2721-2730: Continues updateOrderSidebar. Declares sidebarOrders, hasItems. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 2731-2740: Continues updateOrderSidebar. Sets element properties: dataset.mode=== "cleared" && !hasItems) {, dataset.mode=== "cleared" && hasItems) {, dataset.mode=cart. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 2741-2750: Continues updateOrderSidebar. Declares itemsHTML. Sets element properties: innerHTML=<div class="orderSidebarEmpty">No items added yet</div>. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 2751-2760: Continues updateOrderSidebar. Iterates collections. Purpose: implement module logic.
+- Lines 2761-2770: Continues updateOrderSidebar. Selects elements: .orderItemRemove. Sets element properties: innerHTML=itemsHTML. Iterates collections. Purpose: update UI state and presentation.
+- Lines 2771-2780: Continues updateOrderSidebar. Declares dishName. Binds events: click. Branches on conditions. Purpose: respond to user actions.
+- Lines 2781-2790: Continues updateOrderSidebar. Branches on conditions. Purpose: implement module logic.
+- Lines 2791-2800: Defines function isOrderSidebarDisabled. Declares hasItems, sidebarOrders. Returns values from this block. Purpose: implement module logic.
+- Lines 2801-2810: Defines function setOrderSidebarVisibility. Declares sidebar. Selects elements: orderSidebar. Updates classes (add: minimized; remove: open, orderSidebarOpen). Sets inline styles: display=none. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 2811-2820: Continues setOrderSidebarVisibility. Declares hasContent. Updates classes (add: minimized; remove: open, orderSidebarOpen). Sets inline styles: display=hasContent ? "" : "none". Branches on conditions. Purpose: update UI state and presentation.
+- Lines 2821-2830: Defines function setOrderSidebarToggleLabel. Declares label, toggleBtn. Selects elements: orderSidebarToggleLabel, orderSidebarToggle. Sets element properties: textContent=text. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 2831-2840: Defines function getOrderSortValue. Declares candidates, candidate. Iterates collections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 2841-2850: Defines function pickMostRecentOrder. Declares parsed. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 2851-2860: Defines function isOrderActiveForBadge. Declares sorted. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 2861-2870: Continues isOrderActiveForBadge. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 2871-2880: Defines function getActiveOrderCount. Declares restaurantId, dismissed, orders, activeOrders. Iterates collections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 2881-2890: Continues getActiveOrderCount. Declares hasCartItems, isCleared. Sets element properties: dataset.mode=== "cleared". Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 2891-2900: Continues getActiveOrderCount. Declares cartCount, submittedCount, count. Iterates collections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 2901-2910: Defines function updateOrderSidebarBadge. Declares badge, count. Selects elements: orderSidebarBadge. Sets element properties: textContent=String(count). Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 2911-2920: Defines function setConfirmButtonVisibility. Branches on conditions. Purpose: implement module logic.
+- Lines 2921-2930: Defines function setConfirmButtonDisabled. Sets inline styles: display=visible ? "" : "none". Branches on conditions. Purpose: update UI state and presentation.
+- Lines 2931-2940: Continues setConfirmButtonDisabled. Declares isVisible, orderSidebarCustomHeight, orderSidebarLastExpandedHeight. Sets element properties: disabled=disabled. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 2941-2950: Defines function clampValue. Declares orderSidebarDragState, viewportHeight, collapsedHeight, allowCollapsed = false. Returns values from this block. Purpose: implement module logic.
+- Lines 2951-2960: Continues clampValue. Declares minHeight, maxHeight. Returns values from this block. Purpose: implement module logic.
+- Lines 2961-2970: Defines function getOrderSidebarCollapsedHeight. Declares sidebar, raw, parsed. Selects elements: orderSidebar. Branches on conditions. Returns values from this block. Purpose: connect logic to DOM elements.
+- Lines 2971-2980: Defines function setOrderSidebarHeight. Declares sidebar. Selects elements: orderSidebar. Branches on conditions. Returns values from this block. Purpose: connect logic to DOM elements.
+- Lines 2981-2990: Continues setOrderSidebarHeight. Declares sidebar, menuWrap, baseHeight, targetHeight, minHeight, maxHeight. Selects elements: .menuWrap, orderSidebar. Branches on conditions. Returns values from this block. Purpose: connect logic to DOM elements.
+- Lines 2991-3000: Defines function initOrderSidebarDrag. Declares header, sidebar. Selects elements: .orderSidebarHeader, orderSidebar. Branches on conditions. Purpose: connect logic to DOM elements.
+- Lines 3001-3010: Defines function onPointerDown. Selects elements: button. Branches on conditions. Returns values from this block. Purpose: connect logic to DOM elements.
+- Lines 3011-3020: Defines function onPointerMove. Updates classes (add: dragging). Branches on conditions. Purpose: update UI state and presentation.
+- Lines 3021-3030: Continues onPointerMove. Declares delta, collapseThreshold, nextHeight, minHeight, maxHeight. Updates classes (remove: minimized). Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 3031-3040: Continues onPointerMove. Declares shouldPersist. Updates classes (add: open, orderSidebarOpen). Branches on conditions. Purpose: update UI state and presentation.
+- Lines 3041-3050: Defines function onPointerUp. Declares finalHeight, collapseThreshold. Updates classes (remove: dragging). Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 3051-3060: Continues onPointerUp. Binds events: pointerdown. Returns values from this block. Purpose: respond to user actions.
+- Lines 3061-3070: Defines function hasSubmittedActiveOrder. Declares order. Binds events: pointermove, pointerup, pointercancel. Branches on conditions. Returns values from this block. Purpose: respond to user actions.
+- Lines 3071-3080: Continues hasSubmittedActiveOrder. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 3081-3090: Defines function updateConfirmButtonVisibility. Declares hasItems, clearedMode, selectedItems. Sets element properties: dataset.mode=== "cleared". Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 3091-3100: Defines function minimizeOrderSidebar. Declares sidebar. Selects elements: orderSidebar. Updates classes (add: minimized; remove: open). Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 3101-3110: Continues minimizeOrderSidebar. Updates classes (add: minimized; remove: orderSidebarOpen, open). Returns values from this block. Purpose: update UI state and presentation.
+- Lines 3111-3120: Defines function openOrderSidebar. Declares sidebar. Selects elements: orderSidebar. Branches on conditions. Returns values from this block. Purpose: connect logic to DOM elements.
+- Lines 3121-3130: Continues openOrderSidebar. Updates classes (add: open, orderSidebarOpen; remove: minimized). Returns values from this block. Purpose: update UI state and presentation.
+- Lines 3131-3140: Defines function toggleOrderSidebar. Declares sidebar. Selects elements: orderSidebar. Branches on conditions. Returns values from this block. Purpose: connect logic to DOM elements.
+- Lines 3141-3150: Defines function confirmOrder. Declares selectedItems. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 3151-3160: Defines function refreshOrderStatus. Declares orderRefreshTimerId, ORDER_REFRESH_INTERVAL_MS. Purpose: implement module logic.
+- Lines 3161-3170: Continues refreshOrderStatus. Declares restaurantId, orders, dismissed, filteredOrders, activeOrders, targetOrder. Iterates collections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 3171-3180: Continues refreshOrderStatus. Branches on conditions. Purpose: implement module logic.
+- Lines 3181-3190: Continues refreshOrderStatus. Branches on conditions. Purpose: implement module logic.
+- Lines 3191-3200: Defines function startOrderRefresh. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 3201-3210: Defines function stopOrderRefresh. Schedules timed work. Branches on conditions. Purpose: implement module logic.
+- Lines 3211-3220: Defines function initOrderSidebar. Declares restaurantId. Iterates collections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 3221-3230: Continues initOrderSidebar. Declares currentOrder. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 3231-3240: Continues initOrderSidebar. Declares confirmBtn. Selects elements: confirmOrderBtn. Purpose: connect logic to DOM elements.
+- Lines 3241-3250: Continues initOrderSidebar. Declares refreshBtn, sidebar. Selects elements: orderSidebarRefreshBtn, orderSidebar. Binds events: resize, click. Branches on conditions. Purpose: respond to user actions.
+- Lines 3251-3260: Continues initOrderSidebar. Binds events: click. Sets element properties: textContent=↻, disabled=true. Branches on conditions. Purpose: respond to user actions.
+- Lines 3261-3270: Continues initOrderSidebar. Sets inline styles: opacity=0.6, opacity=1. Sets element properties: disabled=false. Schedules timed work. Purpose: update UI state and presentation.
+- Lines 3271-3280: Defines function waitForMenu. Declares hasRestoredItems, menu. Selects elements: menu. Branches on conditions. Purpose: connect logic to DOM elements.
+- Lines 3281-3290: Continues waitForMenu. Declares overlays, titleEl, title. Selects elements: .overlay, .tTitle. Iterates collections. Branches on conditions. Purpose: connect logic to DOM elements.
+- Lines 3291-3300: Continues waitForMenu. Declares addBtn. Selects elements: .addToOrderBtn[data-dish-name]. Updates classes (add: selected). Sets element properties: disabled=true. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 3301-3310: Continues waitForMenu. Sets element properties: textContent=Added. Schedules timed work. Purpose: update UI state and presentation.
+- Lines 3311-3320: Continues waitForMenu. Schedules timed work. Branches on conditions. Purpose: implement module logic.
+- Lines 3321-3330: Continues waitForMenu. Declares order, ackBtn. Selects elements: ackBtn. Updates classes (add: on; remove: off). Sets element properties: textContent=Acknowledged. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 3331-3340: Continues waitForMenu. Schedules timed work. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 3341-3350: Continues waitForMenu. Returns values from this block. Purpose: implement module logic.
+- Lines 3351-3360: Continues waitForMenu. Purpose: implement module logic.
+- Lines 3361-3370: Continues waitForMenu. Returns values from this block. Purpose: implement module logic.
+- Lines 3371-3380: Continues waitForMenu. Returns values from this block. Purpose: implement module logic.
+- Lines 3381-3381: Continues waitForMenu. Purpose: implement module logic.
+
+## public/js/restaurant/unsaved-changes.js
+
+- Lines 1-10: Defines function initUnsavedChangesGuard. Branches on conditions. Exports module members. Purpose: expose helpers to other modules.
+- Lines 11-20: Continues initUnsavedChangesGuard. Declares backdrop, aiState, modalIsOpen. Returns values from this block. Purpose: implement module logic.
+- Lines 21-30: Continues initUnsavedChangesGuard. Declares dishNameModified, nameInput. Selects elements: aiAssistNameInput. Branches on conditions. Purpose: connect logic to DOM elements.
+- Lines 31-40: Continues initUnsavedChangesGuard. Declares dishNameHasUnsavedChanges, currentDishName, dataChanged. Branches on conditions. Purpose: implement module logic.
+- Lines 41-50: Continues initUnsavedChangesGuard. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 51-60: Defines function showUnsavedChangesModal. Declares existingModal, modal. Selects elements: unsavedChangesModal. Sets inline styles: cssText=`. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 61-70: Continues showUnsavedChangesModal. Purpose: implement module logic.
+- Lines 71-80: Continues showUnsavedChangesModal. Sets element properties: innerHTML=`. Purpose: update UI state and presentation.
+- Lines 81-90: Continues showUnsavedChangesModal. Purpose: implement module logic.
+- Lines 91-100: Continues showUnsavedChangesModal. Purpose: implement module logic.
+- Lines 101-110: Continues showUnsavedChangesModal. Branches on conditions. Purpose: implement module logic.
+- Lines 111-120: Continues showUnsavedChangesModal. Purpose: implement module logic.
+- Lines 121-130: Continues showUnsavedChangesModal. Purpose: implement module logic.
+- Lines 131-140: Continues showUnsavedChangesModal. Declares cancelBtn, leaveBtn. Selects elements: #unsavedChangesCancel, #unsavedChangesLeave. Binds events: mouseenter, mouseleave. Sets inline styles: background=rgba(148, 163, 184, 0.1), borderColor=rgba(148, 163, 184, 0.5). Purpose: respond to user actions.
+- Lines 141-150: Continues showUnsavedChangesModal. Binds events: mouseenter, mouseleave. Sets inline styles: background=transparent, borderColor=rgba(148, 163, 184, 0.3), background=#b91c1c, background=#dc2626. Purpose: respond to user actions.
+- Lines 151-160: Continues showUnsavedChangesModal. Binds events: click. Branches on conditions. Purpose: respond to user actions.
+- Lines 161-170: Defines function handleEscape. Binds events: click. Branches on conditions. Purpose: respond to user actions.
+- Lines 171-180: Defines function clearDirtyFlags. Binds events: keydown. Branches on conditions. Purpose: respond to user actions.
+- Lines 181-190: Defines function navigateWithCheck. Sets element properties: href=url. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 191-200: Continues navigateWithCheck. Binds events: beforeunload. Sets element properties: href=url. Branches on conditions. Returns values from this block. Purpose: respond to user actions.
+- Lines 201-210: Continues navigateWithCheck. Declares link, href. Selects elements: a[href]. Binds events: click. Branches on conditions. Returns values from this block. Purpose: respond to user actions.
+- Lines 211-220: Continues navigateWithCheck. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 221-230: Continues navigateWithCheck. Sets element properties: href=href. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 231-233: Continues navigateWithCheck. Purpose: implement module logic.
+
+## public/js/restaurant-boot.js
+
+- Lines 1-10: Declares SUPABASE_URL, SUPABASE_KEY, supabaseClient, createClient. Purpose: implement module logic.
+- Lines 11-20: Declares EditorLock, storageKey, sid. Iterates collections. Purpose: implement module logic.
+- Lines 21-30: Iterates collections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 31-40: Declares data. Iterates collections. Purpose: implement module logic.
+- Lines 41-50: Declares data, error. Branches on conditions. Purpose: implement module logic.
+- Lines 51-60: Iterates collections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 61-70: Returns values from this block. Purpose: implement module logic.
+- Lines 71-80: Returns values from this block. Purpose: implement module logic.
+- Lines 81-90: Declares data, error. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 91-100: Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 101-110: Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 111-120: Declares data, error. Branches on conditions. Purpose: implement module logic.
+- Lines 121-130: Runs general logic. Purpose: implement module logic.
+- Lines 131-140: Schedules timed work. Purpose: implement module logic.
+- Lines 141-150: Branches on conditions. Purpose: implement module logic.
+- Lines 151-160: Defines function releaseEditorLockSync. Declares token. Iterates collections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 161-170: Continues releaseEditorLockSync. Declares url. Returns values from this block. Purpose: implement module logic.
+- Lines 171-180: Continues releaseEditorLockSync. Serializes or parses JSON. Purpose: implement module logic.
+- Lines 181-190: Continues releaseEditorLockSync. Binds events: pagehide. Purpose: respond to user actions.
+- Lines 191-200: Defines function showEditorLockModal. Declares backdrop, titleEl, messageEl, userSpan. Selects elements: .editorLockMessage, editorLockBackdrop, editorLockTitle, editorLockUser. Binds events: beforeunload. Iterates collections. Purpose: respond to user actions.
+- Lines 201-210: Continues showEditorLockModal. Declares sinceSpan, infoEl. Selects elements: .editorLockInfo, editorLockSince. Sets element properties: textContent=Editor Open in Another Tab, innerHTML="You already have the editor open in <span>another browse.... Branches on conditions. Purpose: update UI state and presentation.
+- Lines 211-220: Continues showEditorLockModal. Sets element properties: textContent='Close the other tab and click "Check again" to continue ..., textContent=Editor Currently in Use, textContent="To avoid conflicts, only one person can edit at a time. ..., innerHTML=`<span id="editorLockUser">${lockedBy}</span> is currentl.... Branches on conditions. Purpose: update UI state and presentation.
+- Lines 221-230: Continues showEditorLockModal. Declares date. Sets element properties: textContent=lockedBy, textContent=date.toLocaleTimeString([], {. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 231-240: Defines function hideEditorLockModal. Declares backdrop. Selects elements: editorLockBackdrop, editorLockRefresh. Binds events: click. Sets inline styles: display=flex, display=none. Branches on conditions. Purpose: respond to user actions.
+- Lines 241-250: Continues hideEditorLockModal. Declares urlParams. Purpose: implement module logic.
+- Lines 251-260: Continues hideEditorLockModal. Declares slug, qrParam, isQrVisit, inviteToken, managerInviteBanner. Selects elements: managerInviteBanner. Iterates collections. Branches on conditions. Purpose: connect logic to DOM elements.
+- Lines 261-270: Continues hideEditorLockModal. Declares managerInviteSignupBtn. Selects elements: managerInviteSignupBtn. Updates classes (add: managerInviteBannerVisible). Sets inline styles: display=flex. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 271-280: Continues hideEditorLockModal. Sets element properties: href=`account.html?invite=${encodeURIComponent(inviteToken)}`. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 281-290: Continues hideEditorLockModal. Declares recentlyViewed, filtered. Uses storage keys: getItem:recentlyViewedRestaurants, setItem:recentlyViewedRestaurants. Serializes or parses JSON. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 291-300: Continues hideEditorLockModal. Declares HOW_IT_WORKS_SLUG, HOW_IT_WORKS_MENU_IMAGE, HOW_IT_WORKS_OVERLAYS. Serializes or parses JSON. Purpose: implement module logic.
+- Lines 301-310: Continues hideEditorLockModal. Purpose: implement module logic.
+- Lines 311-320: Continues hideEditorLockModal. Iterates collections. Purpose: implement module logic.
+- Lines 321-330: Continues hideEditorLockModal. Purpose: implement module logic.
+- Lines 331-340: Continues hideEditorLockModal. Purpose: implement module logic.
+- Lines 341-350: Continues hideEditorLockModal. Purpose: implement module logic.
+- Lines 351-360: Continues hideEditorLockModal. Purpose: implement module logic.
+- Lines 361-370: Continues hideEditorLockModal. Declares HOW_IT_WORKS_RESTAURANT. Purpose: implement module logic.
+- Lines 371-380: Continues hideEditorLockModal. Declares isHowItWorksSlug, editParam, hasExplicitModeParam, shouldStartInEditor. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 381-390: Continues hideEditorLockModal. Declares storedMode. Uses storage keys: getItem:clarivoreManagerMode. Branches on conditions. Purpose: implement module logic.
+- Lines 391-400: Continues hideEditorLockModal. Declares openLogParam. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 401-410: Continues hideEditorLockModal. Declares openConfirmParam. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 411-420: Defines function loadRestaurant. Declares managerRestaurantsList. Sets element properties: innerHTML='<div style="color: #ef4444. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 421-430: Continues loadRestaurant. Declares data, error. Supabase tables: restaurants (select). Returns values from this block. Purpose: load or persist data for the page.
+- Lines 431-440: Continues loadRestaurant. Sets element properties: innerHTML='<div style="color: #ef4444. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 441-450: Continues loadRestaurant. Declares allergies. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 451-460: Continues loadRestaurant. Declares diets, canEdit, OWNER_EMAIL, userRole, isOwner, data. Supabase tables: user_allergies (select). Branches on conditions. Purpose: load or persist data for the page.
+- Lines 461-470: Continues loadRestaurant. Declares data. Supabase tables: user_loved_dishes (select). Purpose: load or persist data for the page.
+- Lines 471-480: Continues loadRestaurant. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 481-490: Continues loadRestaurant. Declares data, error. Supabase tables: restaurant_managers (select). Branches on conditions. Purpose: load or persist data for the page.
+- Lines 491-500: Continues loadRestaurant. Sets element properties: href=restaurants.html. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 501-510: Continues loadRestaurant. Declares data. Supabase tables: restaurants. Iterates collections. Branches on conditions. Purpose: load or persist data for the page.
+- Lines 511-520: Continues loadRestaurant. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 521-530: Continues loadRestaurant. Declares restaurantIds, data. Supabase tables: restaurant_managers (select). Iterates collections. Branches on conditions. Purpose: load or persist data for the page.
+- Lines 531-540: Continues loadRestaurant. Declares data. Supabase tables: restaurants (select). Iterates collections. Branches on conditions. Purpose: load or persist data for the page.
+- Lines 541-550: Continues loadRestaurant. Purpose: implement module logic.
+- Lines 551-560: Continues loadRestaurant. Declares initialPage, wantsEditorMode, lockResult. Branches on conditions. Purpose: implement module logic.
+- Lines 561-570: Continues loadRestaurant. Branches on conditions. Purpose: implement module logic.
+- Lines 571-580: Continues loadRestaurant. Purpose: implement module logic.
+- Lines 581-590: Continues loadRestaurant. Declares bootPayload. Branches on conditions. Purpose: implement module logic.
+- Lines 591-600: Continues loadRestaurant. Purpose: implement module logic.
+- Lines 601-610: Continues loadRestaurant. Purpose: implement module logic.
+- Lines 611-620: Defines function loadTrainingRestaurant. Declares allergies, diets, userPayload. Purpose: implement module logic.
+- Lines 621-630: Continues loadTrainingRestaurant. Branches on conditions. Purpose: implement module logic.
+- Lines 631-640: Continues loadTrainingRestaurant. Declares data. Supabase tables: user_allergies (select). Purpose: load or persist data for the page.
+- Lines 641-650: Continues loadTrainingRestaurant. Declares restaurantClone, bootPayload. Serializes or parses JSON. Purpose: implement module logic.
+- Lines 651-660: Continues loadTrainingRestaurant. Purpose: implement module logic.
+- Lines 661-661: Continues loadTrainingRestaurant. Purpose: implement module logic.
+
+## public/js/restaurant-page.js
+
+- Lines 1-10: Iterates collections. Purpose: implement module logic.
+- Lines 11-20: Runs general logic. Purpose: implement module logic.
+- Lines 21-30: Runs general logic. Purpose: implement module logic.
+- Lines 31-40: Declares logDebug, setDebugJson, TABLET_ORDER_STATUSES. Iterates collections. Purpose: implement module logic.
+- Lines 41-50: Runs general logic. Purpose: implement module logic.
+- Lines 51-60: Declares m. Selects elements: meta[name="viewport"]. Iterates collections. Branches on conditions. Purpose: connect logic to DOM elements.
+- Lines 61-70: Declares ALLERGENS. Purpose: implement module logic.
+- Lines 71-80: Declares DIETS, ALLERGEN_ALIASES. Purpose: implement module logic.
+- Lines 81-90: Runs general logic. Purpose: implement module logic.
+- Lines 91-100: Runs general logic. Purpose: implement module logic.
+- Lines 101-110: Defines function openBrandIdentificationChoice. Declares showIngredientPhotoUploadModal, showPhotoAnalysisLoadingInRow, hidePhotoAnalysisLoadingInRow, updatePhotoAnalysisLoadingStatus, showPhotoAnalysisResultButton. Purpose: implement module logic.
+- Lines 111-120: Defines function openBrandVerification. Declares collectAllBrandItems, openChangeLog, openFeedbackModal, openReportIssueModal, rebuildBrandMemoryFromRestaurant, aiAssistState, .... Purpose: implement module logic.
+- Lines 121-130: Defines function renderAiTable. Declares openAiAssistant, handleAiAssistantResult, handleAiAssistantError, getAiAssistBackdrop, getAiAssistTableBody, ALLERGEN_EMOJI. Purpose: implement module logic.
+- Lines 131-140: Continues renderAiTable. Declares DIET_EMOJI. Purpose: implement module logic.
+- Lines 141-150: Defines function detectAllergensInText. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 151-160: Continues detectAllergensInText. Declares lower, found. Iterates collections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 161-170: Continues detectAllergensInText. Declares state. Purpose: implement module logic.
+- Lines 171-180: Defines function maybeInitHowItWorksTour. Declares hasUnsavedChanges, showUnsavedChangesModal, editorSaveApi, navigateWithCheck. Purpose: implement module logic.
+- Lines 181-190: Continues maybeInitHowItWorksTour. Declares rootOffsetPadding, mobileInfoPanel, currentMobileInfoItem, mobileViewerChrome. Sets element properties: href=url. Purpose: update UI state and presentation.
+- Lines 191-200: Defines function ensureMobileInfoPanel. Declares mobileZoomLevel, mobileViewerKeyHandler, zoomToOverlay, zoomOutOverlay, isOverlayZoomed, zoomedOverlayItem. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 201-210: Continues ensureMobileInfoPanel. Sets attributes: aria-live=polite. Sets inline styles: position=fixed, width=auto, zIndex=3500, background=rgba(11,16,32,0.94), backdropFilter=blur(14px). Branches on conditions. Purpose: update UI state and presentation.
+- Lines 211-220: Continues ensureMobileInfoPanel. Sets inline styles: webkitBackdropFilter=blur(14px), paddingBottom=calc(24px + env(safe-area-inset-bottom,0)), borderRadius=20px, display=none. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 221-230: Continues ensureMobileInfoPanel. Updates classes (remove: show). Sets inline styles: left=12px, right=12px, bottom=12px, display=none. Sets element properties: innerHTML=. Purpose: update UI state and presentation.
+- Lines 231-240: Defines function adjustMobileInfoPanelForZoom. Iterates collections. Returns values from this block. Purpose: implement module logic.
+- Lines 241-250: Defines function getIssueReportMeta. Declares user, pageUrl, accountName, firstName. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 251-260: Continues getIssueReportMeta. Declares lastName. Branches on conditions. Purpose: implement module logic.
+- Lines 261-270: Continues getIssueReportMeta. Returns values from this block. Purpose: implement module logic.
+- Lines 271-280: Defines function resizeLegendToFit. Declares legendRow, line1, line2, line1Text, line2Text. Selects elements: .legendText, legendRow, legendLine1, legendLine2. Branches on conditions. Returns values from this block. Purpose: connect logic to DOM elements.
+- Lines 281-290: Continues resizeLegendToFit. Declares width1. Sets inline styles: transform=none, transformOrigin=center, display=inline-block. Iterates collections. Purpose: update UI state and presentation.
+- Lines 291-300: Continues resizeLegendToFit. Declares width2, availableWidth, scale. Sets inline styles: transform=`scale(${scale})`. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 301-310: Defines function captureMenuBaseDimensions. Declares state, img. Selects elements: legendRow. Binds events: resize. Branches on conditions. Purpose: respond to user actions.
+- Lines 311-320: Defines function ensureMobileViewerChrome. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 321-330: Continues ensureMobileViewerChrome. Declares chrome. Selects elements: mobileViewerChrome. Sets element properties: innerHTML=`. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 331-340: Continues ensureMobileViewerChrome. Sets inline styles: display=none. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 341-350: Continues ensureMobileViewerChrome. Declares closeBtn, zoomOutBtn, zoomInBtn. Selects elements: #mobileViewerCloseBtn, #mobileZoomOutBtn, #mobileZoomInBtn. Sets attributes: aria-hidden=true. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 351-360: Defines function updateZoomIndicator. Declares indicator. Selects elements: mobileZoomValue. Sets element properties: textContent=`${Math.round(mobileZoomLevel * 100)}%`. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 361-370: Defines function updateFullScreenAllergySummary. Declares summary, uniqueKeys, selectedDiets, html. Selects elements: mobileViewerAllergySummary. Iterates collections. Branches on conditions. Returns values from this block. Purpose: connect logic to DOM elements.
+- Lines 371-380: Continues updateFullScreenAllergySummary. Declares allergenBadges, emoji. Iterates collections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 381-390: Continues updateFullScreenAllergySummary. Declares dietBadges, emoji. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 391-400: Continues updateFullScreenAllergySummary. Returns values from this block. Purpose: implement module logic.
+- Lines 401-410: Continues updateFullScreenAllergySummary. Sets element properties: innerHTML=html. Purpose: update UI state and presentation.
+- Lines 411-420: Defines function setMobileZoom. Declares state, img. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 421-430: Continues setMobileZoom. Declares width, inner, layer. Sets inline styles: width=width + "px". Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 431-440: Defines function resetMobileZoom. Declares state, img. Schedules timed work. Branches on conditions. Purpose: implement module logic.
+- Lines 441-450: Continues resetMobileZoom. Sets inline styles: width=. Schedules timed work. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 451-460: Defines function openMobileViewer. Declares chrome. Updates classes (add: mobileViewerActive). Sets attributes: aria-hidden=false. Sets inline styles: display=block. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 461-470: Defines function updatePanel. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 471-480: Continues updatePanel. Schedules timed work. Purpose: implement module logic.
+- Lines 481-490: Defines class to. Declares reapplySelection, layer. Selects elements: .overlayLayer. Schedules timed work. Iterates collections. Branches on conditions. Purpose: connect logic to DOM elements.
+- Lines 491-500: Continues to. Declares boxes. Selects elements: .overlay. Updates classes (add: selected; remove: selected). Iterates collections. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 501-510: Continues to. Schedules timed work. Purpose: implement module logic.
+- Lines 511-520: Continues to. Declares wrap, closeBtn. Selects elements: menu, mobileViewerCloseBtn. Schedules timed work. Branches on conditions. Purpose: connect logic to DOM elements.
+- Lines 521-530: Defines function closeMobileViewer. Binds events: keydown. Branches on conditions. Purpose: respond to user actions.
+- Lines 531-540: Continues closeMobileViewer. Updates classes (remove: mobileViewerActive, show). Sets attributes: aria-hidden=true. Sets inline styles: display=none. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 541-550: Continues closeMobileViewer. Sets element properties: innerHTML=. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 551-560: Continues closeMobileViewer. Declares openBtn, notice. Selects elements: #mobileMenuNotice .mobileMenuOpenBtn, mobileMenuNotice. Sets attributes: aria-hidden=false. Sets inline styles: display=flex. Sets element properties: dataset.enabled=== "1") {. Schedules timed work. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 561-570: Continues closeMobileViewer. Declares urlQR. Branches on conditions. Purpose: implement module logic.
+- Lines 571-580: Defines function shouldShowQrPromo. Declares v, QR_PROMO_STORAGE_KEY. Returns values from this block. Purpose: implement module logic.
+- Lines 581-590: Defines function dismissQrPromo. Declares qrPromoTimerId. Returns values from this block. Purpose: implement module logic.
+- Lines 591-600: Defines function queueQrPromoTimer. Schedules timed work. Branches on conditions. Purpose: implement module logic.
+- Lines 601-610: Defines function isDishInfoPopupOpen. Declares mobilePanel. Selects elements: mobileInfoPanel. Branches on conditions. Returns values from this block. Purpose: connect logic to DOM elements.
+- Lines 611-620: Defines function openQrPromo. Declares backdrop. Selects elements: qrPromoBackdrop. Schedules timed work. Iterates collections. Branches on conditions. Returns values from this block. Purpose: connect logic to DOM elements.
+- Lines 621-630: Defines function closeQrPromo. Declares backdrop. Selects elements: qrPromoBackdrop. Updates classes (add: show). Sets attributes: aria-hidden=false. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 631-640: Continues closeQrPromo. Declares isStandalone. Updates classes (remove: show). Sets attributes: aria-hidden=true. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 641-650: Defines function send. Sets element properties: href=restaurants.html, href=favorites.html, href=dish-search.html, href=my-dishes.html. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 651-660: Continues send. Declares params, url. Sets element properties: href=report-issue.html, href=url, href=p.to. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 661-670: Continues send. Declares params, url. Sets element properties: href=url, href=`restaurant.html?slug=${p.slug}`. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 671-680: Continues send. Declares payload, overlaysToSave, client, restaurantId. Branches on conditions. Purpose: implement module logic.
+- Lines 681-690: Continues send. Declares savedOverlay. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 691-700: Continues send. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 701-710: Continues send. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 711-720: Continues send. Branches on conditions. Purpose: implement module logic.
+- Lines 721-730: Continues send. Iterates collections. Purpose: implement module logic.
+- Lines 731-740: Continues send. Declares error. Serializes or parses JSON. Purpose: implement module logic.
+- Lines 741-750: Continues send. Supabase tables: restaurants (update). Branches on conditions. Purpose: load or persist data for the page.
+- Lines 751-760: Continues send. Serializes or parses JSON. Purpose: implement module logic.
+- Lines 761-770: Continues send. Serializes or parses JSON. Purpose: implement module logic.
+- Lines 771-780: Continues send. Iterates collections. Purpose: implement module logic.
+- Lines 781-790: Continues send. Declares nextRestaurant. Serializes or parses JSON. Branches on conditions. Purpose: implement module logic.
+- Lines 791-800: Continues send. Branches on conditions. Purpose: implement module logic.
+- Lines 801-810: Continues send. Declares updatedRestaurant. Branches on conditions. Purpose: implement module logic.
+- Lines 811-820: Continues send. Branches on conditions. Purpose: implement module logic.
+- Lines 821-830: Continues send. Purpose: implement module logic.
+- Lines 831-840: Continues send. Declares rawChangePayload, changePayload. Branches on conditions. Purpose: implement module logic.
+- Lines 841-850: Continues send. Declares authorName. Serializes or parses JSON. Branches on conditions. Purpose: implement module logic.
+- Lines 851-860: Continues send. Declares first, last. Branches on conditions. Purpose: implement module logic.
+- Lines 861-870: Continues send. Declares storedChanges. Serializes or parses JSON. Branches on conditions. Purpose: implement module logic.
+- Lines 871-880: Continues send. Purpose: implement module logic.
+- Lines 881-890: Continues send. Purpose: implement module logic.
+- Lines 891-900: Continues send. Declares errorPayload. Purpose: implement module logic.
+- Lines 901-910: Continues send. Serializes or parses JSON. Purpose: implement module logic.
+- Lines 911-920: Continues send. Returns values from this block. Purpose: implement module logic.
+- Lines 921-930: Continues send. Declares client, restaurantId, timestamp. Branches on conditions. Purpose: implement module logic.
+- Lines 931-940: Continues send. Declares userName, data, error. Supabase tables: restaurants (select, update). Branches on conditions. Purpose: load or persist data for the page.
+- Lines 941-950: Continues send. Declares first, last. Branches on conditions. Purpose: implement module logic.
+- Lines 951-960: Continues send. Declares confirmPayload. Purpose: implement module logic.
+- Lines 961-970: Continues send. Serializes or parses JSON. Purpose: implement module logic.
+- Lines 971-980: Continues send. Purpose: implement module logic.
+- Lines 981-990: Continues send. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 991-1000: Continues send. Declares logs. Purpose: implement module logic.
+- Lines 1001-1010: Continues send. Returns values from this block. Purpose: implement module logic.
+- Lines 1011-1020: Continues send. Declares orderFlow. Purpose: implement module logic.
+- Lines 1021-1030: Continues send. Purpose: implement module logic.
+- Lines 1031-1040: Continues send. Purpose: implement module logic.
+- Lines 1041-1050: Defines function requestSignIn. Declares slugParam. Purpose: implement module logic.
+- Lines 1051-1060: Continues requestSignIn. Declares payload, qrPromoBackdrop, qrPromoCloseBtn, qrPromoSignupBtn. Selects elements: qrPromoBackdrop, qrPromoClose, qrPromoSignup. Branches on conditions. Purpose: connect logic to DOM elements.
+- Lines 1061-1070: Continues requestSignIn. Binds events: click. Branches on conditions. Purpose: respond to user actions.
+- Lines 1071-1080: Continues requestSignIn. Declares inviteParam. Sets element properties: href=`account.html?invite=${encodeURIComponent(inviteParam)}`. Iterates collections. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 1081-1090: Defines function norm. Declares esc. Purpose: implement module logic.
+- Lines 1091-1100: Defines function cap. Iterates collections. Purpose: implement module logic.
+- Lines 1101-1110: Defines function setOverlayPulseColor. Declares borderColor, match, rgbParts. Iterates collections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 1111-1120: Continues setOverlayPulseColor. Sets inline styles: zIndex=1010. Iterates collections. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 1121-1130: Defines function hidePageLoader. Declares loader. Selects elements: pageLoader. Updates classes (add: hidden). Schedules timed work. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 1131-1140: Continues hidePageLoader. Declares mobileZoomApi, renderGroupedSourcesHtml. Purpose: implement module logic.
+- Lines 1141-1150: Continues hidePageLoader. Purpose: implement module logic.
+- Lines 1151-1160: Defines function normalizeDietLabel. Declares lower, match, fmtDate, x. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 1161-1170: Defines function fmtDateTime. Declares x. Returns values from this block. Purpose: implement module logic.
+- Lines 1171-1180: Continues fmtDateTime. Declares aiAssistantApi. Returns values from this block. Purpose: implement module logic.
+- Lines 1181-1190: Continues fmtDateTime. Purpose: implement module logic.
+- Lines 1191-1200: Continues fmtDateTime. Purpose: implement module logic.
+- Lines 1201-1210: Continues fmtDateTime. Purpose: implement module logic.
+- Lines 1211-1220: Continues fmtDateTime. Purpose: implement module logic.
+- Lines 1221-1230: Continues fmtDateTime. Declares feedbackModalsApi. Purpose: implement module logic.
+- Lines 1231-1240: Continues fmtDateTime. Declares getWeeksAgoInfo, x, now. Iterates collections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 1241-1250: Continues fmtDateTime. Declares today, compareDate, diffDays, diffWeeks. Iterates collections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 1251-1260: Continues fmtDateTime. Declares text. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 1261-1270: Continues fmtDateTime. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 1271-1280: Continues fmtDateTime. Iterates collections. Returns values from this block. Purpose: implement module logic.
+- Lines 1281-1290: Defines function daysAgo. Declares info. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 1291-1300: Defines function div. Sets element properties: innerHTML=html. Iterates collections. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 1301-1310: Defines function num. Declares it, coords, maxCoord, looksLikeThousandScale. Iterates collections. Returns values from this block. Purpose: implement module logic.
+- Lines 1311-1320: Continues num. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 1321-1330: Continues num. Declares x, y, w, h. Purpose: implement module logic.
+- Lines 1331-1340: Defines function normalizeRestaurant. Declares pIdx. Returns values from this block. Purpose: implement module logic.
+- Lines 1341-1350: Continues normalizeRestaurant. Declares id, menuImage, menuImages, menuImagesArray. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 1351-1360: Continues normalizeRestaurant. Declares lastConfirmed, overlays. Returns values from this block. Purpose: implement module logic.
+- Lines 1361-1370: Continues normalizeRestaurant. Iterates collections. Purpose: implement module logic.
+- Lines 1371-1380: Defines function configureModalClose. Declares closeBtn, client. Selects elements: modalCloseBtn. Sets inline styles: display=visible ? "inline-flex" : "none". Branches on conditions. Purpose: update UI state and presentation.
+- Lines 1381-1390: Continues configureModalClose. Declares payload. Branches on conditions. Purpose: implement module logic.
+- Lines 1391-1400: Continues configureModalClose. Declares error. Supabase tables: change_logs (insert). Iterates collections. Branches on conditions. Returns values from this block. Purpose: load or persist data for the page.
+- Lines 1401-1410: Defines function fetchChangeLogEntries. Declares client, query. Supabase tables: change_logs (select). Branches on conditions. Purpose: load or persist data for the page.
+- Lines 1411-1420: Defines function computeStatus. Declares hasAllergenReqs, data, error. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 1421-1430: Continues computeStatus. Declares hasDietReqs, allergenHits, hasAllergenIssues, removableAllergenSet. Iterates collections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 1431-1440: Continues computeStatus. Declares allergenRemovableAll, itemDiets, meetsDietReqs. Branches on conditions. Purpose: implement module logic.
+- Lines 1441-1450: Continues computeStatus. Declares canBeMadeForDiets, allergenConflicts, unmetDiets. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 1451-1460: Continues computeStatus. Declares conflicts, itemAllergens, conflictingAllergens, allConflictingAllergensRemovable. Iterates collections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 1461-1470: Continues computeStatus. Declares blockingIngredients, allBlockingIngredientsRemovable, hasBlocks. Purpose: implement module logic.
+- Lines 1471-1480: Continues computeStatus. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 1481-1490: Continues computeStatus. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 1491-1500: Defines function hasCrossContamination. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 1501-1510: Continues hasCrossContamination. Declares hasAllergenCross, hasDietCross. Purpose: implement module logic.
+- Lines 1511-1520: Defines function currentScale. Returns values from this block. Purpose: implement module logic.
+- Lines 1521-1530: Defines function tooltipBodyHTML. Declares status, details, hasCross. Returns values from this block. Purpose: implement module logic.
+- Lines 1531-1540: Continues tooltipBodyHTML. Declares isMobile, showDetails, html. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 1541-1550: Continues tooltipBodyHTML. Declares hits, removableSet, unsafeHits, removableHits. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 1551-1560: Continues tooltipBodyHTML. Declares list, emoji, allergenLower, text. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 1561-1570: Continues tooltipBodyHTML. Declares ingredientInfo, ingredients, detailStyle. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 1571-1580: Continues tooltipBodyHTML. Declares list, emoji. Iterates collections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 1581-1590: Continues tooltipBodyHTML. Declares allergenLower, text, ingredientInfo, ingredients. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 1591-1600: Continues tooltipBodyHTML. Declares detailStyle. Returns values from this block. Purpose: implement module logic.
+- Lines 1601-1610: Continues tooltipBodyHTML. Declares freeFromAllergens, successLines, emoji. Iterates collections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 1611-1620: Continues tooltipBodyHTML. Declares hasUserDiets. Iterates collections. Purpose: implement module logic.
+- Lines 1621-1630: Continues tooltipBodyHTML. Declares itemDietSet, removableAllergens, allergenConflicts. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 1631-1640: Continues tooltipBodyHTML. Declares isDietMet, emoji. Iterates collections. Purpose: implement module logic.
+- Lines 1641-1650: Continues tooltipBodyHTML. Declares dietLower, conflicts, itemAllergens, conflictingAllergens. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 1651-1660: Continues tooltipBodyHTML. Declares allConflictingAllergensRemovable. Branches on conditions. Purpose: implement module logic.
+- Lines 1661-1670: Continues tooltipBodyHTML. Declares blockingIngredients, allBlockingIngredientsRemovable, hasRemovableBlockers. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 1671-1680: Continues tooltipBodyHTML. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 1681-1690: Continues tooltipBodyHTML. Declares canBeMade. Branches on conditions. Purpose: implement module logic.
+- Lines 1691-1700: Continues tooltipBodyHTML. Declares hasBlockingIngredientsInfo. Branches on conditions. Purpose: implement module logic.
+- Lines 1701-1710: Continues tooltipBodyHTML. Declares noBlockingIngredients, noConflictingAllergens. Branches on conditions. Purpose: implement module logic.
+- Lines 1711-1720: Continues tooltipBodyHTML. Branches on conditions. Purpose: implement module logic.
+- Lines 1721-1730: Continues tooltipBodyHTML. Declares dietText, ingredientNames. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 1731-1740: Continues tooltipBodyHTML. Declares detailStyle. Purpose: implement module logic.
+- Lines 1741-1750: Continues tooltipBodyHTML. Declares allergenCrossHits. Iterates collections. Purpose: implement module logic.
+- Lines 1751-1760: Continues tooltipBodyHTML. Declares dietCrossHits, allCrossItems, emoji. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 1761-1770: Continues tooltipBodyHTML. Declares emoji, crossList. Iterates collections. Purpose: implement module logic.
+- Lines 1771-1780: Continues tooltipBodyHTML. Returns values from this block. Purpose: implement module logic.
+- Lines 1781-1790: Defines function toggleLoveDishInTooltip. Declares dishKey, isLoved, labelEl. Selects elements: [data-role="label"]. Sets element properties: disabled=true. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 1791-1800: Continues toggleLoveDishInTooltip. Declares error. Updates classes (remove: loved). Supabase tables: user_loved_dishes (delete). Branches on conditions. Purpose: load or persist data for the page.
+- Lines 1801-1810: Continues toggleLoveDishInTooltip. Declares img, error. Selects elements: img. Sets attributes: title=Add to favorite dishes, aria-label=Add to favorites, aria-pressed=false. Sets element properties: textContent=Favorite, src=images/heart-icon.svg. Supabase tables: user_loved_dishes. Branches on conditions. Purpose: load or persist data for the page.
+- Lines 1811-1820: Continues toggleLoveDishInTooltip. Branches on conditions. Purpose: implement module logic.
+- Lines 1821-1830: Continues toggleLoveDishInTooltip. Declares img. Selects elements: img. Updates classes (add: loved). Sets attributes: title=Remove from favorite dishes, aria-label=Remove from favorites, aria-pressed=true. Sets element properties: textContent=Favorited, src=images/heart-icon.svg. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 1831-1840: Defines function navigateWithUnsavedGuard. Sets element properties: disabled=false. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 1841-1850: Defines function getNavUserPayload. Sets element properties: href=targetUrl. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 1851-1860: Defines function getNavCurrentPageId. Declares role, userMetadata. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 1861-1870: Continues getNavCurrentPageId. Declares restaurantSlug. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 1871-1880: Defines function attachNavButtonGuards. Selects elements: button[data-href]. Binds events: click. Iterates collections. Branches on conditions. Returns values from this block. Purpose: respond to user actions.
+- Lines 1881-1890: Defines function fitTopbarNav. Purpose: implement module logic.
+- Lines 1891-1900: Continues fitTopbarNav. Declares nav, available. Selects elements: .simple-nav. Updates classes (add: nav-compact, nav-ultra; remove: nav-compact, nav-ultra). Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 1901-1910: Defines function scheduleTopbarFit. Declares el. Selects elements: topbar. Schedules timed work. Branches on conditions. Returns values from this block. Purpose: connect logic to DOM elements.
+- Lines 1911-1920: Continues scheduleTopbarFit. Declares isQrExperience, brand. Updates classes (toggle: qrMode). Sets element properties: innerHTML=, innerHTML=`<img src="https://static.wixstatic.com/media/945e9d_2b97..., href=home.html. Purpose: update UI state and presentation.
+- Lines 1921-1930: Continues scheduleTopbarFit. Declares navWrap, navUser, OWNER_EMAIL, isOwner, isManager, currentMode, .... Uses storage keys: getItem:clarivoreManagerMode. Purpose: implement module logic.
+- Lines 1931-1940: Continues scheduleTopbarFit. Declares showCtaOnly, signInBtn. Binds events: click. Sets element properties: textContent=Sign in / Create an account, href=account.html?mode=signin, dataset.href=account.html?mode=signin. Branches on conditions. Purpose: respond to user actions.
+- Lines 1941-1950: Continues scheduleTopbarFit. Declares currentPageId. Purpose: implement module logic.
+- Lines 1951-1960: Continues scheduleTopbarFit. Declares modeToggleContainer. Selects elements: modeToggleContainer. Sets inline styles: display=flex. Sets element properties: innerHTML=`. Iterates collections. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 1961-1970: Continues scheduleTopbarFit. Declares toggle, modeValue, targetUrl, slugValue. Selects elements: modeToggle. Branches on conditions. Purpose: connect logic to DOM elements.
+- Lines 1971-1980: Continues scheduleTopbarFit. Branches on conditions. Purpose: implement module logic.
+- Lines 1981-1990: Continues scheduleTopbarFit. Declares nextHref. Sets element properties: href=nextHref. Uses storage keys: setItem:clarivoreManagerMode. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 1991-2000: Continues scheduleTopbarFit. Sets inline styles: display=none. Sets element properties: href=nextHref. Uses storage keys: setItem:clarivoreManagerMode. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 2001-2010: Continues scheduleTopbarFit. Declares pageTip, tipInteracted. Selects elements: tip. Binds events: resize. Schedules timed work. Branches on conditions. Purpose: respond to user actions.
+- Lines 2011-2020: Continues scheduleTopbarFit. Declares tipPinned, pinnedOverlayItem. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 2021-2030: Continues scheduleTopbarFit. Declares close. Binds events: click. Branches on conditions. Returns values from this block. Purpose: respond to user actions.
+- Lines 2031-2040: Continues scheduleTopbarFit. Binds events: touchstart. Branches on conditions. Returns values from this block. Purpose: respond to user actions.
+- Lines 2041-2050: Defines function prefersMobileInfo. Declares hasCoarse, hasFine. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 2051-2060: Defines function mobileCompactBodyHTML. Iterates collections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 2061-2070: Continues mobileCompactBodyHTML. Declares details, allergenRed, allergenGreen, allergenYellow. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 2071-2080: Continues mobileCompactBodyHTML. Declares dietRed, dietGreen, dietYellow, dishAllergens, dishCrossContamination, allergenLower. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 2081-2090: Continues mobileCompactBodyHTML. Declares isDanger, isCrossContamination, emoji, ingredientInfo. Branches on conditions. Purpose: implement module logic.
+- Lines 2091-2100: Continues mobileCompactBodyHTML. Declares ingredients. Branches on conditions. Purpose: implement module logic.
+- Lines 2101-2110: Continues mobileCompactBodyHTML. Declares itemDietSet, crossContaminationDietSet, isDietMet. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 2111-2120: Continues mobileCompactBodyHTML. Declares emoji, dietLower, hasCrossContamination, blockingIngredients. Branches on conditions. Purpose: implement module logic.
+- Lines 2121-2130: Continues mobileCompactBodyHTML. Declares ingredientNames. Iterates collections. Purpose: implement module logic.
+- Lines 2131-2140: Continues mobileCompactBodyHTML. Purpose: implement module logic.
+- Lines 2141-2150: Defines function renderColumn. Declares col. Iterates collections. Purpose: implement module logic.
+- Lines 2151-2160: Continues renderColumn. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 2161-2170: Continues renderColumn. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 2171-2180: Continues renderColumn. Branches on conditions. Purpose: implement module logic.
+- Lines 2181-2190: Continues renderColumn. Declares html. Returns values from this block. Purpose: implement module logic.
+- Lines 2191-2200: Defines function renderMobileInfo. Sets inline styles: position=fixed. Iterates collections. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 2201-2210: Continues renderMobileInfo. Declares isFullScreen. Sets inline styles: left=12px, right=12px, bottom=12px. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 2211-2220: Continues renderMobileInfo. Updates classes (remove: show). Sets inline styles: zIndex=3500, display=none. Sets element properties: innerHTML=. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 2221-2230: Defines class from. Selects elements: .overlay. Updates classes (remove: show, selected). Sets inline styles: display=none. Sets element properties: innerHTML=. Iterates collections. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 2231-2240: Continues from. Declares dishName, bodyHTML. Returns values from this block. Purpose: implement module logic.
+- Lines 2241-2250: Continues from. Declares isInOrder, restaurantId, dishKey, isLoved, showFavorite. Purpose: implement module logic.
+- Lines 2251-2260: Continues from. Sets element properties: innerHTML=`. Purpose: update UI state and presentation.
+- Lines 2261-2270: Continues from. Purpose: implement module logic.
+- Lines 2271-2280: Defines function handleLoveClick. Declares loveBtn. Selects elements: #mobileFavoriteBtn. Branches on conditions. Purpose: connect logic to DOM elements.
+- Lines 2281-2290: Continues handleLoveClick. Declares addToOrderBtn, actionsContainer, addToOrderConfirmEl. Selects elements: .mobileAddToOrderBtn, .mobileInfoActions. Binds events: click, touchend. Purpose: respond to user actions.
+- Lines 2291-2300: Continues handleLoveClick. Declares dishNameAttr. Binds events: click. Branches on conditions. Purpose: respond to user actions.
+- Lines 2301-2310: Continues handleLoveClick. Declares details, hasIssues, severity. Branches on conditions. Purpose: implement module logic.
+- Lines 2311-2320: Continues handleLoveClick. Declares result. Purpose: implement module logic.
+- Lines 2321-2330: Continues handleLoveClick. Declares severity. Sets element properties: textContent=Added, disabled=true. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 2331-2340: Continues handleLoveClick. Purpose: implement module logic.
+- Lines 2341-2350: Continues handleLoveClick. Declares isFullScreenCheck. Sets inline styles: background=rgba(11,16,32,0.94), backdropFilter=blur(14px), webkitBackdropFilter=blur(14px). Branches on conditions. Purpose: update UI state and presentation.
+- Lines 2351-2360: Continues handleLoveClick. Declares closeBtn. Selects elements: .mobileInfoClose. Updates classes (add: show). Sets inline styles: display=block. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 2361-2370: Defines function closePanel. Binds events: click, touchend, keydown. Branches on conditions. Purpose: respond to user actions.
+- Lines 2371-2380: Defines function syncMobileInfoPanel. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 2381-2390: Continues syncMobileInfoPanel. Updates classes (remove: show). Sets inline styles: display=none. Sets element properties: innerHTML=. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 2391-2400: Continues syncMobileInfoPanel. Binds events: resize. Updates classes (remove: show). Sets inline styles: display=none. Sets element properties: innerHTML=. Branches on conditions. Purpose: respond to user actions.
+- Lines 2401-2410: Defines function showTipIn. Binds events: scroll. Purpose: respond to user actions.
+- Lines 2411-2420: Continues showTipIn. Declares vv, zoom, offsetLeft. Purpose: implement module logic.
+- Lines 2421-2430: Continues showTipIn. Declares offsetTop, viewportWidth, viewportHeight, scrollX, scrollY. Purpose: implement module logic.
+- Lines 2431-2440: Continues showTipIn. Declares showButtons, restaurantId, dishName, dishKey. Branches on conditions. Purpose: implement module logic.
+- Lines 2441-2450: Continues showTipIn. Declares isLoved, loveButtonId, loveButtonHTML. Purpose: implement module logic.
+- Lines 2451-2460: Continues showTipIn. Declares closeButtonHTML, hoverMessage. Iterates collections. Purpose: implement module logic.
+- Lines 2461-2470: Continues showTipIn. Declares isInOrder, addToOrderButton. Sets element properties: innerHTML=`. Purpose: update UI state and presentation.
+- Lines 2471-2480: Continues showTipIn. Purpose: implement module logic.
+- Lines 2481-2490: Continues showTipIn. Sets inline styles: display=block, paddingBottom=4px, paddingBottom=. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 2491-2500: Continues showTipIn. Branches on conditions. Purpose: implement module logic.
+- Lines 2501-2510: Continues showTipIn. Declares loveBtn, restaurantIdAttr, dishNameAttr. Selects elements: .love-button-tooltip. Branches on conditions. Purpose: connect logic to DOM elements.
+- Lines 2511-2520: Defines function handleLoveClick. Branches on conditions. Purpose: implement module logic.
+- Lines 2521-2530: Continues handleLoveClick. Declares addToOrderBtn. Selects elements: .addToOrderBtn. Binds events: click, touchend. Branches on conditions. Purpose: respond to user actions.
+- Lines 2531-2540: Continues handleLoveClick. Declares addToOrderConfirmEl, dishNameAttr. Binds events: click. Branches on conditions. Purpose: respond to user actions.
+- Lines 2541-2550: Continues handleLoveClick. Declares details, hasIssues. Branches on conditions. Purpose: implement module logic.
+- Lines 2551-2560: Continues handleLoveClick. Declares severity. Purpose: implement module logic.
+- Lines 2561-2570: Continues handleLoveClick. Declares result. Sets element properties: textContent=Added, disabled=true. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 2571-2580: Continues handleLoveClick. Declares severity. Branches on conditions. Purpose: implement module logic.
+- Lines 2581-2590: Continues handleLoveClick. Purpose: implement module logic.
+- Lines 2591-2600: Continues handleLoveClick. Declares isMobile, layoutWidth, baseMaxWidth. Sets inline styles: transform=, transformOrigin=. Purpose: update UI state and presentation.
+- Lines 2601-2610: Continues handleLoveClick. Declares titleEl, closeEl. Selects elements: .tTitle, .tClose. Sets inline styles: maxWidth=baseMaxWidth + "px", padding=isMobile ? "8px" : "10px", borderRadius=isMobile ? "8px" : "10px", fontSize=isMobile ? "12px" : "14px", fontSize=isMobile ? "14px" : "16px". Branches on conditions. Purpose: update UI state and presentation.
+- Lines 2611-2620: Continues handleLoveClick. Declares loveBtnEl. Selects elements: .love-button-tooltip. Sets inline styles: padding=isMobile ? "3px 6px" : "4px 8px", fontSize=isMobile ? "12px" : "14px", borderRadius=isMobile ? "5px" : "6px". Branches on conditions. Purpose: update UI state and presentation.
+- Lines 2621-2630: Continues handleLoveClick. Declares noteEls, r, pad, visibleLeft. Selects elements: .note. Sets inline styles: borderRadius=isMobile ? "5px" : "6px", fontSize=isMobile ? "11px" : "13px")). Schedules timed work. Iterates collections. Purpose: update UI state and presentation.
+- Lines 2631-2640: Continues handleLoveClick. Declares visibleTop, visibleRight, visibleBottom, useAnchor, anchorLeft, anchorRight. Purpose: implement module logic.
+- Lines 2641-2650: Continues handleLoveClick. Declares anchorTop, anchorBottom, anchorCenterX, left, top. Purpose: implement module logic.
+- Lines 2651-2660: Continues handleLoveClick. Declares offset. Branches on conditions. Purpose: implement module logic.
+- Lines 2661-2670: Continues handleLoveClick. Declares anchorMiddle. Branches on conditions. Purpose: implement module logic.
+- Lines 2671-2680: Continues handleLoveClick. Declares pointerX, pointerY. Purpose: implement module logic.
+- Lines 2681-2690: Continues handleLoveClick. Branches on conditions. Purpose: implement module logic.
+- Lines 2691-2700: Continues handleLoveClick. Selects elements: .tClose. Sets inline styles: left=left + "px", top=top + "px". Branches on conditions. Purpose: update UI state and presentation.
+- Lines 2701-2710: Defines function hideTip. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 2711-2720: Defines class removal. Sets inline styles: display=none. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 2721-2730: Defines function renderCardsPage. Selects elements: .overlay, root. Updates classes (remove: selected). Iterates collections. Purpose: update UI state and presentation.
+- Lines 2731-2740: Continues renderCardsPage. Declares grid, isAdmin, isManager, filteredRestaurants. Selects elements: grid. Sets element properties: innerHTML=`<h1 style="text-align:center">Restaurants</h1><div class.... Branches on conditions. Purpose: update UI state and presentation.
+- Lines 2741-2750: Continues renderCardsPage. Declares thirtyDaysAgo, lastConfirmed. Iterates collections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 2751-2760: Continues renderCardsPage. Declares c. Iterates collections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 2761-2770: Continues renderCardsPage. Declares isAdmin, isManager, showAll, info. Selects elements: .btn. Branches on conditions. Returns values from this block. Purpose: connect logic to DOM elements.
+- Lines 2771-2780: Defines function renderSavedChips. Declares saved. Sets element properties: innerHTML=. Iterates collections. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 2781-2790: Continues renderSavedChips. Declares row. Sets inline styles: cssText="flex-wrap:nowrap. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 2791-2800: Continues renderSavedChips. Declares emoji, chip. Sets inline styles: cssText="flex-shrink:0. Iterates collections. Purpose: update UI state and presentation.
+- Lines 2801-2810: Defines function renderSavedDiets. Declares saved. Sets element properties: innerHTML=. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 2811-2820: Continues renderSavedDiets. Declares row, emoji. Sets inline styles: cssText="flex-wrap:nowrap. Iterates collections. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 2821-2830: Continues renderSavedDiets. Declares chip. Sets inline styles: cssText="flex-shrink:0. Purpose: update UI state and presentation.
+- Lines 2831-2840: Defines function renderSelectedChips. Declares selected. Sets element properties: innerHTML=. Iterates collections. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 2841-2850: Continues renderSelectedChips. Declares row, emoji, chip. Sets inline styles: cssText="flex-wrap:nowrap, cssText="flex-shrink:0. Iterates collections. Purpose: update UI state and presentation.
+- Lines 2851-2860: Defines function renderSelectedDiets. Declares selected. Sets element properties: innerHTML=. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 2861-2870: Continues renderSelectedDiets. Declares row, emoji. Sets inline styles: cssText="flex-wrap:nowrap. Iterates collections. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 2871-2880: Continues renderSelectedDiets. Declares chip. Sets inline styles: cssText="flex-shrink:0. Purpose: update UI state and presentation.
+- Lines 2881-2890: Defines function renderSelector. Declares row, sel. Sets attributes: role=list. Sets element properties: innerHTML=. Iterates collections. Purpose: update UI state and presentation.
+- Lines 2891-2900: Continues renderSelector. Declares isActive, emoji. Sets attributes: role=button, tabindex=0. Iterates collections. Purpose: update UI state and presentation.
+- Lines 2901-2910: Defines function toggle. Sets element properties: value=a, dataset.value=a. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 2911-2920: Continues toggle. Binds events: click. Uses storage keys: setItem:qrAllergies. Serializes or parses JSON. Branches on conditions. Purpose: respond to user actions.
+- Lines 2921-2930: Continues toggle. Binds events: touchend. Purpose: respond to user actions.
+- Lines 2931-2940: Continues toggle. Binds events: keydown. Branches on conditions. Purpose: respond to user actions.
+- Lines 2941-2950: Defines function renderDietSelector. Declares row. Sets element properties: innerHTML=. Purpose: update UI state and presentation.
+- Lines 2951-2960: Continues renderDietSelector. Declares sel, isActive, emoji. Sets attributes: role=list. Iterates collections. Purpose: update UI state and presentation.
+- Lines 2961-2970: Continues renderDietSelector. Sets attributes: role=button, tabindex=0. Purpose: update UI state and presentation.
+- Lines 2971-2980: Defines function toggle. Sets element properties: value=diet, dataset.value=diet. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 2981-2990: Continues toggle. Binds events: click. Uses storage keys: setItem:qrDiets. Serializes or parses JSON. Branches on conditions. Purpose: respond to user actions.
+- Lines 2991-3000: Continues toggle. Binds events: touchend. Purpose: respond to user actions.
+- Lines 3001-3010: Continues toggle. Binds events: keydown. Branches on conditions. Purpose: respond to user actions.
+- Lines 3011-3020: Continues toggle. Declares howItWorksTour. Purpose: implement module logic.
+- Lines 3021-3030: Defines function drawMenu. Branches on conditions. Purpose: implement module logic.
+- Lines 3031-3040: Continues drawMenu. Declares images. Sets element properties: innerHTML=. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 3041-3050: Defines function createMiniMapViewportUpdater. Declares inner, menuState. Sets element properties: innerHTML=`<div class="note" style="padding:16px">No menu image con.... Iterates collections. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 3051-3060: Continues createMiniMapViewportUpdater. Declares headerMiniMapImg, viewportBox, menuContainer, headerMiniMapLabel, sections, pageIndex. Selects elements: headerMiniMapImg, headerMiniMapViewport, menu, headerMiniMapLabel. Branches on conditions. Returns values from this block. Purpose: connect logic to DOM elements.
+- Lines 3061-3070: Continues createMiniMapViewportUpdater. Declares currentSection, miniMapSrc. Sets element properties: src=miniMapSrc. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 3071-3080: Continues createMiniMapViewportUpdater. Declares sectionImg, imgRect, containerRect. Sets element properties: textContent=Page 1. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 3081-3090: Continues createMiniMapViewportUpdater. Declares zoomState, scale, imgHeight, imgWidth. Purpose: implement module logic.
+- Lines 3091-3100: Continues createMiniMapViewportUpdater. Declares visibleTop, visibleBottom. Sets inline styles: display=none. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 3101-3110: Continues createMiniMapViewportUpdater. Declares visibleHeight, visibleLeft, visibleRight. Purpose: implement module logic.
+- Lines 3111-3120: Continues createMiniMapViewportUpdater. Declares visibleWidth, leftPercent, widthPercent, topPercent, heightPercent. Sets inline styles: display=none. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 3121-3130: Continues createMiniMapViewportUpdater. Declares miniMapRect, miniMapNaturalWidth, miniMapNaturalHeight, miniMapAspect, containerAspect. Iterates collections. Returns values from this block. Purpose: implement module logic.
+- Lines 3131-3140: Continues createMiniMapViewportUpdater. Declares thumbnailLeft, thumbnailTop. Branches on conditions. Purpose: implement module logic.
+- Lines 3141-3150: Continues createMiniMapViewportUpdater. Declares vpLeft, vpTop, vpWidth. Purpose: implement module logic.
+- Lines 3151-3160: Continues createMiniMapViewportUpdater. Declares vpHeight. Sets inline styles: display=block, top=`${vpTop}px`, height=`${vpHeight}px`, left=`${vpLeft}px`, width=`${vpWidth}px`. Purpose: update UI state and presentation.
+- Lines 3161-3170: Continues createMiniMapViewportUpdater. Declares scrollWrapper, scroller. Sets inline styles: cssText="width:100%, cssText="display:block. Iterates collections. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 3171-3180: Continues createMiniMapViewportUpdater. Declares section. Iterates collections. Purpose: implement module logic.
+- Lines 3181-3190: Continues createMiniMapViewportUpdater. Declares sectionInner, img. Sets inline styles: cssText="position:relative. Sets element properties: src=imgSrc, dataset.sectionIndex=idx. Purpose: update UI state and presentation.
+- Lines 3191-3200: Continues createMiniMapViewportUpdater. Declares layer. Binds events: dragstart. Sets inline styles: cssText="width:100%. Sets element properties: dataset.sectionIndex=idx. Purpose: respond to user actions.
+- Lines 3201-3210: Continues createMiniMapViewportUpdater. Iterates collections. Purpose: implement module logic.
+- Lines 3211-3220: Continues createMiniMapViewportUpdater. Declares updateMiniMapViewport. Purpose: implement module logic.
+- Lines 3221-3230: Defines function updateHeaderMiniMap. Declares sections, section. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 3231-3240: Continues updateHeaderMiniMap. Declares headerMiniMapImg, headerMiniMapLabel. Selects elements: headerMiniMapImg, headerMiniMapLabel. Sets element properties: textContent=`Page ${pageIndex + 1} of ${sections.length}`, src=section.img.src. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 3241-3250: Defines function updateCurrentSection. Declares sections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 3251-3260: Continues updateCurrentSection. Declares menuContainer, containerRect, containerMidY, sectionRect. Selects elements: menu. Iterates collections. Branches on conditions. Returns values from this block. Purpose: connect logic to DOM elements.
+- Lines 3261-3270: Continues updateCurrentSection. Declares activePage. Branches on conditions. Purpose: implement module logic.
+- Lines 3271-3280: Continues updateCurrentSection. Binds events: scroll. Purpose: respond to user actions.
+- Lines 3281-3290: Defines function initHeaderMiniMap. Declares sections. Branches on conditions. Purpose: implement module logic.
+- Lines 3291-3300: Continues initHeaderMiniMap. Binds events: load. Iterates collections. Branches on conditions. Purpose: respond to user actions.
+- Lines 3301-3310: Continues initHeaderMiniMap. Declares inner, displayImage, img. Sets element properties: src=displayImage. Purpose: update UI state and presentation.
+- Lines 3311-3320: Continues initHeaderMiniMap. Declares layer. Binds events: dragstart. Purpose: respond to user actions.
+- Lines 3321-3330: Continues initHeaderMiniMap. Purpose: implement module logic.
+- Lines 3331-3340: Defines function updateHeaderMiniMapSingle. Declares updateMiniMapViewport, headerMiniMapImg, headerMiniMapLabel. Selects elements: headerMiniMapImg, headerMiniMapLabel. Binds events: scroll. Sets element properties: src=img.src || displayImage. Branches on conditions. Purpose: respond to user actions.
+- Lines 3341-3350: Continues updateHeaderMiniMapSingle. Binds events: load. Sets element properties: textContent=Page 1. Branches on conditions. Purpose: respond to user actions.
+- Lines 3351-3360: Continues updateHeaderMiniMapSingle. Declares img, layer, inner. Iterates collections. Purpose: implement module logic.
+- Lines 3361-3370: Defines function setupPinchZoom. Declares pinchScale, pinchStartDist, pinchStartScale, isPinching. Iterates collections. Purpose: implement module logic.
+- Lines 3371-3380: Continues setupPinchZoom. Declares panStartX, translateX, startTranslateX, zoomWrapper. Selects elements: .pinchZoomWrapper. Iterates collections. Branches on conditions. Purpose: connect logic to DOM elements.
+- Lines 3381-3390: Continues setupPinchZoom. Sets inline styles: cssText="transform-origin:0 0. Purpose: update UI state and presentation.
+- Lines 3391-3400: Defines function getDistance. Declares dx, dy, applyTransform. Sets inline styles: transform=`translate(${translateX}px, ${translateY}px) scale(${pinc.... Iterates collections. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 3401-3410: Defines function resetZoom. Branches on conditions. Purpose: implement module logic.
+- Lines 3411-3420: Continues resetZoom. Binds events: touchstart. Sets inline styles: transform=. Branches on conditions. Purpose: respond to user actions.
+- Lines 3421-3430: Continues resetZoom. Declares cx, cy. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 3431-3440: Continues resetZoom. Branches on conditions. Purpose: implement module logic.
+- Lines 3441-3450: Continues resetZoom. Declares dist, newScale. Binds events: touchmove. Branches on conditions. Purpose: respond to user actions.
+- Lines 3451-3460: Continues resetZoom. Declares cx, cy. Branches on conditions. Purpose: implement module logic.
+- Lines 3461-3470: Continues resetZoom. Declares containerRect, localCx, localCy, scaleChange. Purpose: implement module logic.
+- Lines 3471-3480: Continues resetZoom. Declares dx, dy. Branches on conditions. Purpose: implement module logic.
+- Lines 3481-3490: Continues resetZoom. Binds events: touchend. Branches on conditions. Purpose: respond to user actions.
+- Lines 3491-3500: Continues resetZoom. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 3501-3510: Continues resetZoom. Declares lastTap. Binds events: touchend. Purpose: respond to user actions.
+- Lines 3511-3520: Continues resetZoom. Declares now. Branches on conditions. Purpose: implement module logic.
+- Lines 3521-3530: Defines function trackDishInteraction. Declares trackedDishes, OWNER_EMAIL. Iterates collections. Purpose: implement module logic.
+- Lines 3531-3540: Continues trackDishInteraction. Declares isOwner, isManager, dishName. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 3541-3550: Continues trackDishInteraction. Declares trackKey, restaurantId. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 3551-3560: Continues trackDishInteraction. Declares userAllergens, userDiets, dishStatus, dishAllergens, dishDiets, removable. Iterates collections. Purpose: implement module logic.
+- Lines 3561-3570: Continues trackDishInteraction. Declares hasAllergenConflict, hasDietConflict, nonRemovableAllergens. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 3571-3580: Continues trackDishInteraction. Branches on conditions. Purpose: implement module logic.
+- Lines 3581-3590: Continues trackDishInteraction. Declares error. Supabase tables: dish_interactions (insert). Purpose: load or persist data for the page.
+- Lines 3591-3600: Continues trackDishInteraction. Branches on conditions. Purpose: implement module logic.
+- Lines 3601-3610: Defines function showOverlayDetails. Declares pointerType. Branches on conditions. Purpose: implement module logic.
+- Lines 3611-3620: Continues showOverlayDetails. Declares useMobilePanel. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 3621-3630: Continues showOverlayDetails. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 3631-3640: Continues showOverlayDetails. Declares overlayBox. Selects elements: .overlay. Purpose: connect logic to DOM elements.
+- Lines 3641-3650: Defines class here. Declares isTransition, zoomToOverlay. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 3651-3660: Continues here. Updates classes (remove: show). Sets inline styles: display=none. Sets element properties: innerHTML=. Iterates collections. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 3661-3670: Continues here. Declares client, rect, clientX, clientY. Purpose: implement module logic.
+- Lines 3671-3680: Continues here. Declares isClick, currentItemId, pinnedItemId. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 3681-3690: Continues here. Purpose: implement module logic.
+- Lines 3691-3700: Continues here. Declares overlayBox. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 3701-3710: Continues here. Selects elements: .overlay. Updates classes (remove: selected). Iterates collections. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 3711-3720: Continues here. Updates classes (add: selected). Branches on conditions. Purpose: update UI state and presentation.
+- Lines 3721-3730: Continues here. Selects elements: .overlay. Updates classes (add: selected; remove: selected). Iterates collections. Purpose: update UI state and presentation.
+- Lines 3731-3740: Defines function renderLayer. Declares colors, allOverlays. Purpose: implement module logic.
+- Lines 3741-3750: Continues renderLayer. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 3751-3760: Continues renderLayer. Selects elements: .overlay. Iterates collections. Branches on conditions. Purpose: connect logic to DOM elements.
+- Lines 3761-3770: Continues renderLayer. Declares sectionOverlays. Sets inline styles: width=section.img.clientWidth + "px", height=section.img.clientHeight + "px". Iterates collections. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 3771-3780: Continues renderLayer. Iterates collections. Returns values from this block. Purpose: implement module logic.
+- Lines 3781-3790: Continues renderLayer. Selects elements: .overlay. Iterates collections. Branches on conditions. Purpose: connect logic to DOM elements.
+- Lines 3791-3800: Continues renderLayer. Declares pageForFilter, pageOverlays. Sets inline styles: width=img.clientWidth + "px", height=img.clientHeight + "px". Iterates collections. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 3801-3810: Defines function renderOverlayBox. Iterates collections. Purpose: implement module logic.
+- Lines 3811-3820: Defines class for. Declares box, st. Sets inline styles: borderColor=colors[st] || colors.neutral, left=(+it.x || 0) + "%", top=(+it.y || 0) + "%", width=(+it.w || 0) + "%", height=(+it.h || 0) + "%". Iterates collections. Purpose: update UI state and presentation.
+- Lines 3821-3830: Continues for. Declares isDanger, isCaution, hasCross. Iterates collections. Purpose: implement module logic.
+- Lines 3831-3840: Continues for. Declares warning, badge. Sets element properties: textContent=⚠, title=Cross-contamination risk. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 3841-3850: Continues for. Binds events: mousemove. Sets element properties: textContent=i, title=Details. Branches on conditions. Returns values from this block. Purpose: respond to user actions.
+- Lines 3851-3860: Continues for. Declares rect. Returns values from this block. Purpose: implement module logic.
+- Lines 3861-3870: Continues for. Binds events: mouseleave. Branches on conditions. Purpose: respond to user actions.
+- Lines 3871-3880: Continues for. Binds events: click. Purpose: respond to user actions.
+- Lines 3881-3890: Defines function applyInitialZoom. Sets inline styles: transform=, transformOrigin=0 0, overflow=auto. Purpose: update UI state and presentation.
+- Lines 3891-3900: Continues applyInitialZoom. Declares loadedCount, totalSections. Sets inline styles: maxHeight=. Iterates collections. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 3901-3910: Defines function onSectionLoad. Schedules timed work. Branches on conditions. Purpose: implement module logic.
+- Lines 3911-3920: Continues onSectionLoad. Schedules timed work. Branches on conditions. Purpose: implement module logic.
+- Lines 3921-3930: Continues onSectionLoad. Schedules timed work. Branches on conditions. Purpose: implement module logic.
+- Lines 3931-3940: Defines class if. Binds events: resize. Schedules timed work. Branches on conditions. Returns values from this block. Purpose: respond to user actions.
+- Lines 3941-3950: Continues if. Declares currentLeft, currentTop. Binds events: resize. Sets inline styles: display=== "block") {. Branches on conditions. Purpose: respond to user actions.
+- Lines 3951-3960: Continues if. Declares zoom, k, isMobile, vw, vh. Sets inline styles: transform=`scale(${k})`, transformOrigin=top left. Purpose: update UI state and presentation.
+- Lines 3961-3970: Continues if. Declares vw2, vh2, baseMaxWidth, pad. Sets inline styles: maxWidth=baseMaxWidth + "px". Schedules timed work. Purpose: update UI state and presentation.
+- Lines 3971-3980: Continues if. Declares r, left, top. Sets inline styles: left=left + "px", top=top + "px". Purpose: update UI state and presentation.
+- Lines 3981-3990: Defines function renderRestaurant. Purpose: implement module logic.
+- Lines 3991-4000: Continues renderRestaurant. Declares root, rs, urlParams, dishName, ackParam, hasSubmittedNotice. Selects elements: root. Branches on conditions. Purpose: connect logic to DOM elements.
+- Lines 4001-4010: Continues renderRestaurant. Declares isGuest. Branches on conditions. Purpose: implement module logic.
+- Lines 4011-4020: Continues renderRestaurant. Declares showGuestFilterToggle, guestFilterToggleHtml. Sets element properties: innerHTML=`. Purpose: update UI state and presentation.
+- Lines 4021-4030: Continues renderRestaurant. Purpose: implement module logic.
+- Lines 4031-4040: Continues renderRestaurant. Purpose: implement module logic.
+- Lines 4041-4050: Continues renderRestaurant. Purpose: implement module logic.
+- Lines 4051-4060: Continues renderRestaurant. Purpose: implement module logic.
+- Lines 4061-4070: Continues renderRestaurant. Purpose: implement module logic.
+- Lines 4071-4080: Continues renderRestaurant. Purpose: implement module logic.
+- Lines 4081-4090: Continues renderRestaurant. Iterates collections. Purpose: implement module logic.
+- Lines 4091-4100: Continues renderRestaurant. Purpose: implement module logic.
+- Lines 4101-4110: Defines function renderFilterChips. Declares chipsHost, dietChipsHost, allowInteractiveFilters. Selects elements: savedChips, dietChips. Branches on conditions. Purpose: connect logic to DOM elements.
+- Lines 4111-4120: Defines function syncGuestFilterToggleButtons. Declares buttons. Selects elements: [data-guest-filter-toggle]. Branches on conditions. Returns values from this block. Purpose: connect logic to DOM elements.
+- Lines 4121-4130: Defines function bindGuestFilterToggleButtons. Declares buttons. Selects elements: [data-guest-filter-toggle]. Updates classes (toggle: save). Sets inline styles: display=isGuest && state.ack && !state.isHowItWorks ? "inline-fle.... Sets element properties: textContent=state.guestFilterEditing ? "Save" : "Edit". Iterates collections. Purpose: update UI state and presentation.
+- Lines 4131-4140: Continues bindGuestFilterToggleButtons. Binds events: click. Iterates collections. Branches on conditions. Returns values from this block. Purpose: respond to user actions.
+- Lines 4141-4150: Continues bindGuestFilterToggleButtons. Declares menu. Selects elements: menu. Updates classes (remove: show). Sets inline styles: display=none. Purpose: update UI state and presentation.
+- Lines 4151-4160: Continues bindGuestFilterToggleButtons. Declares menuShouldShow. Selects elements: actionButtonsRow. Updates classes (add: show). Sets inline styles: display=flex. Sets element properties: innerHTML=. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 4161-4170: Continues bindGuestFilterToggleButtons. Declares headerMiniMap, headerMiniMapImg. Selects elements: legendRow, confirmedRow, headerMiniMap, headerMiniMapImg. Sets inline styles: display=flex, display=block. Schedules timed work. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 4171-4180: Continues bindGuestFilterToggleButtons. Declares headerMiniMapLabel, menuImages. Selects elements: headerMiniMapLabel. Sets element properties: textContent=menuImages.length > 1 ? `Page 1 of ${menuImages.length}` ..., src=menuImages[0]. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 4181-4190: Continues bindGuestFilterToggleButtons. Declares menuState, nextPage. Branches on conditions. Purpose: implement module logic.
+- Lines 4191-4200: Continues bindGuestFilterToggleButtons. Declares hasMenuImage, notice. Selects elements: mobileMenuNotice. Branches on conditions. Purpose: connect logic to DOM elements.
+- Lines 4201-4210: Defines function handler. Declares openBtn. Selects elements: .mobileMenuOpenBtn. Sets attributes: aria-hidden=false. Sets inline styles: display=flex. Sets element properties: dataset.enabled=1. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 4211-4220: Continues handler. Binds events: click. Branches on conditions. Purpose: respond to user actions.
+- Lines 4221-4230: Continues handler. Sets attributes: aria-hidden=true. Sets inline styles: display=none. Schedules timed work. Purpose: update UI state and presentation.
+- Lines 4231-4240: Continues handler. Declares b. Selects elements: ackBtn. Sets element properties: textContent=Acknowledged. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 4241-4250: Continues handler. Declares disclaimerBanner, headerMiniMap. Selects elements: disclaimerBanner, headerMiniMap. Updates classes (add: on; remove: off). Sets inline styles: display=none. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 4251-4260: Continues handler. Declares hasMenuImage. Selects elements: actionButtonsRow, legendRow, confirmedRow. Updates classes (add: show). Sets inline styles: display=flex, display=block. Schedules timed work. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 4261-4270: Continues handler. Declares notice, openBtn. Selects elements: .mobileMenuOpenBtn, mobileMenuNotice. Sets attributes: aria-hidden=false. Sets inline styles: display=flex. Sets element properties: dataset.enabled=1. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 4271-4280: Defines function handler. Binds events: click. Branches on conditions. Purpose: respond to user actions.
+- Lines 4281-4290: Continues handler. Declares notice. Selects elements: mobileMenuNotice. Sets attributes: aria-hidden=true. Sets inline styles: display=none. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 4291-4300: Continues handler. Declares openBtn. Selects elements: .mobileMenuOpenBtn. Sets attributes: aria-hidden=true. Sets inline styles: display=none. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 4301-4310: Continues handler. Updates classes (remove: show). Sets inline styles: display=none. Sets element properties: innerHTML=. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 4311-4320: Continues handler. Declares editBtn, editDietsBtn. Selects elements: editSavedBtn, editSavedDietsBtn. Branches on conditions. Purpose: connect logic to DOM elements.
+- Lines 4321-4330: Continues handler. Declares websiteBtn. Selects elements: restaurantWebsiteBtn. Branches on conditions. Purpose: connect logic to DOM elements.
+- Lines 4331-4340: Continues handler. Declares callBtn, feedbackBtn. Selects elements: restaurantCallBtn, restaurantFeedbackBtn. Sets element properties: href=`tel:${rs.phone}`. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 4341-4350: Continues handler. Declares reportIssueBtn. Selects elements: reportIssueBtn. Iterates collections. Branches on conditions. Purpose: connect logic to DOM elements.
+- Lines 4351-4360: Defines function renderEditor. Declares rs, root. Selects elements: root. Sets element properties: innerHTML=`. Purpose: update UI state and presentation.
+- Lines 4361-4370: Continues renderEditor. Purpose: implement module logic.
+- Lines 4371-4380: Continues renderEditor. Purpose: implement module logic.
+- Lines 4381-4390: Continues renderEditor. Purpose: implement module logic.
+- Lines 4391-4400: Continues renderEditor. Purpose: implement module logic.
+- Lines 4401-4410: Continues renderEditor. Purpose: implement module logic.
+- Lines 4411-4420: Continues renderEditor. Purpose: implement module logic.
+- Lines 4421-4430: Continues renderEditor. Iterates collections. Purpose: implement module logic.
+- Lines 4431-4440: Continues renderEditor. Purpose: implement module logic.
+- Lines 4441-4450: Continues renderEditor. Declares menu, menuImages. Selects elements: menu. Branches on conditions. Purpose: connect logic to DOM elements.
+- Lines 4451-4460: Continues renderEditor. Declares hasOriginalMenuImages, originalMenuImages. Serializes or parses JSON. Branches on conditions. Purpose: implement module logic.
+- Lines 4461-4470: Continues renderEditor. Declares currentPageIndex, applyCurrentPageOnLoad. Branches on conditions. Purpose: implement module logic.
+- Lines 4471-4480: Continues renderEditor. Declares editorSections, updateEditorMiniMap, inner, img, overlayLayer, editorSectionsApi. Iterates collections. Purpose: implement module logic.
+- Lines 4481-4490: Continues renderEditor. Purpose: implement module logic.
+- Lines 4491-4500: Continues renderEditor. Declares rebuildEditorSectionsFromMenuImages. Purpose: implement module logic.
+- Lines 4501-4510: Defines function syncEditorMenuImages. Declares shouldBeMulti, isMulti. Serializes or parses JSON. Branches on conditions. Purpose: implement module logic.
+- Lines 4511-4520: Continues syncEditorMenuImages. Sets element properties: src=menuImages[0] || "". Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 4521-4530: Continues syncEditorMenuImages. Binds events: load. Branches on conditions. Returns values from this block. Purpose: respond to user actions.
+- Lines 4531-4540: Defines function applyPendingMenuIndexRemap. Declares updateMenuNavigationUI, menuTopNav, menuBottomNav. Selects elements: menuTopNav, menuBottomNav. Sets inline styles: display=none. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 4541-4550: Continues applyPendingMenuIndexRemap. Declares oldToNewIndex, removedIndices. Iterates collections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 4551-4560: Continues applyPendingMenuIndexRemap. Declares overlayPageIndex. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 4561-4570: Continues applyPendingMenuIndexRemap. Declares overlayPageIndex. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 4571-4580: Continues applyPendingMenuIndexRemap. Declares overlays. Serializes or parses JSON. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 4581-4590: Continues applyPendingMenuIndexRemap. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 4591-4600: Continues applyPendingMenuIndexRemap. Serializes or parses JSON. Purpose: implement module logic.
+- Lines 4601-4610: Defines function setDirty. Declares dirty. Selects elements: saveBtn. Sets inline styles: display=dirty. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 4611-4620: Continues setDirty. Declares pendingChanges, originalOverlaysRef. Serializes or parses JSON. Branches on conditions. Purpose: implement module logic.
+- Lines 4621-4630: Continues setDirty. Declares originalRestaurantSettings. Iterates collections. Purpose: implement module logic.
+- Lines 4631-4640: Defines function getPendingChanges. Declares setPendingChanges, getOriginalOverlaysRef, setOriginalOverlaysRef, getOriginalRestaurantSettings. Purpose: implement module logic.
+- Lines 4641-4650: Continues getPendingChanges. Declares editorHistoryApi, saveBtn, saveReviewApi, pushHistory, undo, redo. Selects elements: saveBtn. Purpose: connect logic to DOM elements.
+- Lines 4651-4660: Continues getPendingChanges. Purpose: implement module logic.
+- Lines 4661-4670: Continues getPendingChanges. Declares setSaveState, formatChangesForLog, describeOverlayChanges. Purpose: implement module logic.
+- Lines 4671-4680: Continues getPendingChanges. Declares mb, editorOverlayApi. Selects elements: modalBack. Purpose: connect logic to DOM elements.
+- Lines 4681-4690: Continues getPendingChanges. Declares drawAll, loadedCount. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 4691-4700: Defines function onLoad. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 4701-4710: Continues onLoad. Declares brandVerificationApi. Binds events: load. Branches on conditions. Purpose: respond to user actions.
+- Lines 4711-4720: Continues onLoad. Purpose: implement module logic.
+- Lines 4721-4730: Continues onLoad. Purpose: implement module logic.
+- Lines 4731-4740: Continues onLoad. Purpose: implement module logic.
+- Lines 4741-4750: Continues onLoad. Declares changeLogApi. Purpose: implement module logic.
+- Lines 4751-4760: Continues onLoad. Declares editorSettingsApi. Purpose: implement module logic.
+- Lines 4761-4770: Continues onLoad. Declares openRestaurantSettings, confirmBtn. Selects elements: confirmBtn. Branches on conditions. Purpose: connect logic to DOM elements.
+- Lines 4771-4780: Continues onLoad. Schedules timed work. Branches on conditions. Purpose: implement module logic.
+- Lines 4781-4790: Continues onLoad. Declares viewLogBtn, settingsBtn. Selects elements: viewLogBtn, settingsBtn. Branches on conditions. Purpose: connect logic to DOM elements.
+- Lines 4791-4800: Continues onLoad. Declares undoBtn. Selects elements: undoBtn. Branches on conditions. Purpose: connect logic to DOM elements.
+- Lines 4801-4810: Continues onLoad. Declares redoBtn. Selects elements: redoBtn. Iterates collections. Branches on conditions. Purpose: connect logic to DOM elements.
+- Lines 4811-4820: Defines function handleEditorKeydown. Binds events: keydown. Branches on conditions. Purpose: respond to user actions.
+- Lines 4821-4830: Defines function updateLastConfirmedText. Declares lastConfirmedText, now, isAdmin, isManager, showAll. Selects elements: lastConfirmedText. Branches on conditions. Purpose: connect logic to DOM elements.
+- Lines 4831-4840: Continues updateLastConfirmedText. Declares info. Sets inline styles: color=info.color, color=. Sets element properties: textContent="Last confirmed by staff: " + info.text, textContent="Last confirmed: " + fmtDateTime(now). Branches on conditions. Purpose: update UI state and presentation.
+- Lines 4841-4850: Continues updateLastConfirmedText. Declares newOverlay. Selects elements: addBox. Purpose: connect logic to DOM elements.
+- Lines 4851-4860: Continues updateLastConfirmedText. Purpose: implement module logic.
+- Lines 4861-4870: Continues updateLastConfirmedText. Declares detectDishesBtn, btn, originalText. Selects elements: detectDishesBtn. Sets element properties: disabled=true. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 4871-4880: Continues updateLastConfirmedText. Declares result. Sets element properties: textContent=🔍 Detecting dishes.... Branches on conditions. Purpose: update UI state and presentation.
+- Lines 4881-4890: Continues updateLastConfirmedText. Declares panel, currentDishNameEl, dishProgressEl, prevBtn. Selects elements: detectedDishesPanel, currentDishName, dishProgress, prevDishBtn. Sets element properties: textContent=originalText, disabled=false. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 4891-4900: Continues updateLastConfirmedText. Declares nextBtn, finishBtn, detectedDishes, currentDishIndex, dragMode, dragStart, .... Selects elements: nextDishBtn, finishMappingBtn. Purpose: connect logic to DOM elements.
+- Lines 4901-4910: Defines function showCurrentDish. Declares mapped, total. Sets inline styles: display=none. Sets element properties: textContent=All items mapped!, textContent=`${mapped} of ${total} items mapped`. Iterates collections. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 4911-4920: Continues showCurrentDish. Declares dish. Sets inline styles: display=inline-flex, cursor=. Sets element properties: textContent=dish.name, textContent=`Item ${currentDishIndex + 1} of ${total} (${mapped} mapp.... Returns values from this block. Purpose: update UI state and presentation.
+- Lines 4921-4930: Continues showCurrentDish. Sets inline styles: display=mapped > 0 ? "inline-flex" : "none", cursor=crosshair, display=block. Sets element properties: disabled=currentDishIndex <= 0, disabled=currentDishIndex >= total - 1. Purpose: update UI state and presentation.
+- Lines 4931-4940: Continues showCurrentDish. Branches on conditions. Purpose: implement module logic.
+- Lines 4941-4950: Continues showCurrentDish. Sets inline styles: display=none, cursor=. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 4951-4960: Defines function handleDragStart. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 4961-4970: Continues handleDragStart. Declares rect, x, y. Sets inline styles: cssText="position:absolute. Purpose: update UI state and presentation.
+- Lines 4971-4980: Defines function handleDragMove. Declares rect, x. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 4981-4990: Continues handleDragMove. Declares y, minX, minY, maxX, maxY. Sets inline styles: left=minX + "%", top=minY + "%", width=maxX - minX + "%". Purpose: update UI state and presentation.
+- Lines 4991-5000: Defines function handleDragEnd. Declares rect, x. Sets inline styles: height=maxY - minY + "%". Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 5001-5010: Continues handleDragEnd. Declares y, minX, minY, maxX, maxY, w. Purpose: implement module logic.
+- Lines 5011-5020: Continues handleDragEnd. Declares dish, newOverlay. Branches on conditions. Purpose: implement module logic.
+- Lines 5021-5030: Continues handleDragEnd. Purpose: implement module logic.
+- Lines 5031-5040: Continues handleDragEnd. Purpose: implement module logic.
+- Lines 5041-5050: Continues handleDragEnd. Branches on conditions. Purpose: implement module logic.
+- Lines 5051-5060: Continues handleDragEnd. Binds events: mousedown, mousemove, mouseup, mouseleave. Sets element properties: textContent=✓ Dishes Detected. Purpose: respond to user actions.
+- Lines 5061-5070: Continues handleDragEnd. Declares editorNavigationApi. Sets element properties: textContent=originalText, disabled=false. Purpose: update UI state and presentation.
+- Lines 5071-5080: Continues handleDragEnd. Purpose: implement module logic.
+- Lines 5081-5090: Continues handleDragEnd. Declares switchMenuPage. Purpose: implement module logic.
+- Lines 5091-5100: Continues handleDragEnd. Purpose: implement module logic.
+- Lines 5101-5110: Continues handleDragEnd. Declares backBtn, warningEl. Selects elements: backBtn, editorUnsavedWarning. Branches on conditions. Purpose: connect logic to DOM elements.
+- Lines 5111-5120: Continues handleDragEnd. Declares saveAndExitBtn, exitWithoutSavingBtn. Selects elements: editorSaveAndExitBtn. Sets inline styles: display=block. Purpose: update UI state and presentation.
+- Lines 5121-5130: Defines function handleSaveAndExit. Declares cancelExitBtn, uiChanges, comparisonChanges. Selects elements: editorCancelExitBtn. Sets inline styles: display=none. Purpose: update UI state and presentation.
+- Lines 5131-5140: Continues handleSaveAndExit. Declares allChanges, changeText. Serializes or parses JSON. Iterates collections. Purpose: implement module logic.
+- Lines 5141-5150: Continues handleSaveAndExit. Declares changesList, formattedChanges. Branches on conditions. Purpose: implement module logic.
+- Lines 5151-5160: Continues handleSaveAndExit. Purpose: implement module logic.
+- Lines 5161-5170: Defines function handleExitWithoutSaving. Sets inline styles: display=none. Purpose: update UI state and presentation.
+- Lines 5171-5180: Defines function handleCancelExit. Sets inline styles: display=none. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 5181-5190: Continues handleCancelExit. Declares newBtn. Branches on conditions. Purpose: implement module logic.
+- Lines 5191-5200: Continues handleCancelExit. Declares newBtn. Branches on conditions. Purpose: implement module logic.
+- Lines 5201-5210: Continues handleCancelExit. Branches on conditions. Purpose: implement module logic.
+- Lines 5211-5220: Continues handleCancelExit. Declares pendingDish. Schedules timed work. Iterates collections. Purpose: implement module logic.
+- Lines 5221-5230: Continues handleCancelExit. Declares matchIndex, itemId, searchName. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 5231-5240: Continues handleCancelExit. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 5241-5250: Continues handleCancelExit. Declares normalizedItem, normalizedSearch. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 5251-5260: Continues handleCancelExit. Iterates collections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 5261-5270: Continues handleCancelExit. Declares aiBtn. Selects elements: aiAssistBtn. Schedules timed work. Branches on conditions. Purpose: connect logic to DOM elements.
+- Lines 5271-5280: Continues handleCancelExit. Purpose: implement module logic.
+- Lines 5281-5290: Defines function openItemEditor. Declares body, hasExistingData. Selects elements: modalBody, modalTitle. Sets element properties: textContent=Edit item. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 5291-5300: Continues openItemEditor. Sets inline styles: display=none. Sets element properties: innerHTML=`<div class="algRow" style="grid-template-columns:1fr">. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 5301-5310: Continues openItemEditor. Purpose: implement module logic.
+- Lines 5311-5320: Continues openItemEditor. Purpose: implement module logic.
+- Lines 5321-5330: Continues openItemEditor. Declares list, existingIngredients, existingSummary. Selects elements: algList. Branches on conditions. Returns values from this block. Purpose: connect logic to DOM elements.
+- Lines 5331-5340: Continues openItemEditor. Declares sel, details, rem, cross. Sets element properties: dataset.aiIngredients=existingIngredients, dataset.aiIngredientSummary=existingSummary. Iterates collections. Purpose: update UI state and presentation.
+- Lines 5341-5350: Continues openItemEditor. Declares allergenTitle, row, b. Sets inline styles: cssText="margin: 0 0 12px 0. Sets element properties: textContent=Allergen Information. Iterates collections. Purpose: update UI state and presentation.
+- Lines 5351-5360: Continues openItemEditor. Declares inp, lab. Updates classes (add: active). Sets element properties: textContent=cap(a), value=details[a] || "", placeholder=Which part of the dish contains the allergen?, dataset.a=a. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 5361-5370: Continues openItemEditor. Declares cb, labCross, cbCross. Sets element properties: checked=rem.has(a), checked=cross.has(a). Purpose: update UI state and presentation.
+- Lines 5371-5380: Defines function reflect. Declares on. Sets inline styles: display=on ? "block" : "none", display=on ? "flex" : "none", display=flex. Purpose: update UI state and presentation.
+- Lines 5381-5390: Continues reflect. Updates classes (toggle: active). Purpose: update UI state and presentation.
+- Lines 5391-5400: Continues reflect. Declares dietTitle. Sets inline styles: cssText="margin: 24px 0 12px 0. Sets element properties: textContent=Dietary Preferences. Purpose: update UI state and presentation.
+- Lines 5401-5410: Continues reflect. Declares dietSel, row, b. Sets element properties: textContent=diet, dataset.diet=diet. Iterates collections. Purpose: update UI state and presentation.
+- Lines 5411-5420: Continues reflect. Updates classes (add: active; toggle: active). Branches on conditions. Purpose: update UI state and presentation.
+- Lines 5421-5430: Defines function updatePreview. Declares tmp. Selects elements: .algRow, itemName. Iterates collections. Purpose: connect logic to DOM elements.
+- Lines 5431-5440: Continues updatePreview. Declares btn, diet, on. Selects elements: .algBtn. Branches on conditions. Purpose: connect logic to DOM elements.
+- Lines 5441-5450: Continues updatePreview. Declares txt, checkboxes, isRem, isCross. Selects elements: .algInput, input[type="checkbox"]. Branches on conditions. Purpose: connect logic to DOM elements.
+- Lines 5451-5460: Continues updatePreview. Declares allergenConflicts. Purpose: implement module logic.
+- Lines 5461-5470: Continues updatePreview. Declares conflicts, hasConflict. Iterates collections. Returns values from this block. Purpose: implement module logic.
+- Lines 5471-5480: Continues updatePreview. Selects elements: previewBox. Sets element properties: innerHTML=tooltipBodyHTML(. Purpose: update UI state and presentation.
+- Lines 5481-5490: Defines function applyIngredientsFromAi. Iterates collections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 5491-5500: Continues applyIngredientsFromAi. Declares appealRows. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 5501-5510: Continues applyIngredientsFromAi. Sets element properties: dataset.aiIngredients=JSON.stringify(rows). Serializes or parses JSON. Iterates collections. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 5511-5520: Continues applyIngredientsFromAi. Declares recipeTextArea. Selects elements: aiAssistInput. Serializes or parses JSON. Branches on conditions. Purpose: connect logic to DOM elements.
+- Lines 5521-5530: Continues applyIngredientsFromAi. Declares parsed, appealInSaved. Serializes or parses JSON. Iterates collections. Purpose: implement module logic.
+- Lines 5531-5540: Continues applyIngredientsFromAi. Declares allergenDetailsMap, activeAllergens, activeMayContainAllergens, activeMayContainDiets. Purpose: implement module logic.
+- Lines 5541-5550: Continues applyIngredientsFromAi. Declares aggregatedIngredientNames, allergenIngredientInfo, activeDiets. Branches on conditions. Purpose: implement module logic.
+- Lines 5551-5560: Continues applyIngredientsFromAi. Declares dietBlockingInfo. Purpose: implement module logic.
+- Lines 5561-5570: Continues applyIngredientsFromAi. Declares allergens, mayContainAllergens, diets, mayContainDiets. Iterates collections. Purpose: implement module logic.
+- Lines 5571-5580: Continues applyIngredientsFromAi. Declares name, brand, isRemovable. Purpose: implement module logic.
+- Lines 5581-5590: Continues applyIngredientsFromAi. Declares key. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 5591-5600: Continues applyIngredientsFromAi. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 5601-5610: Continues applyIngredientsFromAi. Declares label, labelWithBrand, key. Iterates collections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 5611-5620: Continues applyIngredientsFromAi. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 5621-5630: Continues applyIngredientsFromAi. Branches on conditions. Purpose: implement module logic.
+- Lines 5631-5640: Continues applyIngredientsFromAi. Declares ingredientDietSet, hasGlutenAllergen, key. Returns values from this block. Purpose: implement module logic.
+- Lines 5641-5650: Continues applyIngredientsFromAi. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 5651-5660: Continues applyIngredientsFromAi. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 5661-5670: Continues applyIngredientsFromAi. Declares allergenConflicts. Purpose: implement module logic.
+- Lines 5671-5680: Continues applyIngredientsFromAi. Declares conflicts, hasConflict. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 5681-5690: Continues applyIngredientsFromAi. Declares uniqueAggregated. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 5691-5700: Continues applyIngredientsFromAi. Declares uniqueAggregated. Sets element properties: dataset.aiIngredientSummary=JSON.stringify(uniqueAggregated). Serializes or parses JSON. Iterates collections. Purpose: update UI state and presentation.
+- Lines 5701-5710: Continues applyIngredientsFromAi. Declares btn, allergen, key, input. Selects elements: .algRow, .algBtn, .algInput. Serializes or parses JSON. Iterates collections. Purpose: connect logic to DOM elements.
+- Lines 5711-5720: Continues applyIngredientsFromAi. Declares labels, remLabel, crossLabel, remChk, crossChk, isActive, .... Selects elements: .algChk, input. Updates classes (toggle: active). Branches on conditions. Purpose: update UI state and presentation.
+- Lines 5721-5730: Continues applyIngredientsFromAi. Sets inline styles: display=isActive ? "block" : "none", display=isActive ? "flex" : "none". Sets element properties: value=explanations.length, value=. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 5731-5740: Continues applyIngredientsFromAi. Declares allergenInfo. Sets inline styles: display=flex. Sets element properties: checked=allergenInfo && allergenInfo.allRemovable, checked=false. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 5741-5750: Continues applyIngredientsFromAi. Declares btn, diet, isActive. Selects elements: .algRow, .algBtn.dietBtn. Updates classes (toggle: active). Iterates collections. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 5751-5760: Continues applyIngredientsFromAi. Iterates collections. Purpose: implement module logic.
+- Lines 5761-5770: Continues applyIngredientsFromAi. Declares explanations. Branches on conditions. Purpose: implement module logic.
+- Lines 5771-5780: Continues applyIngredientsFromAi. Iterates collections. Purpose: implement module logic.
+- Lines 5781-5790: Continues applyIngredientsFromAi. Branches on conditions. Purpose: implement module logic.
+- Lines 5791-5800: Continues applyIngredientsFromAi. Branches on conditions. Purpose: implement module logic.
+- Lines 5801-5810: Continues applyIngredientsFromAi. Purpose: implement module logic.
+- Lines 5811-5820: Continues applyIngredientsFromAi. Branches on conditions. Purpose: implement module logic.
+- Lines 5821-5830: Continues applyIngredientsFromAi. Declares aiNameInput. Selects elements: aiAssistNameInput. Branches on conditions. Purpose: connect logic to DOM elements.
+- Lines 5831-5840: Continues applyIngredientsFromAi. Declares manualNameInput, currentName, inputValue, newName. Selects elements: itemName. Branches on conditions. Purpose: connect logic to DOM elements.
+- Lines 5841-5850: Continues applyIngredientsFromAi. Declares oldName. Sets element properties: value=newName. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 5851-5860: Continues applyIngredientsFromAi. Declares detail. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 5861-5870: Continues applyIngredientsFromAi. Declares cleanedBlockingInfo. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 5871-5880: Continues applyIngredientsFromAi. Branches on conditions. Purpose: implement module logic.
+- Lines 5881-5890: Continues applyIngredientsFromAi. Purpose: implement module logic.
+- Lines 5891-5900: Continues applyIngredientsFromAi. Declares seedText, isNewItem, existingIngredientRows. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 5901-5910: Continues applyIngredientsFromAi. Branches on conditions. Purpose: implement module logic.
+- Lines 5911-5920: Continues applyIngredientsFromAi. Declares hasAppeal. Serializes or parses JSON. Iterates collections. Purpose: implement module logic.
+- Lines 5921-5930: Continues applyIngredientsFromAi. Branches on conditions. Purpose: implement module logic.
+- Lines 5931-5940: Continues applyIngredientsFromAi. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 5941-5950: Continues applyIngredientsFromAi. Declares detail. Iterates collections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 5951-5960: Continues applyIngredientsFromAi. Purpose: implement module logic.
+- Lines 5961-5970: Continues applyIngredientsFromAi. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 5971-5980: Continues applyIngredientsFromAi. Purpose: implement module logic.
+- Lines 5981-5990: Continues applyIngredientsFromAi. Declares currentDishId. Iterates collections. Purpose: implement module logic.
+- Lines 5991-6000: Continues applyIngredientsFromAi. Returns values from this block. Purpose: implement module logic.
+- Lines 6001-6010: Continues applyIngredientsFromAi. Sets inline styles: display=none. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 6011-6020: Continues applyIngredientsFromAi. Declares oldName, oldAllergens, final. Selects elements: doneBtn. Purpose: connect logic to DOM elements.
+- Lines 6021-6030: Continues applyIngredientsFromAi. Declares btn, diet, on. Selects elements: .algRow, .algBtn. Iterates collections. Purpose: connect logic to DOM elements.
+- Lines 6031-6040: Continues applyIngredientsFromAi. Declares txt, checkboxes, isRem, isCross. Selects elements: .algInput, input[type="checkbox"]. Branches on conditions. Purpose: connect logic to DOM elements.
+- Lines 6041-6050: Continues applyIngredientsFromAi. Branches on conditions. Purpose: implement module logic.
+- Lines 6051-6060: Continues applyIngredientsFromAi. Branches on conditions. Purpose: implement module logic.
+- Lines 6061-6070: Continues applyIngredientsFromAi. Declares rawSummary, summary. Serializes or parses JSON. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 6071-6080: Continues applyIngredientsFromAi. Declares newName. Selects elements: itemName. Branches on conditions. Purpose: connect logic to DOM elements.
+- Lines 6081-6090: Continues applyIngredientsFromAi. Declares newAllergens, added, removed, allergenWord. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 6091-6100: Continues applyIngredientsFromAi. Declares allergenWord. Branches on conditions. Purpose: implement module logic.
+- Lines 6101-6110: Continues applyIngredientsFromAi. Declares allergenConflicts, conflicts, hasConflict. Iterates collections. Purpose: implement module logic.
+- Lines 6111-6120: Continues applyIngredientsFromAi. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 6121-6130: Continues applyIngredientsFromAi. Iterates collections. Purpose: implement module logic.
+- Lines 6131-6140: Continues applyIngredientsFromAi. Sets inline styles: display=none. Iterates collections. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 6141-6150: Continues applyIngredientsFromAi. Declares deleteWarning, confirmDeleteBtn, cancelDeleteBtn. Selects elements: editorDeleteWarning, editorConfirmDeleteBtn, editorCancelDeleteBtn, delBtn. Sets inline styles: display=block. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 6151-6160: Continues applyIngredientsFromAi. Sets inline styles: display=none. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 6161-6170: Continues applyIngredientsFromAi. Sets inline styles: display=none. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 6171-6180: Continues applyIngredientsFromAi. Sets inline styles: display=flex. Iterates collections. Purpose: update UI state and presentation.
+- Lines 6181-6190: Defines function renderReport. Declares root. Selects elements: root. Sets element properties: innerHTML=`< h1 > Report an issue</h1 >. Purpose: update UI state and presentation.
+- Lines 6191-6200: Continues renderReport. Declares name, email, message. Selects elements: rSend, rName, rEmail, rMsg. Branches on conditions. Returns values from this block. Purpose: connect logic to DOM elements.
+- Lines 6201-6210: Defines function updateRootOffset. Declares root, topbar. Selects elements: root, topbarOuter. Branches on conditions. Returns values from this block. Purpose: connect logic to DOM elements.
+- Lines 6211-6220: Defines function setRootOffsetPadding. Declares topbarBottom. Sets inline styles: cssText=`position:fixed. Purpose: update UI state and presentation.
+- Lines 6221-6230: Defines function setMenuScrollLock. Declares htmlEl, root. Selects elements: root. Updates classes (add: menuScrollLocked; remove: menuScrollLocked). Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 6231-6240: Defines function render. Declares result. Sets inline styles: cssText=. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 6241-6250: Continues render. Branches on conditions. Purpose: implement module logic.
+- Lines 6251-6260: Continues render. Returns values from this block. Purpose: implement module logic.
+- Lines 6261-6270: Continues render. Declares unsavedChangesGuard. Selects elements: aiAssistNameInput. Branches on conditions. Purpose: connect logic to DOM elements.
+- Lines 6271-6280: Defines function handleRestaurantMessage. Declares m. Branches on conditions. Purpose: implement module logic.
+- Lines 6281-6290: Continues handleRestaurantMessage. Sets inline styles: display=. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 6291-6300: Continues handleRestaurantMessage. Branches on conditions. Purpose: implement module logic.
+- Lines 6301-6310: Continues handleRestaurantMessage. Declares newRestaurant, newRestaurantId, oldRestaurantId. Branches on conditions. Purpose: implement module logic.
+- Lines 6311-6320: Continues handleRestaurantMessage. Iterates collections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 6321-6330: Continues handleRestaurantMessage. Declares currentOrder. Branches on conditions. Purpose: implement module logic.
+- Lines 6331-6340: Continues handleRestaurantMessage. Purpose: implement module logic.
+- Lines 6341-6350: Continues handleRestaurantMessage. Declares restored. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 6351-6360: Defines function waitForMenu. Declares menu. Selects elements: .overlay, menu. Branches on conditions. Purpose: connect logic to DOM elements.
+- Lines 6361-6370: Continues waitForMenu. Declares overlays, titleEl, title. Selects elements: .overlay, .tTitle. Iterates collections. Branches on conditions. Purpose: connect logic to DOM elements.
+- Lines 6371-6380: Continues waitForMenu. Declares addBtn. Selects elements: .addToOrderBtn[data-dish-name]. Updates classes (add: selected). Sets element properties: textContent=Added, disabled=true. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 6381-6390: Continues waitForMenu. Schedules timed work. Purpose: implement module logic.
+- Lines 6391-6400: Continues waitForMenu. Declares isAdmin, isManager. Schedules timed work. Branches on conditions. Purpose: implement module logic.
+- Lines 6401-6410: Continues waitForMenu. Declares thirtyDaysAgo, lastConfirmed. Iterates collections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 6411-6420: Continues waitForMenu. Branches on conditions. Purpose: implement module logic.
+- Lines 6421-6430: Continues waitForMenu. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 6431-6440: Continues waitForMenu. Branches on conditions. Purpose: implement module logic.
+- Lines 6441-6450: Continues waitForMenu. Declares s. Uses storage keys: getItem:qrAllergies. Serializes or parses JSON. Branches on conditions. Purpose: implement module logic.
+- Lines 6451-6460: Continues waitForMenu. Declares s, urlParamsForAck, dishNameFromUrl, ackParamFromUrl. Uses storage keys: getItem:qrDiets. Serializes or parses JSON. Branches on conditions. Purpose: implement module logic.
+- Lines 6461-6470: Continues waitForMenu. Branches on conditions. Purpose: implement module logic.
+- Lines 6471-6480: Continues waitForMenu. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 6481-6490: Continues waitForMenu. Branches on conditions. Purpose: implement module logic.
+- Lines 6491-6500: Continues waitForMenu. Declares normalized. Branches on conditions. Purpose: implement module logic.
+- Lines 6501-6510: Continues waitForMenu. Iterates collections. Purpose: implement module logic.
+- Lines 6511-6520: Continues waitForMenu. Schedules timed work. Branches on conditions. Purpose: implement module logic.
+- Lines 6521-6530: Continues waitForMenu. Declares hasSaveReview. Branches on conditions. Purpose: implement module logic.
+- Lines 6531-6540: Continues waitForMenu. Serializes or parses JSON. Purpose: implement module logic.
+- Lines 6541-6550: Continues waitForMenu. Declares errorMsg. Serializes or parses JSON. Branches on conditions. Purpose: implement module logic.
+- Lines 6551-6560: Continues waitForMenu. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 6561-6570: Continues waitForMenu. Branches on conditions. Purpose: implement module logic.
+- Lines 6571-6580: Continues waitForMenu. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 6581-6590: Continues waitForMenu. Schedules timed work. Branches on conditions. Purpose: implement module logic.
+- Lines 6591-6600: Continues waitForMenu. Schedules timed work. Branches on conditions. Purpose: implement module logic.
+- Lines 6601-6610: Continues waitForMenu. Binds events: message. Branches on conditions. Purpose: respond to user actions.
+- Lines 6611-6620: Continues waitForMenu. Purpose: implement module logic.
+
+## public/js/server-tablet.js
+
+- Lines 1-10: Runs general logic. Purpose: implement module logic.
+- Lines 11-20: Declares OWNER_EMAIL, statusContainer, queueContainer. Selects elements: server-status, server-queue. Purpose: connect logic to DOM elements.
+- Lines 21-30: Declares tabsContainer, refreshBtn, completedToggle, STATUS_DESCRIPTORS. Selects elements: server-tabs, refresh-btn, server-show-completed. Iterates collections. Purpose: connect logic to DOM elements.
+- Lines 31-40: Declares tabletState. Purpose: implement module logic.
+- Lines 41-50: Declares REJECTION_REMOVAL_DELAY_MS, AUTO_REFRESH_INTERVAL_MS, rejectedRemovalTimers, hiddenRejectedOrders, completedStatuses. Purpose: implement module logic.
+- Lines 51-60: Declares activeServerId, managedRestaurantIds, isOwner, unsubscribeRealtime. Purpose: implement module logic.
+- Lines 61-70: Declares previousOrderStatuses, autoRefreshTimerId, activeRefreshPromise, showCompleted. Binds events: change. Sets element properties: checked=false. Branches on conditions. Purpose: respond to user actions.
+- Lines 71-80: Defines function ensureActiveServerId. Declares groups. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 81-90: Defines function groupOrdersByServer. Declares relevantStatuses. Purpose: implement module logic.
+- Lines 91-100: Continues groupOrdersByServer. Declares map, order. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 101-110: Defines function parseServerId. Declares serverId. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 111-120: Defines function formatStatusBadge. Declares value, descriptor. Returns values from this block. Purpose: implement module logic.
+- Lines 121-130: Defines function getOrderTimestamps. Declares date, history, submittedEntry, submittedTime. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 131-140: Defines function renderStatusSummary. Declares updates. Iterates collections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 141-150: Continues renderStatusSummary. Declares awaitingApproval, queuedForKitchen, parts. Iterates collections. Purpose: implement module logic.
+- Lines 151-160: Defines function renderServerTabs. Declares groups. Sets element properties: innerHTML=parts.join(''), innerHTML=. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 161-170: Defines function renderServerQueue. Declares buttons, name, isActive. Sets element properties: innerHTML=buttons.join(''). Iterates collections. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 171-180: Continues renderServerQueue. Declares groups. Sets element properties: innerHTML=`. Iterates collections. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 181-190: Continues renderServerQueue. Declares orders. Sets element properties: innerHTML=`. Iterates collections. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 191-200: Continues renderServerQueue. Declares cards, tableLabel, dishes. Iterates collections. Returns values from this block. Purpose: implement module logic.
+- Lines 201-210: Continues renderServerQueue. Declares allergies, diets, actions. Branches on conditions. Purpose: implement module logic.
+- Lines 211-220: Continues renderServerQueue. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 221-230: Continues renderServerQueue. Declares submittedTimeStr, updatesHtml, submittedTime, updates. Iterates collections. Purpose: implement module logic.
+- Lines 231-240: Continues renderServerQueue. Returns values from this block. Purpose: implement module logic.
+- Lines 241-250: Continues renderServerQueue. Purpose: implement module logic.
+- Lines 251-260: Defines function findOrder. Sets element properties: innerHTML=cards. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 261-270: Defines function refreshOrders. Declares orders. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 271-280: Defines function setOrders. Declares orders. Returns values from this block. Purpose: implement module logic.
+- Lines 281-290: Continues setOrders. Declares order, previousStatus. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 291-300: Continues setOrders. Declares orderId. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 301-310: Defines function startRealtime. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 311-320: Continues startRealtime. Declares index. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 321-330: Continues startRealtime. Declares previousStatus. Branches on conditions. Purpose: implement module logic.
+- Lines 331-340: Continues startRealtime. Purpose: implement module logic.
+- Lines 341-350: Defines function startAutoRefresh. Schedules timed work. Purpose: implement module logic.
+- Lines 351-360: Defines function stopAutoRefresh. Branches on conditions. Purpose: implement module logic.
+- Lines 361-370: Defines function handleServerAction. Declares order. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 371-380: Continues handleServerAction. Declares previousStatus. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 381-390: Continues handleServerAction. Declares rejectionReason, confirmed, reason. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 391-400: Continues handleServerAction. Binds events: click. Purpose: respond to user actions.
+- Lines 401-410: Continues handleServerAction. Declares button, serverId. Selects elements: [data-server-id], [data-action]. Binds events: click. Branches on conditions. Returns values from this block. Purpose: respond to user actions.
+- Lines 411-420: Continues handleServerAction. Declares action, orderId. Binds events: click. Sets element properties: textContent=Refreshing..., disabled=true. Branches on conditions. Returns values from this block. Purpose: respond to user actions.
+- Lines 421-430: Defines function requireAuth. Declares data, error. Sets element properties: textContent=Refresh orders, disabled=false. Purpose: update UI state and presentation.
+- Lines 431-440: Continues requireAuth. Declares user. Sets element properties: href=account.html?redirect=server-tablet. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 441-450: Defines function showUnauthorized. Sets element properties: innerHTML=`. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 451-460: Defines function bootstrap. Declares user, role, isManager. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 461-470: Continues bootstrap. Declares managerRestaurants. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 471-480: Continues bootstrap. Iterates collections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 481-490: Continues bootstrap. Binds events: beforeunload. Purpose: respond to user actions.
+- Lines 491-500: Defines function ensureRejectionDialogStyles. Declares rejectionDialogStylesInjected, style. Sets element properties: textContent=`. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 501-510: Continues ensureRejectionDialogStyles. Purpose: implement module logic.
+- Lines 511-520: Continues ensureRejectionDialogStyles. Purpose: implement module logic.
+- Lines 521-530: Continues ensureRejectionDialogStyles. Purpose: implement module logic.
+- Lines 531-540: Continues ensureRejectionDialogStyles. Purpose: implement module logic.
+- Lines 541-550: Continues ensureRejectionDialogStyles. Purpose: implement module logic.
+- Lines 551-560: Continues ensureRejectionDialogStyles. Purpose: implement module logic.
+- Lines 561-570: Continues ensureRejectionDialogStyles. Purpose: implement module logic.
+- Lines 571-580: Continues ensureRejectionDialogStyles. Purpose: implement module logic.
+- Lines 581-590: Defines function showRejectionConfirm. Declares backdrop, dialog, guestName. Sets element properties: innerHTML=`. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 591-600: Continues showRejectionConfirm. Declares textarea, cancelBtn. Selects elements: textarea, .server-modal-cancel. Iterates collections. Purpose: connect logic to DOM elements.
+- Lines 601-610: Defines function cleanup. Declares confirmBtn, onKeyDown. Selects elements: .server-modal-confirm. Branches on conditions. Purpose: connect logic to DOM elements.
+- Lines 611-620: Continues cleanup. Binds events: click. Branches on conditions. Purpose: respond to user actions.
+- Lines 621-630: Continues cleanup. Binds events: keydown. Purpose: respond to user actions.
+- Lines 631-640: Defines function clearRejectedRemoval. Declares timer. Branches on conditions. Purpose: implement module logic.
+- Lines 641-650: Defines function removeRejectedOrder. Declares index, order. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 651-660: Defines function scheduleRejectedRemoval. Declares timer. Schedules timed work. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 661-670: Defines function handleRejectedOrderLifecycle. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 671-680: Defines function isOrderHidden. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 681-690: Defines function shouldShowOrder. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 691-697: Continues shouldShowOrder. Declares timestampValue, parsed. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+
+## public/js/shared-nav.js
+
+- Lines 1-10: Iterates collections. Purpose: implement module logic.
+- Lines 11-20: Defines function checkAuthRedirect. Declares currentPath, currentPage, urlParams. Branches on conditions. Exports module members. Purpose: expose helpers to other modules.
+- Lines 21-30: Continues checkAuthRedirect. Declares isQRUser. Iterates collections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 31-40: Continues checkAuthRedirect. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 41-50: Defines function syncNavLayout. Declares delta, fits. Updates classes (toggle: nav-centered). Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 51-60: Defines function bindNavLayout. Declares handleResize. Binds events: resize, orientationchange. Branches on conditions. Returns values from this block. Purpose: respond to user actions.
+- Lines 61-70: Continues bindNavLayout. Declares triggerRect, prevDisplay, prevVisibility, wasHidden, dropdownRect, fallbackWidth. Sets inline styles: visibility=hidden, display=block. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 71-80: Continues bindNavLayout. Declares width, left, maxLeft, top, maxHeight. Sets inline styles: maxHeight=`${Math.round(maxHeight)}px`. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 81-90: Defines function bindDropdownPositioning. Declares groups. Selects elements: .nav-group. Sets inline styles: overflowY=auto, display=prevDisplay, visibility=prevVisibility. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 91-100: Defines function updateAll. Declares trigger, dropdown. Selects elements: .nav-dropdown-trigger, .nav-dropdown-content. Iterates collections. Branches on conditions. Returns values from this block. Purpose: connect logic to DOM elements.
+- Lines 101-110: Continues updateAll. Declares trigger, dropdown. Selects elements: .nav-dropdown-trigger, .nav-dropdown-content. Sets inline styles: display=none, position=fixed. Iterates collections. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 111-120: Defines function show. Sets inline styles: display=none, display=block. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 121-130: Defines function closeNow. Declares hide. Sets inline styles: display=none. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 131-140: Continues closeNow. Schedules timed work. Branches on conditions. Purpose: implement module logic.
+- Lines 141-150: Continues closeNow. Binds events: mouseenter, focus, mouseleave, click. Sets inline styles: display=== 'block') {. Branches on conditions. Purpose: respond to user actions.
+- Lines 151-160: Defines function handle. Binds events: mouseenter, mouseleave. Branches on conditions. Purpose: respond to user actions.
+- Lines 161-170: Continues handle. Declares dropdown, trigger. Binds events: resize, scroll, click. Sets inline styles: display=none. Branches on conditions. Returns values from this block. Purpose: respond to user actions.
+- Lines 171-180: Defines function setupNav. Declares navContainer. Selects elements: .simple-nav. Branches on conditions. Returns values from this block. Exports module members. Purpose: connect logic to DOM elements.
+- Lines 181-190: Continues setupNav. Declares isOwner, isManager, managerRestaurants. Sets element properties: innerHTML=. Iterates collections. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 191-200: Continues setupNav. Declares isManagerOrOwner, currentMode, isEditorMode. Uses storage keys: getItem:clarivoreManagerMode, setItem:clarivoreManagerMode. Branches on conditions. Purpose: implement module logic.
+- Lines 201-210: Continues setupNav. Declares brandLink, navStructure, helpContactLink. Selects elements: .simple-brand. Sets element properties: href=isEditorMode ? 'manager-dashboard.html' : 'home.html'. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 211-220: Continues setupNav. Iterates collections. Purpose: implement module logic.
+- Lines 221-230: Continues setupNav. Purpose: implement module logic.
+- Lines 231-240: Continues setupNav. Branches on conditions. Purpose: implement module logic.
+- Lines 241-250: Continues setupNav. Purpose: implement module logic.
+- Lines 251-260: Continues setupNav. Purpose: implement module logic.
+- Lines 261-270: Continues setupNav. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 271-280: Continues setupNav. Declares restaurant. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 281-290: Continues setupNav. Purpose: implement module logic.
+- Lines 291-300: Continues setupNav. Branches on conditions. Purpose: implement module logic.
+- Lines 301-310: Continues setupNav. Purpose: implement module logic.
+- Lines 311-320: Continues setupNav. Purpose: implement module logic.
+- Lines 321-330: Continues setupNav. Purpose: implement module logic.
+- Lines 331-340: Continues setupNav. Purpose: implement module logic.
+- Lines 341-350: Continues setupNav. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 351-360: Continues setupNav. Declares visibleItems, groupContainer. Iterates collections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 361-370: Continues setupNav. Declares trigger, labelSpan, caret. Sets attributes: aria-hidden=true. Sets element properties: textContent=item.label. Purpose: update UI state and presentation.
+- Lines 371-380: Continues setupNav. Declares isChildActive, dropdown. Updates classes (add: current-page). Branches on conditions. Purpose: update UI state and presentation.
+- Lines 381-390: Continues setupNav. Declares link. Updates classes (add: current-page). Sets element properties: textContent=subItem.label, href=subItem.href. Iterates collections. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 391-400: Continues setupNav. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 401-410: Continues setupNav. Declares btn. Updates classes (add: current-page). Sets element properties: textContent=Sign in, href=account.html, dataset.href=account.html. Iterates collections. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 411-420: Continues setupNav. Declares btn. Sets element properties: textContent=item.label, href=item.href, dataset.href=item.href. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 421-430: Continues setupNav. Updates classes (add: current-page). Sets element properties: href=item.href. Schedules timed work. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 431-440: Defines function attachSignOutHandler. Iterates collections. Exports module members. Purpose: expose helpers to other modules.
+
+## public/js/supabase-client.js
+
+- Lines 1-10: Declares SUPABASE_URL, SUPABASE_KEY, supabaseClient, createClient. Iterates collections. Purpose: implement module logic.
+- Lines 11-13: Iterates collections. Exports module members. Purpose: expose helpers to other modules.
+
+## public/js/tablet-orders-api.js
+
+- Lines 1-10: Defines function ensureSupabase. Declares MISSING_TABLE_ERROR_CODES, bootstrapPromise. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 11-20: Defines function normalizeArray. Returns values from this block. Purpose: implement module logic.
+- Lines 21-30: Defines function isMissingTableError. Declares code, msg, candidate. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 31-40: Defines function getAnonKey. Declares url. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 41-50: Defines function bootstrapTabletOrders. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 51-60: Continues bootstrapTabletOrders. Declares supabaseUrl, anonKey, endpoint. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 61-70: Continues bootstrapTabletOrders. Serializes or parses JSON. Branches on conditions. Purpose: implement module logic.
+- Lines 71-80: Continues bootstrapTabletOrders. Declares text. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 81-90: Continues bootstrapTabletOrders. Returns values from this block. Purpose: implement module logic.
+- Lines 91-100: Defines function ensureTabletOrdersReady. Declares client. Returns values from this block. Exports module members. Purpose: expose helpers to other modules.
+- Lines 101-110: Defines function deserializeTabletOrder. Declares payload, order. Branches on conditions. Returns values from this block. Exports module members. Purpose: expose helpers to other modules.
+- Lines 111-120: Continues deserializeTabletOrder. Returns values from this block. Purpose: implement module logic.
+- Lines 121-130: Defines function serializeTabletOrder. Declares payload. Branches on conditions. Purpose: implement module logic.
+- Lines 131-140: Continues serializeTabletOrder. Returns values from this block. Purpose: implement module logic.
+- Lines 141-150: Defines function fetchTabletOrders. Declares client, attempt, query. Supabase tables: tablet_orders (select). Exports module members. Purpose: load or persist data for the page.
+- Lines 151-160: Continues fetchTabletOrders. Declares data, error. Iterates collections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 161-170: Defines function saveTabletOrder. Returns values from this block. Exports module members. Purpose: expose helpers to other modules.
+- Lines 171-180: Continues saveTabletOrder. Declares client, attempt, payload, error. Supabase tables: tablet_orders. Branches on conditions. Returns values from this block. Purpose: load or persist data for the page.
+- Lines 181-190: Continues saveTabletOrder. Branches on conditions. Purpose: implement module logic.
+- Lines 191-200: Defines function deleteTabletOrder. Declares client, attempt. Branches on conditions. Returns values from this block. Exports module members. Purpose: expose helpers to other modules.
+- Lines 201-210: Continues deleteTabletOrder. Declares error. Supabase tables: tablet_orders (delete). Branches on conditions. Returns values from this block. Purpose: load or persist data for the page.
+- Lines 211-220: Defines function subscribeToTabletOrderChanges. Declares client. Exports module members. Purpose: expose helpers to other modules.
+- Lines 221-230: Continues subscribeToTabletOrderChanges. Declares channel. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 231-240: Continues subscribeToTabletOrderChanges. Purpose: implement module logic.
+- Lines 241-249: Continues subscribeToTabletOrderChanges. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+
+## public/js/tablet-simulation-logic.mjs
+
+- Lines 1-10: Declares ORDER_STATUSES. Iterates collections. Exports module members. Purpose: expose helpers to other modules.
+- Lines 11-20: Runs general logic. Purpose: implement module logic.
+- Lines 21-30: Declares DINING_MODES, DEFAULT_ALLERGENS. Exports module members. Purpose: expose helpers to other modules.
+- Lines 31-40: Runs general logic. Purpose: implement module logic.
+- Lines 41-50: Defines function createInitialState. Declares DEFAULT_CHEFS. Returns values from this block. Exports module members. Purpose: expose helpers to other modules.
+- Lines 51-60: Defines function structuredClone. Serializes or parses JSON. Branches on conditions. Returns values from this block. Exports module members. Purpose: expose helpers to other modules.
+- Lines 61-70: Continues structuredClone. Declares id, now. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 71-80: Continues structuredClone. Purpose: implement module logic.
+- Lines 81-90: Defines function requestServerCode. Declares order. Iterates collections. Branches on conditions. Exports module members. Purpose: expose helpers to other modules.
+- Lines 91-100: Continues requestServerCode. Declares code. Purpose: implement module logic.
+- Lines 101-110: Defines function generateServerCode. Declares code. Returns values from this block. Purpose: implement module logic.
+- Lines 111-120: Defines function submitOrderToServer. Declares order. Branches on conditions. Exports module members. Purpose: expose helpers to other modules.
+- Lines 121-130: Defines function serverApprove. Declares order. Iterates collections. Branches on conditions. Returns values from this block. Exports module members. Purpose: expose helpers to other modules.
+- Lines 131-140: Defines function serverDispatchToKitchen. Declares order. Iterates collections. Branches on conditions. Returns values from this block. Exports module members. Purpose: expose helpers to other modules.
+- Lines 141-150: Defines function serverReject. Declares order. Branches on conditions. Returns values from this block. Exports module members. Purpose: expose helpers to other modules.
+- Lines 151-160: Defines function kitchenAcknowledge. Returns values from this block. Exports module members. Purpose: expose helpers to other modules.
+- Lines 161-170: Continues kitchenAcknowledge. Declares order, chef, timestamp. Branches on conditions. Purpose: implement module logic.
+- Lines 171-180: Continues kitchenAcknowledge. Returns values from this block. Purpose: implement module logic.
+- Lines 181-190: Defines function kitchenAskQuestion. Declares order. Iterates collections. Branches on conditions. Exports module members. Purpose: expose helpers to other modules.
+- Lines 191-200: Continues kitchenAskQuestion. Returns values from this block. Purpose: implement module logic.
+- Lines 201-210: Defines function kitchenReject. Declares order, message. Branches on conditions. Exports module members. Purpose: expose helpers to other modules.
+- Lines 211-220: Defines function userRespondToQuestion. Declares order. Branches on conditions. Returns values from this block. Exports module members. Purpose: expose helpers to other modules.
+- Lines 221-230: Continues userRespondToQuestion. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 231-240: Defines function getOrdersByStatus. Declares statusList, order. Iterates collections. Branches on conditions. Returns values from this block. Exports module members. Purpose: expose helpers to other modules.
+- Lines 241-250: Defines function pushHistory. Returns values from this block. Purpose: implement module logic.
+- Lines 251-260: Defines function canServerApprove. Returns values from this block. Exports module members. Purpose: expose helpers to other modules.
+- Lines 261-270: Defines function canKitchenAcknowledge. Returns values from this block. Exports module members. Purpose: expose helpers to other modules.
+- Lines 271-271: Continues canKitchenAcknowledge. Purpose: implement module logic.
+
+## public/js/tablet-sync.js
+
+- Lines 1-10: Declares STORAGE_KEY, CHANNEL_NAME, sourceId, listeners, channel, lastPersistedPayload. Purpose: implement module logic.
+- Lines 11-20: Defines function sanitizeState. Declares orders, chefs, lastServerCode, updatedAt. Serializes or parses JSON. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 21-30: Defines function notifyListeners. Iterates collections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 31-40: Defines function getPersistedTabletState. Declares raw. Exports module members. Purpose: expose helpers to other modules.
+- Lines 41-50: Defines function persistTabletState. Declares parsed. Serializes or parses JSON. Branches on conditions. Returns values from this block. Exports module members. Purpose: expose helpers to other modules.
+- Lines 51-60: Continues persistTabletState. Declares payload. Serializes or parses JSON. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 61-70: Continues persistTabletState. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 71-80: Defines function subscribeToTabletState. Branches on conditions. Returns values from this block. Exports module members. Purpose: expose helpers to other modules.
+- Lines 81-90: Continues subscribeToTabletState. Declares sanitized, sourceId, payload. Binds events: message. Branches on conditions. Returns values from this block. Purpose: respond to user actions.
+- Lines 91-100: Continues subscribeToTabletState. Declares parsed, sanitized. Binds events: storage. Serializes or parses JSON. Branches on conditions. Returns values from this block. Purpose: respond to user actions.
+- Lines 101-106: Continues subscribeToTabletState. Purpose: implement module logic.
+
+## public/kitchen-tablet.html
+
+- Lines 1-10: Defines metadata and viewport settings. Purpose: control browser rendering and page info.
+- Lines 11-20: Links stylesheets. Purpose: apply site styles.
+- Lines 21-30: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 31-40: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 41-50: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 51-60: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 61-70: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 71-80: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 81-90: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 91-100: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 101-110: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 111-120: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 121-130: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 131-140: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 141-150: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 151-160: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 161-170: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 171-180: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 181-190: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 191-200: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 201-210: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 211-220: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 221-230: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 231-240: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 241-250: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 251-260: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 261-270: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 271-280: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 281-290: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 291-300: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 301-310: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 311-320: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 321-330: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 331-340: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 341-350: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 351-360: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 361-370: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 371-380: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 381-390: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 391-400: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 401-410: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 411-420: Elements: body .page-shell, header .simple-topbar, div .simple-topbar-inner, a .simple-brand href=restaurants.html, img src=https://static.wixstatic.com/media/945e9d_2b97098295d341d493e4a07d80d6b57c~mv2.png, span, .... Text: Clarivore. Purpose: structure layout and content.
+- Lines 421-430: Elements: main .page-main, div .page-content tablet-page, header, div, h1. Text: Kitchen monitor. Purpose: structure layout and content.
+- Lines 431-440: Elements: p .muted-text, button #refresh-btn .secondary-btn type=button, div .tablet-filters, label .tablet-filter, input #kitchen-show-completed type=checkbox, span. Text: Face verification and follow-ups for active allergy notices.; Refresh orders; Show completed/rescinded. Purpose: collect user input and actions.
+- Lines 441-450: Elements: section, div #kitchen-queue .kitchen-queue, div #kitchenPromptBackdrop .kitchen-prompt-backdrop. Purpose: structure layout and content.
+- Lines 451-460: Elements: div .kitchen-prompt-modal, h3 #kitchenPromptTitle, p #kitchenPromptMessage, textarea #kitchenPromptInput, div .kitchen-prompt-actions, button #kitchenPromptCancel .secondary-btn type=button, .... Text: Follow-up question; Share the yes/no follow-up you need the diner to answer.; Cancel; .... Purpose: collect user input and actions.
+- Lines 461-470: Links external scripts. Purpose: load JavaScript for page behavior.
+- Lines 471-475: Links external scripts. Purpose: load JavaScript for page behavior.
+
+## public/manager-dashboard.html
+
+- Lines 1-10: Links stylesheets. Purpose: apply site styles.
+- Lines 11-20: Elements: style. Purpose: build page structure.
+- Lines 21-30: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 31-40: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 41-50: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 51-60: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 61-70: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 71-80: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 81-90: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 91-100: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 101-110: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 111-120: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 121-130: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 131-140: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 141-150: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 151-160: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 161-170: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 171-180: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 181-190: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 191-200: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 201-210: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 211-220: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 221-230: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 231-240: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 241-250: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 251-260: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 261-270: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 271-280: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 281-290: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 291-300: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 301-310: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 311-320: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 321-330: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 331-340: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 341-350: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 351-360: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 361-370: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 371-380: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 381-390: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 391-400: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 401-410: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 411-420: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 421-430: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 431-440: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 441-450: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 451-460: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 461-470: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 471-480: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 481-490: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 491-500: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 501-510: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 511-520: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 521-530: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 531-540: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 541-550: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 551-560: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 561-570: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 571-580: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 581-590: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 591-600: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 601-610: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 611-620: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 621-630: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 631-640: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 641-650: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 651-660: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 661-670: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 671-680: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 681-690: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 691-700: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 701-710: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 711-720: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 721-730: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 731-740: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 741-750: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 751-760: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 761-770: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 771-780: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 781-790: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 791-800: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 801-810: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 811-820: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 821-830: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 831-840: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 841-850: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 851-860: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 861-870: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 871-880: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 881-890: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 891-900: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 901-910: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 911-920: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 921-930: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 931-940: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 941-950: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 951-960: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 961-970: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 971-980: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 981-990: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 991-1000: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1001-1010: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1011-1020: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1021-1030: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1031-1040: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1041-1050: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1051-1060: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1061-1070: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1071-1080: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1081-1090: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1091-1100: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1101-1110: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1111-1120: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1121-1130: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1131-1140: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1141-1150: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1151-1160: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1161-1170: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1171-1180: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1181-1190: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1191-1200: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1201-1210: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1211-1220: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1221-1230: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1231-1240: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1241-1250: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1251-1260: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1261-1270: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1271-1280: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1281-1290: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1291-1300: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1301-1310: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1311-1320: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1321-1330: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1331-1340: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1341-1350: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1351-1360: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1361-1370: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1371-1380: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1381-1390: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1391-1400: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1401-1410: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1411-1420: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1421-1430: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1431-1440: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1441-1450: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1451-1460: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1461-1470: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1471-1480: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1481-1490: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1491-1500: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1501-1510: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1511-1520: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1521-1530: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1531-1540: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1541-1550: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1551-1560: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1561-1570: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1571-1580: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1581-1590: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1591-1600: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1601-1610: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1611-1620: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1621-1630: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1631-1640: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1641-1650: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1651-1660: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1661-1670: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1671-1680: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1681-1690: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1691-1700: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1701-1710: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1711-1720: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1721-1730: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1731-1740: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1741-1750: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1751-1760: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1761-1770: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 1771-1780: Elements: body .page-shell, header .simple-topbar, div .simple-topbar-inner, a .simple-brand href=home.html, img src=https://static.wixstatic.com/media/945e9d_2b97098295d341d493e4a07d80d6b57c~mv2.png, span, .... Text: Clarivore. Purpose: structure layout and content.
+- Lines 1781-1790: Elements: div #modeToggleContainer .mode-toggle-container, main .page-main, div .dashboard-container, div .dashboard-header, h1, p. Text: Restaurant Manager Dashboard; View customer dietary analytics and accommodation requests. Purpose: structure layout and content.
+- Lines 1791-1800: Elements: div #restaurant-selector-container .restaurant-selector, label, select #restaurant-select, option. Text: Select Restaurant; Loading restaurants.... Purpose: collect user input and actions.
+- Lines 1801-1810: Elements: div #auth-required .section, div .empty-state, svg, rect, path, h3, .... Text: Sign in Required; Please sign in to access the manager dashboard.; Sign In. Purpose: build page structure.
+- Lines 1811-1820: Elements: div #not-manager .section, div .empty-state, svg, circle, line. Purpose: build page structure.
+- Lines 1821-1830: Elements: h3, p, div #loading-state .section, div .loading-state, div .spinner. Text: Manager Access Required; You don't have manager access to any restaurants yet.. Purpose: build page structure.
+- Lines 1831-1840: Elements: p, div #dashboard-content, div .section quick-actions-section, div .quick-actions-grid, div .quick-actions-panel. Text: Loading dashboard.... Purpose: build page structure.
+- Lines 1841-1850: Elements: div .chat-header-row, div .chat-title-wrap, h3 .quick-actions-title, span #chat-unread-badge .chat-badge, button #chat-ack-btn .btn btnWarning, div #chat-preview-list .chat-preview-list, .... Text: Direct Messages; 0; Acknowledge message(s). Purpose: collect user input and actions.
+- Lines 1851-1860: Elements: p, div .chat-preview-compose, input #chat-message-input .chat-preview-input type=text, button #chat-send-btn .btn, div .quick-actions-panel. Text: Loading...; Send. Purpose: collect user input and actions.
+- Lines 1861-1870: Elements: h3 .quick-actions-title, div #confirmation-status .confirmation-status, div .loading-state, div .spinner, p. Text: Menu Confirmation; Loading.... Purpose: build page structure.
+- Lines 1871-1880: Elements: div .section, div .dashboard-split, div .dashboard-panel, div .section-header, h2 .section-title, p, .... Text: Recent changes; Review the latest edits to your menu.. Purpose: build page structure.
+- Lines 1881-1890: Elements: div .spinner, p, button #viewFullLogBtn .btn, div .dashboard-panel, div .section-header, h2 .section-title brand-items-title. Text: Loading...; View full change log; Brand items in use. Purpose: collect user input and actions.
+- Lines 1891-1900: Elements: div .brand-items-search, input #brand-items-search .brand-search-input type=search, div #brand-items-list .brand-items-list, div .loading-state, div .spinner, p. Text: Loading brand items.... Purpose: collect user input and actions.
+- Lines 1901-1910: Elements: div .section, div .section-header, h2 .section-title, p. Text: Menu Interest Heatmap; Click on a dish to see detailed analytics. Purpose: build page structure.
+- Lines 1911-1920: Elements: div .heatmap-controls, div .heatmap-metric-toggle, span .heatmap-metric-label, div .heatmap-metric-buttons, button .heatmap-metric-btn active data=data-metric, button .heatmap-metric-btn data=data-metric. Text: Categorize interest by:; Total views; Total loves; .... Purpose: collect user input and actions.
+- Lines 1921-1930: Elements: div .heatmap-legend, div .heatmap-legend-gradient, span, div .heatmap-gradient-bar, div #menu-heatmap-container .menu-heatmap-container. Text: Low; High. Purpose: build page structure.
+- Lines 1931-1940: Elements: div #menu-heatmap-loading .loading-state, div .spinner, p, div #menu-heatmap-content, div #menu-heatmap-inner .menu-heatmap-inner, img #menu-heatmap-img .menu-heatmap-img, .... Text: Loading menu.... Purpose: display images.
+- Lines 1941-1950: Elements: div #heatmap-page-nav .heatmap-page-nav, button #heatmap-prev-btn .heatmap-page-btn, svg, path, span #heatmap-page-indicator .heatmap-page-indicator, button #heatmap-next-btn .heatmap-page-btn. Text: Page 1 of 1. Purpose: collect user input and actions.
+- Lines 1951-1960: Elements: div #menu-heatmap-empty .no-menu-image, svg, rect, circle, polyline. Purpose: build page structure.
+- Lines 1961-1970: Elements: p, div #menu-accommodation-breakdown .menu-accommodation-breakdown, h3, div #menu-allergen-breakdown, div #menu-diet-breakdown. Text: No menu image available for this restaurant; Menu Accommodation Breakdown. Purpose: build page structure.
+- Lines 1971-1980: Elements: div #user-dietary-profile-section .section, div .section-header, h2 .section-title, p, div, div #user-allergen-pie, .... Text: User Dietary Profile Breakdown; Distribution of allergens and diets among users who viewed this menu. Purpose: build page structure.
+- Lines 1981-1990: Elements: div #response-modal .response-modal, div .response-modal-content, h3 #modal-title. Text: Respond to Request. Purpose: build page structure.
+- Lines 1991-2000: Elements: p #modal-dish, textarea #response-text, div .modal-actions, button #modal-cancel .action-btn, button #modal-decline .action-btn decline, button #modal-implement .action-btn success. Text: Cancel; Decline; Mark Implemented. Purpose: collect user input and actions.
+- Lines 2001-2010: Elements: div #dish-analytics-modal .dish-analytics-modal, div .dish-analytics-content, div .dish-analytics-header, h3 #dish-analytics-title, button #dish-analytics-close .dish-analytics-close, div #cannot-accommodate-row .accommodation-row cannot. Text: Dish Analytics; &times;. Purpose: collect user input and actions.
+- Lines 2011-2020: Elements: span .accommodation-label, div #cannot-accommodate-tags .accommodation-tags, div #can-accommodate-row .accommodation-row can, div #can-accommodate-tags .accommodation-tags. Text: Cannot be accommodated:; Can be accommodated:. Purpose: build page structure.
+- Lines 2021-2030: Elements: div .analytics-section, div .analytics-section-title, div #analytics-stacked-chart .stacked-bar-chart, div #conflict-breakdown-section .analytics-section. Text: Dish Interest Summary. Purpose: build page structure.
+- Lines 2031-2040: Elements: div .analytics-section-title, div .conflict-charts-container, div .conflict-chart, div .conflict-chart-title, div #conflict-allergen-bars .conflict-bars. Text: Views by Conflicting Restriction; Allergens; Diets. Purpose: build page structure.
+- Lines 2041-2050: Elements: div #conflict-diet-bars .conflict-bars, div .stacked-bar-legend, span .legend-item, span .legend-color. Text: Safe; Can be accommodated; Cannot be accommodated. Purpose: build page structure.
+- Lines 2051-2060: Elements: div .analytics-section, div, span, span #analytics-requests. Text: Accommodation Requests:; 0. Purpose: build page structure.
+- Lines 2061-2070: Links external scripts. Purpose: load JavaScript for page behavior.
+- Lines 2071-2071: Defines markup container or closes tags. Purpose: build page structure.
+
+## public/my-dishes.html
+
+- Lines 1-10: Defines metadata and viewport settings. Purpose: control browser rendering and page info.
+- Lines 11-20: Links stylesheets. Purpose: apply site styles.
+- Lines 21-30: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 31-40: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 41-50: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 51-60: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 61-70: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 71-80: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 81-90: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 91-100: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 101-110: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 111-120: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 121-130: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 131-140: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 141-150: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 151-160: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 161-170: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 171-180: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 181-190: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 191-200: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 201-210: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 211-220: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 221-230: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 231-240: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 241-250: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 251-260: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 261-270: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 271-280: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 281-290: Elements: body .page-shell. Purpose: build page structure.
+- Lines 291-300: Elements: header .simple-topbar, div .simple-topbar-inner, a .simple-brand href=home.html, img src=https://static.wixstatic.com/media/945e9d_2b97098295d341d493e4a07d80d6b57c~mv2.png, span, div .simple-nav. Text: Clarivore. Purpose: structure layout and content.
+- Lines 301-310: Elements: div #modeToggleContainer .mode-toggle-container, main .page-main, div .page-content, h1, p. Text: My Dishes; Your favorite and previously ordered dishes. Purpose: structure layout and content.
+- Lines 311-320: Elements: p #status-message .status-text, div .two-column-container, div .column, div .column-header, h2, p .column-description. Text: Loved Dishes; Dishes you've saved to your favorites. Purpose: build page structure.
+- Lines 321-330: Elements: div #loved-dishes-container, div .loading, div .column, div .column-header, h2. Text: Loading your favorite dishes...; Previously Ordered. Purpose: build page structure.
+- Lines 331-340: Links external scripts. Purpose: load JavaScript for page behavior.
+- Lines 341-350: Links external scripts. Purpose: load JavaScript for page behavior.
+- Lines 351-360: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 361-370: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 371-380: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 381-390: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 391-400: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 401-410: Elements: button #${dish.restaurant_id} .unlove-btn name=${escapeHtml(dish.dish_name)} data=data-restaurant-id,data-dish-name, svg, path, div #${dish.restaurant_id} .dish-item name=${escapeHtml(dish.dish_name)} data=data-restaurant-slug,data-dish-name,data-restaurant-id. Text: Remove; ` : ''; return `. Purpose: collect user input and actions.
+- Lines 411-420: Elements: span .dish-name, span .dish-actions, span .dish-date, a .dish-launch-link href=${dishUrl}, svg, path, .... Text: ${escapeHtml(dish.dish_name)}; ${unloveBtn} ${dateStr ? `; ${dateStr}; .... Purpose: build page structure.
+- Lines 421-430: Elements: div .loading. Text: Loading your favorite dishes.... Purpose: build page structure.
+- Lines 431-440: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 441-450: Elements: div .empty-state, p. Text: No favorite dishes yet. Purpose: build page structure.
+- Lines 451-460: Elements: p, a href=dish-search.html. Text: Click the heart icon on any dish to save it!; Search for dishes →. Purpose: build page structure.
+- Lines 461-470: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 471-480: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 481-490: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 491-500: Elements: div .restaurant-section, div .restaurant-section-header, h3 .restaurant-section-name. Purpose: build page structure.
+- Lines 501-510: Elements: a href=restaurant.html?slug=${encodeURIComponent(restaurantSlug)}, span .restaurant-dish-count. Text: ${escapeHtml(restaurantName)}; ` : escapeHtml(restaurantName)}; ${count} dish${count !== 1 ? 'es' : ''}; .... Purpose: build page structure.
+- Lines 511-520: Elements: div .status-text error. Text: Failed to load favorite dishes.. Purpose: build page structure.
+- Lines 521-530: Elements: div .loading. Text: Loading your order history.... Purpose: build page structure.
+- Lines 531-540: Elements: div .empty-state. Text: No order history found.. Purpose: build page structure.
+- Lines 541-550: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 551-560: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 561-570: Elements: div .empty-state. Text: No dishes found in your order history.. Purpose: build page structure.
+- Lines 571-580: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 581-590: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 591-600: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 601-610: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 611-620: Elements: div .restaurant-section, div .restaurant-section-header, h3 .restaurant-section-name, a href=restaurant.html?slug=${encodeURIComponent(restaurantSlug)}, span .restaurant-dish-count. Text: new Date(b.created_at) - new Date(a.created_at)); html += `; ${restaurantSlug ? `; ${escapeHtml(restaurantName)}; .... Purpose: build page structure.
+- Lines 621-630: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 631-640: Elements: div .status-text error. Text: Failed to load order history.. Purpose: build page structure.
+- Lines 641-650: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 651-660: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 661-670: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 671-680: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 681-690: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 691-700: Elements: div .empty-state, p. Text: No favorite dishes yet; Click the heart icon on any dish to save it!. Purpose: build page structure.
+- Lines 701-710: Elements: a href=dish-search.html. Text: Search for dishes →. Purpose: build page structure.
+- Lines 711-720: Elements: svg, path. Purpose: build page structure.
+- Lines 721-730: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 731-740: Elements: span .mode-toggle-label, div #modeToggle .mode-toggle ${isEditorMode ? 'active' : ''}. Text: ${isEditorMode ? 'Editor mode' : 'Customer mode'}. Purpose: build page structure.
+- Lines 741-750: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 751-760: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 761-770: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 771-780: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 781-790: Defines markup container or closes tags. Purpose: build page structure.
+
+## public/order-feedback.html
+
+- Lines 1-10: Links stylesheets. Purpose: apply site styles.
+- Lines 11-20: Elements: style. Purpose: build page structure.
+- Lines 21-30: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 31-40: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 41-50: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 51-60: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 61-70: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 71-80: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 81-90: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 91-100: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 101-110: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 111-120: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 121-130: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 131-140: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 141-150: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 151-160: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 161-170: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 171-180: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 181-190: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 191-200: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 201-210: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 211-220: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 221-230: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 231-240: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 241-250: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 251-260: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 261-270: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 271-280: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 281-290: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 291-300: Elements: body .page-shell. Purpose: build page structure.
+- Lines 301-310: Elements: header .simple-topbar, div .simple-topbar-inner, a .simple-brand href=home.html, img src=https://static.wixstatic.com/media/945e9d_2b97098295d341d493e4a07d80d6b57c~mv2.png, span, main .page-main. Text: Clarivore. Purpose: structure layout and content.
+- Lines 311-320: Elements: div .page-content, div #loading-state .loading-state, p, div #invalid-token .invalid-token, h1, a href=restaurants.html. Text: Loading your feedback form...; Invalid or Expired Link; This feedback link is no longer valid. It may have expired or already been used.; .... Purpose: build page structure.
+- Lines 321-330: Elements: div #success-message .success-message, h1, p, a href=restaurants.html, div #feedback-form .feedback-container. Text: Thank You!; Your feedback has been submitted successfully.; We appreciate you helping us and the restaurant improve!; .... Purpose: build page structure.
+- Lines 331-340: Elements: p, strong #restaurant-name, div #error-container, div .feedback-section, h2, textarea #restaurant-feedback .feedback-textarea, .... Text: at; Feedback for the Restaurant. Purpose: collect user input and actions.
+- Lines 341-350: Elements: input #restaurant-include-email type=checkbox, span, div .feedback-section, h2, p, textarea #website-feedback .feedback-textarea. Text: Feedback for Clarivore; Help us improve! Let us know about your experience using our service.. Purpose: collect user input and actions.
+- Lines 351-360: Elements: label .checkbox-row, input #website-include-email type=checkbox, span, div .menu-section, h2, p. Text: Request Dish Accommodations. Purpose: collect user input and actions.
+- Lines 361-370: Elements: div #menu-pages-container, div #selected-dishes .selected-dishes, h3, div #selected-dishes-list. Text: Dishes you'd like accommodated:. Purpose: build page structure.
+- Lines 371-380: Links external scripts. Purpose: load JavaScript for page behavior.
+- Lines 381-390: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 391-400: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 401-410: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 411-420: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 421-430: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 431-440: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 441-450: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 451-460: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 461-470: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 471-480: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 481-490: Elements: div .selected-dish-item, span .selected-dish-name, button .remove-dish-btn. Text: ${escapeHtml(dish)}; &times;. Purpose: collect user input and actions.
+- Lines 491-500: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 501-510: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 511-520: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 521-530: Elements: svg, path. Purpose: build page structure.
+- Lines 531-540: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 541-550: Elements: p, div .menu-page-container data=data-page. Text: No menu images available.; { html += `. Purpose: build page structure.
+- Lines 551-560: Elements: img .menu-image src=${imageUrl} data=data-page, div .overlay-layer, div .page-nav, button .${index === currentPage ? 'active' : ''}. Text: `; }); if (menuImages.length > 1) { html += '; '; menuImages.forEach((_, index) => { html += `; Page ${index + 1}. Purpose: collect user input and actions.
+- Lines 561-570: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 571-580: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 581-590: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 591-600: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 601-610: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 611-620: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 621-630: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 631-640: Elements: div .error-message. Text: ${escapeHtml(message)}. Purpose: build page structure.
+- Lines 641-650: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 651-660: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 661-670: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 671-680: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 681-690: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 691-700: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 701-710: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 711-720: Defines markup container or closes tags. Purpose: build page structure.
+
+## public/qr-generator.html
+
+- Lines 1-10: Defines metadata and viewport settings. Purpose: control browser rendering and page info.
+- Lines 11-20: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 21-30: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 31-40: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 41-50: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 51-60: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 61-70: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 71-80: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 81-90: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 91-100: Elements: body, h1, div .card, h2, p, ul, .... Text: 🔲 QR Code Generator; What is This?; ✅ They can select their allergies without creating an account; .... Purpose: build page structure.
+- Lines 101-110: Elements: li, div .card, h2, div .note, strong. Text: ✅ They see a prompt to create an account for a better experience; Generate QR Code; Step 1:; .... Purpose: build page structure.
+- Lines 111-120: Elements: label, select #restaurant-select, option, div .note, strong. Text: Choose Restaurant:; Loading restaurants...; Step 2:; .... Purpose: collect user input and actions.
+- Lines 121-130: Elements: label, input type=radio name=urlType, br. Text: Production Site (Vercel - for real customers); Local Testing (localhost:8080 - for testing only). Purpose: collect user input and actions.
+- Lines 131-140: Elements: div, button .btn, div #qr-output, div .card, h2, ol. Text: Generate QR Code; 📱 How to Use the QR Code. Purpose: collect user input and actions.
+- Lines 141-150: Elements: li, strong, div .info-box, ul. Text: Download; - Right-click the QR code and "Save image as..."; Print; .... Purpose: build page structure.
+- Lines 151-160: Links external scripts. Purpose: load JavaScript for page behavior.
+- Lines 161-170: Defines inline script. Purpose: run page-specific logic.
+- Lines 171-180: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 181-190: Elements: option. Text: No restaurants found; `; ${r.name}. Purpose: build page structure.
+- Lines 191-200: Elements: option. Text: Error loading restaurants. Purpose: build page structure.
+- Lines 201-210: Elements: p .error, p. Text: Please select a restaurant; Generating QR code.... Purpose: build page structure.
+- Lines 211-220: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 221-230: Elements: div, h3 .success, p, strong, div .url-display. Text: ✅ QR Code Generated!; Restaurant:; ${restaurantName}; .... Purpose: build page structure.
+- Lines 231-240: Elements: div, div .qr-container. Text: ${restaurantName}; Scan for Allergy Information. Purpose: build page structure.
+- Lines 241-250: Elements: div, button .btn, button .btn btn-secondary. Text: Download QR Code; Test URL. Purpose: collect user input and actions.
+- Lines 251-260: Elements: p .error. Text: Error generating QR code: ${err.message}. Purpose: build page structure.
+- Lines 261-270: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 271-274: Defines markup container or closes tags. Purpose: build page structure.
+
+## public/report-issue.html
+
+- Lines 1-10: Links stylesheets. Purpose: apply site styles.
+- Lines 11-20: Elements: style. Purpose: build page structure.
+- Lines 21-30: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 31-40: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 41-50: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 51-60: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 61-70: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 71-80: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 81-90: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 91-100: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 101-110: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 111-120: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 121-130: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 131-140: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 141-150: Elements: body, header .simple-topbar, div .simple-topbar-inner, a .simple-brand href=home.html, img src=https://static.wixstatic.com/media/945e9d_2b97098295d341d493e4a07d80d6b57c~mv2.png, span, .... Text: Clarivore. Purpose: structure layout and content.
+- Lines 151-160: Links external scripts. Purpose: load JavaScript for page behavior.
+- Lines 161-170: Links external scripts. Purpose: load JavaScript for page behavior.
+- Lines 171-180: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 181-190: Elements: span .mode-toggle-label, div #modeToggle .mode-toggle ${isEditorMode ? 'active' : ''}. Text: ${isEditorMode ? 'Editor mode' : 'Customer mode'}. Purpose: build page structure.
+- Lines 191-200: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 201-210: Links external scripts. Purpose: load JavaScript for page behavior.
+- Lines 211-220: Defines inline script. Purpose: run page-specific logic.
+- Lines 221-224: Defines markup container or closes tags. Purpose: build page structure.
+
+## public/restaurant.html
+
+- Lines 1-10: Defines metadata and viewport settings. Purpose: control browser rendering and page info.
+- Lines 11-20: Elements: title, style. Text: Clarivore. Purpose: build page structure.
+- Lines 21-30: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 31-40: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 41-50: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 51-60: Links external scripts. Purpose: load JavaScript for page behavior.
+- Lines 61-70: Links stylesheets. Purpose: apply site styles.
+- Lines 71-80: Elements: div #topbar .topin, div #modeToggleContainer .mode-toggle-container, div #root .content, div #tip .tip, div #orderSidebar .orderSidebar, div .orderSidebarHeader. Purpose: build page structure.
+- Lines 81-90: Elements: div #orderSidebarDragHandle .orderSidebarDragHandle, span .orderSidebarDragBar, span .orderSidebarDragLabel, div .orderSidebarHeaderRow, div .orderSidebarTitleWrap, h3 .orderSidebarTitle, .... Text: Drag; My order dashboard; 0. Purpose: collect user input and actions.
+- Lines 91-100: Elements: div #orderSidebarContent .orderSidebarContent, div #orderSidebarStatus .orderSidebarStatus, div .orderSidebarStatusHeader, span .orderSidebarStatusTitle, span #orderSidebarStatusBadge .orderSidebarStatusBadge orderConfirmStatusBadge data=data-tone. Text: ↻; Allergy notice status; Waiting for server code. Purpose: build page structure.
+- Lines 101-110: Elements: div #orderSidebarItems .orderSidebarItems, div #orderSidebarActions .orderSidebarActions, button #confirmOrderBtn .confirmOrderBtn type=button, div #confirmOrderHint .confirmOrderHint, span. Text: Proceed to confirmation; (check the box next to any dishes you would like to proceed with). Purpose: collect user input and actions.
+- Lines 111-120: Elements: div #orderConfirmDrawer .orderConfirmDrawer, div .orderConfirmPanel, header .orderConfirmHeader, h2 #orderConfirmHeading, button #orderConfirmClose .orderConfirmClose type=button, div .orderConfirmLayout, .... Text: Send allergy &amp; diet notice; ×. Purpose: collect user input and actions.
+- Lines 121-130: Elements: div #orderConfirmSummarySection .orderConfirmSection, div, h3, ul #orderConfirmSummaryList .orderConfirmSummaryList, p #orderConfirmEmptySummary .orderConfirmEmpty, form #orderConfirmForm .orderConfirmSection orderConfirmForm. Text: Review your order; No dishes selected yet.; Diner details. Purpose: collect user input and actions.
+- Lines 131-140: Elements: label, span, input #orderConfirmName type=text name=orderConfirmName, div .orderConfirmRadioGroup, input type=radio name=orderConfirmMode. Text: Your name; Dine-in. Purpose: collect user input and actions.
+- Lines 141-150: Elements: input type=radio name=orderConfirmMode, span, div .orderConfirmConditional, label data=data-mode, textarea #orderConfirmDelivery name=orderConfirmDelivery. Text: Delivery / pickup; Delivery / pickup notes. Purpose: collect user input and actions.
+- Lines 151-160: Elements: div #deliveryButtonContainer data=data-mode, a #deliveryLinkButton .btn btnPrimary, span, div, div #orderConfirmAllergyChips .orderConfirmChips. Text: 🚗 Order Delivery / Pickup; Allergies. Purpose: build page structure.
+- Lines 161-170: Elements: div, span, div #orderConfirmDietChips .orderConfirmChips, label, textarea #orderConfirmNotes name=orderConfirmNotes, div #orderConfirmCodeBlock .orderConfirmCodeBlock. Text: Dietary preferences; Additional notes for the kitchen. Purpose: collect user input and actions.
+- Lines 171-180: Elements: div #dineInCodeSection, p, label, span, input #orderConfirmCodeInput type=text name=orderConfirmCodeInput. Text: Enter the code from your server. Purpose: collect user input and actions.
+- Lines 181-190: Elements: div #deliveryMessageSection, p, div #orderConfirmAuthPrompt .orderConfirmAuthPrompt, p .orderConfirmAuthText, div .orderConfirmAuthButtons. Text: You need to sign in or create a free account to submit your notice.. Purpose: build page structure.
+- Lines 191-200: Elements: button #orderConfirmSignInBtn .orderConfirmAuthBtn orderConfirmSignInBtn type=button, button #orderConfirmSignUpBtn .orderConfirmAuthBtn orderConfirmSignUpBtn type=button, div .orderConfirmActions, button #orderConfirmSubmitBtn .orderConfirmPrimaryBtn type=button, div #orderConfirmSubmitStatus .orderConfirmStatusText. Text: Sign in; Create account; Submit notice. Purpose: collect user input and actions.
+- Lines 201-210: Elements: div .orderConfirmActions, button #orderConfirmResetBtn .orderConfirmSecondaryBtn orderConfirmReset type=button. Text: Start another notice. Purpose: collect user input and actions.
+- Lines 211-220: Elements: aside .orderConfirmAside, div #modalBack .modalBack, div .modal, button #modalCloseBtn .modalCloseBtn type=button, div .head. Text: ×. Purpose: collect user input and actions.
+- Lines 221-230: Elements: div #modalTitle, div #modalBody .body, div #photoModal .photoModal, div #photoModalClose .photoModalClose, img #photoModalImage. Text: Edit item; ×. Purpose: display images.
+- Lines 231-240: Elements: div #qrPromoBackdrop .qrPromoBackdrop, div .qrPromo, button #qrPromoClose .qrPromoClose type=button, h2 #qrPromoTitle, p, button #qrPromoSignup .btn btnPrimary type=button. Text: ×; Check out all restaurants part of Clarivore; Creating an account takes less than a minute and is completely free.; .... Purpose: collect user input and actions.
+- Lines 241-250: Elements: div #managerInviteBanner .managerInviteBanner, div .managerInviteBanner-content, div .managerInviteBanner-icon, div .managerInviteBanner-text, strong, span. Text: 🔑; You've been invited as a Manager; Sign up to activate your manager access to this restaurant. Purpose: build page structure.
+- Lines 251-260: Elements: button #managerInviteSignupBtn .btn btnPrimary type=button, div #editorLockBackdrop .editorLockBackdrop, div .editorLockModal, div .editorLockIcon, h2 #editorLockTitle, p .editorLockMessage, .... Text: Sign up to activate access; 🔒; Editor Currently in Use; .... Purpose: collect user input and actions.
+- Lines 261-270: Elements: p .editorLockSince, span #editorLockSince, p .editorLockInfo, div .editorLockActions, button #editorLockRefresh .btn btnPrimary type=button, div, .... Text: Editing since:; --; Check again; .... Purpose: collect user input and actions.
+- Lines 271-280: Elements: div #zoomTopOverlay .zoomTopOverlay, div #zoomedDishInfo .zoomedDishInfo, div. Purpose: build page structure.
+- Lines 281-290: Elements: button #zoomBackButton .zoomBackButton type=button, svg, polyline, h3 #zoomedDishName, div #zoomedAllergenChips .allergenChips, div #zoomedDishActions .zoomedDishActions. Text: Dish Name. Purpose: collect user input and actions.
+- Lines 291-299: Links external scripts. Purpose: load JavaScript for page behavior.
+
+## public/restaurants.html
+
+- Lines 1-10: Links stylesheets. Purpose: apply site styles.
+- Lines 11-20: Elements: style. Purpose: build page structure.
+- Lines 21-30: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 31-40: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 41-50: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 51-60: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 61-70: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 71-80: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 81-90: Elements: body .page-shell, header .simple-topbar, div .simple-topbar-inner, a .simple-brand href=home.html. Purpose: structure layout and content.
+- Lines 91-100: Elements: img src=https://static.wixstatic.com/media/945e9d_2b97098295d341d493e4a07d80d6b57c~mv2.png, span, div .simple-nav, div #modeToggleContainer .mode-toggle-container. Text: Clarivore. Purpose: display images.
+- Lines 101-110: Elements: main .page-main, div .page-content, h1, p #restaurant-status .status-text, select #sort-select, option, .... Text: All restaurants; Sort: Name (A-Z); Sort: Allergens last confirmed; .... Purpose: collect user input and actions.
+- Lines 111-120: Links external scripts. Purpose: load JavaScript for page behavior.
+- Lines 121-130: Defines inline script. Purpose: run page-specific logic.
+- Lines 131-140: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 141-150: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 151-160: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 161-170: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 171-180: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 181-190: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 191-200: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 201-210: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 211-220: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 221-230: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 231-240: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 241-250: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 251-260: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 261-270: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 271-280: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 281-290: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 291-300: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 301-310: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 311-320: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 321-330: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 331-340: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 341-350: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 351-360: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 361-370: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 371-380: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 381-390: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 391-400: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 401-410: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 411-420: Elements: div .empty-state. Text: No restaurants yet. Encourage your favorite spots to join!. Purpose: build page structure.
+- Lines 421-430: Elements: button #${restaurantKey} .favorite-toggle${isFavorite ? ' is-active' : ''} type=button data=data-id, div #${restaurantKey} .restaurant-card data=data-id,data-slug, div .restaurant-card-media, img src=${r.menu_image || 'https://via.placeholder.com/400x300'}. Text: ${isFavorite ? '★' : '☆'}; ` : ''; return `; ${favoriteButton}. Purpose: collect user input and actions.
+- Lines 431-440: Elements: div .restaurant-card-content, h3. Text: ${r.name}. Purpose: build page structure.
+- Lines 441-450: Elements: p .meta, a .cta-button href=restaurant.html?slug=${r.slug}. Text: Last confirmed by staff: ${info.text}; `; })()}; View menu. Purpose: build page structure.
+- Lines 451-460: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 461-470: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 471-480: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 481-490: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 491-500: Elements: p. Text: No restaurants assigned to your account yet.. Purpose: build page structure.
+- Lines 501-510: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 511-520: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 521-530: Elements: p. Text: Error loading restaurants.. Purpose: build page structure.
+- Lines 531-540: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 541-550: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 551-560: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 561-570: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 571-580: Elements: span .mode-toggle-label, div #modeToggle .mode-toggle ${isEditorMode ? 'active' : ''}. Text: ${isEditorMode ? 'Editor mode' : 'Customer mode'}. Purpose: build page structure.
+- Lines 581-590: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 591-600: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 601-610: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 611-620: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 621-630: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 631-640: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 641-650: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 651-660: Links external scripts. Purpose: load JavaScript for page behavior.
+
+## public/server-tablet.html
+
+- Lines 1-10: Links stylesheets. Purpose: apply site styles.
+- Lines 11-20: Elements: style. Purpose: build page structure.
+- Lines 21-30: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 31-40: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 41-50: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 51-60: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 61-70: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 71-80: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 81-90: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 91-100: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 101-110: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 111-120: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 121-130: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 131-140: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 141-150: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 151-160: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 161-170: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 171-180: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 181-190: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 191-200: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 201-210: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 211-220: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 221-230: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 231-240: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 241-250: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 251-260: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 261-270: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 271-280: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 281-290: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 291-300: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 301-310: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 311-320: Defines markup container or closes tags. Purpose: build page structure.
+- Lines 321-330: Elements: body .page-shell, header .simple-topbar, div .simple-topbar-inner, a .simple-brand href=restaurants.html, img src=https://static.wixstatic.com/media/945e9d_2b97098295d341d493e4a07d80d6b57c~mv2.png, span, .... Text: Clarivore. Purpose: structure layout and content.
+- Lines 331-340: Elements: main .page-main, div .page-content tablet-page, header, div, h1, p .muted-text, .... Text: Server monitor; Review allergy notices waiting for approval or dispatch.. Purpose: collect user input and actions.
+- Lines 341-350: Elements: div #server-status .tablet-status, div .tablet-filters, label .tablet-filter, input #server-show-completed type=checkbox, span. Text: Show completed/rescinded. Purpose: collect user input and actions.
+- Lines 351-360: Links external scripts. Purpose: load JavaScript for page behavior.
+- Lines 361-370: Links external scripts. Purpose: load JavaScript for page behavior.
+- Lines 371-371: Defines markup container or closes tags. Purpose: build page structure.
+
+## Binary assets
+
+- public/canadian study figure 1.png: Binary asset (image). Purpose: used by the UI as a visual resource.
+- public/canadian study figure 2.png: Binary asset (image). Purpose: used by the UI as a visual resource.
+- public/canadian study figure 3.png: Binary asset (image). Purpose: used by the UI as a visual resource.
+- public/canadian study figure 4.png: Binary asset (image). Purpose: used by the UI as a visual resource.
+- public/favicon.png: Binary asset (image). Purpose: used by the UI as a visual resource.

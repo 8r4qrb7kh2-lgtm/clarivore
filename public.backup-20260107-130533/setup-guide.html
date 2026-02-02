@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="favicon.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="favicon.png">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Setup Guide - Clarivore</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial;
+      max-width: 900px;
+      margin: 40px auto;
+      padding: 20px;
+      background: #0b1020;
+      color: #e9ecff;
+    }
+    .card {
+      background: #111630;
+      border: 1px solid #2a3261;
+      border-radius: 12px;
+      padding: 24px;
+      margin: 20px 0;
+    }
+    h1 { color: #7c9cff; margin-top: 0; }
+    h2 { color: #7c9cff; border-bottom: 2px solid #2a3261; padding-bottom: 8px; }
+    h3 { color: #a8b2d6; }
+    .step {
+      background: #0d132a;
+      border-left: 4px solid #7c9cff;
+      padding: 16px;
+      margin: 16px 0;
+      border-radius: 4px;
+    }
+    .step-number {
+      display: inline-block;
+      background: #7c9cff;
+      color: #0b1020;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      text-align: center;
+      line-height: 28px;
+      font-weight: bold;
+      margin-right: 12px;
+    }
+    code {
+      background: #0d132a;
+      padding: 2px 6px;
+      border-radius: 4px;
+      color: #facc15;
+      font-size: 14px;
+    }
+    pre {
+      background: #0d132a;
+      padding: 16px;
+      border-radius: 8px;
+      overflow-x: auto;
+      border: 1px solid #2a3261;
+    }
+    .btn {
+      background: #3651ff;
+      color: white;
+      border: none;
+      padding: 12px 20px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 16px;
+      margin: 8px 8px 8px 0;
+    }
+    .btn:hover { background: #4e65ff; }
+    .success { color: #22c55e; }
+    .error { color: #ef4444; }
+    .warning { color: #facc15; }
+    #results { margin-top: 20px; }
+    .restaurant-info {
+      background: #1a2351;
+      padding: 12px;
+      border-radius: 8px;
+      margin: 12px 0;
+    }
+    img.preview {
+      max-width: 100%;
+      border-radius: 8px;
+      margin-top: 8px;
+      border: 1px solid #2a3261;
+    }
+    .note {
+      background: #351b1b;
+      border: 1px solid #5b2c2c;
+      padding: 12px;
+      border-radius: 8px;
+      margin: 12px 0;
+    }
+    a { color: #7c9cff; }
+  </style>
+</head>
+<body>
+  <h1>🛠️ Clarivore Setup Guide</h1>
+
+  <div class="card">
+    <h2>📊 Current Database Status</h2>
+    <p>Let's check what's in your Supabase database:</p>
+    <button class="btn" onclick="checkDatabase()">Check My Database</button>
+    <div id="results"></div>
+  </div>
+
+  <div class="card">
+    <h2>📸 How to Add a Menu Image (Step-by-Step)</h2>
+
+    <div class="note">
+      <strong>Why you need this:</strong> The menu image shows customers what dishes are available. You can then add colored boxes (overlays) to show which dishes are safe for different allergies.
+    </div>
+
+    <div class="step">
+      <span class="step-number">1</span>
+      <strong>Take or Find a Photo of Your Menu</strong>
+      <ul>
+        <li>Take a clear photo of your restaurant's menu</li>
+        <li>Or use an existing menu image you have</li>
+        <li>Make sure all dish names are clearly visible</li>
+      </ul>
+    </div>
+
+    <div class="step">
+      <span class="step-number">2</span>
+      <strong>Upload Image to a Free Image Hosting Service</strong>
+      <p>You need to get a public URL for your image. Here are easy options:</p>
+
+      <h4>Option A: Use Imgur (Easiest - No Account Needed)</h4>
+      <ol>
+        <li>Go to <a href="https://imgur.com/upload" target="_blank">imgur.com/upload</a></li>
+        <li>Click "New post" or drag your image to the page</li>
+        <li>After upload, RIGHT-CLICK on the image</li>
+        <li>Select "Copy image address" or "Copy image link"</li>
+        <li>You'll get a URL like: <code>https://i.imgur.com/ABC123.jpg</code></li>
+      </ol>
+
+      <h4>Option B: Use Supabase Storage (More Control)</h4>
+      <ol>
+        <li>Go to your Supabase project: <a href="https://supabase.com/dashboard/project/fgoiyycctnwnghrvsilt" target="_blank">Open Supabase</a></li>
+        <li>Click "Storage" in the left sidebar</li>
+        <li>Click "Create a new bucket" → Name it "menus" → Make it PUBLIC</li>
+        <li>Open the "menus" bucket → Click "Upload file"</li>
+        <li>Upload your menu image</li>
+        <li>Click on the uploaded file → Click "Get URL" → Copy it</li>
+      </ol>
+    </div>
+
+    <div class="step">
+      <span class="step-number">3</span>
+      <strong>Add the Image URL to Your Database</strong>
+      <ol>
+        <li>Go to your Supabase project: <a href="https://supabase.com/dashboard/project/fgoiyycctnwnghrvsilt/editor" target="_blank">Open Database Editor</a></li>
+        <li>Click on the "restaurants" table in the left sidebar</li>
+        <li>Find your restaurant (Falafel Café) in the table</li>
+        <li>Double-click the <code>menu_image</code> cell for that restaurant</li>
+        <li>Paste the image URL you copied (like <code>https://i.imgur.com/ABC123.jpg</code>)</li>
+        <li>Press Enter or click away to save</li>
+        <li>You should see a green checkmark confirming it saved</li>
+      </ol>
+    </div>
+
+    <div class="step">
+      <span class="step-number">4</span>
+      <strong>Make Sure Overlays Field Exists</strong>
+      <ol>
+        <li>Still in the restaurants table editor</li>
+        <li>Look for the <code>overlays</code> column</li>
+        <li>If it doesn't exist, click the "+ Add Column" button</li>
+        <li>Name: <code>overlays</code></li>
+        <li>Type: <code>jsonb</code></li>
+        <li>Default value: <code>[]</code> (empty brackets)</li>
+        <li>Click "Save"</li>
+      </ol>
+    </div>
+
+    <div class="step">
+      <span class="step-number">5</span>
+      <strong>Test Your Changes</strong>
+      <ol>
+        <li>Refresh this page or your restaurant page</li>
+        <li>Click "Check My Database" above to verify the image URL is saved</li>
+        <li>Visit: <a href="http://127.0.0.1:8080/restaurant.html?slug=falafel-cafe" target="_blank">Test Restaurant Page</a></li>
+        <li>Click "I understand" - you should see your menu image!</li>
+      </ol>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>🎨 What Are Overlays?</h2>
+    <p><strong>Overlays</strong> are the colored boxes you'll draw on top of menu items to show allergen information:</p>
+    <ul>
+      <li><span class="success">Green box</span> = Safe for selected allergies</li>
+      <li><span class="warning">Yellow box</span> = Can be modified to be safe</li>
+      <li><span class="error">Red box</span> = Contains allergens, not safe</li>
+    </ul>
+    <p>Don't worry about adding overlays manually right now. Once your menu image is showing, restaurant managers can add these through the web interface!</p>
+  </div>
+
+  <div class="card">
+    <h2>❓ Need Help?</h2>
+    <p>If you get stuck:</p>
+    <ul>
+      <li>Make sure your Supabase project URL is: <code>fgoiyycctnwnghrvsilt.supabase.co</code></li>
+      <li>Check that your restaurants table has these columns: <code>id</code>, <code>name</code>, <code>slug</code>, <code>menu_image</code>, <code>overlays</code></li>
+      <li>Verify your image URL works by pasting it directly in a browser</li>
+    </ul>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    const SUPABASE_URL = 'https://fgoiyycctnwnghrvsilt.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZnb2l5eWNjdG53bmdocnZzaWx0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA0MzY1MjYsImV4cCI6MjA3NjAxMjUyNn0.xlSSXr0Gl7j-vsckrj-2anpPmp4BG2SUIdN-_dquSA8';
+    const { createClient } = supabase;
+    const supabaseClient = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    async function checkDatabase() {
+      const results = document.getElementById('results');
+      results.innerHTML = '<p>Loading...</p>';
+
+      try {
+        const { data, error } = await supabaseClient
+          .from('restaurants')
+          .select('*');
+
+        if (error) {
+          results.innerHTML = `<p class="error">❌ Error: ${error.message}</p>`;
+          return;
+        }
+
+        if (!data || data.length === 0) {
+          results.innerHTML = `<p class="warning">⚠️ No restaurants found in database!</p>`;
+          return;
+        }
+
+        let html = `<p class="success">✅ Found ${data.length} restaurant(s):</p>`;
+
+        data.forEach((r, i) => {
+          const hasImage = r.menu_image && r.menu_image.trim() !== '';
+          const hasOverlays = r.overlays !== null;
+
+          html += `
+            <div class="restaurant-info">
+              <h3>${i + 1}. ${r.name}</h3>
+              <p><strong>Slug:</strong> <code>${r.slug}</code></p>
+              <p><strong>Menu Image:</strong> ${hasImage ? '<span class="success">✓ Set</span>' : '<span class="error">✗ Not set</span>'}</p>
+              ${hasImage ? `<p style="font-size:12px; word-break: break-all;">${r.menu_image}</p>` : ''}
+              ${hasImage ? `<img src="${r.menu_image}" class="preview" alt="Menu preview" onerror="this.style.display='none'; this.insertAdjacentHTML('afterend', '<p class=error>❌ Image failed to load. Check the URL.</p>')">` : ''}
+              <p><strong>Overlays Field:</strong> ${hasOverlays ? '<span class="success">✓ Exists</span>' : '<span class="error">✗ Missing</span>'}</p>
+              ${hasOverlays ? `<p><strong>Overlay Count:</strong> ${Array.isArray(r.overlays) ? r.overlays.length : 0}</p>` : ''}
+              <p><strong>Test Link:</strong> <a href="restaurant.html?slug=${r.slug}" target="_blank">Open Restaurant Page</a></p>
+            </div>
+          `;
+        });
+
+        results.innerHTML = html;
+      } catch (err) {
+        results.innerHTML = `<p class="error">❌ Error: ${err.message}</p>`;
+      }
+    }
+
+    // Auto-check on load
+    window.addEventListener('load', checkDatabase);
+  </script>
+</body>
+</html>

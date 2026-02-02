@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="favicon.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="favicon.png">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Restaurant Admin View - Clarivore</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <style>
+    .admin-restaurant-container {
+      max-width: 1400px;
+      margin: 40px auto;
+      padding: 0 20px;
+    }
+
+    .admin-header {
+      background: white;
+      border-radius: 16px;
+      padding: 32px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      margin-bottom: 24px;
+    }
+
+    .admin-header h1 {
+      margin: 0 0 8px 0;
+      color: #1e3a5f;
+      font-size: 2rem;
+    }
+
+    .admin-header p {
+      margin: 0;
+      color: #718096;
+    }
+
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: #4c5ad4;
+      text-decoration: none;
+      margin-bottom: 16px;
+      font-weight: 600;
+    }
+
+    .back-link:hover {
+      text-decoration: underline;
+    }
+
+    .admin-card {
+      background: white;
+      border-radius: 16px;
+      padding: 32px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      margin-bottom: 24px;
+    }
+
+    .admin-card h2 {
+      margin-top: 0;
+      color: #1e3a5f;
+      font-size: 1.5rem;
+    }
+
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+
+    .badge.empty {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    .badge.has-items {
+      background: #d1fae5;
+      color: #065f46;
+    }
+
+    .item-list {
+      display: grid;
+      gap: 16px;
+    }
+
+    .item-card {
+      background: #f7fafc;
+      border-radius: 12px;
+      padding: 20px;
+      border-left: 4px solid #e2e8f0;
+    }
+
+    .item-card.has-content {
+      border-left-color: #4c5ad4;
+    }
+
+    .item-meta {
+      display: flex;
+      gap: 16px;
+      color: #718096;
+      font-size: 0.9rem;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
+    }
+
+    .item-content {
+      color: #1e3a5f;
+      line-height: 1.6;
+      white-space: pre-wrap;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 40px 20px;
+      color: #718096;
+    }
+
+    .loading {
+      text-align: center;
+      padding: 40px 20px;
+      color: #718096;
+    }
+
+    .error-state {
+      background: #fee2e2;
+      color: #991b1b;
+      padding: 16px;
+      border-radius: 8px;
+      border: 1px solid #fca5a5;
+    }
+
+    .appeal-status {
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      display: inline-block;
+    }
+
+    .appeal-status.pending {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    .appeal-status.approved {
+      background: #d1fae5;
+      color: #065f46;
+    }
+
+    .appeal-status.rejected {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .appeal-photo {
+      max-width: 200px;
+      max-height: 200px;
+      border-radius: 8px;
+      margin-top: 12px;
+      border: 2px solid #e2e8f0;
+      cursor: pointer;
+    }
+
+    .change-log-item {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 12px;
+      align-items: start;
+    }
+
+    .change-type-badge {
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .change-type-badge.added {
+      background: #d1fae5;
+      color: #065f46;
+    }
+
+    .change-type-badge.removed {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .change-type-badge.modified {
+      background: #dbeafe;
+      color: #1e40af;
+    }
+
+    .view-restaurant-btn {
+      background: #4c5ad4;
+      color: white;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-block;
+      transition: background 0.2s;
+      margin-top: 16px;
+    }
+
+    .view-restaurant-btn:hover {
+      background: #6366f1;
+    }
+
+    .access-denied {
+      text-align: center;
+      padding: 60px 20px;
+      background: white;
+      border-radius: 16px;
+      margin: 40px auto;
+      max-width: 600px;
+    }
+
+    .access-denied h1 {
+      font-size: 2rem;
+      color: #e85d5d;
+      margin-bottom: 16px;
+    }
+  </style>
+</head>
+<body class="page-shell">
+  <header class="simple-topbar">
+    <div class="simple-topbar-inner">
+      <a class="simple-brand" href="home.html">
+        <img src="https://static.wixstatic.com/media/945e9d_2b97098295d341d493e4a07d80d6b57c~mv2.png" alt="Clarivore logo">
+        <span>Clarivore</span>
+      </a>
+      <div class="simple-nav">
+        <!-- Navigation populated by shared-nav.js -->
+      </div>
+      <div class="mode-toggle-container" id="modeToggleContainer" style="display:none"></div>
+    </div>
+  </header>
+
+  <main class="admin-restaurant-container">
+    <div id="access-denied" class="access-denied" style="display:none;">
+      <h1>🔒 Access Denied</h1>
+      <p>You must be logged in as an administrator to access this page.</p>
+      <button class="view-restaurant-btn" onclick="window.location.href='account.html'">Go to Account</button>
+    </div>
+
+    <div id="admin-content" style="display:none;">
+      <a href="admin-dashboard.html" class="back-link">← Back to Admin Dashboard</a>
+
+      <div class="admin-header">
+        <h1 id="restaurant-name">Loading...</h1>
+        <p id="restaurant-info">Loading restaurant information...</p>
+      </div>
+
+      <div class="admin-card">
+        <div class="section-header">
+          <h2>📝 Anonymous Feedback</h2>
+          <span id="feedback-badge" class="badge empty">Loading...</span>
+        </div>
+        <div id="feedback-list" class="item-list">
+          <div class="loading">Loading feedback...</div>
+        </div>
+      </div>
+
+      <div class="admin-card">
+        <div class="section-header">
+          <h2>📷 Barcode Scan Appeals</h2>
+          <span id="appeals-badge" class="badge empty">Loading...</span>
+        </div>
+        <div id="appeals-list" class="item-list">
+          <div class="loading">Loading appeals...</div>
+        </div>
+      </div>
+
+      <div style="text-align: center; margin-top: 24px;">
+        <a href="#" id="view-restaurant-link" class="view-restaurant-btn" target="_blank">View Restaurant Page</a>
+      </div>
+    </div>
+  </main>
+
+  <script type="module">
+    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+    import { setupTopbar, attachSignOutHandler } from './js/shared-nav.js';
+    import { fetchManagerRestaurants } from './js/manager-context.js';
+
+    const supabase = createClient(
+      'https://fgoiyycctnwnghrvsilt.supabase.co',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZnb2l5eWNjdG53bmdocnZzaWx0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA0MzY1MjYsImV4cCI6MjA3NjAxMjUyNn0.xlSSXr0Gl7j-vsckrj-2anpPmp4BG2SUIdN-_dquSA8'
+    );
+
+    const ADMIN_EMAIL = 'matt.29.ds@gmail.com';
+    let restaurantId = null;
+    let restaurantData = null;
+
+    // Get restaurant ID from URL
+    const urlParams = new URLSearchParams(window.location.search);
+    restaurantId = urlParams.get('id') || urlParams.get('restaurant_id');
+
+    async function checkAuth() {
+      const { data: { user } } = await supabase.auth.getUser();
+
+      let managerRestaurants = [];
+      if (user && user.email === ADMIN_EMAIL) {
+        managerRestaurants = await fetchManagerRestaurants(supabase, user.id);
+      }
+      setupTopbar('admin', user, { managerRestaurants });
+      if (user) {
+        attachSignOutHandler(supabase);
+      }
+
+      if (!user || user.email !== ADMIN_EMAIL) {
+        document.getElementById('access-denied').style.display = 'block';
+        return false;
+      }
+
+      if (!restaurantId) {
+        document.getElementById('admin-content').innerHTML = `
+          <div class="error-state">
+            <strong>Error:</strong> No restaurant ID provided. Please go back to the admin dashboard and click "View" on a restaurant.
+          </div>
+        `;
+        return false;
+      }
+
+      document.getElementById('admin-content').style.display = 'block';
+
+      await loadRestaurantData();
+      return true;
+    }
+
+    async function loadRestaurantData() {
+      try {
+        // Load restaurant info
+        const { data: restaurant, error: restaurantError } = await supabase
+          .from('restaurants')
+          .select('*')
+          .eq('id', restaurantId)
+          .single();
+
+        if (restaurantError) throw restaurantError;
+
+        restaurantData = restaurant;
+        
+        document.getElementById('restaurant-name').textContent = restaurant.name || 'Unknown Restaurant';
+        document.getElementById('restaurant-info').textContent = `Restaurant ID: ${restaurant.id} | Slug: ${restaurant.slug || 'none'}`;
+        
+        const viewLink = document.getElementById('view-restaurant-link');
+        if (restaurant.slug) {
+          viewLink.href = `restaurant.html?slug=${restaurant.slug}`;
+        } else {
+          viewLink.href = `restaurant.html?id=${restaurant.id}`;
+        }
+
+        // Load all data in parallel
+        await Promise.all([
+          loadFeedback(),
+          loadAppeals()
+        ]);
+
+      } catch (error) {
+        console.error('Error loading restaurant data:', error);
+        document.getElementById('admin-content').innerHTML = `
+          <div class="error-state">
+            <strong>Error loading restaurant:</strong> ${error.message}
+          </div>
+        `;
+      }
+    }
+
+    async function loadFeedback() {
+      try {
+        const { data: feedback, error } = await supabase
+          .from('anonymous_feedback')
+          .select('*')
+          .eq('restaurant_id', restaurantId)
+          .order('submitted_at', { ascending: false });
+
+        if (error) throw error;
+
+        const badge = document.getElementById('feedback-badge');
+        const list = document.getElementById('feedback-list');
+
+        if (!feedback || feedback.length === 0) {
+          badge.textContent = 'No feedback';
+          badge.className = 'badge empty';
+          list.innerHTML = '<div class="empty-state">No anonymous feedback has been submitted for this restaurant.</div>';
+          return;
+        }
+
+        badge.textContent = `${feedback.length} feedback${feedback.length !== 1 ? 's' : ''}`;
+        badge.className = 'badge has-items';
+
+        list.innerHTML = feedback.map(f => {
+          const date = new Date(f.submitted_at).toLocaleString();
+          return `
+            <div class="item-card has-content">
+              <div class="item-meta">
+                <span><strong>Submitted:</strong> ${date}</span>
+              </div>
+              <div class="item-content">${escapeHtml(f.feedback_text)}</div>
+            </div>
+          `;
+        }).join('');
+
+      } catch (error) {
+        console.error('Error loading feedback:', error);
+        document.getElementById('feedback-list').innerHTML = `
+          <div class="error-state">Error loading feedback: ${error.message}</div>
+        `;
+      }
+    }
+
+    async function loadAppeals() {
+      try {
+        const { data: appeals, error } = await supabase
+          .from('ingredient_scan_appeals')
+          .select('*')
+          .eq('restaurant_id', restaurantId)
+          .order('submitted_at', { ascending: false });
+
+        if (error) throw error;
+
+        const badge = document.getElementById('appeals-badge');
+        const list = document.getElementById('appeals-list');
+
+        if (!appeals || appeals.length === 0) {
+          badge.textContent = 'No appeals';
+          badge.className = 'badge empty';
+          list.innerHTML = '<div class="empty-state">No barcode scan appeals have been submitted for this restaurant.</div>';
+          return;
+        }
+
+        badge.textContent = `${appeals.length} appeal${appeals.length !== 1 ? 's' : ''}`;
+        badge.className = 'badge has-items';
+
+        list.innerHTML = appeals.map(appeal => {
+          const submittedDate = new Date(appeal.submitted_at).toLocaleString();
+          const reviewedDate = appeal.reviewed_at ? new Date(appeal.reviewed_at).toLocaleString() : null;
+          const status = appeal.review_status || 'pending';
+          const isPending = status === 'pending';
+
+          return `
+            <div class="item-card has-content">
+              <div class="item-meta">
+                ${appeal.dish_name ? `<span><strong>Dish:</strong> ${escapeHtml(appeal.dish_name)}</span>` : ''}
+                <span><strong>Ingredient:</strong> ${escapeHtml(appeal.ingredient_name)}</span>
+                <span><strong>Submitted:</strong> ${submittedDate}</span>
+                ${reviewedDate ? `<span><strong>Reviewed:</strong> ${reviewedDate}</span>` : ''}
+                <span class="appeal-status ${status}">${status}</span>
+              </div>
+              ${appeal.manager_message ? `
+                <div class="item-content" style="margin-top: 12px;">
+                  <strong>Manager Message:</strong> ${escapeHtml(appeal.manager_message)}
+                </div>
+              ` : ''}
+              ${appeal.photo_url ? `
+                <div style="margin-top: 12px;">
+                  <strong>Photo:</strong>
+                  <img src="${appeal.photo_url}" alt="Appeal photo" class="appeal-photo" onclick="window.open('${appeal.photo_url}', '_blank')">
+                </div>
+              ` : ''}
+              ${appeal.review_notes ? `
+                <div class="item-content" style="margin-top: 12px;">
+                  <strong>Review Notes:</strong> ${escapeHtml(appeal.review_notes)}
+                </div>
+              ` : ''}
+              ${isPending ? `
+                <div style="margin-top: 16px; display: flex; gap: 12px; flex-wrap: wrap;">
+                  <textarea id="notes-${appeal.id}" placeholder="Review notes (optional)" style="width: 100%; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 0.95rem; font-family: inherit; min-height: 80px; resize: vertical; box-sizing: border-box;"></textarea>
+                  <div style="display: flex; gap: 12px; width: 100%;">
+                    <button class="btn-approve" onclick="reviewAppeal('${appeal.id}', 'approved')" style="flex: 1;">✓ Approve</button>
+                    <button class="btn-deny" onclick="reviewAppeal('${appeal.id}', 'rejected')" style="flex: 1;">✗ Deny</button>
+                  </div>
+                </div>
+              ` : ''}
+            </div>
+          `;
+        }).join('');
+
+      } catch (error) {
+        console.error('Error loading appeals:', error);
+        document.getElementById('appeals-list').innerHTML = `
+          <div class="error-state">Error loading appeals: ${error.message}</div>
+        `;
+      }
+    }
+
+    async function reviewAppeal(appealId, status) {
+      const notesTextarea = document.getElementById(`notes-${appealId}`);
+      const reviewNotes = notesTextarea ? notesTextarea.value.trim() : '';
+
+      if (!confirm(`Are you sure you want to ${status === 'approved' ? 'approve' : 'deny'} this appeal?`)) {
+        return;
+      }
+
+      try {
+        // First, get the appeal data to find the ingredient
+        const { data: appealData, error: fetchError } = await supabase
+          .from('ingredient_scan_appeals')
+          .select('*')
+          .eq('id', appealId)
+          .single();
+
+        if (fetchError) throw fetchError;
+
+        const ingredientName = appealData.ingredient_name;
+        const ingredientRowIndex = appealData.ingredient_row_index;
+
+        // Update the appeal record
+        const { error: updateError } = await supabase
+          .from('ingredient_scan_appeals')
+          .update({
+            review_status: status,
+            reviewed_at: new Date().toISOString(),
+            review_notes: reviewNotes || null
+          })
+          .eq('id', appealId);
+
+        if (updateError) throw updateError;
+
+        // Now update the ingredient data in the restaurant's overlays
+        try {
+          // Get the restaurant data
+          const { data: restaurant, error: restaurantError } = await supabase
+            .from('restaurants')
+            .select('overlays, id')
+            .eq('id', restaurantId)
+            .single();
+
+          if (!restaurantError && restaurant && restaurant.overlays) {
+            let overlays = Array.isArray(restaurant.overlays) ? restaurant.overlays : [];
+            let updated = false;
+
+            // Find the overlay that contains this ingredient
+            for (let overlay of overlays) {
+              if (!overlay.aiIngredients) continue;
+
+              let aiIngredients;
+              try {
+                aiIngredients = typeof overlay.aiIngredients === 'string' 
+                  ? JSON.parse(overlay.aiIngredients) 
+                  : overlay.aiIngredients;
+              } catch (e) {
+                console.warn('Failed to parse aiIngredients:', e);
+                continue;
+              }
+
+              if (!Array.isArray(aiIngredients)) continue;
+
+              // Find the ingredient by name
+              const ingredientIndex = ingredientRowIndex !== null && ingredientRowIndex >= 0 && ingredientRowIndex < aiIngredients.length
+                ? ingredientRowIndex
+                : aiIngredients.findIndex(ing => 
+                    (ing.name || '').toLowerCase().trim() === (ingredientName || '').toLowerCase().trim()
+                  );
+
+              if (ingredientIndex >= 0 && ingredientIndex < aiIngredients.length) {
+                const ingredient = aiIngredients[ingredientIndex];
+                console.log(`FOUND ingredient "${ingredientName}" at index ${ingredientIndex}, current confirmed=${ingredient.confirmed}`);
+                
+                // If approved, set appeal review status and mark as overridden
+                if (status === 'approved') {
+                  ingredient.appealReviewStatus = status;
+                  ingredient.appealReviewNotes = reviewNotes || null;
+                  ingredient.appealReviewedAt = new Date().toISOString();
+                  ingredient.userOverriddenScan = true;
+                  ingredient.needsScan = false;
+                }
+                // If denied, restore the scan requirement but keep appeal status
+                else if (status === 'rejected') {
+                  // Keep appeal review status to show denied message
+                  ingredient.appealReviewStatus = status;
+                  ingredient.appealReviewNotes = reviewNotes || null;
+                  ingredient.appealReviewedAt = new Date().toISOString();
+                  // Restore scan requirement
+                  ingredient.userOverriddenScan = false;
+                  ingredient.needsScan = true;
+                  // Reset confirmed state - manager must scan again after denial
+                  console.log(`ADMIN DENY: Setting confirmed=false for "${ingredientName}"`);
+                  ingredient.confirmed = false;
+                }
+
+                // Save back to overlay
+                overlay.aiIngredients = JSON.stringify(aiIngredients);
+                updated = true;
+                break;
+              }
+            }
+
+            // Save updated overlays back to database
+            if (updated) {
+              const { error: saveError } = await supabase
+                .from('restaurants')
+                .update({ overlays: overlays })
+                .eq('id', restaurantId);
+
+              if (saveError) {
+                console.warn('Failed to update restaurant overlays:', saveError);
+                // Don't fail the whole operation, the appeal update succeeded
+              } else {
+                console.log('Successfully updated ingredient data in restaurant overlays');
+              }
+            } else {
+              console.warn('Could not find ingredient in restaurant overlays to update');
+            }
+          }
+        } catch (ingredientUpdateError) {
+          console.error('Error updating ingredient data:', ingredientUpdateError);
+          // Don't fail the whole operation - the appeal was updated successfully
+        }
+
+        // Reload appeals to show updated status
+        await loadAppeals();
+
+        // Show success message
+        const message = document.createElement('div');
+        message.style.cssText = 'position: fixed; top: 20px; right: 20px; background: #4caf50; color: white; padding: 16px 24px; border-radius: 8px; z-index: 10001; box-shadow: 0 4px 12px rgba(0,0,0,0.2);';
+        message.textContent = `Appeal ${status === 'approved' ? 'approved' : 'denied'} successfully!`;
+        document.body.appendChild(message);
+        setTimeout(() => message.remove(), 3000);
+
+      } catch (error) {
+        console.error('Error reviewing appeal:', error);
+        alert(`Error ${status === 'approved' ? 'approving' : 'denying'} appeal: ${error.message}`);
+      }
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // Make reviewAppeal available globally
+    window.reviewAppeal = reviewAppeal;
+
+    checkAuth();
+  </script>
+</body>
+</html>

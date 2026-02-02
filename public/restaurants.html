@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="favicon.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="favicon.png">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>All Restaurants - Clarivore</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <style>
+    .restaurant-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 20px;
+      margin: 40px 0;
+    }
+    .search-controls{
+      display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:center;
+      background:linear-gradient(180deg, rgba(28,36,84,0.6), rgba(16,22,56,0.4));
+      border:1px solid var(--border);
+      border-radius:16px;
+      padding:14px;
+      box-shadow:0 12px 28px rgba(0,0,0,0.25);
+    }
+    .search-controls input{
+      border:1px solid var(--border);
+      background:rgba(11,16,32,0.7);
+      color:var(--text);
+      outline:none;
+    }
+    .search-controls input:focus{ border-color:#4e65ff; box-shadow:0 0 0 3px rgba(78,101,255,0.25); }
+    .search-controls select{
+      border:1px solid var(--border);
+      background:rgba(11,16,32,0.7);
+      color:var(--text);
+    }
+    .restaurant-card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      overflow: hidden;
+      transition: transform 0.2s;
+      box-shadow: 0 16px 30px rgba(0,0,0,0.35);
+    }
+    .restaurant-card:hover {
+      transform: translateY(-6px);
+      border-color: var(--hover);
+    }
+    .restaurant-card img {
+      width: 100%;
+      height: 200px;
+      object-fit: cover;
+    }
+    .restaurant-card-media{ position:relative; }
+    .favorite-toggle{ position:absolute; top:10px; right:10px; background:rgba(0,0,0,0.5); border:1px solid rgba(255,255,255,0.2); border-radius:999px; width:34px; height:34px; display:flex; align-items:center; justify-content:center; font-size:18px; cursor:pointer; }
+    .restaurant-card-content {
+      padding: 20px;
+    }
+    .restaurant-card h3 {
+      margin-bottom: 10px;
+    }
+    .restaurant-card .meta {
+      color: var(--muted);
+      font-size: 0.9rem;
+      margin-bottom: 14px;
+    }
+    .match-badge{ display:inline-block; margin:6px 8px 12px 0; padding:6px 10px; border-radius:999px; background:rgba(54,81,255,0.12); border:1px solid rgba(78,101,255,0.35); font-size:0.8rem; }
+    .restaurant-card .cta-button{
+      background:#3651ff;
+      border:1px solid #4e65ff;
+      color:#fff;
+    }
+    .restaurant-card .cta-button:hover{
+      transform:translateY(-1px);
+      box-shadow:0 10px 24px rgba(54,81,255,0.35);
+    }
+    .empty-state{
+      text-align:center;
+      color:var(--muted);
+      padding:60px 20px;
+      border:1px dashed var(--border);
+      border-radius:18px;
+    }
+  </style>
+</head>
+<body class="page-shell">
+  <header class="simple-topbar">
+    <div class="simple-topbar-inner">
+      <a class="simple-brand" href="home.html">
+        <img src="https://static.wixstatic.com/media/945e9d_2b97098295d341d493e4a07d80d6b57c~mv2.png" alt="Clarivore logo">
+        <span>Clarivore</span>
+      </a>
+      <div class="simple-nav">
+        <!-- Navigation populated by shared-nav.js -->
+      </div>
+      <div class="mode-toggle-container" id="modeToggleContainer" style="display:none"></div>
+    </div>
+  </header>
+
+  <main class="page-main">
+    <div class="page-content">
+      <h1 style="text-align:center;margin-bottom:8px;">All restaurants</h1>
+      <p id="restaurant-status" class="status-text" style="text-align:center;margin-bottom:16px;"></p>
+      <select id="sort-select" style="display:block;max-width:300px;margin:0 auto 20px;padding:12px 14px;border-radius:12px;border:1px solid var(--border);background:var(--panel);color:var(--text)">
+        <option value="name">Sort: Name (A-Z)</option>
+        <option value="last_confirmed">Sort: Allergens last confirmed</option>
+        <option value="friendly">Sort: Most allergy/diet friendly</option>
+      </select>
+      <div id="restaurant-grid" class="restaurant-grid">
+        <p style="color: var(--muted); text-align: center; grid-column: 1/-1;">Loading restaurants...</p>
+      </div>
+    </div>
+  </main>
+  
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/auth-redirect.js" defer></script>
+  <script>
+    // Initialize Supabase client for this page
+    const SUPABASE_URL = 'https://fgoiyycctnwnghrvsilt.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZnb2l5eWNjdG53bmdocnZzaWx0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA0MzY1MjYsImV4cCI6MjA3NjAxMjUyNn0.xlSSXr0Gl7j-vsckrj-2anpPmp4BG2SUIdN-_dquSA8';
+    const { createClient } = supabase;
+    window.supabaseClient = window.supabaseClient || createClient(SUPABASE_URL, SUPABASE_KEY);
+    window.SUPABASE_ANON_KEY = SUPABASE_KEY;
+  </script>
+  <script src="js/allergen-diet-config.js"></script>
+  <script type="module">
+    import supabaseClient from './js/supabase-client.js';
+    import { setupTopbar, attachSignOutHandler } from './js/shared-nav.js';
+
+    const allergenConfig = window.loadAllergenDietConfig
+      ? await window.loadAllergenDietConfig({ supabaseClient })
+      : (window.ALLERGEN_DIET_CONFIG || {});
+    const normalizeAllergen = typeof allergenConfig.normalizeAllergen === 'function'
+      ? allergenConfig.normalizeAllergen
+      : (value) => (value || '').toString().toLowerCase().trim();
+    const normalizeDietLabel = typeof allergenConfig.normalizeDietLabel === 'function'
+      ? allergenConfig.normalizeDietLabel
+      : (value) => value;
+    const getDietAllergenConflicts = typeof allergenConfig.getDietAllergenConflicts === 'function'
+      ? allergenConfig.getDietAllergenConflicts
+      : () => [];
+
+    const statusEl = document.getElementById('restaurant-status');
+    let favoriteIds = new Set();
+    let statusTimer = null;
+
+    function setStatus(message = '', variant = '') {
+      if (!statusEl) return;
+      statusEl.textContent = message || '';
+      statusEl.classList.remove('error','success');
+      if (message && variant) statusEl.classList.add(variant);
+      if (statusTimer) {
+        clearTimeout(statusTimer);
+        statusTimer = null;
+      }
+      if (message) {
+        statusTimer = setTimeout(() => {
+          statusEl.textContent = '';
+          statusEl.classList.remove('error','success');
+          statusTimer = null;
+        }, 3000);
+      }
+    }
+
+    const DAY_MS = 24 * 60 * 60 * 1000;
+    // Helper function to get weeks ago text and color
+    // showAll: if true, show text even for dates beyond 30 days (for admin/manager)
+    function getWeeksAgoInfo(date, showAll = false) {
+      if (!date) return { text: 'Never', color: '#888', shouldHide: false };
+      const x = new Date(date);
+      if (Number.isNaN(x.getTime())) return { text: 'Never', color: '#888', shouldHide: false };
+      const now = new Date();
+      
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const compareDate = new Date(x.getFullYear(), x.getMonth(), x.getDate());
+      
+      const diffDays = Math.floor((today - compareDate) / DAY_MS);
+      const diffWeeks = Math.floor(diffDays / 7);
+      
+      // If more than 30 days and not showing all, hide restaurant
+      if (diffDays > 30 && !showAll) {
+        return { text: null, color: null, shouldHide: true };
+      }
+      
+      let text, color;
+      if (diffDays < 7) {
+        text = 'this week';
+        color = '#4caf50'; // Green
+      } else if (diffWeeks === 1) {
+        text = 'last week';
+        color = '#8bc34a'; // Yellow-green
+      } else if (diffWeeks === 2) {
+        text = 'two weeks ago';
+        color = '#ff9800'; // Orange
+      } else if (diffWeeks === 3) {
+        text = 'three weeks ago';
+        color = '#f44336'; // Red
+      } else {
+        // 4+ weeks - show number of weeks for admin/manager, otherwise "one month ago"
+        if (showAll) {
+          text = `${diffWeeks} weeks ago`;
+          color = '#f44336'; // Red for all dates beyond 3 weeks
+        } else {
+          // 4 weeks but still within 30 days
+          text = 'one month ago';
+          color = '#f44336'; // Red
+        }
+      }
+      
+      return { text, color, shouldHide: false };
+    }
+
+    function formatRelativeDate(value){
+      const info = getWeeksAgoInfo(value);
+      if (info.shouldHide) return null; // Signal to hide
+      return info.text;
+    }
+
+    async function loadFavorites(userId) {
+      favoriteIds = new Set();
+      const { data, error } = await supabaseClient
+        .from('user_favorites')
+        .select('restaurant_id')
+        .eq('user_id', userId);
+      if (error) {
+        console.error('Failed to load favorites', error);
+        setStatus('Could not load favorites.', 'error');
+        return;
+      }
+      (data || []).forEach(row => {
+        if (row?.restaurant_id) {
+          favoriteIds.add(String(row.restaurant_id));
+        }
+      });
+    }
+
+    function updateFavoriteButton(btn, isActive) {
+      btn.classList.toggle('is-active', isActive);
+      btn.textContent = isActive ? '★' : '☆';
+      btn.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+      btn.setAttribute('aria-label', isActive ? 'Remove from favorites' : 'Add to favorites');
+    }
+
+    function attachFavoriteHandlers(user) {
+      const buttons = document.querySelectorAll('.favorite-toggle');
+      buttons.forEach(btn => {
+        btn.addEventListener('click', async (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          const restaurantId = btn.getAttribute('data-id');
+          if (!restaurantId || !user) return;
+          await toggleFavorite(user, restaurantId, btn);
+        });
+      });
+    }
+
+    async function toggleFavorite(user, restaurantId, btn) {
+      const isFavorite = favoriteIds.has(String(restaurantId));
+      btn.disabled = true;
+      setStatus('');
+      try {
+        if (isFavorite) {
+          const { error } = await supabaseClient
+            .from('user_favorites')
+            .delete()
+            .eq('user_id', user.id)
+            .eq('restaurant_id', restaurantId);
+          if (error) throw error;
+          favoriteIds.delete(String(restaurantId));
+          updateFavoriteButton(btn, false);
+          setStatus('Removed from favorites.', 'success');
+        } else {
+          const { error } = await supabaseClient
+            .from('user_favorites')
+            .upsert(
+              { user_id: user.id, restaurant_id: restaurantId },
+              { onConflict: 'user_id,restaurant_id' }
+            );
+          if (error) throw error;
+          favoriteIds.add(String(restaurantId));
+          updateFavoriteButton(btn, true);
+          setStatus('Added to favorites!', 'success');
+        }
+      } catch (error) {
+        console.error('Favorite toggle failed', error);
+        setStatus(error.message || 'Unable to update favorite right now.', 'error');
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    let restaurantsData = [];
+    let userPreferences = null;
+
+    async function loadUserPreferences(user) {
+      if (!user) return { allergens: [], diets: [] };
+      if (userPreferences) return userPreferences;
+      try {
+        const { data } = await supabaseClient
+          .from('user_allergies')
+          .select('allergens, diets')
+          .eq('user_id', user.id)
+          .maybeSingle();
+        userPreferences = {
+          allergens: (Array.isArray(data?.allergens) ? data.allergens : [])
+            .map(normalizeAllergen)
+            .filter(Boolean),
+          diets: (Array.isArray(data?.diets) ? data.diets : [])
+            .map(normalizeDietLabel)
+            .filter(Boolean)
+        };
+      } catch (error) {
+        console.error('Failed to load user preferences', error);
+        userPreferences = { allergens: [], diets: [] };
+      }
+      return userPreferences;
+    }
+
+    function getDishCompatibilityLevel(dish, allergies, diets) {
+      const hasPrefs = allergies.length > 0 || diets.length > 0;
+      if (!hasPrefs) return 'unknown';
+      if (!dish) return 'unknown';
+      const dishAllergens = (Array.isArray(dish.allergens) ? dish.allergens : [])
+        .map(normalizeAllergen)
+        .filter(Boolean);
+      const dishDietSet = new Set(
+        (Array.isArray(dish.diets) ? dish.diets : [])
+          .map(normalizeDietLabel)
+          .filter(Boolean)
+      );
+      const removableAllergens = new Set(
+        (dish.removable || [])
+          .map(r => normalizeAllergen(r.allergen || ''))
+          .filter(Boolean)
+      );
+
+      let hasDanger = false;
+      let hasWarn = false;
+
+      allergies.forEach(allergen => {
+        const normalized = normalizeAllergen(allergen);
+        if (!normalized) return;
+        const hasAllergen = dishAllergens.includes(normalized);
+        if (!hasAllergen) return;
+        if (removableAllergens.has(normalized)) {
+          hasWarn = true;
+        } else {
+          hasDanger = true;
+        }
+      });
+
+      diets.forEach(diet => {
+        const normalizedDiet = normalizeDietLabel(diet);
+        if (!normalizedDiet) return;
+        const conflicts = getDietAllergenConflicts(normalizedDiet);
+        const blockingAllergens = conflicts.filter(allergen => dishAllergens.includes(allergen));
+        const allBlockingRemovable = blockingAllergens.length > 0 &&
+          blockingAllergens.every(allergen => removableAllergens.has(allergen));
+
+        if (dishDietSet.has(normalizedDiet)) {
+          return;
+        }
+        if (allBlockingRemovable) {
+          hasWarn = true;
+          return;
+        }
+        hasDanger = true;
+      });
+
+      if (hasDanger) return 'danger';
+      if (hasWarn) return 'warn';
+      return 'safe';
+    }
+
+    function computeRestaurantFriendlyScore(restaurant, allergies, diets) {
+      if (!restaurant) return { score: -1, total: 0 };
+      let overlays = restaurant.overlays;
+      if (typeof overlays === 'string') {
+        try {
+          overlays = JSON.parse(overlays);
+        } catch (error) {
+          overlays = [];
+        }
+      }
+      if (!Array.isArray(overlays) || overlays.length === 0) {
+        return { score: -1, total: 0 };
+      }
+
+      let safeCount = 0;
+      let warnCount = 0;
+      let totalCount = 0;
+
+      overlays.forEach(overlay => {
+        if (!overlay) return;
+        totalCount += 1;
+        const level = getDishCompatibilityLevel(overlay, allergies, diets);
+        if (level === 'safe') safeCount += 1;
+        else if (level === 'warn') warnCount += 1;
+      });
+
+      if (!totalCount) return { score: -1, total: 0 };
+      const score = (safeCount + warnCount * 0.5) / totalCount;
+      return { score, total: totalCount, safe: safeCount, warn: warnCount };
+    }
+
+    async function ensureOverlaysLoaded(restaurants) {
+      const idsToFetch = (restaurants || [])
+        .filter(r => r && r.id && typeof r.overlays === 'undefined')
+        .map(r => r.id);
+      if (!idsToFetch.length) return;
+      const { data, error } = await supabaseClient
+        .from('restaurants')
+        .select('id, overlays')
+        .in('id', idsToFetch);
+      if (error) {
+        console.error('Failed to load restaurant overlays', error);
+        return;
+      }
+      const overlaysById = new Map((data || []).map(row => [row.id, row.overlays]));
+      restaurants.forEach(r => {
+        if (overlaysById.has(r.id)) {
+          r.overlays = overlaysById.get(r.id);
+        }
+      });
+    }
+
+    function renderRestaurants(data, user = null, userRole = null) {
+      const grid = document.getElementById('restaurant-grid');
+      if (!grid) return;
+
+      if (!data.length) {
+        grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1;">No restaurants yet. Encourage your favorite spots to join!</div>';
+        return;
+      }
+
+      grid.innerHTML = data.map(r => {
+        const restaurantKey = r.id ? String(r.id) : '';
+        const isFavorite = restaurantKey && favoriteIds.has(restaurantKey);
+        const favoriteButton = restaurantKey ? `
+          <button class="favorite-toggle${isFavorite ? ' is-active' : ''}" type="button" data-id="${restaurantKey}" aria-label="${isFavorite ? 'Remove from favorites' : 'Add to favorites'}" aria-pressed="${isFavorite ? 'true' : 'false'}">
+            ${isFavorite ? '★' : '☆'}
+          </button>
+        ` : '';
+        return `
+          <div class="restaurant-card" data-id="${restaurantKey}" data-slug="${r.slug || ''}">
+            <div class="restaurant-card-media">
+              ${favoriteButton}
+              <img src="${r.menu_image || 'https://via.placeholder.com/400x300'}" alt="${r.name}" loading="lazy" decoding="async">
+            </div>
+            <div class="restaurant-card-content">
+              <h3>${r.name}</h3>
+              ${(() => {
+                if (!user) return '';
+                const isAdmin = user.email === 'matt.29.ds@gmail.com';
+                const isManager = userRole === 'manager';
+                const showAll = isAdmin || isManager;
+                const info = getWeeksAgoInfo(r.last_confirmed, showAll);
+                if (info.shouldHide || !info.text) return '';
+                return `<p class="meta" style="color: ${info.color}">Last confirmed by staff: ${info.text}</p>`;
+              })()}
+              <a href="restaurant.html?slug=${r.slug}" class="cta-button" style="padding: 10px 20px; font-size: 0.9rem;">View menu</a>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    async function requireAuth() {
+      const { data: { user } } = await supabaseClient.auth.getUser();
+      return user;
+    }
+
+    async function loadRestaurants() {
+      const user = await requireAuth();
+      if (!user) return;
+      await loadUserPreferences(user);
+
+      let managerNavRestaurants = [];
+
+      // Setup navigation with current page indicator
+      // Update after we know manager assignments
+      attachSignOutHandler(supabaseClient);
+
+      const favoritesPromise = loadFavorites(user.id);
+
+      // Check if user is a manager
+      const userRole = user.user_metadata?.role;
+      let data, error;
+
+      if (userRole === 'manager') {
+        // Managers only see restaurants they manage
+        const { data: managerData, error: managerError } = await supabaseClient
+          .from('restaurant_managers')
+          .select('restaurant_id')
+          .eq('user_id', user.id);
+
+        if (managerError) {
+          console.error('Error loading manager restaurants:', managerError);
+          setStatus('Unable to load your restaurants.', 'error');
+          return;
+        }
+
+        const restaurantIds = managerData.map(m => m.restaurant_id);
+
+        if (restaurantIds.length === 0) {
+          // Manager has no restaurants assigned
+          const grid = document.getElementById('restaurant-grid');
+          if (grid) {
+            grid.innerHTML = '<p style="color: var(--text-muted); grid-column:1/-1;">No restaurants assigned to your account yet.</p>';
+          }
+          return;
+        }
+
+        // Fetch only the restaurants this manager has access to
+        const result = await supabaseClient
+          .from('restaurants')
+          .select('id, name, slug, menu_image, last_confirmed')
+          .in('id', restaurantIds)
+          .order('name');
+
+        data = result.data;
+        error = result.error;
+
+        managerNavRestaurants = (data || []).map(r => ({
+          id: r.id,
+          name: r.name || 'Restaurant',
+          slug: r.slug
+        }));
+      } else {
+        // Customers see all restaurants
+        const result = await supabaseClient
+          .from('restaurants')
+          .select('id, name, slug, menu_image, last_confirmed')
+          .order('name');
+
+        data = result.data;
+        error = result.error;
+      }
+
+      if (error) {
+        const grid = document.getElementById('restaurant-grid');
+        if (grid) {
+          grid.innerHTML = '<p style="color: var(--bad); grid-column:1/-1;">Error loading restaurants.</p>';
+        }
+        console.error(error);
+        setStatus('Unable to load restaurants right now.', 'error');
+        return;
+      }
+
+      // Check if user is admin or manager
+      const isAdmin = user.email === 'matt.29.ds@gmail.com';
+      const isManager = userRole === 'manager';
+      
+      // Get manager's restaurant IDs if they're a manager
+      let managerRestaurantIds = [];
+      if (isManager) {
+        managerRestaurantIds = (data || []).map(r => r.id);
+      }
+      
+      // Filter out restaurants that haven't confirmed in 30+ days (unless admin or manager)
+      if (!isAdmin && !isManager) {
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        
+        restaurantsData = (data || []).filter(r => {
+          if (!r.last_confirmed) return false; // Hide restaurants that have never confirmed
+          const lastConfirmed = new Date(r.last_confirmed);
+          return lastConfirmed >= thirtyDaysAgo;
+        });
+      } else {
+        // Admin and managers see all restaurants (managers only see their own, which is already filtered above)
+        restaurantsData = data || [];
+      }
+
+      setupTopbar('restaurants', user, { managerRestaurants: managerNavRestaurants });
+
+
+      await favoritesPromise;
+      renderRestaurants(restaurantsData, user, userRole);
+      attachFavoriteHandlers(user);
+
+      // Set up sort handler
+      const sortSel = document.getElementById('sort-select');
+      if(sortSel){
+        sortSel.addEventListener('change', ()=> applySort(sortSel.value));
+      }
+    }
+
+    async function applySort(mode){
+      // Get current user to check admin/manager status
+      const { data: { user } } = await supabaseClient.auth.getUser();
+      if (!user) return;
+      
+      const isAdmin = user.email === 'matt.29.ds@gmail.com';
+      const isManager = user.user_metadata?.role === 'manager';
+      const preferences = await loadUserPreferences(user);
+      
+      // Filter out restaurants that haven't confirmed in 30+ days (unless admin or manager)
+      let sorted = [...restaurantsData];
+      
+      if (!isAdmin && !isManager) {
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        
+        sorted = sorted.filter(r => {
+          if (!r.last_confirmed) return false;
+          const lastConfirmed = new Date(r.last_confirmed);
+          return lastConfirmed >= thirtyDaysAgo;
+        });
+      }
+      
+      if(mode === 'friendly'){
+        const allergies = preferences.allergens || [];
+        const diets = preferences.diets || [];
+        if (!allergies.length && !diets.length) {
+          setStatus('Add allergens or diets in account settings to use this sort.', 'error');
+          sorted.sort((a,b)=> (a.name||'').localeCompare(b.name||''));
+        } else {
+          setStatus('Sorting by allergy and diet fit...', '');
+          await ensureOverlaysLoaded(sorted);
+          sorted.forEach(r => {
+            if (typeof r.friendlyScore !== 'number') {
+              const scoreData = computeRestaurantFriendlyScore(r, allergies, diets);
+              r.friendlyScore = scoreData.score;
+            }
+          });
+          sorted.sort((a,b) => {
+            const aScore = Number.isFinite(a.friendlyScore) ? a.friendlyScore : -1;
+            const bScore = Number.isFinite(b.friendlyScore) ? b.friendlyScore : -1;
+            if (bScore !== aScore) return bScore - aScore;
+            return (a.name || '').localeCompare(b.name || '');
+          });
+        }
+      } else if(mode === 'last_confirmed'){
+        sorted.sort((a,b)=> new Date(b.last_confirmed||0).getTime() - new Date(a.last_confirmed||0).getTime());
+      } else {
+        sorted.sort((a,b)=> (a.name||'').localeCompare(b.name||''));
+      }
+      const userRole = user.user_metadata?.role;
+      renderRestaurants(sorted, user, userRole);
+      // Re-attach favorite handlers after re-render
+      supabaseClient.auth.getUser().then(({data:{user}})=>{ if(user) attachFavoriteHandlers(user); });
+    }
+
+    loadRestaurants();
+  </script>
+  <script type="module" src="js/report-modal.js"></script>
+</body>
+</html>

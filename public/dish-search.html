@@ -1,0 +1,1595 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="favicon.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="favicon.png">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Dish Search - Clarivore</title>
+  <!-- Cache bust: 20250122-0200 -->
+  <link rel="stylesheet" href="css/styles.css">
+  <style>
+    /* Popup-style dish cards matching restaurant page */
+    .dish-card {
+      background: #1a1f2e;
+      border-radius: 16px;
+      padding: 0;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.3);
+      overflow: hidden;
+      width: 100%;
+      max-width: 380px;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .dish-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+    }
+    .dish-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 20px;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+    .dish-card-title {
+      margin: 0;
+      font-size: 1.15rem;
+      font-weight: 600;
+      color: #fff;
+    }
+    .dish-card-actions {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .dish-card-body {
+      padding: 16px 20px 20px;
+    }
+    .dish-section-header {
+      font-weight: 600;
+      font-size: 0.95rem;
+      color: #fff;
+      margin: 0 0 12px 0;
+    }
+    .dish-allergen-line {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      margin-bottom: 8px;
+      font-size: 0.95rem;
+      line-height: 1.4;
+    }
+    .dish-allergen-line:last-child {
+      margin-bottom: 0;
+    }
+    .dish-allergen-emoji {
+      flex-shrink: 0;
+      font-size: 1rem;
+    }
+    .dish-allergen-text {
+      flex: 1;
+    }
+    .dish-allergen-text.danger {
+      color: #ef4444;
+    }
+    .dish-allergen-text.warn {
+      color: #facc15;
+    }
+    .dish-allergen-text.safe {
+      color: #4ade80;
+    }
+    .dish-section-divider {
+      height: 1px;
+      background: rgba(255,255,255,0.1);
+      margin: 16px 0;
+    }
+    .dish-restaurant-link {
+      display: block;
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid rgba(255,255,255,0.1);
+      font-size: 0.9rem;
+      color: rgba(255,255,255,0.6);
+    }
+    .dish-restaurant-link a {
+      color: #818cf8;
+      text-decoration: none;
+    }
+    .dish-restaurant-link a:hover {
+      text-decoration: underline;
+    }
+    .love-button-popup {
+      background: transparent;
+      border: none;
+      padding: 8px;
+      cursor: pointer;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s;
+    }
+    .love-button-popup:hover {
+      background: rgba(255,255,255,0.1);
+    }
+    .love-button-popup img {
+      width: 20px;
+      height: 20px;
+      opacity: 0.5;
+      transition: opacity 0.2s;
+    }
+    .love-button-popup.loved img {
+      opacity: 1;
+      filter: brightness(0) saturate(100%) invert(45%) sepia(95%) saturate(1500%) hue-rotate(310deg) brightness(95%) contrast(95%);
+    }
+    .love-button-popup:hover img {
+      opacity: 0.8;
+    }
+    /* Results container */
+    #dish-results-list {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    #dish-results-container {
+      width: 100%;
+    }
+    .tooltipDangerText {
+      color: #ef4444;
+    }
+    .tooltipWarnText {
+      color: #facc15;
+    }
+    .tooltipNeutralText {
+      color: rgba(255,255,255,0.6);
+    }
+    .restaurant-link {
+      color: #818cf8;
+      text-decoration: none;
+      font-weight: 500;
+    }
+    .restaurant-link:hover {
+      text-decoration: underline;
+    }
+    /* Legacy love button styles for restaurant dishes section */
+    .love-button {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      padding: 10px 18px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 1.2rem;
+      transition: all 0.2s;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 48px;
+      gap: 6px;
+    }
+    .love-button:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+    .love-button.loved {
+      background: rgba(236, 72, 153, 0.1);
+      border-color: #ec4899;
+      color: #ec4899;
+    }
+    .love-button.loved:hover {
+      background: rgba(236, 72, 153, 0.15);
+    }
+    .preference-panel {
+      padding: 5px;
+      border: 1px dashed #33408c;
+      border-radius: 12px;
+      flex: 1;
+      min-width: 0;
+      overflow: hidden;
+    }
+    .preference-row {
+      display: flex;
+      gap: 6px;
+      align-items: stretch;
+      flex-wrap: nowrap;
+    }
+    .preference-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2px;
+      gap: 4px;
+      flex-wrap: nowrap;
+    }
+    .preference-title {
+      font-weight: 600;
+      font-size: 0.65rem;
+      white-space: nowrap;
+    }
+    .preference-edit {
+      display: inline-flex;
+      align-items: center;
+      padding: 0;
+      font-size: 0.6rem;
+      flex-shrink: 0;
+    }
+    .preference-chips {
+      display: flex;
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      gap: 3px;
+      align-items: center;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+    }
+    .preference-chips .chip.active {
+      box-shadow: none;
+    }
+    .preference-chips::-webkit-scrollbar {
+      display: none;
+    }
+    .preference-chip {
+      padding: 4px 8px;
+      font-size: 0.75rem;
+      line-height: 1.1;
+      white-space: nowrap;
+      flex-shrink: 0;
+      box-shadow: none;
+    }
+    .search-controls {
+      display: flex;
+      gap: 12px;
+      flex-wrap: nowrap;
+      align-items: center;
+      justify-content: center;
+      max-width: 900px;
+      margin: 0 auto 24px;
+      padding: 0 14px;
+      box-sizing: border-box;
+    }
+    .search-controls input {
+      flex: 1;
+      min-width: 200px;
+      padding: 0 16px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: var(--panel);
+      color: var(--ink);
+      font-size: 1rem;
+      line-height: 48px;
+      height: 50px;
+      box-sizing: border-box;
+      margin: 0;
+      appearance: none;
+      display: block;
+      font-family: inherit;
+    }
+    .search-controls input:focus {
+      outline: none;
+      border-color: var(--hover);
+      box-shadow: 0 0 0 3px rgba(76, 90, 212, 0.25);
+    }
+    .search-controls button {
+      padding: 0 40px;
+      white-space: nowrap;
+      min-width: 120px;
+      height: 50px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: #3651ff;
+      border: 1px solid #4e65ff;
+      color: white;
+      border-radius: 999px;
+      font-weight: bold;
+      font-size: 1rem;
+      line-height: 1;
+      cursor: pointer;
+      box-sizing: border-box;
+      margin: 0;
+      font-family: inherit;
+      transition: transform 0.2s, box-shadow 0.2s;
+      box-shadow: 0 6px 20px rgba(54, 81, 255, 0.25);
+    }
+    .search-controls button:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 10px 24px rgba(54, 81, 255, 0.35);
+    }
+    .empty-state {
+      color: var(--muted);
+      padding: 40px 20px;
+      border: 1px dashed var(--border);
+      border-radius: 18px;
+      margin-top: 40px;
+    }
+    .empty-state > p {
+      text-align: center;
+    }
+    .restaurant-section {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    .restaurant-section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+    .restaurant-section-name {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: var(--text);
+      margin: 0;
+    }
+    .restaurant-section-name a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+    .restaurant-section-name a:hover {
+      text-decoration: underline;
+    }
+    .restaurant-section-columns {
+      display: flex;
+      gap: 24px;
+    }
+    .restaurant-section-column {
+      flex: 1;
+      min-width: 0;
+    }
+    .restaurant-section-column-title {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--muted);
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .restaurant-section-column-title .safe-dot {
+      width: 10px;
+      height: 10px;
+      background: #22c55e;
+      border-radius: 50%;
+    }
+    .restaurant-section-column-title .accommodated-dot {
+      width: 10px;
+      height: 10px;
+      background: #facc15;
+      border-radius: 50%;
+    }
+    .restaurant-section-column-title .search-match-dot {
+      width: 10px;
+      height: 10px;
+      background: #818cf8;
+      border-radius: 50%;
+    }
+    .restaurant-dish-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 12px;
+      background: var(--soft);
+      border-radius: 8px;
+      margin-bottom: 8px;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+    }
+    .restaurant-dish-item:hover {
+      background: var(--hover-soft, rgba(76, 90, 212, 0.08));
+      transform: translateX(2px);
+    }
+    .restaurant-dish-item:last-child {
+      margin-bottom: 0;
+    }
+    .restaurant-dish-name {
+      font-size: 0.9rem;
+      color: var(--text);
+      font-weight: 500;
+      flex: 1;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .restaurant-dish-views {
+      font-size: 0.75rem;
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-left: 12px;
+      white-space: nowrap;
+    }
+    .dish-launch-link {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 4px;
+      border-radius: 4px;
+      color: var(--muted);
+      transition: color 0.2s, background 0.2s;
+    }
+    .dish-launch-link:hover {
+      color: var(--accent);
+      background: rgba(76, 90, 212, 0.15);
+    }
+    .no-dishes-message {
+      font-size: 0.85rem;
+      color: var(--muted);
+      font-style: italic;
+      padding: 8px 0;
+    }
+    @media (max-width: 600px) {
+      .restaurant-section-columns {
+        flex-direction: column;
+        gap: 20px;
+      }
+      .search-controls {
+        flex-wrap: wrap;
+      }
+      .search-controls input {
+        width: 100%;
+        min-width: unset;
+      }
+      .search-controls button {
+        width: 100%;
+      }
+    }
+    @keyframes ackPulse {
+      0% { box-shadow: 0 0 0 0 rgba(255, 180, 180, 0.45); }
+      50% { box-shadow: 0 0 0 8px rgba(255, 180, 180, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(255, 180, 180, 0); }
+    }
+    .filter-toggle {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      color: var(--text);
+    }
+    .filter-toggle span {
+      line-height: 1.2;
+    }
+    .filter-toggle .mode-toggle {
+      flex-shrink: 0;
+    }
+    /* Restaurant checkbox styles */
+    .restaurant-checkbox-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 8px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      color: var(--text);
+    }
+    .restaurant-checkbox-item:hover {
+      background: rgba(76, 90, 212, 0.15);
+    }
+    .restaurant-checkbox-item input {
+      width: 16px;
+      height: 16px;
+      cursor: pointer;
+    }
+    #restaurant-dropdown-btn {
+      min-width: 200px;
+    }
+    @media (max-width: 640px) {
+      #search-filters {
+        gap: 12px;
+      }
+      #search-filters > .filter-toggle,
+      #search-filters > div {
+        flex: 1;
+        min-width: 0;
+      }
+      #search-filters > .filter-toggle {
+        justify-content: space-between;
+        font-size: 0.85rem;
+      }
+      #restaurant-dropdown-btn {
+        min-width: 0;
+        width: 100%;
+        font-size: 0.85rem;
+      }
+      .preference-row {
+        gap: 6px;
+      }
+      .preference-title {
+        font-size: 0.65rem;
+      }
+      .preference-edit {
+        font-size: 0.6rem;
+        padding: 0;
+      }
+    }
+  </style>
+</head>
+<body class="page-shell">
+  <header class="simple-topbar">
+    <div class="simple-topbar-inner">
+      <a class="simple-brand" href="home.html">
+        <img src="https://static.wixstatic.com/media/945e9d_2b97098295d341d493e4a07d80d6b57c~mv2.png" alt="Clarivore logo">
+        <span>Clarivore</span>
+      </a>
+      <div class="simple-nav">
+        <!-- Navigation populated by shared-nav.js -->
+      </div>
+      <div class="mode-toggle-container" id="modeToggleContainer" style="display:none"></div>
+    </div>
+  </header>
+
+  <main class="page-main">
+    <div class="page-content">
+      <h1 style="text-align:center;margin-bottom:16px;font-size:clamp(1.6rem, 1.2rem + 1.2vw, 2.2rem);">Dish search</h1>
+
+      <!-- User preferences display - matching restaurant page styling -->
+      <div id="user-preferences-display" style="max-width:900px;margin:0 auto 24px;display:none;">
+        <div class="preference-row">
+          <div class="preference-panel pill">
+            <div class="preference-header">
+              <div class="preference-title">Saved allergens</div>
+              <a href="account.html" class="btnLink preference-edit">Edit</a>
+            </div>
+            <div id="display-allergens" class="preference-chips chips"></div>
+          </div>
+          <div class="preference-panel pill">
+            <div class="preference-header">
+              <div class="preference-title">Saved diets</div>
+              <a href="account.html" class="btnLink preference-edit">Edit</a>
+            </div>
+            <div id="display-diets" class="preference-chips chips"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="search-controls">
+        <input id="search-input" type="text" placeholder="Describe what you want (e.g., spicy vegan noodles, nut-free dessert)">
+        <button id="search-button" class="cta-button">Search</button>
+      </div>
+
+      <!-- Search filters -->
+      <div id="search-filters" style="max-width:900px;margin:16px auto;display:flex;justify-content:center;gap:20px;flex-wrap:nowrap;align-items:center;">
+        <!-- Toggle switch for accommodation -->
+        <div class="filter-toggle" id="filter-include-accommodated-row">
+          <span>Include dishes that can be made to comply</span>
+          <div class="mode-toggle active" id="filter-include-accommodated-toggle" role="switch" aria-checked="true" tabindex="0"></div>
+        </div>
+
+        <!-- Restaurant multi-select dropdown -->
+        <div style="position:relative;">
+          <button type="button" id="restaurant-dropdown-btn" style="display:flex;align-items:center;gap:8px;padding:8px 14px;border:1px solid #2a3261;background:#12183a;border-radius:8px;color:var(--text);font-size:0.9rem;cursor:pointer;justify-content:space-between;">
+            <span id="restaurant-dropdown-label">All restaurants</span>
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor"><path d="M2 4l4 4 4-4z"/></svg>
+          </button>
+          <div id="restaurant-dropdown-menu" style="display:none;position:absolute;top:100%;left:0;right:0;margin-top:4px;background:#12183a;border:1px solid #2a3261;border-radius:8px;z-index:100;max-height:300px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,0.4);">
+            <div style="padding:8px;border-bottom:1px solid #2a3261;display:flex;gap:8px;flex-wrap:wrap;">
+              <button type="button" id="select-all-restaurants" style="flex:1;padding:6px 10px;border:1px solid #2a3261;background:transparent;border-radius:6px;color:var(--text);font-size:0.8rem;cursor:pointer;">Select All</button>
+              <button type="button" id="clear-all-restaurants" style="flex:1;padding:6px 10px;border:1px solid #2a3261;background:transparent;border-radius:6px;color:var(--text);font-size:0.8rem;cursor:pointer;">Clear All</button>
+              <button type="button" id="select-favorites-restaurants" style="flex:1;padding:6px 10px;border:1px solid #2a3261;background:transparent;border-radius:6px;color:var(--text);font-size:0.8rem;cursor:pointer;">⭐ Favorites</button>
+            </div>
+            <div id="restaurant-checkboxes" style="padding:8px;"></div>
+          </div>
+        </div>
+      </div>
+
+      <p id="status-message" class="status-text" style="text-align:center;margin-bottom:16px;"></p>
+
+      <div id="dish-results-container" style="width:100%;">
+        <div id="dish-results-list"></div>
+      </div>
+    </div>
+  </main>
+  
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/auth-redirect.js" defer></script>
+  <script>
+    // Initialize Supabase client for this page
+    const SUPABASE_URL = 'https://fgoiyycctnwnghrvsilt.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZnb2l5eWNjdG53bmdocnZzaWx0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA0MzY1MjYsImV4cCI6MjA3NjAxMjUyNn0.xlSSXr0Gl7j-vsckrj-2anpPmp4BG2SUIdN-_dquSA8';
+    const { createClient } = supabase;
+    window.supabaseClient = window.supabaseClient || createClient(SUPABASE_URL, SUPABASE_KEY);
+    window.SUPABASE_ANON_KEY = SUPABASE_KEY;  </script>
+  <script src="js/allergen-diet-config.js"></script>
+  <script type="module">
+    import supabaseClient from './js/supabase-client.js';
+    import { setupTopbar } from './js/shared-nav.js';
+    import { fetchManagerRestaurants } from './js/manager-context.js';
+
+    const allergenConfig = window.loadAllergenDietConfig
+      ? await window.loadAllergenDietConfig({ supabaseClient })
+      : (window.ALLERGEN_DIET_CONFIG || {});
+    const ALLERGENS = Array.isArray(allergenConfig.ALLERGENS) ? allergenConfig.ALLERGENS : [];
+    const DIETS = Array.isArray(allergenConfig.DIETS) ? allergenConfig.DIETS : [];
+    const normalizeAllergen = typeof allergenConfig.normalizeAllergen === 'function'
+      ? allergenConfig.normalizeAllergen
+      : (value) => (value || '').toString().toLowerCase().trim();
+    const normalizeDietLabel = typeof allergenConfig.normalizeDietLabel === 'function'
+      ? allergenConfig.normalizeDietLabel
+      : (value) => value;
+    const formatAllergenLabel = typeof allergenConfig.formatAllergenLabel === 'function'
+      ? allergenConfig.formatAllergenLabel
+      : (value) => value;
+    const getAllergenEmoji = typeof allergenConfig.getAllergenEmoji === 'function'
+      ? allergenConfig.getAllergenEmoji
+      : () => '';
+    const getDietEmoji = typeof allergenConfig.getDietEmoji === 'function'
+      ? allergenConfig.getDietEmoji
+      : () => '';
+    const getDietAllergenConflicts = typeof allergenConfig.getDietAllergenConflicts === 'function'
+      ? allergenConfig.getDietAllergenConflicts
+      : () => [];
+
+    let userAllergies = [];
+    let userDiets = [];
+    let restaurantsData = [];
+    let lovedDishes = new Set();
+    let currentUser = null;
+    let currentSearchResults = null; // Store current search results for re-filtering
+    let favoriteRestaurantIds = new Set(); // Store user's favorite restaurant IDs
+    let selectedRestaurantIds = new Set(); // Store selected restaurant IDs for filtering (empty = all)
+    let dishViewCounts = {}; // Store view counts for dishes
+
+    const statusEl = document.getElementById('status-message');
+    const searchInput = document.getElementById('search-input');
+    const searchButton = document.getElementById('search-button');
+    const dishResultsList = document.getElementById('dish-results-list');
+    const emptySearchHtml = `
+      <div style="text-align:center;padding:40px 20px;color:var(--muted);border:1px dashed var(--border);border-radius:16px;">
+        <p style="margin:0;">No dishes found matching your search.</p>
+      </div>
+    `;
+
+    function getIncludeAccommodated() {
+      const toggle = document.getElementById('filter-include-accommodated-toggle');
+      return toggle ? toggle.classList.contains('active') : true;
+    }
+
+    function setIncludeAccommodated(value) {
+      const toggle = document.getElementById('filter-include-accommodated-toggle');
+      if (!toggle) return;
+      const isActive = Boolean(value);
+      toggle.classList.toggle('active', isActive);
+      toggle.setAttribute('aria-checked', isActive ? 'true' : 'false');
+    }
+
+    function setStatus(message = '', variant = '') {
+      if (!statusEl) return;
+      statusEl.textContent = message || '';
+      statusEl.classList.remove('error', 'success');
+      if (message && variant) statusEl.classList.add(variant);
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    function normalize(str) {
+      return (str || '').toString().toLowerCase().trim();
+    }
+
+    function hasCrossContamination(item, userAllergens) {
+      if (!userAllergens || !userAllergens.length) return false;
+      if (item.noCrossContamination) return false;
+      const cross = item.crossContamination || [];
+      return cross.some(a => {
+        const normalized = normalizeAllergen(a);
+        return normalized && userAllergens.includes(normalized);
+      });
+    }
+
+    function computeStatus(item, userAllergens, userDiets) {
+      const allergens = (item.allergens || []).map(normalizeAllergen).filter(Boolean);
+      const removable = new Set(
+        (item.removable || [])
+          .map(r => normalizeAllergen(r.allergen))
+          .filter(Boolean)
+      );
+      
+      const hits = allergens.filter(a => userAllergens.includes(a));
+      const unsafeHits = hits.filter(a => !removable.has(a));
+      
+      if (unsafeHits.length > 0 || hasCrossContamination(item, userAllergens)) {
+        return 'unsafe';
+      }
+      
+      if (hits.length > 0) {
+        return 'removable';
+      }
+      
+      // Check diets
+      if (userDiets && userDiets.length > 0) {
+        const itemDiets = new Set((item.diets || []).map(normalizeDietLabel).filter(Boolean));
+        for (const diet of userDiets) {
+          const conflicts = getDietAllergenConflicts(diet);
+          const conflictingAllergens = conflicts.filter(a => allergens.includes(a));
+          const canBeMade = conflictingAllergens.length > 0 &&
+                           conflictingAllergens.every(a => removable.has(a));
+          const isMet = itemDiets.has(diet);
+          
+          if (!isMet && !canBeMade) {
+            return 'unsafe';
+          }
+        }
+      }
+      
+      return 'safe';
+    }
+
+    // Generate popup-style HTML matching restaurant page format
+    function tooltipBodyHTML(item, userAllergens, userDiets) {
+      if (!userAllergens.length && (!userDiets || !userDiets.length)) {
+        return '<div class="dish-allergen-line"><span class="dish-allergen-text" style="color:rgba(255,255,255,0.6);">No diets saved. Sign in to save them.</span></div>';
+      }
+
+      let html = '';
+      const allergens = (item.allergens || []).map(normalizeAllergen).filter(Boolean);
+      const removableSet = new Set(
+        (item.removable || [])
+          .map(r => normalizeAllergen(r.allergen || ''))
+          .filter(Boolean)
+      );
+      const itemDietSet = new Set((item.diets || []).map(normalizeDietLabel).filter(Boolean));
+
+      // Allergen section
+      if (userAllergens.length) {
+        html += '<div class="dish-section-header">Allergens:</div>';
+
+        const hits = allergens.filter(a => userAllergens.includes(a));
+        const unsafeHits = hits.filter(a => !removableSet.has(a));
+        const removableHits = hits.filter(a => removableSet.has(a));
+        const freeFromAllergens = userAllergens.filter(a => !hits.includes(a));
+
+        // Show removable allergens (yellow - can be accommodated)
+        removableHits.forEach(a => {
+          const emoji = getAllergenEmoji(a) || '⚠️';
+          html += `<div class="dish-allergen-line"><span class="dish-allergen-emoji">${emoji}</span><span class="dish-allergen-text warn">Contains <strong>${escapeHtml(formatAllergenLabel(a))}</strong> (can be accommodated)</span></div>`;
+        });
+
+        // Show unsafe allergens (red - contains)
+        unsafeHits.forEach(a => {
+          const emoji = getAllergenEmoji(a) || '⚠️';
+          html += `<div class="dish-allergen-line"><span class="dish-allergen-emoji">${emoji}</span><span class="dish-allergen-text danger">Contains <strong>${escapeHtml(formatAllergenLabel(a))}</strong></span></div>`;
+        });
+
+        // Show allergens the dish is free from (green)
+        freeFromAllergens.forEach(a => {
+          const emoji = getAllergenEmoji(a) || '✅';
+          html += `<div class="dish-allergen-line"><span class="dish-allergen-emoji">${emoji}</span><span class="dish-allergen-text safe">This dish is free of <strong>${escapeHtml(formatAllergenLabel(a))}</strong></span></div>`;
+        });
+      }
+
+      // Diet section
+      if (userDiets && userDiets.length > 0) {
+        if (userAllergens.length) {
+          html += '<div class="dish-section-divider"></div>';
+        }
+        html += '<div class="dish-section-header">Diets:</div>';
+
+        const removableAllergens = new Set(
+          (item.removable || [])
+            .map(r => normalizeAllergen(r.allergen))
+            .filter(Boolean)
+        );
+
+        userDiets.forEach(userDiet => {
+          const isDietMet = itemDietSet.has(userDiet);
+          const emoji = getDietEmoji(userDiet) || '✓';
+          const dietLower = userDiet.toLowerCase();
+
+          if (isDietMet) {
+            html += `<div class="dish-allergen-line"><span class="dish-allergen-emoji">${emoji}</span><span class="dish-allergen-text safe">This dish is <strong>${escapeHtml(dietLower)}</strong></span></div>`;
+          } else {
+            const conflicts = getDietAllergenConflicts(userDiet);
+            const conflictingAllergens = conflicts.filter(allergen => allergens.includes(allergen));
+            const canBeMade = conflictingAllergens.length > 0 &&
+                             conflictingAllergens.every(allergen => removableAllergens.has(allergen));
+
+            if (canBeMade) {
+              html += `<div class="dish-allergen-line"><span class="dish-allergen-emoji">${emoji}</span><span class="dish-allergen-text warn">This dish can be made <strong>${escapeHtml(dietLower)}</strong></span></div>`;
+            } else {
+              html += `<div class="dish-allergen-line"><span class="dish-allergen-emoji">${emoji}</span><span class="dish-allergen-text danger">This dish is not <strong>${escapeHtml(dietLower)}</strong></span></div>`;
+            }
+          }
+        });
+      }
+
+      // Cross-contamination warning
+      if (hasCrossContamination(item, userAllergens) && userAllergens.length) {
+        const crossHits = (item.crossContamination || [])
+          .map(normalizeAllergen)
+          .filter(a => a && userAllergens.includes(a));
+        if (crossHits.length > 0) {
+          const crossList = crossHits.map(a => {
+            const emoji = getAllergenEmoji(a) || '';
+            return `${emoji} <strong>${escapeHtml(formatAllergenLabel(a))}</strong>`;
+          }).join(', ');
+          html += '<div class="dish-section-divider"></div>';
+          html += `<div class="dish-allergen-line"><span class="dish-allergen-emoji">⚠️</span><span class="dish-allergen-text warn">Risk of cross-contamination with: ${crossList}</span></div>`;
+        }
+      }
+
+      return html;
+    }
+
+    async function loadUserPreferences(user) {
+      try {
+        const { data: record } = await supabaseClient
+          .from('user_allergies')
+          .select('allergens, diets')
+          .eq('user_id', user.id)
+          .maybeSingle();
+        userAllergies = (record?.allergens || []).map(normalizeAllergen).filter(Boolean);
+        userDiets = (record?.diets || []).map(normalizeDietLabel).filter(Boolean);
+        updatePreferencesDisplay();
+      } catch (err) {
+        console.warn('Failed to load user preferences', err);
+      }
+    }
+
+    function updatePreferencesDisplay() {
+      const container = document.getElementById('user-preferences-display');
+      const allergensEl = document.getElementById('display-allergens');
+      const dietsEl = document.getElementById('display-diets');
+
+      if (!container || !allergensEl || !dietsEl) return;
+
+      // Only show if user has preferences
+      if (userAllergies.length === 0 && userDiets.length === 0) {
+        container.style.display = 'none';
+        return;
+      }
+
+      container.style.display = 'block';
+
+      // Render allergens as chips matching restaurant page style
+      if (userAllergies.length > 0) {
+        allergensEl.innerHTML = userAllergies.map(a => {
+          const emoji = getAllergenEmoji(a) || '⚠️';
+          return `<span class="chip active preference-chip">${emoji} ${escapeHtml(formatAllergenLabel(a))}</span>`;
+        }).join('');
+      } else {
+        allergensEl.innerHTML = '<span class="note">No saved allergens. Use "Edit saved allergens".</span>';
+      }
+
+      // Render diets as chips matching restaurant page style
+      if (userDiets.length > 0) {
+        dietsEl.innerHTML = userDiets.map(d => {
+          const emoji = getDietEmoji(d) || '✓';
+          return `<span class="chip active preference-chip">${emoji} ${escapeHtml(d)}</span>`;
+        }).join('');
+      } else {
+        dietsEl.innerHTML = '<span class="note">No saved diets. Use "Edit saved diets".</span>';
+      }
+    }
+
+    function getDishKey(restaurantId, dishName) {
+      return `${String(restaurantId)}:${dishName}`;
+    }
+
+    async function loadLovedDishes(user) {
+      try {
+        const { data, error } = await supabaseClient
+          .from('user_loved_dishes')
+          .select('restaurant_id, dish_name')
+          .eq('user_id', user.id);
+
+        if (error) throw error;
+
+        lovedDishes = new Set((data || []).map(d => getDishKey(d.restaurant_id, d.dish_name)));
+      } catch (err) {
+        console.warn('Failed to load loved dishes', err);
+      }
+    }
+
+    async function loadFavoriteRestaurants(user) {
+      try {
+        const { data, error } = await supabaseClient
+          .from('user_favorites')
+          .select('restaurant_id')
+          .eq('user_id', user.id);
+
+        if (error) throw error;
+
+        favoriteRestaurantIds = new Set((data || []).map(f => String(f.restaurant_id)));
+      } catch (err) {
+        console.warn('Failed to load favorite restaurants', err);
+      }
+    }
+
+    async function toggleLoveDish(user, restaurantId, dishName, button) {
+      const dishKey = getDishKey(restaurantId, dishName);
+      const isLoved = lovedDishes.has(dishKey);
+      
+      button.disabled = true;
+      
+      try {
+        if (isLoved) {
+          const { error } = await supabaseClient
+            .from('user_loved_dishes')
+            .delete()
+            .eq('user_id', user.id)
+            .eq('restaurant_id', restaurantId)
+            .eq('dish_name', dishName);
+          
+          if (error) throw error;
+          lovedDishes.delete(dishKey);
+          button.classList.remove('loved');
+          const img = button.querySelector('img');
+          if(img) img.src = 'images/heart-icon.svg';
+          setStatus('Removed from your favorites', 'success');
+        } else {
+          const { error } = await supabaseClient
+            .from('user_loved_dishes')
+            .upsert({
+              user_id: user.id,
+              restaurant_id: restaurantId,
+              dish_name: dishName
+            }, { onConflict: 'user_id,restaurant_id,dish_name' });
+          
+          if (error) throw error;
+          lovedDishes.add(dishKey);
+          button.classList.add('loved');
+          const img = button.querySelector('img');
+          if(img) img.src = 'images/heart-icon.svg';
+          setStatus('Added to your favorites!', 'success');
+        }
+      } catch (err) {
+        console.error('Failed to update loved dish', err);
+        setStatus('Failed to update. Please try again.', 'error');
+      } finally {
+        button.disabled = false;
+      }
+    }
+
+    async function loadRestaurants() {
+      const { data, error } = await supabaseClient
+        .from('restaurants')
+        .select('id, name, slug, overlays')
+        .order('name');
+      if (error) {
+        console.error('Failed to load restaurants', error);
+        return;
+      }
+      restaurantsData = data || [];
+
+      // Populate restaurant dropdown checkboxes
+      const checkboxContainer = document.getElementById('restaurant-checkboxes');
+      if (checkboxContainer && restaurantsData.length > 0) {
+        checkboxContainer.innerHTML = restaurantsData.map(r => `
+          <label class="restaurant-checkbox-item">
+            <input type="checkbox" value="${r.id}" checked>
+            <span>${escapeHtml(r.name)}</span>
+          </label>
+        `).join('');
+
+        // Add change listeners to checkboxes
+        checkboxContainer.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+          cb.addEventListener('change', updateSelectedRestaurants);
+        });
+
+        // Initialize all as selected
+        selectedRestaurantIds = new Set(restaurantsData.map(r => String(r.id)));
+        updateDropdownLabel();
+      }
+    }
+
+    function updateSelectedRestaurants() {
+      const checkboxes = document.querySelectorAll('#restaurant-checkboxes input[type="checkbox"]');
+      selectedRestaurantIds = new Set();
+      checkboxes.forEach(cb => {
+        if (cb.checked) selectedRestaurantIds.add(cb.value);
+      });
+      updateDropdownLabel();
+      // Re-render based on current state
+      if (currentSearchResults) {
+        renderDishResults(currentSearchResults, true);
+      } else {
+        loadAllDishes();
+      }
+    }
+
+    function updateDropdownLabel() {
+      const label = document.getElementById('restaurant-dropdown-label');
+      if (!label) return;
+
+      const total = restaurantsData.length;
+      const selected = selectedRestaurantIds.size;
+
+      if (selected === 0) {
+        label.textContent = 'No restaurants';
+      } else if (selected === total) {
+        label.textContent = 'All restaurants';
+      } else {
+        label.textContent = `${selected} restaurant${selected !== 1 ? 's' : ''} selected`;
+      }
+    }
+
+    function setupRestaurantDropdown() {
+      const btn = document.getElementById('restaurant-dropdown-btn');
+      const menu = document.getElementById('restaurant-dropdown-menu');
+      const selectAllBtn = document.getElementById('select-all-restaurants');
+      const clearAllBtn = document.getElementById('clear-all-restaurants');
+      const selectFavBtn = document.getElementById('select-favorites-restaurants');
+
+      if (!btn || !menu) return;
+
+      // Toggle dropdown
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+      });
+
+      // Close on click outside
+      document.addEventListener('click', (e) => {
+        if (!e.target.closest('#restaurant-dropdown-menu') && !e.target.closest('#restaurant-dropdown-btn')) {
+          menu.style.display = 'none';
+        }
+      });
+
+      // Select all
+      if (selectAllBtn) {
+        selectAllBtn.addEventListener('click', () => {
+          document.querySelectorAll('#restaurant-checkboxes input[type="checkbox"]').forEach(cb => cb.checked = true);
+          updateSelectedRestaurants();
+        });
+      }
+
+      // Clear all
+      if (clearAllBtn) {
+        clearAllBtn.addEventListener('click', () => {
+          document.querySelectorAll('#restaurant-checkboxes input[type="checkbox"]').forEach(cb => cb.checked = false);
+          updateSelectedRestaurants();
+        });
+      }
+
+      // Select favorites
+      if (selectFavBtn) {
+        selectFavBtn.addEventListener('click', () => {
+          document.querySelectorAll('#restaurant-checkboxes input[type="checkbox"]').forEach(cb => {
+            cb.checked = favoriteRestaurantIds.has(cb.value);
+          });
+          updateSelectedRestaurants();
+        });
+      }
+    }
+
+    async function loadDishViewCounts() {
+      try {
+        const { data: interactions, error } = await supabaseClient
+          .from('dish_interactions')
+          .select('restaurant_id, dish_name');
+
+        if (!error && interactions) {
+          dishViewCounts = {};
+          interactions.forEach(i => {
+            const key = `${i.restaurant_id}:${i.dish_name}`;
+            dishViewCounts[key] = (dishViewCounts[key] || 0) + 1;
+          });
+        }
+      } catch (err) {
+        console.warn('Failed to load dish view counts', err);
+      }
+    }
+
+    // Load and display all safe/accommodated dishes from all restaurants
+    async function loadAllDishes() {
+      if (!currentUser || (userAllergies.length === 0 && userDiets.length === 0)) {
+        dishResultsList.innerHTML = `
+          <div style="text-align:center;padding:40px 20px;color:var(--muted);border:1px dashed var(--border);border-radius:16px;">
+            <p style="margin:0;">Set up your allergens and diets in your <a href="account.html" style="color:var(--accent);">account</a> to see dishes you can eat.</p>
+          </div>
+        `;
+        return;
+      }
+
+      const includeAccommodated = getIncludeAccommodated();
+      const restaurantSections = [];
+
+      for (const restaurant of restaurantsData) {
+        if (!restaurant.overlays || !Array.isArray(restaurant.overlays) || restaurant.overlays.length === 0) {
+          continue;
+        }
+
+        // Filter by selected restaurants
+        if (selectedRestaurantIds.size > 0 && !selectedRestaurantIds.has(String(restaurant.id))) {
+          continue;
+        }
+
+        const safeDishes = [];
+        const accommodatedDishes = [];
+
+        for (const overlay of restaurant.overlays) {
+          const dishName = overlay.name || overlay.id || '';
+          if (!dishName) continue;
+
+          const status = computeStatus(overlay, userAllergies, userDiets);
+          const isSafe = status === 'safe';
+          const isAccommodated = status === 'removable';
+
+          if (!isSafe && !isAccommodated) continue;
+          if (isAccommodated && !includeAccommodated) continue;
+
+          // Get view count for this dish
+          const viewKey = `${restaurant.id}:${dishName}`;
+          const viewCount = dishViewCounts[viewKey] || 0;
+
+          const dishEntry = {
+            name: dishName,
+            views: viewCount,
+            restaurant_id: restaurant.id,
+            restaurant_slug: restaurant.slug
+          };
+
+          if (isSafe) {
+            safeDishes.push(dishEntry);
+          } else if (isAccommodated) {
+            accommodatedDishes.push(dishEntry);
+          }
+        }
+
+        // Sort both lists by views (descending)
+        safeDishes.sort((a, b) => b.views - a.views);
+        accommodatedDishes.sort((a, b) => b.views - a.views);
+
+        const totalAvailable = includeAccommodated
+          ? safeDishes.length + accommodatedDishes.length
+          : safeDishes.length;
+
+        if (totalAvailable > 0) {
+          restaurantSections.push({
+            restaurant,
+            safeDishes,
+            accommodatedDishes: includeAccommodated ? accommodatedDishes : [],
+            totalDishes: totalAvailable
+          });
+        }
+      }
+
+      // Sort restaurants by total available dishes
+      restaurantSections.sort((a, b) => b.totalDishes - a.totalDishes);
+
+      if (restaurantSections.length === 0) {
+        if (selectedRestaurantIds.size === 0) {
+          dishResultsList.innerHTML = `
+            <div style="text-align:center;padding:40px 20px;color:var(--muted);border:1px dashed var(--border);border-radius:16px;">
+              <p style="margin:0;">No restaurants selected. Use the dropdown above to select restaurants.</p>
+            </div>
+          `;
+        } else {
+          dishResultsList.innerHTML = '';
+        }
+        return;
+      }
+
+      // Render the sections
+      dishResultsList.innerHTML = restaurantSections.map(section => {
+        const { restaurant, safeDishes, accommodatedDishes } = section;
+
+        const renderDishItem = (dish) => {
+          const dishUrl = `restaurant.html?slug=${encodeURIComponent(restaurant.slug || '')}&dishName=${encodeURIComponent(dish.name)}`;
+          return `
+            <div class="restaurant-dish-item" data-restaurant-slug="${restaurant.slug || ''}" data-dish-name="${escapeHtml(dish.name)}">
+              <span class="restaurant-dish-name">${escapeHtml(dish.name)}</span>
+              <span class="restaurant-dish-views">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                  <circle cx="12" cy="12" r="3"/>
+                </svg>
+                ${dish.views}
+                <a href="${dishUrl}" class="dish-launch-link" title="View dish details" onclick="event.stopPropagation()">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                    <polyline points="15 3 21 3 21 9"/>
+                    <line x1="10" y1="14" x2="21" y2="3"/>
+                  </svg>
+                </a>
+              </span>
+            </div>
+          `;
+        };
+
+        const accommodatedColumnHTML = includeAccommodated && accommodatedDishes.length > 0 ? `
+          <div class="restaurant-section-column">
+            <div class="restaurant-section-column-title">
+              <span class="accommodated-dot"></span>
+              Can be accommodated (${accommodatedDishes.length})
+            </div>
+            ${accommodatedDishes.slice(0, 10).map(renderDishItem).join('')}
+            ${accommodatedDishes.length > 10 ? `<p style="font-size:0.8rem;color:var(--muted);margin-top:8px;">+ ${accommodatedDishes.length - 10} more</p>` : ''}
+          </div>
+        ` : '';
+
+        return `
+          <div class="restaurant-section">
+            <div class="restaurant-section-header">
+              <h3 class="restaurant-section-name">
+                <a href="restaurant.html?slug=${encodeURIComponent(restaurant.slug)}">${escapeHtml(restaurant.name)}</a>
+              </h3>
+              <span style="font-size:0.85rem;color:var(--muted);">${safeDishes.length + accommodatedDishes.length} dish${(safeDishes.length + accommodatedDishes.length) !== 1 ? 'es' : ''} available</span>
+            </div>
+            <div class="restaurant-section-columns">
+              <div class="restaurant-section-column">
+                <div class="restaurant-section-column-title">
+                  <span class="safe-dot"></span>
+                  Safe (${safeDishes.length})
+                </div>
+                ${safeDishes.length > 0
+                  ? safeDishes.slice(0, 10).map(renderDishItem).join('')
+                  : '<p class="no-dishes-message">No safe dishes</p>'
+                }
+                ${safeDishes.length > 10 ? `<p style="font-size:0.8rem;color:var(--muted);margin-top:8px;">+ ${safeDishes.length - 10} more</p>` : ''}
+              </div>
+              ${accommodatedColumnHTML}
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      // Add click handlers
+      document.querySelectorAll('.restaurant-dish-item').forEach(item => {
+        item.addEventListener('click', () => {
+          const slug = item.dataset.restaurantSlug;
+          const dishName = item.dataset.dishName;
+          if (slug) {
+            window.location.href = `restaurant.html?slug=${encodeURIComponent(slug)}&dishName=${encodeURIComponent(dishName)}`;
+          }
+        });
+      });
+    }
+
+    async function findFullOverlayData(dishName, restaurantId) {
+      const restaurant = restaurantsData.find(r => String(r.id) === String(restaurantId));
+      if (!restaurant || !restaurant.overlays || !Array.isArray(restaurant.overlays)) {
+        return null;
+      }
+      
+      // Try to find by name match (case-insensitive)
+      const normalizedName = normalize(dishName);
+      return restaurant.overlays.find(ov => {
+        const ovName = normalize(ov.name || ov.id || '');
+        return ovName === normalizedName || ovName.includes(normalizedName) || normalizedName.includes(ovName);
+      }) || null;
+    }
+
+    async function renderDishResults(results, cameFromSearch = false) {
+      if (!results || results.length === 0) {
+        dishResultsList.innerHTML = cameFromSearch ? emptySearchHtml : '';
+        return false;
+      }
+
+      const includeAccommodated = getIncludeAccommodated();
+
+      // Group dishes by restaurant
+      const restaurantMap = new Map();
+
+      for (const result of results) {
+        // Filter by selected restaurants
+        if (selectedRestaurantIds.size > 0 && !selectedRestaurantIds.has(String(result.restaurant_id))) {
+          continue;
+        }
+
+        if (result.top_dishes && Array.isArray(result.top_dishes)) {
+          for (const dish of result.top_dishes) {
+            const overlay = await findFullOverlayData(dish.name, result.restaurant_id);
+
+            // For search results, trust the AI's status designation
+            // The AI already determined relevance and compatibility
+            const aiStatus = dish.status || '';
+            const isSafeByAI = aiStatus === 'meets_all_requirements';
+            const isAccommodatedByAI = aiStatus === 'can_accommodate';
+            const doesNotMeetDietByAI = aiStatus === 'does_not_meet_diet';
+
+            // If we have overlay data, also compute local status for comparison
+            let localStatus = overlay ? computeStatus(overlay, userAllergies, userDiets) : null;
+
+            // Determine final classification
+            // For AI search results: trust AI but also check local status
+            const isSafe = isSafeByAI || (localStatus === 'safe' && !doesNotMeetDietByAI);
+            const isAccommodated = isAccommodatedByAI || (localStatus === 'removable' && !doesNotMeetDietByAI);
+            const doesNotMeetDiet = doesNotMeetDietByAI;
+
+            // For search results, include dishes that don't meet diet (user explicitly searched for them)
+            // Skip only if it's truly unsafe (allergens) and not explicitly searched for
+            if (!isSafe && !isAccommodated && !doesNotMeetDiet) continue;
+            if (isAccommodated && !includeAccommodated && !doesNotMeetDiet) continue;
+
+            const restaurantKey = String(result.restaurant_id);
+            if (!restaurantMap.has(restaurantKey)) {
+              restaurantMap.set(restaurantKey, {
+                id: result.restaurant_id,
+                name: result.restaurant_name,
+                slug: result.restaurant_slug,
+                safeDishes: [],
+                accommodatedDishes: [],
+                searchMatchDishes: [] // Dishes that match search but don't meet diet
+              });
+            }
+
+            const group = restaurantMap.get(restaurantKey);
+            // Get view count for this dish
+            const viewKey = `${result.restaurant_id}:${dish.name}`;
+            const viewCount = dishViewCounts[viewKey] || 0;
+            const dishData = {
+              name: dish.name,
+              relevance_score: dish.relevance_score || 0,
+              views: viewCount,
+              overlay,
+              doesNotMeetDiet
+            };
+
+            if (doesNotMeetDiet) {
+              group.searchMatchDishes.push(dishData);
+            } else if (isSafe) {
+              group.safeDishes.push(dishData);
+            } else if (isAccommodated) {
+              group.accommodatedDishes.push(dishData);
+            }
+          }
+        }
+      }
+
+      // Convert to array and filter out empty restaurants
+      const restaurantSections = Array.from(restaurantMap.values())
+        .filter(r => r.safeDishes.length > 0 || r.accommodatedDishes.length > 0 || r.searchMatchDishes.length > 0);
+
+      if (restaurantSections.length === 0) {
+        dishResultsList.innerHTML = cameFromSearch ? emptySearchHtml : '';
+        return false;
+      }
+
+      // Sort restaurants by total dishes (most first)
+      restaurantSections.sort((a, b) =>
+        (b.safeDishes.length + b.accommodatedDishes.length + b.searchMatchDishes.length) -
+        (a.safeDishes.length + a.accommodatedDishes.length + a.searchMatchDishes.length)
+      );
+
+      // Render restaurant sections
+      dishResultsList.innerHTML = restaurantSections.map(section => {
+        const { safeDishes, accommodatedDishes, searchMatchDishes } = section;
+
+        // Sort dishes by relevance score
+        safeDishes.sort((a, b) => b.relevance_score - a.relevance_score);
+        accommodatedDishes.sort((a, b) => b.relevance_score - a.relevance_score);
+        if (searchMatchDishes) searchMatchDishes.sort((a, b) => b.relevance_score - a.relevance_score);
+
+        const renderDishItem = (dish) => {
+          const dishUrl = `restaurant.html?slug=${encodeURIComponent(section.slug || '')}&dishName=${encodeURIComponent(dish.name)}`;
+          return `
+            <div class="restaurant-dish-item" data-restaurant-slug="${section.slug || ''}" data-dish-name="${escapeHtml(dish.name)}">
+              <span class="restaurant-dish-name">${escapeHtml(dish.name)}</span>
+              <span class="restaurant-dish-views">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                  <circle cx="12" cy="12" r="3"/>
+                </svg>
+                ${dish.views || 0}
+                <a href="${dishUrl}" class="dish-launch-link" title="View dish details" onclick="event.stopPropagation()">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                    <polyline points="15 3 21 3 21 9"/>
+                    <line x1="10" y1="14" x2="21" y2="3"/>
+                  </svg>
+                </a>
+              </span>
+            </div>
+          `;
+        };
+
+        const accommodatedColumnHTML = includeAccommodated && accommodatedDishes.length > 0 ? `
+          <div class="restaurant-section-column">
+            <div class="restaurant-section-column-title">
+              <span class="accommodated-dot"></span>
+              Can be accommodated (${accommodatedDishes.length})
+            </div>
+            ${accommodatedDishes.map(renderDishItem).join('')}
+          </div>
+        ` : '';
+
+        // Column for dishes that match search but don't meet user's saved diet
+        const searchMatchColumnHTML = searchMatchDishes && searchMatchDishes.length > 0 ? `
+          <div class="restaurant-section-column">
+            <div class="restaurant-section-column-title">
+              <span class="search-match-dot"></span>
+              Matches search (${searchMatchDishes.length})
+            </div>
+            ${searchMatchDishes.map(renderDishItem).join('')}
+          </div>
+        ` : '';
+
+        const totalDishes = safeDishes.length + accommodatedDishes.length + (searchMatchDishes?.length || 0);
+
+        return `
+          <div class="restaurant-section">
+            <div class="restaurant-section-header">
+              <h3 class="restaurant-section-name">
+                <a href="restaurant.html?slug=${encodeURIComponent(section.slug || '')}">${escapeHtml(section.name)}</a>
+              </h3>
+              <span style="font-size:0.85rem;color:var(--muted);">${totalDishes} dish${totalDishes !== 1 ? 'es' : ''} found</span>
+            </div>
+            <div class="restaurant-section-columns">
+              ${safeDishes.length > 0 || (!accommodatedColumnHTML && !searchMatchColumnHTML) ? `
+              <div class="restaurant-section-column">
+                <div class="restaurant-section-column-title">
+                  <span class="safe-dot"></span>
+                  Safe (${safeDishes.length})
+                </div>
+                ${safeDishes.length > 0
+                  ? safeDishes.map(renderDishItem).join('')
+                  : '<p class="no-dishes-message">No safe dishes found</p>'
+                }
+              </div>
+              ` : ''}
+              ${accommodatedColumnHTML}
+              ${searchMatchColumnHTML}
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      // Click on dish item navigates to restaurant page
+      document.querySelectorAll('.restaurant-dish-item').forEach(item => {
+        item.addEventListener('click', () => {
+          const slug = item.dataset.restaurantSlug;
+          const dishName = item.dataset.dishName;
+          if (slug) {
+            window.location.href = `restaurant.html?slug=${encodeURIComponent(slug)}&dishName=${encodeURIComponent(dishName)}`;
+          }
+        });
+      });
+
+      return true;
+    }
+
+    async function runSearch(query) {
+      const trimmed = (query || '').trim();
+      if (!trimmed) {
+        currentSearchResults = null; // Clear stored results
+        setStatus('');
+        await loadAllDishes(); // Show all dishes when search is cleared
+        return;
+      }
+
+      setStatus('Searching menus...', '');
+      currentSearchResults = null; // Clear previous results
+      
+      try {
+        const payload = { userQuery: trimmed, userAllergens: userAllergies, userDiets };
+
+        let data = null;
+        try {
+          const invokeRes = await supabaseClient.functions.invoke('ai-dish-search', { body: payload });
+          if (!invokeRes.error) { data = invokeRes.data; }
+        } catch (_) { /* ignore and try fallbacks */ }
+
+        if (!data) {
+          let res = await fetch('/api/ai-proxy', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ functionName: 'ai-dish-search', payload })
+          });
+          if (!res.ok) {
+            res = await fetch('https://fgoiyycctnwnghrvsilt.supabase.co/functions/v1/ai-dish-search', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + (window.SUPABASE_ANON_KEY || ''),
+                'apikey': (window.SUPABASE_ANON_KEY || '')
+              },
+              body: JSON.stringify(payload)
+            });
+          }
+          if (res.ok) { data = await res.json(); }
+        }
+
+        if (data) {
+          const results = Array.isArray(data.results) ? data.results : [];
+          if (results.length > 0) {
+            currentSearchResults = results; // Store results for re-filtering
+            const hasResults = await renderDishResults(results, true);
+            // Only show "Search complete" if results were actually displayed
+            if (hasResults) {
+              setStatus('Search complete.', 'success');
+            } else {
+              setStatus('No dishes found matching your search.', 'error');
+            }
+            return;
+          }
+        }
+        
+        currentSearchResults = null; // Clear results if no dishes found
+        dishResultsList.innerHTML = '';
+        await renderDishResults([], true); // Show empty state
+        setStatus('No dishes found matching your search.', 'error');
+      } catch (err) {
+        console.error('Search failed', err);
+        setStatus('Search failed. Please try again.', 'error');
+      }
+    }
+
+    // Initialize
+    async function init() {
+      const { data: { user } } = await supabaseClient.auth.getUser();
+      if (!user) {
+        window.location.href = 'account.html?redirect=dish-search';
+        return;
+      }
+
+      const OWNER_EMAIL = 'matt.29.ds@gmail.com';
+      const isOwner = user.email === OWNER_EMAIL;
+      const isManager = user.user_metadata?.role === 'manager';
+
+      let managerRestaurants = [];
+      if (isManager || isOwner) {
+        managerRestaurants = await fetchManagerRestaurants(supabaseClient, user.id);
+      }
+
+      if (isManager && !isOwner) {
+        const targetRestaurant = managerRestaurants[0];
+        window.location.href = targetRestaurant
+          ? `restaurant.html?slug=${encodeURIComponent(targetRestaurant.slug)}`
+          : 'server-tablet.html';
+        return;
+      }
+
+      currentUser = user;
+      setupTopbar('dish-search', user, { managerRestaurants });
+
+      await loadUserPreferences(user);
+      await loadLovedDishes(user);
+      await loadFavoriteRestaurants(user);
+      await loadRestaurants();
+      await loadDishViewCounts();
+      setupRestaurantDropdown();
+
+      searchButton.addEventListener('click', () => runSearch(searchInput.value || ''));
+      searchInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') runSearch(searchInput.value || '');
+      });
+
+      // Re-render when accommodation toggle changes
+      const filterAccommodatedRow = document.getElementById('filter-include-accommodated-row');
+      const filterAccommodatedToggle = document.getElementById('filter-include-accommodated-toggle');
+      const rerenderForAccommodated = () => {
+        if (currentSearchResults) {
+          renderDishResults(currentSearchResults, true);
+        } else {
+          loadAllDishes();
+        }
+      };
+      if (filterAccommodatedToggle) {
+        setIncludeAccommodated(filterAccommodatedToggle.classList.contains('active'));
+        filterAccommodatedToggle.addEventListener('keydown', (event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            setIncludeAccommodated(!getIncludeAccommodated());
+            rerenderForAccommodated();
+          }
+        });
+      }
+      if (filterAccommodatedRow) {
+        filterAccommodatedRow.addEventListener('click', () => {
+          setIncludeAccommodated(!getIncludeAccommodated());
+          rerenderForAccommodated();
+        });
+      }
+
+      // Load all dishes on page load (before any search)
+      await loadAllDishes();
+    }
+
+    init();
+  </script>
+  <script type="module" src="js/report-modal.js"></script>
+</body>
+</html>

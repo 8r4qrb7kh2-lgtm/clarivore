@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="favicon.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="favicon.png">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Admin - Add Restaurant - Clarivore</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <style>
+    .admin-container {
+      max-width: 800px;
+      margin: 40px auto;
+      padding: 0 20px;
+    }
+
+    .admin-card {
+      background: white;
+      border-radius: 16px;
+      padding: 32px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      margin-bottom: 24px;
+    }
+
+    .admin-card h2 {
+      margin-top: 0;
+      color: #1e3a5f;
+      font-size: 1.5rem;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 600;
+      color: #1e3a5f;
+    }
+
+    .form-group input[type="text"],
+    .form-group input[type="url"],
+    .form-group textarea {
+      width: 100%;
+      padding: 12px;
+      border: 2px solid #e2e8f0;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-family: inherit;
+    }
+
+    .form-group textarea {
+      min-height: 100px;
+      resize: vertical;
+    }
+
+    .form-group input:focus,
+    .form-group textarea:focus {
+      outline: none;
+      border-color: #4c5ad4;
+    }
+
+    .image-preview {
+      margin-top: 12px;
+      max-width: 100%;
+      border-radius: 8px;
+      display: none;
+    }
+
+    .image-preview.show {
+      display: block;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #4c5ad4 0%, #6366f1 100%);
+      color: white;
+      padding: 14px 28px;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(76,90,212,0.3);
+    }
+
+    .btn-primary:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .status-message {
+      padding: 12px 16px;
+      border-radius: 8px;
+      margin-top: 16px;
+      display: none;
+    }
+
+    .status-message.show {
+      display: block;
+    }
+
+    .status-message.success {
+      background: #d1fae5;
+      color: #065f46;
+      border: 1px solid #6ee7b7;
+    }
+
+    .status-message.error {
+      background: #fee2e2;
+      color: #991b1b;
+      border: 1px solid #fca5a5;
+    }
+
+    .restaurants-list {
+      margin-top: 24px;
+    }
+
+    .restaurant-item {
+      background: #f7fafc;
+      padding: 16px;
+      border-radius: 8px;
+      margin-bottom: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .restaurant-item h3 {
+      margin: 0;
+      color: #1e3a5f;
+      font-size: 1.1rem;
+    }
+
+    .restaurant-item p {
+      margin: 4px 0 0 0;
+      color: #718096;
+      font-size: 0.9rem;
+    }
+
+    .btn-secondary {
+      background: #e2e8f0;
+      color: #1e3a5f;
+      padding: 8px 16px;
+      border: none;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .btn-secondary:hover {
+      background: #cbd5e0;
+    }
+
+    .access-denied {
+      text-align: center;
+      padding: 60px 20px;
+    }
+
+    .access-denied h1 {
+      font-size: 2rem;
+      color: #e85d5d;
+      margin-bottom: 16px;
+    }
+  </style>
+</head>
+<body class="page-shell">
+  <header class="simple-topbar">
+    <div class="simple-topbar-inner">
+      <a class="simple-brand" href="home.html">
+        <img src="https://static.wixstatic.com/media/945e9d_2b97098295d341d493e4a07d80d6b57c~mv2.png" alt="Clarivore logo">
+        <span>Clarivore</span>
+      </a>
+      <div class="simple-nav">
+        <!-- Navigation populated by shared-nav.js -->
+      </div>
+    </div>
+  </header>
+
+  <main class="admin-container">
+    <div id="access-denied" class="access-denied" style="display:none;">
+      <h1>🔒 Access Denied</h1>
+      <p>You must be logged in as an administrator to access this page.</p>
+      <button class="btn-primary" onclick="window.location.href='account.html'">Go to Account</button>
+    </div>
+
+    <div id="admin-content" style="display:none;">
+      <div class="admin-card">
+        <h2>Add New Restaurant</h2>
+        <form id="add-restaurant-form">
+          <div class="form-group">
+            <label for="restaurant-name">Restaurant Name *</label>
+            <input type="text" id="restaurant-name" required placeholder="e.g., Falafel Café">
+          </div>
+
+          <div class="form-group">
+            <label for="restaurant-website">Website</label>
+            <input type="url" id="restaurant-website" placeholder="https://example.com">
+          </div>
+
+          <div class="form-group">
+            <label for="restaurant-description">Description</label>
+            <textarea id="restaurant-description" placeholder="Brief description of the restaurant"></textarea>
+          </div>
+
+          <div class="form-group">
+            <label for="menu-image">Menu Image *</label>
+            <input type="file" id="menu-image" accept="image/*" required>
+            <img id="image-preview" class="image-preview" alt="Menu preview">
+          </div>
+
+          <button type="submit" class="btn-primary" id="submit-btn">Add Restaurant</button>
+          <div id="status-message" class="status-message"></div>
+        </form>
+      </div>
+
+      <div class="admin-card">
+        <h2>Existing Restaurants</h2>
+        <div id="restaurants-list" class="restaurants-list">
+          <p style="color: #718096;">Loading restaurants...</p>
+        </div>
+      </div>
+
+      <div class="admin-card">
+        <h2>Appeals Review</h2>
+        <p style="color: #718096; margin-bottom: 16px;">Review and manage ingredient scan appeals from restaurant managers.</p>
+        <a href="appeals-review.html" class="btn-primary" style="display: inline-block; text-decoration: none;">📷 Review Appeals</a>
+      </div>
+    </div>
+  </main>
+
+  <script type="module">
+    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+    import { setupTopbar, attachSignOutHandler } from './js/shared-nav.js';
+    import { fetchManagerRestaurants } from './js/manager-context.js';
+
+    const supabase = createClient(
+      'https://fgoiyycctnwnghrvsilt.supabase.co',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZnb2l5eWNjdG53bmdocnZzaWx0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA0MzY1MjYsImV4cCI6MjA3NjAxMjUyNn0.xlSSXr0Gl7j-vsckrj-2anpPmp4BG2SUIdN-_dquSA8'
+    );
+
+    // Admin email - only this email can access
+    const ADMIN_EMAIL = 'matt.29.ds@gmail.com';
+
+    let currentUser = null;
+
+    // Check authentication
+    async function checkAuth() {
+      const { data: { user } } = await supabase.auth.getUser();
+
+      // Setup navigation
+      let managerRestaurants = [];
+      if (user && user.email === ADMIN_EMAIL) {
+        managerRestaurants = await fetchManagerRestaurants(supabase, user.id);
+      }
+      setupTopbar('restaurants', user, { managerRestaurants });
+      if (user) {
+        attachSignOutHandler(supabase);
+      }
+
+      if (!user || user.email !== ADMIN_EMAIL) {
+        document.getElementById('access-denied').style.display = 'block';
+        return false;
+      }
+
+      currentUser = user;
+      document.getElementById('admin-content').style.display = 'block';
+      loadRestaurants();
+      return true;
+    }
+
+    // Compress image
+    function compressImage(dataUrl, maxWidth = 1200, quality = 0.8) {
+      return new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+
+          if (width > maxWidth) {
+            height = (height * maxWidth) / width;
+            width = maxWidth;
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+
+          resolve(canvas.toDataURL('image/jpeg', quality));
+        };
+        img.src = dataUrl;
+      });
+    }
+
+    // Image preview
+    document.getElementById('menu-image').addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        const compressed = await compressImage(event.target.result);
+        const preview = document.getElementById('image-preview');
+        preview.src = compressed;
+        preview.classList.add('show');
+      };
+      reader.readAsDataURL(file);
+    });
+
+    // Load restaurants
+    async function loadRestaurants() {
+      const { data: restaurants, error } = await supabase
+        .from('restaurants')
+        .select('*')
+        .order('name');
+
+      const list = document.getElementById('restaurants-list');
+
+      if (error || !restaurants || restaurants.length === 0) {
+        list.innerHTML = '<p style="color: #718096;">No restaurants found.</p>';
+        return;
+      }
+
+      list.innerHTML = restaurants.map(r => `
+        <div class="restaurant-item">
+          <div>
+            <h3>${r.name}</h3>
+            <p>${r.slug || 'no-slug'}</p>
+          </div>
+          <button class="btn-secondary" onclick="window.location.href='restaurant.html?id=${r.id}'">View</button>
+        </div>
+      `).join('');
+    }
+
+    // Show status message
+    function showStatus(message, isError = false) {
+      const statusEl = document.getElementById('status-message');
+      statusEl.textContent = message;
+      statusEl.className = `status-message show ${isError ? 'error' : 'success'}`;
+
+      setTimeout(() => {
+        statusEl.classList.remove('show');
+      }, 5000);
+    }
+
+    // Form submission
+    document.getElementById('add-restaurant-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const submitBtn = document.getElementById('submit-btn');
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Adding restaurant...';
+
+      try {
+        const name = document.getElementById('restaurant-name').value;
+        const website = document.getElementById('restaurant-website').value;
+        const description = document.getElementById('restaurant-description').value;
+
+        // Get compressed image
+        const preview = document.getElementById('image-preview');
+        const menuImage = preview.src;
+
+        if (!menuImage || menuImage === window.location.href) {
+          throw new Error('Please select a menu image');
+        }
+
+        // Insert restaurant
+        const { data: restaurant, error } = await supabase
+          .from('restaurants')
+          .insert({
+            name,
+            slug: name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''),
+            menu_image: menuImage,
+            overlays: [],
+            last_confirmed: null
+          })
+          .select()
+          .single();
+
+        if (error) throw error;
+
+        // Automatically add admin as manager for the new restaurant
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user && user.email === ADMIN_EMAIL) {
+          const { error: managerError } = await supabase
+            .from('restaurant_managers')
+            .insert({
+              user_id: user.id,
+              restaurant_id: restaurant.id
+            });
+          
+          if (managerError) {
+            console.warn('Failed to add admin as manager:', managerError);
+            // Don't throw - restaurant was created successfully
+          }
+        }
+
+        showStatus(`✓ Successfully added ${name}!`);
+
+        // Reset form
+        document.getElementById('add-restaurant-form').reset();
+        preview.classList.remove('show');
+        preview.src = '';
+
+        // Reload restaurants list
+        loadRestaurants();
+
+      } catch (error) {
+        console.error('Error adding restaurant:', error);
+        showStatus('Error: ' + error.message, true);
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Add Restaurant';
+      }
+    });
+
+    // Initialize
+    checkAuth();
+  </script>
+</body>
+</html>
