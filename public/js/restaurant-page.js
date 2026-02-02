@@ -4363,9 +4363,9 @@ function renderEditor() {
           <div class="editorGroupLabel">Editing</div>
           <div class="editorGroupButtons">
             <button class="btn btnPrimary" id="addBox">+ Add overlay</button>
-            <button class="btn btnPrimary editorSaveBtn" id="saveBtn" style="display:none">Save to site</button>
             <button class="btn" id="undoBtn" title="Undo (Ctrl+Z)" style="opacity:0.5">↶ Undo</button>
             <button class="btn" id="redoBtn" title="Redo (Ctrl+Y)" style="opacity:0.5">↷ Redo</button>
+            <button class="btn btnPrimary editorSaveBtn" id="saveBtn" style="display:none">Save to site</button>
           </div>
         </div>
         <div class="editorGroup">

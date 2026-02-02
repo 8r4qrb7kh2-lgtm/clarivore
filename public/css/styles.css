@@ -1918,10 +1918,9 @@ body.menuScrollLocked .menuWrap {
 }
 
 .editorGroupButtons {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 3px;
-  align-items: center;
+  display: grid;
+  gap: 6px;
+  align-items: stretch;
 }
 
 .editorToolbar .btn {
@@ -1929,6 +1928,11 @@ body.menuScrollLocked .menuWrap {
   font-size: 0.68rem;
   border-radius: 10px;
   line-height: 1.1;
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
 }
 
 .editorNoteRow {
