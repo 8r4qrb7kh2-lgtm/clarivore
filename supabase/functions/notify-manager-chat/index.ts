@@ -7,6 +7,11 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "
 const SENDGRID_API_KEY = Deno.env.get("SENDGRID_API_KEY") || "";
 const VAPID_PUBLIC_KEY = Deno.env.get("VAPID_PUBLIC_KEY") || "";
 const VAPID_PRIVATE_KEY = Deno.env.get("VAPID_PRIVATE_KEY") || "";
+const APNS_KEY_ID = Deno.env.get("APNS_KEY_ID") || "";
+const APNS_TEAM_ID = Deno.env.get("APNS_TEAM_ID") || "";
+const APNS_BUNDLE_ID = Deno.env.get("APNS_BUNDLE_ID") || "com.clarivore.app";
+const APNS_PRIVATE_KEY = Deno.env.get("APNS_PRIVATE_KEY") || "";
+const APNS_ENV = (Deno.env.get("APNS_ENV") || "production").toLowerCase();
 const VAPID_SUBJECT =
   Deno.env.get("VAPID_SUBJECT") || "mailto:notifications@clarivore.org";
 const FROM_EMAIL =
@@ -22,6 +27,80 @@ function jsonResponse(payload: unknown, status = 200, headers = {}) {
     status,
     headers: { "Content-Type": "application/json", ...headers },
   });
+}
+
+function base64UrlEncode(data: ArrayBuffer | Uint8Array | string) {
+  let bytes: Uint8Array;
+  if (typeof data === "string") {
+    bytes = new TextEncoder().encode(data);
+  } else if (data instanceof Uint8Array) {
+    bytes = data;
+  } else {
+    bytes = new Uint8Array(data);
+  }
+
+  let binary = "";
+  bytes.forEach((b) => {
+    binary += String.fromCharCode(b);
+  });
+  const base64 = btoa(binary);
+  return base64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+}
+
+function normalizeApnsKey(rawKey: string) {
+  if (!rawKey) return "";
+  if (rawKey.includes("BEGIN PRIVATE KEY")) return rawKey;
+  try {
+    const decoded = atob(rawKey);
+    if (decoded.includes("BEGIN PRIVATE KEY")) {
+      return decoded;
+    }
+  } catch (_) {
+    // ignore
+  }
+  return rawKey;
+}
+
+function pemToArrayBuffer(pem: string) {
+  const contents = pem
+    .replace(/-----BEGIN PRIVATE KEY-----/g, "")
+    .replace(/-----END PRIVATE KEY-----/g, "")
+    .replace(/\s+/g, "");
+  const binary = atob(contents);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes.buffer;
+}
+
+async function createApnsJwt() {
+  if (!APNS_KEY_ID || !APNS_TEAM_ID || !APNS_PRIVATE_KEY) return "";
+  const pem = normalizeApnsKey(APNS_PRIVATE_KEY);
+  if (!pem.includes("BEGIN PRIVATE KEY")) return "";
+  const keyData = pemToArrayBuffer(pem);
+  const cryptoKey = await crypto.subtle.importKey(
+    "pkcs8",
+    keyData,
+    { name: "ECDSA", namedCurve: "P-256" },
+    false,
+    ["sign"],
+  );
+
+  const header = base64UrlEncode(
+    JSON.stringify({ alg: "ES256", kid: APNS_KEY_ID }),
+  );
+  const payload = base64UrlEncode(
+    JSON.stringify({ iss: APNS_TEAM_ID, iat: Math.floor(Date.now() / 1000) }),
+  );
+  const signingInput = `${header}.${payload}`;
+  const signature = await crypto.subtle.sign(
+    { name: "ECDSA", hash: "SHA-256" },
+    cryptoKey,
+    new TextEncoder().encode(signingInput),
+  );
+  const signatureEncoded = base64UrlEncode(signature);
+  return `${signingInput}.${signatureEncoded}`;
 }
 
 function escapeHtml(value: string) {
@@ -229,6 +308,81 @@ async function sendPushNotifications(params: {
   return { sent };
 }
 
+async function sendApnsNotifications(params: {
+  tokens: Array<{ id: string; device_token: string }>;
+  title: string;
+  body: string;
+  messageId: string;
+}) {
+  if (!APNS_KEY_ID || !APNS_TEAM_ID || !APNS_PRIVATE_KEY) {
+    return { skipped: true, sent: 0 };
+  }
+  if (!APNS_BUNDLE_ID) {
+    return { skipped: true, sent: 0 };
+  }
+
+  const jwt = await createApnsJwt();
+  if (!jwt) return { skipped: true, sent: 0 };
+
+  const apnsHost =
+    APNS_ENV === "development"
+      ? "https://api.sandbox.push.apple.com"
+      : "https://api.push.apple.com";
+
+  let sent = 0;
+  for (const tokenEntry of params.tokens) {
+    const response = await fetch(
+      `${apnsHost}/3/device/${tokenEntry.device_token}`,
+      {
+        method: "POST",
+        headers: {
+          authorization: `bearer ${jwt}`,
+          "apns-topic": APNS_BUNDLE_ID,
+          "apns-push-type": "alert",
+          "apns-priority": "10",
+          "apns-collapse-id": `chat-${params.messageId}`,
+        },
+        body: JSON.stringify({
+          aps: {
+            alert: { title: params.title, body: params.body },
+            sound: "default",
+          },
+          messageId: params.messageId,
+        }),
+      },
+    );
+
+    if (response.ok) {
+      sent += 1;
+      continue;
+    }
+
+    let reason = "";
+    try {
+      const payload = await response.json();
+      reason = payload?.reason || "";
+    } catch (_) {
+      // ignore
+    }
+
+    if (
+      response.status === 410 ||
+      reason === "Unregistered" ||
+      reason === "BadDeviceToken" ||
+      reason === "DeviceTokenNotForTopic"
+    ) {
+      await supabase
+        .from("manager_device_tokens")
+        .update({ disabled_at: new Date().toISOString() })
+        .eq("id", tokenEntry.id);
+    }
+
+    console.error("APNs send failed:", response.status, reason);
+  }
+
+  return { sent };
+}
+
 serve(async (req) => {
   const corsHeaders = getCorsHeaders(req);
   if (req.method === "OPTIONS") {
@@ -334,11 +488,26 @@ serve(async (req) => {
     tag: `chat-${message.id}`,
   });
 
+  const { data: deviceTokens } = await supabase
+    .from("manager_device_tokens")
+    .select("id, device_token")
+    .in("user_id", userIds)
+    .eq("platform", "ios")
+    .is("disabled_at", null);
+
+  const apnsResult = await sendApnsNotifications({
+    tokens: deviceTokens || [],
+    title: `New message from ${senderName}`,
+    body: trimmedMessage,
+    messageId: message.id,
+  });
+
   return jsonResponse(
     {
       success: true,
       emailsSent: emailResult?.sent || 0,
       pushesSent: pushResult?.sent || 0,
+      iosPushesSent: apnsResult?.sent || 0,
       managerCount: userIds.length,
     },
     200,

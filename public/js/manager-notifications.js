@@ -2,6 +2,9 @@ import supabaseClient from './supabase-client.js';
 
 const SW_PATH = '/manager-push-sw.js';
 const PUBLIC_KEY = window.CLARIVORE_PUSH_PUBLIC_KEY || '';
+const IOS_BUNDLE_ID = 'com.clarivore.app';
+let webInitDone = false;
+let nativeInitDone = false;
 
 function supportsPush() {
   return (
@@ -10,6 +13,16 @@ function supportsPush() {
     'serviceWorker' in navigator &&
     'PushManager' in window
   );
+}
+
+function isNativePlatform() {
+  if (window.Capacitor?.isNativePlatform) {
+    return window.Capacitor.isNativePlatform();
+  }
+  if (window.Capacitor?.getPlatform) {
+    return window.Capacitor.getPlatform() !== 'web';
+  }
+  return window.navigator?.userAgent?.includes('Capacitor') || false;
 }
 
 function urlBase64ToUint8Array(base64String) {
@@ -29,6 +42,26 @@ async function registerServiceWorker() {
   } catch (err) {
     console.error('Push service worker registration failed:', err);
     return null;
+  }
+}
+
+async function saveNativeToken({ client, userId, token, platform }) {
+  if (!client || !userId || !token) return;
+  const record = {
+    user_id: userId,
+    device_token: token,
+    platform: platform || 'ios',
+    app_bundle_id: IOS_BUNDLE_ID,
+    user_agent: navigator.userAgent || '',
+    last_seen_at: new Date().toISOString(),
+    disabled_at: null
+  };
+
+  const { error } = await client
+    .from('manager_device_tokens')
+    .upsert(record, { onConflict: 'user_id,device_token' });
+  if (error) {
+    console.error('Failed to store native push token:', error);
   }
 }
 
@@ -57,6 +90,37 @@ async function saveSubscription({ client, userId, subscription }) {
   }
 }
 
+async function initNativePush({ user, client }) {
+  if (nativeInitDone || !user) return;
+  if (!isNativePlatform()) return;
+  const PushNotifications = window.Capacitor?.Plugins?.PushNotifications;
+  if (!PushNotifications?.requestPermissions || !PushNotifications?.register) return;
+
+  nativeInitDone = true;
+  const platform = window.Capacitor?.getPlatform ? window.Capacitor.getPlatform() : 'ios';
+
+  PushNotifications.addListener('registration', async (token) => {
+    await saveNativeToken({
+      client,
+      userId: user.id,
+      token: token?.value || '',
+      platform
+    });
+  });
+
+  PushNotifications.addListener('registrationError', (err) => {
+    console.error('Native push registration error:', err);
+  });
+
+  try {
+    const permission = await PushNotifications.requestPermissions();
+    if (permission?.receive !== 'granted') return;
+    await PushNotifications.register();
+  } catch (err) {
+    console.error('Native push permission request failed:', err);
+  }
+}
+
 async function ensureSubscription({ client, userId, registration }) {
   if (!PUBLIC_KEY) return;
   const subscription = await registration.pushManager.getSubscription();
@@ -76,13 +140,15 @@ async function ensureSubscription({ client, userId, registration }) {
   }
 }
 
-export async function initManagerNotifications({ user, client } = {}) {
-  const supabase = client || supabaseClient;
-  if (!user || !supportsPush()) return;
+async function initWebPush({ user, client }) {
+  if (webInitDone || !user) return;
+  if (!supportsPush()) return;
   if (!PUBLIC_KEY) {
     console.warn('Push notifications skipped: missing public key.');
     return;
   }
+
+  webInitDone = true;
 
   const registration = await registerServiceWorker();
   if (!registration) return;
@@ -106,4 +172,11 @@ export async function initManagerNotifications({ user, client } = {}) {
   };
 
   document.addEventListener('click', requestOnce, { once: true });
+}
+
+export async function initManagerNotifications({ user, client } = {}) {
+  const supabase = client || supabaseClient;
+  if (!user) return;
+  await initNativePush({ user, client: supabase });
+  await initWebPush({ user, client: supabase });
 }

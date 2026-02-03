@@ -16,6 +16,7 @@
     "@capacitor/browser": "^6.0.6",
     "@capacitor/core": "^6.1.0",
     "@capacitor/ios": "^6.2.1",
+    "@capacitor/push-notifications": "^6.0.4",
     "@supabase/supabase-js": "^2.39.0"
   },
   "devDependencies": {
