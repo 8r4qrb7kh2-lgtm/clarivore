@@ -1,6 +1,8 @@
     import supabaseClient from './supabase-client.js';
     import { setupTopbar } from './shared-nav.js';
     import { fetchManagerRestaurants } from './manager-context.js';
+    import { initManagerNotifications } from './manager-notifications.js';
+    import { notifyManagerChat } from './chat-notifications.js';
 
     const allergenConfig = window.loadAllergenDietConfig
       ? await window.loadAllergenDietConfig({ supabaseClient })
@@ -117,6 +119,9 @@
         }
 
         setupTopbar('home', user, { managerRestaurants: navRestaurants });
+        if (isManager || isOwner) {
+          initManagerNotifications({ user: currentUser, client: supabaseClient });
+        }
 
         await loadManagedRestaurants();
 
@@ -433,7 +438,7 @@
         const confirmLink = buildConfirmLink(restaurantSlug);
         const message = `${reminderTag}. You have ${daysUntilDue} day${daysUntilDue === 1 ? '' : 's'} to confirm that your information is up-to-date or your restaurant will be temporarily suspended from Clarivore. Confirm here: ${confirmLink}`;
 
-        const { error: insertError } = await supabaseClient
+        const { data: insertedMessage, error: insertError } = await supabaseClient
           .from('restaurant_direct_messages')
           .insert({
             restaurant_id: restaurantId,
@@ -441,10 +446,15 @@
             sender_role: 'admin',
             sender_name: AUTO_ALERT_SENDER,
             sender_id: null
-          });
+          })
+          .select('id')
+          .single();
 
         if (insertError) throw insertError;
         sentReminderKeys.add(reminderKey);
+        if (insertedMessage?.id) {
+          notifyManagerChat({ messageId: insertedMessage.id, client: supabaseClient });
+        }
         await loadChatMessages();
         renderChatPreview();
       } catch (err) {
@@ -870,7 +880,10 @@
 
     function formatChatMessage(text) {
       const escaped = escapeHtml(text || '');
-      return escaped.replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>');
+      return escaped.replace(
+        /((?:https?:|capacitor):\/\/[^\s<]+)/g,
+        '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>'
+      );
     }
 
     function normalizeBrandKey(value) {

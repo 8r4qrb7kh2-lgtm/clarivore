@@ -1215,6 +1215,7 @@
     import supabase from './js/supabase-client.js';
     import { setupTopbar, attachSignOutHandler } from './js/shared-nav.js';
     import { fetchManagerRestaurants } from './js/manager-context.js';
+    import { notifyManagerChat } from './js/chat-notifications.js';
 
     const ADMIN_EMAIL = 'matt.29.ds@gmail.com';
     const ADMIN_DISPLAY_NAME = 'Matt D (clarivore administrator)';
@@ -1683,7 +1684,7 @@
       input.disabled = true;
       try {
         const senderName = ADMIN_DISPLAY_NAME;
-        const { error } = await supabase
+        const { data: insertedMessage, error } = await supabase
           .from('restaurant_direct_messages')
           .insert({
             restaurant_id: restaurantId,
@@ -1691,11 +1692,16 @@
             sender_role: 'admin',
             sender_name: senderName,
             sender_id: currentUser?.id || null
-          });
+          })
+          .select('id')
+          .single();
 
         if (error) throw error;
 
         input.value = '';
+        if (insertedMessage?.id) {
+          notifyManagerChat({ messageId: insertedMessage.id, client: supabase });
+        }
         await loadChatThread(restaurantId, restaurantName);
       } catch (error) {
         console.error('Error sending chat message:', error);

@@ -385,6 +385,7 @@
     import { setupTopbar } from './js/shared-nav.js';
     import { fetchManagerRestaurants } from './js/manager-context.js';
     import { initHelpAssistantPanel, setHelpAssistantMode } from './js/help-assistant-drawer.js';
+    import { initManagerNotifications } from './js/manager-notifications.js';
 
     const OWNER_EMAIL = 'matt.29.ds@gmail.com';
     let currentUser = null;
@@ -960,6 +961,9 @@
       isOwner = user.email === OWNER_EMAIL;
       isManager = user.user_metadata?.role === 'manager';
       const isManagerOrOwner = isOwner || isManager;
+      if (isManagerOrOwner) {
+        initManagerNotifications({ user: currentUser, client: supabaseClient });
+      }
 
       if (isManagerOrOwner) {
         managedRestaurants = await fetchManagerRestaurants(supabaseClient, user.id);

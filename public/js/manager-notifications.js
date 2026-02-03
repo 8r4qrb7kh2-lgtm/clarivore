@@ -1,0 +1,109 @@
+import supabaseClient from './supabase-client.js';
+
+const SW_PATH = '/manager-push-sw.js';
+const PUBLIC_KEY = window.CLARIVORE_PUSH_PUBLIC_KEY || '';
+
+function supportsPush() {
+  return (
+    typeof window !== 'undefined' &&
+    'Notification' in window &&
+    'serviceWorker' in navigator &&
+    'PushManager' in window
+  );
+}
+
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; i += 1) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
+
+async function registerServiceWorker() {
+  try {
+    return await navigator.serviceWorker.register(SW_PATH);
+  } catch (err) {
+    console.error('Push service worker registration failed:', err);
+    return null;
+  }
+}
+
+async function saveSubscription({ client, userId, subscription }) {
+  if (!client || !userId || !subscription) return;
+  const payload = subscription.toJSON ? subscription.toJSON() : null;
+  const keys = payload?.keys || {};
+  const endpoint = subscription.endpoint || payload?.endpoint || '';
+  if (!endpoint || !keys.p256dh || !keys.auth) return;
+
+  const record = {
+    user_id: userId,
+    endpoint,
+    p256dh: keys.p256dh,
+    auth: keys.auth,
+    user_agent: navigator.userAgent || '',
+    last_seen_at: new Date().toISOString(),
+    disabled_at: null
+  };
+
+  const { error } = await client
+    .from('manager_push_subscriptions')
+    .upsert(record, { onConflict: 'user_id,endpoint' });
+  if (error) {
+    console.error('Failed to store push subscription:', error);
+  }
+}
+
+async function ensureSubscription({ client, userId, registration }) {
+  if (!PUBLIC_KEY) return;
+  const subscription = await registration.pushManager.getSubscription();
+  if (subscription) {
+    await saveSubscription({ client, userId, subscription });
+    return;
+  }
+
+  try {
+    const newSub = await registration.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(PUBLIC_KEY)
+    });
+    await saveSubscription({ client, userId, subscription: newSub });
+  } catch (err) {
+    console.error('Failed to subscribe to push notifications:', err);
+  }
+}
+
+export async function initManagerNotifications({ user, client } = {}) {
+  const supabase = client || supabaseClient;
+  if (!user || !supportsPush()) return;
+  if (!PUBLIC_KEY) {
+    console.warn('Push notifications skipped: missing public key.');
+    return;
+  }
+
+  const registration = await registerServiceWorker();
+  if (!registration) return;
+
+  if (Notification.permission === 'granted') {
+    await ensureSubscription({ client: supabase, userId: user.id, registration });
+    return;
+  }
+
+  if (Notification.permission === 'denied') return;
+
+  const requestOnce = async () => {
+    try {
+      const permission = await Notification.requestPermission();
+      if (permission === 'granted') {
+        await ensureSubscription({ client: supabase, userId: user.id, registration });
+      }
+    } catch (err) {
+      console.error('Notification permission request failed:', err);
+    }
+  };
+
+  document.addEventListener('click', requestOnce, { once: true });
+}
