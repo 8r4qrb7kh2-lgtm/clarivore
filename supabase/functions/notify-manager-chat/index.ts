@@ -49,16 +49,25 @@ function base64UrlEncode(data: ArrayBuffer | Uint8Array | string) {
 
 function normalizeApnsKey(rawKey: string) {
   if (!rawKey) return "";
-  if (rawKey.includes("BEGIN PRIVATE KEY")) return rawKey;
+  const trimmed = rawKey.trim();
+  if (!trimmed) return "";
+  if (trimmed.includes("BEGIN PRIVATE KEY")) return trimmed;
+
   try {
-    const decoded = atob(rawKey);
+    const decoded = atob(trimmed);
     if (decoded.includes("BEGIN PRIVATE KEY")) {
       return decoded;
     }
   } catch (_) {
     // ignore
   }
-  return rawKey;
+
+  const base64Body = trimmed.replace(/\s+/g, "");
+  if (/^[A-Za-z0-9+/=_-]+$/.test(base64Body) && base64Body.length > 100) {
+    return `-----BEGIN PRIVATE KEY-----\n${base64Body}\n-----END PRIVATE KEY-----`;
+  }
+
+  return "";
 }
 
 function pemToArrayBuffer(pem: string) {
@@ -315,14 +324,19 @@ async function sendApnsNotifications(params: {
   messageId: string;
 }) {
   if (!APNS_KEY_ID || !APNS_TEAM_ID || !APNS_PRIVATE_KEY) {
+    console.warn("APNs skipped: missing key/team/private key");
     return { skipped: true, sent: 0 };
   }
   if (!APNS_BUNDLE_ID) {
+    console.warn("APNs skipped: missing bundle id");
     return { skipped: true, sent: 0 };
   }
 
   const jwt = await createApnsJwt();
-  if (!jwt) return { skipped: true, sent: 0 };
+  if (!jwt) {
+    console.warn("APNs skipped: JWT creation failed");
+    return { skipped: true, sent: 0 };
+  }
 
   const apnsHost =
     APNS_ENV === "development"
@@ -330,6 +344,11 @@ async function sendApnsNotifications(params: {
       : "https://api.push.apple.com";
 
   let sent = 0;
+  if (!params.tokens.length) {
+    console.warn("APNs skipped: no device tokens");
+    return { skipped: true, sent: 0 };
+  }
+
   for (const tokenEntry of params.tokens) {
     const response = await fetch(
       `${apnsHost}/3/device/${tokenEntry.device_token}`,
