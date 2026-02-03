@@ -938,6 +938,70 @@
       margin-top: 12px;
     }
 
+    /* Manager Access styles */
+    .manager-access-list {
+      display: grid;
+      gap: 16px;
+    }
+
+    .manager-access-card {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 16px;
+    }
+
+    .manager-access-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .manager-access-header h3 {
+      margin: 0;
+      font-size: 1.1rem;
+      color: #1e3a5f;
+    }
+
+    .manager-table {
+      width: 100%;
+      border-collapse: collapse;
+      background: white;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      overflow: hidden;
+      font-size: 0.9rem;
+    }
+
+    .manager-table th,
+    .manager-table td {
+      padding: 10px 12px;
+      border-bottom: 1px solid #e2e8f0;
+      text-align: left;
+      color: #1e3a5f;
+    }
+
+    .manager-table th {
+      background: #eef2ff;
+      font-weight: 600;
+      color: #1e3a5f;
+    }
+
+    .manager-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    .manager-empty {
+      padding: 14px;
+      color: #64748b;
+      background: white;
+      border-radius: 10px;
+      border: 1px dashed #cbd5f5;
+      text-align: center;
+    }
+
     .btn-copy-small {
       background: #4c5ad4;
       color: white;
@@ -1015,7 +1079,7 @@
 
       <div class="tab-buttons">
         <button class="tab-btn active" data-tab="restaurants">Restaurants</button>
-        <button class="tab-btn" data-tab="manager-invites">Manager Invites</button>
+        <button class="tab-btn" data-tab="managers">Managers</button>
         <button class="tab-btn" data-tab="appeals">Appeals Review</button>
         <button class="tab-btn" data-tab="feedback">Anonymous Feedback</button>
         <button class="tab-btn" data-tab="product-reports">📋 Issue Reports</button>
@@ -1062,8 +1126,8 @@
         </div>
       </div>
 
-      <!-- Manager Invites Tab -->
-      <div id="tab-manager-invites" class="tab-content">
+      <!-- Managers Tab -->
+      <div id="tab-managers" class="tab-content">
         <div class="admin-card admin-card-full">
           <h2>🔗 Create Manager Invite Link</h2>
           <p style="color: #718096; margin-bottom: 24px;">Generate a shareable link that allows someone to create an account with manager access to selected restaurants</p>
@@ -1135,6 +1199,14 @@
             <div id="invites-list-container">
               <p style="color: #718096;">Loading invites...</p>
             </div>
+          </div>
+        </div>
+
+        <div class="admin-card admin-card-full" style="margin-top: 20px;">
+          <h2>👥 Manager Access by Restaurant</h2>
+          <p style="color: #718096; margin-bottom: 20px;">View current manager access for each restaurant and revoke access when needed.</p>
+          <div id="manager-access-list" class="manager-access-list">
+            <p style="color: #718096;">Loading manager access...</p>
           </div>
         </div>
       </div>
@@ -1280,8 +1352,9 @@
           loadAllergenIssues();
         } else if (tabName === 'product-reports') {
           loadProductReports();
-        } else if (tabName === 'manager-invites') {
+        } else if (tabName === 'managers') {
           loadInvites();
+          loadManagerAccess();
         }
       });
     });
@@ -1983,6 +2056,124 @@
         console.error('Error loading invites:', error);
         document.getElementById('invites-list-container').innerHTML =
           `<p style="color: #ef4444;">Error loading invites: ${error.message}</p>`;
+      }
+    }
+
+    let managerAccessBound = false;
+
+    async function loadManagerAccess() {
+      const container = document.getElementById('manager-access-list');
+      if (!container) return;
+      container.innerHTML = '<p style="color: #718096;">Loading manager access...</p>';
+
+      try {
+        const { data, error } = await supabase.functions.invoke('admin-managers', {
+          body: { action: 'list' }
+        });
+        if (error) throw error;
+        const restaurants = data?.restaurants || [];
+        renderManagerAccess(restaurants);
+      } catch (error) {
+        console.error('Error loading manager access:', error);
+        container.innerHTML = `<p style="color: #ef4444;">Error loading manager access: ${error.message || error}</p>`;
+      }
+
+      if (!managerAccessBound) {
+        managerAccessBound = true;
+        container.addEventListener('click', (event) => {
+          const btn = event.target.closest('[data-action="remove-manager"]');
+          if (!btn) return;
+          const restaurantId = btn.dataset.restaurantId;
+          const userId = btn.dataset.userId;
+          const label = btn.dataset.label || 'this manager';
+          if (!restaurantId || !userId) return;
+          removeManagerAccess(restaurantId, userId, label);
+        });
+      }
+    }
+
+    function renderManagerAccess(restaurants) {
+      const container = document.getElementById('manager-access-list');
+      if (!container) return;
+
+      if (!restaurants.length) {
+        container.innerHTML = '<p style="color: #718096;">No restaurants found.</p>';
+        return;
+      }
+
+      const cards = restaurants.map((restaurant) => {
+        const managers = Array.isArray(restaurant.managers) ? restaurant.managers : [];
+
+        const managerRows = managers.map((manager) => {
+          const name = manager.name || '';
+          const email = manager.email || '';
+          const userId = manager.user_id || '';
+          const addedAt = manager.created_at ? new Date(manager.created_at).toLocaleString() : '';
+          const label = name || email || userId || 'Manager';
+          return `
+            <tr>
+              <td>${escapeHtml(name || '—')}</td>
+              <td>${escapeHtml(email || '—')}</td>
+              <td><span style="font-family: monospace;">${escapeHtml(userId || '—')}</span></td>
+              <td>${escapeHtml(addedAt || '—')}</td>
+              <td>
+                <button
+                  class="btn-danger"
+                  data-action="remove-manager"
+                  data-restaurant-id="${escapeHtml(restaurant.id || '')}"
+                  data-user-id="${escapeHtml(userId)}"
+                  data-label="${escapeHtml(label)}"
+                >Remove</button>
+              </td>
+            </tr>
+          `;
+        }).join('');
+
+        const tableHtml = managers.length
+          ? `
+            <table class="manager-table">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Email</th>
+                  <th>User ID</th>
+                  <th>Added</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                ${managerRows}
+              </tbody>
+            </table>
+          `
+          : `<div class="manager-empty">No managers assigned yet.</div>`;
+
+        return `
+          <div class="manager-access-card">
+            <div class="manager-access-header">
+              <h3>${escapeHtml(restaurant.name || 'Restaurant')}</h3>
+              <span style="color:#64748b;font-size:0.85rem;">${escapeHtml(restaurant.slug || '')}</span>
+            </div>
+            ${tableHtml}
+          </div>
+        `;
+      }).join('');
+
+      container.innerHTML = cards;
+    }
+
+    async function removeManagerAccess(restaurantId, userId, label) {
+      if (!confirm(`Remove manager access for ${label}?`)) return;
+
+      try {
+        const { data, error } = await supabase.functions.invoke('admin-managers', {
+          body: { action: 'revoke', restaurantId, userId }
+        });
+        if (error) throw error;
+        await loadManagerAccess();
+      } catch (error) {
+        console.error('Error removing manager access:', error);
+        alert(`Error removing manager access: ${error.message || error}`);
       }
     }
 
