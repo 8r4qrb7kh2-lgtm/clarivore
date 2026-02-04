@@ -250,6 +250,7 @@ nav a:hover {
   margin-bottom: 20px;
 }
 
+/* Orientation lock overlay (iPhone landscape) */
 /* Shared page shell + topbar */
 .page-shell {
   min-height: 100vh;
@@ -2444,6 +2445,15 @@ body.menuZoomingOut .wrap > *:not(.content),
 body.menuZoomingOut #root > *:not(.menuWrap) {
   pointer-events: none;
 }
+body.menuZoomed .simple-topbar,
+body.menuZoomingOut .simple-topbar {
+  z-index: 10001;
+}
+body.menuZoomed #stickyHeader,
+body.menuZoomingOut #stickyHeader {
+  position: relative;
+  z-index: 10001;
+}
 body.menuZoomed {
   overflow: hidden;
 }
@@ -2532,11 +2542,24 @@ body.menuZoomingOut {
   );
   padding: 50px 16px calc(8px + env(safe-area-inset-bottom, 0px)) 16px;
   z-index: 10000;
-  display: none;
+  opacity: 0;
+  transform: translateY(20px) scale(0.98);
+  pointer-events: none;
+  visibility: hidden;
+  transition: opacity 0.3s ease, transform 0.3s ease;
 }
 
 .zoomedDishInfo.show {
-  display: block;
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
+  visibility: visible;
+}
+
+body.menuZoomingOut .zoomedDishInfo.show {
+  opacity: 0;
+  transform: translateY(20px) scale(0.98);
+  pointer-events: none;
 }
 
 .zoomedDishInfo h3 {

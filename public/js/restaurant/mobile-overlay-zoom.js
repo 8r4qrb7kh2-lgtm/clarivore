@@ -38,6 +38,7 @@ export function initMobileOverlayZoom(deps = {}) {
   let isOverlayZoomed = false;
   let zoomedOverlayItem = null;
   let preZoomScrollPos = { x: 0, y: 0 };
+  let preZoomMenuWrapOffset = { x: 0, y: 0 };
   let currentZoomScale = 1;
   let isZoomingOut = false;
   let currentZoomTransform = {
@@ -189,6 +190,11 @@ export function initMobileOverlayZoom(deps = {}) {
 
     if (!isTransition) {
       preZoomScrollPos = { x: window.scrollX, y: window.scrollY };
+      const menuWrapRect = menuWrap.getBoundingClientRect();
+      preZoomMenuWrapOffset = {
+        x: menuWrapRect.left,
+        y: menuWrapRect.top,
+      };
     }
 
     const screenWidth = window.innerWidth;
@@ -327,6 +333,9 @@ export function initMobileOverlayZoom(deps = {}) {
     currentZoomScale = 1;
     document.documentElement.style.setProperty("--overlay-zoom-scale", 1);
 
+    menuWrap.style.transition = "transform 0.3s ease-out";
+    menuWrap.style.transform = `translate(${preZoomMenuWrapOffset.x}px, ${preZoomMenuWrapOffset.y}px)`;
+
     const finishZoomOut = () => {
       currentZoomTransform = {
         menuInner: null,
@@ -341,6 +350,8 @@ export function initMobileOverlayZoom(deps = {}) {
       });
 
       menuWrap.classList.remove("zoomed");
+      menuWrap.style.transition = "";
+      menuWrap.style.transform = "";
 
       document
         .querySelectorAll(".menuSection.zoomed-active")
