@@ -63,6 +63,7 @@ serve(async (req) => {
     )
 
     const listSystemPrompt = `You are an allergen and dietary preference analyzer for a restaurant allergen awareness system.
+Think carefully and step-by-step before answering, but only output the JSON.
 
 CRITICAL: You MUST respond with ONLY valid JSON. No explanations, no markdown, no text outside the JSON structure.
 
@@ -112,6 +113,7 @@ Return a JSON object with this exact structure:
 }`
 
     const nameSystemPrompt = `You are an allergen and dietary preference analyzer for a restaurant allergen awareness system.
+Think carefully and step-by-step before answering, but only output the JSON.
 
 CRITICAL: You MUST respond with ONLY valid JSON. No explanations, no markdown, no text outside the JSON structure.
 
@@ -128,8 +130,6 @@ CRITICAL ALLERGEN RULES:
 - Do NOT flag "gluten" as a separate allergen - wheat covers gluten-containing grains
 - Oats by themselves are NOT wheat and should NOT be flagged (unless explicitly wheat)
 - Treat coconut as a tree nut for allergen purposes
-
-INFERENCE RULES FOR SINGLE ITEMS:
 
 Return a JSON object with this exact structure:
 {
@@ -244,6 +244,20 @@ Infer allergens and dietary compatibility based on typical formulation.`
       )
     }
 
+    const expandDietHierarchy = (diets: string[]) => {
+      const out = new Set(
+        (Array.isArray(diets) ? diets : []).filter((d) => typeof d === "string"),
+      )
+      if (veganLabel && out.has(veganLabel)) {
+        if (vegetarianLabel) out.add(vegetarianLabel)
+        if (pescatarianLabel) out.add(pescatarianLabel)
+      }
+      if (vegetarianLabel && out.has(vegetarianLabel)) {
+        if (pescatarianLabel) out.add(pescatarianLabel)
+      }
+      return Array.from(out)
+    }
+
     // Ensure allergens and diets are arrays
     if (!Array.isArray(parsed.allergens)) {
       parsed.allergens = []
@@ -251,6 +265,7 @@ Infer allergens and dietary compatibility based on typical formulation.`
     if (!Array.isArray(parsed.diets)) {
       parsed.diets = []
     }
+    parsed.diets = expandDietHierarchy(parsed.diets)
 
     return new Response(
       JSON.stringify({
