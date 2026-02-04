@@ -137,7 +137,6 @@ INFERENCE RULES FOR SINGLE ITEMS (BE CONSERVATIVE):
 - If the name explicitly includes "vegan", "vegetarian", or "pescatarian", honor it.
 - If clearly an animal product (beef, chicken, pork, lamb, fish, shrimp, milk, cheese, butter, egg, yogurt), set diets accordingly.
 - If clearly a whole plant ingredient (fruit, vegetable, grain, legume, nut, seed, tofu, bean, plant oil), include Vegan + Vegetarian + Pescatarian.
-- For ambiguous prepared foods (bread, buns, tortillas, pasta, sauce, curry), do NOT assume vegan; only include diets if explicitly stated (e.g., "vegan bread", "egg noodles").
 
 Return a JSON object with this exact structure:
 {
