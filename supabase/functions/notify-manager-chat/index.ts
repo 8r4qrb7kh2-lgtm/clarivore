@@ -481,8 +481,14 @@ serve(async (req) => {
   const restaurantName = restaurant?.name || "Your restaurant";
   const dashboardUrl = "https://clarivore.org/manager-dashboard.html";
   const messageText = message.message ? String(message.message) : "";
+  const notificationText = messageText.replace(
+    /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g,
+    "$1",
+  );
   const trimmedMessage =
-    messageText.length > 280 ? `${messageText.slice(0, 277)}...` : messageText;
+    notificationText.length > 280
+      ? `${notificationText.slice(0, 277)}...`
+      : notificationText;
 
   const emails = await getManagerEmails(userIds);
   const emailResult = await sendEmailNotifications({
