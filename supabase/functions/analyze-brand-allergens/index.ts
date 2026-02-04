@@ -129,14 +129,7 @@ CRITICAL ALLERGEN RULES:
 - Oats by themselves are NOT wheat and should NOT be flagged (unless explicitly wheat)
 - Treat coconut as a tree nut for allergen purposes
 
-INFERENCE RULES FOR SINGLE ITEMS (BE CONSERVATIVE):
-- Only include allergens that are intrinsic to the named item itself.
-- Do NOT assume common add-ins or recipes.
-- For diets, ONLY include a diet if the name makes it unambiguously compliant.
-- If unsure, return an empty diets list.
-- If the name explicitly includes "vegan", "vegetarian", or "pescatarian", honor it.
-- If clearly an animal product (beef, chicken, pork, lamb, fish, shrimp, milk, cheese, butter, egg, yogurt), set diets accordingly.
-- If clearly a whole plant ingredient (fruit, vegetable, grain, legume, nut, seed, tofu, bean, plant oil), include Vegan + Vegetarian + Pescatarian.
+INFERENCE RULES FOR SINGLE ITEMS:
 
 Return a JSON object with this exact structure:
 {
