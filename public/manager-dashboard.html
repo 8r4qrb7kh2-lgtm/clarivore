@@ -744,6 +744,7 @@
       gap: 10px;
       min-height: 0;
       overflow-y: auto;
+      overflow-x: hidden;
       padding-right: 4px;
     }
 
@@ -754,11 +755,16 @@
       border: 1px solid rgba(255, 255, 255, 0.08);
       color: var(--ink);
       max-width: 90%;
+      line-height: 1.45;
+      word-break: break-word;
+      overflow-wrap: anywhere;
     }
 
     .chat-preview-item a {
       color: #4c5ad4;
       text-decoration: underline;
+      word-break: break-word;
+      overflow-wrap: anywhere;
     }
 
     .chat-preview-item.outgoing {
@@ -1050,6 +1056,14 @@
         flex-direction: column;
         align-items: flex-start;
         gap: 8px;
+      }
+
+      .chat-preview-list {
+        padding-right: 0;
+      }
+
+      .chat-preview-item {
+        max-width: 100%;
       }
     }
 
