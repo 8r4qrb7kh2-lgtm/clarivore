@@ -2491,6 +2491,41 @@
       document.getElementById('appeals-list').innerHTML = appealsHTML;
     }
 
+    function buildAppealDetailsLink(appeal) {
+      const restaurant = appeal?.restaurants || {};
+      const slug = restaurant.slug || '';
+      if (!slug) return '';
+      try {
+        const url = new URL('restaurant.html', window.location.origin);
+        url.searchParams.set('slug', slug);
+        url.searchParams.set('edit', '1');
+        const dishName = (appeal?.dish_name || '').trim();
+        if (dishName) {
+          url.searchParams.set('openAI', 'true');
+          url.searchParams.set('dishName', dishName);
+        }
+        const ingredientName = (appeal?.ingredient_name || '').trim();
+        if (ingredientName) {
+          url.searchParams.set('ingredientName', ingredientName);
+        }
+        return url.toString();
+      } catch (_) {
+        const params = new URLSearchParams();
+        params.set('slug', slug);
+        params.set('edit', '1');
+        const dishName = (appeal?.dish_name || '').trim();
+        if (dishName) {
+          params.set('openAI', 'true');
+          params.set('dishName', dishName);
+        }
+        const ingredientName = (appeal?.ingredient_name || '').trim();
+        if (ingredientName) {
+          params.set('ingredientName', ingredientName);
+        }
+        return `restaurant.html?${params.toString()}`;
+      }
+    }
+
     async function reviewAppeal(appealId, status) {
       const notesTextarea = document.getElementById(`notes-${appealId}`);
       const reviewNotes = notesTextarea ? notesTextarea.value.trim() : '';
@@ -2510,6 +2545,39 @@
           .eq('id', appealId);
 
         if (error) throw error;
+
+        try {
+          const appeal = allAppeals.find(a => a.id === appealId);
+          if (appeal && appeal.restaurant_id) {
+            const dishLabel = appeal.dish_name || appeal.ingredient_name || 'this dish';
+            const decisionLabel = status === 'approved' ? 'approved' : 'denied';
+            const detailsLink = buildAppealDetailsLink(appeal);
+            const linkText = detailsLink
+              ? ` Click [here](${detailsLink}) to see details.`
+              : ' Please check your dashboard for details.';
+            const messageText = `Your ingredient list scanning appeal for ${dishLabel} has been ${decisionLabel}.${linkText}`;
+
+            const { data: insertedMessage, error: messageError } = await supabase
+              .from('restaurant_direct_messages')
+              .insert({
+                restaurant_id: appeal.restaurant_id,
+                message: messageText,
+                sender_role: 'admin',
+                sender_name: 'Automated alert system',
+                sender_id: currentUser?.id || null
+              })
+              .select('id')
+              .single();
+
+            if (messageError) {
+              console.warn('Failed to send appeal decision message:', messageError);
+            } else if (insertedMessage?.id) {
+              notifyManagerChat({ messageId: insertedMessage.id, client: supabase });
+            }
+          }
+        } catch (notifyError) {
+          console.warn('Appeal decision chat notification failed:', notifyError);
+        }
 
         await loadAppeals({ force: true });
 
@@ -2913,8 +2981,23 @@
     }
 
     function formatChatMessage(text) {
-      const escaped = escapeHtml(text || '');
-      return escaped.replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>');
+      const raw = (text || '').toString();
+      const linkRegex = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g;
+      const linkify = (value) =>
+        value.replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>');
+      let html = '';
+      let lastIndex = 0;
+      let match;
+      while ((match = linkRegex.exec(raw)) !== null) {
+        const before = raw.slice(lastIndex, match.index);
+        html += linkify(escapeHtml(before));
+        const label = escapeHtml(match[1]);
+        const url = escapeHtml(match[2]);
+        html += `<a href="${url}" target="_blank" rel="noopener noreferrer">${label}</a>`;
+        lastIndex = match.index + match[0].length;
+      }
+      html += linkify(escapeHtml(raw.slice(lastIndex)));
+      return html;
     }
 
     window.reviewAppeal = reviewAppeal;

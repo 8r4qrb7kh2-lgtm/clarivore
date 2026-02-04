@@ -866,11 +866,26 @@
     }
 
     function formatChatMessage(text) {
-      const escaped = escapeHtml(text || '');
-      return escaped.replace(
-        /((?:https?:|capacitor):\/\/[^\s<]+)/g,
-        '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>'
-      );
+      const raw = (text || '').toString();
+      const linkRegex = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g;
+      const linkify = (value) =>
+        value.replace(
+          /((?:https?:|capacitor):\/\/[^\s<]+)/g,
+          '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>'
+        );
+      let html = '';
+      let lastIndex = 0;
+      let match;
+      while ((match = linkRegex.exec(raw)) !== null) {
+        const before = raw.slice(lastIndex, match.index);
+        html += linkify(escapeHtml(before));
+        const label = escapeHtml(match[1]);
+        const url = escapeHtml(match[2]);
+        html += `<a href="${url}" target="_blank" rel="noopener noreferrer">${label}</a>`;
+        lastIndex = match.index + match[0].length;
+      }
+      html += linkify(escapeHtml(raw.slice(lastIndex)));
+      return html;
     }
 
     function normalizeBrandKey(value) {
