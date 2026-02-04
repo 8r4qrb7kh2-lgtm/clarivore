@@ -394,18 +394,6 @@
       }
     }
 
-    function buildConfirmLink(restaurantSlug) {
-      try {
-        const url = new URL('restaurant.html', window.location.origin);
-        url.searchParams.set('slug', restaurantSlug);
-        url.searchParams.set('edit', '1');
-        url.searchParams.set('openConfirm', '1');
-        return url.toString();
-      } catch (_) {
-        return `restaurant.html?slug=${encodeURIComponent(restaurantSlug)}&edit=1&openConfirm=1`;
-      }
-    }
-
     async function maybeSendConfirmReminder({ restaurantId, restaurantSlug, daysUntilDue, nextDueDate }) {
       if (!restaurantId || !restaurantSlug || !nextDueDate) return;
       if (!CONFIRM_REMINDER_DAYS.has(daysUntilDue)) return;
@@ -416,7 +404,7 @@
         day: 'numeric',
         year: 'numeric'
       });
-      const reminderTag = `Reminder: ${daysUntilDue} day${daysUntilDue === 1 ? '' : 's'} left`;
+      const reminderTag = `Reminder: you have ${daysUntilDue} day${daysUntilDue === 1 ? '' : 's'}`;
       const reminderKey = `${restaurantId}|${dueLabel}|${daysUntilDue}`;
       if (sentReminderKeys.has(reminderKey)) return;
 
@@ -435,8 +423,7 @@
           return;
         }
 
-        const confirmLink = buildConfirmLink(restaurantSlug);
-        const message = `${reminderTag}. You have ${daysUntilDue} day${daysUntilDue === 1 ? '' : 's'} to confirm that your information is up-to-date or your restaurant will be temporarily suspended from Clarivore. Confirm here: ${confirmLink}`;
+        const message = `${reminderTag} to confirm that your information is up-to-date or your restaurant will be temporarily suspended from Clarivore.`;
 
         const { data: insertedMessage, error: insertError } = await supabaseClient
           .from('restaurant_direct_messages')
