@@ -4794,17 +4794,22 @@ export function initAiAssistant(deps = {}) {
   bottom: 0;
   background: rgba(0,0,0,0.95);
   z-index: 10000;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: flex-start;
+  display: block;
+  width: 100%;
+  height: 100vh;
+  height: 100dvh;
   padding: 20px;
+  padding-top: max(20px, env(safe-area-inset-top));
+  padding-bottom: max(24px, env(safe-area-inset-bottom));
+  box-sizing: border-box;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+  overscroll-behavior: contain;
     `;
 
     appealModal.innerHTML = `
-  <div style="width:100%;max-width:600px;display:flex;flex-direction:column;gap:16px;margin:0 auto;max-height:calc(100vh - 40px);padding-bottom:20px;overflow-y:auto;-webkit-overflow-scrolling:touch">
+  <div style="width:100%;max-width:600px;display:flex;flex-direction:column;gap:16px;margin:0 auto;padding-bottom:24px">
     <div style="text-align:center">
       <h3 style="margin:0 0 8px 0;font-size:1.4rem;color:#fff">Appeal AI Scanning Decision</h3>
       <div style="margin:0;color:#a8b2d6;font-size:0.95rem">

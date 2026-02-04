@@ -679,6 +679,8 @@ export function initBrandVerification(deps = {}) {
           padding: 20px;
           overflow-y: auto;
           -webkit-overflow-scrolling: touch;
+          touch-action: pan-y;
+          overscroll-behavior: contain;
         `;
 
         photoModal.innerHTML = `
@@ -982,6 +984,8 @@ export function initBrandVerification(deps = {}) {
       padding: 20px;
       overflow-y: auto;
       -webkit-overflow-scrolling: touch;
+      touch-action: pan-y;
+      overscroll-behavior: contain;
     `;
 
         scannerModal.innerHTML = `
@@ -1307,6 +1311,8 @@ export function initBrandVerification(deps = {}) {
         padding: 20px;
         overflow-y: auto;
         -webkit-overflow-scrolling: touch;
+        touch-action: pan-y;
+        overscroll-behavior: contain;
       `;
 
           modal.innerHTML = `

@@ -975,6 +975,8 @@ export function initIngredientPhotoAnalysis(deps = {}) {
       padding-bottom: max(20px, env(safe-area-inset-bottom));
       overflow-y: auto;
       -webkit-overflow-scrolling: touch;
+      touch-action: pan-y;
+      overscroll-behavior: contain;
     `;
 
     photoModal.innerHTML = `
@@ -2230,6 +2232,8 @@ export function initIngredientPhotoAnalysis(deps = {}) {
         justify-content: flex-start;
         padding: 20px; overflow-y: auto;
         -webkit-overflow-scrolling: touch;
+        touch-action: pan-y;
+        overscroll-behavior: contain;
       `;
 
       frontModal.innerHTML = `
