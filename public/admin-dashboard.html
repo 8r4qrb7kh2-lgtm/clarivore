@@ -432,6 +432,42 @@
       border-bottom-color: #4c5ad4;
     }
 
+    .tab-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-end;
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .restaurant-selector {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      min-width: 260px;
+    }
+
+    .restaurant-selector label {
+      font-weight: 600;
+      color: #1e3a5f;
+      font-size: 0.95rem;
+    }
+
+    .restaurant-selector select {
+      padding: 12px 14px;
+      border: 2px solid #e2e8f0;
+      border-radius: 10px;
+      font-size: 1rem;
+      background: white;
+      color: #1e3a5f;
+    }
+
+    .restaurant-selector select:focus {
+      outline: none;
+      border-color: #4c5ad4;
+      box-shadow: 0 0 0 2px rgba(76, 90, 212, 0.15);
+    }
+
     .tab-content {
       display: none;
     }
@@ -1002,6 +1038,40 @@
       text-align: center;
     }
 
+    .manager-invite-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    .manager-invite-note {
+      font-size: 0.85rem;
+      color: #64748b;
+    }
+
+    .manager-invite-output {
+      display: none;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .manager-invite-output.show {
+      display: flex;
+    }
+
+    .manager-invite-output input {
+      flex: 1;
+      min-width: 240px;
+      padding: 10px 12px;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      color: #1e3a5f;
+      background: #fff;
+    }
+
     .btn-copy-small {
       background: #4c5ad4;
       color: white;
@@ -1085,6 +1155,15 @@
         <button class="tab-btn" data-tab="product-reports">📋 Issue Reports</button>
       </div>
 
+      <div class="tab-toolbar">
+        <div class="restaurant-selector">
+          <label for="admin-restaurant-select">Restaurant</label>
+          <select id="admin-restaurant-select">
+            <option value="all">All restaurants</option>
+          </select>
+        </div>
+      </div>
+
       <!-- Restaurants Tab -->
       <div id="tab-restaurants" class="tab-content active">
         <div class="admin-grid">
@@ -1129,82 +1208,8 @@
       <!-- Managers Tab -->
       <div id="tab-managers" class="tab-content">
         <div class="admin-card admin-card-full">
-          <h2>🔗 Create Manager Invite Link</h2>
-          <p style="color: #718096; margin-bottom: 24px;">Generate a shareable link that allows someone to create an account with manager access to selected restaurants</p>
-
-          <div class="invite-form">
-            <div class="form-group">
-              <label>Select Restaurants for Manager Access *</label>
-              <p style="color: #718096; font-size: 0.9rem; margin-bottom: 12px;">Choose which restaurants this manager will have access to</p>
-              <div id="invite-restaurants-list" class="restaurant-checkboxes">
-                <p style="color: #718096;">Loading restaurants...</p>
-              </div>
-            </div>
-
-            <div class="form-group">
-              <label>Entry Page When Link is Opened *</label>
-              <p style="color: #718096; font-size: 0.9rem; margin-bottom: 12px;">Where should the user be directed after signing up?</p>
-              <div class="entry-page-options">
-                <div class="entry-page-option selected" onclick="selectEntryPage(this, 'home')">
-                  <input type="radio" name="entry-page" value="home" checked>
-                  <div class="option-info">
-                    <div class="option-title">Homepage</div>
-                    <div class="option-desc">User will be redirected to the Clarivore homepage</div>
-                  </div>
-                </div>
-                <div class="entry-page-option" onclick="selectEntryPage(this, 'restaurant')">
-                  <input type="radio" name="entry-page" value="restaurant">
-                  <div class="option-info">
-                    <div class="option-title">Restaurant QR Code Page</div>
-                    <div class="option-desc">User will be redirected to a specific restaurant's page</div>
-                  </div>
-                </div>
-              </div>
-              <div id="qr-restaurant-select" class="restaurant-select-for-qr" style="display: none;">
-                <label style="font-weight: 500; color: #1e3a5f; margin-bottom: 8px; display: block;">Select restaurant:</label>
-                <select id="entry-restaurant">
-                  <option value="">-- Select a restaurant --</option>
-                </select>
-              </div>
-            </div>
-
-            <div class="form-group">
-              <label>Link Expiration</label>
-              <div class="expiration-options">
-                <select id="invite-expiration">
-                  <option value="1">1 day</option>
-                  <option value="7" selected>7 days</option>
-                  <option value="30">30 days</option>
-                  <option value="90">90 days</option>
-                </select>
-              </div>
-            </div>
-
-            <button type="button" class="btn-primary" id="generate-invite-btn" onclick="generateInviteLink()">
-              Generate Invite Link
-            </button>
-
-            <div id="generated-link-container" class="generated-link-container">
-              <h3>✓ Invite Link Generated!</h3>
-              <p style="color: #065f46; margin-bottom: 12px;">Share this link with the person you want to invite:</p>
-              <div class="generated-link">
-                <input type="text" id="generated-link-input" readonly>
-                <button class="btn-copy" onclick="copyInviteLink()">Copy Link</button>
-              </div>
-            </div>
-          </div>
-
-          <div class="invites-list">
-            <h3 style="color: #1e3a5f; margin-bottom: 16px;">Existing Invites</h3>
-            <div id="invites-list-container">
-              <p style="color: #718096;">Loading invites...</p>
-            </div>
-          </div>
-        </div>
-
-        <div class="admin-card admin-card-full" style="margin-top: 20px;">
-          <h2>👥 Manager Access by Restaurant</h2>
-          <p style="color: #718096; margin-bottom: 20px;">View current manager access for each restaurant and revoke access when needed.</p>
+          <h2>👥 Restaurant Managers</h2>
+          <p style="color: #718096; margin-bottom: 20px;">View current manager access for the selected restaurant, revoke access, and generate invite links.</p>
           <div id="manager-access-list" class="manager-access-list">
             <p style="color: #718096;">Loading manager access...</p>
           </div>
@@ -1299,9 +1304,14 @@
     let allIssues = [];
     let currentReportsFilter = 'all';
     let allReports = [];
+    let reportsLoaded = false;
     let allRestaurants = [];
-    let allInvites = [];
     let allFeedback = [];
+    let feedbackLoaded = false;
+    let selectedRestaurantId = 'all';
+    let managerAccessRestaurants = [];
+    let managerAccessLoaded = false;
+    const managerInviteLinks = {};
     const chatReadStates = {};
     const chatUnreadCounts = {};
 
@@ -1326,8 +1336,52 @@
       currentUser = user;
       document.getElementById('admin-content').style.display = 'block';
 
+      setupRestaurantSelector();
       loadRestaurants();
       return true;
+    }
+
+    let restaurantSelectorBound = false;
+
+    function setupRestaurantSelector() {
+      if (restaurantSelectorBound) return;
+      restaurantSelectorBound = true;
+      const select = document.getElementById('admin-restaurant-select');
+      if (!select) return;
+      select.addEventListener('change', () => {
+        selectedRestaurantId = select.value;
+        refreshTabData();
+      });
+    }
+
+    function populateRestaurantSelector(restaurants) {
+      const select = document.getElementById('admin-restaurant-select');
+      if (!select) return;
+      const options = [
+        '<option value="all">All restaurants</option>',
+        ...restaurants.map(r => `<option value="${r.id}">${escapeHtml(r.name)}</option>`)
+      ];
+      select.innerHTML = options.join('');
+      select.disabled = restaurants.length === 0;
+      const hasSelection = selectedRestaurantId && (selectedRestaurantId === 'all' || restaurants.some(r => r.id === selectedRestaurantId));
+      if (!hasSelection) {
+        selectedRestaurantId = 'all';
+      }
+      select.value = selectedRestaurantId;
+    }
+
+    function getSelectedRestaurant() {
+      if (!selectedRestaurantId || selectedRestaurantId === 'all') return null;
+      return allRestaurants.find(r => r.id === selectedRestaurantId) || null;
+    }
+
+    function refreshTabData() {
+      renderRestaurants();
+      renderManagerAccess();
+      renderAppeals();
+      renderFeedback();
+      renderProductReports();
+      renderAllergenIssues();
     }
 
     // Tab switching
@@ -1353,7 +1407,6 @@
         } else if (tabName === 'product-reports') {
           loadProductReports();
         } else if (tabName === 'managers') {
-          loadInvites();
           loadManagerAccess();
         }
       });
@@ -1406,13 +1459,31 @@
 
       const list = document.getElementById('restaurants-list');
 
-      if (error || !restaurants || restaurants.length === 0) {
-        list.innerHTML = '<p style="color: #718096;">No restaurants found.</p>';
+      if (error) {
+        if (list) {
+          list.innerHTML = `<p style="color: #ef4444;">Error loading restaurants: ${error.message}</p>`;
+        }
         return;
       }
 
-      // Store for invite form
-      allRestaurants = restaurants;
+      allRestaurants = restaurants || [];
+      populateRestaurantSelector(allRestaurants);
+      refreshTabData();
+    }
+
+    function renderRestaurants() {
+      const list = document.getElementById('restaurants-list');
+      if (!list) return;
+
+      const selectedRestaurant = getSelectedRestaurant();
+      const restaurants = selectedRestaurant
+        ? allRestaurants.filter(r => r.id === selectedRestaurant.id)
+        : allRestaurants;
+
+      if (!restaurants || restaurants.length === 0) {
+        list.innerHTML = '<p style="color: #718096;">No restaurants found for the selected filter.</p>';
+        return;
+      }
 
       list.innerHTML = restaurants.map(r => `
         <div class="restaurant-item">
@@ -1489,10 +1560,9 @@
         }
       };
 
-      await loadChatPreviews(restaurants);
-
-      // Populate invite form checkboxes
-      populateInviteRestaurants(restaurants);
+      if (restaurants.length) {
+        loadChatPreviews(restaurants);
+      }
     }
 
     const CHAT_PREVIEW_LIMIT = 3;
@@ -1872,72 +1942,48 @@
 
         if (error) throw error;
         allFeedback = feedback || [];
-
-        if (!allFeedback.length) {
-          list.innerHTML = '<p style="color: #718096;">No anonymous feedback yet.</p>';
-          return;
-        }
-
-        list.innerHTML = allFeedback.map(entry => {
-          const restaurantName = entry.restaurants?.name || 'Unknown restaurant';
-          const restaurantFeedback = entry.restaurant_feedback?.trim();
-          const websiteFeedback = entry.website_feedback?.trim();
-          const createdAt = entry.created_at ? new Date(entry.created_at).toLocaleString() : 'Unknown date';
-          return `
-            <div class="feedback-card">
-              <div class="feedback-meta">
-                <span>${escapeHtml(restaurantName)}</span>
-                <span>${escapeHtml(createdAt)}</span>
-              </div>
-              ${restaurantFeedback ? `<div class="feedback-text"><strong>Restaurant:</strong> ${escapeHtml(restaurantFeedback)}</div>` : ''}
-              ${websiteFeedback ? `<div class="feedback-text" style="margin-top:8px;"><strong>Clarivore:</strong> ${escapeHtml(websiteFeedback)}</div>` : ''}
-              ${!restaurantFeedback && !websiteFeedback ? `<div class="feedback-text">No written feedback provided.</div>` : ''}
-            </div>
-          `;
-        }).join('');
+        feedbackLoaded = true;
+        renderFeedback();
       } catch (error) {
         console.error('Error loading feedback:', error);
         list.innerHTML = `<p style="color: #ef4444;">Error loading feedback: ${error.message}</p>`;
       }
     }
 
-    function populateInviteRestaurants(restaurants) {
-      const container = document.getElementById('invite-restaurants-list');
-      const entrySelect = document.getElementById('entry-restaurant');
+    function renderFeedback() {
+      const list = document.getElementById('feedback-list');
+      if (!list || !feedbackLoaded) return;
 
-      if (!container) return;
+      const selectedRestaurant = getSelectedRestaurant();
+      const filtered = selectedRestaurant
+        ? allFeedback.filter(entry => entry.restaurant_id === selectedRestaurant.id)
+        : allFeedback;
 
-      container.innerHTML = restaurants.map(r => `
-        <div class="restaurant-checkbox" onclick="toggleRestaurantCheckbox(this)">
-          <input type="checkbox" id="invite-r-${r.id}" value="${r.id}" data-name="${escapeHtml(r.name)}" data-slug="${r.slug || ''}">
-          <label for="invite-r-${r.id}">${escapeHtml(r.name)}</label>
-        </div>
-      `).join('');
-
-      // Populate entry page dropdown
-      if (entrySelect) {
-        entrySelect.innerHTML = '<option value="">-- Select a restaurant --</option>' +
-          restaurants.map(r => `<option value="${r.slug}">${escapeHtml(r.name)}</option>`).join('');
+      if (!filtered.length) {
+        const emptyMessage = selectedRestaurant
+          ? 'No anonymous feedback for the selected restaurant.'
+          : 'No anonymous feedback yet.';
+        list.innerHTML = `<p style="color: #718096;">${emptyMessage}</p>`;
+        return;
       }
-    }
 
-    function toggleRestaurantCheckbox(div) {
-      const checkbox = div.querySelector('input[type="checkbox"]');
-      checkbox.checked = !checkbox.checked;
-      div.classList.toggle('selected', checkbox.checked);
-    }
-
-    function selectEntryPage(element, type) {
-      document.querySelectorAll('.entry-page-option').forEach(opt => opt.classList.remove('selected'));
-      element.classList.add('selected');
-      element.querySelector('input').checked = true;
-
-      const qrSelect = document.getElementById('qr-restaurant-select');
-      if (type === 'restaurant') {
-        qrSelect.style.display = 'block';
-      } else {
-        qrSelect.style.display = 'none';
-      }
+      list.innerHTML = filtered.map(entry => {
+        const restaurantName = entry.restaurants?.name || 'Unknown restaurant';
+        const restaurantFeedback = entry.restaurant_feedback?.trim();
+        const websiteFeedback = entry.website_feedback?.trim();
+        const createdAt = entry.created_at ? new Date(entry.created_at).toLocaleString() : 'Unknown date';
+        return `
+          <div class="feedback-card">
+            <div class="feedback-meta">
+              <span>${escapeHtml(restaurantName)}</span>
+              <span>${escapeHtml(createdAt)}</span>
+            </div>
+            ${restaurantFeedback ? `<div class="feedback-text"><strong>Restaurant:</strong> ${escapeHtml(restaurantFeedback)}</div>` : ''}
+            ${websiteFeedback ? `<div class="feedback-text" style="margin-top:8px;"><strong>Clarivore:</strong> ${escapeHtml(websiteFeedback)}</div>` : ''}
+            ${!restaurantFeedback && !websiteFeedback ? `<div class="feedback-text">No written feedback provided.</div>` : ''}
+          </div>
+        `;
+      }).join('');
     }
 
     function generateToken(length = 32) {
@@ -1961,46 +2007,29 @@
       return `${window.location.origin}/account.html?invite=${token}`;
     }
 
-    async function generateInviteLink() {
-      const btn = document.getElementById('generate-invite-btn');
-      btn.disabled = true;
-      btn.textContent = 'Generating...';
+    async function createManagerInviteLink(restaurantId, button) {
+      if (!restaurantId) return;
+      if (!currentUser) {
+        alert('You must be signed in as an administrator to generate invites.');
+        return;
+      }
+
+      const originalText = button ? button.textContent : '';
+      if (button) {
+        button.disabled = true;
+        button.textContent = 'Generating...';
+      }
 
       try {
-        // Get selected restaurants
-        const selectedCheckboxes = document.querySelectorAll('#invite-restaurants-list input:checked');
-        const restaurantIds = Array.from(selectedCheckboxes).map(cb => cb.value);
-
-        if (restaurantIds.length === 0) {
-          throw new Error('Please select at least one restaurant');
-        }
-
-        // Get entry page
-        const entryType = document.querySelector('input[name="entry-page"]:checked').value;
-        let entryPage = 'home';
-
-        if (entryType === 'restaurant') {
-          const selectedSlug = document.getElementById('entry-restaurant').value;
-          if (!selectedSlug) {
-            throw new Error('Please select a restaurant for the entry page');
-          }
-          entryPage = `restaurant:${selectedSlug}`;
-        }
-
-        // Get expiration
-        const expirationDays = parseInt(document.getElementById('invite-expiration').value);
-        const expiresAt = new Date();
-        expiresAt.setDate(expiresAt.getDate() + expirationDays);
-
-        // Generate token
         const token = generateToken();
+        const expiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000);
+        const entryPage = 'dashboard';
 
-        // Insert into database
-        const { data: invite, error } = await supabase
+        const { error } = await supabase
           .from('manager_invites')
           .insert({
             token,
-            restaurant_ids: restaurantIds,
+            restaurant_ids: [restaurantId],
             entry_page: entryPage,
             expires_at: expiresAt.toISOString(),
             created_by: currentUser.id
@@ -2010,52 +2039,56 @@
 
         if (error) throw error;
 
-        // Generate and display the link (goes directly to restaurant page if QR entry)
         const inviteUrl = getInviteUrl(token, entryPage);
-        const linkInput = document.getElementById('generated-link-input');
-        linkInput.value = inviteUrl;
-
-        document.getElementById('generated-link-container').classList.add('show');
-
-        // Reload invites list
-        await loadInvites();
-
+        managerInviteLinks[restaurantId] = inviteUrl;
+        renderManagerAccess();
       } catch (error) {
-        console.error('Error generating invite:', error);
-        alert('Error: ' + error.message);
+        console.error('Error generating invite link:', error);
+        alert(`Error generating invite link: ${error.message || error}`);
       } finally {
-        btn.disabled = false;
-        btn.textContent = 'Generate Invite Link';
+        if (button) {
+          button.disabled = false;
+          button.textContent = originalText;
+        }
       }
     }
 
-    function copyInviteLink() {
-      const linkInput = document.getElementById('generated-link-input');
-      linkInput.select();
-      document.execCommand('copy');
+    async function copyManagerInviteLink(restaurantId, button) {
+      const link = managerInviteLinks[restaurantId];
+      if (!link) return;
 
-      const btn = event.target;
-      const originalText = btn.textContent;
-      btn.textContent = 'Copied!';
-      setTimeout(() => btn.textContent = originalText, 2000);
-    }
-
-    async function loadInvites() {
+      let copied = false;
       try {
-        const { data: invites, error } = await supabase
-          .from('manager_invites')
-          .select('*')
-          .order('created_at', { ascending: false });
+        if (navigator.clipboard && window.isSecureContext) {
+          await navigator.clipboard.writeText(link);
+          copied = true;
+        }
+      } catch (_) {
+        copied = false;
+      }
 
-        if (error) throw error;
+      if (!copied) {
+        const textarea = document.createElement('textarea');
+        textarea.value = link;
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.focus();
+        textarea.select();
+        try {
+          copied = document.execCommand('copy');
+        } catch (_) {
+          copied = false;
+        }
+        document.body.removeChild(textarea);
+      }
 
-        allInvites = invites || [];
-        renderInvites();
-
-      } catch (error) {
-        console.error('Error loading invites:', error);
-        document.getElementById('invites-list-container').innerHTML =
-          `<p style="color: #ef4444;">Error loading invites: ${error.message}</p>`;
+      if (button) {
+        const originalText = button.textContent;
+        button.textContent = copied ? 'Copied!' : 'Copy failed';
+        setTimeout(() => {
+          button.textContent = originalText;
+        }, 2000);
       }
     }
 
@@ -2071,8 +2104,9 @@
           body: { action: 'list' }
         });
         if (error) throw error;
-        const restaurants = data?.restaurants || [];
-        renderManagerAccess(restaurants);
+        managerAccessRestaurants = data?.restaurants || [];
+        managerAccessLoaded = true;
+        renderManagerAccess();
       } catch (error) {
         console.error('Error loading manager access:', error);
         container.innerHTML = `<p style="color: #ef4444;">Error loading manager access: ${error.message || error}</p>`;
@@ -2081,85 +2115,123 @@
       if (!managerAccessBound) {
         managerAccessBound = true;
         container.addEventListener('click', (event) => {
-          const btn = event.target.closest('[data-action="remove-manager"]');
+          const btn = event.target.closest('[data-action]');
           if (!btn) return;
-          const restaurantId = btn.dataset.restaurantId;
-          const userId = btn.dataset.userId;
-          const label = btn.dataset.label || 'this manager';
-          if (!restaurantId || !userId) return;
-          removeManagerAccess(restaurantId, userId, label);
+          const action = btn.dataset.action;
+          if (action === 'remove-manager') {
+            const restaurantId = btn.dataset.restaurantId;
+            const userId = btn.dataset.userId;
+            const label = btn.dataset.label || 'this manager';
+            if (!restaurantId || !userId) return;
+            removeManagerAccess(restaurantId, userId, label);
+            return;
+          }
+          if (action === 'create-invite') {
+            const restaurantId = btn.dataset.restaurantId;
+            if (!restaurantId) return;
+            createManagerInviteLink(restaurantId, btn);
+            return;
+          }
+          if (action === 'copy-invite') {
+            const restaurantId = btn.dataset.restaurantId;
+            if (!restaurantId) return;
+            copyManagerInviteLink(restaurantId, btn);
+          }
         });
       }
     }
 
-    function renderManagerAccess(restaurants) {
+    function renderManagerAccess() {
       const container = document.getElementById('manager-access-list');
       if (!container) return;
 
-      if (!restaurants.length) {
+      if (!managerAccessLoaded) return;
+
+      if (!managerAccessRestaurants.length) {
         container.innerHTML = '<p style="color: #718096;">No restaurants found.</p>';
         return;
       }
 
-      const cards = restaurants.map((restaurant) => {
-        const managers = Array.isArray(restaurant.managers) ? restaurant.managers : [];
+      const selectedRestaurant = getSelectedRestaurant();
+      if (!selectedRestaurant) {
+        container.innerHTML = '<p style="color: #718096;">Select a restaurant above to view managers.</p>';
+        return;
+      }
 
-        const managerRows = managers.map((manager) => {
-          const name = manager.name || '';
-          const email = manager.email || '';
-          const userId = manager.user_id || '';
-          const addedAt = manager.created_at ? new Date(manager.created_at).toLocaleString() : '';
-          const label = name || email || userId || 'Manager';
-          return `
-            <tr>
-              <td>${escapeHtml(name || '—')}</td>
-              <td>${escapeHtml(email || '—')}</td>
-              <td><span style="font-family: monospace;">${escapeHtml(userId || '—')}</span></td>
-              <td>${escapeHtml(addedAt || '—')}</td>
-              <td>
-                <button
-                  class="btn-danger"
-                  data-action="remove-manager"
-                  data-restaurant-id="${escapeHtml(restaurant.id || '')}"
-                  data-user-id="${escapeHtml(userId)}"
-                  data-label="${escapeHtml(label)}"
-                >Remove</button>
-              </td>
-            </tr>
-          `;
-        }).join('');
+      const restaurant = managerAccessRestaurants.find(r => r.id === selectedRestaurant.id);
+      if (!restaurant) {
+        container.innerHTML = '<p style="color: #718096;">No manager data found for this restaurant.</p>';
+        return;
+      }
 
-        const tableHtml = managers.length
-          ? `
-            <table class="manager-table">
-              <thead>
-                <tr>
-                  <th>Name</th>
-                  <th>Email</th>
-                  <th>User ID</th>
-                  <th>Added</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                ${managerRows}
-              </tbody>
-            </table>
-          `
-          : `<div class="manager-empty">No managers assigned yet.</div>`;
+      const managers = Array.isArray(restaurant.managers) ? restaurant.managers : [];
 
+      const managerRows = managers.map((manager) => {
+        const name = manager.name || '';
+        const email = manager.email || '';
+        const userId = manager.user_id || '';
+        const addedAt = manager.created_at ? new Date(manager.created_at).toLocaleString() : '';
+        const label = name || email || userId || 'Manager';
         return `
-          <div class="manager-access-card">
-            <div class="manager-access-header">
-              <h3>${escapeHtml(restaurant.name || 'Restaurant')}</h3>
-              <span style="color:#64748b;font-size:0.85rem;">${escapeHtml(restaurant.slug || '')}</span>
-            </div>
-            ${tableHtml}
-          </div>
+          <tr>
+            <td>${escapeHtml(name || '—')}</td>
+            <td>${escapeHtml(email || '—')}</td>
+            <td><span style="font-family: monospace;">${escapeHtml(userId || '—')}</span></td>
+            <td>${escapeHtml(addedAt || '—')}</td>
+            <td>
+              <button
+                class="btn-danger"
+                data-action="remove-manager"
+                data-restaurant-id="${escapeHtml(restaurant.id || '')}"
+                data-user-id="${escapeHtml(userId)}"
+                data-label="${escapeHtml(label)}"
+              >Remove</button>
+            </td>
+          </tr>
         `;
       }).join('');
 
-      container.innerHTML = cards;
+      const tableHtml = managers.length
+        ? `
+          <table class="manager-table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Email</th>
+                <th>User ID</th>
+                <th>Added</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              ${managerRows}
+            </tbody>
+          </table>
+        `
+        : `<div class="manager-empty">No managers assigned yet.</div>`;
+
+      const inviteLink = managerInviteLinks[restaurant.id] || '';
+      const inviteOutputClass = inviteLink ? 'manager-invite-output show' : 'manager-invite-output';
+
+      container.innerHTML = `
+        <div class="manager-access-card">
+          <div class="manager-access-header">
+            <h3>${escapeHtml(restaurant.name || 'Restaurant')}</h3>
+            <span style="color:#64748b;font-size:0.85rem;">${escapeHtml(restaurant.slug || '')}</span>
+          </div>
+          ${tableHtml}
+          <div class="manager-invite-actions">
+            <button class="btn-primary" data-action="create-invite" data-restaurant-id="${escapeHtml(restaurant.id || '')}">
+              + Create Manager Invite Link
+            </button>
+            <div class="manager-invite-note">Invite links expire after 48 hours and send users to the dashboard.</div>
+            <div class="${inviteOutputClass}">
+              <input type="text" readonly value="${escapeHtml(inviteLink)}">
+              <button class="btn-secondary" data-action="copy-invite" data-restaurant-id="${escapeHtml(restaurant.id || '')}">Copy</button>
+            </div>
+          </div>
+        </div>
+      `;
     }
 
     async function removeManagerAccess(restaurantId, userId, label) {
@@ -2174,123 +2246,6 @@
       } catch (error) {
         console.error('Error removing manager access:', error);
         alert(`Error removing manager access: ${error.message || error}`);
-      }
-    }
-
-    function renderInvites() {
-      const container = document.getElementById('invites-list-container');
-
-      if (allInvites.length === 0) {
-        container.innerHTML = '<p style="color: #718096;">No invites created yet.</p>';
-        return;
-      }
-
-      const restaurantMap = {};
-      allRestaurants.forEach(r => {
-        restaurantMap[r.id] = r.name;
-      });
-
-      const invitesHTML = allInvites.map(invite => {
-        const now = new Date();
-        const expiresAt = new Date(invite.expires_at);
-        const isExpired = expiresAt < now;
-        const isUsed = !!invite.used_at;
-
-        let status = 'active';
-        let statusClass = 'active';
-        if (isUsed) {
-          status = 'used';
-          statusClass = 'used';
-        } else if (isExpired) {
-          status = 'expired';
-          statusClass = 'expired';
-        } else if (!invite.is_active) {
-          status = 'revoked';
-          statusClass = 'expired';
-        }
-
-        const restaurantNames = (invite.restaurant_ids || [])
-          .map(id => restaurantMap[id] || 'Unknown')
-          .slice(0, 5);
-        const moreCount = (invite.restaurant_ids || []).length - 5;
-
-        let entryPageDisplay = 'Homepage';
-        if (invite.entry_page && invite.entry_page.startsWith('restaurant:')) {
-          const slug = invite.entry_page.replace('restaurant:', '');
-          const restaurant = allRestaurants.find(r => r.slug === slug);
-          entryPageDisplay = restaurant ? `Restaurant: ${restaurant.name}` : `Restaurant: ${slug}`;
-        }
-
-        const inviteUrl = getInviteUrl(invite.token, invite.entry_page);
-
-        return `
-          <div class="invite-item ${statusClass}">
-            <div class="invite-header">
-              <div>
-                <strong style="color: #1e3a5f;">Entry: ${entryPageDisplay}</strong>
-                <div class="invite-restaurants">
-                  ${restaurantNames.map(name => `<span class="invite-restaurant-tag">${escapeHtml(name)}</span>`).join('')}
-                  ${moreCount > 0 ? `<span class="invite-restaurant-tag">+${moreCount} more</span>` : ''}
-                </div>
-              </div>
-              <span class="invite-status-badge ${statusClass}">${status}</span>
-            </div>
-            <div class="invite-meta">
-              <span><strong>Created:</strong> ${new Date(invite.created_at).toLocaleString()}</span>
-              <span><strong>Expires:</strong> ${expiresAt.toLocaleString()}</span>
-              ${invite.used_at ? `<span><strong>Used:</strong> ${new Date(invite.used_at).toLocaleString()}</span>` : ''}
-            </div>
-            ${status === 'active' ? `
-              <div class="invite-actions">
-                <button class="btn-copy-small" onclick="copyInviteLinkById('${invite.token}')">Copy Link</button>
-                <button class="btn-revoke" onclick="revokeInvite('${invite.id}')">Revoke</button>
-              </div>
-              <input type="text" value="${inviteUrl}" readonly style="margin-top: 8px; width: 100%; padding: 8px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 0.85rem; font-family: monospace; color: #718096;">
-            ` : ''}
-          </div>
-        `;
-      }).join('');
-
-      container.innerHTML = invitesHTML;
-    }
-
-    function copyInviteLinkById(token) {
-      // Look up the invite to get the correct entry page URL
-      const invite = allInvites.find(i => i.token === token);
-      const inviteUrl = invite ? getInviteUrl(token, invite.entry_page) : `${window.location.origin}/account.html?invite=${token}`;
-      navigator.clipboard.writeText(inviteUrl).then(() => {
-        const message = document.createElement('div');
-        message.style.cssText = 'position: fixed; top: 20px; right: 20px; background: #4c5ad4; color: white; padding: 16px 24px; border-radius: 8px; z-index: 10001; box-shadow: 0 4px 12px rgba(0,0,0,0.2);';
-        message.textContent = 'Link copied to clipboard!';
-        document.body.appendChild(message);
-        setTimeout(() => message.remove(), 2000);
-      });
-    }
-
-    async function revokeInvite(inviteId) {
-      if (!confirm('Are you sure you want to revoke this invite? It will no longer be usable.')) {
-        return;
-      }
-
-      try {
-        const { error } = await supabase
-          .from('manager_invites')
-          .update({ is_active: false })
-          .eq('id', inviteId);
-
-        if (error) throw error;
-
-        await loadInvites();
-
-        const message = document.createElement('div');
-        message.style.cssText = 'position: fixed; top: 20px; right: 20px; background: #ef4444; color: white; padding: 16px 24px; border-radius: 8px; z-index: 10001; box-shadow: 0 4px 12px rgba(0,0,0,0.2);';
-        message.textContent = 'Invite revoked successfully!';
-        document.body.appendChild(message);
-        setTimeout(() => message.remove(), 3000);
-
-      } catch (error) {
-        console.error('Error revoking invite:', error);
-        alert('Error revoking invite: ' + error.message);
       }
     }
 
@@ -2460,9 +2415,18 @@
     }
 
     function renderAppeals() {
+      if (!allAppeals.length && !appealsLoadedAt) {
+        return;
+      }
+
+      const selectedRestaurant = getSelectedRestaurant();
+      const restaurantFiltered = selectedRestaurant
+        ? allAppeals.filter(a => a.restaurant_id === selectedRestaurant.id)
+        : allAppeals;
+
       const filtered = currentFilter === 'all' 
-        ? allAppeals 
-        : allAppeals.filter(a => a.review_status === currentFilter || (!a.review_status && currentFilter === 'pending'));
+        ? restaurantFiltered 
+        : restaurantFiltered.filter(a => a.review_status === currentFilter || (!a.review_status && currentFilter === 'pending'));
 
       if (filtered.length === 0) {
         document.getElementById('no-appeals').style.display = 'block';
@@ -2629,9 +2593,19 @@
       const listEl = document.getElementById('issues-list');
       const emptyEl = document.getElementById('no-issues');
       if (!listEl || !emptyEl) return;
+      const selectedRestaurant = getSelectedRestaurant();
+      const restaurantFiltered = selectedRestaurant
+        ? allIssues.filter(issue => {
+            if (issue.restaurant_id && issue.restaurant_id === selectedRestaurant.id) return true;
+            if (issue.restaurant_slug && selectedRestaurant.slug && issue.restaurant_slug === selectedRestaurant.slug) return true;
+            if (issue.restaurant_name && selectedRestaurant.name && issue.restaurant_name.toLowerCase().trim() === selectedRestaurant.name.toLowerCase().trim()) return true;
+            return false;
+          })
+        : allIssues;
+
       const filtered = currentIssuesFilter === 'all' 
-        ? allIssues 
-        : allIssues.filter(i => i.status === currentIssuesFilter);
+        ? restaurantFiltered 
+        : restaurantFiltered.filter(i => i.status === currentIssuesFilter);
 
       if (filtered.length === 0) {
         emptyEl.style.display = 'block';
@@ -2757,6 +2731,7 @@
         if (error) throw error;
 
         allReports = reports || [];
+        reportsLoaded = true;
         renderProductReports();
 
       } catch (error) {
@@ -2769,9 +2744,25 @@
 
     // Render product reports based on current filter
     function renderProductReports() {
+      if (!allReports.length && !reportsLoaded) {
+        return;
+      }
+
+      const selectedRestaurant = getSelectedRestaurant();
+      const restaurantFiltered = selectedRestaurant
+        ? allReports.filter(report => {
+            if (report.restaurant_id && report.restaurant_id === selectedRestaurant.id) return true;
+            const reportSlug = report.restaurant_slug || report.restaurantSlug || report.slug || report.analysis_details?._report_meta?.restaurant_slug || report.analysis_details?._report_meta?.restaurantSlug;
+            if (reportSlug && selectedRestaurant.slug && reportSlug === selectedRestaurant.slug) return true;
+            const reportName = report.restaurant_name || report.analysis_details?._report_meta?.restaurant_name || report.analysis_details?._report_meta?.restaurantName;
+            if (reportName && selectedRestaurant.name && reportName.toLowerCase().trim() === selectedRestaurant.name.toLowerCase().trim()) return true;
+            return false;
+          })
+        : allReports;
+
       const filtered = currentReportsFilter === 'all'
-        ? allReports
-        : allReports.filter(r => r.status === currentReportsFilter);
+        ? restaurantFiltered
+        : restaurantFiltered.filter(r => r.status === currentReportsFilter);
 
       if (filtered.length === 0) {
         document.getElementById('no-reports').style.display = 'block';
