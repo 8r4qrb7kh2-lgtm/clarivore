@@ -4797,12 +4797,14 @@ export function initAiAssistant(deps = {}) {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   padding: 20px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
     `;
 
     appealModal.innerHTML = `
-  <div style="width:100%;max-width:600px;display:flex;flex-direction:column;gap:16px">
+  <div style="width:100%;max-width:600px;display:flex;flex-direction:column;gap:16px;margin:0 auto;max-height:calc(100vh - 40px);padding-bottom:20px;overflow-y:auto;-webkit-overflow-scrolling:touch">
     <div style="text-align:center">
       <h3 style="margin:0 0 8px 0;font-size:1.4rem;color:#fff">Appeal AI Scanning Decision</h3>
       <div style="margin:0;color:#a8b2d6;font-size:0.95rem">
@@ -4814,7 +4816,7 @@ export function initAiAssistant(deps = {}) {
       <video id="appealCameraVideo" autoplay playsinline muted style="width:100%;height:60vh;max-height:500px;display:none;object-fit:cover"></video>
       <canvas id="appealCameraCanvas" style="display:none"></canvas>
       <img id="appealPhotoPreview" style="width:100%;height:60vh;max-height:500px;object-fit:contain;display:none" alt="Preview">
-      <div id="appealCameraPlaceholder" style="width:100%;height:60vh;max-height:500px;display:flex;align-items:center;justify-content:center;background:#1a1a1a;color:#a8b2d6;font-size:1.1rem">No photo taken yet</div>
+      <div id="appealCameraPlaceholder" style="width:100%;height:60vh;max-height:500px;display:none;align-items:center;justify-content:center;background:#1a1a1a;color:#a8b2d6;font-size:1.1rem">No photo taken yet</div>
     </div>
     <div style="display:flex;flex-direction:column;gap:8px">
       <label for="appealMessage" style="color:#fff;font-weight:600;font-size:0.95rem">Add a message (optional)</label>

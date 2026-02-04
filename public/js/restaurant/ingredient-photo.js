@@ -2227,7 +2227,9 @@ export function initIngredientPhotoAnalysis(deps = {}) {
         position: fixed; top: 0; left: 0; right: 0; bottom: 0;
         background: rgba(0,0,0,0.95); z-index: 10002;
         display: flex; flex-direction: column; align-items: center;
+        justify-content: flex-start;
         padding: 20px; overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
       `;
 
       frontModal.innerHTML = `

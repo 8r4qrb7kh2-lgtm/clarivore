@@ -675,8 +675,10 @@ export function initBrandVerification(deps = {}) {
           display: flex;
           flex-direction: column;
           align-items: center;
-          justify-content: center;
+          justify-content: flex-start;
           padding: 20px;
+          overflow-y: auto;
+          -webkit-overflow-scrolling: touch;
         `;
 
         photoModal.innerHTML = `
@@ -976,8 +978,10 @@ export function initBrandVerification(deps = {}) {
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
+      justify-content: flex-start;
       padding: 20px;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
     `;
 
         scannerModal.innerHTML = `
@@ -1299,8 +1303,10 @@ export function initBrandVerification(deps = {}) {
         display: flex;
         flex-direction: column;
         align-items: center;
-        justify-content: center;
+        justify-content: flex-start;
         padding: 20px;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
       `;
 
           modal.innerHTML = `

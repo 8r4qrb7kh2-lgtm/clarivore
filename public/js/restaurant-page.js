@@ -635,13 +635,124 @@ const send = (p) => {
             state.restaurant?._id || state.restaurant?.id || null;
           if (!restaurantId) throw new Error("Restaurant not loaded yet.");
 
+          const INLINE_IMAGE_PREFIX = "data:image";
+          const MAX_INLINE_IMAGE_LENGTH = 200000;
+          const IMAGE_BUCKET = "ingredient-appeals";
+          const uploadedImageCache = new Map();
+
+          const uploadInlineImage = async (dataUrl, label) => {
+            if (
+              !dataUrl ||
+              typeof dataUrl !== "string" ||
+              !dataUrl.startsWith(INLINE_IMAGE_PREFIX)
+            ) {
+              return dataUrl;
+            }
+            if (uploadedImageCache.has(dataUrl)) {
+              return uploadedImageCache.get(dataUrl);
+            }
+
+            let publicUrl = null;
+            try {
+              if (client?.storage) {
+                const blob = await (await fetch(dataUrl)).blob();
+                const ext =
+                  blob.type && blob.type.includes("png") ? "png" : "jpg";
+                const filePath = `ingredient-images/${label}-${Date.now()}-${Math.random()
+                  .toString(36)
+                  .slice(2)}.${ext}`;
+                const { error: uploadError } = await client.storage
+                  .from(IMAGE_BUCKET)
+                  .upload(filePath, blob, {
+                    contentType: blob.type || "image/jpeg",
+                    upsert: false,
+                  });
+                if (uploadError) {
+                  console.warn(
+                    "Inline image upload failed - keeping fallback data URL:",
+                    uploadError,
+                  );
+                } else {
+                  const { data: urlData } = client.storage
+                    .from(IMAGE_BUCKET)
+                    .getPublicUrl(filePath);
+                  if (urlData?.publicUrl) {
+                    publicUrl = urlData.publicUrl;
+                  }
+                }
+              }
+            } catch (uploadErr) {
+              console.warn(
+                "Inline image upload exception - keeping fallback data URL:",
+                uploadErr,
+              );
+            }
+
+            let finalValue = publicUrl || dataUrl;
+            if (!publicUrl && dataUrl.length > MAX_INLINE_IMAGE_LENGTH) {
+              console.warn(
+                "Dropping large inline image to avoid save failure.",
+              );
+              finalValue = "";
+            }
+            uploadedImageCache.set(dataUrl, finalValue);
+            return finalValue;
+          };
+
+          const sanitizeAiIngredientsImages = async (aiIngredients) => {
+            if (!aiIngredients) return aiIngredients;
+            const raw =
+              typeof aiIngredients === "string"
+                ? aiIngredients
+                : JSON.stringify(aiIngredients);
+            if (!raw || !raw.includes(INLINE_IMAGE_PREFIX)) {
+              return aiIngredients;
+            }
+            let rows = null;
+            try {
+              rows = JSON.parse(raw);
+            } catch (parseErr) {
+              console.warn("Failed to parse aiIngredients for sanitizing.");
+              return aiIngredients;
+            }
+            if (!Array.isArray(rows)) return aiIngredients;
+            for (const row of rows) {
+              if (!row || typeof row !== "object") continue;
+              row.ingredientsImage = await uploadInlineImage(
+                row.ingredientsImage,
+                "label",
+              );
+              row.brandImage = await uploadInlineImage(
+                row.brandImage,
+                "brand",
+              );
+              if (Array.isArray(row.brands)) {
+                for (const brand of row.brands) {
+                  if (!brand || typeof brand !== "object") continue;
+                  brand.ingredientsImage = await uploadInlineImage(
+                    brand.ingredientsImage,
+                    "label",
+                  );
+                  brand.brandImage = await uploadInlineImage(
+                    brand.brandImage,
+                    "brand",
+                  );
+                }
+              }
+            }
+            return JSON.stringify(rows);
+          };
+
           // Ensure aiIngredients and aiIngredientSummary are preserved on all overlays
-          overlaysToSave = (p.overlays || []).map((overlay) => {
+          overlaysToSave = [];
+          for (const overlay of p.overlays || []) {
             // Create a new object to ensure all fields are preserved
             const savedOverlay = { ...overlay };
             // Explicitly preserve aiIngredients if it exists
             if (overlay.aiIngredients !== undefined) {
-              savedOverlay.aiIngredients = overlay.aiIngredients;
+              savedOverlay.aiIngredients = await sanitizeAiIngredientsImages(
+                overlay.aiIngredients,
+              );
             }
             // Explicitly preserve aiIngredientSummary if it exists
             if (overlay.aiIngredientSummary !== undefined) {
@@ -651,8 +762,8 @@ const send = (p) => {
             if (overlay.recipeDescription !== undefined) {
               savedOverlay.recipeDescription = overlay.recipeDescription;
             }
-            return savedOverlay;
-          });
+            overlaysToSave.push(savedOverlay);
+          }
 
           payload = { overlays: overlaysToSave };
           // Support both single image (backward compatible) and multiple images
