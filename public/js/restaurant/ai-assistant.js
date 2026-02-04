@@ -409,8 +409,12 @@ export function initAiAssistant(deps = {}) {
         const aiDiets = Array.isArray(analysisData.diets)
           ? [...analysisData.diets]
           : [];
+        // Apply Claude output directly to the row
         current.allergens = aiAllergens.slice();
         current.diets = aiDiets.slice();
+        // Name-based analysis should not infer cross-contamination
+        current.mayContainAllergens = [];
+        current.mayContainDiets = [];
         current.aiDetectedAllergens = aiAllergens.slice();
         current.aiDetectedDiets = aiDiets.slice();
         current.aiDetectedMayContainAllergens = [];

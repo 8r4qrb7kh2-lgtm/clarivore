@@ -129,17 +129,15 @@ CRITICAL ALLERGEN RULES:
 - Oats by themselves are NOT wheat and should NOT be flagged (unless explicitly wheat)
 - Treat coconut as a tree nut for allergen purposes
 
-INFERENCE RULES FOR SINGLE ITEMS:
-- Use typical formulation for the named item.
-- If clearly plant-based (apple, rice, olive oil), include Vegan + Vegetarian + Pescatarian.
-- If plant-based but commonly includes milk/egg (bread, buns, tortillas), include Vegetarian + Pescatarian, omit Vegan.
-- If clearly milk/egg, include Vegetarian + Pescatarian, omit Vegan.
-- If clearly fish/seafood, include Pescatarian only.
-- If clearly meat (beef, chicken, pork), return no diets.
-- Do not return an empty diets list unless the item clearly violates all diets.
-- For allergens, only include those that are intrinsic to the named item.
-  - Do NOT add milk/egg allergens just because they are sometimes used.
-  - Example: "bread" should include wheat, but not milk/egg unless explicitly stated (e.g., "milk bread", "egg bread").
+INFERENCE RULES FOR SINGLE ITEMS (BE CONSERVATIVE):
+- Only include allergens that are intrinsic to the named item itself.
+- Do NOT assume common add-ins or recipes.
+- For diets, ONLY include a diet if the name makes it unambiguously compliant.
+- If unsure, return an empty diets list.
+- If the name explicitly includes "vegan", "vegetarian", or "pescatarian", honor it.
+- If clearly an animal product (beef, chicken, pork, lamb, fish, shrimp, milk, cheese, butter, egg, yogurt), set diets accordingly.
+- If clearly a whole plant ingredient (fruit, vegetable, grain, legume, nut, seed, tofu, bean, plant oil), include Vegan + Vegetarian + Pescatarian.
+- For ambiguous prepared foods (bread, buns, tortillas, pasta, sauce, curry), do NOT assume vegan; only include diets if explicitly stated (e.g., "vegan bread", "egg noodles").
 
 Return a JSON object with this exact structure:
 {
