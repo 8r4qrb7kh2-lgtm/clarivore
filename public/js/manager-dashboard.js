@@ -868,10 +868,25 @@
     function formatChatMessage(text) {
       const raw = (text || '').toString();
       const linkRegex = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g;
+      const buildLink = (url, label) => {
+        let href = url;
+        let target = ' target="_blank" rel="noopener noreferrer"';
+        try {
+          const parsed = new URL(url, window.location.origin);
+          const isSameOrigin = parsed.origin === window.location.origin;
+          const isClarivore = parsed.hostname.endsWith('clarivore.org');
+          if (isSameOrigin || isClarivore) {
+            href = `${parsed.pathname}${parsed.search}${parsed.hash}`;
+            target = '';
+          }
+        } catch (_) {
+          // fallback to raw url
+        }
+        return `<a href="${escapeHtml(href)}"${target}>${label}</a>`;
+      };
       const linkify = (value) =>
-        value.replace(
-          /((?:https?:|capacitor):\/\/[^\s<]+)/g,
-          '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>'
+        value.replace(/((?:https?:|capacitor):\/\/[^\s<]+)/g, (match) =>
+          buildLink(match, escapeHtml(match))
         );
       let html = '';
       let lastIndex = 0;
@@ -880,8 +895,7 @@
         const before = raw.slice(lastIndex, match.index);
         html += linkify(escapeHtml(before));
         const label = escapeHtml(match[1]);
-        const url = escapeHtml(match[2]);
-        html += `<a href="${url}" target="_blank" rel="noopener noreferrer">${label}</a>`;
+        html += buildLink(match[2], label);
         lastIndex = match.index + match[0].length;
       }
       html += linkify(escapeHtml(raw.slice(lastIndex)));
