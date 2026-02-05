@@ -21,7 +21,7 @@ import { setupTopbar } from "./shared-nav.js";
 import { createHowItWorksTour } from "./restaurant/how-it-works-tour.js";
 import { initOrderFlow } from "./restaurant/order-flow.js";
 import { initUnsavedChangesGuard } from "./restaurant/unsaved-changes.js";
-import { initAiAssistant } from "./restaurant/ai-assistant.js";
+import { initDishEditor } from "./restaurant/dish-editor.js";
 import { initAutoOpenDish } from "./restaurant/auto-open-dish.js";
 import { initIngredientSources } from "./restaurant/ingredient-sources.js";
 import { initFeedbackModals } from "./restaurant/feedback-modals.js";
@@ -97,9 +97,9 @@ let aiAssistSetStatus = () => {};
 let ensureAiAssistElements = () => {};
 let collectAiTableData = () => [];
 let renderAiTable = () => {};
-let openAiAssistant = () => {};
-let handleAiAssistantResult = () => {};
-let handleAiAssistantError = () => {};
+let openDishEditor = () => {};
+let handleDishEditorResult = () => {};
+let handleDishEditorError = () => {};
 let getAiAssistBackdrop = () => null;
 let getAiAssistTableBody = () => null;
 const ALLERGEN_EMOJI =
@@ -1501,7 +1501,7 @@ const fmtDateTime = (d) => {
   }
 };
 
-const aiAssistantApi = initAiAssistant({
+const dishEditorApi = initDishEditor({
   esc,
   state,
   normalizeDietLabel,
@@ -1519,36 +1519,36 @@ const aiAssistantApi = initAiAssistant({
   send,
 });
 openBrandIdentificationChoice =
-  aiAssistantApi.openBrandIdentificationChoice || openBrandIdentificationChoice;
+  dishEditorApi.openBrandIdentificationChoice || openBrandIdentificationChoice;
 showIngredientPhotoUploadModal =
-  aiAssistantApi.showIngredientPhotoUploadModal || showIngredientPhotoUploadModal;
+  dishEditorApi.showIngredientPhotoUploadModal || showIngredientPhotoUploadModal;
 showPhotoAnalysisLoadingInRow =
-  aiAssistantApi.showPhotoAnalysisLoadingInRow || showPhotoAnalysisLoadingInRow;
+  dishEditorApi.showPhotoAnalysisLoadingInRow || showPhotoAnalysisLoadingInRow;
 hidePhotoAnalysisLoadingInRow =
-  aiAssistantApi.hidePhotoAnalysisLoadingInRow || hidePhotoAnalysisLoadingInRow;
+  dishEditorApi.hidePhotoAnalysisLoadingInRow || hidePhotoAnalysisLoadingInRow;
 updatePhotoAnalysisLoadingStatus =
-  aiAssistantApi.updatePhotoAnalysisLoadingStatus ||
+  dishEditorApi.updatePhotoAnalysisLoadingStatus ||
   updatePhotoAnalysisLoadingStatus;
 showPhotoAnalysisResultButton =
-  aiAssistantApi.showPhotoAnalysisResultButton || showPhotoAnalysisResultButton;
-aiAssistState = aiAssistantApi.aiAssistState;
-aiAssistSetStatus = aiAssistantApi.aiAssistSetStatus || aiAssistSetStatus;
+  dishEditorApi.showPhotoAnalysisResultButton || showPhotoAnalysisResultButton;
+aiAssistState = dishEditorApi.aiAssistState;
+aiAssistSetStatus = dishEditorApi.aiAssistSetStatus || aiAssistSetStatus;
 ensureAiAssistElements =
-  aiAssistantApi.ensureAiAssistElements || ensureAiAssistElements;
-collectAiTableData = aiAssistantApi.collectAiTableData || collectAiTableData;
-renderAiTable = aiAssistantApi.renderAiTable || renderAiTable;
-openAiAssistant = aiAssistantApi.openAiAssistant || openAiAssistant;
-handleAiAssistantResult =
-  aiAssistantApi.handleAiAssistantResult || handleAiAssistantResult;
-handleAiAssistantError =
-  aiAssistantApi.handleAiAssistantError || handleAiAssistantError;
+  dishEditorApi.ensureAiAssistElements || ensureAiAssistElements;
+collectAiTableData = dishEditorApi.collectAiTableData || collectAiTableData;
+renderAiTable = dishEditorApi.renderAiTable || renderAiTable;
+openDishEditor = dishEditorApi.openDishEditor || openDishEditor;
+handleDishEditorResult =
+  dishEditorApi.handleDishEditorResult || handleDishEditorResult;
+handleDishEditorError =
+  dishEditorApi.handleDishEditorError || handleDishEditorError;
 rebuildBrandMemoryFromRestaurant =
-  aiAssistantApi.rebuildBrandMemoryFromRestaurant ||
+  dishEditorApi.rebuildBrandMemoryFromRestaurant ||
   rebuildBrandMemoryFromRestaurant;
 getAiAssistBackdrop =
-  aiAssistantApi.getAiAssistBackdrop || getAiAssistBackdrop;
+  dishEditorApi.getAiAssistBackdrop || getAiAssistBackdrop;
 getAiAssistTableBody =
-  aiAssistantApi.getAiAssistTableBody || getAiAssistTableBody;
+  dishEditorApi.getAiAssistTableBody || getAiAssistTableBody;
 
 const feedbackModalsApi = initFeedbackModals({
   configureModalClose,
@@ -5112,7 +5112,7 @@ function renderEditor() {
     send,
     updateLastConfirmedText,
     getIssueReportMeta,
-    openAiAssistant,
+    openDishEditor,
     getAiAssistTableBody,
     showIngredientPhotoUploadModal,
     renderGroupedSourcesHtml,
@@ -6355,7 +6355,7 @@ function renderEditor() {
       currentDishId,
     );
 
-    openAiAssistant({
+    openDishEditor({
       seedText,
       getCurrentName: () => {
         // IMPORTANT: Return the dish ID that was captured in the closure when this editor was opened
@@ -6833,11 +6833,11 @@ function handleRestaurantMessage(message) {
     rerenderOrderConfirmDetails();
   }
   if (m.type === "aiAssistResult") {
-    handleAiAssistantResult(m);
+    handleDishEditorResult(m);
     return;
   }
   if (m.type === "aiAssistError") {
-    handleAiAssistantError(m);
+    handleDishEditorError(m);
     return;
   }
 

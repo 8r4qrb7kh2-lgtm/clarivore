@@ -2590,7 +2590,7 @@ Each block covers up to 10 lines of code and includes a short explanation of wha
 - Lines 271-280: Continues submitReport. Declares banner. Selects elements: form, .qrBanner. Binds events: submit. Branches on conditions. Purpose: respond to user actions.
 - Lines 281-288: Defines function adjustFooter. Declares observer. Sets inline styles: marginBottom=banner.classList.contains('show') ? '140px' : ''. Purpose: update UI state and presentation.
 
-## public/js/restaurant/ai-assistant-extraction.js
+## public/js/restaurant/dish-editor-extraction.js
 
 - Lines 1-10: Defines function requestAiExtraction. Declares DEFAULT_SUPABASE_URL, DEFAULT_SUPABASE_ANON_KEY, endpoint, proxyUrl, supabaseClient, supabaseUrl, .... Exports module members. Purpose: expose helpers to other modules.
 - Lines 11-20: Continues requestAiExtraction. Declares log, warn, error, res. Serializes or parses JSON. Branches on conditions. Purpose: implement module logic.
@@ -2609,9 +2609,9 @@ Each block covers up to 10 lines of code and includes a short explanation of wha
 - Lines 141-150: Continues requestAiExtraction. Branches on conditions. Purpose: implement module logic.
 - Lines 151-158: Continues requestAiExtraction. Branches on conditions. Purpose: implement module logic.
 
-## public/js/restaurant/ai-assistant-photos.js
+## public/js/restaurant/dish-editor-photos.js
 
-- Lines 1-10: Defines function initAiAssistantPhotos. Declares ensureAiAssistElements, aiAssistState, compressImage. Exports module members. Purpose: expose helpers to other modules.
+- Lines 1-10: Defines function initDishEditorPhotos. Declares ensureAiAssistElements, aiAssistState, compressImage. Exports module members. Purpose: expose helpers to other modules.
 - Lines 11-20: Defines function renderPhotoPreviews. Declares aiAssistSetStatus, updateAiAssistMediaPreview, getVideoEl. Purpose: implement module logic.
 - Lines 21-30: Continues renderPhotoPreviews. Declares container, photosList. Selects elements: aiAssistPhotosContainer, aiAssistPhotosList. Sets inline styles: display=none, display=block. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
 - Lines 31-40: Continues renderPhotoPreviews. Declares photoDiv. Sets inline styles: cssText="position:relative. Sets element properties: innerHTML=, innerHTML=`. Iterates collections. Purpose: update UI state and presentation.
@@ -2623,12 +2623,12 @@ Each block covers up to 10 lines of code and includes a short explanation of wha
 - Lines 91-100: Continues handleRecipePhotoCamera. Returns values from this block. Purpose: implement module logic.
 - Lines 101-104: Continues handleRecipePhotoCamera. Purpose: implement module logic.
 
-## public/js/restaurant/ai-assistant.js
+## public/js/restaurant/dish-editor.js
 
-- Lines 1-10: Defines function initAiAssistant. Declares esc, state, detectAllergensInText. Exports module members. Purpose: expose helpers to other modules.
-- Lines 11-20: Continues initAiAssistant. Declares normalizeDietLabel, getIssueReportMeta, ALLERGENS, ALLERGEN_ALIASES. Purpose: implement module logic.
-- Lines 21-30: Continues initAiAssistant. Declares ALLERGEN_EMOJI, DIETS, DIET_EMOJI. Purpose: implement module logic.
-- Lines 31-40: Continues initAiAssistant. Declares cap, norm, tooltipBodyHTML, send, SINGLE_INGREDIENT_EXEMPTIONS. Purpose: implement module logic.
+- Lines 1-10: Defines function initDishEditor. Declares esc, state, detectAllergensInText. Exports module members. Purpose: expose helpers to other modules.
+- Lines 11-20: Continues initDishEditor. Declares normalizeDietLabel, getIssueReportMeta, ALLERGENS, ALLERGEN_ALIASES. Purpose: implement module logic.
+- Lines 21-30: Continues initDishEditor. Declares ALLERGEN_EMOJI, DIETS, DIET_EMOJI. Purpose: implement module logic.
+- Lines 31-40: Continues initDishEditor. Declares cap, norm, tooltipBodyHTML, send, SINGLE_INGREDIENT_EXEMPTIONS. Purpose: implement module logic.
 - Lines 41-50: Defines function requiresLabelScan. Declares PROCESSED_INGREDIENT_PATTERN, PROCESSED_MEATS_PATTERN, CONDIMENT_PATTERN, lower. Purpose: implement module logic.
 - Lines 51-60: Continues requiresLabelScan. Branches on conditions. Returns values from this block. Purpose: implement module logic.
 - Lines 61-70: Defines function enforceDietAllergenConsistency. Declares allergenSet, aiAllergenSet, diets, aiDiets, conflictMap. Iterates collections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
@@ -2944,51 +2944,51 @@ Each block covers up to 10 lines of code and includes a short explanation of wha
 - Lines 3161-3170: Continues normalizeDiet. Declares completedResults, rowIdx. Iterates collections. Branches on conditions. Purpose: implement module logic.
 - Lines 3171-3180: Continues normalizeDiet. Purpose: implement module logic.
 - Lines 3181-3190: Continues normalizeDiet. Declares pendingIngredient. Schedules timed work. Branches on conditions. Purpose: implement module logic.
-- Lines 3191-3200: Defines function scrollAiAssistantToIngredient. Declares target, rows, row. Selects elements: tr[data-index]. Iterates collections. Branches on conditions. Returns values from this block. Purpose: connect logic to DOM elements.
-- Lines 3201-3210: Continues scrollAiAssistantToIngredient. Declares nameInput. Selects elements: .aiIngredientName. Sets inline styles: transition=background-color 0.3s, backgroundColor=rgba(76,90,212,0.2), backgroundColor=, transition=. Schedules timed work. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 3191-3200: Defines function scrollDishEditorToIngredient. Declares target, rows, row. Selects elements: tr[data-index]. Iterates collections. Branches on conditions. Returns values from this block. Purpose: connect logic to DOM elements.
+- Lines 3201-3210: Continues scrollDishEditorToIngredient. Declares nameInput. Selects elements: .aiIngredientName. Sets inline styles: transition=background-color 0.3s, backgroundColor=rgba(76,90,212,0.2), backgroundColor=, transition=. Schedules timed work. Branches on conditions. Purpose: update UI state and presentation.
 - Lines 3211-3220: Defines function normalizeIngredientName. Returns values from this block. Purpose: implement module logic.
 - Lines 3221-3230: Continues normalizeIngredientName. Declares lower, aliases. Purpose: implement module logic.
 - Lines 3231-3240: Continues normalizeIngredientName. Returns values from this block. Purpose: implement module logic.
 - Lines 3241-3250: Defines function heuristicallyExtractIngredients. Declares tokens, unique. Iterates collections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
 - Lines 3251-3260: Continues heuristicallyExtractIngredients. Declares cleaned. Branches on conditions. Returns values from this block. Purpose: implement module logic.
 - Lines 3261-3270: Continues heuristicallyExtractIngredients. Declares normalized, key, detectedAllergens. Iterates collections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
-- Lines 3271-3280: Defines function openAiAssistant. Branches on conditions. Returns values from this block. Purpose: implement module logic.
-- Lines 3281-3290: Continues openAiAssistant. Branches on conditions. Returns values from this block. Purpose: implement module logic.
-- Lines 3291-3300: Continues openAiAssistant. Declares titleEl. Selects elements: aiAssistTitle. Purpose: connect logic to DOM elements.
-- Lines 3301-3310: Continues openAiAssistant. Declares dishName. Sets element properties: textContent=Dish editor. Iterates collections. Branches on conditions. Purpose: update UI state and presentation.
-- Lines 3311-3320: Continues openAiAssistant. Declares nameInput. Selects elements: aiAssistNameInput. Sets element properties: value=. Branches on conditions. Purpose: update UI state and presentation.
-- Lines 3321-3330: Continues openAiAssistant. Sets element properties: value=dishName. Schedules timed work. Purpose: update UI state and presentation.
-- Lines 3331-3340: Continues openAiAssistant. Declares replacementProgressCard, replacementProgressText. Selects elements: aiAssistReplacementProgress, aiAssistReplacementProgressText. Branches on conditions. Purpose: connect logic to DOM elements.
-- Lines 3341-3350: Continues openAiAssistant. Sets inline styles: display=block. Sets element properties: textContent=`Dish ${context.dishNumber} of ${context.totalDishes}`. Branches on conditions. Purpose: update UI state and presentation.
-- Lines 3351-3360: Continues openAiAssistant. Declares deleteBtn, deleteWarning, confirmDeleteBtn, cancelDeleteBtn. Selects elements: aiAssistDeleteBtn, aiAssistDeleteWarning, aiAssistConfirmDeleteBtn, aiAssistCancelDeleteBtn. Sets inline styles: display=none. Purpose: update UI state and presentation.
-- Lines 3361-3370: Continues openAiAssistant. Sets inline styles: display=block. Branches on conditions. Purpose: update UI state and presentation.
-- Lines 3371-3380: Continues openAiAssistant. Sets inline styles: display=none. Branches on conditions. Purpose: update UI state and presentation.
-- Lines 3381-3390: Continues openAiAssistant. Sets inline styles: display=none. Branches on conditions. Purpose: update UI state and presentation.
-- Lines 3391-3400: Continues openAiAssistant. Declares existingIngredients, hasExistingData. Branches on conditions. Purpose: implement module logic.
-- Lines 3401-3410: Continues openAiAssistant. Declares restaurantId, appealsQuery. Supabase tables: ingredient_scan_appeals (select). Iterates collections. Branches on conditions. Purpose: load or persist data for the page.
-- Lines 3411-3420: Continues openAiAssistant. Branches on conditions. Purpose: implement module logic.
-- Lines 3421-3430: Continues openAiAssistant. Declares appealMap, key, data. Iterates collections. Branches on conditions. Purpose: implement module logic.
-- Lines 3431-3440: Continues openAiAssistant. Declares ingredientName, appealData. Iterates collections. Purpose: implement module logic.
-- Lines 3441-3450: Continues openAiAssistant. Declares alreadyHasAppealState. Branches on conditions. Purpose: implement module logic.
-- Lines 3451-3460: Continues openAiAssistant. Branches on conditions. Purpose: implement module logic.
-- Lines 3461-3470: Continues openAiAssistant. Declares hasBrands. Iterates collections. Branches on conditions. Purpose: implement module logic.
-- Lines 3471-3480: Continues openAiAssistant. Iterates collections. Purpose: implement module logic.
-- Lines 3481-3490: Continues openAiAssistant. Declares hasBrands. Branches on conditions. Purpose: implement module logic.
-- Lines 3491-3500: Continues openAiAssistant. Iterates collections. Branches on conditions. Purpose: implement module logic.
-- Lines 3501-3510: Continues openAiAssistant. Iterates collections. Purpose: implement module logic.
-- Lines 3511-3520: Continues openAiAssistant. Branches on conditions. Purpose: implement module logic.
-- Lines 3521-3530: Continues openAiAssistant. Updates classes (add: show). Sets element properties: value=context?.seedText || "". Serializes or parses JSON. Iterates collections. Branches on conditions. Purpose: update UI state and presentation.
-- Lines 3531-3540: Continues openAiAssistant. Sets element properties: value=context?.seedText || "". Schedules timed work. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 3271-3280: Defines function openDishEditor. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 3281-3290: Continues openDishEditor. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 3291-3300: Continues openDishEditor. Declares titleEl. Selects elements: aiAssistTitle. Purpose: connect logic to DOM elements.
+- Lines 3301-3310: Continues openDishEditor. Declares dishName. Sets element properties: textContent=Dish editor. Iterates collections. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 3311-3320: Continues openDishEditor. Declares nameInput. Selects elements: aiAssistNameInput. Sets element properties: value=. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 3321-3330: Continues openDishEditor. Sets element properties: value=dishName. Schedules timed work. Purpose: update UI state and presentation.
+- Lines 3331-3340: Continues openDishEditor. Declares replacementProgressCard, replacementProgressText. Selects elements: aiAssistReplacementProgress, aiAssistReplacementProgressText. Branches on conditions. Purpose: connect logic to DOM elements.
+- Lines 3341-3350: Continues openDishEditor. Sets inline styles: display=block. Sets element properties: textContent=`Dish ${context.dishNumber} of ${context.totalDishes}`. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 3351-3360: Continues openDishEditor. Declares deleteBtn, deleteWarning, confirmDeleteBtn, cancelDeleteBtn. Selects elements: aiAssistDeleteBtn, aiAssistDeleteWarning, aiAssistConfirmDeleteBtn, aiAssistCancelDeleteBtn. Sets inline styles: display=none. Purpose: update UI state and presentation.
+- Lines 3361-3370: Continues openDishEditor. Sets inline styles: display=block. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 3371-3380: Continues openDishEditor. Sets inline styles: display=none. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 3381-3390: Continues openDishEditor. Sets inline styles: display=none. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 3391-3400: Continues openDishEditor. Declares existingIngredients, hasExistingData. Branches on conditions. Purpose: implement module logic.
+- Lines 3401-3410: Continues openDishEditor. Declares restaurantId, appealsQuery. Supabase tables: ingredient_scan_appeals (select). Iterates collections. Branches on conditions. Purpose: load or persist data for the page.
+- Lines 3411-3420: Continues openDishEditor. Branches on conditions. Purpose: implement module logic.
+- Lines 3421-3430: Continues openDishEditor. Declares appealMap, key, data. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 3431-3440: Continues openDishEditor. Declares ingredientName, appealData. Iterates collections. Purpose: implement module logic.
+- Lines 3441-3450: Continues openDishEditor. Declares alreadyHasAppealState. Branches on conditions. Purpose: implement module logic.
+- Lines 3451-3460: Continues openDishEditor. Branches on conditions. Purpose: implement module logic.
+- Lines 3461-3470: Continues openDishEditor. Declares hasBrands. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 3471-3480: Continues openDishEditor. Iterates collections. Purpose: implement module logic.
+- Lines 3481-3490: Continues openDishEditor. Declares hasBrands. Branches on conditions. Purpose: implement module logic.
+- Lines 3491-3500: Continues openDishEditor. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 3501-3510: Continues openDishEditor. Iterates collections. Purpose: implement module logic.
+- Lines 3511-3520: Continues openDishEditor. Branches on conditions. Purpose: implement module logic.
+- Lines 3521-3530: Continues openDishEditor. Updates classes (add: show). Sets element properties: value=context?.seedText || "". Serializes or parses JSON. Iterates collections. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 3531-3540: Continues openDishEditor. Sets element properties: value=context?.seedText || "". Schedules timed work. Branches on conditions. Purpose: update UI state and presentation.
 - Lines 3541-3550: Defines function openImageModal. Declares modal, img. Selects elements: imageModal, imageModalImg. Purpose: connect logic to DOM elements.
 - Lines 3551-3560: Defines function closeImageModal. Declares modal. Selects elements: imageModal. Updates classes (add: show). Sets inline styles: overflow=hidden. Sets element properties: src=imageSrc. Branches on conditions. Purpose: update UI state and presentation.
-- Lines 3561-3570: Defines function closeAiAssistant. Updates classes (remove: show). Sets inline styles: overflow=. Purpose: update UI state and presentation.
-- Lines 3571-3580: Continues closeAiAssistant. Declares replacementProgressCard. Selects elements: aiAssistReplacementProgress. Sets inline styles: display=none. Iterates collections. Branches on conditions. Purpose: update UI state and presentation.
-- Lines 3581-3590: Continues closeAiAssistant. Declares data, hasData, dataChanged, currentData. Serializes or parses JSON. Branches on conditions. Purpose: implement module logic.
-- Lines 3591-3600: Continues closeAiAssistant. Declares nameInput, dishNameHasUnsavedChanges. Selects elements: aiAssistNameInput. Branches on conditions. Purpose: connect logic to DOM elements.
-- Lines 3601-3610: Continues closeAiAssistant. Branches on conditions. Purpose: implement module logic.
-- Lines 3611-3620: Continues closeAiAssistant. Declares currentDishName. Branches on conditions. Purpose: implement module logic.
-- Lines 3621-3630: Continues closeAiAssistant. Declares hasUnsavedChanges, warningEl. Selects elements: aiAssistUnsavedWarning. Sets inline styles: display=block. Branches on conditions. Purpose: update UI state and presentation.
-- Lines 3631-3640: Continues closeAiAssistant. Declares saveAndExitBtn, exitWithoutSavingBtn, cancelExitBtn. Selects elements: aiAssistSaveAndExitBtn, aiAssistExitWithoutSavingBtn, aiAssistCancelExitBtn. Purpose: connect logic to DOM elements.
+- Lines 3561-3570: Defines function closeDishEditor. Updates classes (remove: show). Sets inline styles: overflow=. Purpose: update UI state and presentation.
+- Lines 3571-3580: Continues closeDishEditor. Declares replacementProgressCard. Selects elements: aiAssistReplacementProgress. Sets inline styles: display=none. Iterates collections. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 3581-3590: Continues closeDishEditor. Declares data, hasData, dataChanged, currentData. Serializes or parses JSON. Branches on conditions. Purpose: implement module logic.
+- Lines 3591-3600: Continues closeDishEditor. Declares nameInput, dishNameHasUnsavedChanges. Selects elements: aiAssistNameInput. Branches on conditions. Purpose: connect logic to DOM elements.
+- Lines 3601-3610: Continues closeDishEditor. Branches on conditions. Purpose: implement module logic.
+- Lines 3611-3620: Continues closeDishEditor. Declares currentDishName. Branches on conditions. Purpose: implement module logic.
+- Lines 3621-3630: Continues closeDishEditor. Declares hasUnsavedChanges, warningEl. Selects elements: aiAssistUnsavedWarning. Sets inline styles: display=block. Branches on conditions. Purpose: update UI state and presentation.
+- Lines 3631-3640: Continues closeDishEditor. Declares saveAndExitBtn, exitWithoutSavingBtn, cancelExitBtn. Selects elements: aiAssistSaveAndExitBtn, aiAssistExitWithoutSavingBtn, aiAssistCancelExitBtn. Purpose: connect logic to DOM elements.
 - Lines 3641-3650: Defines function handleSaveAndExit. Declares currentDishName, saveNameBtn. Selects elements: aiAssistSaveNameBtn. Sets inline styles: display=none. Branches on conditions. Purpose: update UI state and presentation.
 - Lines 3651-3660: Continues handleSaveAndExit. Branches on conditions. Purpose: implement module logic.
 - Lines 3661-3670: Continues handleSaveAndExit. Sets inline styles: display=none. Branches on conditions. Purpose: update UI state and presentation.
@@ -3172,11 +3172,11 @@ Each block covers up to 10 lines of code and includes a short explanation of wha
 - Lines 5441-5450: Continues stopProgressAnimation. Branches on conditions. Purpose: implement module logic.
 - Lines 5451-5460: Continues stopProgressAnimation. Declares ingredients. Branches on conditions. Purpose: implement module logic.
 - Lines 5461-5470: Continues stopProgressAnimation. Purpose: implement module logic.
-- Lines 5471-5480: Defines function handleAiAssistantResult. Declares rows. Branches on conditions. Returns values from this block. Purpose: implement module logic.
-- Lines 5481-5490: Continues handleAiAssistantResult. Iterates collections. Branches on conditions. Purpose: implement module logic.
-- Lines 5491-5500: Continues handleAiAssistantResult. Declares ingredientLower. Branches on conditions. Purpose: implement module logic.
-- Lines 5501-5510: Continues handleAiAssistantResult. Purpose: implement module logic.
-- Lines 5511-5520: Defines function handleAiAssistantError. Purpose: implement module logic.
+- Lines 5471-5480: Defines function handleDishEditorResult. Declares rows. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 5481-5490: Continues handleDishEditorResult. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 5491-5500: Continues handleDishEditorResult. Declares ingredientLower. Branches on conditions. Purpose: implement module logic.
+- Lines 5501-5510: Continues handleDishEditorResult. Purpose: implement module logic.
+- Lines 5511-5520: Defines function handleDishEditorError. Purpose: implement module logic.
 - Lines 5521-5530: Defines function applyAiIngredientsToOverlay. Declares rows. Branches on conditions. Returns values from this block. Purpose: implement module logic.
 - Lines 5531-5540: Continues applyAiIngredientsToOverlay. Declares saveErrorEl, saveErrorDetailsEl, nameInput. Selects elements: aiAssistSaveError, aiAssistSaveErrorDetails, aiAssistNameInput. Sets inline styles: display=none. Branches on conditions. Purpose: update UI state and presentation.
 - Lines 5541-5550: Continues applyAiIngredientsToOverlay. Sets inline styles: display=block, border=2px solid #dc2626. Sets element properties: textContent=Please enter a dish name before saving. Branches on conditions. Purpose: update UI state and presentation.
@@ -3215,7 +3215,7 @@ Each block covers up to 10 lines of code and includes a short explanation of wha
 ## public/js/restaurant/brand-verification.js
 
 - Lines 1-10: Defines function initBrandVerification. Declares overlays, rs, setDirty, drawAll, send, updateLastConfirmedText. Exports module members. Purpose: expose helpers to other modules.
-- Lines 11-20: Continues initBrandVerification. Declares getIssueReportMeta, openAiAssistant, getAiAssistTableBody. Purpose: implement module logic.
+- Lines 11-20: Continues initBrandVerification. Declares getIssueReportMeta, openDishEditor, getAiAssistTableBody. Purpose: implement module logic.
 - Lines 21-30: Continues initBrandVerification. Declares showIngredientPhotoUploadModal, renderGroupedSourcesHtml, normalizeDietLabel. Purpose: implement module logic.
 - Lines 31-40: Continues initBrandVerification. Declares esc, norm. Purpose: implement module logic.
 - Lines 41-50: Continues initBrandVerification. Declares ALLERGENS, ALLERGEN_ALIASES, configureModalClose, openImageModal. Purpose: implement module logic.
@@ -3323,17 +3323,17 @@ Each block covers up to 10 lines of code and includes a short explanation of wha
 - Lines 1061-1070: Continues handleBarcodeScanned. Branches on conditions. Purpose: implement module logic.
 - Lines 1071-1080: Continues handleBarcodeScanned. Sets element properties: innerHTML='<div style="color:#ef4444">Camera access denied. Please .... Branches on conditions. Purpose: update UI state and presentation.
 - Lines 1081-1090: Defines function handleReplaceBrand. Selects elements: #brandScannerCancelBtn. Binds events: click. Purpose: respond to user actions.
-- Lines 1091-1100: Defines function routeToAiAssistantForDishes. Declares item. Iterates collections. Purpose: implement module logic.
-- Lines 1101-1110: Continues routeToAiAssistantForDishes. Declares dishes, mb, dish. Selects elements: modalBack. Sets inline styles: display=none. Iterates collections. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
-- Lines 1111-1120: Continues routeToAiAssistantForDishes. Iterates collections. Purpose: implement module logic.
-- Lines 1121-1130: Defines function openAiAssistantForDishReplacement. Iterates collections. Returns values from this block. Purpose: implement module logic.
-- Lines 1131-1140: Continues openAiAssistantForDishReplacement. Declares overlay, ingredientName. Branches on conditions. Returns values from this block. Purpose: implement module logic.
-- Lines 1141-1150: Continues openAiAssistantForDishReplacement. Declares actualDishName, existingIngredients. Serializes or parses JSON. Branches on conditions. Purpose: implement module logic.
-- Lines 1151-1160: Continues openAiAssistantForDishReplacement. Declares brandIdx. Iterates collections. Branches on conditions. Purpose: implement module logic.
-- Lines 1161-1170: Continues openAiAssistantForDishReplacement. Branches on conditions. Purpose: implement module logic.
-- Lines 1171-1180: Continues openAiAssistantForDishReplacement. Serializes or parses JSON. Iterates collections. Purpose: implement module logic.
-- Lines 1181-1190: Continues openAiAssistantForDishReplacement. Declares context. Purpose: implement module logic.
-- Lines 1191-1200: Continues openAiAssistantForDishReplacement. Purpose: implement module logic.
+- Lines 1091-1100: Defines function routeToDishEditorForDishes. Declares item. Iterates collections. Purpose: implement module logic.
+- Lines 1101-1110: Continues routeToDishEditorForDishes. Declares dishes, mb, dish. Selects elements: modalBack. Sets inline styles: display=none. Iterates collections. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
+- Lines 1111-1120: Continues routeToDishEditorForDishes. Iterates collections. Purpose: implement module logic.
+- Lines 1121-1130: Defines function openDishEditorForDishReplacement. Iterates collections. Returns values from this block. Purpose: implement module logic.
+- Lines 1131-1140: Continues openDishEditorForDishReplacement. Declares overlay, ingredientName. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 1141-1150: Continues openDishEditorForDishReplacement. Declares actualDishName, existingIngredients. Serializes or parses JSON. Branches on conditions. Purpose: implement module logic.
+- Lines 1151-1160: Continues openDishEditorForDishReplacement. Declares brandIdx. Iterates collections. Branches on conditions. Purpose: implement module logic.
+- Lines 1161-1170: Continues openDishEditorForDishReplacement. Branches on conditions. Purpose: implement module logic.
+- Lines 1171-1180: Continues openDishEditorForDishReplacement. Serializes or parses JSON. Iterates collections. Purpose: implement module logic.
+- Lines 1181-1190: Continues openDishEditorForDishReplacement. Declares context. Purpose: implement module logic.
+- Lines 1191-1200: Continues openDishEditorForDishReplacement. Purpose: implement module logic.
 - Lines 1201-1210: Defines function scrollToIngredient. Declares aiAssistTableBody. Selects elements: tr[data-index]. Branches on conditions. Purpose: connect logic to DOM elements.
 - Lines 1211-1220: Continues scrollToIngredient. Schedules timed work. Iterates collections. Purpose: implement module logic.
 - Lines 1221-1230: Defines function checkComplete. Declares aiBackdrop. Selects elements: aiAssistBackdrop. Schedules timed work. Branches on conditions. Purpose: connect logic to DOM elements.
@@ -4935,7 +4935,7 @@ Each block covers up to 10 lines of code and includes a short explanation of wha
 - Lines 91-100: Runs general logic. Purpose: implement module logic.
 - Lines 101-110: Defines function openBrandIdentificationChoice. Declares showIngredientPhotoUploadModal, showPhotoAnalysisLoadingInRow, hidePhotoAnalysisLoadingInRow, updatePhotoAnalysisLoadingStatus, showPhotoAnalysisResultButton. Purpose: implement module logic.
 - Lines 111-120: Defines function openBrandVerification. Declares collectAllBrandItems, openChangeLog, openFeedbackModal, openReportIssueModal, rebuildBrandMemoryFromRestaurant, aiAssistState, .... Purpose: implement module logic.
-- Lines 121-130: Defines function renderAiTable. Declares openAiAssistant, handleAiAssistantResult, handleAiAssistantError, getAiAssistBackdrop, getAiAssistTableBody, ALLERGEN_EMOJI. Purpose: implement module logic.
+- Lines 121-130: Defines function renderAiTable. Declares openDishEditor, handleDishEditorResult, handleDishEditorError, getAiAssistBackdrop, getAiAssistTableBody, ALLERGEN_EMOJI. Purpose: implement module logic.
 - Lines 131-140: Continues renderAiTable. Declares DIET_EMOJI. Purpose: implement module logic.
 - Lines 141-150: Defines function detectAllergensInText. Branches on conditions. Returns values from this block. Purpose: implement module logic.
 - Lines 151-160: Continues detectAllergensInText. Declares lower, found. Iterates collections. Branches on conditions. Returns values from this block. Purpose: implement module logic.
@@ -5040,7 +5040,7 @@ Each block covers up to 10 lines of code and includes a short explanation of wha
 - Lines 1141-1150: Continues hidePageLoader. Purpose: implement module logic.
 - Lines 1151-1160: Defines function normalizeDietLabel. Declares lower, match, fmtDate, x. Branches on conditions. Returns values from this block. Purpose: implement module logic.
 - Lines 1161-1170: Defines function fmtDateTime. Declares x. Returns values from this block. Purpose: implement module logic.
-- Lines 1171-1180: Continues fmtDateTime. Declares aiAssistantApi. Returns values from this block. Purpose: implement module logic.
+- Lines 1171-1180: Continues fmtDateTime. Declares dishEditorApi. Returns values from this block. Purpose: implement module logic.
 - Lines 1181-1190: Continues fmtDateTime. Purpose: implement module logic.
 - Lines 1191-1200: Continues fmtDateTime. Purpose: implement module logic.
 - Lines 1201-1210: Continues fmtDateTime. Purpose: implement module logic.

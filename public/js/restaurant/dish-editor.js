@@ -1,9 +1,9 @@
 import { initIngredientPhotoAnalysis } from "./ingredient-photo.js";
-import { initAiAssistantPhotos } from "./ai-assistant-photos.js";
-import { requestAiExtraction } from "./ai-assistant-extraction.js";
+import { initDishEditorPhotos } from "./dish-editor-photos.js";
+import { requestAiExtraction } from "./dish-editor-extraction.js";
 import { createIngredientNormalizer } from "./ingredient-row-utils.js";
 
-export function initAiAssistant(deps = {}) {
+export function initDishEditor(deps = {}) {
   const esc =
     typeof deps.esc === "function" ? deps.esc : (value) => String(value ?? "");
   const state = deps.state || {};
@@ -313,7 +313,25 @@ export function initAiAssistant(deps = {}) {
         inFlightScan && inFlightScan.name === name
           ? inFlightScan.promise
           : fetchIngredientScanDecision(name, getDishNameForAi());
-      const [scanResult] = await Promise.allSettled([scanPromise]);
+      const allergenPromise = (async () => {
+        const { data: analysisData, error } =
+          await window.supabaseClient.functions.invoke(
+            "analyze-brand-allergens",
+            {
+              body: {
+                ingredientText: name,
+                analysisMode: "name",
+              },
+            },
+          );
+        if (error) throw error;
+        return analysisData || {};
+      })();
+
+      const [scanResult, allergenResult] = await Promise.allSettled([
+        scanPromise,
+        allergenPromise,
+      ]);
 
       const refreshed = collectAiTableData();
       const current = refreshed[rowIdx];
@@ -355,24 +373,63 @@ export function initAiAssistant(deps = {}) {
         current.aiDetectionCompleted = false;
       };
 
-      clearAiDetections();
-      const appliedAllergens = false;
+      let appliedAllergens = false;
+      if (allergenResult.status === "fulfilled") {
+        const analysisData = allergenResult.value || {};
+        const aiAllergens = Array.isArray(analysisData.allergens)
+          ? [...analysisData.allergens]
+          : [];
+        const aiDiets = Array.isArray(analysisData.diets)
+          ? [...analysisData.diets]
+          : [];
+        // Apply Claude output directly to the row
+        current.allergens = aiAllergens.slice();
+        current.diets = aiDiets.slice();
+        // Name-based analysis should not infer cross-contamination
+        current.crossContamination = [];
+        current.crossContaminationDiets = [];
+        current.aiDetectedAllergens = aiAllergens.slice();
+        current.aiDetectedDiets = aiDiets.slice();
+        current.aiDetectedCrossContamination = [];
+        current.aiDetectedCrossContaminationDiets = [];
+        current.aiDetectionCompleted = true;
+        appliedAllergens = true;
+      } else if (allergenResult.status === "rejected") {
+        console.error(
+          "AI analysis error:",
+          allergenResult.reason || allergenResult,
+        );
+        clearAiDetections();
+      }
 
       enforceDietAllergenConsistency(current);
       renderAiTable(refreshed);
 
       if (!opts.silent) {
         if (scanDecision === true) {
-          aiAssistSetStatus(`Label required for "${name}".`, "warn");
+          aiAssistSetStatus(
+            appliedAllergens
+              ? `Label required for "${name}". AI prefill added.`
+              : `Label required for "${name}".`,
+            "warn",
+          );
         } else if (scanDecision === false) {
-          aiAssistSetStatus(`Label optional for "${name}".`, "success");
+          aiAssistSetStatus(
+            appliedAllergens
+              ? `Label optional for "${name}". Allergens/diets updated.`
+              : `Label optional for "${name}", but allergens/diets could not be updated.`,
+            appliedAllergens ? "success" : "warn",
+          );
         } else if (appliedAllergens) {
           aiAssistSetStatus(
             `Updated allergens/diets for "${name}".`,
             "success",
           );
         } else {
-          aiAssistSetStatus(`Analysis complete for "${name}".`, "success");
+          aiAssistSetStatus(
+            `Could not complete ingredient analysis for "${name}".`,
+            "warn",
+          );
         }
       }
 
@@ -894,9 +951,9 @@ export function initAiAssistant(deps = {}) {
     }
     if (!aiAssistElementsBound) {
       aiAssistBackdrop.addEventListener("click", (event) => {
-        if (event.target === aiAssistBackdrop) closeAiAssistant();
+        if (event.target === aiAssistBackdrop) closeDishEditor();
       });
-      aiAssistCloseBtn.addEventListener("click", () => closeAiAssistant());
+      aiAssistCloseBtn.addEventListener("click", () => closeDishEditor());
       aiAssistDictateBtn.addEventListener("click", () => toggleAiDictation());
       if (aiAssistGenerateBtn) {
         aiAssistGenerateBtn.addEventListener("click", () =>
@@ -1586,7 +1643,7 @@ export function initAiAssistant(deps = {}) {
     });
   }
 
-  const photoApi = initAiAssistantPhotos({
+  const photoApi = initDishEditorPhotos({
     ensureAiAssistElements,
     aiAssistState,
     compressImage,
@@ -2409,7 +2466,7 @@ export function initAiAssistant(deps = {}) {
 
       // NOTE: We NO LONGER load brands from memory here during render.
       // Brands from memory are only loaded when:
-      // 1. AI returns initial results (in handleAiAssistantResult)
+      // 1. AI returns initial results (in handleDishEditorResult)
       // 2. User opens a saved draft
       // This prevents the infinite loop where deleting a brand causes it to reload from memory.
       // The memory is now purely for auto-populating NEW ingredients, not re-populating deleted brands.
@@ -3319,7 +3376,7 @@ export function initAiAssistant(deps = {}) {
     if (window.__pendingIngredientToScroll) {
       const pendingIngredient = window.__pendingIngredientToScroll;
       requestAnimationFrame(() => {
-        if (scrollAiAssistantToIngredient(pendingIngredient)) {
+        if (scrollDishEditorToIngredient(pendingIngredient)) {
           window.__pendingIngredientToScroll = null;
         }
       });
@@ -3329,7 +3386,7 @@ export function initAiAssistant(deps = {}) {
     updateAiPreview();
   }
 
-  function scrollAiAssistantToIngredient(ingredientName) {
+  function scrollDishEditorToIngredient(ingredientName) {
     if (!ingredientName || !aiAssistTableBody) return false;
     const target = norm(ingredientName);
     const rows = aiAssistTableBody.querySelectorAll("tr[data-index]");
@@ -3352,7 +3409,7 @@ export function initAiAssistant(deps = {}) {
     return false;
   }
 
-  window.scrollAiAssistantToIngredient = scrollAiAssistantToIngredient;
+  window.scrollDishEditorToIngredient = scrollDishEditorToIngredient;
 
   function normalizeIngredientName(name) {
     const lower = name.toLowerCase().trim();
@@ -3414,8 +3471,8 @@ export function initAiAssistant(deps = {}) {
     return Array.from(unique.values());
   }
 
-  async function openAiAssistant(context) {
-    debugLog("!!! openAiAssistant called", new Error().stack);
+  async function openDishEditor(context) {
+    debugLog("!!! openDishEditor called", new Error().stack);
     ensureAiAssistElements();
     if (!aiAssistBackdrop) return;
 
@@ -3443,7 +3500,7 @@ export function initAiAssistant(deps = {}) {
     const dishName = context?.getCurrentName
       ? context.getCurrentName()
       : context?.dishName || "";
-    debugLog("openAiAssistant: Setting dish name to:", dishName);
+    debugLog("openDishEditor: Setting dish name to:", dishName);
 
     // Store original dish name to track unsaved changes
     aiAssistState.originalDishName = dishName;
@@ -3458,7 +3515,7 @@ export function initAiAssistant(deps = {}) {
       setTimeout(() => {
         nameInput.value = dishName;
         debugLog(
-          "openAiAssistant: Name input field updated to:",
+          "openDishEditor: Name input field updated to:",
           nameInput.value,
         );
         // Update original dish name after setting the value
@@ -3550,7 +3607,7 @@ export function initAiAssistant(deps = {}) {
             .eq("restaurant_id", restaurantId);
 
           // Filter by dish_name to scope appeals to this specific dish
-          // Note: dishName was set earlier in openAiAssistant from context.getCurrentName()
+          // Note: dishName was set earlier in openDishEditor from context.getCurrentName()
           if (dishName) {
             appealsQuery = appealsQuery.eq("dish_name", dishName);
           } else {
@@ -3704,7 +3761,7 @@ export function initAiAssistant(deps = {}) {
   window.openImageModal = openImageModal;
   window.closeImageModal = closeImageModal;
 
-  function closeAiAssistant() {
+  function closeDishEditor() {
     ensureAiAssistElements();
 
     // Hide replacement progress card when closing
@@ -5539,7 +5596,7 @@ export function initAiAssistant(deps = {}) {
     }
   }
 
-  function handleAiAssistantResult(payload) {
+  function handleDishEditorResult(payload) {
     ensureAiAssistElements();
     if (!payload || payload.requestId !== aiAssistState.pendingRequestId) return;
     aiAssistState.pendingRequestId = null;
@@ -5579,7 +5636,7 @@ export function initAiAssistant(deps = {}) {
     );
   }
 
-  function handleAiAssistantError(payload) {
+  function handleDishEditorError(payload) {
     ensureAiAssistElements();
     if (!payload || payload.requestId !== aiAssistState.pendingRequestId) return;
     aiAssistState.pendingRequestId = null;
@@ -5690,7 +5747,7 @@ export function initAiAssistant(deps = {}) {
     } else {
       console.error("No onApply callback found!");
     }
-    closeAiAssistant();
+    closeDishEditor();
     aiAssistSetStatus("");
   }
 
@@ -5701,9 +5758,9 @@ export function initAiAssistant(deps = {}) {
     ensureAiAssistElements,
     collectAiTableData,
     renderAiTable,
-    openAiAssistant,
-    handleAiAssistantResult,
-    handleAiAssistantError,
+    openDishEditor,
+    handleDishEditorResult,
+    handleDishEditorError,
     getAiAssistBackdrop: () => aiAssistBackdrop,
     getAiAssistTableBody: () => aiAssistTableBody,
     rebuildBrandMemoryFromRestaurant,

@@ -1,4 +1,4 @@
-export function initAiAssistantPhotos(deps = {}) {
+export function initDishEditorPhotos(deps = {}) {
   const ensureAiAssistElements =
     typeof deps.ensureAiAssistElements === "function"
       ? deps.ensureAiAssistElements

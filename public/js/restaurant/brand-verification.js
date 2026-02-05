@@ -12,8 +12,8 @@ export function initBrandVerification(deps = {}) {
       : () => {};
   const getIssueReportMeta =
     typeof deps.getIssueReportMeta === "function" ? deps.getIssueReportMeta : () => ({});
-  const openAiAssistant =
-    typeof deps.openAiAssistant === "function" ? deps.openAiAssistant : () => {};
+  const openDishEditor =
+    typeof deps.openDishEditor === "function" ? deps.openDishEditor : () => {};
   const getAiAssistTableBody =
     typeof deps.getAiAssistTableBody === "function"
       ? deps.getAiAssistTableBody
@@ -492,7 +492,7 @@ export function initBrandVerification(deps = {}) {
               if (mb) mb.style.display = "none";
 
               // Route to AI assistant for each dish
-              routeToAiAssistantForDishes(idx, item);
+              routeToDishEditorForDishes(idx, item);
             });
           }
 
@@ -1113,7 +1113,7 @@ export function initBrandVerification(deps = {}) {
       }
 
       // Route to AI assistant for each dish that uses this brand item
-      async function routeToAiAssistantForDishes(idx, item) {
+      async function routeToDishEditorForDishes(idx, item) {
         const dishes = item.dishes;
         if (dishes.length === 0) return;
 
@@ -1126,7 +1126,7 @@ export function initBrandVerification(deps = {}) {
           const dish = dishes[i];
 
           // Open AI assistant for this dish with the ingredient pre-filled
-          await openAiAssistantForDishReplacement(
+          await openDishEditorForDishReplacement(
             dish,
             item,
             i + 1,
@@ -1136,7 +1136,7 @@ export function initBrandVerification(deps = {}) {
       }
 
       // Open AI assistant for a specific dish to replace a brand item
-      async function openAiAssistantForDishReplacement(
+      async function openDishEditorForDishReplacement(
         dish,
         brandItem,
         dishNumber,
@@ -1209,7 +1209,7 @@ export function initBrandVerification(deps = {}) {
           };
 
           // Open the AI assistant
-          openAiAssistant(context);
+          openDishEditor(context);
 
           // After the table renders, scroll to the ingredient row
           // Wait a bit longer to ensure table is fully rendered
