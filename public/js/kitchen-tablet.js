@@ -6,6 +6,7 @@ import {
   saveTabletOrder,
   subscribeToTabletOrderChanges
 } from './tablet-orders-api.js';
+import { notifyDinerNotice } from './notice-notifications.js';
 import {
   createInitialState,
   kitchenAcknowledge,
@@ -447,6 +448,7 @@ async function handleAcknowledge(order, card) {
     kitchenAcknowledge({ orders: tabletState.orders, chefs: tabletState.chefs }, order.id, chefId);
     console.log('[kitchen-tablet] Saving order');
     await saveTabletOrder(order, { restaurantId: order.restaurantId });
+    notifyDinerNotice({ orderId: order.id, client: supabaseClient });
     console.log('[kitchen-tablet] Re-rendering queue');
     renderKitchenQueue();
   } catch (error) {
@@ -471,6 +473,7 @@ async function handleQuestion(order) {
   try {
     kitchenAskQuestion({ orders: tabletState.orders, chefs: tabletState.chefs }, order.id, text);
     await saveTabletOrder(order, { restaurantId: order.restaurantId });
+    notifyDinerNotice({ orderId: order.id, client: supabaseClient });
     renderKitchenQueue();
   } catch (error) {
     console.error('[kitchen-tablet] question failed', error);
@@ -489,6 +492,7 @@ async function handleReject(order) {
   try {
     kitchenReject({ orders: tabletState.orders, chefs: tabletState.chefs }, order.id, reason);
     await saveTabletOrder(order, { restaurantId: order.restaurantId });
+    notifyDinerNotice({ orderId: order.id, client: supabaseClient });
     renderKitchenQueue();
   } catch (error) {
     console.error('[kitchen-tablet] reject failed', error);

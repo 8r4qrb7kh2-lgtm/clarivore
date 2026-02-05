@@ -6,6 +6,7 @@ import {
   saveTabletOrder,
   subscribeToTabletOrderChanges
 } from './tablet-orders-api.js';
+import { notifyDinerNotice } from './notice-notifications.js';
 import {
   serverApprove,
   serverDispatchToKitchen,
@@ -390,6 +391,7 @@ async function handleServerAction(action, orderId) {
       return;
     }
     await saveTabletOrder(order, { restaurantId: order.restaurantId });
+    notifyDinerNotice({ orderId: order.id, client: supabaseClient });
     renderServerQueue();
   } catch (error) {
     console.error('[server-tablet] action failed', error);

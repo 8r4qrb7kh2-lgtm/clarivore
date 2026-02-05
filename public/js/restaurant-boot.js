@@ -2,11 +2,14 @@
 const SUPABASE_URL = "https://fgoiyycctnwnghrvsilt.supabase.co";
 const SUPABASE_KEY =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZnb2l5eWNjdG53bmdocnZzaWx0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA0MzY1MjYsImV4cCI6MjA3NjAxMjUyNn0.xlSSXr0Gl7j-vsckrj-2anpPmp4BG2SUIdN-_dquSA8";
+const CLARIVORE_PUSH_PUBLIC_KEY =
+  "BLwHDRRCZBQE_RHLUlRBgrKcKjHGKxIM4UaYWkRHzUMfQZIkNVBERTHL2cvJ1koMTUYlpgfEdslZjj0nh3DLSG0";
 const { createClient } = supabase;
 const supabaseClient = createClient(SUPABASE_URL, SUPABASE_KEY);
 window.supabaseClient = supabaseClient;
 window.SUPABASE_URL = SUPABASE_URL;
 window.SUPABASE_KEY = SUPABASE_KEY;
+window.CLARIVORE_PUSH_PUBLIC_KEY = CLARIVORE_PUSH_PUBLIC_KEY;
 // ========== Editor Lock Management ==========
 // Prevents multiple users OR same user in multiple tabs/devices from editing simultaneously
 const EditorLock = {

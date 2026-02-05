@@ -25,6 +25,7 @@ import { initAiAssistant } from "./restaurant/ai-assistant.js";
 import { initAutoOpenDish } from "./restaurant/auto-open-dish.js";
 import { initIngredientSources } from "./restaurant/ingredient-sources.js";
 import { initFeedbackModals } from "./restaurant/feedback-modals.js";
+import { initDinerNotifications } from "./diner-notifications.js";
 import {
   analyzeBoxSizes,
   splitImageIntoSections,
@@ -6407,6 +6408,9 @@ function handleRestaurantMessage(message) {
   if (m.user) {
     state.user = m.user;
     applyDefaultUserName();
+    if (state.user?.loggedIn) {
+      initDinerNotifications({ user: state.user, client: window.supabaseClient });
+    }
   }
   if (Object.prototype.hasOwnProperty.call(m, "isHowItWorks")) {
     state.isHowItWorks = !!m.isHowItWorks;
