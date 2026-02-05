@@ -117,7 +117,7 @@ ${indexedWordList}
 Analyze for:
 - Allergens: ${allergenListText}
 - Diet violations: ${dietViolationText}
-Use ONLY these exact names in your output:
+Use ONLY these exact names in your output (no synonyms or variants). If you cannot match to a listed term, omit it:
 - Allergens: ${allergenListText}
 - Diets: ${dietListText}
 
@@ -131,7 +131,7 @@ For "CONTAINS:" statements, flag each allergen individually:
 For each allergen/diet violation found, report:
 - The ingredient name as it appears
 - The exact word indices from the numbered list above
-- Whether it's exactly "contained" or exactly "cross-contamination" (use "cross-contamination" for may contain/facility warnings)
+- Whether it's exactly "contained" or exactly "cross-contamination" (use "cross-contamination" for cross-contamination/facility warnings)
 
 Return ONLY valid JSON:
 {

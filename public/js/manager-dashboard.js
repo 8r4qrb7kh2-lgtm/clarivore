@@ -1159,9 +1159,9 @@
         ingredientsList: ingredientText ? [ingredientText] : [],
         ingredientList: ingredientText,
         allergens: Array.isArray(result?.allergens) ? result.allergens : [],
-        mayContainAllergens: Array.isArray(result?.mayContainAllergens) ? result.mayContainAllergens : [],
+        crossContamination: Array.isArray(result?.crossContamination) ? result.crossContamination : [],
         diets: Array.isArray(result?.diets) ? result.diets : [],
-        mayContainDiets: Array.isArray(result?.mayContainDiets) ? result.mayContainDiets : []
+        crossContaminationDiets: Array.isArray(result?.crossContaminationDiets) ? result.crossContaminationDiets : []
       };
 
       try {
@@ -1216,22 +1216,22 @@
     function applyBrandDetections(ingredient, newBrand) {
       const brandAllergens = normalizeTagList(newBrand?.allergens, normalizeAllergen);
       const brandDiets = normalizeTagList(newBrand?.diets, normalizeDietLabel);
-      const brandMayContainAllergens = normalizeTagList(
-        newBrand?.mayContainAllergens,
+      const brandCrossContamination = normalizeTagList(
+        newBrand?.crossContamination,
         normalizeAllergen,
       );
-      const brandMayContainDiets = normalizeTagList(
-        newBrand?.mayContainDiets,
+      const brandCrossContaminationDiets = normalizeTagList(
+        newBrand?.crossContaminationDiets,
         normalizeDietLabel,
       );
       ingredient.allergens = brandAllergens.slice();
       ingredient.diets = brandDiets.slice();
-      ingredient.mayContainAllergens = brandMayContainAllergens.slice();
-      ingredient.mayContainDiets = brandMayContainDiets.slice();
+      ingredient.crossContamination = brandCrossContamination.slice();
+      ingredient.crossContaminationDiets = brandCrossContaminationDiets.slice();
       ingredient.aiDetectedAllergens = brandAllergens.slice();
       ingredient.aiDetectedDiets = brandDiets.slice();
-      ingredient.aiDetectedMayContainAllergens = brandMayContainAllergens.slice();
-      ingredient.aiDetectedMayContainDiets = brandMayContainDiets.slice();
+      ingredient.aiDetectedCrossContamination = brandCrossContamination.slice();
+      ingredient.aiDetectedCrossContaminationDiets = brandCrossContaminationDiets.slice();
     }
 
     function replaceBrandInOverlays(overlays, oldItem, newBrand) {

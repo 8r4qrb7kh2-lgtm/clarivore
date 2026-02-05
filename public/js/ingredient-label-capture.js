@@ -1792,7 +1792,7 @@ Output ONLY the JSON object, nothing else.`;
         const isContained = flag.risk_type === 'contained';
         const bgColor = isContained ? 'rgba(239,68,68,0.15)' : 'rgba(251,191,36,0.15)';
         const borderColor = isContained ? 'rgba(239,68,68,0.4)' : 'rgba(251,191,36,0.4)';
-        const riskLabel = isContained ? 'CONTAINS' : 'MAY CONTAIN';
+        const riskLabel = isContained ? 'CONTAINS' : 'CROSS-CONTAMINATION';
         const types = [...(flag.allergens || []), ...(flag.diets || [])].join(', ');
 
         html += `
@@ -1826,9 +1826,9 @@ Output ONLY the JSON object, nothing else.`;
 
       const flags = analysisResult.allergenFlags || [];
       const containedAllergens = new Set();
-      const mayContainAllergens = new Set();
+      const crossContamination = new Set();
       const violatedDiets = new Set();
-      const mayContainDiets = new Set();
+      const crossContaminationDiets = new Set();
       const confirmedLines = Array.isArray(analysisResult.lines)
         ? analysisResult.lines.filter((_, idx) => lineConfirmations[idx])
         : [];
@@ -1842,25 +1842,12 @@ Output ONLY the JSON object, nothing else.`;
       const labelImage = analysisResult.correctedImage || capturedPhoto || '';
 
       const dietOptions = DIETS;
-      const normalizeAllergenKey = (value) => normalizeAllergen(value);
-      const normalizeDietName = (diet) => normalizeDietLabel(diet);
-      const addMayContainDiets = (list) => {
+      const addCrossContaminationDiets = (list) => {
         (Array.isArray(list) ? list : []).forEach((diet) => {
-          const normalized = normalizeDietName(diet);
-          if (normalized) mayContainDiets.add(normalized);
+          const normalized = String(diet ?? '').trim();
+          if (normalized) crossContaminationDiets.add(normalized);
         });
       };
-      const allergenToDiets = {};
-      dietOptions.forEach((diet) => {
-        getDietAllergenConflicts(diet).forEach((allergen) => {
-          if (!allergenToDiets[allergen]) {
-            allergenToDiets[allergen] = [];
-          }
-          if (!allergenToDiets[allergen].includes(diet)) {
-            allergenToDiets[allergen].push(diet);
-          }
-        });
-      });
 
       const resolveFlagAllergens = (list) =>
         Array.isArray(list) ? list : [];
@@ -1873,34 +1860,26 @@ Output ONLY the JSON object, nothing else.`;
 
         if (isContained) {
           resolvedAllergens.forEach(a => {
-            const normalized = normalizeAllergenKey(a);
-            if (normalized) {
-              containedAllergens.add(normalized);
-              const affectedDiets = allergenToDiets[normalized] || [];
-              affectedDiets.forEach(d => violatedDiets.add(d));
-            }
+            const normalized = String(a ?? '').trim();
+            if (normalized) containedAllergens.add(normalized);
           });
           flagDiets.forEach(d => {
-            const normalized = normalizeDietName(d);
+            const normalized = String(d ?? '').trim();
             if (normalized) violatedDiets.add(normalized);
           });
         } else {
           resolvedAllergens.forEach(a => {
-            const normalized = normalizeAllergenKey(a);
-            if (normalized) {
-              mayContainAllergens.add(normalized);
-              const affectedDiets = allergenToDiets[normalized] || [];
-              affectedDiets.forEach(d => mayContainDiets.add(d));
-            }
+            const normalized = String(a ?? '').trim();
+            if (normalized) crossContamination.add(normalized);
           });
-          addMayContainDiets(flagDiets);
+          addCrossContaminationDiets(flagDiets);
         }
       });
 
-      containedAllergens.forEach(a => mayContainAllergens.delete(a));
-      violatedDiets.forEach(d => mayContainDiets.delete(d));
+      // Keep overlaps so a single allergen/diet can carry both
+      // "contains" and "cross-contamination" flags when needed.
 
-      const compliantDiets = dietOptions.filter(d => !violatedDiets.has(d) && !mayContainDiets.has(d));
+      const compliantDiets = dietOptions.filter(d => !violatedDiets.has(d) && !crossContaminationDiets.has(d));
 
       let compressedImage = '';
       if (frontImageDataUrl) {
@@ -1913,9 +1892,9 @@ Output ONLY the JSON object, nothing else.`;
             ingredientName,
             ingredientText,
             allergens: Array.from(containedAllergens),
-            mayContainAllergens: Array.from(mayContainAllergens),
+            crossContamination: Array.from(crossContamination),
             diets: compliantDiets,
-            mayContainDiets: Array.from(mayContainDiets),
+            crossContaminationDiets: Array.from(crossContaminationDiets),
             brandImage: compressedImage,
             ingredientsImage: labelImage,
             productName: productName || ''
@@ -1927,16 +1906,16 @@ Output ONLY the JSON object, nothing else.`;
       const data = collectAiTableData();
       if (data[rowIdx]) {
         data[rowIdx].allergens = Array.from(containedAllergens);
-        data[rowIdx].mayContainAllergens = Array.from(mayContainAllergens);
+        data[rowIdx].crossContamination = Array.from(crossContamination);
         data[rowIdx].diets = compliantDiets;
-        data[rowIdx].mayContainDiets = Array.from(mayContainDiets);
+        data[rowIdx].crossContaminationDiets = Array.from(crossContaminationDiets);
         data[rowIdx].ingredientsImage = labelImage;
         data[rowIdx].ingredientsList = ingredientLines;
         data[rowIdx].confirmed = false;
         data[rowIdx].aiDetectedAllergens = Array.from(containedAllergens);
-        data[rowIdx].aiDetectedMayContainAllergens = Array.from(mayContainAllergens);
+        data[rowIdx].aiDetectedCrossContamination = Array.from(crossContamination);
         data[rowIdx].aiDetectedDiets = data[rowIdx].diets;
-        data[rowIdx].aiDetectedMayContainDiets = Array.from(mayContainDiets);
+        data[rowIdx].aiDetectedCrossContaminationDiets = Array.from(crossContaminationDiets);
 
         if (frontImageDataUrl) {
           data[rowIdx].brandImage = compressedImage;
@@ -1951,9 +1930,9 @@ Output ONLY the JSON object, nothing else.`;
               ingredientsImage: labelImage,
               ingredientsList: ingredientLines,
               allergens: Array.from(containedAllergens),
-              mayContainAllergens: Array.from(mayContainAllergens),
+              crossContamination: Array.from(crossContamination),
               diets: data[rowIdx].diets,
-              mayContainDiets: Array.from(mayContainDiets)
+              crossContaminationDiets: Array.from(crossContaminationDiets)
             };
             data[rowIdx].brands.push(newBrand);
           }

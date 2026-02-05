@@ -690,15 +690,15 @@ export function initEditorSaveFlow(deps = {}) {
                       ingredient: ingName,
                       before: {
                         allergens: [],
-                        mayContainAllergens: [],
+                        crossContamination: [],
                         diets: [],
-                        mayContainDiets: [],
+                        crossContaminationDiets: [],
                       },
                       after: {
                         allergens: ing.allergens || [],
-                        mayContainAllergens: ing.mayContainAllergens || [],
+                        crossContamination: ing.crossContamination || [],
                         diets: ing.diets || [],
-                        mayContainDiets: ing.mayContainDiets || [],
+                        crossContaminationDiets: ing.crossContaminationDiets || [],
                       },
                     },
                   });
@@ -712,7 +712,7 @@ export function initEditorSaveFlow(deps = {}) {
                       ),
                     );
                   });
-                  (ing.mayContainAllergens || []).forEach((a) => {
+                  (ing.crossContamination || []).forEach((a) => {
                     const displayName = formatAllergenLabel(a);
                     changes.push(
                       makeEntry(
@@ -729,7 +729,7 @@ export function initEditorSaveFlow(deps = {}) {
                       ),
                     );
                   });
-                  (ing.mayContainDiets || []).forEach((d) => {
+                  (ing.crossContaminationDiets || []).forEach((d) => {
                     changes.push(
                       makeEntry(
                         `${itemName}: ${ingName}: [Smart detection] added ${d} (cross-contamination risk)`,
@@ -749,9 +749,9 @@ export function initEditorSaveFlow(deps = {}) {
                   // If no allergens, diets, or brands, just note the ingredient was added
                   if (
                     !ing.allergens?.length &&
-                    !ing.mayContainAllergens?.length &&
+                    !ing.crossContamination?.length &&
                     !ing.diets?.length &&
-                    !ing.mayContainDiets?.length &&
+                    !ing.crossContaminationDiets?.length &&
                     !ing.brands?.length
                   ) {
                     changes.push({
@@ -793,8 +793,8 @@ export function initEditorSaveFlow(deps = {}) {
                         .map((a) => String(a ?? "").trim())
                         .filter(Boolean),
                     );
-                    const oldAiDetectedMayContainAllergens = new Set(
-                      (oldIng.aiDetectedMayContainAllergens || [])
+                    const oldAiDetectedCrossContamination = new Set(
+                      (oldIng.aiDetectedCrossContamination || [])
                         .map((a) => String(a ?? "").trim())
                         .filter(Boolean),
                     );
@@ -803,8 +803,8 @@ export function initEditorSaveFlow(deps = {}) {
                         .map((a) => String(a ?? "").trim())
                         .filter(Boolean),
                     );
-                    const oldAiDetectedMayContainDiets = new Set(
-                      (oldIng.aiDetectedMayContainDiets || [])
+                    const oldAiDetectedCrossContaminationDiets = new Set(
+                      (oldIng.aiDetectedCrossContaminationDiets || [])
                         .map((a) => String(a ?? "").trim())
                         .filter(Boolean),
                     );
@@ -814,8 +814,8 @@ export function initEditorSaveFlow(deps = {}) {
                         .map((a) => String(a ?? "").trim())
                         .filter(Boolean),
                     );
-                    const newAiDetectedMayContainAllergens = new Set(
-                      (newIng.aiDetectedMayContainAllergens || [])
+                    const newAiDetectedCrossContamination = new Set(
+                      (newIng.aiDetectedCrossContamination || [])
                         .map((a) => String(a ?? "").trim())
                         .filter(Boolean),
                     );
@@ -824,8 +824,8 @@ export function initEditorSaveFlow(deps = {}) {
                         .map((a) => String(a ?? "").trim())
                         .filter(Boolean),
                     );
-                    const newAiDetectedMayContainDiets = new Set(
-                      (newIng.aiDetectedMayContainDiets || [])
+                    const newAiDetectedCrossContaminationDiets = new Set(
+                      (newIng.aiDetectedCrossContaminationDiets || [])
                         .map((a) => String(a ?? "").trim())
                         .filter(Boolean),
                     );
@@ -835,18 +835,18 @@ export function initEditorSaveFlow(deps = {}) {
                       JSON.stringify([...oldAiDetectedAllergens].sort()) !==
                         JSON.stringify([...newAiDetectedAllergens].sort()) ||
                       JSON.stringify(
-                        [...oldAiDetectedMayContainAllergens].sort(),
+                        [...oldAiDetectedCrossContamination].sort(),
                       ) !==
                         JSON.stringify(
-                          [...newAiDetectedMayContainAllergens].sort(),
+                          [...newAiDetectedCrossContamination].sort(),
                         ) ||
                       JSON.stringify([...oldAiDetectedDiets].sort()) !==
                         JSON.stringify([...newAiDetectedDiets].sort()) ||
                       JSON.stringify(
-                        [...oldAiDetectedMayContainDiets].sort(),
+                        [...oldAiDetectedCrossContaminationDiets].sort(),
                       ) !==
                         JSON.stringify(
-                          [...newAiDetectedMayContainDiets].sort(),
+                          [...newAiDetectedCrossContaminationDiets].sort(),
                         );
 
                     const smartPrefix = aiDetectionChanged
@@ -860,15 +860,15 @@ export function initEditorSaveFlow(deps = {}) {
                         ingredient: ingredientName,
                         before: {
                           allergens: oldIng.allergens || [],
-                          mayContainAllergens: oldIng.mayContainAllergens || [],
+                          crossContamination: oldIng.crossContamination || [],
                           diets: oldIng.diets || [],
-                          mayContainDiets: oldIng.mayContainDiets || [],
+                          crossContaminationDiets: oldIng.crossContaminationDiets || [],
                         },
                         after: {
                           allergens: newIng.allergens || [],
-                          mayContainAllergens: newIng.mayContainAllergens || [],
+                          crossContamination: newIng.crossContamination || [],
                           diets: newIng.diets || [],
-                          mayContainDiets: newIng.mayContainDiets || [],
+                          crossContaminationDiets: newIng.crossContaminationDiets || [],
                         },
                       },
                     });
@@ -885,7 +885,7 @@ export function initEditorSaveFlow(deps = {}) {
                         )
                           return "contains";
                         if (
-                          (ing.mayContainAllergens || [])
+                          (ing.crossContamination || [])
                             .map((a) => String(a ?? "").trim())
                             .includes(key)
                         )
@@ -898,7 +898,7 @@ export function initEditorSaveFlow(deps = {}) {
                         )
                           return "compliant";
                         if (
-                          (ing.mayContainDiets || [])
+                          (ing.crossContaminationDiets || [])
                             .map((a) => String(a ?? "").trim())
                             .includes(key)
                         )
@@ -912,13 +912,13 @@ export function initEditorSaveFlow(deps = {}) {
                       ...(oldIng.allergens || [])
                         .map((a) => String(a ?? "").trim())
                         .filter(Boolean),
-                      ...(oldIng.mayContainAllergens || [])
+                      ...(oldIng.crossContamination || [])
                         .map((a) => String(a ?? "").trim())
                         .filter(Boolean),
                       ...(newIng.allergens || [])
                         .map((a) => String(a ?? "").trim())
                         .filter(Boolean),
-                      ...(newIng.mayContainAllergens || [])
+                      ...(newIng.crossContamination || [])
                         .map((a) => String(a ?? "").trim())
                         .filter(Boolean),
                     ]);
@@ -928,13 +928,13 @@ export function initEditorSaveFlow(deps = {}) {
                       ...(oldIng.diets || [])
                         .map((a) => String(a ?? "").trim())
                         .filter(Boolean),
-                      ...(oldIng.mayContainDiets || [])
+                      ...(oldIng.crossContaminationDiets || [])
                         .map((a) => String(a ?? "").trim())
                         .filter(Boolean),
                       ...(newIng.diets || [])
                         .map((a) => String(a ?? "").trim())
                         .filter(Boolean),
-                      ...(newIng.mayContainDiets || [])
+                      ...(newIng.crossContaminationDiets || [])
                         .map((a) => String(a ?? "").trim())
                         .filter(Boolean),
                     ]);

@@ -395,8 +395,8 @@ export function initAiAssistant(deps = {}) {
       const clearAiDetections = () => {
         current.aiDetectedAllergens = [];
         current.aiDetectedDiets = [];
-        current.aiDetectedMayContainAllergens = [];
-        current.aiDetectedMayContainDiets = [];
+        current.aiDetectedCrossContamination = [];
+        current.aiDetectedCrossContaminationDiets = [];
         current.aiDetectionCompleted = false;
       };
 
@@ -413,12 +413,12 @@ export function initAiAssistant(deps = {}) {
         current.allergens = aiAllergens.slice();
         current.diets = aiDiets.slice();
         // Name-based analysis should not infer cross-contamination
-        current.mayContainAllergens = [];
-        current.mayContainDiets = [];
+        current.crossContamination = [];
+        current.crossContaminationDiets = [];
         current.aiDetectedAllergens = aiAllergens.slice();
         current.aiDetectedDiets = aiDiets.slice();
-        current.aiDetectedMayContainAllergens = [];
-        current.aiDetectedMayContainDiets = [];
+        current.aiDetectedCrossContamination = [];
+        current.aiDetectedCrossContaminationDiets = [];
         current.aiDetectionCompleted = true;
         appliedAllergens = true;
       } else if (allergenResult.status === "rejected") {
@@ -596,9 +596,9 @@ export function initAiAssistant(deps = {}) {
       ingredientsImage: data.ingredientsImage,
       ingredientsList: data.ingredientsList,
       allergens: data.allergens,
-      mayContainAllergens: data.mayContainAllergens,
+      crossContamination: data.crossContamination,
       diets: data.diets,
-      mayContainDiets: data.mayContainDiets,
+      crossContaminationDiets: data.crossContaminationDiets,
     });
     store[key] = {
       brand: sanitized.name,
@@ -606,9 +606,9 @@ export function initAiAssistant(deps = {}) {
       ingredientsImage: sanitized.ingredientsImage,
       ingredientsList: sanitized.ingredientsList,
       allergens: sanitized.allergens,
-      mayContainAllergens: sanitized.mayContainAllergens,
+      crossContamination: sanitized.crossContamination,
       diets: sanitized.diets,
-      mayContainDiets: sanitized.mayContainDiets,
+      crossContaminationDiets: sanitized.crossContaminationDiets,
       barcode: sanitized.barcode,
     };
     persistAiBrandMemory();
@@ -1279,7 +1279,7 @@ export function initAiAssistant(deps = {}) {
           }
           return;
         }
-        // Three-state toggle for allergen/diet checkboxes: off → contains → maycontain → off
+        // Three-state toggle for allergen/diet checkboxes: off → contains → crosscontamination → off
         const checkboxLabel = event.target.closest(
           ".aiAllergenChecklist label, .aiDietChecklist label",
         );
@@ -1293,12 +1293,12 @@ export function initAiAssistant(deps = {}) {
           if (!checkbox || checkbox.disabled) return;
 
           const currentState = checkbox.dataset.state || "off";
-          // Cycle: off → contains → maycontain → off
+          // Cycle: off → contains → crosscontamination → off
           const nextState =
             currentState === "off"
               ? "contains"
               : currentState === "contains"
-                ? "maycontain"
+                ? "crosscontamination"
                 : "off";
           const wasAiDetected = checkbox.dataset.aiDetected === "true";
           const aiState = checkbox.dataset.aiState || "off"; // What AI originally suggested
@@ -1306,9 +1306,10 @@ export function initAiAssistant(deps = {}) {
           // Update checkbox state
           checkbox.dataset.state = nextState;
           checkbox.checked = nextState !== "off";
+          checkbox.removeAttribute("data-overlap");
 
           // Update label class
-          checkboxLabel.classList.remove("state-contains", "state-maycontain");
+          checkboxLabel.classList.remove("state-contains", "state-crosscontamination");
           checkboxLabel.dataset.state = nextState;
           if (nextState !== "off") {
             checkboxLabel.classList.add(`state-${nextState}`);
@@ -1336,7 +1337,7 @@ export function initAiAssistant(deps = {}) {
             tooltipParts.push(
               "Contains - tap to change to Cross-contamination risk",
             );
-          } else if (nextState === "maycontain") {
+          } else if (nextState === "crosscontamination") {
             tooltipParts.push("Cross-contamination risk - tap to clear");
           } else {
             tooltipParts.push("Tap to mark as Contains");
@@ -1344,7 +1345,7 @@ export function initAiAssistant(deps = {}) {
           if (isOverridden) {
             if (wasAiDetected && nextState === "off") {
               tooltipParts.push("⚠️ Website suggested Contains - you removed it");
-            } else if (wasAiDetected && nextState === "maycontain") {
+            } else if (wasAiDetected && nextState === "crosscontamination") {
               tooltipParts.push(
                 "⚠️ Website suggested Contains - you changed to Cross-contamination",
               );
@@ -1499,12 +1500,12 @@ export function initAiAssistant(deps = {}) {
             entry.aiDetectionCompleted = false;
             entry.aiDetectedAllergens = [];
             entry.aiDetectedDiets = [];
-            entry.aiDetectedMayContainAllergens = [];
-            entry.aiDetectedMayContainDiets = [];
+            entry.aiDetectedCrossContamination = [];
+            entry.aiDetectedCrossContaminationDiets = [];
             entry.allergens = [];
             entry.diets = [];
-            entry.mayContainAllergens = [];
-            entry.mayContainDiets = [];
+            entry.crossContamination = [];
+            entry.crossContaminationDiets = [];
           }
           renderAiTable(data);
           updateAiPreview();
@@ -1842,32 +1843,54 @@ export function initAiAssistant(deps = {}) {
     aiAssistTableBody.querySelectorAll("tr").forEach((row) => {
       const idx = Number(row.dataset.index || "0");
       const name = row.querySelector(".aiIngredientName")?.value.trim() || "";
-      // Collect allergens based on state (contains vs maycontain)
+      // Collect allergens based on state (contains vs crosscontamination)
       const allergens = [
         ...row.querySelectorAll(".aiAllergenChecklist input:checked"),
       ]
-        .filter((input) => input.dataset.state !== "maycontain")
+        .filter((input) => input.dataset.state !== "crosscontamination")
         .map((input) => normalizeAllergenKey(input.value))
         .filter(Boolean);
-      const mayContainAllergens = [
+      let crossContamination = [
         ...row.querySelectorAll(
-          '.aiAllergenChecklist input[data-state="maycontain"]',
+          '.aiAllergenChecklist input[data-state="crosscontamination"]',
         ),
       ]
         .map((input) => normalizeAllergenKey(input.value))
         .filter(Boolean);
-      // Collect diets based on state (contains vs maycontain)
+      const overlapAllergens = [
+        ...row.querySelectorAll('.aiAllergenChecklist input[data-overlap="true"]'),
+      ]
+        .filter((input) => (input.dataset.state || "off") !== "off")
+        .map((input) => normalizeAllergenKey(input.value))
+        .filter(Boolean);
+      if (overlapAllergens.length) {
+        crossContamination = Array.from(
+          new Set([...crossContamination, ...overlapAllergens]),
+        );
+      }
+      // Collect diets based on state (contains vs crosscontamination)
       const diets = [...row.querySelectorAll(".aiDietChecklist input:checked")]
-        .filter((input) => input.dataset.state !== "maycontain")
+        .filter((input) => input.dataset.state !== "crosscontamination")
         .map((input) => normalizeDietKey(input.value))
         .filter(Boolean);
-      const mayContainDiets = [
+      let crossContaminationDiets = [
         ...row.querySelectorAll(
-          '.aiDietChecklist input[data-state="maycontain"]',
+          '.aiDietChecklist input[data-state="crosscontamination"]',
         ),
       ]
         .map((input) => normalizeDietKey(input.value))
         .filter(Boolean);
+      const overlapDiets = [
+        ...row.querySelectorAll('.aiDietChecklist input[data-overlap="true"]'),
+      ]
+        .filter((input) => (input.dataset.state || "off") !== "off")
+        .map((input) => normalizeDietKey(input.value))
+        .filter(Boolean);
+      if (overlapDiets.length) {
+        crossContaminationDiets = Array.from(
+          new Set([...crossContaminationDiets, ...overlapDiets]),
+        );
+      }
       const confirmed =
         row.querySelector(".aiConfirmBtn")?.dataset.confirmed === "true";
 
@@ -1898,12 +1921,12 @@ export function initAiAssistant(deps = {}) {
         parseJsonArray(row.dataset.aiDetectedDiets),
         normalizeDietKey,
       );
-      const aiDetectedMayContainAllergens = normalizeStringArray(
-        parseJsonArray(row.dataset.aiDetectedMayContainAllergens),
+      const aiDetectedCrossContamination = normalizeStringArray(
+        parseJsonArray(row.dataset.aiDetectedCrossContamination),
         normalizeAllergenKey,
       );
-      const aiDetectedMayContainDiets = normalizeStringArray(
-        parseJsonArray(row.dataset.aiDetectedMayContainDiets),
+      const aiDetectedCrossContaminationDiets = normalizeStringArray(
+        parseJsonArray(row.dataset.aiDetectedCrossContaminationDiets),
         normalizeDietKey,
       );
 
@@ -1931,9 +1954,9 @@ export function initAiAssistant(deps = {}) {
       // IMPORTANT: Merge brand allergens/diets into the collected allergens/diets
       // This ensures that brand allergens are always included even if checkboxes weren't checked yet
 
-      // Get all checkbox states (off/contains/maycontain) to track user overrides
+      // Get all checkbox states (off/contains/crosscontamination) to track user overrides
       const allCheckboxStates = {
-        allergens: new Map(), // value -> { state: 'off'|'contains'|'maycontain', checked: boolean }
+        allergens: new Map(), // value -> { state: 'off'|'contains'|'crosscontamination', checked: boolean }
         diets: new Map(),
       };
       row.querySelectorAll(".aiAllergenChecklist input").forEach((input) => {
@@ -1957,10 +1980,8 @@ export function initAiAssistant(deps = {}) {
 
       const allAllergens = new Set(allergens);
       const allDiets = new Set(diets);
-      const allMayContainAllergens = new Set(mayContainAllergens);
-      const allMayContainDiets = new Set(mayContainDiets);
-      allAllergens.forEach((a) => allMayContainAllergens.delete(a));
-      allDiets.forEach((d) => allMayContainDiets.delete(d));
+      const allCrossContamination = new Set(crossContamination);
+      const allCrossContaminationDiets = new Set(crossContaminationDiets);
 
       // Merge brand allergens/diets, but ONLY if user hasn't set them to 'off'
       brands.forEach((brand) => {
@@ -1971,11 +1992,11 @@ export function initAiAssistant(deps = {}) {
             // Only add if user hasn't explicitly set to off
             const stateInfo = allCheckboxStates.allergens.get(normalized);
             if (stateInfo?.state !== "off") {
-              // If it's marked maycontain, add to maycontain set, otherwise add to contains set
-              if (stateInfo?.state === "maycontain") {
-                allMayContainAllergens.add(normalized);
+              // If it's marked crosscontamination, add to crosscontamination set, otherwise add to contains set
+              if (stateInfo?.state === "crosscontamination") {
+                allCrossContamination.add(normalized);
                 debugLog(
-                  `Brand allergen: "${a}" -> normalized: "${normalized}" (added to maycontain)`,
+                  `Brand allergen: "${a}" -> normalized: "${normalized}" (added to crosscontamination)`,
                 );
               } else {
                 allAllergens.add(normalized);
@@ -1997,11 +2018,11 @@ export function initAiAssistant(deps = {}) {
             // Only add if user hasn't explicitly set to off
             const stateInfo = allCheckboxStates.diets.get(normalized);
             if (stateInfo?.state !== "off") {
-              // If it's marked maycontain, add to maycontain set, otherwise add to contains set
-              if (stateInfo?.state === "maycontain") {
-                allMayContainDiets.add(normalized);
+              // If it's marked crosscontamination, add to crosscontamination set, otherwise add to contains set
+              if (stateInfo?.state === "crosscontamination") {
+                allCrossContaminationDiets.add(normalized);
                 debugLog(
-                  `Brand diet: "${d}" -> normalized: "${normalized}" (added to maycontain)`,
+                  `Brand diet: "${d}" -> normalized: "${normalized}" (added to crosscontamination)`,
                 );
               } else {
                 allDiets.add(normalized);
@@ -2021,18 +2042,18 @@ export function initAiAssistant(deps = {}) {
       // Convert back to arrays (allergens are already normalized to standard names)
       const mergedAllergens = Array.from(allAllergens);
       const mergedDiets = Array.from(allDiets);
-      const mergedMayContainAllergens = Array.from(allMayContainAllergens);
-      const mergedMayContainDiets = Array.from(allMayContainDiets);
+      const mergedCrossContamination = Array.from(allCrossContamination);
+      const mergedCrossContaminationDiets = Array.from(allCrossContaminationDiets);
 
       debugLog(
         `Row ${idx} merged allergens:`,
         mergedAllergens,
-        "mayContain allergens:",
-        mergedMayContainAllergens,
+        "cross-contamination allergens:",
+        mergedCrossContamination,
         "merged diets:",
         mergedDiets,
-        "mayContain diets:",
-        mergedMayContainDiets,
+        "cross-contamination diets:",
+        mergedCrossContaminationDiets,
       );
 
       const entry = sanitizeIngredientRow({
@@ -2040,15 +2061,15 @@ export function initAiAssistant(deps = {}) {
         name,
         allergens: mergedAllergens,
         diets: mergedDiets,
-        mayContainAllergens: mergedMayContainAllergens,
-        mayContainDiets: mergedMayContainDiets,
+        crossContamination: mergedCrossContamination,
+        crossContaminationDiets: mergedCrossContaminationDiets,
         brands,
         confirmed,
         removable,
         aiDetectedAllergens,
         aiDetectedDiets,
-        aiDetectedMayContainAllergens,
-        aiDetectedMayContainDiets,
+        aiDetectedCrossContamination,
+        aiDetectedCrossContaminationDiets,
         needsScan,
         userOverriddenScan,
         appealReviewStatus,
@@ -2177,17 +2198,17 @@ export function initAiAssistant(deps = {}) {
     const dishCrossContaminationDiets = new Set();
 
     rows.forEach((row) => {
-      // Include mayContainDiets since those are still supported, just with cross-contamination risk
+      // Include crossContaminationDiets since those are still supported, just with cross-contamination risk
       const ingredientDiets = new Set([
         ...(row.diets || []),
-        ...(row.mayContainDiets || []),
+        ...(row.crossContaminationDiets || []),
       ]);
       const isIngredientRemovable = row.removable === true;
       const ingredientName = row.name || "";
 
-      // Track mayContainDiets at dish level for cross-contamination warning
-      if (Array.isArray(row.mayContainDiets)) {
-        row.mayContainDiets.forEach((d) => dishCrossContaminationDiets.add(d));
+      // Track crossContaminationDiets at dish level for cross-contamination warning
+      if (Array.isArray(row.crossContaminationDiets)) {
+        row.crossContaminationDiets.forEach((d) => dishCrossContaminationDiets.add(d));
       }
 
       // Track which diets this ingredient blocks
@@ -2262,19 +2283,19 @@ export function initAiAssistant(deps = {}) {
       }
     });
 
-    // Collect mayContain/cross-contamination allergens from ingredient rows
-    const mayContainFromRows = new Set();
+    // Collect cross-contamination allergens from ingredient rows
+    const crossContaminationFromRows = new Set();
     rows.forEach((row) => {
-      if (Array.isArray(row.mayContainAllergens)) {
-        row.mayContainAllergens.forEach((allergen) => {
+      if (Array.isArray(row.crossContamination)) {
+        row.crossContamination.forEach((allergen) => {
           const key = normalizeAllergen(allergen);
-          if (key) mayContainFromRows.add(key);
+          if (key) crossContaminationFromRows.add(key);
         });
       }
     });
 
-    tempOverlay.crossContamination = Array.from(mayContainFromRows);
-    tempOverlay.noCrossContamination = mayContainFromRows.size === 0;
+    tempOverlay.crossContamination = Array.from(crossContaminationFromRows);
+    tempOverlay.noCrossContamination = crossContaminationFromRows.size === 0;
 
     // Use the same tooltip HTML generator that's used for the actual overlays
     const allAllergens = ALLERGENS.slice();
@@ -2310,13 +2331,13 @@ export function initAiAssistant(deps = {}) {
       const aiLabel =
         aiState === "contains"
           ? "Contains"
-          : aiState === "maycontain"
+          : aiState === "crosscontamination"
             ? "Cross-contamination risk"
             : null;
       const userLabel =
         currentState === "contains"
           ? "Contains"
-          : currentState === "maycontain"
+          : currentState === "crosscontamination"
             ? "Cross-contamination risk"
             : null;
 
@@ -2345,13 +2366,13 @@ export function initAiAssistant(deps = {}) {
       const aiLabel =
         aiState === "contains"
           ? "Compliant"
-          : aiState === "maycontain"
+          : aiState === "crosscontamination"
             ? "Cross-contamination risk"
             : null;
       const userLabel =
         currentState === "contains"
           ? "Compliant"
-          : currentState === "maycontain"
+          : currentState === "crosscontamination"
             ? "Cross-contamination risk"
             : null;
 
@@ -2495,19 +2516,19 @@ export function initAiAssistant(deps = {}) {
         copy.aiDetectedDiets = [];
       }
 
-      // Also copy aiDetectedMayContainAllergens (allergens detected from "may contain" sections)
-      if (Array.isArray(copy.aiDetectedMayContainAllergens)) {
-        copy.aiDetectedMayContainAllergens =
-          copy.aiDetectedMayContainAllergens.slice();
+      // Also copy aiDetectedCrossContamination (allergens detected from "cross-contamination" sections)
+      if (Array.isArray(copy.aiDetectedCrossContamination)) {
+        copy.aiDetectedCrossContamination =
+          copy.aiDetectedCrossContamination.slice();
       } else {
-        copy.aiDetectedMayContainAllergens = [];
+        copy.aiDetectedCrossContamination = [];
       }
 
-      // Also copy aiDetectedMayContainDiets (diets affected by cross-contamination allergens)
-      if (Array.isArray(copy.aiDetectedMayContainDiets)) {
-        copy.aiDetectedMayContainDiets = copy.aiDetectedMayContainDiets.slice();
+      // Also copy aiDetectedCrossContaminationDiets (diets affected by cross-contamination allergens)
+      if (Array.isArray(copy.aiDetectedCrossContaminationDiets)) {
+        copy.aiDetectedCrossContaminationDiets = copy.aiDetectedCrossContaminationDiets.slice();
       } else {
-        copy.aiDetectedMayContainDiets = [];
+        copy.aiDetectedCrossContaminationDiets = [];
       }
 
       const sanitized = sanitizeIngredientRow(copy);
@@ -2563,23 +2584,23 @@ export function initAiAssistant(deps = {}) {
         row.aiDetectedDiets,
         normalizeDietKey,
       );
-      const baseAiDetectedMayContainAllergens = normalizeStringArray(
-        row.aiDetectedMayContainAllergens,
+      const baseAiDetectedCrossContamination = normalizeStringArray(
+        row.aiDetectedCrossContamination,
         normalizeAllergenKey,
       );
-      const baseAiDetectedMayContainDiets = normalizeStringArray(
-        row.aiDetectedMayContainDiets,
+      const baseAiDetectedCrossContaminationDiets = normalizeStringArray(
+        row.aiDetectedCrossContaminationDiets,
         normalizeDietKey,
       );
 
       // Store in dataset so we can preserve them across re-renders
       tr.dataset.aiDetectedAllergens = JSON.stringify(baseAiDetectedAllergens);
       tr.dataset.aiDetectedDiets = JSON.stringify(baseAiDetectedDiets);
-      tr.dataset.aiDetectedMayContainAllergens = JSON.stringify(
-        baseAiDetectedMayContainAllergens,
+      tr.dataset.aiDetectedCrossContamination = JSON.stringify(
+        baseAiDetectedCrossContamination,
       );
-      tr.dataset.aiDetectedMayContainDiets = JSON.stringify(
-        baseAiDetectedMayContainDiets,
+      tr.dataset.aiDetectedCrossContaminationDiets = JSON.stringify(
+        baseAiDetectedCrossContaminationDiets,
       );
 
       // Preserve needsScan and userOverriddenScan in dataset
@@ -2654,17 +2675,17 @@ export function initAiAssistant(deps = {}) {
       const aiDetectedDiets = new Set(
         normalizeStringArray(baseAiDetectedDiets, normalizeDietKey),
       );
-      // Track which allergens AI detected specifically as "may contain" (cross-contamination)
-      const aiDetectedMayContainAllergens = new Set(
+      // Track which allergens AI detected specifically as "cross-contamination" (cross-contamination)
+      const aiDetectedCrossContamination = new Set(
         normalizeStringArray(
-          baseAiDetectedMayContainAllergens,
+          baseAiDetectedCrossContamination,
           normalizeAllergenKey,
         ),
       );
       // Track which diets AI detected as affected by cross-contamination allergens
-      const aiDetectedMayContainDiets = new Set(
+      const aiDetectedCrossContaminationDiets = new Set(
         normalizeStringArray(
-          baseAiDetectedMayContainDiets,
+          baseAiDetectedCrossContaminationDiets,
           normalizeDietKey,
         ),
       );
@@ -2826,15 +2847,13 @@ export function initAiAssistant(deps = {}) {
       const allDiets = new Set(
         normalizeStringArray(row.diets, normalizeDietKey),
       );
-      // May contain (cross-contamination) allergens/diets
-      const mayContainAllergens = new Set(
-        normalizeStringArray(row.mayContainAllergens, normalizeAllergenKey),
+      // Cross-contamination (cross-contamination) allergens/diets
+      const crossContamination = new Set(
+        normalizeStringArray(row.crossContamination, normalizeAllergenKey),
       );
-      const mayContainDiets = new Set(
-        normalizeStringArray(row.mayContainDiets, normalizeDietKey),
+      const crossContaminationDiets = new Set(
+        normalizeStringArray(row.crossContaminationDiets, normalizeDietKey),
       );
-      allAllergens.forEach((a) => mayContainAllergens.delete(a));
-      allDiets.forEach((d) => mayContainDiets.delete(d));
 
       // Check if there's a remembered brand for this ingredient
       // Only show it if it hasn't already been added to the brands array
@@ -3057,31 +3076,36 @@ export function initAiAssistant(deps = {}) {
                 <div class="aiAllergenChecklist">
                   ${ALLERGENS.map((allergen) => {
                     const allergenNorm = allergen;
-                    // Determine state: contains > maycontain > off (contains is more severe)
+                    // Determine state: contains > crosscontamination > off (contains is more severe)
                     const isContains = allAllergens.has(allergenNorm);
                     const isMayContain =
-                      mayContainAllergens.has(allergenNorm) && !isContains;
+                      crossContamination.has(allergenNorm) && !isContains;
+                    const hasOverlap =
+                      isContains && crossContamination.has(allergenNorm);
                     const state = isContains
                       ? "contains"
                       : isMayContain
-                        ? "maycontain"
+                        ? "crosscontamination"
                         : "off";
                     const checked = isContains || isMayContain ? "checked" : "";
                     const stateClass = state !== "off" ? `state-${state}` : "";
+                    const overlapAttr = hasOverlap
+                      ? ' data-overlap="true"'
+                      : "";
                     const stateIcon = ""; // No longer showing emojis on checkboxes
-                    // Check if allergen is in aiDetectedAllergens OR aiDetectedMayContainAllergens
+                    // Check if allergen is in aiDetectedAllergens OR aiDetectedCrossContamination
                     const aiWasSelectedAsContains =
                       aiDetectedAllergens.has(allergenNorm);
                     const aiWasSelectedAsMayContain =
-                      aiDetectedMayContainAllergens.has(allergenNorm);
+                      aiDetectedCrossContamination.has(allergenNorm);
                     const aiWasSelected =
                       aiWasSelectedAsContains || aiWasSelectedAsMayContain;
                     const aiDetectedClass = aiWasSelected ? "aiDetected" : "";
-                    // AI can suggest as "contains" or "maycontain" - contains takes priority if both present
+                    // AI can suggest as "contains" or "crosscontamination" - contains takes priority if both present
                     const aiState = aiWasSelectedAsContains
                       ? "contains"
                       : aiWasSelectedAsMayContain
-                        ? "maycontain"
+                        ? "crosscontamination"
                         : "off";
                     const currentlySelected = isContains || isMayContain;
                     // Treat any AI suggestion (allergen or diet) as proof that AI ran,
@@ -3089,7 +3113,7 @@ export function initAiAssistant(deps = {}) {
                     const hasAiDetections =
                       aiDetectedAllergens.size +
                         aiDetectedDiets.size +
-                        aiDetectedMayContainAllergens.size >
+                        aiDetectedCrossContamination.size >
                       0;
                     // State is overridden if: AI detected but state changed, OR AI didn't detect but user selected
                     const stateOverridden =
@@ -3111,7 +3135,7 @@ export function initAiAssistant(deps = {}) {
                       tooltipParts.push(
                         "Contains (click to change to Cross-contamination risk)",
                       );
-                    } else if (state === "maycontain") {
+                    } else if (state === "crosscontamination") {
                       tooltipParts.push(
                         "Cross-contamination risk (click to remove)",
                       );
@@ -3141,45 +3165,49 @@ export function initAiAssistant(deps = {}) {
                       ? " selectionsDisabled"
                       : "";
                     const allergenEmoji = ALLERGEN_EMOJI[allergenNorm] || "⚠️";
-                    return `<label class="${aiDetectedClass} ${overrideClass} ${stateClass}${disabledClass}" data-state="${state}" data-ai-state="${aiState}" ${tooltipAttr}><input type="checkbox" class="aiAllergenCheckbox" value="${esc(allergen)}" data-ai-detected="${aiWasSelected}" data-ai-state="${aiState}" data-state="${state}" ${checked} ${disabledAttr}>${allergenEmoji} ${esc(formatAllergenLabel(allergen))}${stateIcon}</label>`;
+                    return `<label class="${aiDetectedClass} ${overrideClass} ${stateClass}${disabledClass}" data-state="${state}" data-ai-state="${aiState}" ${tooltipAttr}><input type="checkbox" class="aiAllergenCheckbox" value="${esc(allergen)}" data-ai-detected="${aiWasSelected}" data-ai-state="${aiState}" data-state="${state}"${overlapAttr} ${checked} ${disabledAttr}>${allergenEmoji} ${esc(formatAllergenLabel(allergen))}${stateIcon}</label>`;
                   }).join("")}
                 </div>
               </div>
               <div style="flex:1">
                 <div class="aiDietChecklist">
                   ${DIETS.map((diet) => {
-                    // Determine state: contains > maycontain > off (contains is more important)
-                    // Note: mayContainDiets contains proper-cased values from normalizeDietKey(), so use 'diet' not lowercase
+                    // Determine state: contains > crosscontamination > off (contains is more important)
+                    // Note: crossContaminationDiets contains proper-cased values from normalizeDietKey(), so use 'diet' not lowercase
                     const isContains = allDiets.has(diet);
-                    const isMayContain = mayContainDiets.has(diet) && !isContains;
+                    const isMayContain = crossContaminationDiets.has(diet) && !isContains;
+                    const hasOverlap = isContains && crossContaminationDiets.has(diet);
                     const state = isContains
                       ? "contains"
                       : isMayContain
-                        ? "maycontain"
+                        ? "crosscontamination"
                         : "off";
                     const checked = isContains || isMayContain ? "checked" : "";
                     const stateClass = state !== "off" ? `state-${state}` : "";
+                    const overlapAttr = hasOverlap
+                      ? ' data-overlap="true"'
+                      : "";
                     const stateIcon = ""; // No longer showing emojis on checkboxes
-                    // Check if diet is in aiDetectedDiets OR aiDetectedMayContainDiets
+                    // Check if diet is in aiDetectedDiets OR aiDetectedCrossContaminationDiets
                     const aiWasSelectedAsContains = aiDetectedDiets.has(diet);
                     const aiWasSelectedAsMayContain =
-                      aiDetectedMayContainDiets.has(diet);
+                      aiDetectedCrossContaminationDiets.has(diet);
                     const aiWasSelected =
                       aiWasSelectedAsContains || aiWasSelectedAsMayContain;
                     const aiDetectedClass = aiWasSelected ? "aiDetected" : "";
-                    // AI can suggest as "contains" or "maycontain" - contains takes priority for diets
+                    // AI can suggest as "contains" or "crosscontamination" - contains takes priority for diets
                     const aiState = aiWasSelectedAsContains
                       ? "contains"
                       : aiWasSelectedAsMayContain
-                        ? "maycontain"
+                        ? "crosscontamination"
                         : "off";
                     const currentlySelected = allDiets.has(diet) || isMayContain;
                     // Likewise, highlight diet overrides if AI detected anything in either category.
                     const hasAiDetections =
                       aiDetectedDiets.size +
                         aiDetectedAllergens.size +
-                        aiDetectedMayContainAllergens.size +
-                        aiDetectedMayContainDiets.size >
+                        aiDetectedCrossContamination.size +
+                        aiDetectedCrossContaminationDiets.size >
                       0;
                     // State is overridden if: AI detected but state changed, OR AI didn't detect but user selected
                     const stateOverridden =
@@ -3201,7 +3229,7 @@ export function initAiAssistant(deps = {}) {
                       tooltipParts.push(
                         "Contains - tap to change to Cross-contamination risk",
                       );
-                    } else if (state === "maycontain") {
+                    } else if (state === "crosscontamination") {
                       tooltipParts.push(
                         "Cross-contamination risk - tap to clear",
                       );
@@ -3231,7 +3259,7 @@ export function initAiAssistant(deps = {}) {
                       ? " selectionsDisabled"
                       : "";
                     const dietEmoji = DIET_EMOJI[diet] || "🍽️";
-                    return `<label class="${aiDetectedClass} ${overrideClass} ${stateClass}${disabledClass}" data-state="${state}" data-ai-state="${aiState}" ${tooltipAttr}><input type="checkbox" class="aiDietCheckbox" value="${esc(diet)}" data-ai-detected="${aiWasSelected}" data-ai-state="${aiState}" data-state="${state}" ${checked} ${disabledAttr}>${dietEmoji} ${esc(diet)}${stateIcon}</label>`;
+                    return `<label class="${aiDetectedClass} ${overrideClass} ${stateClass}${disabledClass}" data-state="${state}" data-ai-state="${aiState}" ${tooltipAttr}><input type="checkbox" class="aiDietCheckbox" value="${esc(diet)}" data-ai-detected="${aiWasSelected}" data-ai-state="${aiState}" data-state="${state}"${overlapAttr} ${checked} ${disabledAttr}>${dietEmoji} ${esc(diet)}${stateIcon}</label>`;
                   }).join("")}
                 </div>
               </div>
@@ -3243,7 +3271,7 @@ export function initAiAssistant(deps = {}) {
               const hasAiDetections =
                 aiDetectedAllergens.size > 0 ||
                 aiDetectedDiets.size > 0 ||
-                aiDetectedMayContainAllergens.size > 0;
+                aiDetectedCrossContamination.size > 0;
               if (!hasAiDetections) return "";
 
               const overriddenItems = [];
@@ -3253,13 +3281,13 @@ export function initAiAssistant(deps = {}) {
                 const aiWasSelectedAsContains =
                   aiDetectedAllergens.has(allergenNorm);
                 const aiWasSelectedAsMayContain =
-                  aiDetectedMayContainAllergens.has(allergenNorm);
+                  aiDetectedCrossContamination.has(allergenNorm);
                 const aiWasSelected =
                   aiWasSelectedAsContains || aiWasSelectedAsMayContain;
                 const currentlySelectedAsContains =
                   allAllergens.has(allergenNorm);
                 const currentlySelectedAsMayContain =
-                  mayContainAllergens.has(allergenNorm);
+                  crossContamination.has(allergenNorm);
                 const currentlySelected =
                   currentlySelectedAsContains || currentlySelectedAsMayContain;
 
@@ -3267,12 +3295,12 @@ export function initAiAssistant(deps = {}) {
                 const currentState = currentlySelectedAsContains
                   ? "contains"
                   : currentlySelectedAsMayContain
-                    ? "maycontain"
+                    ? "crosscontamination"
                     : "off";
                 const aiState = aiWasSelectedAsContains
                   ? "contains"
                   : aiWasSelectedAsMayContain
-                    ? "maycontain"
+                    ? "crosscontamination"
                     : "off";
 
                 // Only show override if the state actually changed from what AI expected
@@ -3297,7 +3325,7 @@ export function initAiAssistant(deps = {}) {
                   currentlySelected &&
                   currentState !== aiState
                 ) {
-                  // State changed (e.g., maycontain → contains or contains → maycontain)
+                  // State changed (e.g., crosscontamination → contains or contains → crosscontamination)
                   const aiStateLabel =
                     aiState === "contains"
                       ? "Contains"
@@ -3314,11 +3342,11 @@ export function initAiAssistant(deps = {}) {
               DIETS.forEach((diet) => {
                 const aiWasSelectedAsContains = aiDetectedDiets.has(diet);
                 const aiWasSelectedAsMayContain =
-                  aiDetectedMayContainDiets.has(diet);
+                  aiDetectedCrossContaminationDiets.has(diet);
                 const aiWasSelected =
                   aiWasSelectedAsContains || aiWasSelectedAsMayContain;
                 const currentlySelectedAsContains = allDiets.has(diet);
-                const currentlySelectedAsMayContain = mayContainDiets.has(diet);
+                const currentlySelectedAsMayContain = crossContaminationDiets.has(diet);
                 const currentlySelected =
                   currentlySelectedAsContains || currentlySelectedAsMayContain;
 
@@ -3326,12 +3354,12 @@ export function initAiAssistant(deps = {}) {
                 const currentState = currentlySelectedAsContains
                   ? "contains"
                   : currentlySelectedAsMayContain
-                    ? "maycontain"
+                    ? "crosscontamination"
                     : "off";
                 const aiState = aiWasSelectedAsContains
                   ? "contains"
                   : aiWasSelectedAsMayContain
-                    ? "maycontain"
+                    ? "crosscontamination"
                     : "off";
 
                 // Only show override if the state actually changed from what AI expected
@@ -3356,7 +3384,7 @@ export function initAiAssistant(deps = {}) {
                   currentlySelected &&
                   currentState !== aiState
                 ) {
-                  // State changed (e.g., maycontain → contains or contains → maycontain)
+                  // State changed (e.g., crosscontamination → contains or contains → crosscontamination)
                   const aiStateLabel =
                     aiState === "contains"
                       ? "Compliant"
@@ -3538,9 +3566,9 @@ export function initAiAssistant(deps = {}) {
         name: normalized,
         brand: "",
         allergens: [],
-        mayContainAllergens: [],
+        crossContamination: [],
         diets: [],
-        mayContainDiets: [],
+        crossContaminationDiets: [],
         ingredientsList: [normalized],
       });
     });
@@ -4496,11 +4524,11 @@ export function initAiAssistant(deps = {}) {
         : [],
       allergens: Array.isArray(brandItem.allergens) ? brandItem.allergens : [],
       diets: Array.isArray(brandItem.diets) ? brandItem.diets : [],
-      mayContainAllergens: Array.isArray(brandItem.mayContainAllergens)
-        ? brandItem.mayContainAllergens
+      crossContamination: Array.isArray(brandItem.crossContamination)
+        ? brandItem.crossContamination
         : [],
-      mayContainDiets: Array.isArray(brandItem.mayContainDiets)
-        ? brandItem.mayContainDiets
+      crossContaminationDiets: Array.isArray(brandItem.crossContaminationDiets)
+        ? brandItem.crossContaminationDiets
         : [],
     };
     applyBrandSuggestionConfirmed(rowIdx, suggestion);
@@ -4628,9 +4656,9 @@ export function initAiAssistant(deps = {}) {
             </div>
             <div style="color:#8891b0;font-size:0.8rem;margin-bottom:6px">Used in ${item.dishes.length} dish${item.dishes.length !== 1 ? "es" : ""}</div>
             ${item.allergens && item.allergens.length ? `<div style="color:#fca5a5;font-size:0.78rem;margin-bottom:4px">Contains: ${item.allergens.map((a) => esc(a)).join(", ")}</div>` : ""}
-            ${item.mayContainAllergens && item.mayContainAllergens.length ? `<div style="color:#facc15;font-size:0.78rem;margin-bottom:4px">May contain: ${item.mayContainAllergens.map((a) => esc(a)).join(", ")}</div>` : ""}
+            ${item.crossContamination && item.crossContamination.length ? `<div style="color:#facc15;font-size:0.78rem;margin-bottom:4px">Cross-contamination: ${item.crossContamination.map((a) => esc(a)).join(", ")}</div>` : ""}
             ${item.diets && item.diets.length ? `<div style="color:#93c5fd;font-size:0.78rem;margin-bottom:4px">Diets: ${item.diets.map((d) => esc(d)).join(", ")}</div>` : ""}
-            ${item.mayContainDiets && item.mayContainDiets.length ? `<div style="color:#60a5fa;font-size:0.78rem;margin-bottom:4px">Cross-contam diets: ${item.mayContainDiets.map((d) => esc(d)).join(", ")}</div>` : ""}
+            ${item.crossContaminationDiets && item.crossContaminationDiets.length ? `<div style="color:#60a5fa;font-size:0.78rem;margin-bottom:4px">Cross-contam diets: ${item.crossContaminationDiets.map((d) => esc(d)).join(", ")}</div>` : ""}
           </div>
           <div style="display:flex;flex-direction:column;gap:8px;flex-shrink:0">
             <button type="button" class="btn btnSmall useExistingBrandBtn" data-index="${index}" style="white-space:nowrap">Use this item</button>
@@ -5273,9 +5301,9 @@ export function initAiAssistant(deps = {}) {
     debugLog("Extracted allergen names:", allergenNames);
     debugLog("Extracted diet names:", dietNames);
 
-    const suggestionMayContainAllergens = [
-      ...(Array.isArray(suggestion.mayContainAllergens)
-        ? suggestion.mayContainAllergens
+    const suggestionCrossContamination = [
+      ...(Array.isArray(suggestion.crossContamination)
+        ? suggestion.crossContamination
         : []),
       ...(Array.isArray(suggestion.crossContaminationAllergens)
         ? suggestion.crossContaminationAllergens
@@ -5283,8 +5311,8 @@ export function initAiAssistant(deps = {}) {
     ]
       .map(normalizeAllergenLabel)
       .filter(Boolean);
-    const suggestionMayContainDiets = (
-      Array.isArray(suggestion.mayContainDiets) ? suggestion.mayContainDiets : []
+    const suggestionCrossContaminationDiets = (
+      Array.isArray(suggestion.crossContaminationDiets) ? suggestion.crossContaminationDiets : []
     )
       .map(normalizeDietLabel)
       .filter(Boolean);
@@ -5296,8 +5324,8 @@ export function initAiAssistant(deps = {}) {
       ingredientsList: normalizedIngredientsList,
       allergens: allergenNames,
       diets: dietNames,
-      mayContainAllergens: suggestionMayContainAllergens,
-      mayContainDiets: suggestionMayContainDiets,
+      crossContamination: suggestionCrossContamination,
+      crossContaminationDiets: suggestionCrossContaminationDiets,
     };
 
     debugLog("Adding brand:", newBrand);
@@ -5349,35 +5377,35 @@ export function initAiAssistant(deps = {}) {
       allData[rowIdx].aiDetectedDiets = normalizedBrandDiets;
       allData[rowIdx].confirmed = false;
 
-      // Handle cross-contamination allergens from May Contain section
-      const mergedMayContainAllergens = Array.from(
-        new Set(suggestionMayContainAllergens),
+      // Handle cross-contamination allergens from the cross-contamination section
+      const mergedCrossContamination = Array.from(
+        new Set(suggestionCrossContamination),
       );
-      const mergedMayContainDiets = Array.from(
-        new Set(suggestionMayContainDiets),
+      const mergedCrossContaminationDiets = Array.from(
+        new Set(suggestionCrossContaminationDiets),
       );
       if (
-        mergedMayContainAllergens.length > 0 ||
-        mergedMayContainDiets.length > 0
+        mergedCrossContamination.length > 0 ||
+        mergedCrossContaminationDiets.length > 0
       ) {
         debugLog(
           "Applying cross-contamination allergens:",
-          mergedMayContainAllergens,
+          mergedCrossContamination,
         );
-        // Store as mayContainAllergens (the field name used by renderAiTable)
-        allData[rowIdx].mayContainAllergens = mergedMayContainAllergens;
+        // Store as crossContamination (the field name used by renderAiTable)
+        allData[rowIdx].crossContamination = mergedCrossContamination;
         // Also add them to the DOM row's dataset
-        row.dataset.mayContainAllergens = JSON.stringify(
-          mergedMayContainAllergens,
+        row.dataset.crossContamination = JSON.stringify(
+          mergedCrossContamination,
         );
 
-        // Track cross-contamination allergens separately so the UI expects "may contain" state.
-        allData[rowIdx].aiDetectedMayContainAllergens = mergedMayContainAllergens;
-        row.dataset.aiDetectedMayContainAllergens = JSON.stringify(
-          mergedMayContainAllergens,
+        // Track cross-contamination allergens separately so the UI expects "cross-contamination" state.
+        allData[rowIdx].aiDetectedCrossContamination = mergedCrossContamination;
+        row.dataset.aiDetectedCrossContamination = JSON.stringify(
+          mergedCrossContamination,
         );
 
-        // Also set mayContainDiets for diets affected by cross-contamination allergens
+        // Also set crossContaminationDiets for diets affected by cross-contamination allergens
         const allergenToDiets = {};
         DIETS.forEach((diet) => {
           getDietAllergenConflicts(diet).forEach((allergen) => {
@@ -5389,28 +5417,28 @@ export function initAiAssistant(deps = {}) {
             }
           });
         });
-        const mayContainDiets = new Set(allData[rowIdx].mayContainDiets || []);
-        mergedMayContainAllergens.forEach((allergen) => {
+        const crossContaminationDiets = new Set(allData[rowIdx].crossContaminationDiets || []);
+        mergedCrossContamination.forEach((allergen) => {
           const normalizedAllergen = normalizeAllergen(allergen);
           const affectedDiets = normalizedAllergen
             ? allergenToDiets[normalizedAllergen]
             : null;
           if (affectedDiets) {
-            affectedDiets.forEach((diet) => mayContainDiets.add(diet));
+            affectedDiets.forEach((diet) => crossContaminationDiets.add(diet));
           }
         });
-        mergedMayContainDiets.forEach((diet) =>
-          mayContainDiets.add(normalizeDietLabel(diet)),
+        mergedCrossContaminationDiets.forEach((diet) =>
+          crossContaminationDiets.add(normalizeDietLabel(diet)),
         );
-        allData[rowIdx].mayContainDiets = Array.from(mayContainDiets);
-        row.dataset.mayContainDiets = JSON.stringify(
-          allData[rowIdx].mayContainDiets,
+        allData[rowIdx].crossContaminationDiets = Array.from(crossContaminationDiets);
+        row.dataset.crossContaminationDiets = JSON.stringify(
+          allData[rowIdx].crossContaminationDiets,
         );
 
-        // Track which diets were detected as maycontain by AI
-        allData[rowIdx].aiDetectedMayContainDiets = Array.from(mayContainDiets);
-        row.dataset.aiDetectedMayContainDiets = JSON.stringify(
-          allData[rowIdx].aiDetectedMayContainDiets,
+        // Track which diets were detected as crosscontamination by AI
+        allData[rowIdx].aiDetectedCrossContaminationDiets = Array.from(crossContaminationDiets);
+        row.dataset.aiDetectedCrossContaminationDiets = JSON.stringify(
+          allData[rowIdx].aiDetectedCrossContaminationDiets,
         );
       }
 
@@ -5833,20 +5861,20 @@ export function initAiAssistant(deps = {}) {
       return;
     }
 
-    // Collect mayContain/cross-contamination allergens from ingredient rows
-    const mayContainFromRows = new Set();
+    // Collect cross-contamination allergens from ingredient rows
+    const crossContaminationFromRows = new Set();
     rows.forEach((row) => {
-      if (Array.isArray(row.mayContainAllergens)) {
-        row.mayContainAllergens.forEach((allergen) => {
+      if (Array.isArray(row.crossContamination)) {
+        row.crossContamination.forEach((allergen) => {
           const key = normalizeAllergenKey(allergen);
-          if (key) mayContainFromRows.add(key);
+          if (key) crossContaminationFromRows.add(key);
         });
       }
     });
 
     const crossContaminationData = {
-      noCrossContamination: mayContainFromRows.size === 0,
-      allergens: Array.from(mayContainFromRows),
+      noCrossContamination: crossContaminationFromRows.size === 0,
+      allergens: Array.from(crossContaminationFromRows),
     };
 
     debugLog("Cross-contamination data from rows:", crossContaminationData);

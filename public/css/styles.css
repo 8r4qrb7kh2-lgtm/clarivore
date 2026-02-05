@@ -5625,7 +5625,7 @@ body.orderConfirmOpen {
   margin: 0;
 }
 
-/* Three-state allergen/diet toggles: off → contains → maycontain */
+/* Three-state allergen/diet toggles: off → contains → crosscontamination */
 /* AI-detected items where user kept AI's choice (contains) = blue solid */
 .aiAllergenChecklist label.aiDetected.state-contains:not(.stateOverridden),
 .aiDietChecklist label.aiDetected.state-contains:not(.stateOverridden) {
@@ -5634,25 +5634,25 @@ body.orderConfirmOpen {
   border-width: 2px !important;
 }
 
-/* AI-detected items as maycontain (cross-contamination from "May Contain" section) = blue dashed */
-.aiAllergenChecklist label.aiDetected.state-maycontain:not(.stateOverridden),
-.aiDietChecklist label.aiDetected.state-maycontain:not(.stateOverridden) {
+/* AI-detected items as crosscontamination (cross-contamination items) = blue dashed */
+.aiAllergenChecklist label.aiDetected.state-crosscontamination:not(.stateOverridden),
+.aiDietChecklist label.aiDetected.state-crosscontamination:not(.stateOverridden) {
   background: rgba(59, 130, 246, 0.15) !important;
   border-color: #3b82f6 !important;
   border-style: dashed !important;
   border-width: 2px !important;
 }
 
-/* AI-detected items changed to maycontain = dashed red (user changed AI's "contains" choice to maycontain) */
-.aiAllergenChecklist label.aiDetected.state-maycontain.stateOverridden,
-.aiDietChecklist label.aiDetected.state-maycontain.stateOverridden {
+/* AI-detected items changed to crosscontamination = dashed red (user changed AI's "contains" choice to crosscontamination) */
+.aiAllergenChecklist label.aiDetected.state-crosscontamination.stateOverridden,
+.aiDietChecklist label.aiDetected.state-crosscontamination.stateOverridden {
   background: rgba(239, 68, 68, 0.15) !important;
   border-color: #ef4444 !important;
   border-style: dashed !important;
   border-width: 2px !important;
 }
 
-/* AI-detected items changed to contains = solid red (user changed AI's "maycontain" choice to contains) */
+/* AI-detected items changed to contains = solid red (user changed AI's "crosscontamination" choice to contains) */
 .aiAllergenChecklist label.aiDetected.state-contains.stateOverridden,
 .aiDietChecklist label.aiDetected.state-contains.stateOverridden {
   background: rgba(239, 68, 68, 0.25) !important;
@@ -5663,9 +5663,9 @@ body.orderConfirmOpen {
 
 /* AI-detected items that were removed by user = red solid */
 .aiAllergenChecklist
-  label.aiDetected.stateOverridden:not(.state-contains):not(.state-maycontain),
+  label.aiDetected.stateOverridden:not(.state-contains):not(.state-crosscontamination),
 .aiDietChecklist
-  label.aiDetected.stateOverridden:not(.state-contains):not(.state-maycontain) {
+  label.aiDetected.stateOverridden:not(.state-contains):not(.state-crosscontamination) {
   background: rgba(239, 68, 68, 0.25) !important;
   border-color: #ef4444 !important;
   border-style: solid !important;
@@ -5680,9 +5680,9 @@ body.orderConfirmOpen {
   border-width: 2px !important;
 }
 
-/* Manually added items (NOT AI-detected) as maycontain = dashed red */
-.aiAllergenChecklist label.state-maycontain.stateOverridden:not(.aiDetected),
-.aiDietChecklist label.state-maycontain.stateOverridden:not(.aiDetected) {
+/* Manually added items (NOT AI-detected) as crosscontamination = dashed red */
+.aiAllergenChecklist label.state-crosscontamination.stateOverridden:not(.aiDetected),
+.aiDietChecklist label.state-crosscontamination.stateOverridden:not(.aiDetected) {
   background: rgba(239, 68, 68, 0.15) !important;
   border-color: #ef4444 !important;
   border-style: dashed !important;
@@ -5700,8 +5700,8 @@ body.orderConfirmOpen {
   background: rgba(239, 68, 68, 0.35) !important;
 }
 
-.aiAllergenChecklist label.stateOverridden.state-maycontain:hover,
-.aiDietChecklist label.stateOverridden.state-maycontain:hover {
+.aiAllergenChecklist label.stateOverridden.state-crosscontamination:hover,
+.aiDietChecklist label.stateOverridden.state-crosscontamination:hover {
   background: rgba(239, 68, 68, 0.25) !important;
 }
 

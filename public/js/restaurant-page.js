@@ -744,6 +744,255 @@ const send = (p) => {
             return JSON.stringify(rows);
           };
 
+          const parseAiIngredients = (value) => {
+            if (!value) return [];
+            if (Array.isArray(value)) return value;
+            if (typeof value === "string") {
+              try {
+                const parsed = JSON.parse(value);
+                return Array.isArray(parsed) ? parsed : [];
+              } catch (_) {
+                return [];
+              }
+            }
+            return [];
+          };
+
+          const normalizeRowText = (row) => {
+            const name = String(row?.name || row?.ingredient || "").trim();
+            if (name) return name;
+            const list = Array.isArray(row?.ingredientsList)
+              ? row.ingredientsList.filter(Boolean)
+              : [];
+            if (list.length) return list.join(", ");
+            return "";
+          };
+
+          let ingredientLookupCache = null;
+          const loadIngredientLookup = async () => {
+            if (ingredientLookupCache) return ingredientLookupCache;
+            const [allergensRes, dietsRes] = await Promise.all([
+              client
+                .from("allergens")
+                .select("id, key, is_active")
+                .eq("is_active", true),
+              client
+                .from("diets")
+                .select("id, label, is_active, is_supported")
+                .eq("is_active", true),
+            ]);
+            if (allergensRes.error) throw allergensRes.error;
+            if (dietsRes.error) throw dietsRes.error;
+
+            const allergenIdByKey = new Map();
+            (allergensRes.data || []).forEach((row) => {
+              if (row?.key && row?.id) {
+                allergenIdByKey.set(row.key, row.id);
+              }
+            });
+
+            const dietIdByLabel = new Map();
+            const supportedDietLabels = [];
+            (dietsRes.data || []).forEach((row) => {
+              const label = String(row?.label || "").trim();
+              if (!label || !row?.id) return;
+              dietIdByLabel.set(label, row.id);
+              if (row?.is_supported !== false) {
+                supportedDietLabels.push(label);
+              }
+            });
+
+            ingredientLookupCache = {
+              allergenIdByKey,
+              dietIdByLabel,
+              supportedDietLabels,
+            };
+            return ingredientLookupCache;
+          };
+
+          const coerceRowIndex = (value, fallback) => {
+            const parsed = Number.parseInt(value, 10);
+            return Number.isFinite(parsed) ? parsed : fallback;
+          };
+
+          const syncIngredientStatusTablesDirect = async (overlaysList) => {
+            const lookup = await loadIngredientLookup();
+            const overlaysArray = Array.isArray(overlaysList) ? overlaysList : [];
+            for (const overlay of overlaysArray) {
+              const dishName = overlay?.id || overlay?.name;
+              if (!dishName) continue;
+
+              const rawRows = parseAiIngredients(overlay?.aiIngredients);
+              const rows = Array.isArray(rawRows) ? rawRows : [];
+
+              const { error: deleteError } = await client
+                .from("dish_ingredient_rows")
+                .delete()
+                .eq("restaurant_id", restaurantId)
+                .eq("dish_name", dishName);
+              if (deleteError) throw deleteError;
+
+              if (!rows.length) continue;
+
+              const rowPayload = rows.map((row, idx) => ({
+                restaurant_id: restaurantId,
+                dish_name: dishName,
+                row_index: coerceRowIndex(row?.index, idx),
+                row_text: normalizeRowText(row) || null,
+              }));
+
+              const { data: insertedRows, error: insertError } = await client
+                .from("dish_ingredient_rows")
+                .insert(rowPayload)
+                .select("id, row_index");
+              if (insertError) throw insertError;
+
+              const rowIdByIndex = new Map(
+                (insertedRows || []).map((row) => [row.row_index, row.id]),
+              );
+
+              const allergenEntries = [];
+              const dietEntries = [];
+              const supportedDietLabels = lookup.supportedDietLabels || [];
+
+              rows.forEach((row, idx) => {
+                const rowIndex = coerceRowIndex(row?.index, idx);
+                const rowId = rowIdByIndex.get(rowIndex);
+                if (!rowId) return;
+
+                const isRemovable = row?.removable === true;
+                const allergens = Array.isArray(row?.allergens)
+                  ? row.allergens
+                  : [];
+                const crossContamination = Array.isArray(row?.crossContamination)
+                  ? row.crossContamination
+                  : [];
+                const allergenStatus = new Map();
+
+                allergens.forEach((key) => {
+                  if (!key) return;
+                  allergenStatus.set(key, {
+                    is_violation: true,
+                    is_cross_contamination: false,
+                  });
+                });
+                crossContamination.forEach((key) => {
+                  if (!key) return;
+                  const existing =
+                    allergenStatus.get(key) || {
+                      is_violation: false,
+                      is_cross_contamination: false,
+                    };
+                  existing.is_cross_contamination = true;
+                  allergenStatus.set(key, existing);
+                });
+
+                allergenStatus.forEach((status, key) => {
+                  const allergenId = lookup.allergenIdByKey.get(key);
+                  if (!allergenId) return;
+                  allergenEntries.push({
+                    ingredient_row_id: rowId,
+                    allergen_id: allergenId,
+                    is_violation: status.is_violation,
+                    is_cross_contamination: status.is_cross_contamination,
+                    is_removable: isRemovable,
+                  });
+                });
+
+                const diets = Array.isArray(row?.diets) ? row.diets : [];
+                const crossContaminationDiets = Array.isArray(row?.crossContaminationDiets)
+                  ? row.crossContaminationDiets
+                  : [];
+                const dietSet = new Set(diets);
+                const crossContaminationSet = new Set(crossContaminationDiets);
+                const compatible = new Set([
+                  ...dietSet,
+                  ...crossContaminationSet,
+                ]);
+
+                supportedDietLabels.forEach((label) => {
+                  const dietId = lookup.dietIdByLabel.get(label);
+                  if (!dietId) return;
+                  if (crossContaminationSet.has(label)) {
+                    dietEntries.push({
+                      ingredient_row_id: rowId,
+                      diet_id: dietId,
+                      is_violation: false,
+                      is_cross_contamination: true,
+                      is_removable: isRemovable,
+                    });
+                    return;
+                  }
+                  if (!compatible.has(label)) {
+                    dietEntries.push({
+                      ingredient_row_id: rowId,
+                      diet_id: dietId,
+                      is_violation: true,
+                      is_cross_contamination: false,
+                      is_removable: isRemovable,
+                    });
+                  }
+                });
+              });
+
+              if (allergenEntries.length) {
+                const { error: allergenError } = await client
+                  .from("dish_ingredient_allergens")
+                  .insert(allergenEntries);
+                if (allergenError) throw allergenError;
+              }
+              if (dietEntries.length) {
+                const { error: dietError } = await client
+                  .from("dish_ingredient_diets")
+                  .insert(dietEntries);
+                if (dietError) throw dietError;
+              }
+            }
+          };
+
+          const syncIngredientStatusTables = async (overlaysList) => {
+            const overlaysArray = Array.isArray(overlaysList) ? overlaysList : [];
+            const sessionResult = await client.auth.getSession();
+            const accessToken =
+              sessionResult?.data?.session?.access_token || null;
+            if (!accessToken) {
+              throw new Error("Missing auth session for ingredient sync.");
+            }
+
+            const minimalOverlays = overlaysArray.map((overlay) => ({
+              id: overlay?.id,
+              name: overlay?.name,
+              dishName: overlay?.id || overlay?.name,
+              aiIngredients: overlay?.aiIngredients,
+            }));
+
+            try {
+              const response = await fetch("/api/ingredient-status-sync", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${accessToken}`,
+                },
+                body: JSON.stringify({
+                  restaurantId,
+                  overlays: minimalOverlays,
+                }),
+              });
+              if (!response.ok) {
+                const message = await response.text();
+                throw new Error(
+                  `Ingredient sync failed (${response.status}): ${message}`,
+                );
+              }
+            } catch (error) {
+              console.warn(
+                "Prisma ingredient sync failed, falling back to direct sync.",
+                error,
+              );
+              await syncIngredientStatusTablesDirect(overlaysList);
+            }
+          };
+
           // Ensure aiIngredients and aiIngredientSummary are preserved on all overlays
           overlaysToSave = [];
           for (const overlay of p.overlays || []) {
@@ -837,6 +1086,8 @@ const send = (p) => {
             });
             throw error;
           }
+
+          await syncIngredientStatusTables(overlaysToSave);
 
           console.log(
             "Saved overlays response:",
@@ -1446,10 +1697,6 @@ function normalizeRestaurant(row) {
     normalized.crossContaminationDiets = normalizeDietList(
       overlay.crossContaminationDiets,
     );
-    normalized.mayContainAllergens = normalizeAllergenList(
-      overlay.mayContainAllergens,
-    );
-    normalized.mayContainDiets = normalizeDietList(overlay.mayContainDiets);
     normalized.removable = Array.isArray(overlay.removable)
       ? overlay.removable
           .map((r) => ({
@@ -1463,8 +1710,8 @@ function normalizeRestaurant(row) {
         ...ingredient,
         allergens: normalizeAllergenList(ingredient.allergens),
         diets: normalizeDietList(ingredient.diets),
-        mayContainAllergens: normalizeAllergenList(ingredient.mayContainAllergens),
-        mayContainDiets: normalizeDietList(ingredient.mayContainDiets),
+        crossContamination: normalizeAllergenList(ingredient.crossContamination),
+        crossContaminationDiets: normalizeDietList(ingredient.crossContaminationDiets),
       }));
     }
     return normalized;
@@ -5683,8 +5930,8 @@ function renderEditor() {
       }
       const allergenDetailsMap = {};
       const activeAllergens = new Set();
-      const activeMayContainAllergens = new Set(); // Track cross-contamination allergens
-      const activeMayContainDiets = new Set(); // Track cross-contamination diets
+      const activeCrossContamination = new Set(); // Track cross-contamination allergens
+      const activeCrossContaminationDiets = new Set(); // Track cross-contamination diets
       const aggregatedIngredientNames = [];
 
       // Track which ingredients contain each allergen, and whether each is removable
@@ -5703,12 +5950,12 @@ function renderEditor() {
 
       rows.forEach((row) => {
         const allergens = Array.isArray(row.allergens) ? row.allergens : [];
-        const mayContainAllergens = Array.isArray(row.mayContainAllergens)
-          ? row.mayContainAllergens
+        const crossContamination = Array.isArray(row.crossContamination)
+          ? row.crossContamination
           : [];
         const diets = Array.isArray(row.diets) ? row.diets : [];
-        const mayContainDiets = Array.isArray(row.mayContainDiets)
-          ? row.mayContainDiets
+        const crossContaminationDiets = Array.isArray(row.crossContaminationDiets)
+          ? row.crossContaminationDiets
           : [];
         const name = (row.name || "").trim();
         const brand = (row.brand || "").trim();
@@ -5716,22 +5963,22 @@ function renderEditor() {
         console.log(
           `Processing row: name = "${name}", allergens = `,
           allergens,
-          `mayContain = `,
-          mayContainAllergens,
+          `crossContamination = `,
+          crossContamination,
           `diets = `,
           diets,
-          `mayContainDiets = `,
-          mayContainDiets,
+          `crossContaminationDiets = `,
+          crossContaminationDiets,
           `removable = ${row.removable}, isRemovable = ${isRemovable} `,
         );
-        // Collect mayContain/cross-contamination allergens
-        mayContainAllergens.forEach((al) => {
+        // Collect cross-contamination allergens
+        crossContamination.forEach((al) => {
           const key = normalizeAllergen(al);
-          if (key) activeMayContainAllergens.add(key);
+          if (key) activeCrossContamination.add(key);
         });
-        // Collect mayContain/cross-contamination diets
-        mayContainDiets.forEach((d) => {
-          if (d) activeMayContainDiets.add(d);
+        // Collect cross-contamination diets
+        crossContaminationDiets.forEach((d) => {
+          if (d) activeCrossContaminationDiets.add(d);
         });
         if (Array.isArray(row.ingredientsList) && row.ingredientsList.length) {
           aggregatedIngredientNames.push(...row.ingredientsList);
@@ -5774,8 +6021,8 @@ function renderEditor() {
 
         // Remove any diets that this ingredient doesn't support
         // This way, only diets supported by ALL ingredients remain
-        // Include mayContainDiets since those are still supported, just with cross-contamination risk
-        const ingredientDietSet = new Set([...diets, ...mayContainDiets]);
+        // Include crossContaminationDiets since those are still supported, just with cross-contamination risk
+        const ingredientDietSet = new Set([...diets, ...crossContaminationDiets]);
         allDietOptions.forEach((diet) => {
           if (!ingredientDietSet.has(diet)) {
             dietBlockingInfo[diet].push({
@@ -5903,8 +6150,8 @@ function renderEditor() {
         extraData?.crossContamination,
       );
       console.log(
-        "  activeMayContainAllergens from rows:",
-        Array.from(activeMayContainAllergens),
+        "  activeCrossContamination from rows:",
+        Array.from(activeCrossContamination),
       );
 
       // Collect cross-contamination from extraData OR from rows directly
@@ -5920,9 +6167,9 @@ function renderEditor() {
           "  -> Set crossContamination from extraData:",
           it.crossContamination,
         );
-      } else if (activeMayContainAllergens.size > 0) {
+      } else if (activeCrossContamination.size > 0) {
         // Use cross-contamination collected directly from rows
-        it.crossContamination = Array.from(activeMayContainAllergens);
+        it.crossContamination = Array.from(activeCrossContamination);
         it.noCrossContamination = false;
         console.log(
           "  -> Set crossContamination from rows:",
@@ -5938,8 +6185,8 @@ function renderEditor() {
       console.log("  Final it.crossContamination:", it.crossContamination);
 
       // Store diet cross-contamination (diets with cross-contamination risk)
-      if (activeMayContainDiets.size > 0) {
-        it.crossContaminationDiets = Array.from(activeMayContainDiets);
+      if (activeCrossContaminationDiets.size > 0) {
+        it.crossContaminationDiets = Array.from(activeCrossContaminationDiets);
         console.log(
           "  -> Set crossContaminationDiets:",
           it.crossContaminationDiets,

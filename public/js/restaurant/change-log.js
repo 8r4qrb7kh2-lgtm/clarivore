@@ -109,9 +109,9 @@ export function initChangeLog(deps = {}) {
             `<span style="color:#ef4444">Allergens: ${data.allergens.map((a) => esc(a)).join(", ")}</span>`,
           );
         }
-        if (data.mayContainAllergens && data.mayContainAllergens.length) {
+        if (data.crossContamination && data.crossContamination.length) {
           parts.push(
-            `<span style="color:#f59e0b">Cross-contam allergens: ${data.mayContainAllergens.map((a) => esc(a)).join(", ")}</span>`,
+            `<span style="color:#f59e0b">Cross-contam allergens: ${data.crossContamination.map((a) => esc(a)).join(", ")}</span>`,
           );
         }
         if (data.diets && data.diets.length) {
@@ -119,9 +119,9 @@ export function initChangeLog(deps = {}) {
             `<span style="color:#22c55e">Diets: ${data.diets.join(", ")}</span>`,
           );
         }
-        if (data.mayContainDiets && data.mayContainDiets.length) {
+        if (data.crossContaminationDiets && data.crossContaminationDiets.length) {
           parts.push(
-            `<span style="color:#3b82f6">Cross-contam diets: ${data.mayContainDiets.join(", ")}</span>`,
+            `<span style="color:#3b82f6">Cross-contam diets: ${data.crossContaminationDiets.join(", ")}</span>`,
           );
         }
         return parts.length > 0

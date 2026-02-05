@@ -155,8 +155,8 @@ export function initBrandVerification(deps = {}) {
                 ingredientsList: sanitizedBrand.ingredientsList || [],
                 allergens: [],
                 diets: [],
-                mayContainAllergens: [],
-                mayContainDiets: [],
+                crossContamination: [],
+                crossContaminationDiets: [],
                 dishes: [],
               });
             }
@@ -193,30 +193,24 @@ export function initBrandVerification(deps = {}) {
               normalizeDietKey,
             );
             mergeNormalized(
-              brandItem.mayContainAllergens,
-              sanitizedBrand.mayContainAllergens,
+              brandItem.crossContamination,
+              sanitizedBrand.crossContamination,
               normalizeAllergenKey,
             );
             mergeNormalized(
-              brandItem.mayContainAllergens,
-              ingredient.mayContainAllergens,
+              brandItem.crossContamination,
+              ingredient.crossContamination,
               normalizeAllergenKey,
             );
             mergeNormalized(
-              brandItem.mayContainDiets,
-              sanitizedBrand.mayContainDiets,
+              brandItem.crossContaminationDiets,
+              sanitizedBrand.crossContaminationDiets,
               normalizeDietKey,
             );
             mergeNormalized(
-              brandItem.mayContainDiets,
-              ingredient.mayContainDiets,
+              brandItem.crossContaminationDiets,
+              ingredient.crossContaminationDiets,
               normalizeDietKey,
-            );
-            brandItem.mayContainAllergens = brandItem.mayContainAllergens.filter(
-              (item) => !brandItem.allergens.includes(item),
-            );
-            brandItem.mayContainDiets = brandItem.mayContainDiets.filter(
-              (item) => !brandItem.diets.includes(item),
             );
             brandItem.dishes.push({
               overlayIdx: overlayIdx,
@@ -1767,8 +1761,8 @@ export function initBrandVerification(deps = {}) {
               ingredientsList,
               allergens,
               diets,
-              mayContainAllergens: [],
-              mayContainDiets: [],
+              crossContamination: [],
+              crossContaminationDiets: [],
             });
 
             if (!ing.brands) {
@@ -1867,8 +1861,8 @@ export function initBrandVerification(deps = {}) {
           overlayIndices,
           allergens = [],
           diets = [],
-          mayContainAllergens = [],
-          mayContainDiets = [],
+          crossContamination = [],
+          crossContaminationDiets = [],
         ) => {
           const sanitizedBrand = ingredientNormalizer.sanitizeBrandEntry({
             name: newBrandName,
@@ -1877,14 +1871,14 @@ export function initBrandVerification(deps = {}) {
             ingredientsImage: newIngredientsImage,
             ingredientsList: newIngredientList ? [newIngredientList] : [],
             allergens,
-            mayContainAllergens,
+            crossContamination,
             diets,
-            mayContainDiets,
+            crossContaminationDiets,
           });
           const normalizedAllergens = sanitizedBrand.allergens;
-          const normalizedMayContainAllergens = sanitizedBrand.mayContainAllergens;
+          const normalizedCrossContamination = sanitizedBrand.crossContamination;
           const normalizedDiets = sanitizedBrand.diets;
-          const normalizedMayContainDiets = sanitizedBrand.mayContainDiets;
+          const normalizedCrossContaminationDiets = sanitizedBrand.crossContaminationDiets;
           const newBrand = sanitizedBrand;
 
           const indicesToUpdate =
@@ -1907,13 +1901,13 @@ export function initBrandVerification(deps = {}) {
                   ing.brands[brandIdx] = newBrand;
                 }
                 ing.allergens = normalizedAllergens;
-                ing.mayContainAllergens = normalizedMayContainAllergens;
+                ing.crossContamination = normalizedCrossContamination;
                 ing.diets = normalizedDiets;
-                ing.mayContainDiets = normalizedMayContainDiets;
+                ing.crossContaminationDiets = normalizedCrossContaminationDiets;
                 ing.aiDetectedAllergens = normalizedAllergens;
-                ing.aiDetectedMayContainAllergens = normalizedMayContainAllergens;
+                ing.aiDetectedCrossContamination = normalizedCrossContamination;
                 ing.aiDetectedDiets = normalizedDiets;
-                ing.aiDetectedMayContainDiets = normalizedMayContainDiets;
+                ing.aiDetectedCrossContaminationDiets = normalizedCrossContaminationDiets;
               }
             });
 
@@ -1962,8 +1956,8 @@ export function initBrandVerification(deps = {}) {
                 overlayIndices,
                 payload.allergens || [],
                 payload.diets || [],
-                payload.mayContainAllergens || [],
-                payload.mayContainDiets || [],
+                payload.crossContamination || [],
+                payload.crossContaminationDiets || [],
               );
             } catch (err) {
               console.error("Replacement error:", err);

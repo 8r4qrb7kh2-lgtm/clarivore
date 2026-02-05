@@ -62,9 +62,11 @@ export function createIngredientNormalizer(options = {}) {
     return out;
   };
 
-  const pruneMayContain = (contains, mayContain) => {
-    const containsSet = new Set(contains);
-    return mayContain.filter((item) => !containsSet.has(item));
+  const pruneCrossContamination = (contains, crossContamination) => {
+    if (!Array.isArray(crossContamination)) return [];
+    // Allow overlap so a single allergen/diet can carry both "contains" and
+    // "cross-contamination" flags when needed.
+    return crossContamination;
   };
 
   const sanitizeBrandEntry = (brand = {}) => {
@@ -72,14 +74,14 @@ export function createIngredientNormalizer(options = {}) {
       brand.allergens,
       normalizeAllergenKey,
     );
-    const mayContainAllergens = pruneMayContain(
+    const crossContamination = pruneCrossContamination(
       allergens,
-      normalizeStringArray(brand.mayContainAllergens, normalizeAllergenKey),
+      normalizeStringArray(brand.crossContamination, normalizeAllergenKey),
     );
     const diets = normalizeStringArray(brand.diets, normalizeDietKey);
-    const mayContainDiets = pruneMayContain(
+    const crossContaminationDiets = pruneCrossContamination(
       diets,
-      normalizeStringArray(brand.mayContainDiets, normalizeDietKey),
+      normalizeStringArray(brand.crossContaminationDiets, normalizeDietKey),
     );
     return {
       ...brand,
@@ -89,38 +91,38 @@ export function createIngredientNormalizer(options = {}) {
       ingredientsImage: brand.ingredientsImage ? String(brand.ingredientsImage) : "",
       ingredientsList: normalizeTextArray(brand.ingredientsList),
       allergens,
-      mayContainAllergens,
+      crossContamination,
       diets,
-      mayContainDiets,
+      crossContaminationDiets,
     };
   };
 
   const sanitizeIngredientRow = (row = {}) => {
     const allergens = normalizeStringArray(row.allergens, normalizeAllergenKey);
-    const mayContainAllergens = pruneMayContain(
+    const crossContamination = pruneCrossContamination(
       allergens,
-      normalizeStringArray(row.mayContainAllergens, normalizeAllergenKey),
+      normalizeStringArray(row.crossContamination, normalizeAllergenKey),
     );
     const diets = normalizeStringArray(row.diets, normalizeDietKey);
-    const mayContainDiets = pruneMayContain(
+    const crossContaminationDiets = pruneCrossContamination(
       diets,
-      normalizeStringArray(row.mayContainDiets, normalizeDietKey),
+      normalizeStringArray(row.crossContaminationDiets, normalizeDietKey),
     );
     const aiDetectedAllergens = normalizeStringArray(
       row.aiDetectedAllergens,
       normalizeAllergenKey,
     );
-    const aiDetectedMayContainAllergens = pruneMayContain(
+    const aiDetectedCrossContamination = pruneCrossContamination(
       aiDetectedAllergens,
-      normalizeStringArray(row.aiDetectedMayContainAllergens, normalizeAllergenKey),
+      normalizeStringArray(row.aiDetectedCrossContamination, normalizeAllergenKey),
     );
     const aiDetectedDiets = normalizeStringArray(
       row.aiDetectedDiets,
       normalizeDietKey,
     );
-    const aiDetectedMayContainDiets = pruneMayContain(
+    const aiDetectedCrossContaminationDiets = pruneCrossContamination(
       aiDetectedDiets,
-      normalizeStringArray(row.aiDetectedMayContainDiets, normalizeDietKey),
+      normalizeStringArray(row.aiDetectedCrossContaminationDiets, normalizeDietKey),
     );
     const brands = Array.isArray(row.brands)
       ? row.brands
@@ -141,13 +143,13 @@ export function createIngredientNormalizer(options = {}) {
       name: String(row.name ?? "").trim(),
       ingredientsList: normalizeTextArray(row.ingredientsList),
       allergens,
-      mayContainAllergens,
+      crossContamination,
       diets,
-      mayContainDiets,
+      crossContaminationDiets,
       aiDetectedAllergens,
-      aiDetectedMayContainAllergens,
+      aiDetectedCrossContamination,
       aiDetectedDiets,
-      aiDetectedMayContainDiets,
+      aiDetectedCrossContaminationDiets,
       brands,
     };
   };
