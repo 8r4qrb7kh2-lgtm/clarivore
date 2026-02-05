@@ -11,6 +11,8 @@ serve(async (req) => {
     return new Response('ok', { headers: corsHeaders })
   }
 
+  let useFlagsOutput = false
+
   try {
     const {
       ingredientText,
@@ -18,6 +20,8 @@ serve(async (req) => {
       labels,
       categories,
       analysisMode,
+      transcriptLines,
+      labelTranscriptLines,
     } = await req.json()
 
     console.log('Analyzing brand product:', {
@@ -30,10 +34,6 @@ serve(async (req) => {
     if (!ANTHROPIC_API_KEY) {
       console.error('ANTHROPIC_API_KEY is not set!')
       throw new Error('Anthropic API key not configured')
-    }
-
-    if (!ingredientText || ingredientText.trim().length === 0) {
-      throw new Error('ingredientText is required')
     }
 
     const config = await fetchAllergenDietConfig()
@@ -49,9 +49,33 @@ serve(async (req) => {
         dietLabelMap[diet.key] = diet.label
       }
     })
-    const veganLabel = dietLabelMap.vegan || 'Vegan'
-    const vegetarianLabel = dietLabelMap.vegetarian || 'Vegetarian'
-    const pescatarianLabel = dietLabelMap.pescatarian || 'Pescatarian'
+    const pickDietLabel = (candidates: Array<string | null | undefined>) => {
+      const labelMap = new Map(
+        dietLabels.map((label) => [label.toLowerCase(), label]),
+      )
+      for (const candidate of candidates) {
+        if (!candidate) continue
+        if (dietLabels.includes(candidate)) return candidate
+        const lower = labelMap.get(candidate.toLowerCase())
+        if (lower) return lower
+      }
+      return null
+    }
+    const veganLabel = pickDietLabel([dietLabelMap.vegan, 'Vegan'])
+    const vegetarianLabel = pickDietLabel([
+      dietLabelMap.vegetarian,
+      'Vegetarian',
+    ])
+    const pescatarianLabel = pickDietLabel([
+      dietLabelMap.pescatarian,
+      'Pescatarian',
+    ])
+    const glutenFreeLabel = pickDietLabel([
+      dietLabelMap['gluten_free'],
+      dietLabelMap['gluten-free'],
+      'Gluten-free',
+      'Gluten Free',
+    ])
     const allDietExample = JSON.stringify(
       [veganLabel, vegetarianLabel, pescatarianLabel].filter(Boolean),
     )
@@ -61,16 +85,17 @@ serve(async (req) => {
     const pescatarianDietExample = JSON.stringify(
       pescatarianLabel ? [pescatarianLabel] : [],
     )
+    const glutenFreeExample = glutenFreeLabel
+      ? JSON.stringify([glutenFreeLabel])
+      : '[]'
 
-    const listSystemPrompt = `You are an allergen and dietary preference analyzer for a restaurant allergen awareness system.
+    const buildListSystemPrompt = (outputMode: 'summary' | 'flags') => `You are an allergen and dietary preference analyzer for a restaurant allergen awareness system.
 Think carefully and step-by-step before answering, but only output the JSON.
 
 CRITICAL: You MUST respond with ONLY valid JSON. No explanations, no markdown, no text outside the JSON structure.
 
 TASK:
-Analyze the ingredient list and determine:
-1. Which allergens are present from this list ONLY: ${allergenListText}
-2. Which dietary preferences this product is compatible with: ${dietListText}
+Analyze the ingredient list and determine which allergens and dietary preferences apply.
 Use ONLY these exact names in your JSON output:
 - Allergens: ${allergenListText}
 - Diets: ${dietListText}
@@ -104,13 +129,44 @@ EXAMPLES:
 3. "chicken, salt, pepper" → allergens: [], diets: []
 4. "tuna, water, salt" → allergens: ["fish"], diets: ${pescatarianDietExample}
 5. "egg, milk, flour" → allergens: ["egg", "milk", "wheat"], diets: ${vegetarianDietExample}
+${outputMode === 'flags' ? `
+IMPORTANT: Look for TWO types of allergen declarations:
+1. Allergens in the ingredient list itself (e.g., "wheat flour", "milk", "soybean oil")
+2. Allergen statements at the end like "CONTAINS: WHEAT, SOY" or "MAY CONTAIN: MILK" or "PRODUCED IN THE SAME FACILITY", and other similar text.
 
+For "CONTAINS:" statements, flag each allergen individually:
+- "CONTAINS: WHEAT, SOY, AND SESAME" should produce 3 separate flags for WHEAT, SOY, and SESAME
+
+For each allergen/diet violation found, report:
+- The ingredient name as it appears
+- The exact word indices from the numbered list provided
+- Whether it's exactly "contained" or exactly "cross-contamination" (use "cross-contamination" for cross-contamination/facility warnings)
+
+Return ONLY valid JSON:
+{
+  "flags": [
+    {
+      "ingredient": "WHEAT",
+      "word_indices": [45],
+      "allergens": ["wheat"],
+      "diets": ${glutenFreeExample},
+      "risk_type": "contained"
+    },
+    {
+      "ingredient": "SOY",
+      "word_indices": [46],
+      "allergens": ["soy"],
+      "diets": [],
+      "risk_type": "contained"
+    }
+  ]
+}` : `
 Return a JSON object with this exact structure:
 {
   "allergens": ["allergen1", "allergen2"],
   "diets": ${allDietExample},
   "reasoning": "Brief explanation of your analysis"
-}`
+}`}`
 
     const nameSystemPrompt = `You are an allergen and dietary preference analyzer for a restaurant allergen awareness system.
 Think carefully and step-by-step before answering, but only output the JSON.
@@ -125,7 +181,7 @@ Use ONLY these exact names in your JSON output:
 - Allergens: ${allergenListText}
 - Diets: ${dietListText}
 
-CRITICAL ALLERGEN RULES:
+CRITICAL RULES:
 - ONLY flag allergens from the top 9 list above
 - Do NOT flag "gluten" as a separate allergen - wheat covers gluten-containing grains
 - Oats by themselves are NOT wheat and should NOT be flagged (unless explicitly wheat)
@@ -138,7 +194,7 @@ Return a JSON object with this exact structure:
   "reasoning": "Brief explanation of your analysis"
 }`
 
-    const listUserPrompt = `Product Name: ${productName || 'Unknown Product'}
+    const listUserPromptBase = `Product Name: ${productName || 'Unknown Product'}
 
 Ingredient List: ${ingredientText}
 
@@ -151,16 +207,63 @@ Please analyze these ingredients and determine allergens and dietary compatibili
 
 Infer allergens and dietary compatibility based on typical formulation.`
 
-    const mode = (analysisMode || "name").toString().toLowerCase()
-    const useListPrompt = mode === "list" || mode === "ingredient_list"
-    const systemPrompt = useListPrompt ? listSystemPrompt : nameSystemPrompt
+
+    const mode = (analysisMode || '').toString().toLowerCase()
+    const hasTranscript = Array.isArray(transcriptLines)
+      ? transcriptLines.length > 0
+      : Array.isArray(labelTranscriptLines)
+        ? labelTranscriptLines.length > 0
+        : false
+    useFlagsOutput = hasTranscript
+    const useListPrompt = useFlagsOutput || mode === 'list'
+
+    const transcriptPayload = Array.isArray(transcriptLines)
+      ? transcriptLines
+      : Array.isArray(labelTranscriptLines)
+        ? labelTranscriptLines
+        : null
+
+    if (useFlagsOutput) {
+      if (!transcriptPayload || transcriptPayload.length === 0) {
+        throw new Error('transcriptLines is required for transcript analysis')
+      }
+    } else if (!ingredientText || ingredientText.trim().length === 0) {
+      throw new Error('ingredientText is required')
+    }
+
+    const wordList: string[] = []
+    if (useFlagsOutput && transcriptPayload) {
+      transcriptPayload.forEach((line) => {
+        const words = String(line || '').split(/\s+/)
+        words.forEach((word) => {
+          if (word) wordList.push(word)
+        })
+      })
+    }
+    const indexedWordList = wordList
+      .map((word, idx) => `${idx}: "${word}"`)
+      .join('\n')
+    const labelUserPrompt = `Here is the transcript with each word numbered (0-based index):
+${indexedWordList}
+
+Use the numbered list above for word_indices. Do not compute your own indices.`
+
+    const listUserPrompt = useFlagsOutput ? labelUserPrompt : listUserPromptBase
+
+    const systemPrompt = useListPrompt
+      ? buildListSystemPrompt(useFlagsOutput ? 'flags' : 'summary')
+      : nameSystemPrompt
     const userPrompt = useListPrompt ? listUserPrompt : nameUserPrompt
 
     console.log(
       'Using prompt type:',
-      useListPrompt ? 'ingredient-list' : 'ingredient-name',
+      useFlagsOutput
+        ? 'ingredient-list (flags)'
+        : useListPrompt
+          ? 'ingredient-list'
+          : 'ingredient-name',
       'mode:',
-      mode,
+      mode || 'name',
     )
 
     console.log('Calling Claude API (Sonnet 4.5)...')
@@ -219,7 +322,8 @@ Infer allergens and dietary compatibility based on typical formulation.`
 
       console.log('Successfully parsed:', {
         allergens: parsed.allergens,
-        diets: parsed.diets
+        diets: parsed.diets,
+        flags: parsed.flags,
       })
     } catch (e) {
       console.error('Failed to parse JSON from Claude response')
@@ -227,20 +331,22 @@ Infer allergens and dietary compatibility based on typical formulation.`
       console.error('Parse error:', e.message)
 
       // Return empty results rather than crashing
+      const emptyPayload = useFlagsOutput
+        ? { error: 'AI returned invalid format', flags: [] }
+        : { error: 'AI returned invalid format', allergens: [], diets: [] }
+
       return new Response(
         JSON.stringify({
-          error: 'AI returned invalid format',
-          allergens: [],
-          diets: [],
-          raw_response: responseText.substring(0, 200)
+          ...emptyPayload,
+          raw_response: responseText.substring(0, 200),
         }),
         {
           status: 200,
           headers: {
             'Content-Type': 'application/json',
             ...corsHeaders,
-          }
-        }
+          },
+        },
       )
     }
 
@@ -258,6 +364,19 @@ Infer allergens and dietary compatibility based on typical formulation.`
       return Array.from(out)
     }
 
+    if (useFlagsOutput) {
+      const flags = Array.isArray(parsed.flags) ? parsed.flags : []
+      return new Response(
+        JSON.stringify({ flags }),
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            ...corsHeaders,
+          },
+        },
+      )
+    }
+
     // Ensure allergens and diets are arrays
     if (!Array.isArray(parsed.allergens)) {
       parsed.allergens = []
@@ -271,14 +390,14 @@ Infer allergens and dietary compatibility based on typical formulation.`
       JSON.stringify({
         allergens: parsed.allergens,
         diets: parsed.diets,
-        reasoning: parsed.reasoning || ''
+        reasoning: parsed.reasoning || '',
       }),
       {
         headers: {
           'Content-Type': 'application/json',
           ...corsHeaders,
-        }
-      }
+        },
+      },
     )
 
   } catch (error) {
@@ -287,24 +406,30 @@ Infer allergens and dietary compatibility based on typical formulation.`
     console.error('Error name:', error.name)
     console.error('Error message:', error.message)
 
+    const fallbackPayload = useFlagsOutput
+      ? { error: error.message || 'Failed to process request', flags: [] }
+      : {
+          error: error.message || 'Failed to process request',
+          allergens: [],
+          diets: [],
+        }
+
     return new Response(
       JSON.stringify({
-        error: error.message || 'Failed to process request',
+        ...fallbackPayload,
         errorName: error.name,
-        allergens: [],
-        diets: [],
         debug: {
           message: error.message,
-          stack: error.stack?.substring(0, 500)
-        }
+          stack: error.stack?.substring(0, 500),
+        },
       }),
       {
-        status: 200,  // Changed to 200 to avoid 500 errors on client side
+        status: 200, // Changed to 200 to avoid 500 errors on client side
         headers: {
           'Content-Type': 'application/json',
           ...corsHeaders,
-        }
-      }
+        },
+      },
     )
   }
 })

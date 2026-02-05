@@ -1666,50 +1666,17 @@ export function initBrandVerification(deps = {}) {
           confirmBtn.addEventListener("click", async () => {
             document.body.removeChild(modal);
 
-            // Analyze allergens/diets
-            try {
-              const analysisResult = await window.supabaseClient.functions.invoke(
-                "analyze-brand-allergens",
-                {
-                  body: {
-                    ingredientText: ingredientList,
-                    productName: productName,
-                    labels: [],
-                    categories: [],
-                    analysisMode: "list",
-                  },
-                },
-              );
-
-              const allergens = analysisResult.data?.allergens || [];
-              const diets = analysisResult.data?.diets || [];
-
-              // Apply replacement to this dish
-              applyReplacementToDish(
-                brandIdx,
-                oldItem,
-                dish,
-                suggestion,
-                ingredientList,
-                allergens,
-                diets,
-              );
-
-              resolve(true);
-            } catch (error) {
-              console.error("Error analyzing allergens:", error);
-              // Still apply replacement even if analysis fails
-              applyReplacementToDish(
-                brandIdx,
-                oldItem,
-                dish,
-                suggestion,
-                ingredientList,
-                [],
-                [],
-              );
-              resolve(true);
-            }
+            // Apply replacement without AI allergen/diet analysis
+            applyReplacementToDish(
+              brandIdx,
+              oldItem,
+              dish,
+              suggestion,
+              ingredientList,
+              [],
+              [],
+            );
+            resolve(true);
           });
 
           cancelBtn.addEventListener("click", () => {

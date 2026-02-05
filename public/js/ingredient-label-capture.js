@@ -1844,8 +1844,9 @@ Output ONLY the JSON object, nothing else.`;
       const dietOptions = DIETS;
       const addCrossContaminationDiets = (list) => {
         (Array.isArray(list) ? list : []).forEach((diet) => {
-          const normalized = String(diet ?? '').trim();
-          if (normalized) crossContaminationDiets.add(normalized);
+          if (diet !== undefined && diet !== null && diet !== '') {
+            crossContaminationDiets.add(diet);
+          }
         });
       };
 
@@ -1860,17 +1861,20 @@ Output ONLY the JSON object, nothing else.`;
 
         if (isContained) {
           resolvedAllergens.forEach(a => {
-            const normalized = String(a ?? '').trim();
-            if (normalized) containedAllergens.add(normalized);
+            if (a !== undefined && a !== null && a !== '') {
+              containedAllergens.add(a);
+            }
           });
           flagDiets.forEach(d => {
-            const normalized = String(d ?? '').trim();
-            if (normalized) violatedDiets.add(normalized);
+            if (d !== undefined && d !== null && d !== '') {
+              violatedDiets.add(d);
+            }
           });
         } else {
           resolvedAllergens.forEach(a => {
-            const normalized = String(a ?? '').trim();
-            if (normalized) crossContamination.add(normalized);
+            if (a !== undefined && a !== null && a !== '') {
+              crossContamination.add(a);
+            }
           });
           addCrossContaminationDiets(flagDiets);
         }

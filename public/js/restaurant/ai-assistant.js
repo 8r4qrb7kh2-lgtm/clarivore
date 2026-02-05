@@ -62,9 +62,9 @@ export function initAiAssistant(deps = {}) {
   const normalizeDietKey = (value) => ingredientNormalizer.normalizeDietKey(value);
   const normalizeStringArray = ingredientNormalizer.normalizeStringArray;
   const sanitizeIngredientRow = (row) =>
-    ingredientNormalizer.sanitizeIngredientRow(row);
+    row && typeof row === "object" ? row : {};
   const sanitizeIngredientRows = (rows) =>
-    ingredientNormalizer.sanitizeIngredientRows(rows);
+    Array.isArray(rows) ? rows : [];
   const DEBUG_REPORTING = false;
   const debugLog = (...args) => {
     if (DEBUG_REPORTING && typeof console !== "undefined") {
@@ -88,34 +88,7 @@ export function initAiAssistant(deps = {}) {
   };
 
   function enforceDietAllergenConsistency(entry) {
-    if (!entry) return;
-    const allergenSet = new Set(
-      normalizeStringArray(entry.allergens, normalizeAllergenKey),
-    );
-    const aiAllergenSet = new Set(
-      normalizeStringArray(entry.aiDetectedAllergens, normalizeAllergenKey),
-    );
-    const diets = normalizeStringArray(entry.diets, normalizeDietKey);
-    const aiDiets = normalizeStringArray(entry.aiDetectedDiets, normalizeDietKey);
-    const conflicts = [];
-
-    diets.forEach((diet) => {
-      const restricted = normalizeStringArray(
-        getDietAllergenConflicts(diet),
-        normalizeAllergenKey,
-      );
-      if (!restricted.length) return;
-      const hits = restricted.filter((a) => allergenSet.has(a));
-      if (hits.length) {
-        conflicts.push({ diet, allergens: hits });
-      }
-    });
-
-    entry.allergens = Array.from(allergenSet);
-    entry.aiDetectedAllergens = Array.from(aiAllergenSet);
-    entry.diets = diets;
-    entry.aiDetectedDiets = aiDiets;
-    entry.dietAllergenConflicts = conflicts;
+    return entry;
   }
 
   let aiAssistBackdrop = null;
@@ -340,25 +313,7 @@ export function initAiAssistant(deps = {}) {
         inFlightScan && inFlightScan.name === name
           ? inFlightScan.promise
           : fetchIngredientScanDecision(name, getDishNameForAi());
-      const allergenPromise = (async () => {
-        const { data: analysisData, error } =
-          await window.supabaseClient.functions.invoke(
-            "analyze-brand-allergens",
-            {
-              body: {
-                ingredientText: name,
-                analysisMode: "name",
-              },
-            },
-          );
-        if (error) throw error;
-        return analysisData || {};
-      })();
-
-      const [scanResult, allergenResult] = await Promise.allSettled([
-        scanPromise,
-        allergenPromise,
-      ]);
+      const [scanResult] = await Promise.allSettled([scanPromise]);
 
       const refreshed = collectAiTableData();
       const current = refreshed[rowIdx];
@@ -400,69 +355,30 @@ export function initAiAssistant(deps = {}) {
         current.aiDetectionCompleted = false;
       };
 
-      let appliedAllergens = false;
-      if (allergenResult.status === "fulfilled") {
-        const analysisData = allergenResult.value || {};
-        const aiAllergens = Array.isArray(analysisData.allergens)
-          ? [...analysisData.allergens]
-          : [];
-        const aiDiets = Array.isArray(analysisData.diets)
-          ? [...analysisData.diets]
-          : [];
-        // Apply Claude output directly to the row
-        current.allergens = aiAllergens.slice();
-        current.diets = aiDiets.slice();
-        // Name-based analysis should not infer cross-contamination
-        current.crossContamination = [];
-        current.crossContaminationDiets = [];
-        current.aiDetectedAllergens = aiAllergens.slice();
-        current.aiDetectedDiets = aiDiets.slice();
-        current.aiDetectedCrossContamination = [];
-        current.aiDetectedCrossContaminationDiets = [];
-        current.aiDetectionCompleted = true;
-        appliedAllergens = true;
-      } else if (allergenResult.status === "rejected") {
-        console.error(
-          "AI analysis error:",
-          allergenResult.reason || allergenResult,
-        );
-        clearAiDetections();
-      }
+      clearAiDetections();
+      const appliedAllergens = false;
 
       enforceDietAllergenConsistency(current);
       renderAiTable(refreshed);
 
       if (!opts.silent) {
         if (scanDecision === true) {
-          aiAssistSetStatus(
-            appliedAllergens
-              ? `Label required for "${name}". AI prefill added.`
-              : `Label required for "${name}".`,
-            "warn",
-          );
+          aiAssistSetStatus(`Label required for "${name}".`, "warn");
         } else if (scanDecision === false) {
-          aiAssistSetStatus(
-            appliedAllergens
-              ? `Label optional for "${name}". Allergens/diets updated.`
-              : `Label optional for "${name}", but allergens/diets could not be updated.`,
-            appliedAllergens ? "success" : "warn",
-          );
+          aiAssistSetStatus(`Label optional for "${name}".`, "success");
         } else if (appliedAllergens) {
           aiAssistSetStatus(
             `Updated allergens/diets for "${name}".`,
             "success",
           );
         } else {
-          aiAssistSetStatus(
-            `Could not complete ingredient analysis for "${name}".`,
-            "warn",
-          );
+          aiAssistSetStatus(`Analysis complete for "${name}".`, "success");
         }
       }
 
       aiAssistState.savedToDish = false;
     } catch (err) {
-      console.error("Failed to analyze allergens/diets:", err);
+      console.error("Failed to analyze ingredient name:", err);
       const errored = collectAiTableData();
       if (errored[rowIdx]) {
         errored[rowIdx].analysisPending = false;
@@ -471,7 +387,7 @@ export function initAiAssistant(deps = {}) {
       }
       if (!opts.silent) {
         aiAssistSetStatus(
-          `Could not complete label analysis for "${name}".`,
+          `Could not complete ingredient analysis for "${name}".`,
           "warn",
         );
       }
@@ -1848,21 +1764,23 @@ export function initAiAssistant(deps = {}) {
         ...row.querySelectorAll(".aiAllergenChecklist input:checked"),
       ]
         .filter((input) => input.dataset.state !== "crosscontamination")
-        .map((input) => normalizeAllergenKey(input.value))
-        .filter(Boolean);
+        .map((input) => input.value)
+        .filter((value) => value !== undefined && value !== null && value !== "");
       let crossContamination = [
         ...row.querySelectorAll(
           '.aiAllergenChecklist input[data-state="crosscontamination"]',
         ),
       ]
-        .map((input) => normalizeAllergenKey(input.value))
-        .filter(Boolean);
+        .map((input) => input.value)
+        .filter((value) => value !== undefined && value !== null && value !== "");
       const overlapAllergens = [
-        ...row.querySelectorAll('.aiAllergenChecklist input[data-overlap="true"]'),
+        ...row.querySelectorAll(
+          '.aiAllergenChecklist input[data-overlap="true"]',
+        ),
       ]
         .filter((input) => (input.dataset.state || "off") !== "off")
-        .map((input) => normalizeAllergenKey(input.value))
-        .filter(Boolean);
+        .map((input) => input.value)
+        .filter((value) => value !== undefined && value !== null && value !== "");
       if (overlapAllergens.length) {
         crossContamination = Array.from(
           new Set([...crossContamination, ...overlapAllergens]),
@@ -1871,21 +1789,21 @@ export function initAiAssistant(deps = {}) {
       // Collect diets based on state (contains vs crosscontamination)
       const diets = [...row.querySelectorAll(".aiDietChecklist input:checked")]
         .filter((input) => input.dataset.state !== "crosscontamination")
-        .map((input) => normalizeDietKey(input.value))
-        .filter(Boolean);
+        .map((input) => input.value)
+        .filter((value) => value !== undefined && value !== null && value !== "");
       let crossContaminationDiets = [
         ...row.querySelectorAll(
           '.aiDietChecklist input[data-state="crosscontamination"]',
         ),
       ]
-        .map((input) => normalizeDietKey(input.value))
-        .filter(Boolean);
+        .map((input) => input.value)
+        .filter((value) => value !== undefined && value !== null && value !== "");
       const overlapDiets = [
         ...row.querySelectorAll('.aiDietChecklist input[data-overlap="true"]'),
       ]
         .filter((input) => (input.dataset.state || "off") !== "off")
-        .map((input) => normalizeDietKey(input.value))
-        .filter(Boolean);
+        .map((input) => input.value)
+        .filter((value) => value !== undefined && value !== null && value !== "");
       if (overlapDiets.length) {
         crossContaminationDiets = Array.from(
           new Set([...crossContaminationDiets, ...overlapDiets]),
@@ -1913,21 +1831,15 @@ export function initAiAssistant(deps = {}) {
       }
 
       // Preserve AI-detected allergens and diets (originally detected by AI from recipe)
-      const aiDetectedAllergens = normalizeStringArray(
-        parseJsonArray(row.dataset.aiDetectedAllergens),
-        normalizeAllergenKey,
+      const aiDetectedAllergens = parseJsonArray(
+        row.dataset.aiDetectedAllergens,
       );
-      const aiDetectedDiets = normalizeStringArray(
-        parseJsonArray(row.dataset.aiDetectedDiets),
-        normalizeDietKey,
+      const aiDetectedDiets = parseJsonArray(row.dataset.aiDetectedDiets);
+      const aiDetectedCrossContamination = parseJsonArray(
+        row.dataset.aiDetectedCrossContamination,
       );
-      const aiDetectedCrossContamination = normalizeStringArray(
-        parseJsonArray(row.dataset.aiDetectedCrossContamination),
-        normalizeAllergenKey,
-      );
-      const aiDetectedCrossContaminationDiets = normalizeStringArray(
-        parseJsonArray(row.dataset.aiDetectedCrossContaminationDiets),
-        normalizeDietKey,
+      const aiDetectedCrossContaminationDiets = parseJsonArray(
+        row.dataset.aiDetectedCrossContaminationDiets,
       );
 
       // Preserve needsScan and userOverriddenScan fields
@@ -1960,18 +1872,20 @@ export function initAiAssistant(deps = {}) {
         diets: new Map(),
       };
       row.querySelectorAll(".aiAllergenChecklist input").forEach((input) => {
-        const key = normalizeAllergenKey(input.value);
-        if (!key) return;
-        const state = input.dataset.state || (input.checked ? "contains" : "off");
+        const key = input.value;
+        if (key === undefined || key === null || key === "") return;
+        const state =
+          input.dataset.state || (input.checked ? "contains" : "off");
         allCheckboxStates.allergens.set(key, {
           state,
           checked: input.checked,
         });
       });
       row.querySelectorAll(".aiDietChecklist input").forEach((input) => {
-        const key = normalizeDietKey(input.value);
-        if (!key) return;
-        const state = input.dataset.state || (input.checked ? "contains" : "off");
+        const key = input.value;
+        if (key === undefined || key === null || key === "") return;
+        const state =
+          input.dataset.state || (input.checked ? "contains" : "off");
         allCheckboxStates.diets.set(key, {
           state,
           checked: input.checked,
@@ -1987,53 +1901,27 @@ export function initAiAssistant(deps = {}) {
       brands.forEach((brand) => {
         if (Array.isArray(brand.allergens)) {
           brand.allergens.forEach((a) => {
-            const normalized = normalizeAllergenKey(a);
-            if (!normalized) return;
-            // Only add if user hasn't explicitly set to off
-            const stateInfo = allCheckboxStates.allergens.get(normalized);
+            if (a === undefined || a === null || a === "") return;
+            const stateInfo = allCheckboxStates.allergens.get(a);
             if (stateInfo?.state !== "off") {
-              // If it's marked crosscontamination, add to crosscontamination set, otherwise add to contains set
               if (stateInfo?.state === "crosscontamination") {
-                allCrossContamination.add(normalized);
-                debugLog(
-                  `Brand allergen: "${a}" -> normalized: "${normalized}" (added to crosscontamination)`,
-                );
+                allCrossContamination.add(a);
               } else {
-                allAllergens.add(normalized);
-                debugLog(
-                  `Brand allergen: "${a}" -> normalized: "${normalized}" (added to contains)`,
-                );
+                allAllergens.add(a);
               }
-            } else {
-              debugLog(
-                `Brand allergen: "${a}" -> normalized: "${normalized}" (skipped - user set to off)`,
-              );
             }
           });
         }
         if (Array.isArray(brand.diets)) {
           brand.diets.forEach((d) => {
-            const normalized = normalizeDietKey(d);
-            if (!normalized) return;
-            // Only add if user hasn't explicitly set to off
-            const stateInfo = allCheckboxStates.diets.get(normalized);
+            if (d === undefined || d === null || d === "") return;
+            const stateInfo = allCheckboxStates.diets.get(d);
             if (stateInfo?.state !== "off") {
-              // If it's marked crosscontamination, add to crosscontamination set, otherwise add to contains set
               if (stateInfo?.state === "crosscontamination") {
-                allCrossContaminationDiets.add(normalized);
-                debugLog(
-                  `Brand diet: "${d}" -> normalized: "${normalized}" (added to crosscontamination)`,
-                );
+                allCrossContaminationDiets.add(d);
               } else {
-                allDiets.add(normalized);
-                debugLog(
-                  `Brand diet: "${d}" -> normalized: "${normalized}" (added to contains)`,
-                );
+                allDiets.add(d);
               }
-            } else {
-              debugLog(
-                `Brand diet: "${d}" -> normalized: "${normalized}" (skipped - user set to off)`,
-              );
             }
           });
         }
@@ -2056,7 +1944,7 @@ export function initAiAssistant(deps = {}) {
         mergedCrossContaminationDiets,
       );
 
-      const entry = sanitizeIngredientRow({
+      const entry = {
         index: idx,
         name,
         allergens: mergedAllergens,
@@ -2081,8 +1969,7 @@ export function initAiAssistant(deps = {}) {
         requiresApply,
         issueReported,
         brandImage,
-      });
-      enforceDietAllergenConsistency(entry);
+      };
       data.push(entry);
     });
     debugLog("collectAiTableData final data:", data);
@@ -2139,8 +2026,13 @@ export function initAiAssistant(deps = {}) {
     rows.forEach((row) => {
       if (Array.isArray(row.allergens)) {
         row.allergens.forEach((allergen) => {
-          const key = normalizeAllergen(allergen);
-          if (key && !tempOverlay.allergens.includes(key)) {
+          const key = allergen;
+          if (
+            key !== undefined &&
+            key !== null &&
+            key !== "" &&
+            !tempOverlay.allergens.includes(key)
+          ) {
             tempOverlay.allergens.push(key);
           }
           // Add ingredient detail
@@ -2226,50 +2118,6 @@ export function initAiAssistant(deps = {}) {
       });
     });
 
-    // Validate dietary preferences against allergens AND blocking ingredients
-    // Build set of removable allergens for quick lookup
-    const removableAllergenSet = new Set(
-      tempOverlay.removable
-        .map((r) => normalizeAllergen(r.allergen))
-        .filter(Boolean),
-    );
-
-    dishDiets.forEach((diet) => {
-      const conflicts = getDietAllergenConflicts(diet);
-      const conflictingAllergens = conflicts.filter((allergen) => {
-        const normalizedAllergen = normalizeAllergen(allergen);
-        return tempOverlay.allergens.some(
-          (a) => normalizeAllergen(a) === normalizedAllergen,
-        );
-      });
-
-      // Check if ALL blocking ingredients are removable
-      const blockingIngredients = ingredientsBlockingDiets[diet] || [];
-      const allBlockingIngredientsRemovable =
-        blockingIngredients.length > 0 &&
-        blockingIngredients.every((ing) => ing.removable);
-
-      // Check if ALL conflicting allergens are removable
-      const allConflictingAllergensRemovable =
-        conflictingAllergens.length > 0 &&
-        conflictingAllergens.every((allergen) =>
-          removableAllergenSet.has(normalizeAllergen(allergen)),
-        );
-
-      // Only keep diet if:
-      // 1. There are NO blocking ingredients AND no conflicting allergens, OR
-      // 2. ALL blocking ingredients are removable AND all conflicting allergens are removable
-      const hasBlockers =
-        blockingIngredients.length > 0 || conflictingAllergens.length > 0;
-      const allBlockersRemovable =
-        (blockingIngredients.length === 0 || allBlockingIngredientsRemovable) &&
-        (conflictingAllergens.length === 0 || allConflictingAllergensRemovable);
-
-      if (hasBlockers && !allBlockersRemovable) {
-        dishDiets.delete(diet);
-      }
-    });
-
     // Store information about which ingredients block diets for use in preview
     tempOverlay.diets = Array.from(dishDiets);
     tempOverlay.ingredientsBlockingDiets = ingredientsBlockingDiets;
@@ -2288,8 +2136,10 @@ export function initAiAssistant(deps = {}) {
     rows.forEach((row) => {
       if (Array.isArray(row.crossContamination)) {
         row.crossContamination.forEach((allergen) => {
-          const key = normalizeAllergen(allergen);
-          if (key) crossContaminationFromRows.add(key);
+          const key = allergen;
+          if (key !== undefined && key !== null && key !== "") {
+            crossContaminationFromRows.add(key);
+          }
         });
       }
     });
@@ -2422,8 +2272,10 @@ export function initAiAssistant(deps = {}) {
     allergenInputs.forEach((input) => {
       const state = input.dataset.state || (input.checked ? "contains" : "off");
       if (state === "contains") {
-        const key = normalizeAllergen(input.value);
-        if (key) selectedAllergens.add(key);
+        const key = input.value;
+        if (key !== undefined && key !== null && key !== "") {
+          selectedAllergens.add(key);
+        }
       }
     });
 
@@ -2431,8 +2283,10 @@ export function initAiAssistant(deps = {}) {
     dietInputs.forEach((input) => {
       const state = input.dataset.state || (input.checked ? "contains" : "off");
       if (state === "contains") {
-        const diet = normalizeDietLabel(input.value);
-        if (diet) selectedDiets.add(diet);
+        const diet = input.value;
+        if (diet !== undefined && diet !== null && diet !== "") {
+          selectedDiets.add(diet);
+        }
       }
     });
 
@@ -2452,7 +2306,6 @@ export function initAiAssistant(deps = {}) {
 
     if (conflicts.length === 0) {
       if (existing) existing.remove();
-      if (rowContainer?.dataset) delete rowContainer.dataset.dietConflicts;
       return;
     }
 
@@ -2638,11 +2491,6 @@ export function initAiAssistant(deps = {}) {
       }
       if (row.appealReviewNotes) {
         tr.dataset.appealReviewNotes = row.appealReviewNotes;
-      }
-      if (row.dietAllergenConflicts && row.dietAllergenConflicts.length) {
-        tr.dataset.dietConflicts = JSON.stringify(row.dietAllergenConflicts);
-      } else {
-        delete tr.dataset.dietConflicts;
       }
       const requiresApply = row.requiresApply === true;
       if (requiresApply) {
@@ -3403,23 +3251,6 @@ export function initAiAssistant(deps = {}) {
               }
               return "";
             })()}
-            ${(() => {
-              if (
-                !row.dietAllergenConflicts ||
-                row.dietAllergenConflicts.length === 0
-              )
-                return "";
-              const details = row.dietAllergenConflicts
-                .map((conflict) => {
-                  const dietLabel = esc(conflict.diet);
-                  const allergenList = conflict.allergens
-                    .map((a) => esc(formatAllergenLabel(a)))
-                    .join(", ");
-                  return `<div><strong>${dietLabel}</strong> conflicts with ${allergenList}</div>`;
-                })
-                .join("");
-              return `<div class="aiDietConflictMessage">${details}</div>`;
-            })()}
           </div>
           <div class="aiConfirmCell" style="position:absolute;top:12px;right:12px;text-align:center;display:flex;flex-direction:column;gap:4px;align-items:center">
             <button type="button" class="btn aiConfirmBtn ${isConfirmed ? "confirmed" : "unconfirmed"}" data-confirmed="${isConfirmed ? "true" : "false"}" ${!canConfirm ? "disabled" : ""} title="${!canConfirm ? "Please add an ingredient label or appeal before confirming" : ""}" style="padding:10px 20px;font-size:0.95rem;font-weight:600;border-radius:8px;min-width:100px;${!canConfirm ? "background:#6b7280;border-color:#6b7280;color:white;cursor:not-allowed;opacity:0.6;" : isConfirmed ? "background:#4caf50;border-color:#4caf50;color:white;" : "background:#f59e0b;border-color:#f59e0b;color:white;"}">${isConfirmed ? "✓ Confirmed" : "Confirm"}</button>
@@ -3438,6 +3269,11 @@ export function initAiAssistant(deps = {}) {
       // NOTE: updateAiBrandPreview() is obsolete now that we support multiple brands
       // It was overwriting the brand images we just rendered. Removed.
     });
+
+    // Ensure diet/allergen conflict warnings are rendered based on DB conflicts.
+    aiAssistTableBody
+      .querySelectorAll("tr")
+      .forEach((rowEl) => updateDietConflictMessage(rowEl));
     aiAssistResultsEl.classList.toggle("show", data.length > 0);
     if (aiAssistBrandResults) {
       aiAssistBrandResults.classList.remove("show");
@@ -4259,8 +4095,8 @@ export function initAiAssistant(deps = {}) {
       if (onProgress)
         onProgress(
           60,
-          "Analyzing ingredients...",
-          `Using Claude AI to analyze ${filteredProducts.length} product${filteredProducts.length > 1 ? "s" : ""}`,
+          "Preparing ingredient lists...",
+          `Loaded ${filteredProducts.length} product${filteredProducts.length > 1 ? "s" : ""} with ingredient labels`,
         );
 
       // Show progress bar for AI analysis (for top-level progress bar)
@@ -4271,50 +4107,11 @@ export function initAiAssistant(deps = {}) {
         progressBarFill.style.width = "30%";
       }
 
-      // Use Claude AI to analyze each product's ingredients
+      // Skip AI allergen/diet analysis for brand ingredient lists
       const analyzedProducts = await Promise.all(
         filteredProducts.map(async (product) => {
-          let allergens = [];
-          let diets = [];
-
-          try {
-            const analysisResult = await window.supabaseClient.functions.invoke(
-              "analyze-brand-allergens",
-              {
-                body: {
-                  ingredientText: product.ingredientsList.join(", "),
-                  productName: product.name || "",
-                  labels: product.labels_tags || [],
-                  categories: product.categories_tags || [],
-                  analysisMode: "list",
-                },
-              },
-            );
-
-            if (analysisResult.error) {
-              console.error(
-                "Claude AI analysis error for product:",
-                product.name,
-                analysisResult.error,
-              );
-            } else {
-              const { allergens: aiAllergens, diets: aiDiets } =
-                analysisResult.data || {};
-              allergens = aiAllergens || [];
-              diets = aiDiets || [];
-              debugLog("Claude AI analyzed:", product.name, {
-                allergens,
-                diets,
-              });
-            }
-          } catch (aiError) {
-            console.error(
-              "Failed to analyze product with Claude AI:",
-              product.name,
-              aiError,
-            );
-          }
-
+          const allergens = [];
+          const diets = [];
           return {
             name: product.name || "",
             brand: product.brand || "",
@@ -5250,19 +5047,16 @@ export function initAiAssistant(deps = {}) {
       } catch (_) {}
     }
 
-    const normalizeAllergenLabel = (allergen) => {
-      const normalized = normalizeAllergen(allergen);
-      return normalized || "";
-    };
+    const coerceLabel = (value) =>
+      value && typeof value === "object" && value.name ? value.name : value;
 
     // Add new brand to the array
     // Extract allergen names from [{name, triggers}] format if needed
     let allergenNames = [];
     if (Array.isArray(suggestion.allergens)) {
       allergenNames = suggestion.allergens
-        .map((a) => (typeof a === "object" && a.name ? a.name : a))
-        .map(normalizeAllergenLabel)
-        .filter(Boolean);
+        .map(coerceLabel)
+        .filter((value) => value !== undefined && value !== null && value !== "");
     }
 
     // Extract compliant diet names from dietary_compliance object if needed
@@ -5285,7 +5079,9 @@ export function initAiAssistant(deps = {}) {
         .filter(([_, diet]) => diet.is_compliant)
         .map(([name]) => name);
     }
-    dietNames = dietNames.map(normalizeDietLabel).filter(Boolean);
+    dietNames = dietNames.filter(
+      (value) => value !== undefined && value !== null && value !== "",
+    );
 
     const normalizedIngredientsList =
       Array.isArray(suggestion.ingredientsList) &&
@@ -5309,13 +5105,15 @@ export function initAiAssistant(deps = {}) {
         ? suggestion.crossContaminationAllergens
         : []),
     ]
-      .map(normalizeAllergenLabel)
-      .filter(Boolean);
+      .map(coerceLabel)
+      .filter((value) => value !== undefined && value !== null && value !== "");
     const suggestionCrossContaminationDiets = (
-      Array.isArray(suggestion.crossContaminationDiets) ? suggestion.crossContaminationDiets : []
+      Array.isArray(suggestion.crossContaminationDiets)
+        ? suggestion.crossContaminationDiets
+        : []
     )
-      .map(normalizeDietLabel)
-      .filter(Boolean);
+      .map(coerceLabel)
+      .filter((value) => value !== undefined && value !== null && value !== "");
 
     const newBrand = {
       name: suggestion.brand || suggestion.name || "Brand",
@@ -5339,17 +5137,30 @@ export function initAiAssistant(deps = {}) {
     // Collect all allergens and diets from all brands (union)
     const brandAllergens = new Set();
     const brandDiets = new Set();
+    const brandCrossContamination = new Set();
+    const brandCrossContaminationDiets = new Set();
     brands.forEach((brand) => {
       if (Array.isArray(brand.allergens)) {
         brand.allergens.forEach((a) => {
-          const normalized = normalizeAllergenLabel(a);
-          if (normalized) brandAllergens.add(normalized);
+          if (a !== undefined && a !== null && a !== "")
+            brandAllergens.add(a);
         });
       }
       if (Array.isArray(brand.diets)) {
         brand.diets.forEach((d) => {
-          const normalized = normalizeDietLabel(d);
-          if (normalized) brandDiets.add(normalized);
+          if (d !== undefined && d !== null && d !== "") brandDiets.add(d);
+        });
+      }
+      if (Array.isArray(brand.crossContamination)) {
+        brand.crossContamination.forEach((a) => {
+          if (a !== undefined && a !== null && a !== "")
+            brandCrossContamination.add(a);
+        });
+      }
+      if (Array.isArray(brand.crossContaminationDiets)) {
+        brand.crossContaminationDiets.forEach((d) => {
+          if (d !== undefined && d !== null && d !== "")
+            brandCrossContaminationDiets.add(d);
         });
       }
     });
@@ -5367,83 +5178,51 @@ export function initAiAssistant(deps = {}) {
       // and ensures only the brand's allergens are present.
       allData[rowIdx].allergens = Array.from(brandAllergens);
 
-      const normalizedBrandDiets = Array.from(brandDiets)
-        .map((diet) => normalizeDietLabel(diet))
-        .filter(Boolean);
-      debugLog("Applying brand diets (normalized):", normalizedBrandDiets);
+      const mergedBrandDiets = Array.from(brandDiets);
+      debugLog("Applying brand diets:", mergedBrandDiets);
 
-      allData[rowIdx].diets = normalizedBrandDiets;
+      allData[rowIdx].diets = mergedBrandDiets;
       allData[rowIdx].aiDetectedAllergens = Array.from(brandAllergens);
-      allData[rowIdx].aiDetectedDiets = normalizedBrandDiets;
+      allData[rowIdx].aiDetectedDiets = mergedBrandDiets;
       allData[rowIdx].confirmed = false;
 
-      // Handle cross-contamination allergens from the cross-contamination section
-      const mergedCrossContamination = Array.from(
-        new Set(suggestionCrossContamination),
+      // Handle cross-contamination allergens from all brands
+      suggestionCrossContamination.forEach((value) =>
+        brandCrossContamination.add(value),
       );
+      suggestionCrossContaminationDiets.forEach((value) =>
+        brandCrossContaminationDiets.add(value),
+      );
+      const mergedCrossContamination = Array.from(brandCrossContamination);
       const mergedCrossContaminationDiets = Array.from(
-        new Set(suggestionCrossContaminationDiets),
+        brandCrossContaminationDiets,
       );
-      if (
-        mergedCrossContamination.length > 0 ||
-        mergedCrossContaminationDiets.length > 0
-      ) {
-        debugLog(
-          "Applying cross-contamination allergens:",
-          mergedCrossContamination,
-        );
-        // Store as crossContamination (the field name used by renderAiTable)
-        allData[rowIdx].crossContamination = mergedCrossContamination;
-        // Also add them to the DOM row's dataset
-        row.dataset.crossContamination = JSON.stringify(
-          mergedCrossContamination,
-        );
+      debugLog(
+        "Applying cross-contamination allergens:",
+        mergedCrossContamination,
+      );
+      // Store as crossContamination (the field name used by renderAiTable)
+      allData[rowIdx].crossContamination = mergedCrossContamination;
+      // Also add them to the DOM row's dataset
+      row.dataset.crossContamination = JSON.stringify(mergedCrossContamination);
 
-        // Track cross-contamination allergens separately so the UI expects "cross-contamination" state.
-        allData[rowIdx].aiDetectedCrossContamination = mergedCrossContamination;
-        row.dataset.aiDetectedCrossContamination = JSON.stringify(
-          mergedCrossContamination,
-        );
+      // Track cross-contamination allergens separately so the UI expects "cross-contamination" state.
+      allData[rowIdx].aiDetectedCrossContamination = mergedCrossContamination;
+      row.dataset.aiDetectedCrossContamination = JSON.stringify(
+        mergedCrossContamination,
+      );
 
-        // Also set crossContaminationDiets for diets affected by cross-contamination allergens
-        const allergenToDiets = {};
-        DIETS.forEach((diet) => {
-          getDietAllergenConflicts(diet).forEach((allergen) => {
-            if (!allergenToDiets[allergen]) {
-              allergenToDiets[allergen] = [];
-            }
-            if (!allergenToDiets[allergen].includes(diet)) {
-              allergenToDiets[allergen].push(diet);
-            }
-          });
-        });
-        const crossContaminationDiets = new Set(allData[rowIdx].crossContaminationDiets || []);
-        mergedCrossContamination.forEach((allergen) => {
-          const normalizedAllergen = normalizeAllergen(allergen);
-          const affectedDiets = normalizedAllergen
-            ? allergenToDiets[normalizedAllergen]
-            : null;
-          if (affectedDiets) {
-            affectedDiets.forEach((diet) => crossContaminationDiets.add(diet));
-          }
-        });
-        mergedCrossContaminationDiets.forEach((diet) =>
-          crossContaminationDiets.add(normalizeDietLabel(diet)),
-        );
-        allData[rowIdx].crossContaminationDiets = Array.from(crossContaminationDiets);
-        row.dataset.crossContaminationDiets = JSON.stringify(
-          allData[rowIdx].crossContaminationDiets,
-        );
+      allData[rowIdx].crossContaminationDiets = mergedCrossContaminationDiets;
+      row.dataset.crossContaminationDiets = JSON.stringify(
+        allData[rowIdx].crossContaminationDiets,
+      );
 
-        // Track which diets were detected as crosscontamination by AI
-        allData[rowIdx].aiDetectedCrossContaminationDiets = Array.from(crossContaminationDiets);
-        row.dataset.aiDetectedCrossContaminationDiets = JSON.stringify(
-          allData[rowIdx].aiDetectedCrossContaminationDiets,
-        );
-      }
-
-      // Ensure diets/allergens stay consistent (e.g., vegan removes milk)
-      enforceDietAllergenConsistency(allData[rowIdx]);
+      // Track which diets were detected as crosscontamination by AI
+      allData[rowIdx].aiDetectedCrossContaminationDiets =
+        mergedCrossContaminationDiets;
+      row.dataset.aiDetectedCrossContaminationDiets = JSON.stringify(
+        allData[rowIdx].aiDetectedCrossContaminationDiets,
+      );
 
       // Also update the DOM row's dataset so it persists across re-renders
       row.dataset.aiDetectedAllergens = JSON.stringify(

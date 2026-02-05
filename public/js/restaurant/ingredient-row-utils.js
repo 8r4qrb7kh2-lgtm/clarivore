@@ -17,50 +17,20 @@ export function createIngredientNormalizer(options = {}) {
   const dietLabelSet = new Set(dietLabels.filter(Boolean));
 
   const normalizeAllergenKey = (value) => {
-    const normalized = normalizeAllergen(value);
-    if (!normalized) return "";
-    const key = String(normalized).trim();
+    const key = String(value ?? "").trim();
     if (!key) return "";
-    if (allergenSet.size && !allergenSet.has(key)) return "";
     return key;
   };
 
   const normalizeDietKey = (value) => {
-    const normalized = normalizeDietLabel(value);
-    if (!normalized) return "";
-    const label = String(normalized).trim();
+    const label = String(value ?? "").trim();
     if (!label) return "";
-    if (!dietLabelSet.size) return label;
-    return dietLabelSet.has(label) ? label : "";
+    return label;
   };
 
-  const normalizeStringArray = (list, normalizer) => {
-    const items = Array.isArray(list) ? list : [];
-    const seen = new Set();
-    const out = [];
-    items.forEach((item) => {
-      const normalized = normalizer ? normalizer(item) : String(item ?? "").trim();
-      if (!normalized) return;
-      if (seen.has(normalized)) return;
-      seen.add(normalized);
-      out.push(normalized);
-    });
-    return out;
-  };
+  const normalizeStringArray = (list) => (Array.isArray(list) ? list : []);
 
-  const normalizeTextArray = (list) => {
-    const items = Array.isArray(list) ? list : [];
-    const seen = new Set();
-    const out = [];
-    items.forEach((item) => {
-      const normalized = String(item ?? "").trim();
-      if (!normalized) return;
-      if (seen.has(normalized)) return;
-      seen.add(normalized);
-      out.push(normalized);
-    });
-    return out;
-  };
+  const normalizeTextArray = (list) => (Array.isArray(list) ? list : []);
 
   const pruneCrossContamination = (contains, crossContamination) => {
     if (!Array.isArray(crossContamination)) return [];
@@ -69,93 +39,14 @@ export function createIngredientNormalizer(options = {}) {
     return crossContamination;
   };
 
-  const sanitizeBrandEntry = (brand = {}) => {
-    const allergens = normalizeStringArray(
-      brand.allergens,
-      normalizeAllergenKey,
-    );
-    const crossContamination = pruneCrossContamination(
-      allergens,
-      normalizeStringArray(brand.crossContamination, normalizeAllergenKey),
-    );
-    const diets = normalizeStringArray(brand.diets, normalizeDietKey);
-    const crossContaminationDiets = pruneCrossContamination(
-      diets,
-      normalizeStringArray(brand.crossContaminationDiets, normalizeDietKey),
-    );
-    return {
-      ...brand,
-      name: String(brand.name ?? "").trim(),
-      barcode: String(brand.barcode ?? "").trim(),
-      brandImage: brand.brandImage ? String(brand.brandImage) : "",
-      ingredientsImage: brand.ingredientsImage ? String(brand.ingredientsImage) : "",
-      ingredientsList: normalizeTextArray(brand.ingredientsList),
-      allergens,
-      crossContamination,
-      diets,
-      crossContaminationDiets,
-    };
-  };
+  const sanitizeBrandEntry = (brand = {}) =>
+    brand && typeof brand === "object" ? { ...brand } : {};
 
-  const sanitizeIngredientRow = (row = {}) => {
-    const allergens = normalizeStringArray(row.allergens, normalizeAllergenKey);
-    const crossContamination = pruneCrossContamination(
-      allergens,
-      normalizeStringArray(row.crossContamination, normalizeAllergenKey),
-    );
-    const diets = normalizeStringArray(row.diets, normalizeDietKey);
-    const crossContaminationDiets = pruneCrossContamination(
-      diets,
-      normalizeStringArray(row.crossContaminationDiets, normalizeDietKey),
-    );
-    const aiDetectedAllergens = normalizeStringArray(
-      row.aiDetectedAllergens,
-      normalizeAllergenKey,
-    );
-    const aiDetectedCrossContamination = pruneCrossContamination(
-      aiDetectedAllergens,
-      normalizeStringArray(row.aiDetectedCrossContamination, normalizeAllergenKey),
-    );
-    const aiDetectedDiets = normalizeStringArray(
-      row.aiDetectedDiets,
-      normalizeDietKey,
-    );
-    const aiDetectedCrossContaminationDiets = pruneCrossContamination(
-      aiDetectedDiets,
-      normalizeStringArray(row.aiDetectedCrossContaminationDiets, normalizeDietKey),
-    );
-    const brands = Array.isArray(row.brands)
-      ? row.brands
-          .map((brand) => sanitizeBrandEntry(brand))
-          .filter((brand) =>
-            Boolean(
-              brand.name ||
-                brand.barcode ||
-                brand.ingredientsList?.length ||
-                brand.brandImage ||
-                brand.ingredientsImage,
-            ),
-          )
-      : [];
-
-    return {
-      ...row,
-      name: String(row.name ?? "").trim(),
-      ingredientsList: normalizeTextArray(row.ingredientsList),
-      allergens,
-      crossContamination,
-      diets,
-      crossContaminationDiets,
-      aiDetectedAllergens,
-      aiDetectedCrossContamination,
-      aiDetectedDiets,
-      aiDetectedCrossContaminationDiets,
-      brands,
-    };
-  };
+  const sanitizeIngredientRow = (row = {}) =>
+    row && typeof row === "object" ? { ...row } : {};
 
   const sanitizeIngredientRows = (rows) =>
-    (Array.isArray(rows) ? rows : []).map((row) => sanitizeIngredientRow(row));
+    Array.isArray(rows) ? rows : [];
 
   return {
     normalizeAllergenKey,

@@ -5851,24 +5851,30 @@ function renderEditor() {
         }
       });
 
-      // Validate dietary preferences against allergens
-      const normalizedAllergens = tmp.allergens
-        .map(normalizeAllergen)
-        .filter(Boolean);
-      tmp.diets = tmp.diets.filter((diet) => {
-        const conflicts = getDietAllergenConflicts(diet);
-        const hasConflict = conflicts.some((allergen) =>
-          normalizedAllergens.includes(allergen),
+      const conflicts = [];
+      tmp.diets.forEach((diet) => {
+        const restricted = getDietAllergenConflicts(diet);
+        const hits = restricted.filter((allergen) =>
+          tmp.allergens.includes(allergen),
         );
-        return !hasConflict;
+        if (hits.length) conflicts.push({ diet, allergens: hits });
       });
 
-      document.getElementById("previewBox").innerHTML = tooltipBodyHTML(
-        tmp,
-        ALLERGENS.slice(),
-        DIETS.slice(),
-        true,
-      );
+      const conflictHtml = conflicts.length
+        ? `<div class="aiDietConflictMessage">${conflicts
+            .map((conflict) => {
+              const dietLabel = esc(conflict.diet);
+              const allergenList = conflict.allergens
+                .map((allergen) => esc(formatAllergenLabel(allergen)))
+                .join(", ");
+              return `<div><strong>${dietLabel}</strong> conflicts with ${allergenList}</div>`;
+            })
+            .join("")}</div>`
+        : "";
+
+      document.getElementById("previewBox").innerHTML =
+        conflictHtml +
+        tooltipBodyHTML(tmp, ALLERGENS.slice(), DIETS.slice(), true);
     }
     updatePreview();
 
@@ -5973,8 +5979,9 @@ function renderEditor() {
         );
         // Collect cross-contamination allergens
         crossContamination.forEach((al) => {
-          const key = normalizeAllergen(al);
-          if (key) activeCrossContamination.add(key);
+          if (al !== undefined && al !== null && al !== "") {
+            activeCrossContamination.add(al);
+          }
         });
         // Collect cross-contamination diets
         crossContaminationDiets.forEach((d) => {
@@ -5994,8 +6001,8 @@ function renderEditor() {
             : brand
           : label;
         allergens.forEach((al) => {
-          const key = normalizeAllergen(al);
-          if (!key) return;
+          const key = al;
+          if (key === undefined || key === null || key === "") return;
           activeAllergens.add(key);
           if (labelWithBrand) {
             if (!allergenDetailsMap[key]) allergenDetailsMap[key] = [];
@@ -6022,7 +6029,10 @@ function renderEditor() {
         // Remove any diets that this ingredient doesn't support
         // This way, only diets supported by ALL ingredients remain
         // Include crossContaminationDiets since those are still supported, just with cross-contamination risk
-        const ingredientDietSet = new Set([...diets, ...crossContaminationDiets]);
+        const ingredientDietSet = new Set([
+          ...diets,
+          ...crossContaminationDiets,
+        ]);
         allDietOptions.forEach((diet) => {
           if (!ingredientDietSet.has(diet)) {
             dietBlockingInfo[diet].push({
@@ -6041,20 +6051,6 @@ function renderEditor() {
       // Ignore the AI's overall dish analysis dietary options - we only trust per-ingredient analysis
       // If the AI said "this dish is vegan" but an ingredient isn't marked vegan, the dish isn't vegan
 
-      // Validate dietary preferences against allergens
-      // Remove incompatible dietary preferences based on allergens present
-      activeDiets.forEach((diet) => {
-        const conflicts = getDietAllergenConflicts(diet);
-        const hasConflict = conflicts.some((allergen) =>
-          activeAllergens.has(allergen),
-        );
-        if (hasConflict) {
-          activeDiets.delete(diet);
-          console.log(
-            `Removed ${diet} diet due to allergen conflict with ${conflicts.filter((a) => activeAllergens.has(a)).join(", ")} `,
-          );
-        }
-      });
       if (list) {
         const uniqueAggregated = [
           ...new Set(
@@ -6470,23 +6466,8 @@ function renderEditor() {
         );
       }
 
-      // Validate dietary preferences against allergens before saving
-      final.allergens = (final.allergens || [])
-        .map(normalizeAllergen)
-        .filter(Boolean);
-      final.diets = (final.diets || []).map(normalizeDietLabel).filter(Boolean);
-      final.diets = final.diets.filter((diet) => {
-        const conflicts = getDietAllergenConflicts(diet);
-        const hasConflict = conflicts.some((allergen) =>
-          final.allergens.includes(allergen),
-        );
-        if (hasConflict) {
-          console.log(
-            `Removed ${diet} from final save due to allergen conflict`,
-          );
-        }
-        return !hasConflict;
-      });
+      final.allergens = Array.isArray(final.allergens) ? final.allergens : [];
+      final.diets = Array.isArray(final.diets) ? final.diets : [];
 
       it.id = newName;
       it.allergens = final.allergens;
