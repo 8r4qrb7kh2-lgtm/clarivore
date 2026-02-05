@@ -218,14 +218,14 @@ function renderServerQueue() {
         actions = `
           <div class="server-order-actions">
             <button type="button" class="primary-btn" data-action="approve" data-order-id="${order.id}">Approve &amp; stage for kitchen</button>
-            <button type="button" class="secondary-btn" data-action="reject" data-order-id="${order.id}">Reject notice</button>
+            <button type="button" class="danger-btn" data-action="reject" data-order-id="${order.id}">Reject notice</button>
           </div>
         `;
       } else if (order.status === ORDER_STATUSES.QUEUED_FOR_KITCHEN) {
         actions = `
           <div class="server-order-actions">
             <button type="button" class="primary-btn" data-action="dispatch" data-order-id="${order.id}">Send to kitchen</button>
-            <button type="button" class="secondary-btn" data-action="reject" data-order-id="${order.id}">Reject notice</button>
+            <button type="button" class="danger-btn" data-action="reject" data-order-id="${order.id}">Reject notice</button>
           </div>
         `;
       }

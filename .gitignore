@@ -2,7 +2,10 @@ node_modules/
 .env
 .env.local
 .vercel
+.vercel-next
 .DS_Store
 *.log
 .git.worktree
 supabase/.temp/
+.next/
+out/

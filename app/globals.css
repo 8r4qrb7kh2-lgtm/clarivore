@@ -1,0 +1,105 @@
+:root {
+  color-scheme: dark;
+  --bg: #0b1020;
+  --card: rgba(16, 24, 44, 0.85);
+  --text: #e9eefc;
+  --muted: #a7b2d1;
+  --accent: #5b7dff;
+  --accent-strong: #3d5bff;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: "Space Grotesk", "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+  background: radial-gradient(1200px 600px at 20% 10%, #1c2440 0%, #0b1020 45%, #070b16 100%);
+  color: var(--text);
+}
+
+.page {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6rem 1.5rem;
+}
+
+.card {
+  width: min(720px, 100%);
+  background: var(--card);
+  border: 1px solid #243058;
+  border-radius: 24px;
+  padding: 2.5rem;
+  box-shadow: 0 30px 90px rgba(6, 11, 24, 0.55);
+  backdrop-filter: blur(8px);
+}
+
+.eyebrow {
+  margin: 0 0 0.75rem;
+  font-size: 0.7rem;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+h1 {
+  margin: 0 0 1rem;
+  font-size: clamp(2rem, 4vw, 3rem);
+}
+
+.lead {
+  margin: 0;
+  font-size: 1.1rem;
+  color: var(--muted);
+}
+
+.links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.7rem 1.2rem;
+  border-radius: 999px;
+  border: none;
+  background: var(--accent);
+  color: #0b1020;
+  font-weight: 600;
+  text-decoration: none;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 30px rgba(91, 125, 255, 0.35);
+}
+
+.button.ghost {
+  background: transparent;
+  border: 1px solid #2d3a66;
+  color: var(--text);
+}
+
+.divider {
+  height: 1px;
+  margin: 2rem 0;
+  background: #233056;
+}
+
+h2 {
+  margin: 0 0 0.5rem;
+  font-size: 1.3rem;
+}
+
+.muted {
+  margin: 0;
+  color: var(--muted);
+}

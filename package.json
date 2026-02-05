@@ -3,6 +3,12 @@
   "version": "1.0.0",
   "scripts": {
     "dev": "npx http-server public -p 8080 -o",
+    "dev:next": "next dev",
+    "build:next": "next build",
+    "preview:next": "npx http-server out -p 8081 -o",
+    "prisma:pull": "prisma db pull",
+    "prisma:generate": "prisma generate",
+    "prisma:studio": "prisma studio",
     "deploy": "node scripts/build-and-push-help-kb.mjs && bash scripts/deploy-vercel.sh",
     "cap:copy": "npx cap copy",
     "cap:sync": "npx cap sync",
@@ -17,11 +23,16 @@
     "@capacitor/core": "^6.1.0",
     "@capacitor/ios": "^6.2.1",
     "@capacitor/push-notifications": "^6.0.4",
-    "@supabase/supabase-js": "^2.39.0"
+    "@prisma/client": "^5.22.0",
+    "@supabase/supabase-js": "^2.39.0",
+    "next": "^14.2.35",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
   },
   "devDependencies": {
     "@capacitor/cli": "^6.1.0",
     "http-server": "^14.1.1",
+    "prisma": "^5.22.0",
     "typescript": "^5.9.3"
   }
 }
