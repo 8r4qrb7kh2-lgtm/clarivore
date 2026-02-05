@@ -138,6 +138,12 @@ function formatStatusBadge(order) {
   return `<span class="status-badge" data-tone="${descriptor.tone}">${descriptor.label}</span>`;
 }
 
+function getFirstName(name) {
+  const raw = String(name || '').trim();
+  if (!raw) return 'Guest';
+  return raw.split(/\s+/)[0];
+}
+
 function formatTimestamp(iso) {
   if (!iso) return '';
   const date = new Date(iso);
@@ -191,6 +197,8 @@ function renderKitchenQueue() {
       const dishes = Array.isArray(order.items) && order.items.length
         ? order.items.join(', ')
         : 'No dishes listed';
+      const tableLabel = order.tableNumber ? `Table ${order.tableNumber}` : 'Table —';
+      const firstName = getFirstName(order.customerName);
 
       const chefOptions = tabletState.chefs
         .map((chef) => `<option value="${chef.id}">${chef.name} • ${chef.role}</option>`)
@@ -317,7 +325,7 @@ function renderKitchenQueue() {
         <article class="kitchen-card" data-order-id="${order.id}">
           <header>
             <div>
-              <h2>${order.customerName || 'Guest'}</h2>
+              <h2>${tableLabel} (${firstName})</h2>
               <div class="kitchen-meta">Allergies: ${allergies}</div>
               <div class="kitchen-meta">Dishes: ${dishes}</div>
               ${submittedTimeStr ? `<div class="kitchen-meta">Submitted: ${submittedTimeStr}</div>` : ''}

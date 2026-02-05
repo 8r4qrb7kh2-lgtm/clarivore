@@ -291,6 +291,15 @@ function buildNotificationBody(status: string, message?: string) {
   return `${normalized.slice(0, 177)}...`;
 }
 
+function buildDishTitle(items: unknown) {
+  const list = Array.isArray(items)
+    ? items.map((item) => String(item || "").trim()).filter(Boolean)
+    : [];
+  if (list.length === 0) return "your dish";
+  if (list.length === 1) return list[0];
+  return `${list[0]} + ${list.length - 1} more`;
+}
+
 serve(async (req) => {
   const corsHeaders = getCorsHeaders(req);
   if (req.method === "OPTIONS") {
@@ -354,9 +363,8 @@ serve(async (req) => {
   const latestUpdate = latestExternalUpdate(history);
   const status = (orderRow.status as string) || (orderPayload.status as string) || "";
   const body = buildNotificationBody(status, latestUpdate?.message);
-  const title = restaurantName
-    ? `Notice update at ${restaurantName}`
-    : "Notice update";
+  const dishTitle = buildDishTitle(orderPayload.items);
+  const title = dishTitle ? `Notice update for ${dishTitle}` : "Notice update";
   const url = restaurantSlug
     ? `/restaurant.html?slug=${encodeURIComponent(restaurantSlug)}`
     : "/restaurants.html";

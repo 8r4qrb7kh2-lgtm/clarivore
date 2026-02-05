@@ -118,6 +118,12 @@ function formatStatusBadge(order) {
   return `<span class="status-badge" data-tone="${descriptor.tone}">${descriptor.label}</span>`;
 }
 
+function getFirstName(name) {
+  const raw = String(name || '').trim();
+  if (!raw) return 'Guest';
+  return raw.split(/\s+/)[0];
+}
+
 function formatTimestamp(iso) {
   if (!iso) return '';
   const date = new Date(iso);
@@ -195,7 +201,8 @@ function renderServerQueue() {
 
   const cards = orders
     .map((order) => {
-      const tableLabel = order.tableNumber ? `Table ${order.tableNumber}` : 'Table not recorded';
+      const tableLabel = order.tableNumber ? `Table ${order.tableNumber}` : 'Table —';
+      const firstName = getFirstName(order.customerName);
       const dishes = Array.isArray(order.items) && order.items.length
         ? order.items.join(', ')
         : 'No dishes listed';
@@ -235,8 +242,7 @@ function renderServerQueue() {
         <article class="server-order-card" data-order-id="${order.id}">
           <div class="server-order-header">
             <div>
-              <h2>${order.customerName || 'Guest'}</h2>
-              <div class="server-order-meta">${tableLabel} • Code ${order.serverCode || '—'}</div>
+              <h2>${tableLabel} (${firstName})</h2>
               <div class="server-order-meta">Dishes: ${dishes}</div>
               ${submittedTimeStr ? `<div class="server-order-meta">Submitted: ${submittedTimeStr}</div>` : ''}
             </div>

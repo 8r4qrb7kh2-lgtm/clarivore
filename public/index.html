@@ -1090,6 +1090,15 @@
       }
       if (redirected) return;
       await loadAllergenConfig();
+      try {
+        const { data: { user } } = await supabaseClient.auth.getUser();
+        if (user) {
+          window.location.replace('home.html');
+          return;
+        }
+      } catch (err) {
+        console.warn('Auth check failed:', err);
+      }
       document.body.style.display = '';
       render();
     }

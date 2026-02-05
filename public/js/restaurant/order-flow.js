@@ -70,6 +70,14 @@ const formatPreferenceLabel =
           )
           .join(" ");
       };
+const getAllergenEmoji =
+  typeof allergenConfig.getAllergenEmoji === "function"
+    ? allergenConfig.getAllergenEmoji
+    : () => "";
+const getDietEmoji =
+  typeof allergenConfig.getDietEmoji === "function"
+    ? allergenConfig.getDietEmoji
+    : () => "";
 const getDietAllergenConflicts =
   typeof allergenConfig.getDietAllergenConflicts === "function"
     ? allergenConfig.getDietAllergenConflicts
@@ -673,7 +681,9 @@ export function initOrderFlow({
     allergies.forEach((allergen) => {
       const chip = document.createElement("span");
       chip.className = "orderConfirmChip";
-      chip.textContent = formatOrderListLabel(allergen);
+      const label = formatOrderListLabel(allergen);
+      const emoji = getAllergenEmoji(allergen) || "🔴";
+      chip.textContent = `${emoji} ${label}`;
       orderConfirmAllergyChips.appendChild(chip);
     });
   }
@@ -692,7 +702,9 @@ export function initOrderFlow({
     diets.forEach((diet) => {
       const chip = document.createElement("span");
       chip.className = "orderConfirmChip";
-      chip.textContent = formatOrderListLabel(diet);
+      const label = formatOrderListLabel(diet);
+      const emoji = getDietEmoji(diet) || "🍽️";
+      chip.textContent = `${emoji} ${label}`;
       orderConfirmDietChips.appendChild(chip);
     });
   }
@@ -917,6 +929,16 @@ export function initOrderFlow({
     return "Your notice was updated.";
   }
 
+  function getNoticeDishTitle(order) {
+    const items = Array.isArray(order?.items) ? order.items : [];
+    const dishNames = items
+      .map((item) => (item ?? "").toString().trim())
+      .filter(Boolean);
+    if (!dishNames.length) return "your dish";
+    if (dishNames.length === 1) return dishNames[0];
+    return `${dishNames[0]} + ${dishNames.length - 1} more`;
+  }
+
   function attachNoticeBannerInteractions(banner, { onDismiss, onTap } = {}) {
     let startY = null;
     let deltaY = 0;
@@ -996,9 +1018,8 @@ export function initOrderFlow({
   function showNoticeUpdateBanner(order, latestExternal) {
     const container = ensureNoticeBannerContainer();
     const banner = document.createElement("div");
-    const title = latestExternal?.actor
-      ? `${latestExternal.actor} update`
-      : "Notice update";
+    const dishTitle = getNoticeDishTitle(order);
+    const title = dishTitle ? `Notice update for ${dishTitle}` : "Notice update";
     const message = getNoticeUpdateMessage(order, latestExternal);
     banner.className = "noticeUpdateBanner";
     banner.innerHTML = `
