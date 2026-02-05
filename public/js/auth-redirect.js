@@ -101,56 +101,6 @@
     });
   }
 
-  function resolveSignedInStartPage(user) {
-    if (!user) return null;
-    const ownerEmail = 'matt.29.ds@gmail.com';
-    const role = user?.user_metadata?.role || user?.role || null;
-    const isOwner = user?.email === ownerEmail;
-    const isManager = role === 'manager';
-    const isManagerOrOwner = isOwner || isManager;
-    if (!isManagerOrOwner) return 'home.html';
-    let mode = null;
-    try {
-      mode = localStorage.getItem('clarivoreManagerMode');
-    } catch (_) {
-      mode = null;
-    }
-    if (!mode) {
-      mode = 'editor';
-      try {
-        localStorage.setItem('clarivoreManagerMode', mode);
-      } catch (_) {
-        // Ignore storage failures.
-      }
-    }
-    return mode === 'editor' ? 'manager-dashboard.html' : 'home.html';
-  }
-
-  async function redirectSignedInUserFromLanding() {
-    const currentPath = window.location.pathname;
-    const currentPage = currentPath.split('/').pop() || 'index.html';
-    const urlParams = new URLSearchParams(window.location.search);
-    const isQRUser = urlParams.get('qr') === '1';
-    const isLandingPage =
-      currentPage === 'index.html' || currentPage === '' || currentPage === '/';
-
-    if (!isLandingPage || isQRUser) return false;
-    if (!isNativePlatform()) return false;
-
-    try {
-      const { data: { user } } = await window.supabaseClient.auth.getUser();
-      if (!user) return false;
-      const target = resolveSignedInStartPage(user);
-      if (!target) return false;
-      if (currentPage === target || currentPath.endsWith(`/${target}`)) return false;
-      window.location.replace(target);
-      return true;
-    } catch (error) {
-      console.error('Landing redirect check error:', error);
-      return false;
-    }
-  }
-
   async function checkLaunchUrl() {
     if (!isNativePlatform()) return;
     const app = getAppPlugin();
@@ -180,9 +130,6 @@
   waitForSupabase(async function() {
     registerNativeAuthListener();
     await checkLaunchUrl();
-    window.addEventListener('clarivore:auth:signed-in', () => {
-      redirectSignedInUserFromLanding();
-    });
     // Get current page
     const currentPath = window.location.pathname;
     const currentPage = currentPath.split('/').pop() || 'index.html';
@@ -190,10 +137,6 @@
     const isQRUser = urlParams.get('qr') === '1';
     const isLandingPage =
       currentPage === 'index.html' || currentPage === '' || currentPage === '/';
-
-    if (await redirectSignedInUserFromLanding()) {
-      return;
-    }
 
     // Skip redirect for landing page, account page, and QR users
     if (isLandingPage ||

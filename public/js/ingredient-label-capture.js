@@ -210,6 +210,111 @@ Rules:
     return JSON.parse(jsonMatch[0]);
   }
 
+  function normalizeQualityAssessment(raw) {
+    const acceptRaw = raw?.accept;
+    const needsRetake = raw?.needs_retake === true;
+    let accept =
+      acceptRaw === false || acceptRaw === 'false' || needsRetake ? false : true;
+    let confidence =
+      typeof raw?.confidence === 'string' ? raw.confidence.toLowerCase() : null;
+    if (!['low', 'medium', 'high'].includes(confidence || '')) {
+      confidence = null;
+    }
+    const reasons = Array.isArray(raw?.reasons)
+      ? raw.reasons.map(r => String(r || '').trim()).filter(Boolean).slice(0, 6)
+      : [];
+    const warnings = Array.isArray(raw?.warnings)
+      ? raw.warnings.map(w => String(w || '').trim()).filter(Boolean).slice(0, 6)
+      : [];
+    let message = typeof raw?.message === 'string' ? raw.message.trim() : '';
+
+    if (accept && confidence !== 'high') {
+      accept = false;
+      if (!reasons.length) {
+        reasons.push('quality confidence not high');
+      }
+    }
+
+    if (!accept && !message) {
+      const issueText = reasons.length ? ` Issues: ${reasons.join('; ')}.` : '';
+      message =
+        'Photo quality is too low to read the ingredients confidently.' +
+        issueText +
+        ' Please retake the photo: fill the frame with the full ingredient list, keep it in focus, and avoid glare or shadows.';
+    }
+
+    const warningMessage = warnings.length
+      ? `Warning: ${warnings.join('; ')}. Consider retaking the photo for best results.`
+      : '';
+
+    return {
+      accept,
+      confidence,
+      reasons,
+      warnings,
+      message,
+      warningMessage
+    };
+  }
+
+  async function getClaudeQualityAssessment(imageBase64, mediaType, claudeLines) {
+    const systemPrompt = `You are a quality-control assistant for ingredient-label photos.
+
+Your job is to decide whether the image is readable enough to confidently extract the COMPLETE ingredient list.
+
+Decide "accept": false if any of these are true:
+- The ingredient list is cut off or missing parts
+- Text is blurry, out of focus, or too small to read
+- Glare, shadows, or distortion makes parts unreadable
+- The image does not clearly show an ingredient list
+- Any portion of the ingredient list is obscured, scribbled over, or partially blocked
+
+Be strict. Accept only if you can read the full ingredient list end-to-end with high confidence.
+If you are not highly confident the list is complete and legible, set "accept": false.
+Only set "accept": true when "confidence" is "high".
+
+Return ONLY valid JSON with this schema:
+{
+  "accept": true|false,
+  "confidence": "low"|"medium"|"high",
+  "reasons": ["short reason phrases if reject"],
+  "warnings": ["short warning phrases if accept but imperfect"],
+  "message": "short user-facing sentence if reject"
+}
+
+Notes:
+- Use the IMAGE as the source of truth.
+- The transcript may be incomplete or inaccurate; use it only as a hint.`;
+
+    const transcriptText = Array.isArray(claudeLines)
+      ? claudeLines.join('\n')
+      : '';
+
+    const response = await callClaudeForAnalysis([{
+      role: 'user',
+      content: [
+        {
+          type: 'image',
+          source: {
+            type: 'base64',
+            media_type: mediaType || 'image/png',
+            data: imageBase64
+          }
+        },
+        {
+          type: 'text',
+          text: `Assess photo quality for ingredient-list readability.\n\nTranscript (may be inaccurate):\n${transcriptText}`
+        }
+      ]
+    }], systemPrompt);
+
+    const jsonMatch = response.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      throw new Error('Could not parse Claude quality response');
+    }
+    return normalizeQualityAssessment(JSON.parse(jsonMatch[0]));
+  }
+
   async function getVisionWords(imageBase64) {
     const googleApiKey = getApiKey('google_vision_api_key');
     if (!googleApiKey) {
@@ -255,12 +360,21 @@ Rules:
                 const y0 = Math.min(...vertices.map(v => v.y || 0));
                 const x1 = Math.max(...vertices.map(v => v.x || 0));
                 const y1 = Math.max(...vertices.map(v => v.y || 0));
+                const symbolConfidences = (word.symbols || [])
+                  .map(s => s.confidence)
+                  .filter(n => typeof n === 'number' && !Number.isNaN(n));
+                const confidence = typeof word.confidence === 'number'
+                  ? word.confidence
+                  : (symbolConfidences.length
+                      ? symbolConfidences.reduce((sum, n) => sum + n, 0) / symbolConfidences.length
+                      : null);
 
                 words.push({
                   text: text.trim(),
                   bbox: { x0, y0, x1, y1 },
                   centerY: (y0 + y1) / 2,
-                  centerX: (x0 + x1) / 2
+                  centerX: (x0 + x1) / 2,
+                  confidence
                 });
               }
             }
@@ -413,9 +527,39 @@ Output ONLY the JSON object, nothing else.`;
     const base64Data = imageDataUrl.split(',')[1];
     const mediaType = imageDataUrl.split(';')[0].split(':')[1] || 'image/jpeg';
 
+    onStatus?.('Checking image quality...');
+
+    let quality = null;
+    try {
+      quality = await getClaudeQualityAssessment(base64Data, mediaType, []);
+    } catch (err) {
+      quality = normalizeQualityAssessment({
+        accept: false,
+        reasons: ['quality check unavailable'],
+        message: 'Unable to verify photo quality. Please retake the photo.'
+      });
+    }
+
+    if (quality && quality.accept === false) {
+      return {
+        success: false,
+        error: quality.message || 'Photo quality is too low to read the ingredients.',
+        quality
+      };
+    }
+
     onStatus?.('Reading text from image...');
 
-    const claudeLines = await getClaudeTranscription(base64Data, mediaType);
+    let claudeLines = [];
+    try {
+      claudeLines = await getClaudeTranscription(base64Data, mediaType);
+    } catch (err) {
+      return {
+        success: false,
+        error: 'Could not read the ingredient text clearly. Please retake the photo.',
+        quality
+      };
+    }
 
     onStatus?.('Detecting word positions...');
 
@@ -515,7 +659,8 @@ Output ONLY the JSON object, nothing else.`;
     return {
       success: true,
       data: data,
-      claude_transcript: claudeLines
+      claude_transcript: claudeLines,
+      quality
     };
   }
 
@@ -537,7 +682,10 @@ Output ONLY the JSON object, nothing else.`;
 
     const analysisResult = await analyzeWithLabelCropper(correctedImage, onStatus);
 
-    if (!analysisResult.success || !analysisResult.data) {
+    if (!analysisResult.success) {
+      throw new Error(analysisResult.error || 'Failed to extract ingredient lines');
+    }
+    if (!analysisResult.data) {
       throw new Error('Failed to extract ingredient lines');
     }
 
@@ -559,7 +707,8 @@ Output ONLY the JSON object, nothing else.`;
       allergenFlags: allergenFlags,
       correctedImage: correctedImage,
       transcript: transcript,
-      allergenAnalysisPending: skipAllergenAnalysis
+      allergenAnalysisPending: skipAllergenAnalysis,
+      quality: analysisResult.quality
     };
   }
 
@@ -990,19 +1139,25 @@ Output ONLY the JSON object, nothing else.`;
         displayCroppedLines(result.lines, correctedPreview || photoToAnalyze, result.allergenFlags);
         const pendingAnalysis = result.allergenAnalysisPending === true
           || (!result.allergenFlags?.length && result.allergenAnalysisPending !== false);
+        const qualityWarning = result.quality?.warningMessage;
         if (!pendingAnalysis) {
           displayAllergenResults(result.allergenFlags);
-          statusDiv.textContent = 'Allergen and diet analysis complete!';
-          statusDiv.style.color = '#4ade80';
+          statusDiv.textContent = qualityWarning
+            ? `${qualityWarning} Allergen and diet analysis complete.`
+            : 'Allergen and diet analysis complete!';
+          statusDiv.style.color = qualityWarning ? '#f59e0b' : '#4ade80';
           hideAnalysisOverlay();
         } else {
-          statusDiv.textContent = 'Text extracted. Running allergen and diet analysis...';
-          statusDiv.style.color = '#a8b2d6';
+          statusDiv.textContent = qualityWarning
+            ? `Text extracted. ${qualityWarning}`
+            : 'Text extracted. Running allergen and diet analysis...';
+          statusDiv.style.color = qualityWarning ? '#f59e0b' : '#a8b2d6';
         }
         buttonsContainer.style.display = 'none';
         applyButtonContainer.style.display = 'flex';
       } catch (err) {
-        statusDiv.textContent = 'Analysis failed: ' + err.message;
+        const msg = err?.message || 'Unable to analyze the photo.';
+        statusDiv.textContent = msg;
         statusDiv.style.color = '#ef4444';
         hideAnalysisOverlay();
       }
@@ -1031,7 +1186,13 @@ Output ONLY the JSON object, nothing else.`;
         }, { skipAllergenAnalysis: true });
         showPhotoAnalysisResultButton(rowIdx, ingredientName, result, capturedPhoto);
       } catch (err) {
-        hidePhotoAnalysisLoadingInRow?.(rowIdx);
+        const msg = err?.message || 'Unable to analyze the photo.';
+        if (typeof updatePhotoAnalysisLoadingStatus === 'function') {
+          updatePhotoAnalysisLoadingStatus(rowIdx, msg);
+        }
+        if (typeof hidePhotoAnalysisLoadingInRow === 'function') {
+          setTimeout(() => hidePhotoAnalysisLoadingInRow(rowIdx), 2500);
+        }
       }
     });
 
