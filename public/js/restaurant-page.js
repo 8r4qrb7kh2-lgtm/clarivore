@@ -2336,16 +2336,23 @@ function renderTopbar() {
 
   const navigateWithMode = (nextMode, nextHref) => {
     if (!nextHref) return;
+    const navigateTo = (href) => {
+      if (window.top && window.self !== window.top) {
+        window.top.location.href = href;
+      } else {
+        window.location.href = href;
+      }
+    };
     if (hasUnsavedChanges()) {
       showUnsavedChangesModal(() => {
         window.editorDirty = false;
         if (aiAssistState) aiAssistState.savedToDish = true;
         localStorage.setItem("clarivoreManagerMode", nextMode);
-        window.location.href = nextHref;
+        navigateTo(nextHref);
       });
     } else {
       localStorage.setItem("clarivoreManagerMode", nextMode);
-      window.location.href = nextHref;
+      navigateTo(nextHref);
     }
   };
 

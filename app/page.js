@@ -1,31 +1,54 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { createClient } from "@supabase/supabase-js";
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const supabase =
+  supabaseUrl && supabaseAnonKey
+    ? createClient(supabaseUrl, supabaseAnonKey)
+    : null;
+
 export default function Home() {
+  const router = useRouter();
+  const [status, setStatus] = useState("Checking your session...");
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function redirect() {
+      if (!supabase) {
+        if (isMounted) {
+          setStatus("Supabase env vars are missing.");
+        }
+        return;
+      }
+
+      try {
+        const { data } = await supabase.auth.getUser();
+        const destination = data?.user ? "/home" : "/index.html";
+        router.replace(destination);
+      } catch (error) {
+        console.error("Failed to check session", error);
+        router.replace("/index.html");
+      }
+    }
+
+    redirect();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [router]);
+
   return (
-    <main className="page">
-      <section className="card">
-        <p className="eyebrow">Clarivore</p>
-        <h1>Next.js scaffold</h1>
-        <p className="lead">
-          This is the starting point for the Next.js migration. We'll port the
-          existing flows here page by page.
-        </p>
-        <div className="links">
-          <a className="button" href="/restaurants">
-            Open Next restaurants
-          </a>
-          <a className="button ghost" href="/home.html">
-            Open legacy customer UI
-          </a>
-          <a className="button ghost" href="/restaurant.html">
-            Open legacy restaurant UI
-          </a>
-        </div>
-        <div className="divider" />
-        <h2>Migration intent</h2>
-        <p className="muted">
-          App Router with client-side data access and static export so iOS can
-          load the same build when we cut over.
-        </p>
-      </section>
+    <main className="page-shell" style={{ padding: "48px 20px" }}>
+      <div className="page-content" style={{ textAlign: "center" }}>
+        <h1 style={{ marginBottom: 12 }}>Clarivore</h1>
+        <p className="muted">{status}</p>
+      </div>
     </main>
   );
 }

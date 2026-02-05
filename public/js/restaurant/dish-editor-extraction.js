@@ -33,7 +33,7 @@ export async function requestAiExtraction(payload, options = {}) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        functionName: "ai-ingredient-assistant",
+        functionName: "dish-editor",
         payload: payload,
       }),
     });
@@ -70,7 +70,7 @@ export async function requestAiExtraction(payload, options = {}) {
       if (supabaseClient) {
         try {
           const { data, error: invokeError } =
-            await supabaseClient.functions.invoke("ai-ingredient-assistant", {
+            await supabaseClient.functions.invoke("dish-editor", {
               body: payload,
             });
 
@@ -109,7 +109,7 @@ export async function requestAiExtraction(payload, options = {}) {
 
       try {
         const directResponse = await fetch(
-          `${supabaseUrl}/functions/v1/ai-ingredient-assistant`,
+          `${supabaseUrl}/functions/v1/dish-editor`,
           {
             method: "POST",
             headers: {

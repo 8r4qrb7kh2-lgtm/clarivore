@@ -4,7 +4,7 @@
 enabled = true
 port = 54321
 
-[functions.ai-ingredient-assistant]
+[functions.dish-editor]
 verify_jwt = false
 
 [functions.analyze-ingredient-scan]

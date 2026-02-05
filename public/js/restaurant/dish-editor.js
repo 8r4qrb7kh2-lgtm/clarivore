@@ -1,21 +1,18 @@
 import { initIngredientPhotoAnalysis } from "./ingredient-photo.js";
 import { initDishEditorPhotos } from "./dish-editor-photos.js";
 import { requestAiExtraction } from "./dish-editor-extraction.js";
-import { createIngredientNormalizer } from "./ingredient-row-utils.js";
+import { createBrandMemory } from "./dish-editor-brand-memory.js";
+import { createDishEditorAnalysis } from "./dish-editor-analysis.js";
+import {
+  dishEditorTemplate,
+  imageModalTemplate,
+} from "./dish-editor-template.js";
 
 export function initDishEditor(deps = {}) {
   const esc =
     typeof deps.esc === "function" ? deps.esc : (value) => String(value ?? "");
   const state = deps.state || {};
-  const normalizeDietLabel =
-    typeof deps.normalizeDietLabel === "function"
-      ? deps.normalizeDietLabel
-      : (value) => {
-          const raw = String(value ?? "").trim();
-          if (!raw) return "";
-          if (!DIETS.length) return raw;
-          return DIETS.includes(raw) ? raw : "";
-        };
+  const normalizeDietLabel = (value) => String(value ?? "").trim();
   const getIssueReportMeta =
     typeof deps.getIssueReportMeta === "function" ? deps.getIssueReportMeta : () => ({});
   const ALLERGENS = Array.isArray(deps.ALLERGENS) ? deps.ALLERGENS : [];
@@ -26,15 +23,7 @@ export function initDishEditor(deps = {}) {
   const DIETS = Array.isArray(deps.DIETS) ? deps.DIETS : [];
   const DIET_EMOJI =
     deps.DIET_EMOJI && typeof deps.DIET_EMOJI === "object" ? deps.DIET_EMOJI : {};
-  const normalizeAllergen =
-    typeof deps.normalizeAllergen === "function"
-      ? deps.normalizeAllergen
-      : (value) => {
-          const raw = String(value ?? "").trim();
-          if (!raw) return "";
-          if (!ALLERGENS.length) return raw;
-          return ALLERGENS.includes(raw) ? raw : "";
-        };
+  const normalizeAllergen = (value) => String(value ?? "").trim();
   const getDietAllergenConflicts =
     typeof deps.getDietAllergenConflicts === "function"
       ? deps.getDietAllergenConflicts
@@ -51,29 +40,16 @@ export function initDishEditor(deps = {}) {
   const tooltipBodyHTML =
     typeof deps.tooltipBodyHTML === "function" ? deps.tooltipBodyHTML : () => "";
   const send = typeof deps.send === "function" ? deps.send : () => {};
-  const ingredientNormalizer = createIngredientNormalizer({
-    normalizeAllergen,
-    normalizeDietLabel,
-    ALLERGENS,
-    DIETS,
-  });
-  const normalizeAllergenKey = (value) =>
-    ingredientNormalizer.normalizeAllergenKey(value);
-  const normalizeDietKey = (value) => ingredientNormalizer.normalizeDietKey(value);
-  const normalizeStringArray = ingredientNormalizer.normalizeStringArray;
-  const sanitizeIngredientRow = (row) =>
-    row && typeof row === "object" ? row : {};
-  const sanitizeIngredientRows = (rows) =>
-    Array.isArray(rows) ? rows : [];
+  const toArray = (value) => (Array.isArray(value) ? value.slice() : []);
   const DEBUG_REPORTING = false;
   const debugLog = (...args) => {
     if (DEBUG_REPORTING && typeof console !== "undefined") {
-      debugLog(...args);
+      console.log(...args);
     }
   };
   const debugWarn = (...args) => {
     if (DEBUG_REPORTING && typeof console !== "undefined") {
-      debugWarn(...args);
+      console.warn(...args);
     }
   };
   const parseJsonArray = (value) => {
@@ -87,9 +63,6 @@ export function initDishEditor(deps = {}) {
     }
   };
 
-  function enforceDietAllergenConsistency(entry) {
-    return entry;
-  }
 
   let aiAssistBackdrop = null;
   let aiAssistPanel = null;
@@ -104,14 +77,9 @@ export function initDishEditor(deps = {}) {
   let aiAssistAddRowBtn = null;
   let aiAssistApplyBtn = null;
   let aiAssistBrandResults = null;
-  let aiAssistUploadBtn = null;
-  let aiAssistCameraBtn = null;
-  let aiAssistFileInput = null;
-  let aiAssistImagePreview = null;
   let aiAssistVideo = null;
   let aiAssistCaptureBtn = null;
   let aiAssistCancelCameraBtn = null;
-  let aiAssistClearImageBtn = null;
   let aiAssistMediaPreview = null;
   let aiAssistElementsBound = false;
   let renderPhotoPreviews = () => {};
@@ -124,15 +92,12 @@ export function initDishEditor(deps = {}) {
     listening: false,
     pendingRequestId: null,
     brandSuggestions: {},
-    imageData: null,
-    imageFileName: null,
     mediaStream: null,
     detectedDietaryOptions: [],
     originalDishName: null, // Store original dish name when modal opens
     dishNameModified: false, // Track if dish name has been modified and saved locally but not applied to dish
   };
 
-  const AI_BRAND_LIMIT = 6;
   const AI_BRAND_MEMORY_KEY = "cle:aiBrandMemory:v1";
 
   // Global tracking of active photo analyses to preserve state across table re-renders
@@ -157,317 +122,20 @@ export function initDishEditor(deps = {}) {
     );
   };
 
-  async function fetchIngredientScanDecision(ingredientName, dishName) {
-    if (!window.supabaseClient?.functions?.invoke) {
-      throw new Error("Supabase client not available");
-    }
-    const { data, error } = await window.supabaseClient.functions.invoke(
-      "analyze-ingredient-scan",
-      {
-        body: {
-          ingredientName,
-          dishName,
-        },
-      },
-    );
-    if (error) throw error;
-    const needsScan = data?.needsScan;
-    return {
-      needsScan: typeof needsScan === "boolean" ? needsScan : null,
-      reasoning: data?.reasoning || "",
-    };
-  }
-
-  async function requestIngredientScanDecision(rowIdx, ingredientName, opts = {}) {
-    ensureAiAssistElements();
-    const name = (ingredientName || "").trim();
-    const data = collectAiTableData();
-    const row = data[rowIdx];
-    if (!row) return null;
-    const emptyResult = { needsScan: null, reasoning: "" };
-
-    if (!name) {
-      row.needsScan = undefined;
-      row.scanDecisionSource = null;
-      row.scanDecisionName = null;
-      row.analysisPending = false;
-      row.analysisMessage = "";
-      renderAiTable(data);
-      updateAiPreview();
-      return emptyResult;
-    }
-
-    const canSkip =
-      !opts.force &&
-      row.scanDecisionName === name &&
-      row.scanDecisionSource === "claude" &&
-      typeof row.needsScan === "boolean";
-    if (canSkip) return { needsScan: row.needsScan, reasoning: "" };
-
-    const existing = scanDecisionRequests.get(rowIdx);
-    if (existing && existing.name === name) {
-      return existing.promise;
-    }
-
-    row.analysisPending = true;
-    row.analysisMessage = `Checking label requirement for "${name}"...`;
-    row.userOverriddenScan = false;
-    row.appealReviewStatus = null;
-    row.appealReviewNotes = null;
-    row.issueReported = false;
-    renderAiTable(data);
-    updateAiPreview();
-
-    const requestId = `scan-${Date.now()}-${Math.random()
-      .toString(16)
-      .slice(2)}`;
-    const promise = (async () => {
-      try {
-        const result = await fetchIngredientScanDecision(
-          name,
-          getDishNameForAi(),
-        );
-        const refreshed = collectAiTableData();
-        const target = refreshed[rowIdx];
-        if (!target) return emptyResult;
-        if ((target.name || "").trim() !== name) return emptyResult;
-        target.analysisPending = false;
-        target.analysisMessage = "";
-        if (typeof result.needsScan === "boolean") {
-          target.needsScan = result.needsScan;
-          target.scanDecisionSource = "claude";
-          target.scanDecisionName = name;
-          target.userOverriddenScan = false;
-        } else {
-          target.needsScan = undefined;
-          target.scanDecisionSource = null;
-          target.scanDecisionName = null;
-        }
-        renderAiTable(refreshed);
-        updateAiPreview();
-        return result;
-      } catch (err) {
-        console.error("Ingredient scan decision failed:", err);
-        const refreshed = collectAiTableData();
-        const target = refreshed[rowIdx];
-        if (target && (target.name || "").trim() === name) {
-          target.analysisPending = false;
-          target.analysisMessage = "";
-          renderAiTable(refreshed);
-          updateAiPreview();
-        }
-        if (!opts.silent) {
-          aiAssistSetStatus(
-            `Could not determine label requirement for "${name}".`,
-            "warn",
-          );
-        }
-        return emptyResult;
-      } finally {
-        const current = scanDecisionRequests.get(rowIdx);
-        if (current && current.requestId === requestId) {
-          scanDecisionRequests.delete(rowIdx);
-        }
-      }
-    })();
-
-    scanDecisionRequests.set(rowIdx, { requestId, name, promise });
-    return promise;
-  }
-
-  async function analyzeIngredientRow(rowIdx, ingredientName, opts = {}) {
-    ensureAiAssistElements();
-    const name = (ingredientName || "").trim();
-    if (!name) {
-      if (!opts.silent) {
-        aiAssistSetStatus("Enter an ingredient name first.", "warn");
-      }
-      return;
-    }
-    const data = collectAiTableData();
-    if (!data[rowIdx]) return;
-    const row = data[rowIdx];
-
-    row.name = name;
-    row.needsScan = undefined;
-    row.userOverriddenScan = false;
-    row.appealReviewStatus = null;
-    row.appealReviewNotes = null;
-    row.issueReported = false;
-    row.analysisPending = true;
-    row.analysisMessage = opts.analysisMessage || "Analyzing ingredient…";
-    row.aiDetectionCompleted = false;
-    row.confirmed = false;
-    row.requiresApply = false;
-    row.scanDecisionName = name;
-
-    renderAiTable(data);
-
-    try {
-      if (!opts.silent) {
-        aiAssistSetStatus(`Analyzing "${name}"...`, "info");
-      }
-
-      const inFlightScan = scanDecisionRequests.get(rowIdx);
-      const scanPromise =
-        inFlightScan && inFlightScan.name === name
-          ? inFlightScan.promise
-          : fetchIngredientScanDecision(name, getDishNameForAi());
-      const allergenPromise = (async () => {
-        const { data: analysisData, error } =
-          await window.supabaseClient.functions.invoke(
-            "analyze-brand-allergens",
-            {
-              body: {
-                ingredientText: name,
-                analysisMode: "name",
-              },
-            },
-          );
-        if (error) throw error;
-        return analysisData || {};
-      })();
-
-      const [scanResult, allergenResult] = await Promise.allSettled([
-        scanPromise,
-        allergenPromise,
-      ]);
-
-      const refreshed = collectAiTableData();
-      const current = refreshed[rowIdx];
-      if (!current) return;
-      if ((current.name || "").trim() !== name) return;
-
-      current.analysisPending = false;
-      current.analysisMessage = "";
-      current.confirmed = false;
-
-      let scanDecision = null;
-      if (scanResult.status === "fulfilled") {
-        const scanValue = scanResult.value;
-        scanDecision =
-          typeof scanValue === "boolean"
-            ? scanValue
-            : typeof scanValue?.needsScan === "boolean"
-              ? scanValue.needsScan
-              : null;
-        if (typeof scanDecision === "boolean") {
-          current.needsScan = scanDecision;
-          current.scanDecisionSource = "claude";
-          current.scanDecisionName = name;
-          current.userOverriddenScan = false;
-        } else {
-          current.needsScan = undefined;
-          current.scanDecisionSource = null;
-          current.scanDecisionName = null;
-        }
-      } else {
-        console.error("Scan decision error:", scanResult.reason || scanResult);
-      }
-
-      const clearAiDetections = () => {
-        current.aiDetectedAllergens = [];
-        current.aiDetectedDiets = [];
-        current.aiDetectedCrossContamination = [];
-        current.aiDetectedCrossContaminationDiets = [];
-        current.aiDetectionCompleted = false;
-      };
-
-      let appliedAllergens = false;
-      if (allergenResult.status === "fulfilled") {
-        const analysisData = allergenResult.value || {};
-        const aiAllergens = Array.isArray(analysisData.allergens)
-          ? [...analysisData.allergens]
-          : [];
-        const aiDiets = Array.isArray(analysisData.diets)
-          ? [...analysisData.diets]
-          : [];
-        // Apply Claude output directly to the row
-        current.allergens = aiAllergens.slice();
-        current.diets = aiDiets.slice();
-        // Name-based analysis should not infer cross-contamination
-        current.crossContamination = [];
-        current.crossContaminationDiets = [];
-        current.aiDetectedAllergens = aiAllergens.slice();
-        current.aiDetectedDiets = aiDiets.slice();
-        current.aiDetectedCrossContamination = [];
-        current.aiDetectedCrossContaminationDiets = [];
-        current.aiDetectionCompleted = true;
-        appliedAllergens = true;
-      } else if (allergenResult.status === "rejected") {
-        console.error(
-          "AI analysis error:",
-          allergenResult.reason || allergenResult,
-        );
-        clearAiDetections();
-      }
-
-      enforceDietAllergenConsistency(current);
-      renderAiTable(refreshed);
-
-      if (!opts.silent) {
-        if (scanDecision === true) {
-          aiAssistSetStatus(
-            appliedAllergens
-              ? `Label required for "${name}". AI prefill added.`
-              : `Label required for "${name}".`,
-            "warn",
-          );
-        } else if (scanDecision === false) {
-          aiAssistSetStatus(
-            appliedAllergens
-              ? `Label optional for "${name}". Allergens/diets updated.`
-              : `Label optional for "${name}", but allergens/diets could not be updated.`,
-            appliedAllergens ? "success" : "warn",
-          );
-        } else if (appliedAllergens) {
-          aiAssistSetStatus(
-            `Updated allergens/diets for "${name}".`,
-            "success",
-          );
-        } else {
-          aiAssistSetStatus(
-            `Could not complete ingredient analysis for "${name}".`,
-            "warn",
-          );
-        }
-      }
-
-      aiAssistState.savedToDish = false;
-    } catch (err) {
-      console.error("Failed to analyze ingredient name:", err);
-      const errored = collectAiTableData();
-      if (errored[rowIdx]) {
-        errored[rowIdx].analysisPending = false;
-        errored[rowIdx].analysisMessage = "";
-        renderAiTable(errored);
-      }
-      if (!opts.silent) {
-        aiAssistSetStatus(
-          `Could not complete ingredient analysis for "${name}".`,
-          "warn",
-        );
-      }
-    }
-  }
-
-  function shouldAutoAnalyzeRow(row) {
-    if (!row || !row.name) return false;
-    if (row.analysisPending) return false;
-    if (row.aiDetectionCompleted === true && typeof row.needsScan === "boolean") {
-      return false;
-    }
-    return true;
-  }
-
-  async function autoAnalyzeIngredientRows() {
-    const data = collectAiTableData();
-    for (let i = 0; i < data.length; i++) {
-      const row = data[i];
-      if (!shouldAutoAnalyzeRow(row)) continue;
-      await analyzeIngredientRow(i, row.name, { silent: true });
-    }
-  }
+  const analysisApi = createDishEditorAnalysis({
+    ensureAiAssistElements,
+    collectAiTableData,
+    renderAiTable,
+    updateAiPreview,
+    aiAssistSetStatus,
+    getDishNameForAi,
+    supabaseClient:
+      typeof window !== "undefined" ? window.supabaseClient : null,
+    scanDecisionRequests,
+    aiAssistState,
+    error: console.error,
+  });
+  const { analyzeIngredientRow, autoAnalyzeIngredientRows } = analysisApi;
 
   const ingredientPhotoApi = initIngredientPhotoAnalysis({
     esc,
@@ -524,210 +192,18 @@ export function initDishEditor(deps = {}) {
       error: console.error,
     });
 
-  let aiBrandMemoryCache = null;
-
-  function loadAiBrandMemory() {
-    if (aiBrandMemoryCache) return aiBrandMemoryCache;
-    try {
-      const raw = localStorage.getItem(AI_BRAND_MEMORY_KEY);
-      aiBrandMemoryCache = raw ? JSON.parse(raw) : {};
-    } catch (_) {
-      aiBrandMemoryCache = {};
-    }
-    return aiBrandMemoryCache;
-  }
-
-  function persistAiBrandMemory() {
-    try {
-      localStorage.setItem(
-        AI_BRAND_MEMORY_KEY,
-        JSON.stringify(aiBrandMemoryCache || {}),
-      );
-    } catch (_) {}
-  }
-
-  function normalizeIngredientKey(name) {
-    return norm(name || "")
-      .replace(/[^a-z0-9]+/g, " ")
-      .trim();
-  }
-
-  function rememberBrand(name, data = {}) {
-    const key = normalizeIngredientKey(name);
-    if (!key) return;
-    const store = loadAiBrandMemory();
-    const brand = (data.brand || "").trim();
-    if (!brand) {
-      delete store[key];
-      persistAiBrandMemory();
-      return;
-    }
-    const sanitized = ingredientNormalizer.sanitizeBrandEntry({
-      name: brand,
-      barcode: data.barcode,
-      brandImage: data.brandImage,
-      ingredientsImage: data.ingredientsImage,
-      ingredientsList: data.ingredientsList,
-      allergens: data.allergens,
-      crossContamination: data.crossContamination,
-      diets: data.diets,
-      crossContaminationDiets: data.crossContaminationDiets,
-    });
-    store[key] = {
-      brand: sanitized.name,
-      brandImage: sanitized.brandImage,
-      ingredientsImage: sanitized.ingredientsImage,
-      ingredientsList: sanitized.ingredientsList,
-      allergens: sanitized.allergens,
-      crossContamination: sanitized.crossContamination,
-      diets: sanitized.diets,
-      crossContaminationDiets: sanitized.crossContaminationDiets,
-      barcode: sanitized.barcode,
-    };
-    persistAiBrandMemory();
-  }
-
-  function getRememberedBrand(name) {
-    const key = normalizeIngredientKey(name);
-    if (!key) return null;
-    const store = loadAiBrandMemory();
-
-    // Try exact match first
-    if (store[key]) {
-      debugLog(
-        `Looking up brand for "${name}" (key: "${key}"): Found exact match: ${store[key].brand}`,
-      );
-      return store[key];
-    }
-
-    // No exact match - try fuzzy matching
-    // Look for stored keys where most of the stored key's words appear in the search
-    const searchWords = key.split(/\s+/).filter((w) => w.length > 2);
-    const storeKeys = Object.keys(store);
-
-    let bestMatch = null;
-    let bestScore = 0;
-
-    for (const storeKey of storeKeys) {
-      const storeWords = storeKey.split(/\s+/).filter((w) => w.length > 2);
-      if (storeWords.length === 0) continue;
-
-      // Count how many of the STORED key's words are covered by the search
-      // This ensures "vegetable broth" matches "100% all natural whole vegetable broth"
-      // but "vegetable oil" does NOT match "vegetable broth" (only 1 of 2 words match)
-      const matchedStoreWords = storeWords.filter((stw) =>
-        searchWords.some(
-          (sw) => stw === sw || stw.includes(sw) || sw.includes(stw),
-        ),
-      );
-
-      // Calculate score as percentage of stored key words that are matched
-      const score = matchedStoreWords.length / storeWords.length;
-
-      // Require ALL of the stored key's words to be present in the search
-      // This prevents false positives like "vegetable oil" matching "vegetable broth"
-      if (score >= 1.0 && score > bestScore) {
-        bestScore = score;
-        bestMatch = { key: storeKey, data: store[storeKey] };
-      }
-    }
-
-    if (bestMatch) {
-      debugLog(
-        `Looking up brand for "${name}" (key: "${key}"): Found fuzzy match "${bestMatch.key}" (score: ${bestScore.toFixed(2)}): ${bestMatch.data.brand}`,
-      );
-      return bestMatch.data;
-    }
-
-    debugLog(`Looking up brand for "${name}" (key: "${key}"): Not found`);
-    debugLog("Available keys in brand memory:", storeKeys);
-    return null;
-  }
-
-  function rebuildBrandMemoryFromRestaurant() {
-    // Clear all existing brand memory
-    debugLog("=== REBUILDING BRAND MEMORY ===");
-    debugLog("Old brand memory:", JSON.stringify(aiBrandMemoryCache));
-    aiBrandMemoryCache = {};
-
-    // Rebuild from actual dishes in database
-    if (!state.restaurant || !Array.isArray(state.restaurant.overlays)) {
-      debugLog("No restaurant or overlays found, clearing memory");
-      persistAiBrandMemory();
-      return;
-    }
-
-    debugLog(
-      `Scanning ${state.restaurant.overlays.length} dishes for brands...`,
-    );
-
-    // Scan through all overlays/dishes
-    state.restaurant.overlays.forEach((overlay, overlayIdx) => {
-      const dishName = overlay.id || overlay.name || "unnamed";
-
-      // Parse aiIngredients if it exists (it's stored as a JSON string)
-      let ingredients = parseJsonArray(overlay.aiIngredients);
-      if (ingredients.length) {
-        debugLog(
-          `Dish ${overlayIdx} (${dishName}): Found aiIngredients with ${ingredients.length} ingredients`,
-        );
-      }
-
-      // Also check for legacy ingredients array format
-      if (!ingredients.length && Array.isArray(overlay.ingredients)) {
-        ingredients = overlay.ingredients;
-        debugLog(
-          `Dish ${overlayIdx} (${dishName}): Using legacy ingredients array with ${ingredients.length} ingredients`,
-        );
-      }
-
-      const sanitizedIngredients = sanitizeIngredientRows(ingredients);
-      if (!sanitizedIngredients.length) {
-        debugLog(`Dish ${overlayIdx} (${dishName}): No ingredients found`);
-        return;
-      }
-
-      debugLog(
-        `Dish ${overlayIdx} (${dishName}): Processing ${sanitizedIngredients.length} ingredients`,
-      );
-
-      sanitizedIngredients.forEach((ingredient) => {
-        if (
-          !ingredient.name ||
-          !Array.isArray(ingredient.brands) ||
-          ingredient.brands.length === 0
-        ) {
-          return;
-        }
-
-        debugLog(
-          `  - Ingredient "${ingredient.name}" has ${ingredient.brands.length} brand(s)`,
-        );
-
-        // Save each brand to memory
-        ingredient.brands.forEach((brand) => {
-          if (brand.name) {
-            debugLog(
-              `    -> Saving brand "${brand.name}" for "${ingredient.name}"`,
-            );
-            rememberBrand(ingredient.name, {
-              brand: brand.name,
-              brandImage: brand.brandImage || "",
-              ingredientsImage: brand.ingredientsImage || "",
-              ingredientsList: Array.isArray(brand.ingredientsList)
-                ? brand.ingredientsList
-                : [],
-              allergens: Array.isArray(brand.allergens) ? brand.allergens : [],
-              diets: Array.isArray(brand.diets) ? brand.diets : [],
-            });
-          }
-        });
-      });
-    });
-
-    debugLog("=== BRAND MEMORY REBUILD COMPLETE ===");
-    debugLog("New brand memory:", JSON.stringify(aiBrandMemoryCache));
-  }
+  const brandMemory = createBrandMemory({
+    storageKey: AI_BRAND_MEMORY_KEY,
+    norm,
+    parseJsonArray,
+    toArray,
+    state,
+    debugLog,
+  });
+  const rememberBrand = brandMemory.rememberBrand;
+  const getRememberedBrand = brandMemory.getRememberedBrand;
+  const rebuildBrandMemoryFromRestaurant =
+    brandMemory.rebuildBrandMemoryFromRestaurant;
 
   function aiAssistSetStatus(message = "", tone = "info") {
     if (!aiAssistStatusEl) return;
@@ -754,14 +230,9 @@ export function initDishEditor(deps = {}) {
       aiAssistAddRowBtn = null;
       aiAssistApplyBtn = null;
       aiAssistBrandResults = null;
-      aiAssistUploadBtn = null;
-      aiAssistCameraBtn = null;
-      aiAssistFileInput = null;
-      aiAssistImagePreview = null;
       aiAssistVideo = null;
       aiAssistCaptureBtn = null;
       aiAssistCancelCameraBtn = null;
-      aiAssistClearImageBtn = null;
       aiAssistMediaPreview = null;
       aiAssistElementsBound = false;
     }
@@ -770,144 +241,7 @@ export function initDishEditor(deps = {}) {
       backdrop.className = "aiAssistBackdrop";
       backdrop.id = "aiAssistBackdrop";
       backdrop.setAttribute("aria-hidden", "true");
-      backdrop.innerHTML = `
-    <div class="aiAssistPanel" id="aiAssistPanel" role="dialog" aria-modal="true" aria-labelledby="aiAssistTitle">
-      <!-- Floating Replacement Progress Card -->
-      <div id="aiAssistReplacementProgress" style="display:none;position:fixed;top:20px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg, #4c5ad4 0%, #5d6ae5 100%);border:2px solid rgba(76,90,212,0.8);border-radius:12px;padding:16px 24px;box-shadow:0 8px 24px rgba(0,0,0,0.4);z-index:10000;min-width:320px;max-width:90vw;text-align:center;white-space:nowrap">
-        <div style="font-size:1.1rem;font-weight:600;color:#fff;margin-bottom:4px">Replace Removed Item</div>
-        <div style="font-size:0.95rem;color:rgba(255,255,255,0.9)" id="aiAssistReplacementProgressText">Dish 1 of 3</div>
-      </div>
-      <div class="aiAssistHead">
-        <div style="display:flex;align-items:center;gap:12px">
-          <h2 id="aiAssistTitle" style="margin:0">Dish editor</h2>
-        </div>
-        <div style="display:flex;gap:8px">
-          <button type="button" class="btn btnDanger" id="aiAssistDeleteBtn" aria-label="Delete overlay" style="display:none;padding:8px 12px;font-size:0.9rem">🗑 Delete</button>
-          <button type="button" class="aiAssistClose" id="aiAssistClose" aria-label="Close AI assistant">×</button>
-        </div>
-      </div>
-
-      <!-- Unsaved Changes Warning -->
-      <div id="aiAssistUnsavedWarning" style="display:none;background:#2a1a0a;border:2px solid #f59e0b;border-radius:8px;padding:20px;margin:16px 0">
-        <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
-          <span style="font-size:2rem">⚠️</span>
-          <div>
-            <div style="font-size:1.1rem;font-weight:600;color:#f59e0b">You have unsaved work in the dish editor</div>
-          </div>
-        </div>
-        <div style="display:flex;gap:12px">
-          <button type="button" class="btn btnPrimary" id="aiAssistSaveAndExitBtn" style="flex:1;padding:12px;font-size:1rem">💾 Save Changes</button>
-          <button type="button" class="btn" id="aiAssistExitWithoutSavingBtn" style="flex:1;padding:12px;font-size:1rem;background:#4a1a1a;border-color:#721c24">Exit Without Saving</button>
-        </div>
-        <button type="button" class="btn" id="aiAssistCancelExitBtn" style="width:100%;margin-top:12px;padding:8px;font-size:0.9rem;background:rgba(76,90,212,0.2);border-color:rgba(76,90,212,0.4)">Cancel</button>
-      </div>
-
-      <!-- Delete Overlay Warning -->
-      <div id="aiAssistDeleteWarning" style="display:none;background:#1a0a0a;border:2px solid #dc2626;border-radius:8px;padding:20px;margin:16px 0">
-        <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
-          <span style="font-size:2rem">🗑️</span>
-          <div>
-            <div style="font-size:1.1rem;font-weight:600;color:#dc2626;margin-bottom:4px">Delete this dish?</div>
-            <div style="font-size:0.95rem;color:#d1d5db">This action cannot be undone.</div>
-          </div>
-        </div>
-        <div style="display:flex;gap:12px">
-          <button type="button" class="btn btnDanger" id="aiAssistConfirmDeleteBtn" style="flex:1;padding:12px;font-size:1rem;background:#dc2626;border-color:#b91c1c">🗑 Delete</button>
-          <button type="button" class="btn" id="aiAssistCancelDeleteBtn" style="flex:1;padding:12px;font-size:1rem;background:rgba(76,90,212,0.2);border-color:rgba(76,90,212,0.4)">Cancel</button>
-        </div>
-      </div>
-
-      <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;position:relative">
-        <label for="aiAssistNameInput" style="font-size:0.95rem;color:#a8b2d6;white-space:nowrap">Dish name:</label>
-        <input type="text" id="aiAssistNameInput" placeholder="Enter dish name" style="flex:1;padding:10px;font-size:1rem;font-weight:600;border-radius:8px;border:1px solid rgba(76,90,212,0.35);background:rgba(10,16,36,0.95);color:var(--ink)">
-        <button type="button" id="aiAssistSaveNameBtn" style="position:absolute;right:8px;padding:6px 12px;font-size:0.85rem;background:#4c5ad4;border-color:#4c5ad4;color:white;border-radius:6px;border:none;cursor:pointer;display:none;z-index:10">💾 Save</button>
-      </div>
-      <p class="aiAssistIntro">Upload recipe photos or describe the dish ingredients below.</p>
-
-      <!-- Photo Upload Section -->
-      <div class="aiAssistMedia" id="aiAssistMedia">
-        <button type="button" class="btn" id="aiAssistUploadRecipeBtn" style="flex:1">📁 Upload photos</button>
-        <button type="button" class="btn" id="aiAssistCameraRecipeBtn" style="flex:1">📷 Take photo</button>
-        <input type="file" id="aiAssistRecipeFileInput" class="aiAssistHidden" accept="image/*" multiple>
-      </div>
-
-      <!-- Photo Previews Container -->
-      <div id="aiAssistPhotosContainer" style="display:none;margin:16px 0;padding:12px;background:rgba(76,90,212,0.1);border:1px solid rgba(76,90,212,0.3);border-radius:8px;">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-          <strong style="color:var(--ink)">Recipe Photos</strong>
-          <button type="button" class="btn" id="aiAssistClearAllPhotosBtn" style="font-size:0.85rem;padding:4px 12px">Clear All</button>
-        </div>
-        <div id="aiAssistPhotosList" style="display:flex;flex-wrap:wrap;gap:8px;"></div>
-      </div>
-
-      <div class="aiAssistMediaPreview" id="aiAssistMediaPreview">
-        <video id="aiAssistVideo" class="aiAssistHidden" playsinline muted></video>
-        <div class="aiAssistPhotoControls">
-          <button type="button" class="btn" id="aiAssistCaptureBtn">Capture photo</button>
-          <button type="button" class="btn" id="aiAssistCancelCameraBtn">Cancel camera</button>
-        </div>
-      </div>
-
-      <!-- OR Divider -->
-      <div style="display: flex; align-items: center; gap: 16px; margin: 20px 0;">
-        <div style="flex: 1; height: 1px; background: rgba(76,90,212,0.3);"></div>
-        <span style="color: #a0a0a0; font-weight: 600; font-size: 1rem;">OR</span>
-        <div style="flex: 1; height: 1px; background: rgba(76,90,212,0.3);"></div>
-      </div>
-
-      <!-- Text Input Section -->
-      <div style="position:relative;">
-        <textarea id="aiAssistInput" class="aiAssistInput" placeholder="Example: Grilled chicken marinated in yogurt, lemon juice, garlic, served with toasted pita and tahini sauce."></textarea>
-        <button type="button" class="btn" id="aiAssistDictateBtn" style="position:absolute;bottom:12px;left:12px;padding:6px 12px;font-size:0.9rem">🎙 Dictate</button>
-        <button type="button" class="btn" id="aiAssistGenerateBtn" style="position:absolute;bottom:12px;right:12px;padding:6px 12px;font-size:0.9rem;background:#4c5ad4;border-color:#4c5ad4;color:white"></button>
-      </div>
-
-      <!-- Process Button -->
-      <button type="button" class="btn" id="aiAssistProcessBtn" style="width:100%;margin-top:16px;padding:14px;font-size:1.1rem;font-weight:600;background:#2d7d46;border-color:#3a9d5a;color:white">
-        ✓ Process Input
-      </button>
-      <span class="aiAssistStatus" id="aiAssistStatus" style="display:block;margin-top:8px;text-align:center"></span>
-      <div class="aiProgressBar" id="aiProgressBar">
-        <div class="aiProgressBarFill" id="aiProgressBarFill" style="width:0%"></div>
-      </div>
-      <div class="aiAssistResults" id="aiAssistResults" aria-live="polite">
-        <h3 style="margin:0">Ingredients</h3>
-        <div class="aiAssistTableWrapper">
-          <table id="aiAssistTable">
-            <tbody id="aiAssistTableBody"></tbody>
-          </table>
-        </div>
-
-        <div class="aiAssistTableActions">
-          <button type="button" class="btn" id="aiAssistAddRowBtn">Add ingredient</button>
-        </div>
-
-        <!-- Validation Error Message (shown when trying to save without confirming all ingredients) -->
-        <div id="aiAssistSaveError" style="display:none;background:#2a1a0a;border:2px solid #f59e0b;border-radius:8px;padding:16px;margin:16px 0">
-          <div style="display:flex;align-items:center;gap:12px">
-            <span style="font-size:1.5rem">⚠️</span>
-            <div>
-              <div style="font-size:1rem;font-weight:600;color:#f59e0b;margin-bottom:4px">Cannot save - not all ingredients are confirmed</div>
-              <div id="aiAssistSaveErrorDetails" style="font-size:0.9rem;color:#d1d5db"></div>
-            </div>
-          </div>
-        </div>
-
-        <div class="aiAssistTableActions" style="margin-top:20px;">
-          <button type="button" class="btn btnPrimary" id="aiAssistApplyBtn">✓ Save to Dish</button>
-        </div>
-
-        <!-- Dish Overlay Preview -->
-        <div id="aiAssistPreview" style="margin-top:24px;padding-top:24px;border-top:2px solid rgba(76,90,212,0.3)">
-          <h3 style="margin:0 0 12px 0;font-size:1.1rem;color:#a8b2d6">Preview: What customers will see</h3>
-          <div id="aiAssistPreviewBox" style="background:rgba(76,90,212,0.05);border:1px solid rgba(76,90,212,0.3);border-radius:8px;padding:16px;color:#d1d5db;font-size:0.95rem;line-height:1.6">
-            <!-- Preview content will be inserted here -->
-          </div>
-        </div>
-
-        <div class="aiAssistBrandResults" id="aiAssistBrandResults" aria-live="polite"></div>
-      </div>
-    </div>`;
+      backdrop.innerHTML = dishEditorTemplate();
       document.body.appendChild(backdrop);
       aiAssistBackdrop = backdrop;
       aiAssistPanel = backdrop.querySelector("#aiAssistPanel");
@@ -917,10 +251,7 @@ export function initDishEditor(deps = {}) {
         const modal = document.createElement("div");
         modal.id = "imageModal";
         modal.className = "imageModal";
-        modal.innerHTML = `
-      <button type="button" class="closeModal" onclick="closeImageModal()" aria-label="Close">×</button>
-      <img id="imageModalImg" src="" alt="Full size image">
-    `;
+        modal.innerHTML = imageModalTemplate();
         modal.addEventListener("click", (e) => {
           if (e.target.classList.contains("imageModal")) {
             closeImageModal();
@@ -1108,19 +439,6 @@ export function initDishEditor(deps = {}) {
       } else {
         console.error("aiAssistApplyBtn not found!");
       }
-      if (aiAssistUploadBtn && aiAssistFileInput) {
-        aiAssistUploadBtn.addEventListener("click", () => {
-          aiAssistFileInput.value = "";
-          aiAssistFileInput.click();
-        });
-        aiAssistFileInput.addEventListener("change", () => {
-          const file = aiAssistFileInput.files && aiAssistFileInput.files[0];
-          if (file) handleAiFileSelection(file);
-        });
-      }
-      if (aiAssistCameraBtn) {
-        aiAssistCameraBtn.addEventListener("click", () => startAiCamera());
-      }
       if (aiAssistCaptureBtn) {
         aiAssistCaptureBtn.addEventListener("click", () => captureAiPhoto());
       }
@@ -1128,9 +446,6 @@ export function initDishEditor(deps = {}) {
         aiAssistCancelCameraBtn.addEventListener("click", () =>
           stopAiCamera(true),
         );
-      }
-      if (aiAssistClearImageBtn) {
-        aiAssistClearImageBtn.addEventListener("click", () => clearAiImage());
       }
       aiAssistTableBody.addEventListener("mousedown", (event) => {
         const applyBtn = event.target.closest?.(".aiIngredientApply");
@@ -1577,10 +892,9 @@ export function initDishEditor(deps = {}) {
 
   function updateAiAssistMediaPreview() {
     ensureAiAssistElements();
-    const hasImage = !!aiAssistState.imageData;
     const hasStream = !!aiAssistState.mediaStream;
     if (aiAssistMediaPreview) {
-      aiAssistMediaPreview.classList.toggle("show", hasImage || hasStream);
+      aiAssistMediaPreview.classList.toggle("show", hasStream);
     }
     if (aiAssistVideo) {
       if (hasStream) {
@@ -1602,18 +916,6 @@ export function initDishEditor(deps = {}) {
     }
     if (aiAssistCancelCameraBtn) {
       aiAssistCancelCameraBtn.classList.toggle("aiAssistHidden", !hasStream);
-    }
-    if (aiAssistImagePreview) {
-      if (hasImage) {
-        aiAssistImagePreview.src = aiAssistState.imageData;
-        aiAssistImagePreview.classList.remove("aiAssistHidden");
-      } else {
-        aiAssistImagePreview.src = "";
-        aiAssistImagePreview.classList.add("aiAssistHidden");
-      }
-    }
-    if (aiAssistClearImageBtn) {
-      aiAssistClearImageBtn.classList.toggle("aiAssistHidden", !hasImage);
     }
   }
 
@@ -1655,30 +957,6 @@ export function initDishEditor(deps = {}) {
   handleMultipleRecipePhotoUpload = photoApi.handleMultipleRecipePhotoUpload;
   handleRecipePhotoCamera = photoApi.handleRecipePhotoCamera;
 
-  function handleAiFileSelection(file) {
-    ensureAiAssistElements();
-    if (!file) {
-      aiAssistSetStatus("No file selected.", "warn");
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = () => {
-      aiAssistState.imageData =
-        typeof reader.result === "string" ? reader.result : null;
-      aiAssistState.imageFileName = file.name || "label.jpg";
-      stopAiCamera();
-      updateAiAssistMediaPreview();
-      aiAssistSetStatus(
-        "Label photo attached. Review before processing.",
-        "info",
-      );
-    };
-    reader.onerror = () => {
-      aiAssistSetStatus("Could not read the selected image.", "warn");
-    };
-    reader.readAsDataURL(file);
-  }
-
   async function startAiCamera() {
     ensureAiAssistElements();
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -1697,11 +975,9 @@ export function initDishEditor(deps = {}) {
         audio: false,
       });
       aiAssistState.mediaStream = stream;
-      aiAssistState.imageData = null;
-      aiAssistState.imageFileName = null;
       updateAiAssistMediaPreview();
       aiAssistSetStatus(
-        "Camera ready. Capture the label when it looks clear.",
+        "Camera ready. Capture the recipe photo when it looks clear.",
         "info",
       );
     } catch (err) {
@@ -1769,17 +1045,6 @@ export function initDishEditor(deps = {}) {
     stopAiCamera();
     renderPhotoPreviews();
     aiAssistSetStatus("Photo captured. Review before processing.", "success");
-  }
-
-  function clearAiImage() {
-    ensureAiAssistElements();
-    aiAssistState.imageData = null;
-    aiAssistState.imageFileName = null;
-    if (aiAssistFileInput) {
-      aiAssistFileInput.value = "";
-    }
-    updateAiAssistMediaPreview();
-    aiAssistSetStatus("Label image cleared.", "info");
   }
 
   function getRowIngredientsList(rowElement) {
@@ -1882,7 +1147,7 @@ export function initDishEditor(deps = {}) {
 
       // Collect multiple brands
       const parsedBrands = parseJsonArray(row.dataset.brands);
-      const brands = sanitizeIngredientRow({ brands: parsedBrands }).brands;
+      const brands = toArray(parsedBrands);
       if (brands.length) {
         debugLog(`Row ${idx} brands from dataset:`, brands);
       }
@@ -1984,7 +1249,7 @@ export function initDishEditor(deps = {}) {
         }
       });
 
-      // Convert back to arrays (allergens are already normalized to standard names)
+      // Convert back to arrays
       const mergedAllergens = Array.from(allAllergens);
       const mergedDiets = Array.from(allDiets);
       const mergedCrossContamination = Array.from(allCrossContamination);
@@ -2441,9 +1706,7 @@ export function initDishEditor(deps = {}) {
         copy.aiDetectedCrossContaminationDiets = [];
       }
 
-      const sanitized = sanitizeIngredientRow(copy);
-      enforceDietAllergenConsistency(sanitized);
-      return sanitized;
+      return copy;
     });
     debugLog(
       "renderAiTable called with rows:",
@@ -2486,21 +1749,13 @@ export function initDishEditor(deps = {}) {
       // Store AI-detected allergens/diets from base ingredient (if this is first render from AI)
       // If row doesn't have aiDetectedAllergens, it means this is the first time rendering from AI results
       // so the current allergens/diets ARE the AI-detected ones
-      const baseAiDetectedAllergens = normalizeStringArray(
-        row.aiDetectedAllergens,
-        normalizeAllergenKey,
-      );
-      const baseAiDetectedDiets = normalizeStringArray(
-        row.aiDetectedDiets,
-        normalizeDietKey,
-      );
-      const baseAiDetectedCrossContamination = normalizeStringArray(
+      const baseAiDetectedAllergens = toArray(row.aiDetectedAllergens);
+      const baseAiDetectedDiets = toArray(row.aiDetectedDiets);
+      const baseAiDetectedCrossContamination = toArray(
         row.aiDetectedCrossContamination,
-        normalizeAllergenKey,
       );
-      const baseAiDetectedCrossContaminationDiets = normalizeStringArray(
+      const baseAiDetectedCrossContaminationDiets = toArray(
         row.aiDetectedCrossContaminationDiets,
-        normalizeDietKey,
       );
 
       // Store in dataset so we can preserve them across re-renders
@@ -2574,54 +1829,36 @@ export function initDishEditor(deps = {}) {
       const detectionCompleted = row.aiDetectionCompleted === true;
 
       // Collect AI-detected allergens and diets from base ingredient AND brand labels
-      const aiDetectedAllergens = new Set(
-        normalizeStringArray(baseAiDetectedAllergens, normalizeAllergenKey),
-      );
-      const aiDetectedDiets = new Set(
-        normalizeStringArray(baseAiDetectedDiets, normalizeDietKey),
-      );
+      const aiDetectedAllergens = new Set(toArray(baseAiDetectedAllergens));
+      const aiDetectedDiets = new Set(toArray(baseAiDetectedDiets));
       // Track which allergens AI detected specifically as "cross-contamination" (cross-contamination)
       const aiDetectedCrossContamination = new Set(
-        normalizeStringArray(
-          baseAiDetectedCrossContamination,
-          normalizeAllergenKey,
-        ),
+        toArray(baseAiDetectedCrossContamination),
       );
       // Track which diets AI detected as affected by cross-contamination allergens
       const aiDetectedCrossContaminationDiets = new Set(
-        normalizeStringArray(
-          baseAiDetectedCrossContaminationDiets,
-          normalizeDietKey,
-        ),
+        toArray(baseAiDetectedCrossContaminationDiets),
       );
 
-      // Add allergens and diets from brand labels (with normalization)
+      // Add allergens and diets from brand labels
       brands.forEach((brand) => {
         debugLog("Brand data:", brand);
         if (Array.isArray(brand.allergens)) {
           brand.allergens.forEach((a) => {
-            const normalized = normalizeAllergenKey(a);
-            if (!normalized) return;
             debugLog(
               "Adding allergen to aiDetected:",
               a,
-              "=> normalized:",
-              normalized,
             );
-            aiDetectedAllergens.add(normalized);
+            if (a) aiDetectedAllergens.add(a);
           });
         }
         if (Array.isArray(brand.diets)) {
           brand.diets.forEach((d) => {
-            const normalized = normalizeDietKey(d);
-            if (!normalized) return;
             debugLog(
               "Adding diet to aiDetected:",
               d,
-              "=> normalized:",
-              normalized,
             );
-            aiDetectedDiets.add(normalized);
+            if (d) aiDetectedDiets.add(d);
           });
         }
       });
@@ -2746,18 +1983,12 @@ export function initDishEditor(deps = {}) {
 
       // Use allergens/diets from collected data (which already includes merged brands respecting unchecked checkboxes)
       // Don't merge brands again here - collectAiTableData already did that
-      const allAllergens = new Set(
-        normalizeStringArray(row.allergens, normalizeAllergenKey),
-      );
-      const allDiets = new Set(
-        normalizeStringArray(row.diets, normalizeDietKey),
-      );
+      const allAllergens = new Set(toArray(row.allergens));
+      const allDiets = new Set(toArray(row.diets));
       // Cross-contamination (cross-contamination) allergens/diets
-      const crossContamination = new Set(
-        normalizeStringArray(row.crossContamination, normalizeAllergenKey),
-      );
+      const crossContamination = new Set(toArray(row.crossContamination));
       const crossContaminationDiets = new Set(
-        normalizeStringArray(row.crossContaminationDiets, normalizeDietKey),
+        toArray(row.crossContaminationDiets),
       );
 
       // Check if there's a remembered brand for this ingredient
@@ -3078,7 +2309,7 @@ export function initDishEditor(deps = {}) {
                 <div class="aiDietChecklist">
                   ${DIETS.map((diet) => {
                     // Determine state: contains > crosscontamination > off (contains is more important)
-                    // Note: crossContaminationDiets contains proper-cased values from normalizeDietKey(), so use 'diet' not lowercase
+                    // Note: crossContaminationDiets uses raw diet labels, so compare directly
                     const isContains = allDiets.has(diet);
                     const isMayContain = crossContaminationDiets.has(diet) && !isContains;
                     const hasOverlap = isContains && crossContaminationDiets.has(diet);
@@ -3480,8 +2711,6 @@ export function initDishEditor(deps = {}) {
     aiAssistState.context = null;
     aiAssistState.pendingRequestId = null;
     aiAssistState.brandSuggestions = {};
-    aiAssistState.imageData = null;
-    aiAssistState.imageFileName = null;
     aiAssistState.detectedDietaryOptions = null;
     aiAssistState.savedToDish = false;
     aiAssistState.initialData = null;
@@ -3585,7 +2814,7 @@ export function initDishEditor(deps = {}) {
     }
 
     // Check if there are existing ingredients to edit
-    const existingIngredients = sanitizeIngredientRows(
+    const existingIngredients = toArray(
       Array.isArray(context?.existingIngredients)
         ? context.existingIngredients
         : [],
@@ -3917,8 +3146,6 @@ export function initDishEditor(deps = {}) {
     aiAssistState.dishNameModified = false; // Reset dish name modification flag on close
     aiAssistSetStatus("");
     stopAiCamera();
-    aiAssistState.imageData = null;
-    aiAssistState.imageFileName = null;
     updateAiAssistMediaPreview();
     if (aiAssistResultsEl) {
       aiAssistResultsEl.classList.remove("show");
@@ -5575,7 +4802,7 @@ export function initDishEditor(deps = {}) {
           }
 
           if (text) {
-            const ingredients = sanitizeIngredientRows(
+            const ingredients = toArray(
               heuristicallyExtractIngredients(text),
             );
             // Render new data directly (existing data was cleared at start)
@@ -5619,7 +4846,7 @@ export function initDishEditor(deps = {}) {
         row.needsScan = row.needsScan === true || row.needsScan === "true";
       }
     });
-    const sanitizedRows = sanitizeIngredientRows(rows);
+    const sanitizedRows = toArray(rows);
 
     // NOTE: Brands from memory are now shown as thumbnails with + buttons
     // in the renderAiTable function, rather than auto-populating.
@@ -5646,7 +4873,7 @@ export function initDishEditor(deps = {}) {
   function applyAiIngredientsToOverlay() {
     debugLog("applyAiIngredientsToOverlay called");
     ensureAiAssistElements();
-    const rows = sanitizeIngredientRows(collectAiTableData());
+    const rows = toArray(collectAiTableData());
 
     // Hide any previous save error
     const saveErrorEl = document.getElementById("aiAssistSaveError");
@@ -5702,8 +4929,7 @@ export function initDishEditor(deps = {}) {
     rows.forEach((row) => {
       if (Array.isArray(row.crossContamination)) {
         row.crossContamination.forEach((allergen) => {
-          const key = normalizeAllergenKey(allergen);
-          if (key) crossContaminationFromRows.add(key);
+          if (allergen) crossContaminationFromRows.add(allergen);
         });
       }
     });

@@ -114,7 +114,11 @@
 
         const currentMode = localStorage.getItem('clarivoreManagerMode') || 'editor';
         if ((isManager || isOwner) && currentMode !== 'editor') {
-          window.location.href = 'home.html';
+          if (window.top && window.self !== window.top) {
+            window.top.location.href = '/home';
+          } else {
+            window.location.href = '/home';
+          }
           return;
         }
 

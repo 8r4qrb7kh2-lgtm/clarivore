@@ -2,14 +2,15 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { createClient } from "@supabase/supabase-js";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-const supabase = supabaseUrl && supabaseAnonKey
-  ? createClient(supabaseUrl, supabaseAnonKey)
-  : null;
+const supabase =
+  supabaseUrl && supabaseAnonKey
+    ? createClient(supabaseUrl, supabaseAnonKey)
+    : null;
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -37,14 +38,25 @@ function getWeeksAgoInfo(date) {
   return { text: `${diffWeeks} weeks ago`, color: "#f44336" };
 }
 
-export default function RestaurantsClient() {
-  const router = useRouter();
+function getDisplayName(user) {
+  if (!user) return "there";
+  const meta = user.user_metadata || {};
+  const name =
+    meta.first_name ||
+    meta.full_name ||
+    meta.name ||
+    user.email ||
+    "there";
+  return String(name).split(" ")[0];
+}
+
+export default function HomeClient() {
   const searchParams = useSearchParams();
   const isQR = searchParams?.get("qr") === "1";
   const [status, setStatus] = useState("");
-  const [sortMode, setSortMode] = useState("name");
-  const [restaurants, setRestaurants] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [restaurants, setRestaurants] = useState([]);
+  const [user, setUser] = useState(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -61,14 +73,13 @@ export default function RestaurantsClient() {
           await supabase.auth.getUser();
         if (authError) throw authError;
         if (!authData?.user && !isQR) {
-          router.replace("/account?redirect=restaurants");
+          window.location.replace("/index.html");
           return;
         }
+        if (isMounted) setUser(authData?.user || null);
       } catch (error) {
         console.error("Auth check failed", error);
-        if (!isQR) {
-          router.replace("/account?redirect=restaurants");
-        }
+        window.location.replace("/index.html");
         return;
       }
 
@@ -77,7 +88,8 @@ export default function RestaurantsClient() {
         const { data, error } = await supabase
           .from("restaurants")
           .select("id, name, slug, menu_image, last_confirmed")
-          .order("name", { ascending: true });
+          .order("last_confirmed", { ascending: false })
+          .limit(6);
 
         if (error) throw error;
         if (isMounted) {
@@ -100,20 +112,9 @@ export default function RestaurantsClient() {
     return () => {
       isMounted = false;
     };
-  }, [isQR, router]);
+  }, [isQR]);
 
-  const sorted = useMemo(() => {
-    const list = [...restaurants];
-    if (sortMode === "last_confirmed") {
-      list.sort((a, b) => {
-        const aDate = a.last_confirmed ? new Date(a.last_confirmed).getTime() : 0;
-        const bDate = b.last_confirmed ? new Date(b.last_confirmed).getTime() : 0;
-        return bDate - aDate;
-      });
-      return list;
-    }
-    return list.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
-  }, [restaurants, sortMode]);
+  const greeting = useMemo(() => getDisplayName(user), [user]);
 
   return (
     <div className="page-shell">
@@ -127,41 +128,70 @@ export default function RestaurantsClient() {
             <span>Clarivore</span>
           </Link>
           <div className="simple-nav">
-            <Link href="/home">Home</Link>
+            <Link href="/restaurants">Restaurants</Link>
+            <Link href="/favorites">My restaurants</Link>
+            <Link href="/dish-search">Dish search</Link>
+            <Link href="/help-contact">Help</Link>
             <Link href="/account">Account</Link>
           </div>
         </div>
       </header>
 
       <main className="page-main">
-        <div className="page-content">
-          <h1 style={{ textAlign: "center", marginBottom: 8 }}>
-            All restaurants
-          </h1>
+        <section className="home-hero">
+          <p className="eyebrow">Welcome back</p>
+          <h1>Hi {greeting}. Let’s plan a safe meal.</h1>
+          <p className="home-lead">
+            Search verified dishes, track your favorites, and confirm allergens
+            before you order.
+          </p>
+          <div className="home-actions">
+            <Link href="/restaurants" className="home-action-card">
+              <span className="home-action-title">Browse restaurants</span>
+              <span className="home-action-desc">
+                Explore menus with staff-confirmed allergen checks.
+              </span>
+            </Link>
+            <Link href="/dish-search" className="home-action-card">
+              <span className="home-action-title">Search by dish</span>
+              <span className="home-action-desc">
+                Find a dish and see allergy flags instantly.
+              </span>
+            </Link>
+            <Link href="/favorites" className="home-action-card">
+              <span className="home-action-title">My restaurants</span>
+              <span className="home-action-desc">
+                Jump back into your saved spots.
+              </span>
+            </Link>
+            <Link href="/help-contact" className="home-action-card">
+              <span className="home-action-title">Need help?</span>
+              <span className="home-action-desc">
+                Get answers and send feedback to Clarivore.
+              </span>
+            </Link>
+          </div>
+        </section>
+
+        <section className="home-section">
+          <div className="home-section-header">
+            <div>
+              <h2>Recently confirmed menus</h2>
+              <p className="home-section-subtitle">
+                These restaurants have recent staff confirmations.
+              </p>
+            </div>
+            <Link className="cta-button ghost" href="/restaurants">
+              View all
+            </Link>
+          </div>
+
           <p
-            id="restaurant-status"
             className={`status-text ${status ? "error" : ""}`}
-            style={{ textAlign: "center", marginBottom: 16 }}
+            style={{ textAlign: "center" }}
           >
             {status}
           </p>
-          <select
-            value={sortMode}
-            onChange={(event) => setSortMode(event.target.value)}
-            style={{
-              display: "block",
-              maxWidth: 300,
-              margin: "0 auto 20px",
-              padding: "12px 14px",
-              borderRadius: 12,
-              border: "1px solid var(--border)",
-              background: "var(--panel)",
-              color: "var(--text)",
-            }}
-          >
-            <option value="name">Sort: Name (A-Z)</option>
-            <option value="last_confirmed">Sort: Allergens last confirmed</option>
-          </select>
 
           <div className="restaurant-grid">
             {loading ? (
@@ -174,8 +204,8 @@ export default function RestaurantsClient() {
               >
                 Loading restaurants...
               </p>
-            ) : sorted.length ? (
-              sorted.map((restaurant) => {
+            ) : restaurants.length ? (
+              restaurants.map((restaurant) => {
                 const info = getWeeksAgoInfo(restaurant.last_confirmed);
                 return (
                   <article key={restaurant.id} className="restaurant-card">
@@ -193,25 +223,31 @@ export default function RestaurantsClient() {
                       <p className="meta" style={{ color: info.color }}>
                         Last confirmed by staff: {info.text}
                       </p>
-                      <a
+                      <Link
                         className="cta-button"
                         href={`/restaurant?slug=${encodeURIComponent(
                           restaurant.slug,
                         )}`}
                       >
                         View menu
-                      </a>
+                      </Link>
                     </div>
                   </article>
                 );
               })
             ) : (
-              <div className="empty-state">
-                No restaurants yet. Encourage your favorite spots to join!
-              </div>
+              <p
+                style={{
+                  color: "var(--muted)",
+                  textAlign: "center",
+                  gridColumn: "1 / -1",
+                }}
+              >
+                No recent confirmations yet.
+              </p>
             )}
           </div>
-        </div>
+        </section>
       </main>
     </div>
   );

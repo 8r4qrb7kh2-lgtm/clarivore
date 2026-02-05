@@ -11,6 +11,60 @@ import { initHelpAssistantDrawer, setHelpAssistantMode } from './help-assistant-
 initHelpAssistantDrawer();
 
 const OWNER_EMAIL = 'matt.29.ds@gmail.com';
+const IS_EMBEDDED = (() => {
+  try {
+    return window.self !== window.top;
+  } catch (_) {
+    return false;
+  }
+})();
+const IS_NATIVE = (() => {
+  const protocol = window.location.protocol;
+  if (protocol === 'capacitor:' || protocol === 'ionic:' || protocol === 'file:') {
+    return true;
+  }
+  if (window.Capacitor?.isNativePlatform) {
+    return window.Capacitor.isNativePlatform();
+  }
+  if (window.Capacitor?.getPlatform) {
+    return window.Capacitor.getPlatform() !== 'web';
+  }
+  if (window.navigator?.userAgent?.includes('Capacitor')) {
+    return true;
+  }
+  return false;
+})();
+const preferNextRoutes = !IS_NATIVE;
+const route = (nextPath, legacyPath) => (preferNextRoutes ? nextPath : legacyPath);
+const routeWithQuery = (nextPath, legacyPath) =>
+  preferNextRoutes ? nextPath : legacyPath;
+
+const ROUTES = {
+  index: route('/index.html', 'index.html'),
+  home: route('/home', 'home.html'),
+  account: route('/account', 'account.html'),
+  restaurants: route('/restaurants', 'restaurants.html'),
+  favorites: route('/favorites', 'favorites.html'),
+  dishSearch: route('/dish-search', 'dish-search.html'),
+  myDishes: route('/my-dishes', 'my-dishes.html'),
+  help: route('/help-contact', 'help-contact.html'),
+  reportIssue: route('/report-issue', 'report-issue.html'),
+  restaurantEditor: (slug) =>
+    routeWithQuery(
+      `/restaurant?slug=${encodeURIComponent(slug)}&edit=1`,
+      `restaurant.html?slug=${encodeURIComponent(slug)}&edit=1`,
+    ),
+  managerDashboard: route('/manager-dashboard', 'manager-dashboard.html'),
+  serverTablet: route('/server-tablet', 'server-tablet.html'),
+  kitchenTablet: route('/kitchen-tablet', 'kitchen-tablet.html'),
+  admin: route('/admin', 'admin.html'),
+  adminDashboard: route('/admin-dashboard', 'admin-dashboard.html'),
+  adminInvites: route('/admin-invites', 'admin-invites.html'),
+  adminRestaurantView: route(
+    '/admin-restaurant-view',
+    'admin-restaurant-view.html',
+  ),
+};
 
 function getUserFlags(user) {
   const role = user?.user_metadata?.role || user?.role || null;
@@ -37,13 +91,20 @@ function getManagerMode(user) {
 export async function checkAuthRedirect(supabaseClient) {
   // Get current page
   const currentPath = window.location.pathname;
-  const currentPage = currentPath.split('/').pop() || 'index.html';
+  const currentPage = currentPath.split('/').filter(Boolean).pop() || '';
   const urlParams = new URLSearchParams(window.location.search);
   const isQRUser = urlParams.get('qr') === '1';
+  const isLanding =
+    currentPage === '' ||
+    currentPage === '/' ||
+    currentPage === 'index.html' ||
+    currentPage === 'index';
+  const isAccount =
+    currentPage === 'account.html' ||
+    currentPage === 'account';
 
   // Skip redirect for landing page, account page, and QR users
-  if (currentPage === 'index.html' || currentPage === '' || currentPage === '/' ||
-      currentPage === 'account.html' || isQRUser) {
+  if (isLanding || isAccount || isQRUser) {
     return;
   }
 
@@ -53,13 +114,13 @@ export async function checkAuthRedirect(supabaseClient) {
 
     // If not logged in, redirect to landing page
     if (!user) {
-      window.location.replace('/index.html');
+      window.location.replace(ROUTES.index);
       return;
     }
   } catch (error) {
     console.error('Auth check error:', error);
     // On error, redirect to landing page to be safe
-    window.location.replace('/index.html');
+    window.location.replace(ROUTES.index);
   }
 }
 
@@ -227,6 +288,15 @@ export function setupNav(currentPage, user = null, options = {}) {
     return;
   }
 
+  const navigateTo = (href) => {
+    if (!href) return;
+    if (IS_EMBEDDED && window.top) {
+      window.top.location.href = href;
+    } else {
+      window.location.href = href;
+    }
+  };
+
   // Clear existing nav
   navContainer.innerHTML = '';
   resetNavScroll(navContainer);
@@ -248,27 +318,42 @@ export function setupNav(currentPage, user = null, options = {}) {
 
   // Update brand link based on editor mode
   const brandLink = document.querySelector('.simple-brand');
-  if (brandLink && isManagerOrOwner) {
-    brandLink.href = isEditorMode ? 'manager-dashboard.html' : 'home.html';
+  if (brandLink) {
+    if (isManagerOrOwner) {
+      brandLink.href = isEditorMode
+        ? ROUTES.managerDashboard
+        : ROUTES.home;
+    } else {
+      brandLink.href = ROUTES.home;
+    }
+    if (IS_EMBEDDED) {
+      brandLink.target = '_top';
+    }
   }
 
   let navStructure = [];
-  const helpContactLink = { type: 'link', id: 'help-contact', label: 'Help', href: 'help-contact.html', requiresAuth: true };
+  const helpContactLink = {
+    type: 'link',
+    id: 'help-contact',
+    label: 'Help',
+    href: ROUTES.help,
+    requiresAuth: true
+  };
 
   if (isOwner && isEditorMode) {
     // Owner in editor mode - admin tools without the admin entry
     navStructure = [
-      { type: 'link', id: 'home', label: 'Dashboard', href: 'manager-dashboard.html', requiresAuth: true },
+      { type: 'link', id: 'home', label: 'Dashboard', href: ROUTES.managerDashboard, requiresAuth: true },
       // Webpage editor buttons for each restaurant
       ...(managerRestaurants.length === 1 ? [
-        { type: 'link', id: `restaurant-${managerRestaurants[0].slug}-editor`, label: 'Webpage editor', href: `restaurant.html?slug=${encodeURIComponent(managerRestaurants[0].slug)}&edit=1`, requiresAuth: true }
+        { type: 'link', id: `restaurant-${managerRestaurants[0].slug}-editor`, label: 'Webpage editor', href: ROUTES.restaurantEditor(managerRestaurants[0].slug), requiresAuth: true }
       ] : managerRestaurants.length > 1 ? [{
         type: 'group',
         label: 'Webpage editor',
         items: managerRestaurants.map(restaurant => ({
           id: `restaurant-${restaurant.slug}-editor`,
           label: restaurant.name,
-          href: `restaurant.html?slug=${encodeURIComponent(restaurant.slug)}&edit=1`,
+          href: ROUTES.restaurantEditor(restaurant.slug),
           requiresAuth: true
         }))
       }] : []),
@@ -276,48 +361,48 @@ export function setupNav(currentPage, user = null, options = {}) {
         type: 'group',
         label: 'Tablet pages',
         items: [
-          { id: 'server-tablet', label: 'Server tablet', href: 'server-tablet.html', requiresAuth: true },
-          { id: 'kitchen-tablet', label: 'Kitchen tablet', href: 'kitchen-tablet.html', requiresAuth: true }
+          { id: 'server-tablet', label: 'Server tablet', href: ROUTES.serverTablet, requiresAuth: true },
+          { id: 'kitchen-tablet', label: 'Kitchen tablet', href: ROUTES.kitchenTablet, requiresAuth: true }
         ]
       },
       helpContactLink,
-      { type: 'link', id: 'account', label: 'Account settings', href: 'account.html' }
+      { type: 'link', id: 'account', label: 'Account settings', href: ROUTES.account }
     ];
   } else if (isOwner && !isEditorMode) {
     // Owner in customer mode - sees customer navigation
     navStructure = [
-      { type: 'link', id: 'home', label: 'Home', href: 'home.html' },
+      { type: 'link', id: 'home', label: 'Home', href: ROUTES.home },
       {
         type: 'group',
         label: 'By restaurant',
         items: [
-          { id: 'restaurants', label: 'All restaurants', href: 'restaurants.html', requiresAuth: true },
-          { id: 'favorites', label: 'My restaurants', href: 'favorites.html', requiresAuth: true }
+          { id: 'restaurants', label: 'All restaurants', href: ROUTES.restaurants, requiresAuth: true },
+          { id: 'favorites', label: 'My restaurants', href: ROUTES.favorites, requiresAuth: true }
         ]
       },
       {
         type: 'group',
         label: 'By dish',
         items: [
-          { id: 'dish-search', label: 'Dish search', href: 'dish-search.html', requiresAuth: true },
-          { id: 'my-dishes', label: 'My dishes', href: 'my-dishes.html', requiresAuth: true }
+          { id: 'dish-search', label: 'Dish search', href: ROUTES.dishSearch, requiresAuth: true },
+          { id: 'my-dishes', label: 'My dishes', href: ROUTES.myDishes, requiresAuth: true }
         ]
       },
       helpContactLink,
-      { type: 'link', id: 'account', label: 'Account settings', href: 'account.html' }
+      { type: 'link', id: 'account', label: 'Account settings', href: ROUTES.account }
     ];
   } else if (isManager && isEditorMode) {
     // Manager in EDITOR mode - show manager navigation
     navStructure = [];
 
     // Dashboard (manager dashboard with statistics)
-    navStructure.push({ type: 'link', id: 'home', label: 'Dashboard', href: 'manager-dashboard.html', requiresAuth: true });
+    navStructure.push({ type: 'link', id: 'home', label: 'Dashboard', href: ROUTES.managerDashboard, requiresAuth: true });
 
     // Webpage editor buttons for each restaurant
     if (managerRestaurants.length === 1) {
       // Single restaurant - just one button
       const restaurant = managerRestaurants[0];
-      navStructure.push({ type: 'link', id: `restaurant-${restaurant.slug}-editor`, label: 'Webpage editor', href: `restaurant.html?slug=${encodeURIComponent(restaurant.slug)}&edit=1`, requiresAuth: true });
+      navStructure.push({ type: 'link', id: `restaurant-${restaurant.slug}-editor`, label: 'Webpage editor', href: ROUTES.restaurantEditor(restaurant.slug), requiresAuth: true });
     } else if (managerRestaurants.length > 1) {
       // Multiple restaurants - dropdown with restaurant names
       navStructure.push({
@@ -326,7 +411,7 @@ export function setupNav(currentPage, user = null, options = {}) {
         items: managerRestaurants.map(restaurant => ({
           id: `restaurant-${restaurant.slug}-editor`,
           label: restaurant.name,
-          href: `restaurant.html?slug=${encodeURIComponent(restaurant.slug)}&edit=1`,
+          href: ROUTES.restaurantEditor(restaurant.slug),
           requiresAuth: true
         }))
       });
@@ -337,59 +422,59 @@ export function setupNav(currentPage, user = null, options = {}) {
       type: 'group',
       label: 'Tablet pages',
       items: [
-        { id: 'server-tablet', label: 'Server tablet', href: 'server-tablet.html', requiresAuth: true },
-        { id: 'kitchen-tablet', label: 'Kitchen tablet', href: 'kitchen-tablet.html', requiresAuth: true }
+        { id: 'server-tablet', label: 'Server tablet', href: ROUTES.serverTablet, requiresAuth: true },
+        { id: 'kitchen-tablet', label: 'Kitchen tablet', href: ROUTES.kitchenTablet, requiresAuth: true }
       ]
     });
 
     // Account settings
     navStructure.push(helpContactLink);
-    navStructure.push({ type: 'link', id: 'account', label: 'Account settings', href: 'account.html', requiresAuth: true });
+    navStructure.push({ type: 'link', id: 'account', label: 'Account settings', href: ROUTES.account, requiresAuth: true });
   } else if (isManager && !isEditorMode) {
     // Manager in CUSTOMER mode - show customer navigation
     navStructure = [
-      { type: 'link', id: 'home', label: 'Home', href: 'home.html' },
+      { type: 'link', id: 'home', label: 'Home', href: ROUTES.home },
       {
         type: 'group',
         label: 'By restaurant',
         items: [
-          { id: 'restaurants', label: 'All restaurants', href: 'restaurants.html', requiresAuth: true },
-          { id: 'favorites', label: 'My restaurants', href: 'favorites.html', requiresAuth: true }
+          { id: 'restaurants', label: 'All restaurants', href: ROUTES.restaurants, requiresAuth: true },
+          { id: 'favorites', label: 'My restaurants', href: ROUTES.favorites, requiresAuth: true }
         ]
       },
       {
         type: 'group',
         label: 'By dish',
         items: [
-          { id: 'dish-search', label: 'Dish search', href: 'dish-search.html', requiresAuth: true },
-          { id: 'my-dishes', label: 'My dishes', href: 'my-dishes.html', requiresAuth: true }
+          { id: 'dish-search', label: 'Dish search', href: ROUTES.dishSearch, requiresAuth: true },
+          { id: 'my-dishes', label: 'My dishes', href: ROUTES.myDishes, requiresAuth: true }
         ]
       },
       helpContactLink,
-      { type: 'link', id: 'account', label: 'Account settings', href: 'account.html' }
+      { type: 'link', id: 'account', label: 'Account settings', href: ROUTES.account }
     ];
   } else {
     // Regular user view (not logged in or regular customer)
     navStructure = [
-      { type: 'link', id: 'home', label: 'Home', href: 'home.html' },
+      { type: 'link', id: 'home', label: 'Home', href: ROUTES.home },
       {
         type: 'group',
         label: 'By restaurant',
         items: [
-          { id: 'restaurants', label: 'All restaurants', href: 'restaurants.html', requiresAuth: true },
-          { id: 'favorites', label: 'My restaurants', href: 'favorites.html', requiresAuth: true }
+          { id: 'restaurants', label: 'All restaurants', href: ROUTES.restaurants, requiresAuth: true },
+          { id: 'favorites', label: 'My restaurants', href: ROUTES.favorites, requiresAuth: true }
         ]
       },
       {
         type: 'group',
         label: 'By dish',
         items: [
-          { id: 'dish-search', label: 'Dish search', href: 'dish-search.html', requiresAuth: true },
-          { id: 'my-dishes', label: 'My dishes', href: 'my-dishes.html', requiresAuth: true }
+          { id: 'dish-search', label: 'Dish search', href: ROUTES.dishSearch, requiresAuth: true },
+          { id: 'my-dishes', label: 'My dishes', href: ROUTES.myDishes, requiresAuth: true }
         ]
       },
       helpContactLink,
-      { type: 'link', id: 'account', label: 'Account settings', href: 'account.html' }
+      { type: 'link', id: 'account', label: 'Account settings', href: ROUTES.account }
     ];
   }
 
@@ -435,6 +520,13 @@ export function setupNav(currentPage, user = null, options = {}) {
         if (currentPage === subItem.id) {
           link.classList.add('current-page');
         }
+        if (IS_EMBEDDED) {
+          link.target = '_top';
+          link.addEventListener('click', (event) => {
+            event.preventDefault();
+            navigateTo(subItem.href);
+          });
+        }
         dropdown.appendChild(link);
       });
 
@@ -449,8 +541,8 @@ export function setupNav(currentPage, user = null, options = {}) {
       const btn = document.createElement('button');
       btn.textContent = 'Sign in';
       btn.type = 'button';
-      btn.dataset.href = 'account.html';
-      btn.onclick = () => window.location.href = 'account.html';
+      btn.dataset.href = ROUTES.account;
+      btn.onclick = () => navigateTo(ROUTES.account);
       if (currentPage === 'account') {
         btn.classList.add('current-page');
       }
@@ -468,7 +560,7 @@ export function setupNav(currentPage, user = null, options = {}) {
     if (currentPage === item.id) {
       btn.classList.add('current-page');
     }
-    btn.onclick = () => window.location.href = item.href;
+    btn.onclick = () => navigateTo(item.href);
     navContainer.appendChild(btn);
   });
 
@@ -489,7 +581,7 @@ export function setupTopbar(currentPage, user = null, options = {}) {
   const {
     managerRestaurants = [],
     container = document.querySelector('.simple-topbar-inner'),
-    brandHref = 'home.html',
+    brandHref = ROUTES.home,
     onNavReady,
     modeToggle = {}
   } = options;
@@ -508,6 +600,9 @@ export function setupTopbar(currentPage, user = null, options = {}) {
   const brand = document.createElement('a');
   brand.className = 'simple-brand';
   brand.href = brandHref;
+  if (IS_EMBEDDED) {
+    brand.target = '_top';
+  }
   brand.innerHTML = '<img src="https://static.wixstatic.com/media/945e9d_2b97098295d341d493e4a07d80d6b57c~mv2.png" alt="Clarivore logo"><span>Clarivore</span>';
   container.appendChild(brand);
 
@@ -525,8 +620,8 @@ export function setupTopbar(currentPage, user = null, options = {}) {
     enabled = true,
     resolveTarget,
     navigate,
-    editorTarget = 'manager-dashboard.html',
-    customerTarget = 'home.html'
+    editorTarget = ROUTES.managerDashboard,
+    customerTarget = ROUTES.home
   } = modeToggle;
 
   const { isManagerOrOwner } = getUserFlags(user);
@@ -559,7 +654,11 @@ export function setupTopbar(currentPage, user = null, options = {}) {
           ? navigate
           : (mode, href) => {
               localStorage.setItem('clarivoreManagerMode', mode);
-              window.location.href = href;
+              if (IS_EMBEDDED && window.top) {
+                window.top.location.href = href;
+              } else {
+                window.location.href = href;
+              }
             };
 
       if (target) {

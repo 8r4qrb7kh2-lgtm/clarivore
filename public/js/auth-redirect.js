@@ -39,6 +39,27 @@
     );
   }
 
+  function isEmbedded() {
+    try {
+      return window.self !== window.top;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function getIndexRoute() {
+    return '/index.html';
+  }
+
+  function navigateToIndex() {
+    const target = getIndexRoute();
+    if (isEmbedded() && window.top) {
+      window.top.location.replace(target);
+    } else {
+      window.location.replace(target);
+    }
+  }
+
   async function exchangeNativeOAuth(url) {
     if (!url || !window.supabaseClient) return;
     if (!url.startsWith('com.clarivore.app://')) return;
@@ -132,15 +153,19 @@
     await checkLaunchUrl();
     // Get current page
     const currentPath = window.location.pathname;
-    const currentPage = currentPath.split('/').pop() || 'index.html';
+    const currentPage = currentPath.split('/').filter(Boolean).pop() || '';
     const urlParams = new URLSearchParams(window.location.search);
     const isQRUser = urlParams.get('qr') === '1';
     const isLandingPage =
-      currentPage === 'index.html' || currentPage === '' || currentPage === '/';
+      currentPage === '' ||
+      currentPage === '/' ||
+      currentPage === 'index.html' ||
+      currentPage === 'index';
 
     // Skip redirect for landing page, account page, and QR users
     if (isLandingPage ||
         currentPage === 'account.html' ||
+        currentPage === 'account' ||
         isQRUser) {
       return;
     }
@@ -151,13 +176,13 @@
 
       // If not logged in, redirect to landing page
       if (!user) {
-        window.location.replace('/index.html');
+        navigateToIndex();
         return;
       }
     } catch (error) {
       console.error('Auth redirect check error:', error);
       // On error, redirect to landing page to be safe
-      window.location.replace('/index.html');
+      navigateToIndex();
     }
   });
 })();
