@@ -1208,13 +1208,14 @@ export function initOrderFlow({
   </div>
     `
         : "";
+    const kitchenQuestion = getKitchenQuestion(order);
     const hasKitchenQuestion =
-      order.kitchenQuestion && !order.kitchenQuestion.response;
+      kitchenQuestion && !kitchenQuestion.response;
     const kitchenQuestionHtml = hasKitchenQuestion
       ? `
   <div class="orderSidebarKitchenQuestion">
     <div class="orderSidebarKitchenQuestionLabel">Kitchen Question</div>
-    <div class="orderSidebarKitchenQuestionText">${esc(order.kitchenQuestion.text)}</div>
+    <div class="orderSidebarKitchenQuestionText">${esc(kitchenQuestion.text)}</div>
     <div class="orderSidebarKitchenQuestionActions">
       <button type="button" class="orderSidebarQuestionBtn orderSidebarQuestionYes" data-order-id="${escapeAttribute(order.id)}" data-response="yes">Yes</button>
       <button type="button" class="orderSidebarQuestionBtn orderSidebarQuestionNo" data-order-id="${escapeAttribute(order.id)}" data-response="no">No</button>
@@ -1274,7 +1275,7 @@ export function initOrderFlow({
     ${cartItems
       .map(
         (itemName) => `
-      <div class="orderItem">
+      <div class="orderItem" data-dish-name="${escapeAttribute(itemName)}">
         <button type="button" class="orderItemSelect${isOrderItemSelected(itemName) ? " is-selected" : ""}" data-dish-name="${escapeAttribute(itemName)}" aria-pressed="${isOrderItemSelected(itemName) ? "true" : "false"}" aria-label="Select ${escapeAttribute(itemName)}"></button>
         <div style="flex:1">
           <div class="orderItemName">${esc(itemName)}</div>
@@ -1858,7 +1859,7 @@ export function initOrderFlow({
     try {
       if (action === "acknowledge") {
         const chefId = tabletSimState.chefs[0]?.id || null;
-        if (!chefId) throw new Error("No FaceID-enrolled chefs found.");
+        if (!chefId) throw new Error("No chefs available.");
         tabletKitchenAcknowledge(tabletSimState, orderId, chefId);
       } else if (action === "message") {
         const text = await showTextPrompt({
@@ -1993,7 +1994,14 @@ export function initOrderFlow({
     if (!orderId || !response || !["yes", "no"].includes(response)) return;
     try {
       const order = getTabletOrderById(orderId);
-      if (!order || !order.kitchenQuestion) return;
+      if (!order) return;
+      if (!order.kitchenQuestion) {
+        const derivedQuestion = getKitchenQuestion(order);
+        if (derivedQuestion) {
+          order.kitchenQuestion = derivedQuestion;
+        }
+      }
+      if (!order.kitchenQuestion) return;
       tabletUserRespondToQuestion(tabletSimState, orderId, response);
       const restaurantId = state.restaurant?._id || state.restaurant?.id || null;
       if (restaurantId) {
@@ -2234,6 +2242,32 @@ export function initOrderFlow({
         return candidate === target;
       }) || null
     );
+  }
+
+  function deriveKitchenQuestionFromHistory(order) {
+    const history = Array.isArray(order?.history) ? order.history : [];
+    for (let i = history.length - 1; i >= 0; i -= 1) {
+      const entry = history[i];
+      if (!entry?.message) continue;
+      const actor = String(entry.actor || "").toLowerCase();
+      if (actor && actor !== "kitchen") continue;
+      const match = String(entry.message).match(
+        /Sent a yes\/no question:\\s*\"([^\"]+)\"/i,
+      );
+      if (match && match[1]) {
+        return {
+          text: match[1],
+          response: null,
+          askedAt: entry.at || null,
+        };
+      }
+    }
+    return null;
+  }
+
+  function getKitchenQuestion(order) {
+    if (order?.kitchenQuestion) return order.kitchenQuestion;
+    return deriveKitchenQuestionFromHistory(order);
   }
 
   function renderCompatibilityList(messages, extraClass) {
@@ -2986,11 +3020,7 @@ export function initOrderFlow({
     container.querySelectorAll(".orderItemSelect").forEach((btn) => {
       if (btn.__selectionBound) return;
       btn.__selectionBound = true;
-      btn.addEventListener("click", (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        const dishName = btn.getAttribute("data-dish-name");
-        if (!dishName) return;
+      const applySelectionState = (dishName) => {
         toggleOrderItemSelection(dishName);
         const isSelected = isOrderItemSelected(dishName);
         btn.classList.toggle("is-selected", isSelected);
@@ -2999,7 +3029,27 @@ export function initOrderFlow({
           "aria-label",
           `${isSelected ? "Deselect" : "Select"} ${dishName}`,
         );
+      };
+      btn.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const dishName = btn.getAttribute("data-dish-name");
+        if (!dishName) return;
+        applySelectionState(dishName);
       });
+      const row = btn.closest(".orderItem");
+      if (row && !row.__rowSelectionBound) {
+        row.__rowSelectionBound = true;
+        row.addEventListener("click", (e) => {
+          if (e.target.closest(".orderItemRemove")) return;
+          if (e.target.closest(".orderItemSelect")) return;
+          const dishName =
+            row.getAttribute("data-dish-name") ||
+            btn.getAttribute("data-dish-name");
+          if (!dishName) return;
+          applySelectionState(dishName);
+        });
+      }
     });
   }
 
@@ -3039,7 +3089,7 @@ export function initOrderFlow({
         .map(
           (dishName) => `
     <div class="orderSidebarCard">
-      <div class="orderItem">
+      <div class="orderItem" data-dish-name="${escapeAttribute(dishName)}">
         <button type="button" class="orderItemSelect${isOrderItemSelected(dishName) ? " is-selected" : ""}" data-dish-name="${escapeAttribute(dishName)}" aria-pressed="${isOrderItemSelected(dishName) ? "true" : "false"}" aria-label="Select ${escapeAttribute(dishName)}"></button>
         <div style="flex:1">
           <div class="orderItemName">${esc(dishName)}</div>

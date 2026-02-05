@@ -162,7 +162,7 @@ export function kitchenAcknowledge(state, orderId, chefId) {
   }
   const chef = state.chefs.find(c => c.id === chefId);
   if (!chef) {
-    throw new Error('Selected chef is not FaceID enrolled.');
+    throw new Error('Selected chef is not available.');
   }
   order.status = ORDER_STATUSES.ACKNOWLEDGED;
   const timestamp = new Date().toISOString();
@@ -172,7 +172,7 @@ export function kitchenAcknowledge(state, orderId, chefId) {
     faceIdTag: chef.faceIdTag,
     at: timestamp
   });
-  pushHistory(order, 'Kitchen', `Chef ${chef.name} acknowledged allergies with FaceID scan.`);
+  pushHistory(order, 'Kitchen', `Chef ${chef.name} acknowledged the notice.`);
   order.updatedAt = timestamp;
   return order;
 }

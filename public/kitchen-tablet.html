@@ -91,6 +91,24 @@
       margin-top: 4px;
     }
 
+    .kitchen-action-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin: 8px 0 16px;
+    }
+
+    .question-inline {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      align-items: baseline;
+    }
+
+    .question-inline strong {
+      color: #fff;
+    }
+
     /* Status badges */
     .status-badge {
       display: inline-flex;
@@ -428,7 +446,7 @@
           style="display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 12px;">
           <div>
             <h1>Kitchen monitor</h1>
-            <p class="muted-text">Face verification and follow-ups for active allergy notices.</p>
+            <p class="muted-text">Acknowledgements and follow-ups for active allergy notices.</p>
           </div>
           <button id="refresh-btn" type="button" class="secondary-btn" style="white-space: nowrap;">
             Refresh orders

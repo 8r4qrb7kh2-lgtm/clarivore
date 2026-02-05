@@ -29,10 +29,10 @@ const promptCancel = document.getElementById('kitchenPromptCancel');
 const promptConfirm = document.getElementById('kitchenPromptConfirm');
 
 const STATUS_DESCRIPTORS = {
-  [ORDER_STATUSES.WITH_KITCHEN]: { label: 'Awaiting FaceID', tone: 'warn' },
+  [ORDER_STATUSES.WITH_KITCHEN]: { label: 'Awaiting acknowledgement', tone: 'warn' },
   [ORDER_STATUSES.ACKNOWLEDGED]: { label: 'Acknowledged', tone: 'success' },
   [ORDER_STATUSES.AWAITING_USER_RESPONSE]: { label: 'Waiting on diner', tone: 'warn' },
-  [ORDER_STATUSES.QUESTION_ANSWERED]: { label: 'Awaiting FaceID', tone: 'warn' },
+  [ORDER_STATUSES.QUESTION_ANSWERED]: { label: 'Awaiting acknowledgement', tone: 'warn' },
   [ORDER_STATUSES.RESCINDED_BY_DINER]: { label: 'Rescinded by diner', tone: 'muted' },
   [ORDER_STATUSES.REJECTED_BY_KITCHEN]: { label: 'Rejected by kitchen', tone: 'danger' }
 };
@@ -200,74 +200,54 @@ function renderKitchenQueue() {
       const tableLabel = order.tableNumber ? `Table ${order.tableNumber}` : 'Table —';
       const firstName = getFirstName(order.customerName);
 
-      const chefOptions = tabletState.chefs
-        .map((chef) => `<option value="${chef.id}">${chef.name} • ${chef.role}</option>`)
-        .join('');
-
-      let faceIdControls = '';
+      const actionButtons = [];
       if (order.status === ORDER_STATUSES.RESCINDED_BY_DINER) {
-        faceIdControls = `
-          <div class="hardware-buttons">
-            <button type="button" class="secondary-btn" disabled>
-              Rescinded by diner
-            </button>
-          </div>
-        `;
+        actionButtons.push(`
+          <button type="button" class="secondary-btn" disabled>
+            Rescinded by diner
+          </button>
+        `);
       } else if (order.status === ORDER_STATUSES.REJECTED_BY_KITCHEN) {
-        faceIdControls = `
-          <div class="hardware-buttons">
-            <button type="button" class="secondary-btn" disabled>
-              Rejected by kitchen
-            </button>
-          </div>
-        `;
+        actionButtons.push(`
+          <button type="button" class="secondary-btn" disabled>
+            Rejected by kitchen
+          </button>
+        `);
       } else if ([ORDER_STATUSES.WITH_KITCHEN, ORDER_STATUSES.QUESTION_ANSWERED].includes(order.status)) {
-        faceIdControls = `
-          <div class="hardware-buttons" data-role="faceid-controls">
-            <label style="display:flex;flex-direction:column;gap:6px;">
-              <span class="kitchen-meta">Chef on duty</span>
-              <select data-role="chef-select">
-                ${chefOptions}
-              </select>
-            </label>
-            <button type="button" class="primary-btn" data-action="acknowledge" data-order-id="${order.id}">
-              Acknowledge &amp; FaceID
-            </button>
-          </div>
-        `;
+        actionButtons.push(`
+          <button type="button" class="primary-btn" data-action="acknowledge" data-order-id="${order.id}">
+            Acknowledge notice
+          </button>
+        `);
       } else if (order.status === ORDER_STATUSES.ACKNOWLEDGED) {
-        faceIdControls = `
-          <div class="hardware-buttons">
-            <button type="button" class="secondary-btn" disabled>
-              Acknowledged
-            </button>
-          </div>
-        `;
+        actionButtons.push(`
+          <button type="button" class="secondary-btn" disabled>
+            Acknowledged
+          </button>
+        `);
       } else {
-        faceIdControls = `
-          <div class="hardware-buttons">
-            <button type="button" class="secondary-btn" disabled>
-              Waiting on diner
-            </button>
-          </div>
-        `;
+        actionButtons.push(`
+          <button type="button" class="secondary-btn" disabled>
+            Waiting on diner
+          </button>
+        `);
       }
 
-      let questionControls = '';
-      if (order.status === ORDER_STATUSES.RESCINDED_BY_DINER || order.status === ORDER_STATUSES.REJECTED_BY_KITCHEN) {
-        questionControls = '';
-      } else if ([ORDER_STATUSES.WITH_KITCHEN, ORDER_STATUSES.ACKNOWLEDGED, ORDER_STATUSES.QUESTION_ANSWERED].includes(order.status)) {
-        questionControls = `
-          <div class="hardware-buttons">
+      let questionButton = '';
+      let questionCard = '';
+      if (order.status !== ORDER_STATUSES.RESCINDED_BY_DINER && order.status !== ORDER_STATUSES.REJECTED_BY_KITCHEN) {
+        if ([ORDER_STATUSES.WITH_KITCHEN, ORDER_STATUSES.ACKNOWLEDGED, ORDER_STATUSES.QUESTION_ANSWERED].includes(order.status)) {
+          questionButton = `
             <button type="button" class="secondary-btn" data-action="question" data-order-id="${order.id}">
               Send follow-up question
             </button>
-          </div>
-        `;
+          `;
+        }
         if (order.kitchenQuestion) {
-          questionControls += `
+          const label = questionButton ? 'Previous follow-up:' : 'Follow-up:';
+          questionCard = `
             <div class="question-card">
-              <strong>Previous follow-up:</strong> ${order.kitchenQuestion.text}<br>
+              <div class="question-inline"><strong>${label}</strong><span>${order.kitchenQuestion.text}</span></div>
               <span class="kitchen-meta">
                 ${order.kitchenQuestion.response
               ? `Diner responded ${order.kitchenQuestion.response.toUpperCase()}`
@@ -276,29 +256,26 @@ function renderKitchenQueue() {
             </div>
           `;
         }
-      } else if (order.kitchenQuestion) {
-        questionControls = `
-          <div class="question-card">
-            <strong>Follow-up:</strong> ${order.kitchenQuestion.text}<br>
-            <span class="kitchen-meta">
-              ${order.kitchenQuestion.response
-            ? `Diner responded ${order.kitchenQuestion.response.toUpperCase()}`
-            : 'Awaiting diner response'}
-            </span>
-          </div>
-        `;
       }
 
       let rejectControls = '';
       if (order.status !== ORDER_STATUSES.RESCINDED_BY_DINER && order.status !== ORDER_STATUSES.REJECTED_BY_KITCHEN) {
         rejectControls = `
-          <div class="hardware-buttons">
-            <button type="button" class="danger-btn" data-action="reject" data-order-id="${order.id}">
-              Reject order
-            </button>
-          </div>
+          <button type="button" class="danger-btn" data-action="reject" data-order-id="${order.id}">
+            Reject order
+          </button>
         `;
       }
+
+      if (questionButton) {
+        actionButtons.push(questionButton);
+      }
+      if (rejectControls) {
+        actionButtons.push(rejectControls);
+      }
+      const actionRow = actionButtons.length
+        ? `<div class="kitchen-action-row">${actionButtons.join('')}</div>`
+        : '';
 
       let faceIdLog = '';
       if (Array.isArray(order.faceIdAudit) && order.faceIdAudit.length) {
@@ -307,7 +284,7 @@ function renderKitchenQueue() {
           .join('');
         faceIdLog = `
           <div class="faceid-log">
-            <strong>FaceID acknowledgements</strong>
+            <strong>Acknowledgements</strong>
             <ul>${items}</ul>
           </div>
         `;
@@ -332,9 +309,8 @@ function renderKitchenQueue() {
             </div>
             ${formatStatusBadge(order)}
           </header>
-          ${faceIdControls}
-          ${questionControls}
-          ${rejectControls}
+          ${actionRow}
+          ${questionCard}
           ${updatesHtml}
           ${faceIdLog}
         </article>
@@ -431,33 +407,15 @@ function stopAutoRefresh() {
 }
 
 async function handleAcknowledge(order, card) {
-  console.log('[kitchen-tablet] handleAcknowledge called', { orderId: order.id, card });
-  const select = card.querySelector('[data-role="chef-select"]');
-  console.log('[kitchen-tablet] chef select element:', select);
-  let chefId = select?.value;
-  console.log('[kitchen-tablet] selected chef ID:', chefId);
+  const chefId = tabletState.chefs?.[0]?.id || null;
   if (!chefId) {
-    // Fallback: if no chef selected, use the first available chef
-    if (tabletState.chefs && tabletState.chefs.length > 0) {
-      const fallbackChef = tabletState.chefs[0];
-      console.warn('[kitchen-tablet] No chef selected, falling back to first chef:', fallbackChef.id);
-      chefId = fallbackChef.id;
-      if (select) {
-        select.value = chefId; // update UI select
-      }
-    } else {
-      console.error('[kitchen-tablet] No chef selected and no chefs available');
-      alert('Select the chef acknowledging the notice.');
-      return;
-    }
+    alert('No chefs available.');
+    return;
   }
   try {
-    console.log('[kitchen-tablet] Calling kitchenAcknowledge');
     kitchenAcknowledge({ orders: tabletState.orders, chefs: tabletState.chefs }, order.id, chefId);
-    console.log('[kitchen-tablet] Saving order');
     await saveTabletOrder(order, { restaurantId: order.restaurantId });
     notifyDinerNotice({ orderId: order.id, client: supabaseClient });
-    console.log('[kitchen-tablet] Re-rendering queue');
     renderKitchenQueue();
   } catch (error) {
     console.error('[kitchen-tablet] acknowledge failed', error);
@@ -498,8 +456,18 @@ async function handleReject(order) {
   });
   if (reason === null) return;
   try {
-    kitchenReject({ orders: tabletState.orders, chefs: tabletState.chefs }, order.id, reason);
-    await saveTabletOrder(order, { restaurantId: order.restaurantId });
+    await refreshOrders();
+    const latestOrder = findOrder(order.id) || order;
+    if (!latestOrder) {
+      alert('Order not found.');
+      return;
+    }
+    kitchenReject({ orders: tabletState.orders, chefs: tabletState.chefs }, latestOrder.id, reason);
+    const restaurantId = latestOrder.restaurantId || order.restaurantId || null;
+    if (!restaurantId) {
+      throw new Error('Missing restaurant ID for this order.');
+    }
+    await saveTabletOrder(latestOrder, { restaurantId });
     notifyDinerNotice({ orderId: order.id, client: supabaseClient });
     renderKitchenQueue();
   } catch (error) {
