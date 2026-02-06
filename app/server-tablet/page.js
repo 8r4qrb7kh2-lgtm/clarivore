@@ -1,5 +1,18 @@
-import LegacyFrame from "../legacy/LegacyFrame";
+import { Suspense } from "react";
+import ServerTabletClient from "./ServerTabletClient";
 
 export default function ServerTabletPage() {
-  return <LegacyFrame title="Clarivore Server Monitor" path="/server-tablet.html" />;
+  return (
+    <Suspense
+      fallback={
+        <div className="page-shell" style={{ padding: "40px" }}>
+          <p style={{ color: "var(--muted)", textAlign: "center" }}>
+            Loading server tablet...
+          </p>
+        </div>
+      }
+    >
+      <ServerTabletClient />
+    </Suspense>
+  );
 }

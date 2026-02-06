@@ -57,13 +57,7 @@ const ROUTES = {
   managerDashboard: route('/manager-dashboard', 'manager-dashboard.html'),
   serverTablet: route('/server-tablet', 'server-tablet.html'),
   kitchenTablet: route('/kitchen-tablet', 'kitchen-tablet.html'),
-  admin: route('/admin', 'admin.html'),
   adminDashboard: route('/admin-dashboard', 'admin-dashboard.html'),
-  adminInvites: route('/admin-invites', 'admin-invites.html'),
-  adminRestaurantView: route(
-    '/admin-restaurant-view',
-    'admin-restaurant-view.html',
-  ),
 };
 
 function getUserFlags(user) {

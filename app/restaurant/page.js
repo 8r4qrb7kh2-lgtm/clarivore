@@ -1,5 +1,18 @@
-import LegacyFrame from "../legacy/LegacyFrame";
+import { Suspense } from "react";
+import RestaurantClient from "./RestaurantClient";
 
-export default function RestaurantLegacyPage() {
-  return <LegacyFrame title="Clarivore Dish Editor" path="/restaurant.html" />;
+export default function RestaurantPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="page-shell" style={{ padding: "40px" }}>
+          <p style={{ color: "var(--muted)", textAlign: "center" }}>
+            Loading restaurant...
+          </p>
+        </div>
+      }
+    >
+      <RestaurantClient />
+    </Suspense>
+  );
 }

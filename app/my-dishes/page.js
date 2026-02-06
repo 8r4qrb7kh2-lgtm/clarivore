@@ -1,5 +1,18 @@
-import LegacyFrame from "../legacy/LegacyFrame";
+import { Suspense } from "react";
+import MyDishesClient from "./MyDishesClient";
 
 export default function MyDishesLegacyPage() {
-  return <LegacyFrame title="Clarivore My Dishes" path="/my-dishes.html" />;
+  return (
+    <Suspense
+      fallback={
+        <div className="page-shell" style={{ padding: "40px" }}>
+          <p style={{ color: "var(--muted)", textAlign: "center" }}>
+            Loading my dishes...
+          </p>
+        </div>
+      }
+    >
+      <MyDishesClient />
+    </Suspense>
+  );
 }
