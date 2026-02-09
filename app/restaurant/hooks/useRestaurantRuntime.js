@@ -21,7 +21,6 @@ export function useRestaurantRuntime({ slug, isQrVisit, inviteToken }) {
 
   useEffect(() => {
     let cancelled = false;
-    const loadedScripts = [];
     let lockRef = null;
 
     async function boot() {
@@ -38,7 +37,7 @@ export function useRestaurantRuntime({ slug, isQrVisit, inviteToken }) {
         initRestaurantBootGlobals(supabase);
 
         setStatus("Loading page dependencies...");
-        loadedScripts.push(...(await loadRestaurantDependencies()));
+        await loadRestaurantDependencies();
 
         setStatus("Loading restaurant data...");
         const result = await buildRestaurantBootPayload({
@@ -63,7 +62,7 @@ export function useRestaurantRuntime({ slug, isQrVisit, inviteToken }) {
         dispatchRestaurantBootPayload(result.payload);
 
         setStatus("Starting restaurant app...");
-        loadedScripts.push(await loadRestaurantRuntimeModule());
+        await loadRestaurantRuntimeModule();
 
         if (!cancelled) {
           setStatus("");
@@ -81,7 +80,6 @@ export function useRestaurantRuntime({ slug, isQrVisit, inviteToken }) {
 
     return () => {
       cancelled = true;
-      loadedScripts.forEach((node) => node.remove());
       if (lockRef && typeof lockRef.release === "function") {
         lockRef.release().catch(() => {});
       }

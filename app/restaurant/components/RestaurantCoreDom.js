@@ -1,4 +1,6 @@
 import RestaurantEditorShellTemplate from "./RestaurantEditorShellTemplate";
+import RestaurantShellTemplate from "./RestaurantShellTemplate";
+import RestaurantReportShellTemplate from "./RestaurantReportShellTemplate";
 
 export default function RestaurantCoreDom({ managerDashboardHref }) {
   return (
@@ -333,7 +335,9 @@ export default function RestaurantCoreDom({ managerDashboardHref }) {
         <div className="zoomedDishActions" id="zoomedDishActions" />
       </div>
 
+      <RestaurantShellTemplate />
       <RestaurantEditorShellTemplate />
+      <RestaurantReportShellTemplate />
     </>
   );
 }
