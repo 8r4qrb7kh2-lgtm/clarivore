@@ -1,7 +1,4 @@
     import supabaseClient from './supabase-client.js';
-    import { setupTopbar } from './shared-nav.js';
-    import { fetchManagerRestaurants } from './manager-context.js';
-    import { initManagerNotifications } from './manager-notifications.js';
     import { notifyManagerChat } from './chat-notifications.js';
 
     const allergenConfig = window.loadAllergenDietConfig
@@ -117,15 +114,18 @@
             ? preloadedBoot.isManager
             : user.user_metadata?.role === 'manager';
 
-        // Fetch manager restaurants for navigation
         let navRestaurants = Array.isArray(preloadedBoot?.managerRestaurants)
           ? preloadedBoot.managerRestaurants
           : [];
         if (!navRestaurants.length && (isManager || isOwner)) {
+          const { fetchManagerRestaurants } = await import('./manager-context.js');
           navRestaurants = await fetchManagerRestaurants(supabaseClient, user.id);
         }
 
-        const currentMode = localStorage.getItem('clarivoreManagerMode') || 'editor';
+        const currentMode =
+          typeof preloadedBoot?.currentMode === 'string'
+            ? preloadedBoot.currentMode
+            : localStorage.getItem('clarivoreManagerMode') || 'editor';
         if ((isManager || isOwner) && currentMode !== 'editor') {
           if (window.top && window.self !== window.top) {
             window.top.location.href = '/home';
@@ -135,8 +135,12 @@
           return;
         }
 
-        setupTopbar('home', user, { managerRestaurants: navRestaurants });
-        if (isManager || isOwner) {
+        if (!preloadedBoot?.topbarSetupDone) {
+          const { setupTopbar } = await import('./shared-nav.js');
+          setupTopbar('home', user, { managerRestaurants: navRestaurants });
+        }
+        if ((isManager || isOwner) && !preloadedBoot?.managerNotificationsReady) {
+          const { initManagerNotifications } = await import('./manager-notifications.js');
           initManagerNotifications({ user: currentUser, client: supabaseClient });
         }
 

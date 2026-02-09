@@ -25,6 +25,48 @@ export default function ManagerDashboardClient() {
 
   const beforeModuleLoad = useCallback(async () => {
     const bootPayload = await prepareManagerDashboardBootPayload();
+    const hasManagerAccess = Boolean(bootPayload.isOwner || bootPayload.isManager);
+
+    if (hasManagerAccess) {
+      bootPayload.currentMode =
+        localStorage.getItem("clarivoreManagerMode") || "editor";
+    } else {
+      bootPayload.currentMode = null;
+    }
+
+    if (bootPayload.user) {
+      const [{ setupTopbar }, { initManagerNotifications }] = await Promise.all([
+        import(
+          /* webpackIgnore: true */
+          "/js/shared-nav.js"
+        ),
+        hasManagerAccess
+          ? import(
+              /* webpackIgnore: true */
+              "/js/manager-notifications.js"
+            )
+          : Promise.resolve({ initManagerNotifications: null }),
+      ]);
+
+      setupTopbar("home", bootPayload.user, {
+        managerRestaurants: bootPayload.managerRestaurants || [],
+      });
+      bootPayload.topbarSetupDone = true;
+
+      if (hasManagerAccess && typeof initManagerNotifications === "function") {
+        initManagerNotifications({
+          user: bootPayload.user,
+          client: window.supabaseClient,
+        });
+        bootPayload.managerNotificationsReady = true;
+      } else {
+        bootPayload.managerNotificationsReady = false;
+      }
+    } else {
+      bootPayload.topbarSetupDone = false;
+      bootPayload.managerNotificationsReady = false;
+    }
+
     window.__managerDashboardBootPayload = bootPayload;
   }, []);
 
