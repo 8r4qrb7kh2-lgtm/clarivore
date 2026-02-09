@@ -1,11 +1,21 @@
 "use client";
 
-import { useLegacyTabletRuntime } from "../tablet-runtime/useLegacyTabletRuntime";
+import { useMemo } from "react";
+import { useModuleRuntime } from "../runtime/useModuleRuntime";
 import ServerTabletDom from "./components/ServerTabletDom";
 
 export default function ServerTabletClient() {
-  const { error } = useLegacyTabletRuntime({
-    moduleSrc: "/js/server-tablet.js",
+  const externalScripts = useMemo(
+    () => [
+      { src: "/js/auth-redirect.js", defer: true },
+    ],
+    [],
+  );
+  const moduleScripts = useMemo(() => ["/js/server-tablet.js"], []);
+
+  const { error } = useModuleRuntime({
+    externalScripts,
+    moduleScripts,
   });
 
   return (
@@ -22,4 +32,3 @@ export default function ServerTabletClient() {
     </>
   );
 }
-

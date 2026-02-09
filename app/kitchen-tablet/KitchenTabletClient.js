@@ -1,11 +1,21 @@
 "use client";
 
-import { useLegacyTabletRuntime } from "../tablet-runtime/useLegacyTabletRuntime";
+import { useMemo } from "react";
+import { useModuleRuntime } from "../runtime/useModuleRuntime";
 import KitchenTabletDom from "./components/KitchenTabletDom";
 
 export default function KitchenTabletClient() {
-  const { error } = useLegacyTabletRuntime({
-    moduleSrc: "/js/kitchen-tablet.js",
+  const externalScripts = useMemo(
+    () => [
+      { src: "/js/auth-redirect.js", defer: true },
+    ],
+    [],
+  );
+  const moduleScripts = useMemo(() => ["/js/kitchen-tablet.js"], []);
+
+  const { error } = useModuleRuntime({
+    externalScripts,
+    moduleScripts,
   });
 
   return (
@@ -22,4 +32,3 @@ export default function KitchenTabletClient() {
     </>
   );
 }
-

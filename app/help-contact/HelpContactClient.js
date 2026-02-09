@@ -1,20 +1,19 @@
 "use client";
 
 import { useMemo } from "react";
-import { useLegacyRuntime } from "../legacy-runtime/useLegacyRuntime";
+import { useModuleRuntime } from "../runtime/useModuleRuntime";
 import HelpContactDom from "./components/HelpContactDom";
 
 export default function HelpContactClient() {
-  const scripts = useMemo(
+  const externalScripts = useMemo(
     () => [
-      { src: "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" },
       { src: "/js/auth-redirect.js", defer: true },
-      { src: "/js/help-contact-page.js", type: "module" },
     ],
     [],
   );
+  const moduleScripts = useMemo(() => ["/js/help-contact-page.js"], []);
 
-  const { error } = useLegacyRuntime({ scripts });
+  const { error } = useModuleRuntime({ externalScripts, moduleScripts });
 
   return (
     <>

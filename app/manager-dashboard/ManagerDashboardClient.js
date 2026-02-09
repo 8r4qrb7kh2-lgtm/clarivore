@@ -1,24 +1,28 @@
 "use client";
 
 import { useMemo } from "react";
-import { useLegacyRuntime } from "../legacy-runtime/useLegacyRuntime";
+import { useModuleRuntime } from "../runtime/useModuleRuntime";
 import ManagerDashboardDom from "./components/ManagerDashboardDom";
 
 export default function ManagerDashboardClient() {
-  const scripts = useMemo(
+  const externalScripts = useMemo(
     () => [
       { src: "https://docs.opencv.org/4.5.2/opencv.js" },
-      { src: "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" },
       { src: "/js/auth-redirect.js", defer: true },
       { src: "/js/allergen-diet-config.js" },
-      { src: "/js/ingredient-label-capture.js", type: "module" },
-      { src: "/js/manager-dashboard.js", type: "module" },
-      { src: "/js/report-modal.js", type: "module" },
+    ],
+    [],
+  );
+  const moduleScripts = useMemo(
+    () => [
+      "/js/ingredient-label-capture.js",
+      "/js/manager-dashboard.js",
+      "/js/report-modal.js",
     ],
     [],
   );
 
-  const { error } = useLegacyRuntime({ scripts });
+  const { error } = useModuleRuntime({ externalScripts, moduleScripts });
 
   return (
     <>
@@ -34,4 +38,3 @@ export default function ManagerDashboardClient() {
     </>
   );
 }
-
