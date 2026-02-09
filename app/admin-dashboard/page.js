@@ -1,5 +1,18 @@
-import LegacyFrame from "../legacy/LegacyFrame";
+import { Suspense } from "react";
+import AdminDashboardClient from "./AdminDashboardClient";
 
-export default function AdminDashboardLegacyPage() {
-  return <LegacyFrame title="Clarivore Admin Dashboard" path="/admin-dashboard.html" />;
+export default function AdminDashboardPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="page-shell" style={{ padding: "40px" }}>
+          <p style={{ color: "var(--muted)", textAlign: "center" }}>
+            Loading admin dashboard...
+          </p>
+        </div>
+      }
+    >
+      <AdminDashboardClient />
+    </Suspense>
+  );
 }
