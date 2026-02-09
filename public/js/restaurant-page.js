@@ -89,13 +89,19 @@ import {
   insertChangeLogEntry,
 } from "./restaurant/change-log-service.js";
 import { createStandaloneMessageDispatcher } from "./restaurant/standalone-message-dispatcher.js";
-import { createTooltipBodyHTML } from "./restaurant/dish-compatibility-tooltip.js";
+import {
+  createDishCompatibilityEvaluator,
+  createTooltipBodyHTML,
+} from "./restaurant/dish-compatibility-tooltip.js";
 import { normalizeRestaurantRow } from "./restaurant/restaurant-normalization.js";
 import {
   createMobileInfoHelpers,
   prefersMobileInfo,
 } from "./restaurant/mobile-info-helpers.js";
 import { createMobileInfoPanelRuntime } from "./restaurant/mobile-info-panel-runtime.js";
+import { createTooltipRuntime } from "./restaurant/tooltip-runtime.js";
+import { createMobileViewerRuntime } from "./restaurant/mobile-viewer-runtime.js";
+import { createMenuDrawRuntime } from "./restaurant/menu-draw-runtime.js";
 import {
   fmtDate,
   fmtDateTime,
@@ -213,16 +219,27 @@ let rootOffsetPadding = "0";
 
 let mobileInfoPanel = null;
 let currentMobileInfoItem = null;
-let mobileViewerChrome = null;
-let mobileZoomLevel = 1;
-let mobileViewerKeyHandler = null;
 let renderMobileInfo = () => {};
 let syncMobileInfoPanel = () => {};
+let captureMenuBaseDimensions = () => {};
+let ensureMobileViewerChrome = () => null;
+let updateZoomIndicator = () => {};
+let updateFullScreenAllergySummary = () => {};
+let setMobileZoom = () => {};
+let resetMobileZoom = () => {};
+let openMobileViewer = () => {};
+let closeMobileViewer = () => {};
+let getMobileZoomLevel = () => 1;
+let drawMenu = () => {};
 
 let zoomToOverlay = () => {};
 let zoomOutOverlay = () => {};
 let isOverlayZoomed = false;
 let zoomedOverlayItem = null;
+let showTipIn = () => {};
+let hideTip = () => {};
+let getTipPinned = () => false;
+let getPinnedOverlayItem = () => null;
 
 function ensureMobileInfoPanel() {
   if (mobileInfoPanel && mobileInfoPanel.isConnected) return mobileInfoPanel;
@@ -333,265 +350,14 @@ window.addEventListener("resize", () => {
   }
 });
 
-function captureMenuBaseDimensions(force = false) {
-  const state = getMenuState();
-  const img = state?.img;
-  if (!img) return;
-  if (force || !state.baseWidth) {
-    state.baseWidth = img.clientWidth || img.naturalWidth || img.width || 0;
-    state.baseHeight = img.clientHeight || img.naturalHeight || img.height || 0;
-  }
-}
-
-function ensureMobileViewerChrome() {
-  if (mobileViewerChrome && mobileViewerChrome.isConnected)
-    return mobileViewerChrome;
-  let chrome = document.getElementById("mobileViewerChrome");
-  if (!chrome) {
-    chrome = document.createElement("div");
-    chrome.id = "mobileViewerChrome";
-    chrome.innerHTML = `
-  <div class="chromeTop">
-    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;pointer-events:auto;">
-      <button type="button" class="mobileViewerControlBtn" id="mobileViewerCloseBtn">Close</button>
-      <div class="mobileZoomGroup">
-        <button type="button" id="mobileZoomOutBtn" aria-label="Zoom out">−</button>
-        <span id="mobileZoomValue">100%</span>
-        <button type="button" id="mobileZoomInBtn" aria-label="Zoom in">+</button>
-      </div>
-    </div>
-    <div class="mobileViewerSummary" id="mobileViewerAllergySummary" aria-live="polite"></div>
-  </div>`;
-    document.body.appendChild(chrome);
-  }
-  if (!chrome.style.display) chrome.style.display = "none";
-  if (!chrome.hasAttribute("aria-hidden"))
-    chrome.setAttribute("aria-hidden", "true");
-  mobileViewerChrome = chrome;
-  const closeBtn = chrome.querySelector("#mobileViewerCloseBtn");
-  const zoomOutBtn = chrome.querySelector("#mobileZoomOutBtn");
-  const zoomInBtn = chrome.querySelector("#mobileZoomInBtn");
-  if (closeBtn) closeBtn.onclick = () => closeMobileViewer();
-  if (zoomOutBtn)
-    zoomOutBtn.onclick = () => setMobileZoom(mobileZoomLevel - 0.25);
-  if (zoomInBtn)
-    zoomInBtn.onclick = () => setMobileZoom(mobileZoomLevel + 0.25);
-  updateFullScreenAllergySummary();
-  return mobileViewerChrome;
-}
-
-function updateZoomIndicator() {
-  const indicator = document.getElementById("mobileZoomValue");
-  if (indicator)
-    indicator.textContent = `${Math.round(mobileZoomLevel * 100)}%`;
-}
-
-function updateFullScreenAllergySummary() {
-  const summary = document.getElementById("mobileViewerAllergySummary");
-  if (!summary) return;
-  const uniqueKeys = Array.from(
-    new Set((state.allergies || []).map(normalizeAllergen).filter(Boolean)),
-  ).filter(Boolean);
-  const selectedDiets = state.diets || [];
-
-  let html = "";
-  if (uniqueKeys.length || selectedDiets.length) {
-    html = '<div class="mobileViewerSummaryInner">';
-
-    // Allergens with emoji badges
-    if (uniqueKeys.length) {
-      const allergenBadges = uniqueKeys
-        .map((a) => {
-          const emoji = ALLERGEN_EMOJI[a] || "🔴";
-          return `<span style="display:inline-flex;align-items:center;gap:3px;background:rgba(76,90,212,0.25);border:1px solid rgba(76,90,212,0.4);border-radius:999px;padding:3px 8px;font-size:0.8rem;white-space:nowrap;"><span>${emoji}</span><span>${esc(formatAllergenLabel(a))}</span></span>`;
-        })
-        .join("");
-      html += `<div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;"><span class="label">Allergens:</span>${allergenBadges}</div>`;
-    }
-
-    // Dietary preferences with emoji
-    if (selectedDiets.length) {
-      const dietBadges = selectedDiets
-        .map((d) => {
-          const emoji = DIET_EMOJI[d] || "🍽️";
-          return `<span style="display:inline-flex;align-items:center;gap:3px;background:rgba(34,197,94,0.15);border:1px solid rgba(34,197,94,0.4);border-radius:999px;padding:3px 8px;font-size:0.8rem;white-space:nowrap;"><span>${emoji}</span><span>${esc(d)}</span></span>`;
-        })
-        .join("");
-      html += `<div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin-top:${uniqueKeys.length ? "5px" : "0"}"><span class="label">Diets:</span>${dietBadges}</div>`;
-    }
-
-    html += "</div>";
-  } else {
-    html = `<div class="mobileViewerSummaryInner"><span class="values">No allergens or diets selected</span></div>`;
-  }
-  summary.innerHTML = html;
-}
-
-function setMobileZoom(level, resetBase = false) {
-  const state = getMenuState();
-  const img = state?.img;
-  if (!img) return;
-  if (resetBase) {
-    state.baseWidth = null;
-    state.baseHeight = null;
-  }
-  captureMenuBaseDimensions(resetBase);
-  if (!state.baseWidth) {
-    updateZoomIndicator();
-    return;
-  }
-  mobileZoomLevel = Math.min(Math.max(level, 1), 4);
-  const width = state.baseWidth * mobileZoomLevel;
-  const inner = state.inner;
-  const layer = state.layer;
-  img.style.width = width + "px";
-  if (inner) inner.style.width = width + "px";
-  if (layer) layer.style.width = width + "px";
-  requestAnimationFrame(() => {
-    if (window.__rerenderLayer__) window.__rerenderLayer__();
-    updateZoomIndicator();
-  });
-}
-
-function resetMobileZoom() {
-  const state = getMenuState();
-  mobileZoomLevel = 1;
-  const img = state?.img;
-  if (img) {
-    img.style.width = "";
-    if (state.inner) state.inner.style.width = "";
-    if (state.layer) state.layer.style.width = "";
-  }
-  requestAnimationFrame(() => {
-    if (window.__rerenderLayer__) window.__rerenderLayer__();
-    captureMenuBaseDimensions(true);
-    updateZoomIndicator();
-  });
-}
-
-function openMobileViewer() {
-  const chrome = ensureMobileViewerChrome();
-  if (chrome) {
-    chrome.style.display = "block";
-    chrome.setAttribute("aria-hidden", "false");
-  }
-  captureMenuBaseDimensions(true);
-  document.body.classList.add("mobileViewerActive");
-  updateFullScreenAllergySummary();
-  setMobileZoom(1, true);
-  if (prefersMobileInfo()) {
-    // Force re-render to update panel size for full-screen mode
-    // Use multiple timing approaches to ensure it updates
-    const updatePanel = () => {
-      if (currentMobileInfoItem && mobileInfoPanel) {
-        // Update positioning to full width for full-screen mode - use setProperty with important
-        mobileInfoPanel.style.setProperty("left", "0", "important");
-        mobileInfoPanel.style.setProperty("right", "0", "important");
-        mobileInfoPanel.style.setProperty("bottom", "0", "important");
-        // Force re-render to apply full width
-        renderMobileInfo(currentMobileInfoItem);
-      } else {
-        renderMobileInfo(null);
-      }
-    };
-    // Try immediately
-    requestAnimationFrame(() => {
-      requestAnimationFrame(updatePanel);
-    });
-    // Also try after a short delay as backup
-    setTimeout(updatePanel, 50);
-    setTimeout(updatePanel, 150);
-    // Re-apply selected class to overlay if one was selected before (for dish search navigation)
-    // This is needed because setMobileZoom calls renderLayer which removes all selected classes
-    if (currentMobileInfoItem && window.__lastSelectedOverlay) {
-      const reapplySelection = () => {
-        const layer = document.querySelector(".overlayLayer");
-        if (layer) {
-          const boxes = layer.querySelectorAll(".overlay");
-          boxes.forEach((box, idx) => {
-            if (idx === window.__lastSelectedOverlay.index) {
-              document
-                .querySelectorAll(".overlay")
-                .forEach((ov) => ov.classList.remove("selected"));
-              box.classList.add("selected");
-              setOverlayPulseColor(box);
-            }
-          });
-        }
-      };
-      // Reapply after renderLayer has finished (which runs in requestAnimationFrame after setMobileZoom)
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          requestAnimationFrame(reapplySelection);
-        });
-      });
-    }
-  }
-  const wrap = document.getElementById("menu");
-  if (wrap) {
-    wrap.scrollTop = 0;
-  }
-  const closeBtn = document.getElementById("mobileViewerCloseBtn");
-  if (closeBtn) {
-    setTimeout(() => closeBtn.focus(), 150);
-  }
-  if (!mobileViewerKeyHandler) {
-    mobileViewerKeyHandler = (e) => {
-      if (e.key === "Escape") {
-        e.preventDefault();
-        closeMobileViewer();
-      }
-    };
-    document.addEventListener("keydown", mobileViewerKeyHandler);
-  }
-}
-
-function closeMobileViewer() {
-  document.body.classList.remove("mobileViewerActive");
-  if (mobileViewerChrome) {
-    mobileViewerChrome.style.display = "none";
-    mobileViewerChrome.setAttribute("aria-hidden", "true");
-  }
-  resetMobileZoom();
-  // Close the mobile info panel if it's open
-  if (mobileInfoPanel) {
-    mobileInfoPanel.classList.remove("show");
-    mobileInfoPanel.style.display = "none";
-    mobileInfoPanel.innerHTML = "";
-    currentMobileInfoItem = null;
-  }
-  if (prefersMobileInfo()) {
-    if (currentMobileInfoItem) {
-      renderMobileInfo(currentMobileInfoItem);
-    } else {
-      renderMobileInfo(null);
-    }
-  }
-  const openBtn = document.querySelector(
-    "#mobileMenuNotice .mobileMenuOpenBtn",
-  );
-  if (openBtn) {
-    setTimeout(() => openBtn.focus(), 150);
-  }
-  const notice = document.getElementById("mobileMenuNotice");
-  if (notice && notice.dataset.enabled === "1") {
-    notice.style.display = "flex";
-    notice.setAttribute("aria-hidden", "false");
-  }
-  if (mobileViewerKeyHandler) {
-    document.removeEventListener("keydown", mobileViewerKeyHandler);
-    mobileViewerKeyHandler = null;
-  }
-}
-
 const urlQR = deriveQrVisitFlag();
 
 function isDishInfoPopupOpen() {
   // Check if mobile info panel is showing
   const mobilePanel = document.getElementById("mobileInfoPanel");
   if (mobilePanel && mobilePanel.classList.contains("show")) return true;
-  // Check if desktop tooltip is pinned open (tipPinned is declared later, check via window or direct)
-  if (typeof tipPinned !== "undefined" && tipPinned) return true;
+  // Check if desktop tooltip is pinned open
+  if (getTipPinned()) return true;
   return false;
 }
 const {
@@ -763,6 +529,12 @@ const { mobileCompactBodyHTML, toggleLoveDishInTooltip } =
     DIET_EMOJI,
     esc,
   });
+const { computeStatus, hasCrossContamination } =
+  createDishCompatibilityEvaluator({
+    normalizeAllergen,
+    normalizeDietLabel,
+    getDietAllergenConflicts,
+  });
 const mobileZoomApi = initMobileOverlayZoom({
   state,
   esc,
@@ -889,40 +661,22 @@ const { renderTopbar } = initRestaurantTopbar({
 
 /* tooltips */
 const pageTip = document.getElementById("tip");
-// Track if tip has been clicked/selected to stop pulsing
-let tipInteracted = false;
-// Track if tip is pinned open (clicked, should stay visible when mouse leaves)
-let tipPinned = false;
-// Track which overlay item is currently pinned (by comparing item data)
-let pinnedOverlayItem = null;
-
-// Set up click handlers for tip pinning
-if (pageTip) {
-  // Removed hover pulsing animation handlers
-
-  // Pin tip open when user clicks anywhere in the tip
-  pageTip.addEventListener("click", (e) => {
-    // Don't pin if clicking the close button (let close handler handle it)
-    if (e.target && e.target.classList.contains("tClose")) {
-      hideTip(true);
-      return;
-    }
-    tipInteracted = true;
-    tipPinned = true;
-    // pinnedOverlayItem is already set when showTipIn is called with isClick=true
-  });
-
-  // Also handle touch interactions
-  pageTip.addEventListener("touchstart", (e) => {
-    if (e.target && e.target.classList.contains("tClose")) {
-      hideTip(true);
-      return;
-    }
-    tipInteracted = true;
-    tipPinned = true;
-    // pinnedOverlayItem is already set when showTipIn is called with isClick=true
-  });
-}
+const tooltipRuntime = createTooltipRuntime({
+  pageTip,
+  state,
+  esc,
+  toggleLoveDishInTooltip,
+  ensureAddToOrderConfirmContainer,
+  hideAddToOrderConfirmation,
+  showAddToOrderConfirmation,
+  addDishToOrder,
+  getDishCompatibilityDetails,
+  setOverlayPulseColor,
+});
+showTipIn = tooltipRuntime.showTipIn;
+hideTip = tooltipRuntime.hideTip;
+getTipPinned = tooltipRuntime.getTipPinned;
+getPinnedOverlayItem = tooltipRuntime.getPinnedOverlayItem;
 
 const mobileInfoPanelRuntime = createMobileInfoPanelRuntime({
   state,
@@ -950,325 +704,33 @@ renderMobileInfo = mobileInfoPanelRuntime.renderMobileInfo;
 syncMobileInfoPanel = mobileInfoPanelRuntime.syncMobileInfoPanel;
 mobileInfoPanelRuntime.bindSyncListeners();
 ensureMobileInfoPanel();
-function showTipIn(
-  el,
-  x,
-  y,
-  title,
-  bodyHTML,
-  anchorRect = null,
-  isClick = false,
-  item = null,
-) {
-  const vv = window.visualViewport;
-  const zoom = vv && vv.scale ? vv.scale : 1;
-  const offsetLeft =
-    vv && typeof vv.offsetLeft === "number" ? vv.offsetLeft : 0;
-  const offsetTop = vv && typeof vv.offsetTop === "number" ? vv.offsetTop : 0;
-  const viewportWidth = vv && vv.width ? vv.width : window.innerWidth;
-  const viewportHeight = vv && vv.height ? vv.height : window.innerHeight;
-  const scrollX =
-    window.scrollX ||
-    window.pageXOffset ||
-    document.documentElement.scrollLeft ||
-    0;
-  const scrollY =
-    window.scrollY ||
-    window.pageYOffset ||
-    document.documentElement.scrollTop ||
-    0;
-  // Only show love button and close button when item is selected (pinned or clicked)
-  const showButtons = tipPinned || isClick;
-
-  // Generate love button HTML if user is logged in and item is selected
-  const restaurantId = state.restaurant?._id || state.restaurant?.id || null;
-  const dishName = title || "Unnamed dish";
-  const dishKey = restaurantId ? `${String(restaurantId)}:${dishName}` : null;
-  const isLoved =
-    dishKey && window.lovedDishesSet && window.lovedDishesSet.has(dishKey);
-  const loveButtonId = dishKey
-    ? `love-btn-tooltip-${dishKey.replace(/[^a-zA-Z0-9]/g, "-")}`
-    : null;
-  const loveButtonHTML =
-    showButtons && loveButtonId && state.user?.loggedIn && restaurantId
-      ? `<button type="button" class="love-button-tooltip ${isLoved ? "loved" : ""}" id="${loveButtonId}" data-restaurant-id="${restaurantId}" data-dish-name="${esc(dishName)}" title="${isLoved ? "Remove from favorite dishes" : "Add to favorite dishes"}" aria-label="${isLoved ? "Remove from favorites" : "Add to favorites"}"><img src="images/heart-icon.svg" alt="${isLoved ? "Loved" : "Not loved"}" style="width:14px;height:14px;display:block;" /></button>`
-      : "";
-
-  const closeButtonHTML = showButtons
-    ? '<button class="tClose" type="button">✕</button>'
-    : "";
-
-  // Add pulsing hover message when it's a hover (not a click) and not already pinned
-  const hoverMessage =
-    !isClick && !tipPinned
-      ? '<div class="tipHoverMessage">Select item for more options</div>'
-      : "";
-
-  // Add "Add to order" button when item is selected (pinned or clicked)
-  const isInOrder =
-    (window.orderItems && title && window.orderItems.includes(title)) || false;
-  const addToOrderButton =
-    showButtons && title
-      ? `<button type="button" class="addToOrderBtn" data-dish-name="${esc(title)}" id="addToOrderBtn_${esc(title).replace(/[^a-zA-Z0-9]/g, "_")}" ${isInOrder ? "disabled" : ""}>${isInOrder ? "Added" : "Add to order"}</button>`
-      : "";
-
-  el.innerHTML = `
-<div class="tipHead">
-  <div class="tTitle">${esc(title || "Item")}</div>
-  <div style="display:flex;align-items:center;gap:0;">
-    ${loveButtonHTML}
-    ${closeButtonHTML}
-  </div>
-</div>
-${bodyHTML}
-${hoverMessage}
-${addToOrderButton}
-  `;
-  el.style.display = "block";
-
-  // Reduce bottom padding when hover message is present to eliminate extra space
-  if (hoverMessage) {
-    el.style.paddingBottom = "4px";
-  } else {
-    el.style.paddingBottom = "";
-  }
-
-  // If this is a click, pin the tip
-  if (isClick && item) {
-    tipPinned = true;
-    tipInteracted = true;
-    pinnedOverlayItem = item; // Track which item is pinned
-  }
-
-  // Only reset interaction state if not already pinned (preserve pinned state)
-  // This allows the tip to stay open when clicked
-  if (!tipPinned) {
-    tipInteracted = false;
-    pinnedOverlayItem = null;
-  }
-
-  // Removed pulsing animation from tip pop-up
-
-  // Attach love button handler if present
-  const loveBtn = el.querySelector(".love-button-tooltip");
-  if (loveBtn && window.supabaseClient && state.user?.loggedIn) {
-    const restaurantIdAttr = loveBtn.getAttribute("data-restaurant-id");
-    const dishNameAttr = loveBtn.getAttribute("data-dish-name");
-    if (restaurantIdAttr && dishNameAttr) {
-      const handleLoveClick = (e) => {
-        if (e) {
-          e.preventDefault();
-          e.stopPropagation();
-        }
-        toggleLoveDishInTooltip(
-          state.user,
-          restaurantIdAttr,
-          dishNameAttr,
-          loveBtn,
-        );
-      };
-      loveBtn.addEventListener("click", handleLoveClick);
-      loveBtn.addEventListener("touchend", handleLoveClick, { passive: false });
-    }
-  }
-
-  // Attach "Add to order" button handler if present
-  const addToOrderBtn = el.querySelector(".addToOrderBtn");
-  const addToOrderConfirmEl = ensureAddToOrderConfirmContainer(el);
-  hideAddToOrderConfirmation(addToOrderConfirmEl);
-  if (addToOrderBtn) {
-    const dishNameAttr = addToOrderBtn.getAttribute("data-dish-name");
-    if (dishNameAttr) {
-      addToOrderBtn.addEventListener("click", (e) => {
-        if (e) {
-          e.preventDefault();
-          e.stopPropagation();
-        }
-        hideAddToOrderConfirmation(addToOrderConfirmEl);
-
-        // Always check getDishCompatibilityDetails first to match what UI displays
-        const details = getDishCompatibilityDetails(dishNameAttr);
-        const hasIssues =
-          details.issues?.allergens?.length > 0 ||
-          details.issues?.diets?.length > 0;
-
-        if (hasIssues) {
-          // There are issues according to getDishCompatibilityDetails (what UI shows)
-          // Show confirmation dialog
-          const severity =
-            details.issues?.allergens?.length > 0 ||
-            details.issues?.diets?.length > 0
-              ? "danger"
-              : "warn";
-          details.severity = severity;
-          showAddToOrderConfirmation(
-            addToOrderConfirmEl,
-            dishNameAttr,
-            details,
-            addToOrderBtn,
-          );
-        } else {
-          // No issues according to getDishCompatibilityDetails, add directly
-          const result = addDishToOrder(dishNameAttr);
-          if (result?.success) {
-            addToOrderBtn.disabled = true;
-            addToOrderBtn.textContent = "Added";
-            hideAddToOrderConfirmation(addToOrderConfirmEl);
-          } else if (result?.needsConfirmation) {
-            // Fallback: if addDishToOrder says needs confirmation but getDishCompatibilityDetails doesn't,
-            // still show confirmation (shouldn't happen if logic is consistent, but safety check)
-            const severity =
-              result.issues?.allergens?.length > 0 ||
-              result.issues?.diets?.length > 0
-                ? "danger"
-                : "warn";
-            details.severity = severity;
-            details.issues = result.issues || details.issues;
-            showAddToOrderConfirmation(
-              addToOrderConfirmEl,
-              dishNameAttr,
-              details,
-              addToOrderBtn,
-            );
-          }
-        }
-      });
-    }
-  }
-
-  const isMobile = window.innerWidth <= 640;
-  el.style.transform = "";
-  el.style.transformOrigin = "";
-
-  const layoutWidth =
-    document.documentElement?.clientWidth || window.innerWidth;
-  const baseMaxWidth = isMobile
-    ? Math.min(280, Math.max(220, layoutWidth - 40))
-    : Math.min(320, Math.max(240, layoutWidth - 80));
-  el.style.maxWidth = baseMaxWidth + "px";
-  el.style.padding = isMobile ? "8px" : "10px";
-  el.style.borderRadius = isMobile ? "8px" : "10px";
-  el.style.fontSize = isMobile ? "12px" : "14px";
-
-  const titleEl = el.querySelector(".tTitle");
-  if (titleEl) titleEl.style.fontSize = isMobile ? "14px" : "16px";
-
-  const closeEl = el.querySelector(".tClose");
-  if (closeEl) {
-    closeEl.style.padding = isMobile ? "3px 6px" : "4px 8px";
-    closeEl.style.fontSize = isMobile ? "12px" : "14px";
-    closeEl.style.borderRadius = isMobile ? "5px" : "6px";
-  }
-
-  const loveBtnEl = el.querySelector(".love-button-tooltip");
-  if (loveBtnEl) {
-    loveBtnEl.style.padding = isMobile ? "3px 6px" : "4px 8px";
-    loveBtnEl.style.fontSize = isMobile ? "12px" : "14px";
-    loveBtnEl.style.borderRadius = isMobile ? "5px" : "6px";
-  }
-
-  const noteEls = el.querySelectorAll(".note");
-  noteEls.forEach((n) => (n.style.fontSize = isMobile ? "11px" : "13px"));
-
-  requestAnimationFrame(() => {
-    const r = el.getBoundingClientRect();
-    const pad = isMobile ? 8 : 12;
-    const visibleLeft = scrollX + offsetLeft;
-    const visibleTop = scrollY + offsetTop;
-    const visibleRight = visibleLeft + viewportWidth;
-    const visibleBottom = visibleTop + viewportHeight;
-
-    const useAnchor = !!anchorRect;
-
-    const anchorLeft = anchorRect
-      ? anchorRect.left + scrollX + offsetLeft
-      : null;
-    const anchorRight = anchorRect
-      ? anchorRect.right + scrollX + offsetLeft
-      : null;
-    const anchorTop = anchorRect ? anchorRect.top + scrollY + offsetTop : null;
-    const anchorBottom = anchorRect
-      ? anchorRect.bottom + scrollY + offsetTop
-      : null;
-    const anchorCenterX = anchorRect ? (anchorLeft + anchorRight) / 2 : null;
-
-    let left;
-    let top;
-
-    if (useAnchor) {
-      const offset = isMobile ? 12 : 16;
-      left = (anchorCenterX || visibleLeft + pad) - r.width / 2;
-      top =
-        (anchorTop !== null ? anchorTop : visibleTop + pad) - r.height - offset;
-
-      if (top < visibleTop + pad) {
-        top =
-          (anchorBottom !== null ? anchorBottom : visibleTop + pad) + offset;
-      }
-      if (top + r.height + pad > visibleBottom) {
-        const anchorMiddle = anchorRect
-          ? anchorTop + anchorRect.height / 2
-          : visibleTop + viewportHeight / 2;
-        top = anchorMiddle - r.height / 2;
-        if (top + r.height + pad > visibleBottom) {
-          top = visibleBottom - r.height - pad;
-        }
-      }
-    } else {
-      const pointerX =
-        typeof x === "number"
-          ? x + scrollX + offsetLeft
-          : visibleLeft + viewportWidth / 2;
-      const pointerY =
-        typeof y === "number"
-          ? y + scrollY + offsetTop
-          : visibleTop + viewportHeight / 2;
-      left = pointerX + (isMobile ? 8 : 12);
-      top = pointerY + (isMobile ? 8 : 12);
-    }
-
-    if (left + r.width + pad > visibleRight) {
-      left = Math.max(visibleLeft + pad, visibleRight - r.width - pad);
-    }
-    if (top + r.height + pad > visibleBottom) {
-      top = Math.max(visibleTop + pad, visibleBottom - r.height - pad);
-    }
-
-    left = Math.max(visibleLeft + pad, left);
-    top = Math.max(visibleTop + pad, top);
-
-    el.style.left = left + "px";
-    el.style.top = top + "px";
-  });
-
-  if (el.querySelector(".tClose")) {
-    el.querySelector(".tClose").onclick = () => {
-      // Use hideTip with force=true to properly clean up all state including selected class
-      hideTip(true);
-    };
-  }
-}
-
-function hideTip(force = false) {
-  // Don't hide if tip is pinned open (user clicked on it), unless forced
-  if (tipPinned && !force) {
-    return;
-  }
-  // Don't hide if mouse is currently over the tip itself, unless forced
-  if (pageTip && pageTip.matches(":hover") && !force) {
-    return;
-  }
-  pageTip.style.display = "none";
-  // Reset interaction state when tip is hidden
-  tipInteracted = false;
-  tipPinned = false;
-  pinnedOverlayItem = null;
-  // Removed pulse class removal
-  // Remove selected from all overlays when tip is hidden
-  document
-    .querySelectorAll(".overlay")
-    .forEach((ov) => ov.classList.remove("selected"));
-}
+const mobileViewerRuntime = createMobileViewerRuntime({
+  state,
+  normalizeAllergen,
+  ALLERGEN_EMOJI,
+  DIET_EMOJI,
+  esc,
+  formatAllergenLabel,
+  getMenuState,
+  setOverlayPulseColor,
+  prefersMobileInfo,
+  getCurrentMobileInfoItem: () => currentMobileInfoItem,
+  setCurrentMobileInfoItem: (item) => {
+    currentMobileInfoItem = item;
+    window.currentMobileInfoItem = item;
+  },
+  getMobileInfoPanel: () => mobileInfoPanel,
+  getRenderMobileInfo: () => renderMobileInfo,
+});
+captureMenuBaseDimensions = mobileViewerRuntime.captureMenuBaseDimensions;
+ensureMobileViewerChrome = mobileViewerRuntime.ensureMobileViewerChrome;
+updateZoomIndicator = mobileViewerRuntime.updateZoomIndicator;
+updateFullScreenAllergySummary = mobileViewerRuntime.updateFullScreenAllergySummary;
+setMobileZoom = mobileViewerRuntime.setMobileZoom;
+resetMobileZoom = mobileViewerRuntime.resetMobileZoom;
+openMobileViewer = mobileViewerRuntime.openMobileViewer;
+closeMobileViewer = mobileViewerRuntime.closeMobileViewer;
+getMobileZoomLevel = mobileViewerRuntime.getMobileZoomLevel;
 
 /* list */
 const renderCardsPage = () =>
@@ -1324,139 +786,44 @@ const howItWorksTour = createHowItWorksTour({
 maybeInitHowItWorksTour = howItWorksTour.maybeInitHowItWorksTour;
 
 /* draw (simple image that follows page zoom) */
-function drawMenu(
-  container,
-  imageURL,
-  menuImagesArray = null,
-  currentPage = 0,
-) {
-  container.innerHTML = "";
-
-  // Support multiple menu images
-  const images = menuImagesArray || (imageURL ? [imageURL] : []);
-
-  if (!images.length || !images[0]) {
-    const inner = div("", "menuInner");
-    inner.innerHTML = `<div class="note" style="padding:16px">No menu image configured for this restaurant.</div>`;
-    container.appendChild(inner);
-    return;
-  }
-
-  const menuState = getMenuState();
-  const { img, layer, inner } = initializeMenuLayout({
-    container,
-    images,
-    imageURL,
-    currentPage,
-    div,
-    menuState,
-  });
-
-  ensureMobileViewerChrome();
-  updateZoomIndicator();
-
-  // ========== Pinch-to-Zoom for Menu ==========
-  setupMenuPinchZoom({ container, menuState });
-
-  // Track dish interaction for analytics
-  const trackDishInteraction = createDishInteractionTracker({
-    state,
-    normalizeAllergen,
-    normalizeDietLabel,
-    supabaseClient: window.supabaseClient,
-  });
-
-  const { showOverlayDetails, renderLayer } = createMenuOverlayRuntime({
-    state,
-    menuState,
-    layer,
-    img,
-    ensureMobileInfoPanel,
-    prefersMobileInfo,
-    getIsOverlayZoomed: () => isOverlayZoomed,
-    getZoomedOverlayItem: () => zoomedOverlayItem,
-    zoomOutOverlay,
-    hideTip,
-    zoomToOverlay,
-    hideMobileInfoPanel: () => {
-      if (mobileInfoPanel && mobileInfoPanel.classList.contains("show")) {
-        mobileInfoPanel.classList.remove("show");
-        mobileInfoPanel.style.display = "none";
-        mobileInfoPanel.innerHTML = "";
-        currentMobileInfoItem = null;
-      }
-    },
-    showTipIn,
-    pageTip,
-    tooltipBodyHTML,
-    getTipPinned: () => tipPinned,
-    getPinnedOverlayItem: () => pinnedOverlayItem,
-    setOverlayPulseColor,
-    hasCrossContamination,
-    computeStatus,
-    trackDishInteraction,
-  });
-
-  // Make showOverlayDetails globally accessible for auto-opening overlays from dish search
-  window.showOverlayDetails = showOverlayDetails;
-
-  window.__rerenderLayer__ = renderLayer;
-  captureMenuBaseDimensions(true);
-
-  // Calculate and apply initial zoom based on smallest box size
-  function applyInitialZoom() {
-    // Disable auto-zoom so menus load at a consistent scale
-    inner.style.transform = "";
-    inner.style.transformOrigin = "0 0";
-    container.style.overflow = "auto";
-    container.style.maxHeight = "";
-    menuState.initialZoom = 1;
-  }
-
-  // Handle image load for scrollable sections
-  if (menuState.isScrollable && menuState.sections) {
-    let loadedCount = 0;
-    const totalSections = menuState.sections.length;
-
-    menuState.sections.forEach((section) => {
-      const onSectionLoad = () => {
-        loadedCount++;
-        // Re-render this section's overlays
-        setTimeout(renderLayer, 50);
-        if (loadedCount === totalSections) {
-          captureMenuBaseDimensions(true);
-        }
-      };
-
-      if (section.img.complete && section.img.naturalWidth) {
-        onSectionLoad();
-      } else {
-        section.img.onload = onSectionLoad;
-      }
-    });
-  } else if (img.complete && img.naturalWidth) {
-    renderLayer();
-    captureMenuBaseDimensions(true);
-    setTimeout(applyInitialZoom, 100); // Apply zoom after layout settles
-  } else {
-    img.onload = () => {
-      setTimeout(() => {
-        renderLayer();
-        applyInitialZoom();
-      }, 50);
-      captureMenuBaseDimensions(true);
-      if (document.body.classList.contains("mobileViewerActive")) {
-        setMobileZoom(mobileZoomLevel, true);
-      }
-    };
-  }
-
-  bindMenuOverlayListeners({
-    isOverlayZoomed: () => isOverlayZoomed,
-    renderLayer,
-    pageTip,
-  });
-}
+const menuDrawRuntime = createMenuDrawRuntime({
+  state,
+  div,
+  getMenuState,
+  initializeMenuLayout,
+  ensureMobileViewerChrome,
+  updateZoomIndicator,
+  setupMenuPinchZoom,
+  createDishInteractionTracker,
+  normalizeAllergen,
+  normalizeDietLabel,
+  supabaseClient: window.supabaseClient,
+  createMenuOverlayRuntime,
+  ensureMobileInfoPanel,
+  prefersMobileInfo,
+  getIsOverlayZoomed: () => isOverlayZoomed,
+  getZoomedOverlayItem: () => zoomedOverlayItem,
+  zoomOutOverlay,
+  hideTip,
+  zoomToOverlay,
+  getMobileInfoPanel: () => mobileInfoPanel,
+  clearCurrentMobileInfoItem: () => {
+    currentMobileInfoItem = null;
+  },
+  showTipIn,
+  pageTip,
+  tooltipBodyHTML,
+  getTipPinned,
+  getPinnedOverlayItem,
+  setOverlayPulseColor,
+  hasCrossContamination,
+  computeStatus,
+  captureMenuBaseDimensions,
+  setMobileZoom,
+  getMobileZoomLevel,
+  bindMenuOverlayListeners,
+});
+drawMenu = menuDrawRuntime.drawMenu;
 
 /* restaurant page */
 const renderRestaurant = () =>

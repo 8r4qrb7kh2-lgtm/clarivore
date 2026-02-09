@@ -1,4 +1,4 @@
-export function createTooltipBodyHTML(deps = {}) {
+export function createDishCompatibilityEvaluator(deps = {}) {
   const normalizeAllergen =
     typeof deps.normalizeAllergen === "function"
       ? deps.normalizeAllergen
@@ -11,26 +11,8 @@ export function createTooltipBodyHTML(deps = {}) {
     typeof deps.getDietAllergenConflicts === "function"
       ? deps.getDietAllergenConflicts
       : () => [];
-  const ALLERGEN_EMOJI =
-    deps.ALLERGEN_EMOJI && typeof deps.ALLERGEN_EMOJI === "object"
-      ? deps.ALLERGEN_EMOJI
-      : {};
-  const DIET_EMOJI =
-    deps.DIET_EMOJI && typeof deps.DIET_EMOJI === "object" ? deps.DIET_EMOJI : {};
-  const formatAllergenLabel =
-    typeof deps.formatAllergenLabel === "function"
-      ? deps.formatAllergenLabel
-      : (value) => String(value ?? "");
-  const esc =
-    typeof deps.esc === "function"
-      ? deps.esc
-      : (value) => String(value ?? "");
-  const prefersMobileInfo =
-    typeof deps.prefersMobileInfo === "function"
-      ? deps.prefersMobileInfo
-      : () => false;
 
-  function computeStatus(item, sel, userDiets) {
+  const computeStatus = (item, sel, userDiets) => {
     const userAllergens = (sel || []).map(normalizeAllergen).filter(Boolean);
     const normalizedDiets = (userDiets || [])
       .map(normalizeDietLabel)
@@ -106,9 +88,9 @@ export function createTooltipBodyHTML(deps = {}) {
     if (hasAllergenIssues && allergenRemovableAll) return "removable";
     if (!meetsDietReqs && canBeMadeForDiets) return "removable";
     return "safe";
-  }
+  };
 
-  function hasCrossContamination(item, sel, userDiets) {
+  const hasCrossContamination = (item, sel, userDiets) => {
     const userAllergens = (sel || []).map(normalizeAllergen).filter(Boolean);
     const hasAllergenCross =
       userAllergens.length > 0 &&
@@ -128,7 +110,40 @@ export function createTooltipBodyHTML(deps = {}) {
       });
 
     return hasAllergenCross || hasDietCross;
-  }
+  };
+
+  return { computeStatus, hasCrossContamination };
+}
+
+export function createTooltipBodyHTML(deps = {}) {
+  const normalizeAllergen =
+    typeof deps.normalizeAllergen === "function"
+      ? deps.normalizeAllergen
+      : (value) => String(value ?? "").trim();
+  const normalizeDietLabel =
+    typeof deps.normalizeDietLabel === "function"
+      ? deps.normalizeDietLabel
+      : (value) => String(value ?? "").trim();
+  const ALLERGEN_EMOJI =
+    deps.ALLERGEN_EMOJI && typeof deps.ALLERGEN_EMOJI === "object"
+      ? deps.ALLERGEN_EMOJI
+      : {};
+  const DIET_EMOJI =
+    deps.DIET_EMOJI && typeof deps.DIET_EMOJI === "object" ? deps.DIET_EMOJI : {};
+  const formatAllergenLabel =
+    typeof deps.formatAllergenLabel === "function"
+      ? deps.formatAllergenLabel
+      : (value) => String(value ?? "");
+  const esc =
+    typeof deps.esc === "function"
+      ? deps.esc
+      : (value) => String(value ?? "");
+  const prefersMobileInfo =
+    typeof deps.prefersMobileInfo === "function"
+      ? deps.prefersMobileInfo
+      : () => false;
+  const { computeStatus, hasCrossContamination } =
+    createDishCompatibilityEvaluator(deps);
 
   return function tooltipBodyHTML(item, sel, userDiets, isClick = false) {
     const status = computeStatus(item, sel, userDiets);
