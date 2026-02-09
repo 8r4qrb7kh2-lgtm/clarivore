@@ -31,6 +31,7 @@
     let brandItemsCache = [];
     let activeBrandReplaceItem = null;
     let brandItemsSearchQuery = '';
+    const preloadedBoot = window.__managerDashboardBootPayload || null;
 
     // DOM Elements
     const loadingState = document.getElementById('loading-state');
@@ -95,7 +96,11 @@
     // Initialize
     async function init() {
       try {
-        const { data: { user } } = await supabaseClient.auth.getUser();
+        let user = preloadedBoot?.user || null;
+        if (!user) {
+          const authResult = await supabaseClient.auth.getUser();
+          user = authResult?.data?.user || null;
+        }
 
         if (!user) {
           showAuthRequired();
@@ -103,12 +108,20 @@
         }
 
         currentUser = user;
-        const isOwner = user.email === OWNER_EMAIL;
-        const isManager = user.user_metadata?.role === 'manager';
+        const isOwner =
+          typeof preloadedBoot?.isOwner === 'boolean'
+            ? preloadedBoot.isOwner
+            : user.email === OWNER_EMAIL;
+        const isManager =
+          typeof preloadedBoot?.isManager === 'boolean'
+            ? preloadedBoot.isManager
+            : user.user_metadata?.role === 'manager';
 
         // Fetch manager restaurants for navigation
-        let navRestaurants = [];
-        if (isManager || isOwner) {
+        let navRestaurants = Array.isArray(preloadedBoot?.managerRestaurants)
+          ? preloadedBoot.managerRestaurants
+          : [];
+        if (!navRestaurants.length && (isManager || isOwner)) {
           navRestaurants = await fetchManagerRestaurants(supabaseClient, user.id);
         }
 
@@ -127,7 +140,13 @@
           initManagerNotifications({ user: currentUser, client: supabaseClient });
         }
 
-        await loadManagedRestaurants();
+        const preloadedManagedRestaurants = Array.isArray(
+          preloadedBoot?.managedRestaurants,
+        )
+          ? preloadedBoot.managedRestaurants
+          : null;
+
+        await loadManagedRestaurants(preloadedManagedRestaurants);
 
         restaurantSelectorContainer.style.display = isOwner ? 'block' : 'none';
       } catch (err) {
@@ -148,8 +167,33 @@
       restaurantSelectorContainer.style.display = 'none';
     }
 
-    async function loadManagedRestaurants() {
+    async function applyManagedRestaurants(restaurants) {
+      if (!Array.isArray(restaurants) || restaurants.length === 0) {
+        showNotManager();
+        return;
+      }
+
+      managedRestaurants = restaurants;
+
+      // Populate restaurant selector
+      restaurantSelect.innerHTML = managedRestaurants.map(r =>
+        `<option value="${r.id}">${r.name}</option>`
+      ).join('');
+
+      // Select first restaurant
+      if (managedRestaurants.length > 0) {
+        selectedRestaurantId = managedRestaurants[0].id;
+        await loadDashboardData();
+      }
+    }
+
+    async function loadManagedRestaurants(preloadedRestaurants = null) {
       try {
+        if (Array.isArray(preloadedRestaurants)) {
+          await applyManagedRestaurants(preloadedRestaurants);
+          return;
+        }
+
         const isOwner = currentUser.email === OWNER_EMAIL;
 
         let restaurants = [];
@@ -174,23 +218,7 @@
           restaurants = (data || []).map(d => d.restaurants).filter(r => r);
         }
 
-        if (restaurants.length === 0) {
-          showNotManager();
-          return;
-        }
-
-        managedRestaurants = restaurants;
-
-        // Populate restaurant selector
-        restaurantSelect.innerHTML = managedRestaurants.map(r =>
-          `<option value="${r.id}">${r.name}</option>`
-        ).join('');
-
-        // Select first restaurant
-        if (managedRestaurants.length > 0) {
-          selectedRestaurantId = managedRestaurants[0].id;
-          await loadDashboardData();
-        }
+        await applyManagedRestaurants(restaurants);
       } catch (err) {
         console.error('Failed to load managed restaurants:', err);
         showNotManager();

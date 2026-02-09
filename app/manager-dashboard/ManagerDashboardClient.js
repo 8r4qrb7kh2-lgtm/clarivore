@@ -1,8 +1,9 @@
 "use client";
 
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { useModuleRuntime } from "../runtime/useModuleRuntime";
 import ManagerDashboardDom from "./components/ManagerDashboardDom";
+import { prepareManagerDashboardBootPayload } from "./services/managerDashboardBoot";
 
 export default function ManagerDashboardClient() {
   const externalScripts = useMemo(
@@ -22,7 +23,16 @@ export default function ManagerDashboardClient() {
     [],
   );
 
-  const { error } = useModuleRuntime({ externalScripts, moduleScripts });
+  const beforeModuleLoad = useCallback(async () => {
+    const bootPayload = await prepareManagerDashboardBootPayload();
+    window.__managerDashboardBootPayload = bootPayload;
+  }, []);
+
+  const { error } = useModuleRuntime({
+    externalScripts,
+    moduleScripts,
+    beforeModuleLoad,
+  });
 
   return (
     <>

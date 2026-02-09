@@ -39,6 +39,7 @@ function setRuntimeGlobals() {
 export function useModuleRuntime({
   externalScripts = [],
   moduleScripts = [],
+  beforeModuleLoad = null,
 } = {}) {
   const [error, setError] = useState("");
   const [ready, setReady] = useState(false);
@@ -57,6 +58,10 @@ export function useModuleRuntime({
             defer: scriptConfig.defer,
             async: scriptConfig.async,
           });
+        }
+
+        if (typeof beforeModuleLoad === "function") {
+          await beforeModuleLoad();
         }
 
         for (const moduleSrc of moduleScripts) {
@@ -79,7 +84,7 @@ export function useModuleRuntime({
     return () => {
       cancelled = true;
     };
-  }, [externalScripts, moduleScripts]);
+  }, [externalScripts, moduleScripts, beforeModuleLoad]);
 
   return { ready, error };
 }
