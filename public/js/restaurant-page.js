@@ -92,6 +92,11 @@ import { createStandaloneMessageDispatcher } from "./restaurant/standalone-messa
 import { createTooltipBodyHTML } from "./restaurant/dish-compatibility-tooltip.js";
 import { normalizeRestaurantRow } from "./restaurant/restaurant-normalization.js";
 import {
+  createMobileInfoHelpers,
+  prefersMobileInfo,
+} from "./restaurant/mobile-info-helpers.js";
+import { createMobileInfoPanelRuntime } from "./restaurant/mobile-info-panel-runtime.js";
+import {
   fmtDate,
   fmtDateTime,
   getWeeksAgoInfo,
@@ -211,6 +216,8 @@ let currentMobileInfoItem = null;
 let mobileViewerChrome = null;
 let mobileZoomLevel = 1;
 let mobileViewerKeyHandler = null;
+let renderMobileInfo = () => {};
+let syncMobileInfoPanel = () => {};
 
 let zoomToOverlay = () => {};
 let zoomOutOverlay = () => {};
@@ -738,6 +745,24 @@ function hidePageLoader() {
 }
 
 const { renderGroupedSourcesHtml } = initIngredientSources({ esc });
+const normalizeDietLabel =
+  typeof allergenConfig.normalizeDietLabel === "function"
+    ? allergenConfig.normalizeDietLabel
+    : (diet) => {
+      if (!diet) return "";
+      const raw = diet.toString().trim();
+      if (!DIETS.length) return raw;
+      return DIETS.includes(raw) ? raw : "";
+    };
+const { mobileCompactBodyHTML, toggleLoveDishInTooltip } =
+  createMobileInfoHelpers({
+    normalizeAllergen,
+    normalizeDietLabel,
+    formatAllergenLabel,
+    ALLERGEN_EMOJI,
+    DIET_EMOJI,
+    esc,
+  });
 const mobileZoomApi = initMobileOverlayZoom({
   state,
   esc,
@@ -757,15 +782,6 @@ const mobileZoomApi = initMobileOverlayZoom({
 });
 zoomToOverlay = mobileZoomApi.zoomToOverlay;
 zoomOutOverlay = mobileZoomApi.zoomOutOverlay;
-const normalizeDietLabel =
-  typeof allergenConfig.normalizeDietLabel === "function"
-    ? allergenConfig.normalizeDietLabel
-    : (diet) => {
-      if (!diet) return "";
-      const raw = diet.toString().trim();
-      if (!DIETS.length) return raw;
-      return DIETS.includes(raw) ? raw : "";
-    };
 const tooltipBodyHTML = createTooltipBodyHTML({
   normalizeAllergen,
   normalizeDietLabel,
@@ -857,61 +873,6 @@ function configureModalClose({ visible = true, onClick = null } = {}) {
   }
 }
 
-async function toggleLoveDishInTooltip(user, restaurantId, dishName, button) {
-  if (!window.lovedDishesSet) window.lovedDishesSet = new Set();
-  const dishKey = `${String(restaurantId)}:${dishName}`;
-  const isLoved = window.lovedDishesSet.has(dishKey);
-
-  button.disabled = true;
-  const labelEl = button.querySelector('[data-role="label"]');
-
-  try {
-    if (isLoved) {
-      const { error } = await window.supabaseClient
-        .from("user_loved_dishes")
-        .delete()
-        .eq("user_id", user.id)
-        .eq("restaurant_id", restaurantId)
-        .eq("dish_name", dishName);
-
-      if (error) throw error;
-      window.lovedDishesSet.delete(dishKey);
-      button.classList.remove("loved");
-      button.setAttribute("title", "Add to favorite dishes");
-      button.setAttribute("aria-label", "Add to favorites");
-      button.setAttribute("aria-pressed", "false");
-      const img = button.querySelector("img");
-      if (img) img.src = "images/heart-icon.svg";
-      if (labelEl) labelEl.textContent = "Favorite";
-    } else {
-      const { error } = await window.supabaseClient
-        .from("user_loved_dishes")
-        .upsert(
-          {
-            user_id: user.id,
-            restaurant_id: restaurantId,
-            dish_name: dishName,
-          },
-          { onConflict: "user_id,restaurant_id,dish_name" },
-        );
-
-      if (error) throw error;
-      window.lovedDishesSet.add(dishKey);
-      button.classList.add("loved");
-      button.setAttribute("title", "Remove from favorite dishes");
-      button.setAttribute("aria-label", "Remove from favorites");
-      button.setAttribute("aria-pressed", "true");
-      const img = button.querySelector("img");
-      if (img) img.src = "images/heart-icon.svg";
-      if (labelEl) labelEl.textContent = "Favorited";
-    }
-  } catch (err) {
-    console.error("Failed to update loved dish", err);
-  } finally {
-    button.disabled = false;
-  }
-}
-
 const { renderTopbar } = initRestaurantTopbar({
   state,
   urlQR,
@@ -963,384 +924,31 @@ if (pageTip) {
   });
 }
 
-function prefersMobileInfo() {
-  try {
-    const hasCoarse =
-      window.matchMedia && window.matchMedia("(pointer: coarse)").matches;
-    const hasFine =
-      window.matchMedia && window.matchMedia("(pointer: fine)").matches;
-    if (hasCoarse) return true;
-    if (hasFine) return false;
-    return window.innerWidth <= 640;
-  } catch (_) {
-    return window.innerWidth <= 640;
-  }
-}
-
-// Compact mobile-specific display for allergen/diet information
-// Organized by severity: RED (danger) → YELLOW (caution) → GREEN (safe)
-function mobileCompactBodyHTML(item, sel, userDiets) {
-  const details = item.details || {};
-  const normalizedAllergens = (sel || [])
-    .map(normalizeAllergen)
-    .filter(Boolean);
-  const normalizedDiets = (userDiets || [])
-    .map(normalizeDietLabel)
-    .filter(Boolean);
-
-  if (!normalizedAllergens.length && !normalizedDiets.length) {
-    return `<div style="padding:8px;text-align:center;color:rgba(255,255,255,0.6);font-size:0.8rem">No diets saved</div>`;
-  }
-
-  // Separate allergen and diet items
-  const allergenRed = [];
-  const allergenGreen = [];
-  const allergenYellow = [];
-  const dietRed = [];
-  const dietGreen = [];
-  const dietYellow = [];
-
-  // Process allergens
-  if (normalizedAllergens.length) {
-    const dishAllergensRaw = Array.isArray(item.allergens) ? item.allergens : [];
-    const dishAllergens = dishAllergensRaw
-      .map(normalizeAllergen)
-      .filter(Boolean);
-    const dishCrossContamination = (item.crossContamination || [])
-      .map(normalizeAllergen)
-      .filter(Boolean);
-    const allergenKeyMap = new Map();
-    dishAllergensRaw.forEach((raw) => {
-      const normalized = normalizeAllergen(raw);
-      if (normalized && !allergenKeyMap.has(normalized)) {
-        allergenKeyMap.set(normalized, raw);
-      }
-    });
-    normalizedAllergens.forEach((allergen) => {
-      const label = formatAllergenLabel(allergen);
-      const isDanger = dishAllergens.includes(allergen);
-      const isCrossContamination = dishCrossContamination.includes(allergen);
-      const emoji = ALLERGEN_EMOJI[allergen] || "⚠️";
-
-      if (isDanger) {
-        const detailKey = allergenKeyMap.get(allergen) || allergen;
-        const ingredientInfo = details[detailKey] || details[allergen];
-        const ingredients = ingredientInfo
-          ? ingredientInfo.replace(/^Contains\s+/i, "")
-          : "";
-        allergenRed.push({ emoji, text: label, subtext: ingredients });
-      } else if (isCrossContamination) {
-        allergenYellow.push({ emoji, text: label });
-      } else {
-        allergenGreen.push({ emoji, text: `${label}-free` });
-      }
-    });
-  }
-
-  // Process diets
-  if (normalizedDiets.length > 0) {
-    const itemDietSet = new Set(
-      (item.diets || []).map(normalizeDietLabel).filter(Boolean),
-    );
-    const crossContaminationDietSet = new Set(
-      (item.crossContaminationDiets || [])
-        .map(normalizeDietLabel)
-        .filter(Boolean),
-    );
-    normalizedDiets.forEach((userDiet) => {
-      const isDietMet = itemDietSet.has(userDiet);
-      const emoji = DIET_EMOJI[userDiet] || "🍽️";
-      const hasCrossContamination = crossContaminationDietSet.has(userDiet);
-      const blockingIngredients =
-        item.ingredientsBlockingDiets?.[userDiet] || [];
-
-      if (isDietMet) {
-        if (hasCrossContamination) {
-          dietYellow.push({ emoji, text: userDiet });
-        } else {
-          dietGreen.push({ emoji, text: userDiet });
-        }
-      } else {
-        const ingredientNames =
-          blockingIngredients.length > 0
-            ? blockingIngredients
-                .map((ing) => ing.name || ing)
-                .filter((name) => name)
-                .join(", ")
-            : "";
-        dietRed.push({
-          emoji,
-          text: `Not ${userDiet}`,
-          subtext: ingredientNames,
-        });
-      }
-    });
-  }
-
-  // Helper to render a column's items
-  const renderColumn = (redItems, yellowItems, greenItems, title) => {
-    let col = `<div class="mobileInfoColumn">`;
-    col += `<div style="font-size:0.65rem;color:#9ca3af;margin-bottom:4px;font-weight:600">${title}</div>`;
-
-    // Red items
-    redItems.forEach((i) => {
-      col += `<div style="background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);border-radius:6px;padding:4px 6px;margin-bottom:3px">`;
-      col += `<div style="color:#fca5a5;font-size:0.75rem;font-weight:500">${i.emoji} ${esc(i.text)}</div>`;
-      if (i.subtext) {
-        col += `<div style="color:rgba(252,165,165,0.6);font-size:0.65rem;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(i.subtext)}</div>`;
-      }
-      col += `</div>`;
-    });
-
-    // Yellow items (cross-contamination)
-    yellowItems.forEach((i) => {
-      col += `<div style="background:rgba(250,204,21,0.12);border:1px solid rgba(250,204,21,0.25);border-radius:6px;padding:3px 6px;margin-bottom:3px">`;
-      col += `<div style="color:#fde047;font-size:0.7rem">⚠️ ${i.emoji} ${esc(i.text)}</div>`;
-      col += `</div>`;
-    });
-
-    // Green items as compact chips
-    if (greenItems.length > 0) {
-      col += `<div style="display:flex;flex-wrap:wrap;gap:3px">`;
-      greenItems.forEach((i) => {
-        col += `<div style="background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.2);border-radius:4px;padding:2px 5px;font-size:0.65rem;color:#86efac">${i.emoji} ${esc(i.text)}</div>`;
-      });
-      col += `</div>`;
-    }
-
-    if (
-      redItems.length === 0 &&
-      yellowItems.length === 0 &&
-      greenItems.length === 0
-    ) {
-      col += `<div style="color:rgba(255,255,255,0.4);font-size:0.7rem;font-style:italic">None selected</div>`;
-    }
-
-    col += `</div>`;
-    return col;
-  };
-
-  // Build two-column layout
-  let html = `<div class="mobileInfoColumns" style="padding:6px 0">`;
-  html += renderColumn(allergenRed, allergenYellow, allergenGreen, "ALLERGENS");
-  html += renderColumn(dietRed, dietYellow, dietGreen, "DIETS");
-  html += `</div>`;
-
-  return html;
-}
-function renderMobileInfo(item) {
-  // Make function available globally for MutationObserver
-  window.renderMobileInfo = renderMobileInfo;
-  window.currentMobileInfoItem = item;
-  ensureMobileInfoPanel();
-  if (!mobileInfoPanel) return;
-  mobileInfoPanel.style.position = "fixed";
-  /* Use full width in full-screen mode, otherwise use margins */
-  const isFullScreen = document.body.classList.contains("mobileViewerActive");
-  if (isFullScreen) {
-    // Force full width in full-screen mode - use !important via setProperty
-    mobileInfoPanel.style.setProperty("left", "0", "important");
-    mobileInfoPanel.style.setProperty("right", "0", "important");
-    mobileInfoPanel.style.setProperty("bottom", "0", "important");
-  } else {
-    mobileInfoPanel.style.left = "12px";
-    mobileInfoPanel.style.right = "12px";
-    mobileInfoPanel.style.bottom = "12px";
-  }
-  mobileInfoPanel.style.zIndex = "3500";
-  if (!prefersMobileInfo()) {
-    mobileInfoPanel.classList.remove("show");
-    mobileInfoPanel.style.display = "none";
-    mobileInfoPanel.innerHTML = "";
-    currentMobileInfoItem = null;
-    return;
-  }
-  if (!item) {
-    currentMobileInfoItem = null;
-    mobileInfoPanel.innerHTML = "";
-    mobileInfoPanel.style.display = "none";
-    mobileInfoPanel.classList.remove("show");
-    if (!isOverlayZoomed) {
-      // Remove selected class from all overlays when mobile panel is closed
-      document
-        .querySelectorAll(".overlay")
-        .forEach((ov) => ov.classList.remove("selected"));
-      // Clear tracked overlay selection
-      window.__lastSelectedOverlay = null;
-    }
-    return;
-  }
-  currentMobileInfoItem = item;
-  const dishName = item.id || item.name || "Item";
-  const bodyHTML = mobileCompactBodyHTML(
-    item,
-    state.allergies || [],
-    state.diets || [],
-  );
-  const isInOrder =
-    (window.orderItems && dishName && window.orderItems.includes(dishName)) ||
-    false;
-  const restaurantId = state.restaurant?._id || state.restaurant?.id || null;
-  const dishKey = restaurantId ? `${String(restaurantId)}:${dishName}` : null;
-  const isLoved =
-    dishKey && window.lovedDishesSet && window.lovedDishesSet.has(dishKey);
-  const showFavorite = !!(
-    state.user?.loggedIn &&
-    window.supabaseClient &&
-    restaurantId
-  );
-
-  mobileInfoPanel.innerHTML = `
-<div class="mobileInfoHeaderRow">
-  <div class="mobileInfoHeader">${esc(dishName || "Item")}</div>
-  <div style="display:flex;align-items:center;gap:0;">
-    <button type="button" class="mobileInfoClose" aria-label="Close dish details">×</button>
-  </div>
-</div>
-<div class="mobileInfoContent">
-  ${bodyHTML}
-  <div class="mobileInfoActions">
-    <div class="mobileInfoActionRow">
-      ${showFavorite ? `<button type="button" class="mobileFavoriteBtn${isLoved ? " loved" : ""}" id="mobileFavoriteBtn" aria-pressed="${isLoved ? "true" : "false"}" title="${isLoved ? "Remove from favorite dishes" : "Add to favorite dishes"}" aria-label="${isLoved ? "Remove from favorites" : "Add to favorites"}"><img src="images/heart-icon.svg" alt=""><span data-role="label">${isLoved ? "Favorited" : "Favorite"}</span></button>` : ""}
-      <button type="button" class="addToOrderBtn mobileAddToOrderBtn" data-dish-name="${esc(dishName)}" ${isInOrder ? "disabled" : ""}>${isInOrder ? "Added" : "Add to order"}</button>
-    </div>
-  </div>
-</div>
-  `;
-
-  if (showFavorite && restaurantId && dishName) {
-    const loveBtn = mobileInfoPanel.querySelector("#mobileFavoriteBtn");
-    if (loveBtn) {
-      const handleLoveClick = (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        toggleLoveDishInTooltip(state.user, restaurantId, dishName, loveBtn);
-      };
-      loveBtn.addEventListener("click", handleLoveClick, true);
-      loveBtn.addEventListener("touchend", handleLoveClick, true);
-    }
-  }
-  const addToOrderBtn = mobileInfoPanel.querySelector(".mobileAddToOrderBtn");
-  const actionsContainer = mobileInfoPanel.querySelector(".mobileInfoActions");
-  const addToOrderConfirmEl = ensureAddToOrderConfirmContainer(
-    actionsContainer || mobileInfoPanel,
-  );
-  hideAddToOrderConfirmation(addToOrderConfirmEl);
-  if (addToOrderBtn) {
-    const dishNameAttr = addToOrderBtn.getAttribute("data-dish-name");
-    if (dishNameAttr) {
-      addToOrderBtn.addEventListener("click", (e) => {
-        if (e) {
-          e.preventDefault();
-          e.stopPropagation();
-        }
-        hideAddToOrderConfirmation(addToOrderConfirmEl);
-
-        const details = getDishCompatibilityDetails(dishNameAttr);
-        const hasIssues =
-          details.issues?.allergens?.length > 0 ||
-          details.issues?.diets?.length > 0;
-
-        if (hasIssues) {
-          const severity =
-            details.issues?.allergens?.length > 0 ||
-            details.issues?.diets?.length > 0
-              ? "danger"
-              : "warn";
-          details.severity = severity;
-          showAddToOrderConfirmation(
-            addToOrderConfirmEl,
-            dishNameAttr,
-            details,
-            addToOrderBtn,
-          );
-        } else {
-          const result = addDishToOrder(dishNameAttr);
-          if (result?.success) {
-            addToOrderBtn.disabled = true;
-            addToOrderBtn.textContent = "Added";
-            hideAddToOrderConfirmation(addToOrderConfirmEl);
-          } else if (result?.needsConfirmation) {
-            const severity =
-              result.issues?.allergens?.length > 0 ||
-              result.issues?.diets?.length > 0
-                ? "danger"
-                : "warn";
-            details.severity = severity;
-            details.issues = result.issues || details.issues;
-            showAddToOrderConfirmation(
-              addToOrderConfirmEl,
-              dishNameAttr,
-              details,
-              addToOrderBtn,
-            );
-          }
-        }
-      });
-    }
-  }
-  mobileInfoPanel.style.background = "rgba(11,16,32,0.94)";
-  mobileInfoPanel.style.backdropFilter = "blur(14px)";
-  mobileInfoPanel.style.webkitBackdropFilter = "blur(14px)";
-  // Ensure positioning is correct, especially after full-screen mode activates
-  const isFullScreenCheck =
-    document.body.classList.contains("mobileViewerActive");
-  if (isFullScreenCheck) {
-    // Force full width in full-screen mode - use setProperty with important
-    mobileInfoPanel.style.setProperty("left", "0", "important");
-    mobileInfoPanel.style.setProperty("right", "0", "important");
-    mobileInfoPanel.style.setProperty("bottom", "0", "important");
-  }
-  adjustMobileInfoPanelForZoom();
-  mobileInfoPanel.style.display = "block";
-  mobileInfoPanel.classList.add("show");
-  const closeBtn = mobileInfoPanel.querySelector(".mobileInfoClose");
-  if (closeBtn) {
-    const closePanel = (ev) => {
-      if (ev) {
-        ev.preventDefault();
-        ev.stopPropagation();
-      }
-      renderMobileInfo(null);
-    };
-    closeBtn.addEventListener("click", closePanel);
-    closeBtn.addEventListener("touchend", closePanel, { passive: false });
-    closeBtn.addEventListener("keydown", (ev) => {
-      if (ev.key === "Enter" || ev.key === " ") {
-        closePanel(ev);
-      }
-    });
-  }
-}
-function syncMobileInfoPanel() {
-  if (!mobileInfoPanel) return;
-  if (isOverlayZoomed) return;
-  adjustMobileInfoPanelForZoom();
-  if (prefersMobileInfo()) {
-    if (currentMobileInfoItem) {
-      renderMobileInfo(currentMobileInfoItem);
-    } else {
-      mobileInfoPanel.innerHTML = "";
-      mobileInfoPanel.style.display = "none";
-      mobileInfoPanel.classList.remove("show");
-    }
-    hideTip();
-  } else {
-    mobileInfoPanel.classList.remove("show");
-    mobileInfoPanel.style.display = "none";
-    mobileInfoPanel.innerHTML = "";
-    currentMobileInfoItem = null;
-  }
-}
-addEventListener("resize", () => syncMobileInfoPanel(), { passive: true });
-if (window.visualViewport) {
-  visualViewport.addEventListener("resize", () => syncMobileInfoPanel(), {
-    passive: true,
-  });
-  visualViewport.addEventListener("scroll", () => syncMobileInfoPanel(), {
-    passive: true,
-  });
-}
+const mobileInfoPanelRuntime = createMobileInfoPanelRuntime({
+  state,
+  esc,
+  prefersMobileInfo,
+  mobileCompactBodyHTML,
+  toggleLoveDishInTooltip,
+  ensureAddToOrderConfirmContainer,
+  hideAddToOrderConfirmation,
+  showAddToOrderConfirmation,
+  addDishToOrder,
+  getDishCompatibilityDetails,
+  ensureMobileInfoPanel,
+  getMobileInfoPanel: () => mobileInfoPanel,
+  getCurrentMobileInfoItem: () => currentMobileInfoItem,
+  setCurrentMobileInfoItem: (item) => {
+    currentMobileInfoItem = item;
+    window.currentMobileInfoItem = item;
+  },
+  getIsOverlayZoomed: () => isOverlayZoomed,
+  adjustMobileInfoPanelForZoom,
+  hideTip: () => hideTip(),
+});
+renderMobileInfo = mobileInfoPanelRuntime.renderMobileInfo;
+syncMobileInfoPanel = mobileInfoPanelRuntime.syncMobileInfoPanel;
+mobileInfoPanelRuntime.bindSyncListeners();
 ensureMobileInfoPanel();
 function showTipIn(
   el,
