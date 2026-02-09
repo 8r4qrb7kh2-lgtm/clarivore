@@ -181,10 +181,3 @@ export async function buildRestaurantBootPayload({
 
   return { payload, lock };
 }
-
-export function dispatchRestaurantBootPayload(payload) {
-  if (!payload) return;
-  window.__restaurantBootPayload = payload;
-  window.__restaurantBootPayloadConsumed = false;
-  window.postMessage(payload, "*");
-}

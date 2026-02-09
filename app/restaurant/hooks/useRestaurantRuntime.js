@@ -6,7 +6,6 @@ import { supabaseClient as supabase } from "../../lib/supabase";
 import {
   applyConsoleReportingPreference,
   buildRestaurantBootPayload,
-  dispatchRestaurantBootPayload,
   initRestaurantBootGlobals,
 } from "../restaurantBootService";
 import {
@@ -59,10 +58,20 @@ export function useRestaurantRuntime({ slug, isQrVisit, inviteToken }) {
         }
 
         lockRef = result.lock;
-        dispatchRestaurantBootPayload(result.payload);
 
         setStatus("Starting restaurant app...");
-        await loadRestaurantRuntimeModule();
+        const runtimeModule = await loadRestaurantRuntimeModule();
+
+        if (cancelled) return;
+
+        if (typeof runtimeModule?.hydrateRestaurantBootPayload === "function") {
+          runtimeModule.hydrateRestaurantBootPayload(result.payload);
+        } else {
+          // Legacy fallback while older module bundles are still present.
+          window.__restaurantBootPayload = result.payload;
+          window.__restaurantBootPayloadConsumed = false;
+          window.postMessage(result.payload, "*");
+        }
 
         if (!cancelled) {
           setStatus("");
