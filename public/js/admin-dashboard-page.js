@@ -4,6 +4,7 @@
     import { notifyManagerChat } from './chat-notifications.js';
 
     const ADMIN_EMAIL = 'matt.29.ds@gmail.com';
+    const preloadedBoot = window.__adminDashboardBootPayload || null;
     const ADMIN_DISPLAY_NAME = 'Matt D (clarivore administrator)';
     let currentUser = null;
     let currentFilter = 'all';
@@ -26,14 +27,23 @@
 
     // Check authentication
     async function checkAuth() {
-      const { data: { user } } = await supabase.auth.getUser();
+      let user = preloadedBoot?.user || null;
+      if (!user) {
+        const authResult = await supabase.auth.getUser();
+        user = authResult?.data?.user || null;
+      }
 
-      let managerRestaurants = [];
-      if (user && user.email === ADMIN_EMAIL) {
+      let managerRestaurants = Array.isArray(preloadedBoot?.managerRestaurants)
+        ? preloadedBoot.managerRestaurants
+        : [];
+      if (!managerRestaurants.length && user && user.email === ADMIN_EMAIL) {
         managerRestaurants = await fetchManagerRestaurants(supabase, user.id);
       }
-      setupTopbar('admin', user, { managerRestaurants });
-      if (user) {
+
+      if (!preloadedBoot?.topbarSetupDone) {
+        setupTopbar('admin', user, { managerRestaurants });
+      }
+      if (user && !preloadedBoot?.signOutHandlerBound) {
         attachSignOutHandler(supabase);
       }
 

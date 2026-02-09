@@ -1,80 +1,102 @@
 "use client";
 
-import { useCallback, useMemo } from "react";
-import { useModuleRuntime } from "../runtime/useModuleRuntime";
+import { useEffect, useState } from "react";
 import ManagerDashboardDom from "./components/ManagerDashboardDom";
 import { prepareManagerDashboardBootPayload } from "./services/managerDashboardBoot";
+import { supabaseClient as supabase } from "../lib/supabase";
+import { loadScript } from "../runtime/scriptLoader";
 
 export default function ManagerDashboardClient() {
-  const externalScripts = useMemo(
-    () => [
-      { src: "https://docs.opencv.org/4.5.2/opencv.js" },
-      { src: "/js/auth-redirect.js", defer: true },
-      { src: "/js/allergen-diet-config.js" },
-    ],
-    [],
-  );
-  const moduleScripts = useMemo(
-    () => [
-      "/js/ingredient-label-capture.js",
-      "/js/manager-dashboard.js",
-      "/js/report-modal.js",
-    ],
-    [],
-  );
+  const [error, setError] = useState("");
 
-  const beforeModuleLoad = useCallback(async () => {
-    const bootPayload = await prepareManagerDashboardBootPayload();
-    const hasManagerAccess = Boolean(bootPayload.isOwner || bootPayload.isManager);
+  useEffect(() => {
+    let cancelled = false;
 
-    if (hasManagerAccess) {
-      bootPayload.currentMode =
-        localStorage.getItem("clarivoreManagerMode") || "editor";
-    } else {
-      bootPayload.currentMode = null;
-    }
+    async function boot() {
+      try {
+        if (!supabase) {
+          throw new Error("Supabase env vars are missing.");
+        }
 
-    if (bootPayload.user) {
-      const [{ setupTopbar }, { initManagerNotifications }] = await Promise.all([
-        import(
-          /* webpackIgnore: true */
-          "/js/shared-nav.js"
-        ),
-        hasManagerAccess
-          ? import(
+        window.supabaseClient = supabase;
+
+        await loadScript("https://docs.opencv.org/4.5.2/opencv.js");
+        await loadScript("/js/auth-redirect.js", { defer: true });
+        await loadScript("/js/allergen-diet-config.js");
+
+        const bootPayload = await prepareManagerDashboardBootPayload();
+        const hasManagerAccess = Boolean(bootPayload.isOwner || bootPayload.isManager);
+
+        if (hasManagerAccess) {
+          bootPayload.currentMode =
+            localStorage.getItem("clarivoreManagerMode") || "editor";
+        } else {
+          bootPayload.currentMode = null;
+        }
+
+        if (bootPayload.user) {
+          const [{ setupTopbar }, { initManagerNotifications }] = await Promise.all([
+            import(
               /* webpackIgnore: true */
-              "/js/manager-notifications.js"
-            )
-          : Promise.resolve({ initManagerNotifications: null }),
-      ]);
+              "/js/shared-nav.js"
+            ),
+            hasManagerAccess
+              ? import(
+                  /* webpackIgnore: true */
+                  "/js/manager-notifications.js"
+                )
+              : Promise.resolve({ initManagerNotifications: null }),
+          ]);
 
-      setupTopbar("home", bootPayload.user, {
-        managerRestaurants: bootPayload.managerRestaurants || [],
-      });
-      bootPayload.topbarSetupDone = true;
+          setupTopbar("home", bootPayload.user, {
+            managerRestaurants: bootPayload.managerRestaurants || [],
+          });
+          bootPayload.topbarSetupDone = true;
 
-      if (hasManagerAccess && typeof initManagerNotifications === "function") {
-        initManagerNotifications({
-          user: bootPayload.user,
-          client: window.supabaseClient,
-        });
-        bootPayload.managerNotificationsReady = true;
-      } else {
-        bootPayload.managerNotificationsReady = false;
+          if (hasManagerAccess && typeof initManagerNotifications === "function") {
+            initManagerNotifications({
+              user: bootPayload.user,
+              client: window.supabaseClient,
+            });
+            bootPayload.managerNotificationsReady = true;
+          } else {
+            bootPayload.managerNotificationsReady = false;
+          }
+        } else {
+          bootPayload.topbarSetupDone = false;
+          bootPayload.managerNotificationsReady = false;
+        }
+
+        window.__managerDashboardBootPayload = bootPayload;
+
+        await import(
+          /* webpackIgnore: true */
+          "/js/ingredient-label-capture.js"
+        );
+        await import(
+          /* webpackIgnore: true */
+          "/js/manager-dashboard.js"
+        );
+        await import(
+          /* webpackIgnore: true */
+          "/js/report-modal.js"
+        );
+      } catch (runtimeError) {
+        console.error("[manager-dashboard-next] boot failed", runtimeError);
+        if (!cancelled) {
+          setError(
+            runtimeError?.message || "Failed to load manager dashboard runtime.",
+          );
+        }
       }
-    } else {
-      bootPayload.topbarSetupDone = false;
-      bootPayload.managerNotificationsReady = false;
     }
 
-    window.__managerDashboardBootPayload = bootPayload;
-  }, []);
+    boot();
 
-  const { error } = useModuleRuntime({
-    externalScripts,
-    moduleScripts,
-    beforeModuleLoad,
-  });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   return (
     <>
