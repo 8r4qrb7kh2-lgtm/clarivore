@@ -30,6 +30,27 @@
   - `ManagerModeSwitch` for editor/customer mode toggles
 - Refactored 14 app routes/components to use shared `SimpleTopbar`, including restaurant shell compatibility usage.
 - Raw app-level `simple-topbar` markup is now fully removed from page components.
+- Introduced shared tablet monitor layout components in `app/components/TabletMonitorLayout.js`:
+  - `TabletMonitorPage`
+  - `TabletMonitorHeader`
+  - `TabletEmptyState`
+- Refactored both tablet monitor routes (`kitchen-tablet`, `server-tablet`) to use shared monitor layout components.
+- Introduced shared restaurant card component in `app/components/RestaurantCard.js`.
+- Refactored `home`, `restaurants`, and `favorites` to render the same shared restaurant card UI component.
+- Removed duplicated route-level inline restaurant card CSS from `app/restaurants/head.js` in favor of shared stylesheet classes.
+- Consolidated duplicated legacy runtime Supabase bridge modules into `app/runtime/legacy/supabase-client.js` and re-exported from app-local runtime trees.
+- Added shared owner/manager access helpers in `app/lib/managerRestaurants.js`:
+  - `isOwnerUser`
+  - `isManagerUser`
+  - `isManagerOrOwnerUser`
+  - `resolveManagerRestaurantAccess`
+- Refactored access checks across key routes/services to use shared helpers (`account`, `report-issue`, `order-feedback`, `help-contact`, `dish-search`, `kitchen-tablet`, `server-tablet`, `manager-dashboard`, `admin-dashboard`, `restaurantBootService`).
+- Added shared tablet order persistence helpers in `app/lib/tabletOrderPersistence.js`:
+  - `cloneTabletOrder`
+  - `fetchAccessibleTabletOrders`
+  - `upsertTabletOrder`
+  - `notifyDinerNoticeUpdate`
+- Refactored both tablet monitor routes (`kitchen-tablet`, `server-tablet`) to use shared tablet order persistence helpers.
 
 ## Current migration inventory
 - Legacy static HTML pages still present in `public/`: 15

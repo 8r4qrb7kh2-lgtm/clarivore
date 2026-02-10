@@ -8,7 +8,11 @@ import {
   buildAllergenDietConfig,
   loadAllergenDietConfig,
 } from "../lib/allergenConfig";
-import { OWNER_EMAIL, fetchManagerRestaurants } from "../lib/managerRestaurants";
+import {
+  fetchManagerRestaurants,
+  isManagerUser,
+  isOwnerUser,
+} from "../lib/managerRestaurants";
 import {
   supabaseClient as supabase,
   supabaseAnonKey,
@@ -76,8 +80,8 @@ export default function DishSearchClient() {
 
       if (isMounted) setUser(currentUser);
 
-      const isOwner = currentUser.email === OWNER_EMAIL;
-      const isManager = currentUser.user_metadata?.role === "manager";
+      const isOwner = isOwnerUser(currentUser);
+      const isManager = isManagerUser(currentUser);
 
       let managerRestaurants = [];
       if (isManager || isOwner) {

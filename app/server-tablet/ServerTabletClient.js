@@ -2,10 +2,20 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import SimpleTopbar from "../components/SimpleTopbar";
+import {
+  TabletEmptyState,
+  TabletMonitorHeader,
+  TabletMonitorPage,
+} from "../components/TabletMonitorLayout";
 import { supabaseClient as supabase } from "../lib/supabase";
-import { OWNER_EMAIL, fetchManagerRestaurants } from "../lib/managerRestaurants";
+import { resolveManagerRestaurantAccess } from "../lib/managerRestaurants";
 import { showOrderNotification } from "../lib/orderNotifications";
+import {
+  cloneTabletOrder,
+  fetchAccessibleTabletOrders,
+  notifyDinerNoticeUpdate,
+  upsertTabletOrder,
+} from "../lib/tabletOrderPersistence";
 import {
   ORDER_STATUSES,
   applyServerApprove,
@@ -22,14 +32,6 @@ import {
 
 const REJECTION_REMOVAL_DELAY_MS = 5000;
 const AUTO_REFRESH_INTERVAL_MS = 15000;
-
-function cloneOrder(order) {
-  if (!order) return null;
-  if (typeof structuredClone === "function") {
-    return structuredClone(order);
-  }
-  return JSON.parse(JSON.stringify(order));
-}
 
 export default function ServerTabletClient() {
   const router = useRouter();
@@ -177,23 +179,11 @@ export default function ServerTabletClient() {
   );
 
   const queryOrders = useCallback(async () => {
-    if (!supabase) return [];
-
-    let query = supabase
-      .from("tablet_orders")
-      .select("*")
-      .order("created_at", { ascending: true });
-
-    if (!access.isOwner && access.managedRestaurantIds.length > 0) {
-      query = query.in("restaurant_id", access.managedRestaurantIds);
-    }
-
-    const { data, error } = await query;
-    if (error) throw error;
-
-    return (data || [])
-      .map((row) => deserializeTabletOrder(row))
-      .filter(Boolean);
+    return fetchAccessibleTabletOrders({
+      supabase,
+      access,
+      deserializeOrder: deserializeTabletOrder,
+    });
   }, [access]);
 
   const refreshOrders = useCallback(async () => {
@@ -215,42 +205,19 @@ export default function ServerTabletClient() {
   }, [applyOrders, queryOrders]);
 
   const saveOrder = useCallback(async (order) => {
-    if (!supabase) throw new Error("Supabase is not configured.");
-
-    const restaurantId = order?.restaurantId || order?.restaurant_id;
-    if (!restaurantId) {
-      throw new Error("Order is missing restaurant id.");
-    }
-
-    const payload = {
-      ...order,
-      restaurantId,
-      updatedAt: new Date().toISOString(),
-    };
-
-    const { error } = await supabase.from("tablet_orders").upsert(
-      {
-        id: payload.id,
-        restaurant_id: payload.restaurantId,
-        status: payload.status || ORDER_STATUSES.CODE_ASSIGNED,
-        payload,
-      },
-      { onConflict: "id" },
-    );
-
-    if (error) throw error;
-    return payload;
+    return upsertTabletOrder({
+      supabase,
+      order,
+      fallbackStatus: ORDER_STATUSES.CODE_ASSIGNED,
+    });
   }, []);
 
   const notifyDinerNotice = useCallback(async (orderId) => {
-    if (!supabase || !orderId) return;
-    try {
-      await supabase.functions.invoke("notify-diner-notice", {
-        body: { orderId },
-      });
-    } catch (error) {
-      console.error("[server-tablet-next] failed to notify diner", error);
-    }
+    await notifyDinerNoticeUpdate({
+      supabase,
+      orderId,
+      logLabel: "server-tablet-next",
+    });
   }, []);
 
   const runAction = useCallback(
@@ -268,7 +235,7 @@ export default function ServerTabletClient() {
           return;
         }
 
-        const updatedOrder = cloneOrder(currentOrder);
+        const updatedOrder = cloneTabletOrder(currentOrder);
         if (!updatedOrder) return;
 
         if (action === "approve") {
@@ -365,20 +332,11 @@ export default function ServerTabletClient() {
         }
         setAuthUser(user);
 
-        const isOwner = user.email === OWNER_EMAIL;
-        const isManager = user.user_metadata?.role === "manager";
-        const managerRestaurants =
-          isOwner || isManager
-            ? await fetchManagerRestaurants(supabase, user)
-            : [];
+        const accessState = await resolveManagerRestaurantAccess(supabase, user);
 
         if (!active) return;
 
-        const hasAccess =
-          (isOwner || isManager) &&
-          (isOwner || managerRestaurants.length > 0);
-
-        if (!hasAccess) {
+        if (!accessState.hasAccess) {
           setIsUnauthorized(true);
           setAccess({ isOwner: false, managedRestaurantIds: [] });
           setIsBooting(false);
@@ -387,10 +345,8 @@ export default function ServerTabletClient() {
 
         setIsUnauthorized(false);
         setAccess({
-          isOwner,
-          managedRestaurantIds: managerRestaurants
-            .map((restaurant) => restaurant.id)
-            .filter(Boolean),
+          isOwner: accessState.isOwner,
+          managedRestaurantIds: accessState.managedRestaurantIds,
         });
         setIsBooting(false);
       } catch (error) {
@@ -960,47 +916,23 @@ export default function ServerTabletClient() {
         }
       `}</style>
 
-      <SimpleTopbar
+      <TabletMonitorPage
         brandHref="/restaurants"
         links={[
           { href: "/manager-dashboard", label: "Dashboard" },
           { href: "/kitchen-tablet", label: "Kitchen monitor" },
           { href: "/help-contact", label: "Help" },
         ]}
-        showAuthAction
         signedIn={Boolean(authUser)}
         onSignOut={onSignOut}
-      />
-
-      <main className="page-main">
-        <div className="page-content tablet-page">
-          <header>
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "flex-start",
-                gap: 16,
-                marginBottom: 12,
-              }}
-            >
-              <div>
-                <h1>Server monitor</h1>
-                <p className="muted-text">
-                  Review allergy notices waiting for approval or dispatch.
-                </p>
-              </div>
-              <button
-                type="button"
-                className="secondary-btn"
-                style={{ whiteSpace: "nowrap" }}
-                onClick={onRefreshClick}
-                disabled={refreshing || isBooting || isUnauthorized}
-              >
-                {refreshing ? "Refreshing..." : "Refresh orders"}
-              </button>
-            </div>
-
+      >
+        <TabletMonitorHeader
+          title="Server monitor"
+          subtitle="Review allergy notices waiting for approval or dispatch."
+          onRefresh={onRefreshClick}
+          refreshing={refreshing}
+          refreshDisabled={refreshing || isBooting || isUnauthorized}
+          statusContent={
             <div className="tablet-status">
               <span className="tablet-status-badge">
                 Awaiting approval: {awaitingApprovalCount}
@@ -1009,19 +941,11 @@ export default function ServerTabletClient() {
                 Ready to dispatch: {readyToDispatchCount}
               </span>
             </div>
-
-            <div className="tablet-filters">
-              <label className="tablet-filter" htmlFor="server-show-completed">
-                <input
-                  type="checkbox"
-                  id="server-show-completed"
-                  checked={showCompleted}
-                  onChange={(event) => setShowCompleted(event.target.checked)}
-                />
-                <span>Show completed/rescinded</span>
-              </label>
-            </div>
-          </header>
+          }
+          filterId="server-show-completed"
+          showCompleted={showCompleted}
+          onShowCompletedChange={setShowCompleted}
+        />
 
           <section>
             {serverEntries.length > 0 ? (
@@ -1046,21 +970,21 @@ export default function ServerTabletClient() {
 
             <div className="server-queue">
               {isBooting ? (
-                <div className="empty-tablet-state">Loading server monitor...</div>
+                <TabletEmptyState>Loading server monitor...</TabletEmptyState>
               ) : isUnauthorized ? (
-                <div className="empty-tablet-state">
+                <TabletEmptyState>
                   You do not have access to the server station tablet.
-                </div>
+                </TabletEmptyState>
               ) : bootError ? (
-                <div className="empty-tablet-state">{bootError}</div>
+                <TabletEmptyState>{bootError}</TabletEmptyState>
               ) : serverEntries.length === 0 ? (
-                <div className="empty-tablet-state">
+                <TabletEmptyState>
                   Waiting for diners to submit codes. Notices will appear here once received.
-                </div>
+                </TabletEmptyState>
               ) : visibleOrdersForServer.length === 0 ? (
-                <div className="empty-tablet-state">
+                <TabletEmptyState>
                   No active notices for this server.
-                </div>
+                </TabletEmptyState>
               ) : (
                 visibleOrdersForServer.map((order) => {
                   const tableLabel = order.tableNumber
@@ -1169,8 +1093,7 @@ export default function ServerTabletClient() {
               )}
             </div>
           </section>
-        </div>
-      </main>
+      </TabletMonitorPage>
 
       {rejectDraft ? (
         <div

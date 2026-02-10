@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import SimpleTopbar from "../components/SimpleTopbar";
 import { supabaseClient as supabase } from "../lib/supabase";
-import { OWNER_EMAIL } from "../lib/managerRestaurants";
+import { isManagerOrOwnerUser } from "../lib/managerRestaurants";
 
 function resolveAccountName(user, fallbackName = "") {
   if (!user) return (fallbackName || "").trim() || null;
@@ -36,8 +36,7 @@ export default function ReportIssueClient() {
     () => (isSubmitting ? "Sending..." : "Send"),
     [isSubmitting],
   );
-  const isManagerOrOwner =
-    user?.email === OWNER_EMAIL || user?.user_metadata?.role === "manager";
+  const isManagerOrOwner = isManagerOrOwnerUser(user);
 
   useEffect(() => {
     let isMounted = true;

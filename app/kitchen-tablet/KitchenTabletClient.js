@@ -2,10 +2,20 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import SimpleTopbar from "../components/SimpleTopbar";
+import {
+  TabletEmptyState,
+  TabletMonitorHeader,
+  TabletMonitorPage,
+} from "../components/TabletMonitorLayout";
 import { supabaseClient as supabase } from "../lib/supabase";
-import { OWNER_EMAIL, fetchManagerRestaurants } from "../lib/managerRestaurants";
+import { resolveManagerRestaurantAccess } from "../lib/managerRestaurants";
 import { showOrderNotification } from "../lib/orderNotifications";
+import {
+  cloneTabletOrder,
+  fetchAccessibleTabletOrders,
+  notifyDinerNoticeUpdate,
+  upsertTabletOrder,
+} from "../lib/tabletOrderPersistence";
 import {
   KITCHEN_RELEVANT_STATUSES,
   KITCHEN_STATUS_DESCRIPTORS,
@@ -21,14 +31,6 @@ import {
 } from "./kitchenTabletLogic";
 
 const AUTO_REFRESH_INTERVAL_MS = 15000;
-
-function cloneOrder(order) {
-  if (!order) return null;
-  if (typeof structuredClone === "function") {
-    return structuredClone(order);
-  }
-  return JSON.parse(JSON.stringify(order));
-}
 
 function statusDescriptor(status) {
   return (
@@ -99,23 +101,11 @@ export default function KitchenTabletClient() {
   }, []);
 
   const queryOrders = useCallback(async () => {
-    if (!supabase) return [];
-
-    let query = supabase
-      .from("tablet_orders")
-      .select("*")
-      .order("created_at", { ascending: true });
-
-    if (!access.isOwner && access.managedRestaurantIds.length > 0) {
-      query = query.in("restaurant_id", access.managedRestaurantIds);
-    }
-
-    const { data, error } = await query;
-    if (error) throw error;
-
-    return (data || [])
-      .map((row) => deserializeTabletOrder(row))
-      .filter(Boolean);
+    return fetchAccessibleTabletOrders({
+      supabase,
+      access,
+      deserializeOrder: deserializeTabletOrder,
+    });
   }, [access]);
 
   const refreshOrders = useCallback(async () => {
@@ -136,42 +126,19 @@ export default function KitchenTabletClient() {
   }, [applyOrders, queryOrders]);
 
   const saveOrder = useCallback(async (order) => {
-    if (!supabase) throw new Error("Supabase is not configured.");
-
-    const restaurantId = order?.restaurantId || order?.restaurant_id;
-    if (!restaurantId) {
-      throw new Error("Order is missing restaurant id.");
-    }
-
-    const payload = {
-      ...order,
-      restaurantId,
-      updatedAt: new Date().toISOString(),
-    };
-
-    const { error } = await supabase.from("tablet_orders").upsert(
-      {
-        id: payload.id,
-        restaurant_id: payload.restaurantId,
-        status: payload.status || ORDER_STATUSES.WITH_KITCHEN,
-        payload,
-      },
-      { onConflict: "id" },
-    );
-
-    if (error) throw error;
-    return payload;
+    return upsertTabletOrder({
+      supabase,
+      order,
+      fallbackStatus: ORDER_STATUSES.WITH_KITCHEN,
+    });
   }, []);
 
   const notifyDinerNotice = useCallback(async (orderId) => {
-    if (!supabase || !orderId) return;
-    try {
-      await supabase.functions.invoke("notify-diner-notice", {
-        body: { orderId },
-      });
-    } catch (error) {
-      console.error("[kitchen-tablet-next] failed to notify diner", error);
-    }
+    await notifyDinerNoticeUpdate({
+      supabase,
+      orderId,
+      logLabel: "kitchen-tablet-next",
+    });
   }, []);
 
   const runAction = useCallback(
@@ -186,7 +153,7 @@ export default function KitchenTabletClient() {
           throw new Error("Order not found.");
         }
 
-        const latestOrder = cloneOrder(currentOrder);
+        const latestOrder = cloneTabletOrder(currentOrder);
         if (!latestOrder) return;
 
         if (action === "acknowledge") {
@@ -235,20 +202,11 @@ export default function KitchenTabletClient() {
         }
         setAuthUser(user);
 
-        const isOwner = user.email === OWNER_EMAIL;
-        const isManager = user.user_metadata?.role === "manager";
-        const managerRestaurants =
-          isOwner || isManager
-            ? await fetchManagerRestaurants(supabase, user)
-            : [];
+        const accessState = await resolveManagerRestaurantAccess(supabase, user);
 
         if (!active) return;
 
-        const hasAccess =
-          (isOwner || isManager) &&
-          (isOwner || managerRestaurants.length > 0);
-
-        if (!hasAccess) {
+        if (!accessState.hasAccess) {
           setIsUnauthorized(true);
           setAccess({ isOwner: false, managedRestaurantIds: [] });
           setIsBooting(false);
@@ -257,10 +215,8 @@ export default function KitchenTabletClient() {
 
         setIsUnauthorized(false);
         setAccess({
-          isOwner,
-          managedRestaurantIds: managerRestaurants
-            .map((restaurant) => restaurant.id)
-            .filter(Boolean),
+          isOwner: accessState.isOwner,
+          managedRestaurantIds: accessState.managedRestaurantIds,
         });
         setIsBooting(false);
       } catch (error) {
@@ -768,74 +724,41 @@ export default function KitchenTabletClient() {
         }
       `}</style>
 
-      <SimpleTopbar
+      <TabletMonitorPage
         brandHref="/restaurants"
         links={[
           { href: "/manager-dashboard", label: "Dashboard" },
           { href: "/server-tablet", label: "Server monitor" },
           { href: "/help-contact", label: "Help" },
         ]}
-        showAuthAction
         signedIn={Boolean(authUser)}
         onSignOut={onSignOut}
-      />
-
-      <main className="page-main">
-        <div className="page-content tablet-page">
-          <header>
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "flex-start",
-                gap: 16,
-                marginBottom: 12,
-              }}
-            >
-              <div>
-                <h1>Kitchen monitor</h1>
-                <p className="muted-text">
-                  Acknowledgements and follow-ups for active allergy notices.
-                </p>
-              </div>
-              <button
-                type="button"
-                className="secondary-btn"
-                style={{ whiteSpace: "nowrap" }}
-                onClick={onRefreshClick}
-                disabled={refreshing || isBooting || isUnauthorized}
-              >
-                {refreshing ? "Refreshing..." : "Refresh orders"}
-              </button>
-            </div>
-
-            <div className="tablet-filters">
-              <label className="tablet-filter" htmlFor="kitchen-show-completed">
-                <input
-                  type="checkbox"
-                  id="kitchen-show-completed"
-                  checked={showCompleted}
-                  onChange={(event) => setShowCompleted(event.target.checked)}
-                />
-                <span>Show completed/rescinded</span>
-              </label>
-            </div>
-          </header>
+      >
+        <TabletMonitorHeader
+          title="Kitchen monitor"
+          subtitle="Acknowledgements and follow-ups for active allergy notices."
+          onRefresh={onRefreshClick}
+          refreshing={refreshing}
+          refreshDisabled={refreshing || isBooting || isUnauthorized}
+          filterId="kitchen-show-completed"
+          showCompleted={showCompleted}
+          onShowCompletedChange={setShowCompleted}
+        />
 
           <section>
             <div className="kitchen-queue">
               {isBooting ? (
-                <div className="empty-tablet-state">Loading kitchen monitor...</div>
+                <TabletEmptyState>Loading kitchen monitor...</TabletEmptyState>
               ) : isUnauthorized ? (
-                <div className="empty-tablet-state">
+                <TabletEmptyState>
                   You do not have access to the kitchen line tablet.
-                </div>
+                </TabletEmptyState>
               ) : bootError ? (
-                <div className="empty-tablet-state">{bootError}</div>
+                <TabletEmptyState>{bootError}</TabletEmptyState>
               ) : visibleOrders.length === 0 ? (
-                <div className="empty-tablet-state">
+                <TabletEmptyState>
                   Kitchen is idle. Notices appear here after the server dispatches them.
-                </div>
+                </TabletEmptyState>
               ) : (
                 visibleOrders.map((order) => {
                   const allergies =
@@ -991,8 +914,7 @@ export default function KitchenTabletClient() {
               )}
             </div>
           </section>
-        </div>
-      </main>
+      </TabletMonitorPage>
 
       {promptDraft ? (
         <div

@@ -1,4 +1,4 @@
-import { OWNER_EMAIL, fetchManagerRestaurants } from "../../lib/managerRestaurants";
+import { resolveManagerRestaurantAccess } from "../../lib/managerRestaurants";
 import { supabaseClient as supabase } from "../../lib/supabase";
 
 export async function prepareManagerDashboardBootPayload() {
@@ -26,17 +26,13 @@ export async function prepareManagerDashboardBootPayload() {
     };
   }
 
-  const isOwner = user.email === OWNER_EMAIL;
-  const isManager = user.user_metadata?.role === "manager";
-  const managerRestaurants =
-    isOwner || isManager ? await fetchManagerRestaurants(supabase, user) : [];
+  const access = await resolveManagerRestaurantAccess(supabase, user);
 
   return {
     user,
-    isOwner,
-    isManager,
-    managerRestaurants,
-    managedRestaurants: managerRestaurants,
+    isOwner: access.isOwner,
+    isManager: access.isManager,
+    managerRestaurants: access.managerRestaurants,
+    managedRestaurants: access.managerRestaurants,
   };
 }
-

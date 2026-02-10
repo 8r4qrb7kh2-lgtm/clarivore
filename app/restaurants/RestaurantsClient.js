@@ -2,8 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import RestaurantCard from "../components/RestaurantCard";
 import SimpleTopbar from "../components/SimpleTopbar";
-import { getWeeksAgoInfo } from "../lib/confirmationAge";
 import { supabaseClient as supabase } from "../lib/supabase";
 
 export default function RestaurantsClient() {
@@ -136,38 +136,13 @@ export default function RestaurantsClient() {
                 Loading restaurants...
               </p>
             ) : sorted.length ? (
-              sorted.map((restaurant) => {
-                const info = getWeeksAgoInfo(restaurant.last_confirmed, {
-                  useMonthLabel: true,
-                });
-                return (
-                  <article key={restaurant.id} className="restaurant-card">
-                    <div className="restaurant-card-media">
-                      <img
-                        src={
-                          restaurant.menu_image ||
-                          "https://via.placeholder.com/400x300"
-                        }
-                        alt={restaurant.name || "Restaurant"}
-                      />
-                    </div>
-                    <div className="restaurant-card-content">
-                      <h3>{restaurant.name}</h3>
-                      <p className="meta" style={{ color: info.color }}>
-                        Last confirmed by staff: {info.text}
-                      </p>
-                      <a
-                        className="cta-button"
-                        href={`/restaurant?slug=${encodeURIComponent(
-                          restaurant.slug,
-                        )}`}
-                      >
-                        View menu
-                      </a>
-                    </div>
-                  </article>
-                );
-              })
+              sorted.map((restaurant) => (
+                <RestaurantCard
+                  key={restaurant.id}
+                  restaurant={restaurant}
+                  confirmationUseMonthLabel
+                />
+              ))
             ) : (
               <div className="empty-state">
                 No restaurants yet. Encourage your favorite spots to join!

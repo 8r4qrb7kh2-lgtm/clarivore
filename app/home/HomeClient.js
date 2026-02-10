@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import SimpleTopbar from "../components/SimpleTopbar";
-import { getWeeksAgoInfo } from "../lib/confirmationAge";
+import RestaurantCard from "../components/RestaurantCard";
 import { supabaseClient as supabase } from "../lib/supabase";
 
 function getDisplayName(user) {
@@ -167,38 +167,13 @@ export default function HomeClient() {
                 Loading restaurants...
               </p>
             ) : restaurants.length ? (
-              restaurants.map((restaurant) => {
-                const info = getWeeksAgoInfo(restaurant.last_confirmed, {
-                  useMonthLabel: true,
-                });
-                return (
-                  <article key={restaurant.id} className="restaurant-card">
-                    <div className="restaurant-card-media">
-                      <img
-                        src={
-                          restaurant.menu_image ||
-                          "https://via.placeholder.com/400x300"
-                        }
-                        alt={restaurant.name || "Restaurant"}
-                      />
-                    </div>
-                    <div className="restaurant-card-content">
-                      <h3>{restaurant.name}</h3>
-                      <p className="meta" style={{ color: info.color }}>
-                        Last confirmed by staff: {info.text}
-                      </p>
-                      <Link
-                        className="cta-button"
-                        href={`/restaurant?slug=${encodeURIComponent(
-                          restaurant.slug,
-                        )}`}
-                      >
-                        View menu
-                      </Link>
-                    </div>
-                  </article>
-                );
-              })
+              restaurants.map((restaurant) => (
+                <RestaurantCard
+                  key={restaurant.id}
+                  restaurant={restaurant}
+                  confirmationUseMonthLabel
+                />
+              ))
             ) : (
               <p
                 style={{

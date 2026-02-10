@@ -4,7 +4,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import SimpleTopbar from "../components/SimpleTopbar";
 import { buildAllergenDietConfig, loadAllergenDietConfig } from "../lib/allergenConfig";
-import { fetchManagerRestaurants, OWNER_EMAIL } from "../lib/managerRestaurants";
+import {
+  fetchManagerRestaurants,
+  isManagerUser,
+  isOwnerUser,
+} from "../lib/managerRestaurants";
 import {
   DEFAULT_PUSH_PUBLIC_KEY,
   isNativePlatform,
@@ -105,8 +109,8 @@ export default function AccountClient() {
     getDietEmoji,
   } = config;
 
-  const isOwner = user?.email === OWNER_EMAIL;
-  const isManager = user?.user_metadata?.role === "manager";
+  const isOwner = isOwnerUser(user);
+  const isManager = isManagerUser(user);
   const isManagerOrOwner = isOwner || isManager;
 
   const detailsChanged =

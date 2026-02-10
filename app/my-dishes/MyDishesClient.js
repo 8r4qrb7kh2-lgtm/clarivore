@@ -5,7 +5,11 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import SimpleTopbar from "../components/SimpleTopbar";
 import { supabaseClient as supabase } from "../lib/supabase";
-import { OWNER_EMAIL, fetchManagerRestaurants } from "../lib/managerRestaurants";
+import {
+  fetchManagerRestaurants,
+  isManagerUser,
+  isOwnerUser,
+} from "../lib/managerRestaurants";
 
 function formatDate(dateValue) {
   if (!dateValue) return "";
@@ -253,8 +257,8 @@ export default function MyDishesClient() {
           return;
         }
 
-        const isOwner = authUser.email === OWNER_EMAIL;
-        const isManager = authUser.user_metadata?.role === "manager";
+        const isOwner = isOwnerUser(authUser);
+        const isManager = isManagerUser(authUser);
         const managerRestaurants =
           isManager || isOwner
             ? await fetchManagerRestaurants(supabase, authUser)
@@ -289,7 +293,7 @@ export default function MyDishesClient() {
   }, [reloadData, router]);
 
   const isManagerOrOwner =
-    user?.email === OWNER_EMAIL || user?.user_metadata?.role === "manager";
+    isOwnerUser(user) || isManagerUser(user);
 
   const onSignOut = useCallback(async () => {
     if (!supabase) return;

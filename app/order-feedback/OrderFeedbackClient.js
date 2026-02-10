@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import SimpleTopbar from "../components/SimpleTopbar";
 import { supabaseClient as supabase } from "../lib/supabase";
-import { OWNER_EMAIL } from "../lib/managerRestaurants";
+import { isManagerOrOwnerUser } from "../lib/managerRestaurants";
 import { loadAllergenDietConfig } from "../lib/allergenConfig";
 
 function getDefaultConfig() {
@@ -41,9 +41,7 @@ export default function OrderFeedbackClient() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [config, setConfig] = useState(() => getDefaultConfig());
   const [topbarUser, setTopbarUser] = useState(null);
-  const isManagerOrOwner =
-    topbarUser?.email === OWNER_EMAIL ||
-    topbarUser?.user_metadata?.role === "manager";
+  const isManagerOrOwner = isManagerOrOwnerUser(topbarUser);
 
   const menuImages = useMemo(
     () => (Array.isArray(restaurantData?.menu_images) ? restaurantData.menu_images : []),

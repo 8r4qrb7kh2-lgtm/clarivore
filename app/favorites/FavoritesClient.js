@@ -1,11 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import RestaurantCard from "../components/RestaurantCard";
 import SimpleTopbar from "../components/SimpleTopbar";
-import { getWeeksAgoInfo } from "../lib/confirmationAge";
-import { OWNER_EMAIL, fetchManagerRestaurants } from "../lib/managerRestaurants";
+import {
+  fetchManagerRestaurants,
+  isManagerUser,
+  isOwnerUser,
+} from "../lib/managerRestaurants";
 import { supabaseClient as supabase } from "../lib/supabase";
 
 export default function FavoritesClient() {
@@ -46,8 +49,8 @@ export default function FavoritesClient() {
       }
       if (isMounted) setUser(user);
 
-      const isOwner = user.email === OWNER_EMAIL;
-      const isManager = user.user_metadata?.role === "manager";
+      const isOwner = isOwnerUser(user);
+      const isManager = isManagerUser(user);
 
       let managerRestaurants = [];
       if (isManager || isOwner) {
@@ -239,16 +242,15 @@ export default function FavoritesClient() {
                   : "";
                 const isFavorite = restaurantKey && favoriteSet.has(restaurantKey);
                 const showAll =
-                  user?.email === OWNER_EMAIL ||
-                  user?.user_metadata?.role === "manager";
-                const info = getWeeksAgoInfo(restaurant.last_confirmed, {
-                  showAll,
-                });
+                  isOwnerUser(user) || isManagerUser(user);
 
                 return (
-                  <article key={restaurant.id} className="restaurant-card">
-                    <div className="restaurant-card-media">
-                      {restaurantKey && (
+                  <RestaurantCard
+                    key={restaurant.id}
+                    restaurant={restaurant}
+                    confirmationShowAll={showAll}
+                    mediaOverlay={
+                      restaurantKey ? (
                         <button
                           className={`favorite-toggle${
                             isFavorite ? " is-active" : ""
@@ -269,32 +271,9 @@ export default function FavoritesClient() {
                         >
                           {isFavorite ? "★" : "☆"}
                         </button>
-                      )}
-                      <img
-                        src={
-                          restaurant.menu_image ||
-                          "https://via.placeholder.com/400x300"
-                        }
-                        alt={restaurant.name || "Restaurant"}
-                      />
-                    </div>
-                    <div className="restaurant-card-content">
-                      <h3>{restaurant.name}</h3>
-                      {info.text ? (
-                        <p className="meta" style={{ color: info.color }}>
-                          Last confirmed by staff: {info.text}
-                        </p>
-                      ) : null}
-                      <Link
-                        className="cta-button"
-                        href={`/restaurant?slug=${encodeURIComponent(
-                          restaurant.slug,
-                        )}`}
-                      >
-                        View menu
-                      </Link>
-                    </div>
-                  </article>
+                      ) : null
+                    }
+                  />
                 );
               })
             ) : (

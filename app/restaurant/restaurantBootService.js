@@ -3,7 +3,10 @@ import {
   supabaseAnonKey,
   supabaseUrl,
 } from "../lib/supabase";
-import { fetchManagerRestaurants, OWNER_EMAIL } from "../lib/managerRestaurants";
+import {
+  fetchManagerRestaurants,
+  isOwnerUser,
+} from "../lib/managerRestaurants";
 import { buildTrainingRestaurantPayload, HOW_IT_WORKS_SLUG } from "./boot/trainingRestaurant";
 import { applyConsoleReportingPreference, applyModeFlags, attachInviteBanner, trackRecentlyViewed } from "./boot/pageFlags";
 import { createEditorLock, hideEditorLockModal, showEditorLockModal } from "./boot/editorLock";
@@ -84,7 +87,7 @@ export async function buildRestaurantBootPayload({
 
   if (user) {
     const userRole = user.user_metadata?.role || null;
-    const isOwner = user.email === OWNER_EMAIL;
+    const isOwner = isOwnerUser(user);
 
     const { data: record } = await supabaseClient
       .from("user_allergies")

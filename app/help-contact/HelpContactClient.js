@@ -5,7 +5,10 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import SimpleTopbar, { ManagerModeSwitch } from "../components/SimpleTopbar";
 import { supabaseClient as supabase } from "../lib/supabase";
-import { OWNER_EMAIL, fetchManagerRestaurants } from "../lib/managerRestaurants";
+import {
+  fetchManagerRestaurants,
+  isManagerOrOwnerUser,
+} from "../lib/managerRestaurants";
 import { initManagerNotifications } from "../lib/managerNotifications";
 
 const ADMIN_DISPLAY_NAME = "Matt D (clarivore administrator)";
@@ -146,8 +149,7 @@ export default function HelpContactClient() {
   }, [user]);
 
   const mode = isEditorMode ? "manager" : "customer";
-  const isManagerOrOwner =
-    user?.email === OWNER_EMAIL || user?.user_metadata?.role === "manager";
+  const isManagerOrOwner = isManagerOrOwnerUser(user);
 
   const applyRestaurantSelection = useCallback((availableRestaurants, preferRecent) => {
     setRestaurants(availableRestaurants);
@@ -502,9 +504,7 @@ export default function HelpContactClient() {
         if (!mounted) return;
         setUser(authUser);
 
-        const isOwner = authUser.email === OWNER_EMAIL;
-        const isManager = authUser.user_metadata?.role === "manager";
-        const isManagerOrOwner = isOwner || isManager;
+        const isManagerOrOwner = isManagerOrOwnerUser(authUser);
 
         let managerRestaurants = [];
         if (isManagerOrOwner) {

@@ -1,9 +1,21 @@
 export const OWNER_EMAIL = "matt.29.ds@gmail.com";
 
+export function isOwnerUser(user) {
+  return Boolean(user?.email && user.email === OWNER_EMAIL);
+}
+
+export function isManagerUser(user) {
+  return user?.user_metadata?.role === "manager";
+}
+
+export function isManagerOrOwnerUser(user) {
+  return isOwnerUser(user) || isManagerUser(user);
+}
+
 export async function fetchManagerRestaurants(supabase, user) {
   if (!supabase || !user?.id) return [];
 
-  const isOwner = user.email === OWNER_EMAIL;
+  const isOwner = isOwnerUser(user);
 
   if (isOwner) {
     const { data, error } = await supabase
@@ -60,4 +72,22 @@ export async function fetchManagerRestaurants(supabase, user) {
       slug: row.slug,
       name: row.name || "Restaurant",
     }));
+}
+
+export async function resolveManagerRestaurantAccess(supabase, user) {
+  const isOwner = isOwnerUser(user);
+  const isManager = isManagerUser(user);
+  const managerRestaurants = isManagerOrOwnerUser(user)
+    ? await fetchManagerRestaurants(supabase, user)
+    : [];
+
+  return {
+    isOwner,
+    isManager,
+    managerRestaurants,
+    managedRestaurantIds: managerRestaurants
+      .map((restaurant) => restaurant.id)
+      .filter(Boolean),
+    hasAccess: (isOwner || isManager) && (isOwner || managerRestaurants.length > 0),
+  };
 }

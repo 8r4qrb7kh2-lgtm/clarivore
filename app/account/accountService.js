@@ -1,4 +1,4 @@
-import { OWNER_EMAIL } from "../lib/managerRestaurants";
+import { isOwnerUser } from "../lib/managerRestaurants";
 
 const QR_ALLERGIES_KEY = "qrAllergies";
 const QR_DIETS_KEY = "qrDiets";
@@ -278,7 +278,7 @@ export async function deleteUserAccount(supabase, userId) {
 
 export function getDefaultPostLoginPath(user, redirectParam, inviteValidation) {
   const role = user?.user_metadata?.role || user?.role || "customer";
-  const isOwner = user?.email === OWNER_EMAIL;
+  const isOwner = isOwnerUser(user);
 
   if (role === "manager" || isOwner || inviteValidation?.isValid) {
     return "/manager-dashboard";
