@@ -17,6 +17,8 @@ import {
   setOrderItems,
   getSupabaseClient,
 } from "./restaurantRuntime/runtimeSessionState.js";
+import { markOverlayDishesSelected } from "./restaurantRuntime/overlay-dom.js";
+import { waitForMenuOverlays } from "./restaurantRuntime/menu-overlay-ready.js";
 
 function filterOrdersByRestaurant(orderFlow, restaurantId) {
   if (!orderFlow || !orderFlow.tabletSimState) return;
@@ -44,41 +46,16 @@ function restoreSelectedMenuItems({ updateOrderSidebar, openOrderSidebar }) {
   const orderItems = getOrderItems();
   if (!orderItems.length) return;
 
-  const waitForMenu = () => {
-    const menu = document.getElementById("menu");
-    if (menu && menu.querySelectorAll(".overlay").length > 0) {
-      orderItems.forEach((dishName) => {
-        const overlays = document.querySelectorAll(".overlay");
-        overlays.forEach((overlay) => {
-          const titleEl = overlay.querySelector(".tTitle");
-          if (!titleEl) return;
-          const title = titleEl.textContent.trim();
-          if (
-            title.toLowerCase() !== String(dishName).toLowerCase() &&
-            title !== dishName
-          ) {
-            return;
-          }
-
-          overlay.classList.add("selected");
-          applyOverlayPulseColor(overlay);
-
-          const addBtn = overlay.querySelector(`.addToOrderBtn[data-dish-name]`);
-          if (addBtn) {
-            addBtn.disabled = true;
-            addBtn.textContent = "Added";
-          }
-        });
+  waitForMenuOverlays({
+    initialDelayMs: 500,
+    onReady: () => {
+      markOverlayDishesSelected(orderItems, {
+        setOverlayPulseColor: applyOverlayPulseColor,
       });
       updateOrderSidebar();
       openOrderSidebar();
-      return;
-    }
-
-    setTimeout(waitForMenu, 100);
-  };
-
-  setTimeout(waitForMenu, 500);
+    },
+  });
 }
 
 function applyRestaurantUpdate({

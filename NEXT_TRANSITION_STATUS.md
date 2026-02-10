@@ -375,6 +375,29 @@
     - `app/lib/restaurantRuntime/menu-overlay-listeners.js` to use shared viewport listener binding
     - `app/lib/restaurantRuntime/mobile-info-panel-runtime.js` to use shared viewport listener binding with explicit cleanup hook
     - `app/lib/restaurantRuntime/menu-draw-runtime.js` to dispose/rebind overlay listeners per draw cycle (prevents stacking duplicate global listeners across redraws)
+- Added shared overlay DOM selection/runtime helpers:
+  - `app/lib/restaurantRuntime/overlay-dom.js`
+  - centralized reusable overlay utilities for:
+    - overlay node lookup
+    - overlay dish-name metadata (`data-item-id` / `data-dish-name`)
+    - selected-state clear/apply
+    - batch selection restore by dish name
+- Refactored overlay/tooltip/order restore flows to use shared overlay DOM helpers instead of duplicated per-module DOM loops:
+  - `app/lib/restaurantRuntime/menu-overlays.js`
+  - `app/lib/restaurantRuntime/mobile-overlay-zoom.js`
+  - `app/lib/restaurantRuntime/tooltip-runtime.js`
+  - `app/lib/restaurantRuntime/mobile-info-panel-runtime.js`
+  - `app/lib/restaurantRuntime/mobile-viewer-runtime.js`
+  - `app/lib/restaurantRuntime/order-flow.js`
+  - `app/lib/restaurantMessageHandler.js`
+- Simplified menu/order selected-dish restoration logic:
+  - replaced repeated nested `querySelectorAll(".overlay")` loops and title-element probing with one shared dish-based selection path.
+  - overlay elements now carry stable dish metadata attributes, improving consistency between render-time overlays and restore-time order selection.
+- Added shared menu-overlay readiness helper to remove duplicated timeout polling loops:
+  - `app/lib/restaurantRuntime/menu-overlay-ready.js`
+  - refactored delayed overlay restore paths to use the shared helper in:
+    - `app/lib/restaurantRuntime/order-flow.js`
+    - `app/lib/restaurantMessageHandler.js`
 
 ## Current migration inventory
 - Legacy static HTML compatibility pages still present in `public/`: 15 (all are redirect shells; no legacy page UI/runtime logic)

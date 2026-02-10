@@ -1,3 +1,8 @@
+import {
+  markOverlaySelected,
+  setOverlayDishName,
+} from "./overlay-dom.js";
+
 export function createMenuOverlayRuntime(options = {}) {
   const {
     state,
@@ -109,21 +114,19 @@ export function createMenuOverlayRuntime(options = {}) {
     if (!overlayBox) return;
 
     if (isClick) {
-      document
-        .querySelectorAll(".overlay")
-        .forEach((overlay) => overlay.classList.remove("selected"));
-      overlayBox.classList.add("selected");
-      setOverlayPulseColor(overlayBox);
-      void overlayBox.offsetWidth;
+      markOverlaySelected(overlayBox, {
+        clearExisting: true,
+        setOverlayPulseColor,
+        restartAnimation: true,
+      });
       return;
     }
 
     if (!getTipPinned()) {
-      document
-        .querySelectorAll(".overlay")
-        .forEach((overlay) => overlay.classList.remove("selected"));
-      overlayBox.classList.add("selected");
-      setOverlayPulseColor(overlayBox);
+      markOverlaySelected(overlayBox, {
+        clearExisting: true,
+        setOverlayPulseColor,
+      });
     }
   };
 
@@ -136,6 +139,7 @@ export function createMenuOverlayRuntime(options = {}) {
     box.style.top = (+item.y || 0) + "%";
     box.style.width = (+item.w || 0) + "%";
     box.style.height = (+item.h || 0) + "%";
+    setOverlayDishName(box, item.id || item.name || item.label || "");
 
     const isCaution = status === "removable";
     const hasCross = hasCrossContamination(item, state.allergies || [], state.diets || []);

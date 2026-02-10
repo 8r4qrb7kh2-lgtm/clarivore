@@ -9,6 +9,7 @@ import {
   getSupabaseClient as getSessionSupabaseClient,
 } from "./runtimeSessionState.js";
 import { bindViewportListeners } from "./viewport-listeners.js";
+import { clearSelectedOverlays } from "./overlay-dom.js";
 
 export function createMobileInfoPanelRuntime(deps = {}) {
   const state = deps.state || {};
@@ -118,9 +119,7 @@ export function createMobileInfoPanelRuntime(deps = {}) {
       mobileInfoPanel.style.display = "none";
       mobileInfoPanel.classList.remove("show");
       if (!getIsOverlayZoomed()) {
-        document
-          .querySelectorAll(".overlay")
-          .forEach((overlay) => overlay.classList.remove("selected"));
+        clearSelectedOverlays();
         setLastSelectedOverlay(null);
       }
       return;

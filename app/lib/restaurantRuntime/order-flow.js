@@ -25,6 +25,8 @@ import {
   setOrderItems as setSessionOrderItems,
 } from "./runtimeSessionState.js";
 import { applyOverlayPulseColor as applyOverlayPulseColorFromBridge } from "./restaurantRuntimeBridge.js";
+import { markOverlayDishesSelected } from "./overlay-dom.js";
+import { waitForMenuOverlays } from "./menu-overlay-ready.js";
 
 const esc = (s) =>
   (s ?? "").toString().replace(
@@ -485,30 +487,13 @@ export function initOrderFlow({
         formData.dishes.length > 0
       ) {
         writeOrderItems([...formData.dishes]);
-        // Visually select dishes in the menu by finding overlays with matching titles
-        formData.dishes.forEach((dishName) => {
-          const overlays = document.querySelectorAll(".overlay");
-          overlays.forEach((overlay) => {
-            const titleEl = overlay.querySelector(".tTitle");
-            if (titleEl) {
-              const title = titleEl.textContent.trim();
-              if (
-                title.toLowerCase() === dishName.toLowerCase() ||
-                title === dishName
-              ) {
-                overlay.classList.add("selected");
-                applyOverlayPulseColor(overlay);
-                // Also update the "Add to order" button if it exists
-                const addBtn = overlay.querySelector(
-                  `.addToOrderBtn[data-dish-name]`,
-                );
-                if (addBtn) {
-                  addBtn.disabled = true;
-                  addBtn.textContent = "Added";
-                }
-              }
-            }
-          });
+        waitForMenuOverlays({
+          onReady: () => {
+            markOverlayDishesSelected(formData.dishes, {
+              setOverlayPulseColor: applyOverlayPulseColor,
+            });
+            updateOrderSidebar();
+          },
         });
         updateOrderSidebar();
       }
@@ -3702,39 +3687,16 @@ export function initOrderFlow({
     const hasRestoredItems = restoreOrderItems();
     if (hasRestoredItems && hasOrderItems()) {
       // Visually restore selected dishes in the menu
-      const waitForMenu = () => {
-        const menu = document.getElementById("menu");
-        if (menu && menu.querySelectorAll(".overlay").length > 0) {
-          getOrderItems().forEach((dishName) => {
-            const overlays = document.querySelectorAll(".overlay");
-            overlays.forEach((overlay) => {
-              const titleEl = overlay.querySelector(".tTitle");
-              if (titleEl) {
-                const title = titleEl.textContent.trim();
-                if (
-                  title.toLowerCase() === dishName.toLowerCase() ||
-                  title === dishName
-                ) {
-                  overlay.classList.add("selected");
-                  applyOverlayPulseColor(overlay);
-                  const addBtn = overlay.querySelector(
-                    `.addToOrderBtn[data-dish-name]`,
-                  );
-                  if (addBtn) {
-                    addBtn.disabled = true;
-                    addBtn.textContent = "Added";
-                  }
-                }
-              }
-            });
+      waitForMenuOverlays({
+        initialDelayMs: 500,
+        onReady: () => {
+          markOverlayDishesSelected(getOrderItems(), {
+            setOverlayPulseColor: applyOverlayPulseColor,
           });
           updateOrderSidebar();
           openOrderSidebar();
-        } else {
-          setTimeout(waitForMenu, 100);
-        }
-      };
-      setTimeout(waitForMenu, 500);
+        },
+      });
     } else {
       // Initialize sidebar state
       updateOrderSidebar();

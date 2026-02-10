@@ -4,6 +4,10 @@ import {
   getOrderItems as getSessionOrderItems,
   getSupabaseClient as getSessionSupabaseClient,
 } from "./runtimeSessionState.js";
+import {
+  clearSelectedOverlays,
+  markOverlaySelected,
+} from "./overlay-dom.js";
 
 export function initMobileOverlayZoom(deps = {}) {
   const getMenuState =
@@ -343,22 +347,14 @@ export function initMobileOverlayZoom(deps = {}) {
 
     const animationDelay = isTransition ? 50 : 150;
     setTimeout(() => {
-      document.querySelectorAll(".overlay").forEach((ov) => {
-        ov.classList.remove("selected");
-        ov.style.animation = "none";
-      });
+      clearSelectedOverlays({ clearAnimation: true });
 
       if (overlayEl) {
-        if (typeof setOverlayPulseColor === "function") {
-          setOverlayPulseColor(overlayEl);
-        }
-
-        void overlayEl.offsetWidth;
-
-        overlayEl.style.animation = "";
-        overlayEl.classList.add("selected");
-
-        void overlayEl.offsetWidth;
+        markOverlaySelected(overlayEl, {
+          clearExisting: false,
+          restartAnimation: true,
+          setOverlayPulseColor,
+        });
       }
     }, animationDelay);
 
@@ -428,10 +424,7 @@ export function initMobileOverlayZoom(deps = {}) {
       document.body.style.overflow = "";
       document.body.classList.remove("menuZoomed");
       document.body.classList.remove("menuZoomingOut");
-
-      document
-        .querySelectorAll(".overlay.selected")
-        .forEach((ov) => ov.classList.remove("selected"));
+      clearSelectedOverlays();
 
       updateZoomState(false, null);
 

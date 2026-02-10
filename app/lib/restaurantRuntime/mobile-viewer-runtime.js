@@ -2,6 +2,7 @@ import {
   callRerenderLayer,
   getLastSelectedOverlay as readLastSelectedOverlay,
 } from "./restaurantRuntimeBridge.js";
+import { clearSelectedOverlays, markOverlaySelected } from "./overlay-dom.js";
 
 export function createMobileViewerRuntime(deps = {}) {
   const state = deps.state || {};
@@ -235,11 +236,10 @@ export function createMobileViewerRuntime(deps = {}) {
           const boxes = layer.querySelectorAll(".overlay");
           boxes.forEach((box, idx) => {
             if (idx === lastSelectedOverlay.index) {
-              document
-                .querySelectorAll(".overlay")
-                .forEach((overlay) => overlay.classList.remove("selected"));
-              box.classList.add("selected");
-              setOverlayPulseColor(box);
+              clearSelectedOverlays();
+              markOverlaySelected(box, {
+                setOverlayPulseColor,
+              });
             }
           });
         };

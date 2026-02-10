@@ -3,6 +3,7 @@ import {
   getOrderItems as getSessionOrderItems,
   getSupabaseClient as getSessionSupabaseClient,
 } from "./runtimeSessionState.js";
+import { clearSelectedOverlays } from "./overlay-dom.js";
 
 export function createTooltipRuntime(deps = {}) {
   const pageTip = deps.pageTip || null;
@@ -67,9 +68,7 @@ export function createTooltipRuntime(deps = {}) {
     tipInteracted = false;
     tipPinned = false;
     pinnedOverlayItem = null;
-    document
-      .querySelectorAll(".overlay")
-      .forEach((overlay) => overlay.classList.remove("selected"));
+    clearSelectedOverlays();
   }
 
   function bindTipInteraction() {
