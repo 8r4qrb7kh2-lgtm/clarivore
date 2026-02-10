@@ -2,41 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
-import { createClient } from "@supabase/supabase-js";
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-const supabase =
-  supabaseUrl && supabaseAnonKey
-    ? createClient(supabaseUrl, supabaseAnonKey)
-    : null;
-
-const DAY_MS = 24 * 60 * 60 * 1000;
-
-function getWeeksAgoInfo(date) {
-  if (!date) return { text: "Never", color: "#888" };
-  const parsed = new Date(date);
-  if (Number.isNaN(parsed.getTime())) return { text: "Never", color: "#888" };
-
-  const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const compareDate = new Date(
-    parsed.getFullYear(),
-    parsed.getMonth(),
-    parsed.getDate(),
-  );
-
-  const diffDays = Math.floor((today - compareDate) / DAY_MS);
-  const diffWeeks = Math.floor(diffDays / 7);
-
-  if (diffDays < 7) return { text: "this week", color: "#4caf50" };
-  if (diffWeeks === 1) return { text: "last week", color: "#8bc34a" };
-  if (diffWeeks === 2) return { text: "two weeks ago", color: "#ff9800" };
-  if (diffWeeks === 3) return { text: "three weeks ago", color: "#f44336" };
-  if (diffDays <= 30) return { text: "one month ago", color: "#f44336" };
-  return { text: `${diffWeeks} weeks ago`, color: "#f44336" };
-}
+import { useRouter, useSearchParams } from "next/navigation";
+import { getWeeksAgoInfo } from "../lib/confirmationAge";
+import { supabaseClient as supabase } from "../lib/supabase";
 
 function getDisplayName(user) {
   if (!user) return "there";
@@ -51,6 +19,7 @@ function getDisplayName(user) {
 }
 
 export default function HomeClient() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const isQR = searchParams?.get("qr") === "1";
   const [status, setStatus] = useState("");
@@ -73,13 +42,13 @@ export default function HomeClient() {
           await supabase.auth.getUser();
         if (authError) throw authError;
         if (!authData?.user && !isQR) {
-          window.location.replace("/index.html");
+          router.replace("/account?mode=signin");
           return;
         }
         if (isMounted) setUser(authData?.user || null);
       } catch (error) {
         console.error("Auth check failed", error);
-        window.location.replace("/index.html");
+        router.replace("/account?mode=signin");
         return;
       }
 
@@ -112,7 +81,7 @@ export default function HomeClient() {
     return () => {
       isMounted = false;
     };
-  }, [isQR]);
+  }, [isQR, router]);
 
   const greeting = useMemo(() => getDisplayName(user), [user]);
 
@@ -206,7 +175,9 @@ export default function HomeClient() {
               </p>
             ) : restaurants.length ? (
               restaurants.map((restaurant) => {
-                const info = getWeeksAgoInfo(restaurant.last_confirmed);
+                const info = getWeeksAgoInfo(restaurant.last_confirmed, {
+                  useMonthLabel: true,
+                });
                 return (
                   <article key={restaurant.id} className="restaurant-card">
                     <div className="restaurant-card-media">

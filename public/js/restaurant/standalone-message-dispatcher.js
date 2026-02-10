@@ -3,20 +3,20 @@ function buildLegacyAccountUrl(params = {}) {
   if (params.slug) query.set("returnSlug", params.slug);
   if (params.redirect) query.set("redirect", params.redirect);
   const qs = query.toString();
-  return "account.html" + (qs ? `?${qs}` : "");
+  return "/account" + (qs ? `?${qs}` : "");
 }
 
 function navigateLegacy(message = {}) {
   if (message.type === "navigate") {
-    if (message.to === "/restaurants") window.location.href = "restaurants.html";
+    if (message.to === "/restaurants") window.location.href = "/restaurants";
     else if (message.to === "/favorites")
-      window.location.href = "favorites.html";
+      window.location.href = "/favorites";
     else if (message.to === "/dish-search")
-      window.location.href = "dish-search.html";
+      window.location.href = "/dish-search";
     else if (message.to === "/my-dishes")
-      window.location.href = "my-dishes.html";
+      window.location.href = "/my-dishes";
     else if (message.to === "/report-issue")
-      window.location.href = "report-issue.html";
+      window.location.href = "/report-issue";
     else if (message.to === "/accounts")
       window.location.href = buildLegacyAccountUrl({
         slug: message.slug,
@@ -35,7 +35,7 @@ function navigateLegacy(message = {}) {
   }
 
   if (message.type === "openRestaurant") {
-    window.location.href = `restaurant.html?slug=${message.slug}`;
+    window.location.href = `/restaurant?slug=${message.slug}`;
     return true;
   }
 

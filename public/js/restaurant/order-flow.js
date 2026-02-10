@@ -513,13 +513,13 @@ export function initOrderFlow({
   function handleSignInClick() {
     saveOrderFormState();
     const currentUrl = window.location.href;
-    window.location.href = `account.html?redirect=${encodeURIComponent(currentUrl)}&mode=signin`;
+    window.location.href = `/account?redirect=${encodeURIComponent(currentUrl)}&mode=signin`;
   }
 
   function handleSignUpClick() {
     saveOrderFormState();
     const currentUrl = window.location.href;
-    window.location.href = `account.html?redirect=${encodeURIComponent(currentUrl)}&mode=signup`;
+    window.location.href = `/account?redirect=${encodeURIComponent(currentUrl)}&mode=signup`;
   }
 
   async function updateOrderConfirmAuthState() {

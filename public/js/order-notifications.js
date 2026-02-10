@@ -127,7 +127,10 @@ function createNotificationBanner(orderId, status, customerName) {
     border-radius: 8px;
   `;
   viewBtn.addEventListener('click', () => {
-    window.location.href = 'tablet-simulation.html';
+    const currentPath = window.location.pathname || '';
+    window.location.href = currentPath.includes('/kitchen-tablet')
+      ? '/kitchen-tablet'
+      : '/server-tablet';
     dismissNotification(orderId);
   });
 

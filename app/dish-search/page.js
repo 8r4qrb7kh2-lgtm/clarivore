@@ -1,18 +1,10 @@
-import { Suspense } from "react";
 import DishSearchClient from "./DishSearchClient";
+import RouteSuspense from "../components/RouteSuspense";
 
 export default function DishSearchPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="page-shell" style={{ padding: "40px" }}>
-          <p style={{ color: "var(--muted)", textAlign: "center" }}>
-            Loading dish search...
-          </p>
-        </div>
-      }
-    >
+    <RouteSuspense label="dish search">
       <DishSearchClient />
-    </Suspense>
+    </RouteSuspense>
   );
 }

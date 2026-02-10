@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { supabaseClient as supabase } from "../lib/supabase";
 import { OWNER_EMAIL, fetchManagerRestaurants } from "../lib/managerRestaurants";
 
@@ -24,6 +25,7 @@ function dishKey(restaurantId, dishName) {
 }
 
 export default function MyDishesClient() {
+  const router = useRouter();
   const [user, setUser] = useState(null);
   const [status, setStatus] = useState({ text: "", tone: "" });
   const [bootError, setBootError] = useState("");
@@ -246,7 +248,7 @@ export default function MyDishesClient() {
         } = await supabase.auth.getUser();
         if (authError) throw authError;
         if (!authUser) {
-          window.location.href = "/account";
+          router.replace("/account?redirect=my-dishes");
           return;
         }
 
@@ -259,21 +261,14 @@ export default function MyDishesClient() {
 
         if (isManager && !isOwner) {
           const targetRestaurant = managerRestaurants[0];
-          window.location.href = targetRestaurant
+          router.replace(
+            targetRestaurant
             ? `/restaurant?slug=${encodeURIComponent(targetRestaurant.slug)}`
-            : "/server-tablet";
+            : "/server-tablet",
+          );
           return;
         }
-
-        const [{ setupTopbar }] = await Promise.all([
-          import(
-            /* webpackIgnore: true */
-            "/js/shared-nav.js"
-          ),
-        ]);
         if (!isMounted) return;
-
-        setupTopbar("my-dishes", authUser, { managerRestaurants });
         setUser(authUser);
         await reloadData(authUser);
       } catch (error) {
@@ -290,7 +285,21 @@ export default function MyDishesClient() {
     return () => {
       isMounted = false;
     };
-  }, [reloadData]);
+  }, [reloadData, router]);
+
+  const isManagerOrOwner =
+    user?.email === OWNER_EMAIL || user?.user_metadata?.role === "manager";
+
+  const onSignOut = useCallback(async () => {
+    if (!supabase) return;
+    try {
+      await supabase.auth.signOut();
+      router.replace("/account?mode=signin");
+    } catch (error) {
+      console.error("[my-dishes] sign-out failed", error);
+      showStatus("Unable to sign out right now.", "error");
+    }
+  }, [router, showStatus]);
 
   const onUnloveDish = useCallback(
     async (restaurantId, dishName) => {
@@ -350,7 +359,7 @@ export default function MyDishesClient() {
         key={`${dish.restaurantId}:${dish.dishName}:${dish.createdAt || ""}`}
         onClick={() => {
           if (!restaurantSlug) return;
-          window.location.href = dishUrl;
+          router.push(dishUrl);
         }}
       >
         <span className="dish-name">{dish.dishName}</span>
@@ -373,7 +382,7 @@ export default function MyDishesClient() {
           {dish.createdAt ? (
             <span className="dish-date">{formatDate(dish.createdAt)}</span>
           ) : null}
-          <a
+          <Link
             href={dishUrl}
             className="dish-launch-link"
             title="View dish details"
@@ -391,11 +400,11 @@ export default function MyDishesClient() {
               <polyline points="15 3 21 3 21 9" />
               <line x1="10" y1="14" x2="21" y2="3" />
             </svg>
-          </a>
+          </Link>
         </span>
       </div>
     );
-  }, [onUnloveDish]);
+  }, [onUnloveDish, router]);
 
   const lovedEmpty = useMemo(
     () =>
@@ -407,9 +416,9 @@ export default function MyDishesClient() {
           <p style={{ marginBottom: 16 }}>
             Click the heart icon on any dish to save it.
           </p>
-          <a href="/dish-search" style={{ color: "var(--accent)", textDecoration: "none" }}>
+          <Link href="/dish-search" style={{ color: "var(--accent)", textDecoration: "none" }}>
             Search for dishes →
-          </a>
+          </Link>
         </div>
       ) : null,
     [isLoadingLoved, lovedSections.length],
@@ -434,8 +443,19 @@ export default function MyDishesClient() {
             />
             <span>Clarivore</span>
           </Link>
-          <div className="simple-nav" />
-          <div className="mode-toggle-container" id="modeToggleContainer" />
+          <div className="simple-nav">
+            <Link href="/home">Home</Link>
+            <Link href="/restaurants">Restaurants</Link>
+            <Link href="/favorites">My restaurants</Link>
+            <Link href="/dish-search">Dish search</Link>
+            {isManagerOrOwner ? (
+              <Link href="/manager-dashboard">Dashboard</Link>
+            ) : null}
+            <Link href="/help-contact">Help</Link>
+            <button type="button" className="btnLink" onClick={onSignOut}>
+              Sign out
+            </button>
+          </div>
         </div>
       </header>
 
@@ -465,9 +485,9 @@ export default function MyDishesClient() {
                         <div className="restaurant-section-header">
                           <h3 className="restaurant-section-name">
                             {section.restaurantSlug ? (
-                              <a href={`/restaurant?slug=${encodeURIComponent(section.restaurantSlug)}`}>
+                              <Link href={`/restaurant?slug=${encodeURIComponent(section.restaurantSlug)}`}>
                                 {section.restaurantName}
-                              </a>
+                              </Link>
                             ) : (
                               section.restaurantName
                             )}
@@ -500,9 +520,9 @@ export default function MyDishesClient() {
                         <div className="restaurant-section-header">
                           <h3 className="restaurant-section-name">
                             {section.restaurantSlug ? (
-                              <a href={`/restaurant?slug=${encodeURIComponent(section.restaurantSlug)}`}>
+                              <Link href={`/restaurant?slug=${encodeURIComponent(section.restaurantSlug)}`}>
                                 {section.restaurantName}
-                              </a>
+                              </Link>
                             ) : (
                               section.restaurantName
                             )}

@@ -3,107 +3,16 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { createClient } from "@supabase/supabase-js";
 import {
   buildAllergenDietConfig,
   loadAllergenDietConfig,
 } from "../lib/allergenConfig";
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-const supabase =
-  supabaseUrl && supabaseAnonKey
-    ? createClient(supabaseUrl, supabaseAnonKey)
-    : null;
-
-const OWNER_EMAIL = "matt.29.ds@gmail.com";
-const DAY_MS = 24 * 60 * 60 * 1000;
-
-function getWeeksAgoInfo(date, showAll = false) {
-  if (!date) return { text: "Never", color: "#888", shouldHide: false };
-  const parsed = new Date(date);
-  if (Number.isNaN(parsed.getTime()))
-    return { text: "Never", color: "#888", shouldHide: false };
-
-  const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const compareDate = new Date(
-    parsed.getFullYear(),
-    parsed.getMonth(),
-    parsed.getDate(),
-  );
-
-  const diffDays = Math.floor((today - compareDate) / DAY_MS);
-  const diffWeeks = Math.floor(diffDays / 7);
-
-  if (diffDays > 30 && !showAll) {
-    return { text: null, color: null, shouldHide: true };
-  }
-
-  if (diffDays < 7) return { text: "this week", color: "#4caf50" };
-  if (diffWeeks === 1) return { text: "last week", color: "#8bc34a" };
-  if (diffWeeks === 2) return { text: "two weeks ago", color: "#ff9800" };
-  if (diffWeeks === 3) return { text: "three weeks ago", color: "#f44336" };
-  if (showAll) return { text: `${diffWeeks} weeks ago`, color: "#f44336" };
-  return { text: "one month ago", color: "#f44336" };
-}
-
-async function fetchManagerRestaurants(user) {
-  if (!supabase || !user?.id) return [];
-  const isOwner = user.email === OWNER_EMAIL;
-
-  if (isOwner) {
-    const { data, error } = await supabase
-      .from("restaurants")
-      .select("id, name, slug")
-      .order("name");
-    if (error) {
-      console.error("[dish-search] failed to load owner restaurants", error);
-      return [];
-    }
-    return (data || [])
-      .filter((row) => row && row.id && row.slug)
-      .map((row) => ({
-        id: row.id,
-        slug: row.slug,
-        name: row.name || "Restaurant",
-      }));
-  }
-
-  const { data: assignments, error } = await supabase
-    .from("restaurant_managers")
-    .select("restaurant_id")
-    .eq("user_id", user.id);
-
-  if (error) {
-    console.error("[dish-search] failed to load manager assignments", error);
-    return [];
-  }
-
-  const restaurantIds = (assignments || [])
-    .map((row) => row.restaurant_id)
-    .filter(Boolean);
-
-  if (!restaurantIds.length) return [];
-
-  const { data: restaurants, error: restaurantError } = await supabase
-    .from("restaurants")
-    .select("id, name, slug")
-    .in("id", restaurantIds);
-
-  if (restaurantError) {
-    console.error("[dish-search] failed to load manager restaurants", restaurantError);
-    return [];
-  }
-
-  return (restaurants || [])
-    .filter((row) => row && row.id && row.slug)
-    .map((row) => ({
-      id: row.id,
-      slug: row.slug,
-      name: row.name || "Restaurant",
-    }));
-}
+import { OWNER_EMAIL, fetchManagerRestaurants } from "../lib/managerRestaurants";
+import {
+  supabaseClient as supabase,
+  supabaseAnonKey,
+  supabaseUrl,
+} from "../lib/supabase";
 
 export default function DishSearchClient() {
   const router = useRouter();
@@ -171,7 +80,7 @@ export default function DishSearchClient() {
 
       let managerRestaurants = [];
       if (isManager || isOwner) {
-        managerRestaurants = await fetchManagerRestaurants(currentUser);
+        managerRestaurants = await fetchManagerRestaurants(supabase, currentUser);
       }
 
       if (isManager && !isOwner) {

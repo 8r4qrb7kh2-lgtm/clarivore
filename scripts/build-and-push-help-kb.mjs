@@ -96,16 +96,16 @@ const managerOnlyPages = new Set([
 
 const urlOverrides = new Map([
   ['index.html', '/'],
-  ['restaurant.html', 'restaurant.html?slug=RESTAURANT_SLUG'],
-  ['manager-dashboard.html', 'manager-dashboard.html'],
-  ['admin-dashboard.html', 'admin-dashboard.html'],
-  ['home.html', 'home.html'],
-  ['restaurants.html', 'restaurants.html'],
-  ['dish-search.html', 'dish-search.html'],
-  ['favorites.html', 'favorites.html'],
-  ['my-dishes.html', 'my-dishes.html'],
-  ['account.html', 'account.html'],
-  ['help-contact.html', 'help-contact.html']
+  ['restaurant.html', '/restaurant?slug=RESTAURANT_SLUG'],
+  ['manager-dashboard.html', '/manager-dashboard'],
+  ['admin-dashboard.html', '/admin-dashboard'],
+  ['home.html', '/home'],
+  ['restaurants.html', '/restaurants'],
+  ['dish-search.html', '/dish-search'],
+  ['favorites.html', '/favorites'],
+  ['my-dishes.html', '/my-dishes'],
+  ['account.html', '/account'],
+  ['help-contact.html', '/help-contact']
 ]);
 
 function cleanText(value) {

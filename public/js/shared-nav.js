@@ -40,7 +40,7 @@ const routeWithQuery = (nextPath, legacyPath) =>
   preferNextRoutes ? nextPath : legacyPath;
 
 const ROUTES = {
-  index: route('/index.html', 'index.html'),
+  index: route('/', 'index.html'),
   home: route('/home', 'home.html'),
   account: route('/account', 'account.html'),
   restaurants: route('/restaurants', 'restaurants.html'),

@@ -655,7 +655,7 @@
               edit: '1',
               openConfirm: '1'
             });
-            window.location.href = `restaurant.html?${params.toString()}`;
+            window.location.href = `/restaurant?${params.toString()}`;
           };
         }
       }
@@ -668,7 +668,7 @@
         viewLogBtn.onclick = () => {
           const slug = currentRestaurantData.slug;
           if (slug) {
-            window.location.href = `restaurant.html?slug=${encodeURIComponent(slug)}&edit=1&openLog=1`;
+            window.location.href = `/restaurant?slug=${encodeURIComponent(slug)}&edit=1&openLog=1`;
           }
         };
       }
@@ -1176,7 +1176,7 @@
             dishName: dishName
           });
           if (ingredientName) params.set('ingredientName', ingredientName);
-          window.location.href = `restaurant.html?${params.toString()}`;
+          window.location.href = `/restaurant?${params.toString()}`;
         });
       });
     }

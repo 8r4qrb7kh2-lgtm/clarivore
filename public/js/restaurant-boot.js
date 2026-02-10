@@ -272,7 +272,7 @@ if (inviteToken) {
     // Handle signup button click - go to account page with invite token preserved
     if (managerInviteSignupBtn) {
       managerInviteSignupBtn.onclick = () => {
-        window.location.href = `account.html?invite=${encodeURIComponent(inviteToken)}`;
+        window.location.href = `/account?invite=${encodeURIComponent(inviteToken)}`;
       };
     }
   }
@@ -496,7 +496,7 @@ if (!slug) {
       console.log("Manager row:", managerRecord, "error:", managerError);
 
       if (userRole === "manager" && !isOwner && !managerRecord) {
-        window.location.href = "restaurants.html";
+        window.location.href = "/restaurants";
         return;
       }
 

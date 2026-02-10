@@ -1,18 +1,10 @@
-import { Suspense } from "react";
 import HomeClient from "./HomeClient";
+import RouteSuspense from "../components/RouteSuspense";
 
 export default function HomePage() {
   return (
-    <Suspense
-      fallback={
-        <div className="page-shell" style={{ padding: "40px" }}>
-          <p style={{ color: "var(--muted)", textAlign: "center" }}>
-            Loading home...
-          </p>
-        </div>
-      }
-    >
+    <RouteSuspense label="home">
       <HomeClient />
-    </Suspense>
+    </RouteSuspense>
   );
 }

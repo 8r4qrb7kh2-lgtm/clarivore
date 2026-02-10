@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { supabaseClient as supabase } from "../lib/supabase";
 import { OWNER_EMAIL, fetchManagerRestaurants } from "../lib/managerRestaurants";
 import {
@@ -30,9 +31,11 @@ function cloneOrder(order) {
 }
 
 export default function ServerTabletClient() {
+  const router = useRouter();
   const [bootError, setBootError] = useState("");
   const [isBooting, setIsBooting] = useState(true);
   const [isUnauthorized, setIsUnauthorized] = useState(false);
+  const [authUser, setAuthUser] = useState(null);
   const [access, setAccess] = useState({ isOwner: false, managedRestaurantIds: [] });
 
   const [orders, setOrders] = useState([]);
@@ -356,9 +359,10 @@ export default function ServerTabletClient() {
         if (error) throw error;
 
         if (!user) {
-          window.location.href = "/account?redirect=server-tablet";
+          router.replace("/account?redirect=server-tablet");
           return;
         }
+        setAuthUser(user);
 
         const isOwner = user.email === OWNER_EMAIL;
         const isManager = user.user_metadata?.role === "manager";
@@ -367,11 +371,7 @@ export default function ServerTabletClient() {
             ? await fetchManagerRestaurants(supabase, user)
             : [];
 
-        const [{ setupTopbar }, notifications] = await Promise.all([
-          import(
-            /* webpackIgnore: true */
-            "/js/shared-nav.js"
-          ),
+        const [notifications] = await Promise.all([
           import(
             /* webpackIgnore: true */
             "/js/order-notifications.js"
@@ -380,7 +380,6 @@ export default function ServerTabletClient() {
 
         if (!active) return;
 
-        setupTopbar("server-tablet", user, { managerRestaurants });
         if (typeof notifications?.showOrderNotification === "function") {
           notifyStatusChangeRef.current = notifications.showOrderNotification;
         }
@@ -419,7 +418,18 @@ export default function ServerTabletClient() {
       active = false;
       notifyStatusChangeRef.current = null;
     };
-  }, []);
+  }, [router]);
+
+  const onSignOut = useCallback(async () => {
+    if (!supabase) return;
+    try {
+      await supabase.auth.signOut();
+      router.replace("/account?mode=signin");
+    } catch (error) {
+      console.error("[server-tablet-next] sign-out failed", error);
+      setBootError("Unable to sign out right now.");
+    }
+  }, [router]);
 
   useEffect(() => {
     if (isBooting || isUnauthorized || !supabase) return;
@@ -969,12 +979,18 @@ export default function ServerTabletClient() {
             />
             <span>Clarivore</span>
           </Link>
-          <div className="simple-nav" />
-          <div
-            className="mode-toggle-container"
-            id="modeToggleContainer"
-            style={{ display: "none" }}
-          />
+          <div className="simple-nav">
+            <Link href="/manager-dashboard">Dashboard</Link>
+            <Link href="/kitchen-tablet">Kitchen monitor</Link>
+            <Link href="/help-contact">Help</Link>
+            {authUser ? (
+              <button type="button" className="btnLink" onClick={onSignOut}>
+                Sign out
+              </button>
+            ) : (
+              <Link href="/account?mode=signin">Sign in</Link>
+            )}
+          </div>
         </div>
       </header>
 

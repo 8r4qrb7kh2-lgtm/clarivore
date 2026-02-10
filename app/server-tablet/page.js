@@ -1,18 +1,10 @@
-import { Suspense } from "react";
 import ServerTabletClient from "./ServerTabletClient";
+import RouteSuspense from "../components/RouteSuspense";
 
 export default function ServerTabletPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="page-shell" style={{ padding: "40px" }}>
-          <p style={{ color: "var(--muted)", textAlign: "center" }}>
-            Loading server tablet...
-          </p>
-        </div>
-      }
-    >
+    <RouteSuspense label="server tablet">
       <ServerTabletClient />
-    </Suspense>
+    </RouteSuspense>
   );
 }

@@ -339,22 +339,25 @@ function ensureRestaurantMenuUrl(url) {
   } catch (_) {
     return url;
   }
-  const path = parsed.pathname.replace(/^\/+/, '');
-  if (!/restaurant\.html$/i.test(path)) {
-    return url;
+  const normalizedPath = parsed.pathname.replace(/\/+$/, '') || '/';
+  const isRestaurantPath =
+    normalizedPath === '/restaurant' || /\/restaurant\.html$/i.test(normalizedPath);
+  if (!isRestaurantPath) {
+    return `${parsed.pathname}${parsed.search}`;
   }
   const slugParam = parsed.searchParams.get('slug');
   const idParam = parsed.searchParams.get('id');
   if ((slugParam && slugParam.trim()) || (idParam && idParam.trim())) {
-    return `${path}${parsed.search}`;
+    const nextParams = parsed.searchParams.toString();
+    return nextParams ? `/restaurant?${nextParams}` : '/restaurant';
   }
   const slug = resolveRestaurantSlug();
   if (slug) {
     parsed.searchParams.set('slug', slug);
     const nextParams = parsed.searchParams.toString();
-    return nextParams ? `${path}?${nextParams}` : path;
+    return nextParams ? `/restaurant?${nextParams}` : '/restaurant';
   }
-  return 'restaurants.html';
+  return '/restaurants';
 }
 
 function resolveDashboardUrl(url, label) {
@@ -362,9 +365,21 @@ function resolveDashboardUrl(url, label) {
   const mode = localStorage.getItem(HELP_ASSISTANT_MODE_KEY) || '';
   if (mode !== 'manager') return url;
   const normalizedLabel = normalizeText(label || '');
-  if (normalizedLabel.includes('dashboard') && /home\.html/i.test(url)) {
-    return url.replace(/home\.html/i, 'manager-dashboard.html');
+  if (!normalizedLabel.includes('dashboard')) return url;
+
+  try {
+    const parsed = new URL(url, window.location.origin);
+    const normalizedPath = parsed.pathname.replace(/\/+$/, '') || '/';
+    const isHomeRoute =
+      normalizedPath === '/home' || /\/home\.html$/i.test(normalizedPath);
+    if (isHomeRoute) {
+      parsed.pathname = '/manager-dashboard';
+      return `${parsed.pathname}${parsed.search}`;
+    }
+  } catch (_) {
+    return url;
   }
+
   return url;
 }
 

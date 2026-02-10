@@ -1,18 +1,10 @@
-import { Suspense } from "react";
 import RestaurantClient from "./RestaurantClient";
+import RouteSuspense from "../components/RouteSuspense";
 
 export default function RestaurantPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="page-shell" style={{ padding: "40px" }}>
-          <p style={{ color: "var(--muted)", textAlign: "center" }}>
-            Loading restaurant...
-          </p>
-        </div>
-      }
-    >
+    <RouteSuspense label="restaurant">
       <RestaurantClient />
-    </Suspense>
+    </RouteSuspense>
   );
 }

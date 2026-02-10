@@ -525,7 +525,7 @@ async function requireAuth() {
   }
   const user = data?.user;
   if (!user) {
-    window.location.href = 'account.html?redirect=kitchen-tablet';
+    window.location.href = '/account?redirect=kitchen-tablet';
     return null;
   }
   return user;

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { supabaseClient as supabase } from "../lib/supabase";
 import { OWNER_EMAIL, fetchManagerRestaurants } from "../lib/managerRestaurants";
 import {
@@ -38,9 +39,11 @@ function statusDescriptor(status) {
 }
 
 export default function KitchenTabletClient() {
+  const router = useRouter();
   const [bootError, setBootError] = useState("");
   const [isBooting, setIsBooting] = useState(true);
   const [isUnauthorized, setIsUnauthorized] = useState(false);
+  const [authUser, setAuthUser] = useState(null);
   const [access, setAccess] = useState({ isOwner: false, managedRestaurantIds: [] });
 
   const [orders, setOrders] = useState([]);
@@ -226,9 +229,10 @@ export default function KitchenTabletClient() {
         if (error) throw error;
 
         if (!user) {
-          window.location.href = "/account?redirect=kitchen-tablet";
+          router.replace("/account?redirect=kitchen-tablet");
           return;
         }
+        setAuthUser(user);
 
         const isOwner = user.email === OWNER_EMAIL;
         const isManager = user.user_metadata?.role === "manager";
@@ -237,11 +241,7 @@ export default function KitchenTabletClient() {
             ? await fetchManagerRestaurants(supabase, user)
             : [];
 
-        const [{ setupTopbar }, notifications] = await Promise.all([
-          import(
-            /* webpackIgnore: true */
-            "/js/shared-nav.js"
-          ),
+        const [notifications] = await Promise.all([
           import(
             /* webpackIgnore: true */
             "/js/order-notifications.js"
@@ -250,7 +250,6 @@ export default function KitchenTabletClient() {
 
         if (!active) return;
 
-        setupTopbar("kitchen-tablet", user, { managerRestaurants });
         if (typeof notifications?.showOrderNotification === "function") {
           notifyStatusChangeRef.current = notifications.showOrderNotification;
         }
@@ -289,7 +288,18 @@ export default function KitchenTabletClient() {
       active = false;
       notifyStatusChangeRef.current = null;
     };
-  }, []);
+  }, [router]);
+
+  const onSignOut = useCallback(async () => {
+    if (!supabase) return;
+    try {
+      await supabase.auth.signOut();
+      router.replace("/account?mode=signin");
+    } catch (error) {
+      console.error("[kitchen-tablet-next] sign-out failed", error);
+      setBootError("Unable to sign out right now.");
+    }
+  }, [router]);
 
   useEffect(() => {
     if (isBooting || isUnauthorized || !supabase) return;
@@ -777,12 +787,18 @@ export default function KitchenTabletClient() {
             />
             <span>Clarivore</span>
           </Link>
-          <div className="simple-nav" />
-          <div
-            className="mode-toggle-container"
-            id="modeToggleContainer"
-            style={{ display: "none" }}
-          />
+          <div className="simple-nav">
+            <Link href="/manager-dashboard">Dashboard</Link>
+            <Link href="/server-tablet">Server monitor</Link>
+            <Link href="/help-contact">Help</Link>
+            {authUser ? (
+              <button type="button" className="btnLink" onClick={onSignOut}>
+                Sign out
+              </button>
+            ) : (
+              <Link href="/account?mode=signin">Sign in</Link>
+            )}
+          </div>
         </div>
       </header>
 

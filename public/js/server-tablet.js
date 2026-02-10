@@ -442,7 +442,7 @@ async function requireAuth() {
   }
   const user = data?.user;
   if (!user) {
-    window.location.href = 'account.html?redirect=server-tablet';
+    window.location.href = '/account?redirect=server-tablet';
     return null;
   }
   return user;

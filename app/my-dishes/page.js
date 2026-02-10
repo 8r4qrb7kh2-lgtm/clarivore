@@ -1,18 +1,10 @@
-import { Suspense } from "react";
 import MyDishesClient from "./MyDishesClient";
+import RouteSuspense from "../components/RouteSuspense";
 
 export default function MyDishesLegacyPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="page-shell" style={{ padding: "40px" }}>
-          <p style={{ color: "var(--muted)", textAlign: "center" }}>
-            Loading my dishes...
-          </p>
-        </div>
-      }
-    >
+    <RouteSuspense label="my dishes">
       <MyDishesClient />
-    </Suspense>
+    </RouteSuspense>
   );
 }

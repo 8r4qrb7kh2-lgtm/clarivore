@@ -1,18 +1,10 @@
-import { Suspense } from "react";
 import KitchenTabletClient from "./KitchenTabletClient";
+import RouteSuspense from "../components/RouteSuspense";
 
 export default function KitchenTabletPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="page-shell" style={{ padding: "40px" }}>
-          <p style={{ color: "var(--muted)", textAlign: "center" }}>
-            Loading kitchen tablet...
-          </p>
-        </div>
-      }
-    >
+    <RouteSuspense label="kitchen tablet">
       <KitchenTabletClient />
-    </Suspense>
+    </RouteSuspense>
   );
 }

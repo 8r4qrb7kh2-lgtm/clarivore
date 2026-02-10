@@ -48,7 +48,7 @@
   }
 
   function getIndexRoute() {
-    return '/index.html';
+    return isNativePlatform() ? 'index.html' : '/';
   }
 
   function navigateToIndex() {

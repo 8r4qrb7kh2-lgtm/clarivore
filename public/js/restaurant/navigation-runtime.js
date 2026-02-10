@@ -66,7 +66,7 @@ export function createNavigationRuntime(deps = {}) {
           "invite",
         );
         if (inviteParam) {
-          window.location.href = `account.html?invite=${encodeURIComponent(inviteParam)}`;
+          window.location.href = `/account?invite=${encodeURIComponent(inviteParam)}`;
         } else {
           requestSignIn("qr");
         }

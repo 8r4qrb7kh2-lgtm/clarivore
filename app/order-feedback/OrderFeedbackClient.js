@@ -2,9 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { supabaseClient as supabase } from "../lib/supabase";
-import { fetchManagerRestaurants, OWNER_EMAIL } from "../lib/managerRestaurants";
+import { OWNER_EMAIL } from "../lib/managerRestaurants";
 
 function getDefaultConfig() {
   const normalizeAllergen = (value) => String(value ?? "").trim();
@@ -17,6 +17,7 @@ function getDefaultConfig() {
 }
 
 export default function OrderFeedbackClient() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams?.get("token") || "";
 
@@ -37,6 +38,10 @@ export default function OrderFeedbackClient() {
   const [submitError, setSubmitError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [config, setConfig] = useState(() => getDefaultConfig());
+  const [topbarUser, setTopbarUser] = useState(null);
+  const isManagerOrOwner =
+    topbarUser?.email === OWNER_EMAIL ||
+    topbarUser?.user_metadata?.role === "manager";
 
   const menuImages = useMemo(
     () => (Array.isArray(restaurantData?.menu_images) ? restaurantData.menu_images : []),
@@ -228,20 +233,8 @@ export default function OrderFeedbackClient() {
         const {
           data: { user },
         } = await supabase.auth.getUser();
-        const isOwner = user?.email === OWNER_EMAIL;
-        const isManager = user?.user_metadata?.role === "manager";
-        const managerRestaurants =
-          user && (isOwner || isManager)
-            ? await fetchManagerRestaurants(supabase, user)
-            : [];
-        const [{ setupTopbar }] = await Promise.all([
-          import(
-            /* webpackIgnore: true */
-            "/js/shared-nav.js"
-          ),
-        ]);
         if (!isMounted) return;
-        setupTopbar("order-feedback", user || null, { managerRestaurants });
+        setTopbarUser(user || null);
       } catch (error) {
         console.error("[order-feedback] topbar init failed", error);
       }
@@ -251,6 +244,17 @@ export default function OrderFeedbackClient() {
       isMounted = false;
     };
   }, []);
+
+  const onSignOut = useCallback(async () => {
+    if (!supabase) return;
+    try {
+      await supabase.auth.signOut();
+      router.replace("/account?mode=signin");
+    } catch (error) {
+      console.error("[order-feedback] sign-out failed", error);
+      setBootError("Unable to sign out right now.");
+    }
+  }, [router]);
 
   useEffect(() => {
     let isMounted = true;
@@ -351,12 +355,22 @@ export default function OrderFeedbackClient() {
             />
             <span>Clarivore</span>
           </Link>
-          <div className="simple-nav" />
-          <div
-            className="mode-toggle-container"
-            id="modeToggleContainer"
-            style={{ display: "none" }}
-          />
+          <div className="simple-nav">
+            <Link href="/home">Home</Link>
+            <Link href="/restaurants">Restaurants</Link>
+            <Link href="/favorites">My restaurants</Link>
+            {isManagerOrOwner ? (
+              <Link href="/manager-dashboard">Dashboard</Link>
+            ) : null}
+            <Link href="/help-contact">Help</Link>
+            {topbarUser ? (
+              <button type="button" className="btnLink" onClick={onSignOut}>
+                Sign out
+              </button>
+            ) : (
+              <Link href="/account?mode=signin">Sign in</Link>
+            )}
+          </div>
         </div>
       </header>
 
@@ -376,9 +390,9 @@ export default function OrderFeedbackClient() {
                 already been used.
               </p>
               <p style={{ marginTop: 20 }}>
-                <a href="/restaurants" style={{ color: "var(--accent)" }}>
+                <Link href="/restaurants" style={{ color: "var(--accent)" }}>
                   Return to Restaurants
-                </a>
+                </Link>
               </p>
             </div>
           ) : null}
@@ -391,9 +405,9 @@ export default function OrderFeedbackClient() {
                 We appreciate you helping us and the restaurant improve.
               </p>
               <p style={{ marginTop: 30 }}>
-                <a href="/restaurants" style={{ color: "var(--accent)" }}>
+                <Link href="/restaurants" style={{ color: "var(--accent)" }}>
                   Browse More Restaurants
-                </a>
+                </Link>
               </p>
             </div>
           ) : null}

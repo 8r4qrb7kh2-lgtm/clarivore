@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { supabaseClient as supabase } from "../lib/supabase";
-import { fetchManagerRestaurants } from "../lib/managerRestaurants";
+import { OWNER_EMAIL } from "../lib/managerRestaurants";
 
 function resolveAccountName(user, fallbackName = "") {
   if (!user) return (fallbackName || "").trim() || null;
@@ -20,6 +21,7 @@ function resolveAccountName(user, fallbackName = "") {
 }
 
 export default function ReportIssueClient() {
+  const router = useRouter();
   const [user, setUser] = useState(null);
   const [bootError, setBootError] = useState("");
   const [isOpen, setIsOpen] = useState(true);
@@ -34,6 +36,8 @@ export default function ReportIssueClient() {
     () => (isSubmitting ? "Sending..." : "Send"),
     [isSubmitting],
   );
+  const isManagerOrOwner =
+    user?.email === OWNER_EMAIL || user?.user_metadata?.role === "manager";
 
   useEffect(() => {
     let isMounted = true;
@@ -55,21 +59,6 @@ export default function ReportIssueClient() {
         if (authUser?.email) {
           setEmail(authUser.email);
         }
-
-        const [{ setupTopbar, attachSignOutHandler }, managerRestaurants] =
-          await Promise.all([
-            import(
-              /* webpackIgnore: true */
-              "/js/shared-nav.js"
-            ),
-            authUser
-              ? fetchManagerRestaurants(supabase, authUser)
-              : Promise.resolve([]),
-          ]);
-
-        if (!isMounted) return;
-        setupTopbar("report-issue", authUser, { managerRestaurants });
-        if (authUser) attachSignOutHandler(supabase);
       } catch (error) {
         console.error("[report-issue] boot failed", error);
         if (isMounted) {
@@ -96,6 +85,17 @@ export default function ReportIssueClient() {
       window.removeEventListener("keydown", handleEsc);
     };
   }, [isOpen]);
+
+  const onSignOut = useCallback(async () => {
+    if (!supabase) return;
+    try {
+      await supabase.auth.signOut();
+      router.replace("/account?mode=signin");
+    } catch (error) {
+      console.error("[report-issue] sign-out failed", error);
+      setBootError("Unable to sign out right now.");
+    }
+  }, [router]);
 
   const onSubmit = useCallback(
     async (event) => {
@@ -171,12 +171,21 @@ export default function ReportIssueClient() {
             />
             <span>Clarivore</span>
           </Link>
-          <div className="simple-nav" />
-          <div
-            className="mode-toggle-container"
-            id="modeToggleContainer"
-            style={{ display: "none" }}
-          />
+          <div className="simple-nav">
+            <Link href="/home">Home</Link>
+            <Link href="/restaurants">Restaurants</Link>
+            {isManagerOrOwner ? (
+              <Link href="/manager-dashboard">Dashboard</Link>
+            ) : null}
+            <Link href="/help-contact">Help</Link>
+            {user ? (
+              <button type="button" className="btnLink" onClick={onSignOut}>
+                Sign out
+              </button>
+            ) : (
+              <Link href="/account?mode=signin">Sign in</Link>
+            )}
+          </div>
         </div>
       </header>
 

@@ -1,13 +1,27 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import AdminDashboardDom from "./components/AdminDashboardDom";
 import { supabaseClient as supabase } from "../lib/supabase";
 import { loadScript } from "../runtime/scriptLoader";
 import { prepareAdminDashboardBootPayload } from "./services/adminDashboardBoot";
 
 export default function AdminDashboardClient() {
+  const router = useRouter();
   const [error, setError] = useState("");
+  const [authUser, setAuthUser] = useState(null);
+
+  const onSignOut = useCallback(async () => {
+    if (!supabase) return;
+    try {
+      await supabase.auth.signOut();
+      router.replace("/account?mode=signin");
+    } catch (signOutError) {
+      console.error("[admin-dashboard-next] sign-out failed", signOutError);
+      setError("Unable to sign out right now.");
+    }
+  }, [router]);
 
   useEffect(() => {
     let cancelled = false;
@@ -26,20 +40,8 @@ export default function AdminDashboardClient() {
         );
 
         const bootPayload = await prepareAdminDashboardBootPayload();
-
-        const { setupTopbar, attachSignOutHandler } = await import(
-          /* webpackIgnore: true */
-          "/js/shared-nav.js"
-        );
-
-        setupTopbar("admin", bootPayload.user, {
-          managerRestaurants: bootPayload.managerRestaurants || [],
-        });
-        bootPayload.topbarSetupDone = true;
-
-        if (bootPayload.user) {
-          attachSignOutHandler(supabase);
-          bootPayload.signOutHandlerBound = true;
+        if (!cancelled) {
+          setAuthUser(bootPayload.user || null);
         }
 
         window.__adminDashboardBootPayload = bootPayload;
@@ -67,7 +69,7 @@ export default function AdminDashboardClient() {
 
   return (
     <>
-      <AdminDashboardDom />
+      <AdminDashboardDom user={authUser} onSignOut={onSignOut} />
       {error ? (
         <p
           className="status-text error"

@@ -2,14 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@supabase/supabase-js";
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-const supabase =
-  supabaseUrl && supabaseAnonKey
-    ? createClient(supabaseUrl, supabaseAnonKey)
-    : null;
+import { supabaseClient as supabase } from "./lib/supabase";
 
 export default function Home() {
   const router = useRouter();
@@ -28,11 +21,11 @@ export default function Home() {
 
       try {
         const { data } = await supabase.auth.getUser();
-        const destination = data?.user ? "/home" : "/index.html";
+        const destination = data?.user ? "/home" : "/account?mode=signin";
         router.replace(destination);
       } catch (error) {
         console.error("Failed to check session", error);
-        router.replace("/index.html");
+        router.replace("/account?mode=signin");
       }
     }
 
