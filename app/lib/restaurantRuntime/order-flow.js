@@ -33,6 +33,7 @@ import { createOrderSidebarCartRuntime } from "./order-sidebar-cart-runtime.js";
 import { createOrderConfirmTabletRuntime } from "./order-confirm-tablet-runtime.js";
 import { createOrderNoticeUpdatesRuntime } from "./order-notice-updates-runtime.js";
 import { createOrderDishCompatibilityRuntime } from "./order-dish-compatibility-runtime.js";
+import { createOrderConfirmFormRuntime } from "./order-confirm-form-runtime.js";
 
 const esc = (s) =>
   (s ?? "").toString().replace(
@@ -321,7 +322,6 @@ export function initOrderFlow({
     renderOrderConfirm();
     updateOrderSidebarBadge();
   });
-  let orderConfirmModeBound = false;
   const serverPanelState = { activeServerId: null };
 
   const orderConfirmDrawer = document.getElementById("orderConfirmDrawer");
@@ -380,6 +380,7 @@ export function initOrderFlow({
   let orderSidebarForceOpenOrderId = null;
   let rescindConfirmOrderId = null;
   let orderSidebarCartRuntime = null;
+  let orderConfirmFormRuntime = null;
   let orderConfirmTabletRuntime = null;
   let orderNoticeUpdatesRuntime = null;
   const orderSidebarUiRuntime = createOrderSidebarUiRuntime({
@@ -454,6 +455,39 @@ export function initOrderFlow({
     formatOrderListLabel,
     esc,
   });
+  orderConfirmFormRuntime = createOrderConfirmFormRuntime({
+    state,
+    send,
+    resizeLegendToFit,
+    orderConfirmForm,
+    orderConfirmNameInput,
+    orderConfirmAllergyChips,
+    orderConfirmDietChips,
+    orderConfirmNotesInput,
+    orderConfirmCodeInput,
+    orderConfirmAuthPrompt,
+    orderConfirmSubmitBtn,
+    getSupabaseClient: () => getSupabaseClient(),
+    getOrderItems: () => getOrderItems(),
+    writeOrderItems: (items) => writeOrderItems(items),
+    hasOrderItems: () => hasOrderItems(),
+    getOrderFormStateStorageKey: () => getOrderFormStateStorageKey(),
+    getRestaurantSlug: () => getRestaurantSlug(),
+    getLocationHref: () => getLocationHref(),
+    navigateToUrl: (url) => navigateToUrl(url),
+    waitForMenuOverlays,
+    markOverlayDishesSelected,
+    applyOverlayPulseColor,
+    onUpdateOrderSidebar: () => updateOrderSidebar(),
+    onOpenOrderSidebar: () => openOrderSidebar(),
+    onConfirmOrder: () => confirmOrder(),
+    onRerenderOrderConfirmDetails: () => rerenderOrderConfirmDetails(),
+    showAlert: (message) => {
+      if (typeof alert === "function") {
+        alert(message);
+      }
+    },
+  });
   orderConfirmTabletRuntime = createOrderConfirmTabletRuntime({
     orderConfirmServerPanel,
     orderConfirmKitchenPanel,
@@ -491,231 +525,32 @@ export function initOrderFlow({
   initializeOrderConfirmDrawer();
   setOpenOrderConfirmDrawer(openOrderConfirmDrawer);
 
-  function getSuggestedUserName() {
-    if (!state.user) return "";
-    const rawName =
-      typeof state.user.name === "string" ? state.user.name.trim() : "";
-    if (rawName) return rawName;
-    const first = state.user.user_metadata?.first_name
-      ? String(state.user.user_metadata.first_name).trim()
-      : "";
-    const last = state.user.user_metadata?.last_name
-      ? String(state.user.user_metadata.last_name).trim()
-      : "";
-    const combined = `${first} ${last}`.trim();
-    if (combined) return combined;
-    const email = typeof state.user.email === "string" ? state.user.email : "";
-    if (email) {
-      const emailName = (email.split("@")[0] || "")
-        .replace(/[_\.]+/g, " ")
-        .trim();
-      if (emailName) return emailName;
-    }
-    return "";
-  }
-
   function applyDefaultUserName(force = false) {
-    if (!orderConfirmNameInput) return;
-    const current = (orderConfirmNameInput.value || "").trim();
-    if (current && !force) return;
-    const suggested = getSuggestedUserName();
-    if (suggested) {
-      orderConfirmNameInput.value = suggested;
-    }
+    return orderConfirmFormRuntime.applyDefaultUserName(force);
   }
 
   async function checkUserAuth() {
-    try {
-      const supabaseClient = getSupabaseClient();
-      if (!supabaseClient) return false;
-      const {
-        data: { user },
-      } = await supabaseClient.auth.getUser();
-      return !!user;
-    } catch (error) {
-      return false;
-    }
+    return orderConfirmFormRuntime.checkUserAuth();
   }
 
   function saveOrderFormState() {
-    if (!orderConfirmForm) return;
-    const storageKey = getOrderFormStateStorageKey();
-    const formData = {
-      name: orderConfirmNameInput?.value || "",
-      mode:
-        orderConfirmForm.querySelector('input[name="orderConfirmMode"]:checked')
-          ?.value || "dine-in",
-      allergies: Array.from(
-        orderConfirmAllergyChips?.querySelectorAll(".chip.selected") || [],
-      ).map((c) => c.textContent.trim()),
-      diets: Array.from(
-        orderConfirmDietChips?.querySelectorAll(".chip.selected") || [],
-      ).map((c) => c.textContent.trim()),
-      notes: orderConfirmNotesInput?.value || "",
-      code: orderConfirmCodeInput?.value || "",
-      dishes: [...getOrderItems()],
-      timestamp: Date.now(),
-      restaurantSlug: getRestaurantSlug(),
-    };
-    try {
-      localStorage.setItem(storageKey, JSON.stringify(formData));
-      if (storageKey !== "orderConfirmFormState") {
-        localStorage.removeItem("orderConfirmFormState");
-      }
-    } catch (error) {
-      console.error("Failed to save order form state", error);
-    }
+    return orderConfirmFormRuntime.saveOrderFormState();
   }
 
   function restoreOrderFormState() {
-    try {
-      const storageKey = getOrderFormStateStorageKey();
-      let saved = localStorage.getItem(storageKey);
-      let usedLegacyKey = false;
-      if (!saved && storageKey !== "orderConfirmFormState") {
-        saved = localStorage.getItem("orderConfirmFormState");
-        if (saved) usedLegacyKey = true;
-      }
-      if (!saved) return false;
-      const formData = JSON.parse(saved);
-      const restaurantMatches =
-        !formData?.restaurantSlug ||
-        formData.restaurantSlug === getRestaurantSlug();
-      if (
-        !formData ||
-        Date.now() - formData.timestamp > 3600000 ||
-        !restaurantMatches
-      ) {
-        localStorage.removeItem(storageKey);
-        if (usedLegacyKey) localStorage.removeItem("orderConfirmFormState");
-        return false;
-      }
-
-      // Restore dishes first
-      if (
-        formData.dishes &&
-        Array.isArray(formData.dishes) &&
-        formData.dishes.length > 0
-      ) {
-        writeOrderItems([...formData.dishes]);
-        waitForMenuOverlays({
-          onReady: () => {
-            markOverlayDishesSelected(formData.dishes, {
-              setOverlayPulseColor: applyOverlayPulseColor,
-            });
-            updateOrderSidebar();
-          },
-        });
-        updateOrderSidebar();
-      }
-
-      // Restore form fields
-      if (orderConfirmNameInput) {
-        if (formData.name) {
-          orderConfirmNameInput.value = formData.name;
-        } else if (state.user?.name) {
-          orderConfirmNameInput.value = state.user.name;
-        } else if (state.user?.email) {
-          orderConfirmNameInput.value = (
-            state.user.email.split("@")[0] || ""
-          ).trim();
-        }
-      }
-      if (formData.mode) {
-        const modeRadio = orderConfirmForm?.querySelector(
-          `input[name="orderConfirmMode"][value="${formData.mode}"]`,
-        );
-        if (modeRadio) modeRadio.checked = true;
-      }
-      // Note: allergies/diets chips are display-only and will be rendered when state.allergies/diets are loaded
-      // They don't need to be "selected" - they just show what's in state.allergies and state.diets
-      if (orderConfirmNameInput && !orderConfirmNameInput.value.trim()) {
-        applyDefaultUserName();
-      }
-      if (orderConfirmNotesInput && formData.notes)
-        orderConfirmNotesInput.value = formData.notes;
-      if (orderConfirmCodeInput && formData.code)
-        orderConfirmCodeInput.value = formData.code;
-
-      // Acknowledge disclaimer
-      const wasAcknowledged = state.ack;
-      state.ack = true;
-      const ackBtn = document.getElementById("ackBtn");
-      if (ackBtn) {
-        // Send ack message if not already acknowledged
-        if (!wasAcknowledged && typeof send === "function") {
-          send({ type: "ack" });
-        }
-        ackBtn.textContent = "Acknowledged";
-        ackBtn.classList.remove("off");
-        ackBtn.classList.add("on");
-        // Show menu and legend
-        const menu = document.getElementById("menu");
-        if (menu) menu.classList.add("show");
-        const actionButtonsRow = document.getElementById("actionButtonsRow");
-        if (actionButtonsRow) actionButtonsRow.style.display = "flex";
-        const legendRow = document.getElementById("legendRow");
-        if (legendRow) {
-          legendRow.style.display = "flex";
-          setTimeout(resizeLegendToFit, 0);
-        }
-        const confirmedRow = document.getElementById("confirmedRow");
-        if (confirmedRow) confirmedRow.style.display = "block";
-      }
-
-      // Open sidebar
-      openOrderSidebar();
-
-      // Automatically proceed to confirmation if there are dishes
-      if (hasOrderItems()) {
-        setTimeout(() => {
-          confirmOrder();
-          // Ensure summary reflects restored preferences
-          setTimeout(() => {
-            rerenderOrderConfirmDetails();
-          }, 120);
-        }, 100);
-      }
-
-      localStorage.removeItem(storageKey);
-      if (storageKey !== "orderConfirmFormState") {
-        localStorage.removeItem("orderConfirmFormState");
-      }
-      return true;
-    } catch (error) {
-      console.error("Failed to restore form state", error);
-      return false;
-    }
+    return orderConfirmFormRuntime.restoreOrderFormState();
   }
 
   function handleSignInClick() {
-    saveOrderFormState();
-    const currentUrl = getLocationHref();
-    navigateToUrl(
-      `/account?redirect=${encodeURIComponent(currentUrl)}&mode=signin`,
-    );
+    return orderConfirmFormRuntime.handleSignInClick();
   }
 
   function handleSignUpClick() {
-    saveOrderFormState();
-    const currentUrl = getLocationHref();
-    navigateToUrl(
-      `/account?redirect=${encodeURIComponent(currentUrl)}&mode=signup`,
-    );
+    return orderConfirmFormRuntime.handleSignUpClick();
   }
 
   async function updateOrderConfirmAuthState() {
-    const isAuthenticated = await checkUserAuth();
-    if (orderConfirmAuthPrompt) {
-      orderConfirmAuthPrompt.style.display = isAuthenticated ? "none" : "block";
-    }
-    if (orderConfirmSubmitBtn) {
-      orderConfirmSubmitBtn.disabled = !isAuthenticated;
-    }
-    if (isAuthenticated) {
-      restoreOrderFormState();
-      applyDefaultUserName();
-    }
+    return orderConfirmFormRuntime.updateOrderConfirmAuthState();
   }
 
   function rerenderOrderConfirmDetails() {
@@ -1597,75 +1432,11 @@ export function initOrderFlow({
   }
 
   function bindOrderConfirmModeSwitcher() {
-    if (orderConfirmModeBound || !orderConfirmForm) return;
-    const radios = orderConfirmForm.querySelectorAll(
-      'input[name="orderConfirmMode"]',
-    );
-    radios.forEach((radio) => {
-      radio.addEventListener("change", () => {
-        updateOrderConfirmModeVisibility();
-      });
-    });
-    orderConfirmModeBound = true;
-    updateOrderConfirmModeVisibility();
+    return orderConfirmFormRuntime.bindOrderConfirmModeSwitcher();
   }
 
   function updateOrderConfirmModeVisibility() {
-    if (!orderConfirmForm) return;
-    const conditionalLabels = orderConfirmForm.querySelectorAll(
-      ".orderConfirmConditional [data-mode]",
-    );
-    const active = orderConfirmForm.querySelector(
-      'input[name="orderConfirmMode"]:checked',
-    );
-    const isDelivery = active && active.value === "delivery";
-
-    conditionalLabels.forEach((label) => {
-      const mode = label.getAttribute("data-mode");
-      label.hidden = !active || active.value !== mode;
-    });
-
-    // Update delivery button visibility and link
-    const deliveryButtonContainer = document.getElementById(
-      "deliveryButtonContainer",
-    );
-    if (deliveryButtonContainer) {
-      deliveryButtonContainer.hidden = !isDelivery;
-      const deliveryLinkButton = document.getElementById("deliveryLinkButton");
-      if (deliveryLinkButton) {
-        if (isDelivery && state.restaurant?.delivery_url) {
-          deliveryLinkButton.href = state.restaurant.delivery_url;
-          deliveryLinkButton.style.display = "inline-flex";
-          deliveryLinkButton.style.opacity = "1";
-          deliveryLinkButton.style.cursor = "pointer";
-          deliveryLinkButton.onclick = null; // Allow default link behavior
-        } else if (isDelivery && !state.restaurant?.delivery_url) {
-          // Show button but disabled if no URL is set
-          deliveryLinkButton.href = "#";
-          deliveryLinkButton.style.display = "inline-flex";
-          deliveryLinkButton.style.opacity = "0.5";
-          deliveryLinkButton.style.cursor = "not-allowed";
-          deliveryLinkButton.onclick = (e) => {
-            e.preventDefault();
-            alert("Delivery URL not configured. Please contact the restaurant.");
-          };
-        } else {
-          deliveryLinkButton.style.display = "none";
-        }
-      }
-    }
-
-    // Update server code section visibility
-    const dineInCodeSection = document.getElementById("dineInCodeSection");
-    const deliveryMessageSection = document.getElementById(
-      "deliveryMessageSection",
-    );
-    if (dineInCodeSection) {
-      dineInCodeSection.style.display = isDelivery ? "none" : "block";
-    }
-    if (deliveryMessageSection) {
-      deliveryMessageSection.style.display = isDelivery ? "block" : "none";
-    }
+    return orderConfirmFormRuntime.updateOrderConfirmModeVisibility();
   }
 
   function getTabletOrder() {

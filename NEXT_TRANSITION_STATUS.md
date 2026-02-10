@@ -419,6 +419,14 @@
     - dish compatibility summary/warning rendering through one compatibility service
     - cart sidebar rendering + order-item selection binding through one cart runtime service
   - simplified `addDishToOrder` to use the same compatibility evaluation source as confirmation UI (removed duplicate compatibility-check implementation in `order-flow`).
+- Continued `order-flow` confirmation-flow decomposition into reusable runtime services:
+  - added shared order confirmation form/auth runtime service:
+    - `app/lib/restaurantRuntime/order-confirm-form-runtime.js`
+  - refactored `app/lib/restaurantRuntime/order-flow.js` to delegate:
+    - user-name defaulting and auth checks for confirmation submission
+    - confirmation form persistence/restore behavior (including overlay/order restore and acknowledgement UI sync)
+    - sign-in/sign-up redirect handoff with saved confirmation state
+    - mode-switcher rendering for dine-in vs delivery confirmation UI
 
 ## Current migration inventory
 - Legacy static HTML compatibility pages still present in `public/`: 15 (all are redirect shells; no legacy page UI/runtime logic)
