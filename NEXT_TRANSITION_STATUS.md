@@ -427,6 +427,31 @@
     - confirmation form persistence/restore behavior (including overlay/order restore and acknowledgement UI sync)
     - sign-in/sign-up redirect handoff with saved confirmation state
     - mode-switcher rendering for dine-in vs delivery confirmation UI
+- Continued `order-flow` status/polling decomposition into reusable runtime services:
+  - added shared order status sync runtime service:
+    - `app/lib/restaurantRuntime/order-status-sync-runtime.js`
+  - refactored `app/lib/restaurantRuntime/order-flow.js` to delegate:
+    - restaurant-scoped order synchronization for sidebar initialization
+    - active-order detection + refresh polling lifecycle (`checkForActiveOrders`, `refreshOrderStatus`, `startOrderRefresh`, `stopOrderRefresh`)
+    - periodic order-status updates and badge/sidebar sync through one status runtime
+- Continued large-scale `order-flow` state decomposition across item + sidebar lifecycle responsibilities:
+  - added shared order item state runtime service:
+    - `app/lib/restaurantRuntime/order-item-state-runtime.js`
+  - added shared order sidebar state runtime service:
+    - `app/lib/restaurantRuntime/order-sidebar-state-runtime.js`
+  - refactored `app/lib/restaurantRuntime/order-flow.js` to delegate:
+    - order item storage keys, persistence/restore, and selection-state synchronization through one item-state service
+    - sidebar dismissed/open-after-submit local persistence and auto-minimize/open lifecycle through one sidebar-state service
+    - sidebar order filtering/sorting/active-count derivation through shared sidebar-state methods used by both UI and status-sync runtimes
+- Continued large-scale `order-flow` decomposition across confirmation UI and dish action responsibilities:
+  - added shared order confirmation UI runtime service:
+    - `app/lib/restaurantRuntime/order-confirm-ui-runtime.js`
+  - added shared order dish action runtime service:
+    - `app/lib/restaurantRuntime/order-dish-actions-runtime.js`
+  - refactored `app/lib/restaurantRuntime/order-flow.js` to delegate:
+    - confirmation drawer initialization/open/close/reset lifecycle
+    - confirmation summary/allergen/diet rendering and status message/badge updates
+    - add/remove dish order actions through one shared dish-actions service (keeping compatibility checks and sidebar synchronization centralized)
 
 ## Current migration inventory
 - Legacy static HTML compatibility pages still present in `public/`: 15 (all are redirect shells; no legacy page UI/runtime logic)

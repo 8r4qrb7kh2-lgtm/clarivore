@@ -30,10 +30,15 @@ import { waitForMenuOverlays } from "./menu-overlay-ready.js";
 import { createOrderSidebarUiRuntime } from "./order-sidebar-ui-runtime.js";
 import { createOrderSidebarPendingRuntime } from "./order-sidebar-pending-runtime.js";
 import { createOrderSidebarCartRuntime } from "./order-sidebar-cart-runtime.js";
+import { createOrderSidebarStateRuntime } from "./order-sidebar-state-runtime.js";
 import { createOrderConfirmTabletRuntime } from "./order-confirm-tablet-runtime.js";
 import { createOrderNoticeUpdatesRuntime } from "./order-notice-updates-runtime.js";
 import { createOrderDishCompatibilityRuntime } from "./order-dish-compatibility-runtime.js";
+import { createOrderItemStateRuntime } from "./order-item-state-runtime.js";
+import { createOrderConfirmUiRuntime } from "./order-confirm-ui-runtime.js";
+import { createOrderDishActionsRuntime } from "./order-dish-actions-runtime.js";
 import { createOrderConfirmFormRuntime } from "./order-confirm-form-runtime.js";
+import { createOrderStatusSyncRuntime } from "./order-status-sync-runtime.js";
 
 const esc = (s) =>
   (s ?? "").toString().replace(
@@ -187,12 +192,20 @@ export function initOrderFlow({
         };
 
   function getOrderItems() {
+    if (orderItemStateRuntime) {
+      return orderItemStateRuntime.getOrderItems();
+    }
     const items = readOrderItems();
     if (Array.isArray(items)) return items;
-    return writeOrderItems([]);
+    const fallback = [];
+    writeOrderItems(fallback);
+    return fallback;
   }
 
   function hasOrderItems() {
+    if (orderItemStateRuntime) {
+      return orderItemStateRuntime.hasOrderItems();
+    }
     return getOrderItems().length > 0;
   }
   const ORDER_STATUS_DESCRIPTORS = {
@@ -345,7 +358,6 @@ export function initOrderFlow({
   );
   const orderConfirmDietChips = document.getElementById("orderConfirmDietChips");
   const orderConfirmNotesInput = document.getElementById("orderConfirmNotes");
-  const orderConfirmCodeBlock = document.getElementById("orderConfirmCodeBlock");
   const orderConfirmCodeInput = document.getElementById("orderConfirmCodeInput");
   const orderConfirmSubmitBtn = document.getElementById("orderConfirmSubmitBtn");
   const orderConfirmSubmitStatus = document.getElementById(
@@ -374,15 +386,24 @@ export function initOrderFlow({
   if (orderSidebarItems) {
     orderSidebarItems.dataset.mode = "cart";
   }
-  let orderSidebarUserToggled = false;
-  let orderSidebarLastOrderId = null;
-  let orderSidebarAutoMinimizedOrderId = null;
-  let orderSidebarForceOpenOrderId = null;
   let rescindConfirmOrderId = null;
+  let orderItemStateRuntime = null;
+  let orderSidebarStateRuntime = null;
   let orderSidebarCartRuntime = null;
+  let orderDishActionsRuntime = null;
   let orderConfirmFormRuntime = null;
+  let orderConfirmUiRuntime = null;
   let orderConfirmTabletRuntime = null;
   let orderNoticeUpdatesRuntime = null;
+  let orderStatusSyncRuntime = null;
+  orderItemStateRuntime = createOrderItemStateRuntime({
+    state,
+    getGlobalSlug: () =>
+      typeof slug === "string" && slug ? slug : "",
+    readOrderItems: () => readOrderItems(),
+    writeOrderItems: (items) => writeOrderItems(items),
+    readOrderItemSelections: () => readOrderItemSelections(),
+  });
   const orderSidebarUiRuntime = createOrderSidebarUiRuntime({
     state,
     orderSidebarItems,
@@ -399,8 +420,31 @@ export function initOrderFlow({
       renderOrderConfirmSummary();
     },
     onSidebarUserToggle: () => {
-      orderSidebarUserToggled = true;
+      orderSidebarStateRuntime?.markSidebarUserToggled();
     },
+  });
+  orderSidebarStateRuntime = createOrderSidebarStateRuntime({
+    TABLET_ORDER_STATUSES,
+    dismissedStorageKey: ORDER_SIDEBAR_DISMISSED_KEY,
+    openAfterSubmitStorageKey: ORDER_SIDEBAR_OPEN_AFTER_SUBMIT_KEY,
+    getCurrentRestaurantId: () =>
+      state.restaurant?._id || state.restaurant?.id || null,
+    getOrders: () => (Array.isArray(tabletSimState.orders) ? tabletSimState.orders : []),
+    setOrders: (orders) => {
+      tabletSimState.orders = Array.isArray(orders) ? orders : [];
+    },
+    getCurrentOrderId: () => tabletSimOrderId,
+    setCurrentOrderId: (orderId) => {
+      tabletSimOrderId = orderId || null;
+    },
+    onStopOrderRefresh: () => stopOrderRefresh(),
+    onPersistSnapshot: () => persistTabletStateSnapshot(),
+    onUpdateSidebarBadge: () => updateOrderSidebarBadge(),
+    onOpenSidebar: () => openOrderSidebar(),
+    onMinimizeSidebar: () => minimizeOrderSidebar(),
+    getSidebarMode: () => orderSidebarItems?.dataset.mode || "",
+    hasOrderItems: () => hasOrderItems(),
+    getOrderItems: () => getOrderItems(),
   });
   orderSidebarCartRuntime = createOrderSidebarCartRuntime({
     orderSidebarItems,
@@ -454,6 +498,28 @@ export function initOrderFlow({
     getDietAllergenConflicts,
     formatOrderListLabel,
     esc,
+  });
+  orderDishActionsRuntime = createOrderDishActionsRuntime({
+    getOrderItems: () => getOrderItems(),
+    writeOrderItems: (items) => writeOrderItems(items),
+    getOrderItemSelections: () => getOrderItemSelections(),
+    getDishCompatibilityDetails: (dishName) => getDishCompatibilityDetails(dishName),
+    hasBlockingCompatibilityIssues: (details) =>
+      orderDishCompatibilityRuntime.hasBlockingCompatibilityIssues(details),
+    persistOrderItems: () => persistOrderItems(),
+    syncOrderItemSelections: () => syncOrderItemSelections(),
+    updateOrderSidebar: () => updateOrderSidebar(),
+    openOrderSidebar: () => openOrderSidebar(),
+    closeDishDetailsAfterAdd: () => closeDishDetailsAfterAdd(),
+    onAfterRemoveDish: (dishName) => {
+      const addBtn = document.querySelector(
+        `.addToOrderBtn[data-dish-name="${esc(dishName)}"]`,
+      );
+      if (addBtn) {
+        addBtn.disabled = false;
+        addBtn.textContent = "Add to order";
+      }
+    },
   });
   orderConfirmFormRuntime = createOrderConfirmFormRuntime({
     state,
@@ -521,6 +587,91 @@ export function initOrderFlow({
     onOpenOrderSidebar: () => openOrderSidebar(),
     onRenderOrderSidebarStatus: (order) => renderOrderSidebarStatus(order),
   });
+  orderStatusSyncRuntime = createOrderStatusSyncRuntime({
+    getCurrentRestaurantId: () => state.restaurant?._id || state.restaurant?.id || null,
+    isEditorPage: () => state.page === "editor",
+    fetchOrdersForRestaurant: async (restaurantId) => {
+      if (!restaurantId) return [];
+      return fetchTabletOrders([restaurantId]);
+    },
+    getDismissedOrderIds: () => getDismissedOrderIds(),
+    isOrderActiveForBadge,
+    pickMostRecentOrder,
+    handleNoticeUpdates: (orders) => handleNoticeUpdates(orders),
+    getOrders: () => (Array.isArray(tabletSimState.orders) ? tabletSimState.orders : []),
+    setOrders: (orders) => {
+      tabletSimState.orders = Array.isArray(orders) ? orders : [];
+    },
+    getCurrentOrderId: () => tabletSimOrderId,
+    setCurrentOrderId: (orderId) => {
+      tabletSimOrderId = orderId || null;
+    },
+    persistTabletStateSnapshot: () => persistTabletStateSnapshot(),
+    renderOrderSidebarStatus: (order) => renderOrderSidebarStatus(order),
+    updateOrderSidebarBadge: () => updateOrderSidebarBadge(),
+    minimizeOrderSidebar: () => minimizeOrderSidebar(),
+    onActiveOrderDetected: () => {
+      state.ack = true;
+      const ackBtn = document.getElementById("ackBtn");
+      if (ackBtn) {
+        ackBtn.textContent = "Acknowledged";
+        ackBtn.classList.remove("off");
+        ackBtn.classList.add("on");
+      }
+    },
+    logError: (message, error) => {
+      console.error(message, error);
+    },
+  });
+  orderConfirmUiRuntime = createOrderConfirmUiRuntime({
+    state,
+    orderConfirmDrawer,
+    orderConfirmCloseBtn,
+    orderConfirmSummaryList,
+    orderConfirmEmptySummary,
+    orderConfirmStatusBadge,
+    orderConfirmForm,
+    orderConfirmNameInput,
+    orderConfirmDeliveryInput,
+    orderConfirmAllergyChips,
+    orderConfirmDietChips,
+    orderConfirmNotesInput,
+    orderConfirmCodeInput,
+    orderConfirmSubmitBtn,
+    orderConfirmSubmitStatus,
+    orderConfirmResetBtn,
+    orderConfirmSignInBtn,
+    orderConfirmSignUpBtn,
+    orderConfirmServerPanel,
+    orderConfirmKitchenPanel,
+    getSelectedOrderItems: () => getSelectedOrderItems(),
+    createDishSummaryCard: (dishName) => createDishSummaryCard(dishName),
+    formatOrderListLabel,
+    getAllergenEmoji,
+    getDietEmoji,
+    onBindOrderConfirmModeSwitcher: () => bindOrderConfirmModeSwitcher(),
+    onHandleOrderConfirmSubmit: () => handleOrderConfirmSubmit(),
+    onHandleOrderConfirmReset: () => handleOrderConfirmReset(),
+    onHandleSignInClick: () => handleSignInClick(),
+    onHandleSignUpClick: () => handleSignUpClick(),
+    onHandleOrderConfirmServerPanel: (event) => handleOrderConfirmServerPanel(event),
+    onHandleOrderConfirmKitchenPanel: (event) => handleOrderConfirmKitchenPanel(event),
+    onUpdateOrderConfirmAuthState: () => updateOrderConfirmAuthState(),
+    onUpdateOrderConfirmModeVisibility: () => updateOrderConfirmModeVisibility(),
+    onRenderOrderConfirmServerPanel: () => renderOrderConfirmServerPanel(),
+    onRenderOrderConfirmKitchenPanel: () => renderOrderConfirmKitchenPanel(),
+    onRenderOrderSidebarStatus: (order) => renderOrderSidebarStatus(order),
+    onPersistTabletStateSnapshot: () => persistTabletStateSnapshot(),
+    onGetTabletOrder: () => getTabletOrder(),
+    onApplyDefaultUserName: () => applyDefaultUserName(),
+    onResetOrders: () => {
+      tabletSimState = createTabletInitialState();
+      tabletSimOrderId = null;
+    },
+    onResetServerPanelState: () => {
+      serverPanelState.activeServerId = null;
+    },
+  });
 
   initializeOrderConfirmDrawer();
   setOpenOrderConfirmDrawer(openOrderConfirmDrawer);
@@ -554,353 +705,59 @@ export function initOrderFlow({
   }
 
   function rerenderOrderConfirmDetails() {
-    if (!orderConfirmDrawer?.classList.contains("show")) return;
-    // Re-render everything to reflect current state (especially dish summary cards)
-    renderOrderConfirmSummary();
-    renderOrderConfirmAllergies();
-    renderOrderConfirmDiets();
+    return orderConfirmUiRuntime.rerenderOrderConfirmDetails();
   }
 
   function initializeOrderConfirmDrawer() {
-    if (!orderConfirmDrawer) return;
-    bindOrderConfirmModeSwitcher();
-    orderConfirmCloseBtn?.addEventListener("click", closeOrderConfirmDrawer);
-    orderConfirmDrawer.addEventListener("click", (evt) => {
-      if (evt.target === orderConfirmDrawer) {
-        closeOrderConfirmDrawer();
-      }
-    });
-    document.addEventListener("keydown", (evt) => {
-      if (evt.key === "Escape" && orderConfirmDrawer.classList.contains("show")) {
-        closeOrderConfirmDrawer();
-      }
-    });
-    orderConfirmSubmitBtn?.addEventListener("click", handleOrderConfirmSubmit);
-    orderConfirmResetBtn?.addEventListener("click", handleOrderConfirmReset);
-    orderConfirmSignInBtn?.addEventListener("click", handleSignInClick);
-    orderConfirmSignUpBtn?.addEventListener("click", handleSignUpClick);
-
-    updateOrderConfirmAuthState();
-    orderConfirmServerPanel?.addEventListener(
-      "click",
-      handleOrderConfirmServerPanel,
-    );
-    orderConfirmKitchenPanel?.addEventListener(
-      "click",
-      handleOrderConfirmKitchenPanel,
-    );
+    return orderConfirmUiRuntime.initializeOrderConfirmDrawer();
   }
 
   function openOrderConfirmDrawer() {
-    if (!orderConfirmDrawer) return;
-    console.log("[order-confirm] Opening confirmation drawer");
-    renderOrderConfirmSummary();
-    resetOrderConfirmFlow({ preserveOrders: true });
-    applyDefaultUserName();
-    renderOrderConfirmAllergies();
-    renderOrderConfirmDiets();
-    updateOrderConfirmAuthState();
-    orderConfirmDrawer.classList.add("show");
-    orderConfirmDrawer.setAttribute("aria-hidden", "false");
-    document.body.classList.add("orderConfirmOpen");
-    setTimeout(() => orderConfirmNameInput?.focus(), 60);
-    // Re-render after a delay to catch any allergies/diets that arrive after drawer opens
-    setTimeout(() => {
-      if (orderConfirmDrawer?.classList.contains("show")) {
-        rerenderOrderConfirmDetails();
-        // Also ensure name is populated from user account if not already set
-        if (orderConfirmNameInput && !orderConfirmNameInput.value) {
-          if (state.user?.name) {
-            orderConfirmNameInput.value = state.user.name;
-          } else if (state.user?.email) {
-            orderConfirmNameInput.value = (
-              state.user.email.split("@")[0] || ""
-            ).trim();
-          }
-        }
-      }
-    }, 1000);
+    return orderConfirmUiRuntime.openOrderConfirmDrawer();
   }
 
   function closeOrderConfirmDrawer() {
-    if (!orderConfirmDrawer) return;
-    orderConfirmDrawer.classList.remove("show");
-    orderConfirmDrawer.setAttribute("aria-hidden", "true");
-    document.body.classList.remove("orderConfirmOpen");
+    return orderConfirmUiRuntime.closeOrderConfirmDrawer();
   }
 
   function resetOrderConfirmFlow(options = {}) {
-    if (!orderConfirmForm) return;
-    const preserveOrders = options.preserveOrders !== false;
-    if (!preserveOrders) {
-      tabletSimState = createTabletInitialState();
-      tabletSimOrderId = null;
-    }
-    orderConfirmForm.reset();
-    updateOrderConfirmModeVisibility();
-    if (orderConfirmCodeInput) {
-      orderConfirmCodeInput.value = "";
-      orderConfirmCodeInput.disabled = false;
-    }
-    if (orderConfirmSubmitBtn) {
-      orderConfirmSubmitBtn.disabled = false;
-    }
-    setStatusMessage(orderConfirmSubmitStatus, "");
-    setOrderConfirmStatusBadge("Waiting for server code", "idle");
-    renderOrderConfirmServerPanel();
-    renderOrderConfirmKitchenPanel();
-    orderConfirmResetBtn?.setAttribute("hidden", "");
-    if (state.user?.name) {
-      orderConfirmNameInput.value = state.user.name;
-    } else if (state.user?.email) {
-      orderConfirmNameInput.value = (state.user.email.split("@")[0] || "").trim();
-    } else if (orderConfirmNameInput) {
-      orderConfirmNameInput.value = "";
-    }
-    if (orderConfirmDeliveryInput) orderConfirmDeliveryInput.value = "";
-    if (orderConfirmNotesInput) orderConfirmNotesInput.value = "";
-    serverPanelState.activeServerId = null;
-    if (!preserveOrders) {
-      renderOrderSidebarStatus(null);
-      persistTabletStateSnapshot();
-    } else {
-      renderOrderSidebarStatus(getTabletOrder());
-    }
+    return orderConfirmUiRuntime.resetOrderConfirmFlow(options);
   }
 
   function renderOrderConfirmSummary() {
-    if (!orderConfirmSummaryList || !orderConfirmEmptySummary) return;
-    orderConfirmSummaryList.innerHTML = "";
-    const items = getSelectedOrderItems();
-    if (items.length === 0) {
-      orderConfirmEmptySummary.hidden = false;
-      return;
-    }
-    orderConfirmEmptySummary.hidden = true;
-    items.forEach((item) => {
-      const li = document.createElement("li");
-      li.innerHTML = createDishSummaryCard(item);
-      orderConfirmSummaryList.appendChild(li);
-    });
+    return orderConfirmUiRuntime.renderOrderConfirmSummary();
   }
 
   function renderOrderConfirmAllergies() {
-    if (!orderConfirmAllergyChips) return;
-    orderConfirmAllergyChips.innerHTML = "";
-    const allergies = Array.isArray(state.allergies) ? state.allergies : [];
-    if (allergies.length === 0) {
-      const chip = document.createElement("span");
-      chip.className = "orderConfirmChip muted";
-      chip.textContent = "No allergens saved";
-      orderConfirmAllergyChips.appendChild(chip);
-      return;
-    }
-    allergies.forEach((allergen) => {
-      const chip = document.createElement("span");
-      chip.className = "orderConfirmChip";
-      const label = formatOrderListLabel(allergen);
-      const emoji = getAllergenEmoji(allergen) || "🔴";
-      chip.textContent = `${emoji} ${label}`;
-      orderConfirmAllergyChips.appendChild(chip);
-    });
+    return orderConfirmUiRuntime.renderOrderConfirmAllergies();
   }
 
   function renderOrderConfirmDiets() {
-    if (!orderConfirmDietChips) return;
-    orderConfirmDietChips.innerHTML = "";
-    const diets = Array.isArray(state.diets) ? state.diets : [];
-    if (diets.length === 0) {
-      const chip = document.createElement("span");
-      chip.className = "orderConfirmChip muted";
-      chip.textContent = "No diets saved";
-      orderConfirmDietChips.appendChild(chip);
-      return;
-    }
-    diets.forEach((diet) => {
-      const chip = document.createElement("span");
-      chip.className = "orderConfirmChip";
-      const label = formatOrderListLabel(diet);
-      const emoji = getDietEmoji(diet) || "🍽️";
-      chip.textContent = `${emoji} ${label}`;
-      orderConfirmDietChips.appendChild(chip);
-    });
+    return orderConfirmUiRuntime.renderOrderConfirmDiets();
   }
 
   function getDismissedOrderIds() {
-    try {
-      const raw = localStorage.getItem(ORDER_SIDEBAR_DISMISSED_KEY);
-      if (!raw) return [];
-      const parsed = JSON.parse(raw);
-      if (!Array.isArray(parsed)) return [];
-      return parsed.filter((id) => typeof id === "string" && id);
-    } catch (error) {
-      console.warn("Failed to read dismissed order ids", error);
-      return [];
-    }
-  }
-
-  function setDismissedOrderIds(ids) {
-    try {
-      const unique = Array.from(
-        new Set(ids.filter((id) => typeof id === "string" && id)),
-      );
-      const trimmed = unique.slice(-25);
-      localStorage.setItem(ORDER_SIDEBAR_DISMISSED_KEY, JSON.stringify(trimmed));
-    } catch (error) {
-      console.warn("Failed to store dismissed order ids", error);
-    }
+    return orderSidebarStateRuntime.getDismissedOrderIds();
   }
 
   function dismissOrderId(orderId) {
-    if (!orderId) return;
-    const ids = getDismissedOrderIds();
-    if (!ids.includes(orderId)) {
-      ids.push(orderId);
-      setDismissedOrderIds(ids);
-    }
-    updateOrderSidebarBadge();
-  }
-
-  function pruneDismissedOrders() {
-    const dismissed = getDismissedOrderIds();
-    if (!dismissed.length) return dismissed;
-    const filtered = tabletSimState.orders.filter(
-      (order) => !dismissed.includes(order.id),
-    );
-    if (filtered.length !== tabletSimState.orders.length) {
-      tabletSimState.orders = filtered;
-      if (tabletSimOrderId && dismissed.includes(tabletSimOrderId)) {
-        tabletSimOrderId = null;
-        stopOrderRefresh();
-      }
-      persistTabletStateSnapshot();
-    }
-    return dismissed;
-  }
-
-  function getOrderSidebarOpenAfterSubmitId() {
-    try {
-      const raw = localStorage.getItem(ORDER_SIDEBAR_OPEN_AFTER_SUBMIT_KEY);
-      if (!raw) return null;
-      const parsed = JSON.parse(raw);
-      if (!parsed || typeof parsed.orderId !== "string") return null;
-      return parsed.orderId;
-    } catch (error) {
-      console.warn("Failed to read sidebar open-after-submit state", error);
-      return null;
-    }
-  }
-
-  function setOrderSidebarOpenAfterSubmit(orderId) {
-    if (!orderId) return;
-    try {
-      localStorage.setItem(
-        ORDER_SIDEBAR_OPEN_AFTER_SUBMIT_KEY,
-        JSON.stringify({
-          orderId,
-          at: Date.now(),
-        }),
-      );
-    } catch (error) {
-      console.warn("Failed to store sidebar open-after-submit state", error);
-    }
-  }
-
-  function clearOrderSidebarOpenAfterSubmit() {
-    try {
-      localStorage.removeItem(ORDER_SIDEBAR_OPEN_AFTER_SUBMIT_KEY);
-    } catch (error) {
-      console.warn("Failed to clear sidebar open-after-submit state", error);
-    }
+    return orderSidebarStateRuntime.dismissOrderId(orderId);
   }
 
   function resetOrderSidebarAutoState() {
-    orderSidebarUserToggled = false;
-    orderSidebarLastOrderId = null;
-    orderSidebarAutoMinimizedOrderId = null;
-  }
-
-  function isActiveOrder(order) {
-    if (!order) return false;
-    if (order.status === TABLET_ORDER_STATUSES.CODE_ASSIGNED) return false;
-    if (
-      TABLET_ORDER_STATUSES.DRAFT &&
-      order.status === TABLET_ORDER_STATUSES.DRAFT
-    )
-      return false;
-    if (order.status === TABLET_ORDER_STATUSES.RESCINDED_BY_DINER) return false;
-    if (order.status === TABLET_ORDER_STATUSES.REJECTED_BY_SERVER) return false;
-    if (order.status === TABLET_ORDER_STATUSES.REJECTED_BY_KITCHEN) return false;
-    return true;
+    return orderSidebarStateRuntime.resetOrderSidebarAutoState();
   }
 
   function shouldShowClearOrderButton(order) {
-    if (!order) return false;
-    return (
-      order.status === TABLET_ORDER_STATUSES.ACKNOWLEDGED ||
-      order.status === TABLET_ORDER_STATUSES.QUESTION_ANSWERED ||
-      order.status === TABLET_ORDER_STATUSES.REJECTED_BY_SERVER ||
-      order.status === TABLET_ORDER_STATUSES.REJECTED_BY_KITCHEN ||
-      order.status === TABLET_ORDER_STATUSES.RESCINDED_BY_DINER
-    );
+    return orderSidebarStateRuntime.shouldShowClearOrderButton(order);
   }
 
   function maybeAutoMinimizeSidebar(order) {
-    const orderId = order?.id || null;
-    if (!orderSidebarForceOpenOrderId) {
-      orderSidebarForceOpenOrderId = getOrderSidebarOpenAfterSubmitId();
-    }
-    if (orderId !== orderSidebarLastOrderId) {
-      orderSidebarUserToggled = false;
-      orderSidebarAutoMinimizedOrderId = null;
-      orderSidebarLastOrderId = orderId;
-    }
-    if (orderId && orderSidebarForceOpenOrderId === orderId) {
-      orderSidebarUserToggled = true;
-      openOrderSidebar();
-      orderSidebarForceOpenOrderId = null;
-      clearOrderSidebarOpenAfterSubmit();
-      return;
-    }
-    if (!isActiveOrder(order)) return;
-    if (orderSidebarUserToggled) return;
-    if (orderSidebarAutoMinimizedOrderId === orderId) return;
-    minimizeOrderSidebar();
-    orderSidebarAutoMinimizedOrderId = orderId;
-  }
-
-  function isSidebarOrderVisible(order) {
-    if (!order || !order.id) return false;
-    if (order.status === TABLET_ORDER_STATUSES.CODE_ASSIGNED) return false;
-    if (
-      TABLET_ORDER_STATUSES.DRAFT &&
-      order.status === TABLET_ORDER_STATUSES.DRAFT
-    )
-      return false;
-    return true;
+    return orderSidebarStateRuntime.maybeAutoMinimizeSidebar(order);
   }
 
   function getSidebarOrders() {
-    const restaurantId = state.restaurant?._id || state.restaurant?.id || null;
-    const dismissed = pruneDismissedOrders();
-    const orders = Array.isArray(tabletSimState.orders)
-      ? tabletSimState.orders
-      : [];
-    return orders
-      .filter((order) => {
-        if (!order || !order.id) return false;
-        if (!isSidebarOrderVisible(order)) return false;
-        if (
-          restaurantId &&
-          order.restaurantId &&
-          order.restaurantId !== restaurantId
-        )
-          return false;
-        if (restaurantId && !order.restaurantId) return false;
-        if (dismissed.includes(order.id)) return false;
-        return true;
-      })
-      .sort((a, b) => getOrderSortValue(b) - getOrderSortValue(a));
+    return orderSidebarStateRuntime.getSidebarOrders();
   }
 
   function handleNoticeUpdates(orders) {
@@ -1214,9 +1071,7 @@ export function initOrderFlow({
       persistOrderItems();
       updateOrderSidebar();
       closeOrderConfirmDrawer();
-      setOrderSidebarOpenAfterSubmit(order.id);
-      orderSidebarForceOpenOrderId = order.id;
-      orderSidebarUserToggled = true;
+      orderSidebarStateRuntime.forceOpenForOrder(order.id);
       openOrderSidebar();
       renderOrderSidebarStatus(order);
       startOrderRefresh();
@@ -1373,62 +1228,7 @@ export function initOrderFlow({
   }
 
   async function checkForActiveOrders() {
-    try {
-      if (state.page === "editor") return;
-      const restaurantId = state.restaurant?._id || state.restaurant?.id || null;
-      if (!restaurantId) return;
-
-      // Clear orders from other restaurants
-      tabletSimState.orders = tabletSimState.orders.filter((o) => {
-        if (!o.restaurantId) return false; // Remove orders without restaurantId
-        return o.restaurantId === restaurantId;
-      });
-
-      // If current order is from a different restaurant, clear it
-      if (tabletSimOrderId) {
-        const currentOrder = tabletSimState.orders.find(
-          (o) => o.id === tabletSimOrderId,
-        );
-        if (
-          !currentOrder ||
-          (currentOrder.restaurantId &&
-            currentOrder.restaurantId !== restaurantId)
-        ) {
-          tabletSimOrderId = null;
-          stopOrderRefresh();
-        }
-      }
-
-      const orders = await fetchTabletOrders([restaurantId]);
-      const dismissed = getDismissedOrderIds();
-      const filteredOrders = orders.filter((o) => !dismissed.includes(o.id));
-      tabletSimState.orders = filteredOrders;
-      handleNoticeUpdates(filteredOrders);
-      const activeOrders = filteredOrders.filter((o) => isOrderActiveForBadge(o));
-      const activeOrder = pickMostRecentOrder(activeOrders);
-      if (activeOrder) {
-        tabletSimOrderId = activeOrder.id;
-        persistTabletStateSnapshot();
-        state.ack = true;
-        const ackBtn = document.getElementById("ackBtn");
-        if (ackBtn) {
-          ackBtn.textContent = "Acknowledged";
-          ackBtn.classList.remove("off");
-          ackBtn.classList.add("on");
-        }
-        renderOrderSidebarStatus(activeOrder);
-        minimizeOrderSidebar();
-        startOrderRefresh();
-      } else {
-        tabletSimOrderId = null;
-        stopOrderRefresh();
-        // No active order for this restaurant - clear sidebar
-        renderOrderSidebarStatus(null);
-      }
-      updateOrderSidebarBadge();
-    } catch (error) {
-      console.error("Failed to check for active orders", error);
-    }
+    return orderStatusSyncRuntime?.checkForActiveOrders();
   }
 
   function bindOrderConfirmModeSwitcher() {
@@ -1472,21 +1272,11 @@ export function initOrderFlow({
   }
 
   function setOrderConfirmStatusBadge(label, tone = "idle") {
-    if (!orderConfirmStatusBadge) return;
-    orderConfirmStatusBadge.dataset.tone = tone || "idle";
-    orderConfirmStatusBadge.textContent = label;
+    return orderConfirmUiRuntime.setOrderConfirmStatusBadge(label, tone);
   }
 
   function setStatusMessage(target, message, variant) {
-    if (!target) return;
-    target.textContent = message || "";
-    target.classList.remove("error", "success");
-    if (!message) return;
-    if (variant === "error") {
-      target.classList.add("error");
-    } else if (variant === "success") {
-      target.classList.add("success");
-    }
+    return orderConfirmUiRuntime.setStatusMessage(target, message, variant);
   }
 
   function deepCloneArray(value) {
@@ -1703,123 +1493,50 @@ export function initOrderFlow({
   }
 
   function getRestaurantSlug() {
-    if (state.restaurant?.slug) return state.restaurant.slug;
-    if (typeof slug === "string" && slug) return slug;
-    return "";
+    return orderItemStateRuntime.getRestaurantSlug();
   }
 
   function getOrderItemsStorageKey() {
-    const restaurantSlug = getRestaurantSlug();
-    return restaurantSlug ? `orderItems:${restaurantSlug}` : "orderItems";
+    return orderItemStateRuntime.getOrderItemsStorageKey();
   }
 
   function getOrderFormStateStorageKey() {
-    const restaurantSlug = getRestaurantSlug();
-    return restaurantSlug
-      ? `orderConfirmFormState:${restaurantSlug}`
-      : "orderConfirmFormState";
+    return orderItemStateRuntime.getOrderFormStateStorageKey();
   }
 
   // Order management functions
   function persistOrderItems() {
-    const storageKey = getOrderItemsStorageKey();
-    try {
-      const orderItems = getOrderItems();
-      if (orderItems.length > 0) {
-        localStorage.setItem(
-          storageKey,
-          JSON.stringify({
-            items: orderItems,
-            timestamp: Date.now(),
-          }),
-        );
-      } else {
-        localStorage.removeItem(storageKey);
-      }
-      if (storageKey !== "orderItems") {
-        localStorage.removeItem("orderItems");
-      }
-    } catch (error) {
-      console.error("Failed to persist order items", error);
-    }
+    return orderItemStateRuntime.persistOrderItems();
   }
 
   function restoreOrderItems() {
-    const storageKey = getOrderItemsStorageKey();
-    try {
-      let saved = localStorage.getItem(storageKey);
-      let usedLegacyKey = false;
-      if (!saved && storageKey !== "orderItems") {
-        saved = localStorage.getItem("orderItems");
-        if (saved) usedLegacyKey = true;
-      }
-      if (saved) {
-        const data = JSON.parse(saved);
-        const isValidArray = data && Array.isArray(data.items);
-        const isFresh =
-          data && data.timestamp && Date.now() - data.timestamp < 86400000;
-        if (isValidArray && isFresh && data.items.length) {
-          writeOrderItems([...data.items]);
-          syncOrderItemSelections();
-          if (usedLegacyKey) {
-            localStorage.removeItem("orderItems");
-            localStorage.setItem(storageKey, saved);
-          }
-          return true;
-        } else {
-          localStorage.removeItem(storageKey);
-          if (usedLegacyKey) localStorage.removeItem("orderItems");
-        }
-      }
-    } catch (error) {
-      console.error("Failed to restore order items", error);
-      localStorage.removeItem(storageKey);
-      if (storageKey !== "orderItems") localStorage.removeItem("orderItems");
-    }
-    writeOrderItems([]);
-    clearOrderItemSelections();
-    return false;
+    return orderItemStateRuntime.restoreOrderItems();
   }
 
   function getOrderItemSelections() {
-    return readOrderItemSelections();
+    return orderItemStateRuntime.getOrderItemSelections();
   }
 
   function clearOrderItemSelections() {
-    getOrderItemSelections().clear();
+    return orderItemStateRuntime.clearOrderItemSelections();
   }
 
   function syncOrderItemSelections() {
-    const selections = getOrderItemSelections();
-    const items = getOrderItems();
-    const itemSet = new Set(items);
-    Array.from(selections).forEach((item) => {
-      if (!itemSet.has(item)) {
-        selections.delete(item);
-      }
-    });
+    return orderItemStateRuntime.syncOrderItemSelections();
   }
 
   function isOrderItemSelected(dishName) {
-    return getOrderItemSelections().has(dishName);
+    return orderItemStateRuntime.isOrderItemSelected(dishName);
   }
 
   function toggleOrderItemSelection(dishName) {
-    const selections = getOrderItemSelections();
-    if (selections.has(dishName)) {
-      selections.delete(dishName);
-    } else {
-      selections.add(dishName);
-    }
+    orderItemStateRuntime.toggleOrderItemSelection(dishName);
     updateConfirmButtonVisibility();
     orderSidebarUiRuntime.syncConfirmDrawerSummary();
   }
 
   function getSelectedOrderItems() {
-    syncOrderItemSelections();
-    const selections = getOrderItemSelections();
-    const items = getOrderItems();
-    return items.filter((item) => selections.has(item));
+    return orderItemStateRuntime.getSelectedOrderItems();
   }
 
   function closeDishDetailsAfterAdd() {
@@ -1840,52 +1557,11 @@ export function initOrderFlow({
   }
 
   function addDishToOrder(dishName, options = {}) {
-    const orderItems = getOrderItems();
-    if (orderItems.includes(dishName)) {
-      return { success: false, message: "already-added" };
-    }
-
-    const force = !!options.force;
-
-    const details = getDishCompatibilityDetails(dishName);
-    const hasBlockingIssues =
-      orderDishCompatibilityRuntime.hasBlockingCompatibilityIssues(details);
-    if (hasBlockingIssues && !force) {
-      return {
-        success: false,
-        needsConfirmation: true,
-        issues: details.issues,
-      };
-    }
-
-    orderItems.push(dishName);
-    writeOrderItems(orderItems);
-    persistOrderItems();
-    updateOrderSidebar();
-    openOrderSidebar();
-    closeDishDetailsAfterAdd();
-    return { success: true };
+    return orderDishActionsRuntime.addDishToOrder(dishName, options);
   }
 
   function removeDishFromOrder(dishName) {
-    const orderItems = getOrderItems();
-    const index = orderItems.indexOf(dishName);
-    if (index > -1) {
-      orderItems.splice(index, 1);
-      writeOrderItems(orderItems);
-      getOrderItemSelections().delete(dishName);
-      persistOrderItems();
-      syncOrderItemSelections();
-      updateOrderSidebar();
-      // Re-enable "Add to order" button if item is removed while tooltip is open
-      const addBtn = document.querySelector(
-        `.addToOrderBtn[data-dish-name="${esc(dishName)}"]`,
-      );
-      if (addBtn) {
-        addBtn.disabled = false;
-        addBtn.textContent = "Add to order";
-      }
-    }
+    return orderDishActionsRuntime.removeDishFromOrder(dishName);
   }
 
   function updateOrderSidebar() {
@@ -1919,75 +1595,16 @@ export function initOrderFlow({
     return orderSidebarUiRuntime.setOrderSidebarVisibility();
   }
 
-  function getOrderSortValue(order) {
-    if (!order) return 0;
-    const candidates = [order.updatedAt, order.submittedAt, order.createdAt];
-    for (const candidate of candidates) {
-      if (!candidate) continue;
-      if (typeof candidate === "number" && Number.isFinite(candidate)) {
-        return candidate;
-      }
-      const parsed = Date.parse(candidate);
-      if (!Number.isNaN(parsed)) {
-        return parsed;
-      }
-    }
-    return 0;
-  }
-
   function pickMostRecentOrder(orders) {
-    if (!Array.isArray(orders) || orders.length === 0) return null;
-    const sorted = orders
-      .slice()
-      .sort((a, b) => getOrderSortValue(b) - getOrderSortValue(a));
-    return sorted[0] || null;
+    return orderSidebarStateRuntime.pickMostRecentOrder(orders);
   }
 
   function isOrderActiveForBadge(order) {
-    if (!order || !order.id) return false;
-    if (
-      TABLET_ORDER_STATUSES.DRAFT &&
-      order.status === TABLET_ORDER_STATUSES.DRAFT
-    )
-      return false;
-    if (order.status === TABLET_ORDER_STATUSES.CODE_ASSIGNED) return false;
-    if (order.status === TABLET_ORDER_STATUSES.RESCINDED_BY_DINER) return false;
-    if (order.status === TABLET_ORDER_STATUSES.REJECTED_BY_SERVER) return false;
-    if (order.status === TABLET_ORDER_STATUSES.REJECTED_BY_KITCHEN) return false;
-    return true;
+    return orderSidebarStateRuntime.isOrderActiveForBadge(order);
   }
 
   function getActiveOrderCount() {
-    const restaurantId = state.restaurant?._id || state.restaurant?.id || null;
-    const dismissed = getDismissedOrderIds();
-    const orders = Array.isArray(tabletSimState.orders)
-      ? tabletSimState.orders
-      : [];
-    const activeOrders = orders.filter((order) => {
-      if (!order || !order.id) return false;
-      if (
-        restaurantId &&
-        order.restaurantId &&
-        order.restaurantId !== restaurantId
-      )
-        return false;
-      if (dismissed.includes(order.id)) return false;
-      return isOrderActiveForBadge(order);
-    });
-    const hasCartItems = hasOrderItems();
-    const isCleared = orderSidebarItems?.dataset.mode === "cleared";
-    const cartCount = hasCartItems && !isCleared ? getOrderItems().length : 0;
-    if (activeOrders.length > 0) {
-      const submittedCount = activeOrders.reduce((sum, order) => {
-        const count =
-          Array.isArray(order.items) && order.items.length
-            ? order.items.length
-            : 1;
-        return sum + count;
-      }, 0);
-      return submittedCount + cartCount;
-    }
-    return cartCount;
+    return orderSidebarStateRuntime.getActiveOrderCount();
   }
 
   function updateOrderSidebarBadge() {
@@ -2035,91 +1652,20 @@ export function initOrderFlow({
     openOrderConfirmDrawer();
   }
 
-  // Initialize order sidebar handlers
-  let orderRefreshTimerId = null;
-  const ORDER_REFRESH_INTERVAL_MS = 15000;
-
   async function refreshOrderStatus() {
-    try {
-      const restaurantId = state.restaurant?._id || state.restaurant?.id || null;
-      if (!restaurantId) return;
-      const orders = await fetchTabletOrders([restaurantId]);
-      const dismissed = getDismissedOrderIds();
-      const filteredOrders = orders.filter((o) => !dismissed.includes(o.id));
-      tabletSimState.orders = filteredOrders;
-      handleNoticeUpdates(filteredOrders);
-      const activeOrders = filteredOrders.filter((o) => isOrderActiveForBadge(o));
-      let targetOrder = tabletSimOrderId
-        ? filteredOrders.find((o) => o.id === tabletSimOrderId)
-        : null;
-
-      if (!targetOrder || !isOrderActiveForBadge(targetOrder)) {
-        targetOrder = pickMostRecentOrder(activeOrders);
-        if (targetOrder) {
-          tabletSimOrderId = targetOrder.id;
-          if (!orderRefreshTimerId) {
-            startOrderRefresh();
-          }
-        } else if (tabletSimOrderId) {
-          tabletSimOrderId = null;
-          stopOrderRefresh();
-        }
-      }
-
-      persistTabletStateSnapshot();
-      if (targetOrder) {
-        renderOrderSidebarStatus(targetOrder);
-        updateOrderSidebarBadge();
-      } else {
-        renderOrderSidebarStatus(null);
-        updateOrderSidebarBadge();
-      }
-    } catch (error) {
-      console.error("Failed to refresh order status", error);
-    }
+    return orderStatusSyncRuntime?.refreshOrderStatus();
   }
 
   function startOrderRefresh() {
-    stopOrderRefresh();
-    if (!tabletSimOrderId) return;
-    orderRefreshTimerId = setInterval(() => {
-      refreshOrderStatus().catch((err) => {
-        console.error("[order-refresh] periodic refresh failed", err);
-      });
-    }, ORDER_REFRESH_INTERVAL_MS);
+    return orderStatusSyncRuntime?.startOrderRefresh();
   }
 
   function stopOrderRefresh() {
-    if (orderRefreshTimerId) {
-      clearInterval(orderRefreshTimerId);
-      orderRefreshTimerId = null;
-    }
+    return orderStatusSyncRuntime?.stopOrderRefresh();
   }
 
   function initOrderSidebar() {
-    // Filter orders by current restaurant when sidebar initializes
-    const restaurantId = state.restaurant?._id || state.restaurant?.id || null;
-    if (restaurantId) {
-      tabletSimState.orders = tabletSimState.orders.filter((o) => {
-        if (!o.restaurantId) return false;
-        return o.restaurantId === restaurantId;
-      });
-      // Clear current order if it's from a different restaurant
-      if (tabletSimOrderId) {
-        const currentOrder = tabletSimState.orders.find(
-          (o) => o.id === tabletSimOrderId,
-        );
-        if (
-          !currentOrder ||
-          (currentOrder.restaurantId &&
-            currentOrder.restaurantId !== restaurantId)
-        ) {
-          tabletSimOrderId = null;
-          stopOrderRefresh();
-        }
-      }
-      persistTabletStateSnapshot();
-    }
+    orderStatusSyncRuntime?.scopeOrdersToCurrentRestaurant();
 
     const confirmBtn = document.getElementById("confirmOrderBtn");
     const refreshBtn = document.getElementById("orderSidebarRefreshBtn");
