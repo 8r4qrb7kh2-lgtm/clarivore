@@ -106,24 +106,34 @@ export function createTooltipRuntime(deps = {}) {
   ) {
     if (!el) return;
 
-    const viewport = window.visualViewport;
+    const viewport =
+      typeof visualViewport !== "undefined" ? visualViewport : null;
     const offsetLeft =
       viewport && typeof viewport.offsetLeft === "number"
         ? viewport.offsetLeft
         : 0;
     const offsetTop =
       viewport && typeof viewport.offsetTop === "number" ? viewport.offsetTop : 0;
-    const viewportWidth = viewport && viewport.width ? viewport.width : window.innerWidth;
+    const viewportWidth =
+      viewport && viewport.width
+        ? viewport.width
+        : typeof innerWidth === "number"
+          ? innerWidth
+          : document.documentElement?.clientWidth || 0;
     const viewportHeight =
-      viewport && viewport.height ? viewport.height : window.innerHeight;
-    const scrollX =
-      window.scrollX ||
-      window.pageXOffset ||
+      viewport && viewport.height
+        ? viewport.height
+        : typeof innerHeight === "number"
+          ? innerHeight
+          : document.documentElement?.clientHeight || 0;
+    const scrollLeftPx =
+      (typeof scrollX === "number" ? scrollX : null) ||
+      (typeof pageXOffset === "number" ? pageXOffset : null) ||
       document.documentElement.scrollLeft ||
       0;
-    const scrollY =
-      window.scrollY ||
-      window.pageYOffset ||
+    const scrollTopPx =
+      (typeof scrollY === "number" ? scrollY : null) ||
+      (typeof pageYOffset === "number" ? pageYOffset : null) ||
       document.documentElement.scrollTop ||
       0;
 
@@ -269,12 +279,16 @@ ${addToOrderButton}
       }
     }
 
-    const isMobile = window.innerWidth <= 640;
+    const isMobile =
+      (typeof innerWidth === "number"
+        ? innerWidth
+        : document.documentElement?.clientWidth || 0) <= 640;
     el.style.transform = "";
     el.style.transformOrigin = "";
 
     const layoutWidth =
-      document.documentElement?.clientWidth || window.innerWidth;
+      document.documentElement?.clientWidth ||
+      (typeof innerWidth === "number" ? innerWidth : 0);
     const baseMaxWidth = isMobile
       ? Math.min(280, Math.max(220, layoutWidth - 40))
       : Math.min(320, Math.max(240, layoutWidth - 80));
@@ -306,24 +320,24 @@ ${addToOrderButton}
     requestAnimationFrame(() => {
       const rect = el.getBoundingClientRect();
       const pad = isMobile ? 8 : 12;
-      const visibleLeft = scrollX + offsetLeft;
-      const visibleTop = scrollY + offsetTop;
+      const visibleLeft = scrollLeftPx + offsetLeft;
+      const visibleTop = scrollTopPx + offsetTop;
       const visibleRight = visibleLeft + viewportWidth;
       const visibleBottom = visibleTop + viewportHeight;
 
       const useAnchor = !!anchorRect;
 
       const anchorLeft = anchorRect
-        ? anchorRect.left + scrollX + offsetLeft
+        ? anchorRect.left + scrollLeftPx + offsetLeft
         : null;
       const anchorRight = anchorRect
-        ? anchorRect.right + scrollX + offsetLeft
+        ? anchorRect.right + scrollLeftPx + offsetLeft
         : null;
       const anchorTop = anchorRect
-        ? anchorRect.top + scrollY + offsetTop
+        ? anchorRect.top + scrollTopPx + offsetTop
         : null;
       const anchorBottom = anchorRect
-        ? anchorRect.bottom + scrollY + offsetTop
+        ? anchorRect.bottom + scrollTopPx + offsetTop
         : null;
       const anchorCenterX = anchorRect ? (anchorLeft + anchorRight) / 2 : null;
 
@@ -354,11 +368,11 @@ ${addToOrderButton}
       } else {
         const pointerX =
           typeof x === "number"
-            ? x + scrollX + offsetLeft
+            ? x + scrollLeftPx + offsetLeft
             : visibleLeft + viewportWidth / 2;
         const pointerY =
           typeof y === "number"
-            ? y + scrollY + offsetTop
+            ? y + scrollTopPx + offsetTop
             : visibleTop + viewportHeight / 2;
         left = pointerX + (isMobile ? 8 : 12);
         top = pointerY + (isMobile ? 8 : 12);

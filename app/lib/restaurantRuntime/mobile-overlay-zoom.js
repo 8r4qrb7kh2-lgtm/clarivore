@@ -213,7 +213,10 @@ export function initMobileOverlayZoom(deps = {}) {
     }
 
     if (!isTransition) {
-      preZoomScrollPos = { x: window.scrollX, y: window.scrollY };
+      preZoomScrollPos = {
+        x: typeof scrollX === "number" ? scrollX : 0,
+        y: typeof scrollY === "number" ? scrollY : 0,
+      };
       const menuWrapRect = menuWrap.getBoundingClientRect();
       preZoomMenuWrapOffset = {
         x: menuWrapRect.left,
@@ -225,8 +228,10 @@ export function initMobileOverlayZoom(deps = {}) {
       };
     }
 
-    const screenWidth = window.innerWidth;
-    const screenHeight = window.innerHeight;
+    const screenWidth =
+      typeof innerWidth === "number" ? innerWidth : menuWrap.clientWidth || 1;
+    const screenHeight =
+      typeof innerHeight === "number" ? innerHeight : menuWrap.clientHeight || 1;
 
     if (!hasActiveTransform) {
       menuInner.style.transition = "none";
@@ -278,8 +283,10 @@ export function initMobileOverlayZoom(deps = {}) {
 
     if (!hasActiveTransform) {
       const fullRect = menuWrap.getBoundingClientRect();
-      const safeWidth = fullRect.width || window.innerWidth || 1;
-      const safeHeight = fullRect.height || window.innerHeight || 1;
+      const safeWidth =
+        fullRect.width || (typeof innerWidth === "number" ? innerWidth : 1);
+      const safeHeight =
+        fullRect.height || (typeof innerHeight === "number" ? innerHeight : 1);
       const scaleX = preZoomMenuWrapSize.width
         ? preZoomMenuWrapSize.width / safeWidth
         : 1;
@@ -434,7 +441,9 @@ export function initMobileOverlayZoom(deps = {}) {
         requestAnimationFrame(() => {
           rerenderLayer();
 
-          window.scrollTo(preZoomScrollPos.x, preZoomScrollPos.y);
+          if (typeof scrollTo === "function") {
+            scrollTo(preZoomScrollPos.x, preZoomScrollPos.y);
+          }
 
           const menuState = getMenuState();
           if (menuState && typeof menuState.updateMiniMapViewport === "function") {

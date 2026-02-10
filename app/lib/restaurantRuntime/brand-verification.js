@@ -72,26 +72,29 @@ export function initBrandVerification(deps = {}) {
     typeof deps.showPhotoPreview === "function"
       ? deps.showPhotoPreview
       : () => {};
+  const SUPABASE_URL =
+    typeof deps.SUPABASE_URL === "string" && deps.SUPABASE_URL.trim()
+      ? deps.SUPABASE_URL.trim()
+      : "https://fgoiyycctnwnghrvsilt.supabase.co";
+  const SUPABASE_ANON_KEY =
+    typeof deps.SUPABASE_ANON_KEY === "string" ? deps.SUPABASE_ANON_KEY : "";
   const fetchProductByBarcode =
     typeof deps.fetchProductByBarcode === "function"
       ? deps.fetchProductByBarcode
-      : typeof window !== "undefined" && typeof window.fetchProductByBarcode === "function"
-        ? window.fetchProductByBarcode
-        : async () => {
-            throw new Error("fetchProductByBarcode is not available");
-          };
+      : async () => {
+          throw new Error("fetchProductByBarcode is not available");
+        };
   const showReplacementPreview =
     typeof deps.showReplacementPreview === "function"
       ? deps.showReplacementPreview
-      : typeof window !== "undefined" && typeof window.showReplacementPreview === "function"
-        ? window.showReplacementPreview
-        : async () => {
-            throw new Error("showReplacementPreview is not available");
-          };
+      : async () => {
+          throw new Error("showReplacementPreview is not available");
+        };
+  const ZXing =
+    deps.ZXing ||
+    (typeof globalThis !== "undefined" ? globalThis.ZXing || null : null);
   const SUPABASE_KEY =
-    deps.SUPABASE_KEY ||
-    (typeof window !== "undefined" ? window.SUPABASE_KEY : "") ||
-    "";
+    deps.SUPABASE_KEY || SUPABASE_ANON_KEY || "";
   const parseJsonArray = (value) => {
     if (!value) return [];
     if (Array.isArray(value)) return value;
@@ -901,12 +904,12 @@ export function initBrandVerification(deps = {}) {
           try {
             // Call the verify-brand-image edge function
             const response = await fetch(
-              `${window.SUPABASE_URL || "https://fgoiyycctnwnghrvsilt.supabase.co"}/functions/v1/verify-brand-image`,
+              `${SUPABASE_URL}/functions/v1/verify-brand-image`,
               {
                 method: "POST",
                 headers: {
                   "Content-Type": "application/json",
-                  Authorization: `Bearer ${window.SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZnb2l5eWNjdG53bmdocnZzaWx0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzAzMTkzNzAsImV4cCI6MjA0NTg5NTM3MH0.2cONT_HUQzaVWLeXG_Y0s9Qrl6HHTGY9brfJyBvbwzw"}`,
+                  Authorization: `Bearer ${SUPABASE_ANON_KEY || SUPABASE_KEY}`,
                 },
                 body: JSON.stringify({
                   originalImage: item.brandImage,
@@ -1486,14 +1489,14 @@ export function initBrandVerification(deps = {}) {
               video.style.display = "block";
               placeholder.style.display = "none";
 
-              if (!window.ZXing) {
+              if (!ZXing) {
                 alert(
                   "Barcode scanner library not loaded. Please refresh the page.",
                 );
                 return;
               }
 
-              codeReader = new window.ZXing.BrowserMultiFormatReader();
+              codeReader = new ZXing.BrowserMultiFormatReader();
               scanning = true;
 
               codeReader.decodeFromVideoDevice(null, video, (result, err) => {
@@ -1501,7 +1504,7 @@ export function initBrandVerification(deps = {}) {
                   handleBarcodeScanned(result.getText());
                 } else if (
                   err &&
-                  !(err instanceof window.ZXing.NotFoundException)
+                  !(err instanceof ZXing.NotFoundException)
                 ) {
                   console.error("Scan error:", err);
                 }
@@ -1529,12 +1532,12 @@ export function initBrandVerification(deps = {}) {
               const imageData = event.target.result;
 
               try {
-                if (!window.ZXing) {
+                if (!ZXing) {
                   alert("Barcode scanner library not loaded.");
                   return;
                 }
 
-                const codeReader = new window.ZXing.BrowserMultiFormatReader();
+                const codeReader = new ZXing.BrowserMultiFormatReader();
                 const result = await codeReader.decodeFromImageDataUrl(imageData);
 
                 if (result) {
@@ -2400,7 +2403,7 @@ export function initBrandVerification(deps = {}) {
       console.log("Modal element:", modal);
       console.log(
         "Modal visible:",
-        window.getComputedStyle(modal).display !== "none",
+        getComputedStyle(modal).display !== "none",
       );
 
       const cancelBtn = modalContent.querySelector(
@@ -2757,7 +2760,7 @@ export function initBrandVerification(deps = {}) {
 
         try {
           const response = await fetch(
-            `${window.SUPABASE_URL || "https://fgoiyycctnwnghrvsilt.supabase.co"}/functions/v1/verify-menu-image`,
+            `${SUPABASE_URL}/functions/v1/verify-menu-image`,
             {
               method: "POST",
               headers: {

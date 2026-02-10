@@ -37,6 +37,7 @@ const HOW_IT_WORKS_TOUR_STEPS = [
     action: "openNotice",
   },
 ];
+let sharedHowTourController = null;
 
 export function createHowItWorksTour({
   state,
@@ -47,8 +48,8 @@ export function createHowItWorksTour({
   rerenderLayer,
 } = {}) {
   function getHowItWorksTourController() {
-    if (!window.__howTour) {
-      window.__howTour = {
+    if (!sharedHowTourController) {
+      sharedHowTourController = {
         index: 0,
         container: null,
         replayBtn: null,
@@ -62,7 +63,7 @@ export function createHowItWorksTour({
         nextBtn: null,
       };
     }
-    return window.__howTour;
+    return sharedHowTourController;
   }
 
   function ensureHowItWorksTourElements() {
@@ -114,12 +115,14 @@ export function createHowItWorksTour({
       spotlight.className = "how-tour-spotlight";
       document.body.appendChild(spotlight);
       ctrl.spotlight = spotlight;
-      window.addEventListener("scroll", updateHowItWorksSpotlight, {
-        passive: true,
-      });
-      window.addEventListener("resize", updateHowItWorksSpotlight, {
-        passive: true,
-      });
+      if (typeof addEventListener === "function") {
+        addEventListener("scroll", updateHowItWorksSpotlight, {
+          passive: true,
+        });
+        addEventListener("resize", updateHowItWorksSpotlight, {
+          passive: true,
+        });
+      }
     }
 
     if (!ctrl.prevBtn.__tourBound) {
@@ -168,8 +171,10 @@ export function createHowItWorksTour({
     }
     const rect = target.getBoundingClientRect();
     const pad = 12;
-    spotlight.style.left = `${window.scrollX + rect.left - pad}px`;
-    spotlight.style.top = `${window.scrollY + rect.top - pad}px`;
+    const leftOffset = typeof scrollX === "number" ? scrollX : 0;
+    const topOffset = typeof scrollY === "number" ? scrollY : 0;
+    spotlight.style.left = `${leftOffset + rect.left - pad}px`;
+    spotlight.style.top = `${topOffset + rect.top - pad}px`;
     spotlight.style.width = `${rect.width + pad * 2}px`;
     spotlight.style.height = `${rect.height + pad * 2}px`;
     spotlight.classList.add("show");

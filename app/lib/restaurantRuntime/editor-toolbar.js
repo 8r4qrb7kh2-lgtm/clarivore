@@ -17,7 +17,7 @@ export function bindEditorToolbarScale(options = {}) {
     toolbar.style.width = "100%";
     scaleWrap.style.height = "";
 
-    if (window.matchMedia("(max-width: 768px)").matches) {
+    if (typeof matchMedia === "function" && matchMedia("(max-width: 768px)").matches) {
       onMiniMapResize();
       return;
     }
@@ -46,8 +46,10 @@ export function bindEditorToolbarScale(options = {}) {
       if (!isEditorPage()) return;
       syncToolbarScale();
     };
-    window.addEventListener("resize", editorToolbarScaleHandler);
-    window.addEventListener("orientationchange", editorToolbarScaleHandler);
+    if (typeof addEventListener === "function") {
+      addEventListener("resize", editorToolbarScaleHandler);
+      addEventListener("orientationchange", editorToolbarScaleHandler);
+    }
   }
 
   syncToolbarScale();

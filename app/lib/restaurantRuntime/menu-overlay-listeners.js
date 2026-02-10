@@ -14,7 +14,7 @@ export function bindMenuOverlayListeners(options = {}) {
     { passive: true },
   );
 
-  if (window.visualViewport) {
+  if (typeof visualViewport !== "undefined" && visualViewport) {
     visualViewport.addEventListener(
       "resize",
       () => {
@@ -25,7 +25,10 @@ export function bindMenuOverlayListeners(options = {}) {
           const zoom = visualViewport.scale || 1;
           const k = 1 / zoom;
 
-          const isMobile = window.innerWidth <= 640;
+          const isMobile =
+            (typeof innerWidth === "number"
+              ? innerWidth
+              : document.documentElement?.clientWidth || 0) <= 640;
           const vw2 = visualViewport.width;
           const vh2 = visualViewport.height;
 

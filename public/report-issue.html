@@ -1,200 +1,32 @@
 <!doctype html>
-<html lang="en">
-<head>
-  <link rel="icon" type="image/png" sizes="32x32" href="favicon.png">
-  <link rel="icon" type="image/png" sizes="16x16" href="favicon.png">
-  <link rel="apple-touch-icon" sizes="180x180" href="favicon.png">
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Report an issue - Clarivore</title>
-  <link rel="stylesheet" href="css/styles.css">
-  <style>
-    :root{
-      --bg:#0b1020; --ink:#e9ecff; --muted:#a8b2d6;
-      --border:#2a3261; --hover:#4c5ad4;
-    }
-    *{box-sizing:border-box;}
-    body{
-      margin:0;
-      min-height:100vh;
-      font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Arial;
-      background:var(--bg);
-      color:var(--ink);
-      display:flex;
-      flex-direction:column;
-    }
-    .topbar{
-      position:sticky;
-      top:0;
-      z-index:20;
-      background:linear-gradient(180deg,#101637,#090f27);
-      border-bottom:1px solid #1c2448;
-      box-shadow:0 12px 28px rgba(0,0,0,.4);
-      padding-top: env(safe-area-inset-top, 0px);
-    }
-    .topin{
-      max-width:1100px;
-      margin:0 auto;
-      padding:12px 22px 10px;
-      display:flex;
-      flex-direction:column;
-      gap:12px;
-      align-items:center;
-      justify-content:center;
-    }
-    .brand{
-      display:flex;
-      align-items:center;
-      gap:10px;
-      text-decoration:none;
-      color:inherit;
-      font-weight:800;
-      font-size:1.1rem;
-    }
-    .brand img{
-      width:30px;
-      height:30px;
-      border-radius:6px;
-    }
-    .topNav{
-      display:flex;
-      align-items:center;
-      gap:10px;
-      flex-wrap:wrap;
-      justify-content:center;
-    }
-    .topNav a{
-      padding:8px 14px;
-      border:1px solid var(--border);
-      border-radius:999px;
-      background:#12183a;
-      color:inherit;
-      text-decoration:none;
-      font-size:0.95rem;
-    }
-    .topNav a:hover{
-      border-color:var(--hover);
-      box-shadow:0 0 0 3px #7c9cff33 inset,0 2px 10px #0b1b60aa;
-    }
-    main{
-      flex:1;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      padding:40px 20px 120px;
-      text-align:center;
-    }
-    main h1{margin-bottom:12px;}
-    main p{margin:0;color:var(--muted);}
-    @media (max-width:640px){
-      .topin{padding:12px 14px;}
-      .brand{font-size:1rem;}
-      .brand img{width:26px;height:26px;}
-      .topNav a{font-size:0.9rem;}
-    }
-
-    /* Mode toggle styles */
-    .mode-toggle-container {
-      display: none;
-      align-items: center;
-      gap: 10px;
-      margin-right: auto;
-      padding-right: 16px;
-    }
-
-    .mode-toggle-label {
-      font-size: 0.85rem;
-      color: var(--muted);
-      white-space: nowrap;
-    }
-
-    .mode-toggle {
-      width: 44px;
-      height: 24px;
-      background: var(--border);
-      border-radius: 12px;
-      position: relative;
-      cursor: pointer;
-      transition: background 0.2s;
-    }
-
-    .mode-toggle::after {
-      content: '';
-      position: absolute;
-      width: 18px;
-      height: 18px;
-      background: white;
-      border-radius: 50%;
-      top: 3px;
-      left: 3px;
-      transition: transform 0.2s;
-    }
-
-    .mode-toggle.active {
-      background: var(--hover);
-    }
-
-    .mode-toggle.active::after {
-      transform: translateX(20px);
-    }
-  </style>
-</head>
-<body>
-  <header class="simple-topbar">
-    <div class="simple-topbar-inner">
-      <a class="simple-brand" href="home.html">
-        <img src="https://static.wixstatic.com/media/945e9d_2b97098295d341d493e4a07d80d6b57c~mv2.png" alt="">
-        <span>Clarivore</span>
-      </a>
-      <div class="simple-nav">
-        <!-- Navigation populated by shared-nav.js -->
-      </div>
-      <div class="mode-toggle-container" id="modeToggleContainer" style="display:none"></div>
-    </div>
-  </header>
-  <main>
-    <div>
-      <h1>Report an issue</h1>
-      <p>The report form now opens as a popup. Tap the button below to continue.</p>
-    </div>
-  </main>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="js/auth-redirect.js" defer></script>
-  <script type="module">
-    import supabaseClient from './js/supabase-client.js';
-    import { setupTopbar, attachSignOutHandler } from './js/shared-nav.js';
-    import { fetchManagerRestaurants } from './js/manager-context.js';
-
-    // Setup navigation
-    async function initNav() {
-      const { data: { user } } = await supabaseClient.auth.getUser();
-      let managerRestaurants = [];
-      if (user) {
-        const isOwner = user.email === 'matt.29.ds@gmail.com';
-        const isManager = user.user_metadata?.role === 'manager';
-        if (isOwner || isManager) {
-          managerRestaurants = await fetchManagerRestaurants(supabaseClient, user.id);
-        }
+<html lang="en" data-next-route="/report-issue/">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex, nofollow">
+    <title>Redirecting...</title>
+    <script defer src="/js/legacy-route-redirect.js"></script>
+    <style>
+      body {
+        margin: 0;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: #0b1022;
+        color: #e8eeff;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        text-align: center;
+        padding: 24px;
       }
-      setupTopbar('report-issue', user, { managerRestaurants });
-      if (user) {
-        attachSignOutHandler(supabaseClient);
+      a {
+        color: #7da2ff;
       }
-    }
-    initNav();
-  </script>
-  <script type="module" src="js/report-modal.js"></script>
-  <script>
-    const launchReportModal = () => {
-      if (typeof window.openReportModal === 'function') {
-        window.openReportModal();
-      }
-    };
-    if (typeof window.openReportModal === 'function') {
-      launchReportModal();
-    } else {
-      document.addEventListener('reportModalReady', launchReportModal, { once: true });
-    }
-  </script>
-</body>
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1 style="margin:0 0 8px; font-size:1.25rem;">Redirecting to Clarivore</h1>
+      <p style="margin:0; opacity:0.86;">If you are not redirected automatically, <a href="/report-issue/">continue here</a>.</p>
+    </main>
+  </body>
 </html>

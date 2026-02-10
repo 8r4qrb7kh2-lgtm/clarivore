@@ -304,10 +304,67 @@
   - switched monitoring migration menu URLs to `https://clarivore.org/restaurant?slug=...` in:
     - `supabase/migrations/20251022_enable_monitoring.sql`
     - `supabase/migrations/20251022000001_fix_monitoring_slugs.sql`
+- Further de-globalized brand verification runtime dependencies:
+  - `app/lib/restaurantRuntime/brand-verification.js` now consumes injected `SUPABASE_URL` / `SUPABASE_ANON_KEY` / `ZXing` / barcode helpers instead of reading `window.*` globals directly
+  - removed direct `window.*` runtime reads for Supabase URLs/keys, ZXing scanner classes, and modal visibility inspection in this module
+- Expanded editor hydration option plumbing to carry runtime service dependencies explicitly:
+  - added `getSupabaseUrl`, `getSupabaseAnonKey`, and `getBarcodeLibrary` through:
+    - `app/lib/pageEditorHydrationOptionsRuntime.js`
+    - `app/lib/restaurantRuntime/editor-screen.js`
+    - `app/restaurant/runtime/restaurantPageRuntime.js`
+- Reduced dish editor global coupling by removing legacy global helper exports and using injected providers:
+  - `app/lib/restaurantRuntime/dish-editor.js` now uses injected `getSupabaseKey` and `getAiAssistEndpoint`
+  - removed `window.rotateImage`, `window.analyzeWithLabelCropper`, `window.analyzeAllergensWithLabelCropper`, `window.analyzeIngredientPhoto`, and `window.showIngredientPhotoUploadModal` assignments
+  - removed `window.__CLE_AI_ENDPOINT__` / `window.SUPABASE_KEY` direct fallback reads from this module
+- Updated runtime-core composition so dish editor dependencies come from the Next runtime composition layer:
+  - `app/restaurant/runtime/createRestaurantRuntimeCore.js` now accepts and forwards `getSupabaseKey` and `getAiAssistEndpoint`
+  - `app/restaurant/runtime/restaurantPageRuntime.js` now provides those dependencies via centralized runtime globals resolver
+- Removed legacy bridge fallback globals for brand-item collectors:
+  - `app/lib/restaurantRuntime/restaurantRuntimeBridge.js` no longer writes/reads `window.collectAiBrandItems`; collector state is now bridge-local only
+- Replaced window-bound pointer handlers in menu image corner editor with explicit listener lifecycle:
+  - `app/lib/restaurantRuntime/menu-images.js` now uses `addEventListener`/`removeEventListener` for drag interactions and cleans handlers on modal close/confirm
+- Simplified runtime navigation/viewport defaults away from direct `window.*` reads:
+  - `app/lib/restaurantRuntime/order-flow.js` defaults now use `location`, `innerHeight`, and global event APIs
+  - `app/restaurant/runtime/restaurantPageRuntime.js` default `navigateWithCheck` now uses `location.href`
+- Replaced all legacy static route pages with thin Next compatibility redirect shells:
+  - updated these `public/*.html` files to redirect to canonical Next routes while preserving query/hash:
+    - `public/index.html` -> `/`
+    - `public/home.html` -> `/home/`
+    - `public/restaurants.html` -> `/restaurants/`
+    - `public/favorites.html` -> `/favorites/`
+    - `public/dish-search.html` -> `/dish-search/`
+    - `public/my-dishes.html` -> `/my-dishes/`
+    - `public/restaurant.html` -> `/restaurant/`
+    - `public/account.html` -> `/account/`
+    - `public/help-contact.html` -> `/help-contact/`
+    - `public/report-issue.html` -> `/report-issue/`
+    - `public/order-feedback.html` -> `/order-feedback/`
+    - `public/manager-dashboard.html` -> `/manager-dashboard/`
+    - `public/admin-dashboard.html` -> `/admin-dashboard/`
+    - `public/kitchen-tablet.html` -> `/kitchen-tablet/`
+    - `public/server-tablet.html` -> `/server-tablet/`
+  - added shared redirect helper script `public/js/legacy-route-redirect.js` so compatibility logic is centralized and reused
+- Removed unused legacy static runtime bundle files under `public/js`:
+  - deleted obsolete legacy page/runtime scripts (including full `public/js/restaurant/*` legacy tree and legacy top-level page scripts)
+  - retained only active compatibility asset in `public/js`:
+    - `public/js/legacy-route-redirect.js`
+- Completed full de-windowing pass for restaurant runtime modules:
+  - removed direct `window.*` usage in:
+    - `app/lib/restaurantRuntime/mobile-overlay-zoom.js`
+    - `app/lib/restaurantRuntime/editor-sections.js`
+    - `app/lib/restaurantRuntime/mobile-info-panel-runtime.js`
+    - `app/lib/restaurantRuntime/how-it-works-tour.js`
+    - `app/lib/restaurantRuntime/tooltip-runtime.js`
+    - `app/lib/restaurantRuntime/qr-promo.js`
+    - `app/lib/restaurantRuntime/editor-toolbar.js`
+    - `app/lib/restaurantRuntime/menu-overlay-listeners.js`
+    - `app/lib/restaurantRuntime/restaurant-screen.js`
+    - `app/lib/restaurantRuntime/dish-editor.js`
+  - removed `window.__howTour` global storage in favor of module-local controller state in `app/lib/restaurantRuntime/how-it-works-tour.js`
 
 ## Current migration inventory
-- Legacy static HTML pages still present in `public/`: 15
-- Legacy runtime JS files in `public/js/`: 108
+- Legacy static HTML compatibility pages still present in `public/`: 15 (all are redirect shells; no legacy page UI/runtime logic)
+- Legacy runtime JS files in `public/js/`: 1 (`legacy-route-redirect.js`)
 - Next clients still booting legacy runtime modules via `/js/*`: 0 imports
 - App-level `webpackIgnore` imports: 0
 - Inline `onclick` handlers in `app/*`: 0
@@ -318,12 +375,12 @@
   - `app/restaurant/runtime/legacy`: 0
 - App routes still rendering raw topbar markup directly: 0
 - App routes still rendering direct raw `page-shell` wrappers: 0 (excluding `RouteSuspense` fallback UI)
-- Remaining `window.*` references in `app/lib/restaurantRuntime` + `app/restaurant/runtime`: 73 (down from 122 in prior pass)
+- Remaining `window.*` references in `app/lib/restaurantRuntime` + `app/restaurant/runtime`: 0 (down from 122 in prior pass)
 
 ## Remaining high-priority work
 1. Replace the monolithic `restaurant` runtime entry (`app/restaurant/runtime/restaurantPageRuntime.js`) with native React/Next feature modules page-by-page.
-2. Continue reducing global window-coupled runtime state in `app/lib/restaurantRuntime/*` into testable app-level services/hooks.
-3. Retire `public/*.html` and unused `public/js/*` runtime files after parity, leaving only static assets.
+2. Continue reducing broad global DOM coupling (event bus/state lifecycle) in `app/lib/restaurantRuntime/*` into testable app-level services/hooks.
+3. Decide whether to fully remove compatibility redirect pages (`public/*.html`) once legacy deep links are no longer needed, or keep them permanently as compatibility aliases.
 
 ## Validation commands
 - `npm run build`

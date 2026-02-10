@@ -25,6 +25,8 @@ export function createRestaurantRuntimeCore(options = {}) {
     ALLERGEN_EMOJI,
     DIET_EMOJI,
     supabaseClient,
+    getSupabaseKey,
+    getAiAssistEndpoint,
     current,
   } = options;
 
@@ -74,6 +76,10 @@ export function createRestaurantRuntimeCore(options = {}) {
     norm: pageServicesRuntime.norm,
     tooltipBodyHTML: pageServicesRuntime.tooltipBodyHTML,
     send: pageServicesRuntime.send,
+    getSupabaseKey:
+      typeof getSupabaseKey === "function" ? getSupabaseKey : () => "",
+    getAiAssistEndpoint:
+      typeof getAiAssistEndpoint === "function" ? getAiAssistEndpoint : () => null,
     current,
   });
 

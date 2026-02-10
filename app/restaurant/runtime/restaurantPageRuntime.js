@@ -2,7 +2,7 @@ import { ORDER_STATUSES as TabletOrderStatusesConst } from "../../lib/tabletSimu
 import { setupTopbar } from "../../lib/sharedNav.js";
 import { initDinerNotifications } from "../../lib/dinerNotifications.js";
 import { getActiveAllergenDietConfig } from "../../lib/allergenConfigRuntime.js";
-import { supabaseAnonKey } from "../../lib/supabase.js";
+import { supabaseAnonKey, supabaseUrl } from "../../lib/supabase.js";
 import {
   analyzeBoxSizes,
   splitImageIntoSections,
@@ -159,8 +159,8 @@ let hasUnsavedChanges = () => false;
 let showUnsavedChangesModal = () => {};
 let editorSaveApi = null;
 let navigateWithCheck = (url) => {
-  if (typeof window !== "undefined") {
-    window.location.href = url;
+  if (typeof location !== "undefined") {
+    location.href = url;
   }
 };
 let mobileInfoPanel = null;
@@ -233,6 +233,9 @@ let getTipPinned = () => false;
 let getPinnedOverlayItem = () => null;
 let pageTip = null;
 const runtimeSupabaseAnonKey = supabaseAnonKey || "";
+const runtimeSupabaseUrl = supabaseUrl || "https://fgoiyycctnwnghrvsilt.supabase.co";
+const resolveRuntimeGlobal = (key) =>
+  typeof globalThis !== "undefined" ? globalThis[key] || null : null;
 
 const {
   pageServicesRuntime,
@@ -263,6 +266,8 @@ const {
   ALLERGEN_EMOJI,
   DIET_EMOJI,
   supabaseClient: getSupabaseClient(),
+  getSupabaseKey: () => runtimeSupabaseAnonKey,
+  getAiAssistEndpoint: () => resolveRuntimeGlobal("__CLE_AI_ENDPOINT__"),
   current: {
     openBrandIdentificationChoice,
     showIngredientPhotoUploadModal,
@@ -524,13 +529,12 @@ const {
   DIETS,
   norm,
   getSupabaseKey: () => runtimeSupabaseAnonKey,
-  getFetchProductByBarcode: () =>
-    typeof window !== "undefined"
-      ? window.fetchProductByBarcode || null
-      : null,
+  getSupabaseUrl: () => runtimeSupabaseUrl,
+  getSupabaseAnonKey: () => runtimeSupabaseAnonKey,
+  getFetchProductByBarcode: () => resolveRuntimeGlobal("fetchProductByBarcode"),
+  getBarcodeLibrary: () => resolveRuntimeGlobal("ZXing"),
   getOpenImageModal: () => openImageModal,
-  getShowReplacementPreview: () =>
-    typeof window !== "undefined" ? window.showReplacementPreview || null : null,
+  getShowReplacementPreview: () => resolveRuntimeGlobal("showReplacementPreview"),
   initChangeLog,
   initEditorSettings,
   orderFlow,

@@ -387,20 +387,11 @@ export function getEditorMiniMapResizeHandler() {
 export function setCollectAllBrandItems(fn) {
   const nextFn = typeof fn === "function" ? fn : null;
   setBridgeValue("collectAllBrandItems", nextFn);
-  if (hasWindow()) {
-    window.collectAiBrandItems = nextFn;
-  }
   return nextFn;
 }
 
 export function getCollectAllBrandItems() {
   const value = getBridgeValue("collectAllBrandItems");
   if (typeof value === "function") return value;
-  if (!hasWindow()) return null;
-  const fallback = window.collectAiBrandItems;
-  if (typeof fallback === "function") {
-    bridgeState.collectAllBrandItems = fallback;
-    return fallback;
-  }
   return null;
 }

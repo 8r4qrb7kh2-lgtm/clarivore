@@ -41,7 +41,7 @@ export function renderRestaurantScreen(options = {}) {
   const root = document.getElementById("root");
   const restaurant = state.restaurant || {};
 
-  const urlParams = new URLSearchParams(window.location.search);
+  const urlParams = new URLSearchParams(location.search);
   const dishName = urlParams.get("dishName");
   const ackParam = urlParams.get("ack");
   const hasSubmittedNotice =

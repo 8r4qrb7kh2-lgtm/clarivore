@@ -1,8 +1,8 @@
 const QR_PROMO_STORAGE_KEY = "qrPromoDismissed";
 
 export function deriveQrVisitFlag() {
-  if (typeof window.__qrVisit === "boolean") {
-    return window.__qrVisit;
+  if (typeof globalThis.__qrVisit === "boolean") {
+    return globalThis.__qrVisit;
   }
   const value = new URLSearchParams(location.search).get("qr");
   return !!(value && /^(1|true|yes)$/i.test(value));

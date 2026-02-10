@@ -152,28 +152,28 @@ export function initOrderFlow({
   const getLocationHref =
     typeof getLocationHrefOverride === "function"
       ? getLocationHrefOverride
-      : () => (typeof window !== "undefined" ? window.location.href : "");
+      : () => (typeof location !== "undefined" ? location.href : "");
 
   const navigateToUrl =
     typeof navigateToUrlOverride === "function"
       ? navigateToUrlOverride
       : (url) => {
-          if (typeof window !== "undefined") {
-            window.location.href = url;
+          if (typeof location !== "undefined") {
+            location.href = url;
           }
         };
 
   const getViewportHeight =
     typeof getViewportHeightOverride === "function"
       ? getViewportHeightOverride
-      : () => (typeof window !== "undefined" ? window.innerHeight || 0 : 0);
+      : () => (typeof innerHeight === "number" ? innerHeight : 0);
 
   const addWindowResizeListener =
     typeof addWindowResizeListenerOverride === "function"
       ? addWindowResizeListenerOverride
       : (handler) => {
-          if (typeof window !== "undefined") {
-            window.addEventListener("resize", handler);
+          if (typeof addEventListener === "function") {
+            addEventListener("resize", handler);
           }
         };
 

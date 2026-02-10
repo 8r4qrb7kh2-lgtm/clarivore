@@ -205,6 +205,7 @@ export function initMenuImageEditor(deps = {}) {
       const ctx = canvas.getContext("2d");
 
       const img = new Image();
+      let teardownPointerHandlers = () => {};
       let corners = initialCorners || {
         topLeft: { x: 100, y: 100 },
         topRight: { x: 900, y: 100 },
@@ -299,13 +300,22 @@ export function initMenuImageEditor(deps = {}) {
 
         const handleEnd = () => (dragging = null);
 
-        canvas.onmousedown = handleStart;
-        window.onmousemove = handleMove;
-        window.onmouseup = handleEnd;
+        canvas.addEventListener("mousedown", handleStart);
+        addEventListener("mousemove", handleMove);
+        addEventListener("mouseup", handleEnd);
 
-        canvas.ontouchstart = handleStart;
-        window.ontouchmove = handleMove;
-        window.ontouchend = handleEnd;
+        canvas.addEventListener("touchstart", handleStart, { passive: true });
+        addEventListener("touchmove", handleMove, { passive: false });
+        addEventListener("touchend", handleEnd);
+
+        teardownPointerHandlers = () => {
+          canvas.removeEventListener("mousedown", handleStart);
+          removeEventListener("mousemove", handleMove);
+          removeEventListener("mouseup", handleEnd);
+          canvas.removeEventListener("touchstart", handleStart);
+          removeEventListener("touchmove", handleMove);
+          removeEventListener("touchend", handleEnd);
+        };
       };
       img.src = imageData;
 
@@ -325,6 +335,7 @@ export function initMenuImageEditor(deps = {}) {
         "background:#334;color:#ccc;padding:10px 20px;border:none;border-radius:6px;cursor:pointer;";
 
       skipBtn.onclick = () => {
+        teardownPointerHandlers();
         document.body.removeChild(modal);
         resolve(null); // Return null to indicate no-warp
       };
@@ -345,6 +356,7 @@ export function initMenuImageEditor(deps = {}) {
         const cornerImg = document.createElement("img");
         cornerImg.src = warpImageData;
         cornerImg.onload = async () => {
+          teardownPointerHandlers();
           document.body.removeChild(modal);
           // Optionally map corners before warping (e.g., from letterboxed square to original image)
           const cornersToUse = mapForWarp ? mapForWarp(corners) : corners;

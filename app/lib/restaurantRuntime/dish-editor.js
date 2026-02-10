@@ -72,6 +72,17 @@ export function initDishEditor(deps = {}) {
       return [];
     }
   };
+  const getSupabaseKey =
+    typeof deps.getSupabaseKey === "function"
+      ? deps.getSupabaseKey
+      : () => (typeof deps.SUPABASE_KEY === "string" ? deps.SUPABASE_KEY : "");
+  const getAiAssistEndpoint =
+    typeof deps.getAiAssistEndpoint === "function"
+      ? deps.getAiAssistEndpoint
+      : () =>
+          typeof deps.aiAssistEndpoint === "string"
+            ? deps.aiAssistEndpoint
+            : null;
 
   const waitForSupabaseClient = async (timeoutMs = 2000) => {
     const directClient = getSupabaseClient();
@@ -181,8 +192,7 @@ export function initDishEditor(deps = {}) {
     activePhotoAnalyses,
     ALLERGENS,
     DIETS,
-    getSupabaseKey: () =>
-      typeof window !== "undefined" ? window.SUPABASE_KEY : "",
+    getSupabaseKey,
   });
 
   openBrandIdentificationChoice = ingredientPhotoApi.openBrandIdentificationChoice;
@@ -197,21 +207,10 @@ export function initDishEditor(deps = {}) {
   showPhotoAnalysisResultButton =
     ingredientPhotoApi.showPhotoAnalysisResultButton;
 
-  if (typeof window !== "undefined") {
-    window.rotateImage = ingredientPhotoApi.rotateImage;
-    window.analyzeWithLabelCropper = ingredientPhotoApi.analyzeWithLabelCropper;
-    window.analyzeAllergensWithLabelCropper =
-      ingredientPhotoApi.analyzeAllergensWithLabelCropper;
-    window.analyzeIngredientPhoto = ingredientPhotoApi.analyzeIngredientPhoto;
-    window.showIngredientPhotoUploadModal =
-      ingredientPhotoApi.showIngredientPhotoUploadModal;
-  }
-
   const requestAiExtractionWithConfig = (payload) =>
     requestAiExtraction(payload, {
       endpoint:
-        state.aiAssistEndpoint ||
-        (typeof window !== "undefined" ? window.__CLE_AI_ENDPOINT__ : null),
+        state.aiAssistEndpoint || getAiAssistEndpoint() || null,
       supabaseClient: getSupabaseClient(),
       log: debugLog,
       warn: debugWarn,
@@ -911,7 +910,8 @@ export function initDishEditor(deps = {}) {
       aiAssistBackdrop.setAttribute("aria-hidden", "false");
       // Mobile-safe scroll lock: store position and fix body
       scrollLockPosition =
-        window.pageYOffset || document.documentElement.scrollTop;
+        (typeof pageYOffset === "number" ? pageYOffset : null) ||
+        document.documentElement.scrollTop;
       document.body.style.position = "fixed";
       document.body.style.top = `-${scrollLockPosition}px`;
       document.body.style.width = "100%";
@@ -924,7 +924,7 @@ export function initDishEditor(deps = {}) {
       document.body.style.top = "";
       document.body.style.width = "";
       document.body.style.overflow = "";
-      window.scrollTo(0, scrollLockPosition);
+      if (typeof scrollTo === "function") scrollTo(0, scrollLockPosition);
     }
   }
 
@@ -3214,7 +3214,7 @@ export function initDishEditor(deps = {}) {
       return;
     }
     const SpeechRecognition =
-      window.SpeechRecognition || window.webkitSpeechRecognition;
+      globalThis.SpeechRecognition || globalThis.webkitSpeechRecognition;
     if (!SpeechRecognition) {
       aiAssistSetStatus("Dictation is not supported in this browser.", "warn");
       return;
@@ -3987,7 +3987,9 @@ export function initDishEditor(deps = {}) {
     `;
 
     // Lock background scrolling
-    scrollLockPosition = window.pageYOffset || document.documentElement.scrollTop;
+    scrollLockPosition =
+      (typeof pageYOffset === "number" ? pageYOffset : null) ||
+      document.documentElement.scrollTop;
     document.body.style.position = "fixed";
     document.body.style.top = `-${scrollLockPosition}px`;
     document.body.style.width = "100%";
@@ -4036,7 +4038,7 @@ export function initDishEditor(deps = {}) {
       document.body.style.top = "";
       document.body.style.width = "";
       document.body.style.overflow = "";
-      window.scrollTo(0, scrollLockPosition);
+      if (typeof scrollTo === "function") scrollTo(0, scrollLockPosition);
     };
 
     const showPreview = (dataUrl) => {
@@ -4680,7 +4682,11 @@ export function initDishEditor(deps = {}) {
       text,
       dishName: dishNameForAi,
     };
-    if (window !== window.parent) {
+    const isEmbedded =
+      typeof self !== "undefined" &&
+      typeof parent !== "undefined" &&
+      self !== parent;
+    if (isEmbedded) {
       const requestId = `ai-${Date.now()}-${Math.random().toString(16).slice(2)}`;
       aiAssistState.pendingRequestId = requestId;
       parent.postMessage(

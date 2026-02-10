@@ -106,8 +106,8 @@ export function initEditorSections(deps = {}) {
       scrollWrapper.appendChild(miniMap);
     }
     const previousMiniMapResizeHandler = getEditorMiniMapResizeHandler();
-    if (previousMiniMapResizeHandler) {
-      window.removeEventListener("resize", previousMiniMapResizeHandler);
+    if (previousMiniMapResizeHandler && typeof removeEventListener === "function") {
+      removeEventListener("resize", previousMiniMapResizeHandler);
     }
     const updateEditorMiniMapViewport = () => {
       const section = editorSections[currentMiniMapPage];
@@ -192,7 +192,9 @@ export function initEditorSections(deps = {}) {
       updateEditorMiniMapViewport();
     };
     setEditorMiniMapResizeHandler(syncMiniMapHeight);
-    window.addEventListener("resize", syncMiniMapHeight);
+    if (typeof addEventListener === "function") {
+      addEventListener("resize", syncMiniMapHeight);
+    }
     requestAnimationFrame(syncMiniMapHeight);
 
     // Create scrollable container

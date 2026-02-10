@@ -289,7 +289,7 @@ export function createMobileInfoPanelRuntime(deps = {}) {
 
   function bindSyncListeners() {
     addEventListener("resize", () => syncMobileInfoPanel(), { passive: true });
-    if (window.visualViewport) {
+    if (typeof visualViewport !== "undefined" && visualViewport) {
       visualViewport.addEventListener("resize", () => syncMobileInfoPanel(), {
         passive: true,
       });

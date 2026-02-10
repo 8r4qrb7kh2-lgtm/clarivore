@@ -46,7 +46,10 @@ export function createEditorRenderer(options) {
     DIETS,
     norm,
     getSupabaseKey,
+    getSupabaseUrl,
+    getSupabaseAnonKey,
     getFetchProductByBarcode,
+    getBarcodeLibrary,
     getOpenImageModal,
     getShowReplacementPreview,
     initChangeLog,
@@ -296,7 +299,15 @@ export function createEditorRenderer(options) {
       esc,
       norm,
       SUPABASE_KEY: getSupabaseKey(),
+      SUPABASE_URL:
+        typeof getSupabaseUrl === "function" ? getSupabaseUrl() : "",
+      SUPABASE_ANON_KEY:
+        typeof getSupabaseAnonKey === "function"
+          ? getSupabaseAnonKey()
+          : getSupabaseKey(),
       fetchProductByBarcode: getFetchProductByBarcode(),
+      ZXing:
+        typeof getBarcodeLibrary === "function" ? getBarcodeLibrary() : null,
       showReplacementPreview: getShowReplacementPreview(),
       openImageModal:
         typeof getOpenImageModal === "function" ? getOpenImageModal() : null,
