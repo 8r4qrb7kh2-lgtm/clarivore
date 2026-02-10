@@ -4,8 +4,6 @@ export function createPageRouterRuntime(deps = {}) {
     typeof deps.setOrderSidebarVisibility === "function"
       ? deps.setOrderSidebarVisibility
       : () => {};
-  const renderCardsPage =
-    typeof deps.renderCardsPage === "function" ? deps.renderCardsPage : () => {};
   const renderEditor =
     typeof deps.renderEditor === "function" ? deps.renderEditor : () => {};
   const renderRestaurant =
@@ -21,6 +19,10 @@ export function createPageRouterRuntime(deps = {}) {
   const send = typeof deps.send === "function" ? deps.send : () => {};
   const hidePageLoader =
     typeof deps.hidePageLoader === "function" ? deps.hidePageLoader : () => {};
+  const routeRestaurantsPath =
+    typeof deps.routeRestaurantsPath === "string" && deps.routeRestaurantsPath.trim()
+      ? deps.routeRestaurantsPath.trim()
+      : "/restaurants";
 
   function renderReport() {
     return renderRestaurantReportPage({
@@ -45,6 +47,27 @@ export function createPageRouterRuntime(deps = {}) {
     }
   }
 
+  function navigateToRestaurantsRoute() {
+    if (typeof window === "undefined") return;
+
+    const target = new URL(routeRestaurantsPath, window.location.origin);
+    const current = new URL(window.location.href);
+    const currentPath = current.pathname.replace(/\/+$/, "") || "/";
+    const targetPath = target.pathname.replace(/\/+$/, "") || "/";
+
+    // Preserve QR/invite context when a legacy payload asks for restaurant list view.
+    ["qr", "invite"].forEach((key) => {
+      const value = current.searchParams.get(key);
+      if (value) target.searchParams.set(key, value);
+    });
+
+    if (currentPath === targetPath && current.search === target.search) {
+      return;
+    }
+
+    window.location.replace(target.toString());
+  }
+
   function render() {
     setMenuScrollLock(state.page === "restaurant" || state.page === "editor");
     document.body.classList.toggle("editorView", state.page === "editor");
@@ -52,7 +75,7 @@ export function createPageRouterRuntime(deps = {}) {
     let result;
     switch (state.page) {
       case "restaurants":
-        result = renderCardsPage();
+        result = navigateToRestaurantsRoute();
         break;
       case "editor":
         result = renderEditor();

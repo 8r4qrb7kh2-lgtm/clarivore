@@ -100,13 +100,13 @@
 - Moved additional restaurant runtime view orchestration modules into shared app modules:
   - `app/lib/restaurantMessageHandler.js`
   - `app/lib/restaurantFiltersRuntime.js`
-  - `app/lib/restaurantCardsPageRuntime.js`
   - `app/lib/restaurantTopbarRuntime.js`
 - Updated restaurant runtime imports to consume those shared modules and removed legacy duplicates:
   - `app/restaurant/runtime/legacy/restaurant/restaurant-message.js` (removed)
   - `app/restaurant/runtime/legacy/restaurant/restaurant-filters.js` (removed)
   - `app/restaurant/runtime/legacy/restaurant/restaurant-cards-page.js` (removed)
   - `app/restaurant/runtime/legacy/restaurant/restaurant-topbar.js` (removed)
+- Retired legacy in-runtime restaurant cards page rendering; router now sends `state.page === "restaurants"` to Next route `/restaurants` (preserving QR/invite query context).
 - Moved additional restaurant shell/report/editor view helpers out of `app/restaurant/runtime/legacy` into shared app modules:
   - `app/lib/restaurantChangeLogRuntime.js`
   - `app/lib/editorLastConfirmedRuntime.js`
@@ -121,6 +121,14 @@
   - `app/restaurant/runtime/legacy/restaurant/report-shell-markup.js` (removed)
   - `app/restaurant/runtime/legacy/restaurant/restaurant-shell-markup.js` (removed)
   - `app/restaurant/runtime/legacy/restaurant/restaurant-report-page.js` (removed)
+- Moved hydration/boot leaf helpers out of `app/restaurant/runtime/legacy` into shared app modules:
+  - `app/lib/autoOpenDishRuntime.js`
+  - `app/lib/bootHydrationRuntime.js`
+  - `app/lib/orderConfirmRestoreRuntime.js`
+- Updated hydration runtime imports to consume those shared modules and removed legacy duplicates:
+  - `app/restaurant/runtime/legacy/restaurant/auto-open-dish.js` (removed)
+  - `app/restaurant/runtime/legacy/restaurant/boot-hydration-runtime.js` (removed)
+  - `app/restaurant/runtime/legacy/restaurant/order-confirm-restore.js` (removed)
 
 ## Current migration inventory
 - Legacy static HTML pages still present in `public/`: 15
@@ -130,7 +138,7 @@
 - App-local legacy runtime files:
   - `app/admin-dashboard/runtime/legacy`: 0
   - `app/manager-dashboard/runtime/legacy`: 0
-  - `app/restaurant/runtime/legacy`: 67
+  - `app/restaurant/runtime/legacy`: 64
 - App routes still rendering raw topbar markup directly: 0
 
 ## Remaining high-priority work

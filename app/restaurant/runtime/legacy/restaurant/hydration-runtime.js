@@ -1,6 +1,6 @@
-import { initAutoOpenDish } from "./auto-open-dish.js";
-import { createBootHydrationRuntime } from "./boot-hydration-runtime.js";
-import { initOrderConfirmRestore } from "./order-confirm-restore.js";
+import { initAutoOpenDish } from "../../../../lib/autoOpenDishRuntime.js";
+import { createBootHydrationRuntime } from "../../../../lib/bootHydrationRuntime.js";
+import { initOrderConfirmRestore } from "../../../../lib/orderConfirmRestoreRuntime.js";
 import { createRestaurantMessageHandler } from "../../../../lib/restaurantMessageHandler.js";
 
 export function createHydrationRuntime(deps = {}) {

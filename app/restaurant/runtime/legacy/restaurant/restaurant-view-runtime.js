@@ -1,6 +1,5 @@
 import { createHowItWorksTour } from "./how-it-works-tour.js";
 import { initRestaurantFilters } from "../../../../lib/restaurantFiltersRuntime.js";
-import { renderRestaurantCardsPage } from "../../../../lib/restaurantCardsPageRuntime.js";
 import { renderRestaurantScreen } from "./restaurant-screen.js";
 import { createMenuDrawRuntime } from "./menu-draw-runtime.js";
 import { createDishInteractionTracker } from "./menu-dish-tracking.js";
@@ -19,8 +18,6 @@ export function createRestaurantViewRuntime(deps = {}) {
       ? deps.esc
       : (value) => String(value ?? "");
   const send = typeof deps.send === "function" ? deps.send : () => {};
-  const getWeeksAgoInfo =
-    typeof deps.getWeeksAgoInfo === "function" ? deps.getWeeksAgoInfo : () => "";
   const resizeLegendToFit =
     typeof deps.resizeLegendToFit === "function" ? deps.resizeLegendToFit : () => {};
   const normalizeAllergen =
@@ -176,16 +173,7 @@ export function createRestaurantViewRuntime(deps = {}) {
   const openMobileViewer =
     typeof deps.openMobileViewer === "function" ? deps.openMobileViewer : () => {};
 
-  const renderCardsPage = () =>
-    renderRestaurantCardsPage({
-      state,
-      renderTopbar,
-      root: document.getElementById("root"),
-      div,
-      esc,
-      send,
-      getWeeksAgoInfo,
-    });
+  const renderCardsPage = () => {};
 
   const {
     renderSavedChips,
