@@ -35,16 +35,16 @@ export function useRestaurantRuntime({ slug, isQrVisit, inviteToken }) {
         applyConsoleReportingPreference();
         initRestaurantBootGlobals(supabase);
 
-        setStatus("Loading page dependencies...");
-        await loadRestaurantDependencies();
-
         setStatus("Loading restaurant data...");
-        const result = await buildRestaurantBootPayload({
-          supabaseClient: supabase,
-          slug,
-          isQrVisit,
-          inviteToken,
-        });
+        const [result] = await Promise.all([
+          buildRestaurantBootPayload({
+            supabaseClient: supabase,
+            slug,
+            isQrVisit,
+            inviteToken,
+          }),
+          loadRestaurantDependencies(),
+        ]);
 
         if (cancelled) return;
 
