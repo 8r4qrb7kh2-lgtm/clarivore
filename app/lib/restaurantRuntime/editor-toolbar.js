@@ -1,3 +1,6 @@
+let editorToolbarScaleBound = false;
+let editorToolbarScaleHandler = null;
+
 export function bindEditorToolbarScale(options = {}) {
   const {
     state,
@@ -37,17 +40,14 @@ export function bindEditorToolbarScale(options = {}) {
     onMiniMapResize();
   };
 
-  if (!window.__editorToolbarScaleBound) {
-    window.__editorToolbarScaleBound = true;
-    window.__editorToolbarScaleHandler = () => {
+  if (!editorToolbarScaleBound) {
+    editorToolbarScaleBound = true;
+    editorToolbarScaleHandler = () => {
       if (!isEditorPage()) return;
       syncToolbarScale();
     };
-    window.addEventListener("resize", window.__editorToolbarScaleHandler);
-    window.addEventListener(
-      "orientationchange",
-      window.__editorToolbarScaleHandler,
-    );
+    window.addEventListener("resize", editorToolbarScaleHandler);
+    window.addEventListener("orientationchange", editorToolbarScaleHandler);
   }
 
   syncToolbarScale();

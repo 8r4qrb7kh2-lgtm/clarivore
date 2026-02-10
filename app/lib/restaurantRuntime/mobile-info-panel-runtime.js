@@ -3,6 +3,11 @@ import {
   setLastSelectedOverlay,
   setRenderMobileInfo,
 } from "./restaurantRuntimeBridge.js";
+import {
+  getLovedDishesSet as getSessionLovedDishesSet,
+  getOrderItems as getSessionOrderItems,
+  getSupabaseClient as getSessionSupabaseClient,
+} from "./runtimeSessionState.js";
 
 export function createMobileInfoPanelRuntime(deps = {}) {
   const state = deps.state || {};
@@ -63,15 +68,17 @@ export function createMobileInfoPanelRuntime(deps = {}) {
       : () => {};
   const hideTip = typeof deps.hideTip === "function" ? deps.hideTip : () => {};
   const getOrderItems =
-    typeof deps.getOrderItems === "function" ? deps.getOrderItems : () => window.orderItems;
+    typeof deps.getOrderItems === "function"
+      ? deps.getOrderItems
+      : () => getSessionOrderItems();
   const getLovedDishesSet =
     typeof deps.getLovedDishesSet === "function"
       ? deps.getLovedDishesSet
-      : () => window.lovedDishesSet;
+      : () => getSessionLovedDishesSet();
   const getSupabaseClient =
     typeof deps.getSupabaseClient === "function"
       ? deps.getSupabaseClient
-      : () => window.supabaseClient;
+      : () => getSessionSupabaseClient();
 
   function renderMobileInfo(item) {
     setRenderMobileInfo(renderMobileInfo);

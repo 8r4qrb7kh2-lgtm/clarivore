@@ -1,12 +1,11 @@
+const editorHistoryControlsState = {
+  undo: null,
+  redo: null,
+  keyHandlerBound: false,
+};
+
 function getControlState() {
-  if (!window.__editorHistoryControlsState) {
-    window.__editorHistoryControlsState = {
-      undo: null,
-      redo: null,
-      keyHandlerBound: false,
-    };
-  }
-  return window.__editorHistoryControlsState;
+  return editorHistoryControlsState;
 }
 
 export function bindEditorHistoryControls(options = {}) {

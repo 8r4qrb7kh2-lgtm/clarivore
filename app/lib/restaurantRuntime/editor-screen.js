@@ -1,3 +1,13 @@
+import {
+  getEditorMiniMapResizeHandler,
+  setEditorDirty,
+  setEditorForceDirty,
+  setEditorOverrideCurrentPage,
+  setEditorOverrideMenuImages,
+  setEditorOverrideOverlays,
+  setEditorOverridePendingChanges,
+} from "./restaurantRuntimeBridge.js";
+
 export function createEditorRenderer(options) {
   const {
     state,
@@ -62,7 +72,7 @@ export function createEditorRenderer(options) {
   } = options;
 
   function renderEditor() {
-    window.editorDirty = false;
+    setEditorDirty(false);
     renderTopbar();
     const rs = state.restaurant || {};
     const root = document.getElementById("root");
@@ -73,8 +83,9 @@ export function createEditorRenderer(options) {
       state,
       isEditorPage: () => state.page === "editor",
       onMiniMapResize: () => {
-        if (typeof window.__editorMiniMapResizeHandler === "function") {
-          window.__editorMiniMapResizeHandler();
+        const miniMapResizeHandler = getEditorMiniMapResizeHandler();
+        if (typeof miniMapResizeHandler === "function") {
+          miniMapResizeHandler();
         }
       },
     });
@@ -115,11 +126,11 @@ export function createEditorRenderer(options) {
       const isMulti = editorSections.length > 0;
       if (shouldBeMulti !== isMulti) {
         const currentPendingChanges = getPendingChanges();
-        window.__editorOverrideOverlays = JSON.parse(JSON.stringify(overlays));
-        window.__editorOverrideMenuImages = JSON.parse(JSON.stringify(menuImages));
-        window.__editorOverridePendingChanges = [...currentPendingChanges];
-        window.__editorOverrideCurrentPage = currentPageIndex;
-        window.__editorForceDirty = isDirty() || currentPendingChanges.length > 0;
+        setEditorOverrideOverlays(JSON.parse(JSON.stringify(overlays)));
+        setEditorOverrideMenuImages(JSON.parse(JSON.stringify(menuImages)));
+        setEditorOverridePendingChanges([...currentPendingChanges]);
+        setEditorOverrideCurrentPage(currentPageIndex);
+        setEditorForceDirty(isDirty() || currentPendingChanges.length > 0);
         renderEditor();
         return true;
       }

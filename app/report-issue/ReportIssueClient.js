@@ -6,6 +6,7 @@ import PageShell from "../components/PageShell";
 import SimpleTopbar from "../components/SimpleTopbar";
 import { supabaseClient as supabase } from "../lib/supabase";
 import { isManagerOrOwnerUser } from "../lib/managerRestaurants";
+import { createDinerTopbarLinks } from "../lib/topbarLinks";
 import { resolveAccountName } from "../lib/userIdentity";
 
 export default function ReportIssueClient() {
@@ -154,12 +155,14 @@ export default function ReportIssueClient() {
       topbar={
         <SimpleTopbar
           brandHref="/home"
-          links={[
-            { href: "/home", label: "Home" },
-            { href: "/restaurants", label: "Restaurants" },
-            { href: "/manager-dashboard", label: "Dashboard", visible: isManagerOrOwner },
-            { href: "/help-contact", label: "Help" },
-          ]}
+          links={createDinerTopbarLinks({
+            includeFavorites: false,
+            includeDishSearch: false,
+            includeHelp: true,
+            includeDashboard: true,
+            dashboardVisible: isManagerOrOwner,
+            includeAccount: false,
+          })}
           showAuthAction
           signedIn={Boolean(user)}
           onSignOut={onSignOut}

@@ -1,36 +1,49 @@
+import {
+  consumeEditorForceDirty,
+  consumeEditorOverrideCurrentPage,
+  consumeEditorOverrideMenuImages,
+  consumeEditorOverrideOverlays,
+  consumeEditorOverridePendingChanges,
+  getEditorOriginalMenuImages,
+  setEditorDirty,
+  setEditorOriginalMenuImages,
+  setUpdateOriginalRestaurantSettings,
+} from "./restaurantRuntimeBridge.js";
+
 export function initializeEditorAssets(restaurant = {}) {
   let menuImages =
     restaurant.menuImages || (restaurant.menuImage ? [restaurant.menuImage] : []);
 
-  if (window.__editorOverrideMenuImages) {
-    menuImages = window.__editorOverrideMenuImages;
-    window.__editorOverrideMenuImages = null;
+  const overrideMenuImages = consumeEditorOverrideMenuImages();
+  if (overrideMenuImages) {
+    menuImages = overrideMenuImages;
   }
 
-  const hasOriginalMenuImages = Array.isArray(window.__editorOriginalMenuImages);
+  const originalFromBridge = getEditorOriginalMenuImages();
+  const hasOriginalMenuImages = Array.isArray(originalFromBridge);
   if (!hasOriginalMenuImages) {
-    window.__editorOriginalMenuImages = JSON.parse(JSON.stringify(menuImages));
+    setEditorOriginalMenuImages(JSON.parse(JSON.stringify(menuImages)));
   }
 
   const originalMenuImages = JSON.parse(
-    JSON.stringify(window.__editorOriginalMenuImages || menuImages),
+    JSON.stringify(getEditorOriginalMenuImages() || menuImages),
   );
 
   let currentPageIndex = 0;
   let applyCurrentPageOnLoad = false;
-  if (Number.isInteger(window.__editorOverrideCurrentPage)) {
+  const overrideCurrentPage = consumeEditorOverrideCurrentPage();
+  if (Number.isInteger(overrideCurrentPage)) {
     currentPageIndex = Math.min(
-      Math.max(window.__editorOverrideCurrentPage, 0),
+      Math.max(overrideCurrentPage, 0),
       Math.max(0, menuImages.length - 1),
     );
     applyCurrentPageOnLoad = true;
-    window.__editorOverrideCurrentPage = null;
   }
 
   let overlays = JSON.parse(JSON.stringify(restaurant.overlays || []));
-  if (window.__editorOverrideOverlays) {
-    overlays = window.__editorOverrideOverlays;
-    window.__editorOverrideOverlays = null;
+  const overrideOverlays = consumeEditorOverrideOverlays();
+  if (overrideOverlays) {
+    overlays = overrideOverlays;
   }
 
   overlays.forEach((overlay) => {
@@ -53,7 +66,7 @@ export function createDirtyController(saveButton) {
 
   const setDirty = (next = true) => {
     dirty = next;
-    window.editorDirty = next;
+    setEditorDirty(next);
     if (!saveButton) return;
 
     saveButton.style.display = dirty ? "inline-flex" : "none";
@@ -69,9 +82,8 @@ export function createDirtyController(saveButton) {
     saveButton.classList.add("btnPrimary");
   };
 
-  if (window.__editorForceDirty) {
+  if (consumeEditorForceDirty()) {
     setDirty(true);
-    window.__editorForceDirty = false;
   }
 
   return {
@@ -82,13 +94,13 @@ export function createDirtyController(saveButton) {
 
 export function createEditorChangeState(restaurant = {}) {
   const pendingChanges = [];
-  if (Array.isArray(window.__editorOverridePendingChanges)) {
+  const overridePendingChanges = consumeEditorOverridePendingChanges();
+  if (Array.isArray(overridePendingChanges)) {
     pendingChanges.splice(
       0,
       pendingChanges.length,
-      ...window.__editorOverridePendingChanges,
+      ...overridePendingChanges,
     );
-    window.__editorOverridePendingChanges = null;
   }
 
   let originalOverlaysRef = JSON.stringify(restaurant.overlays || []);
@@ -98,11 +110,9 @@ export function createEditorChangeState(restaurant = {}) {
     delivery_url: restaurant.delivery_url || null,
   };
 
-  window.updateOriginalRestaurantSettings = function updateOriginalRestaurantSettings(
-    newSettings,
-  ) {
+  setUpdateOriginalRestaurantSettings((newSettings) => {
     originalRestaurantSettings = newSettings;
-  };
+  });
 
   return {
     getPendingChanges: () => pendingChanges,

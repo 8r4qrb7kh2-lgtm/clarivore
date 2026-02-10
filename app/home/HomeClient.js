@@ -9,6 +9,7 @@ import RestaurantCard from "../components/RestaurantCard";
 import RestaurantGridState from "../components/RestaurantGridState";
 import { filterRestaurantsByVisibility } from "../lib/restaurantVisibility";
 import { supabaseClient as supabase } from "../lib/supabase";
+import { createDinerTopbarLinks } from "../lib/topbarLinks";
 import { resolveGreetingFirstName } from "../lib/userIdentity";
 
 export default function HomeClient() {
@@ -90,13 +91,7 @@ export default function HomeClient() {
       topbar={
         <SimpleTopbar
           brandHref="/home"
-          links={[
-            { href: "/restaurants", label: "Restaurants" },
-            { href: "/favorites", label: "My restaurants" },
-            { href: "/dish-search", label: "Dish search" },
-            { href: "/help-contact", label: "Help" },
-            { href: "/account", label: "Account" },
-          ]}
+          links={createDinerTopbarLinks({ includeHome: false })}
         />
       }
     >

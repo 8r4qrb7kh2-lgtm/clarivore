@@ -1,9 +1,4 @@
-function resetEditorRouteFlags() {
-  window.__editorOriginalMenuImages = null;
-  window.__editorOverridePendingChanges = null;
-  window.__editorOverrideCurrentPage = null;
-  window.__editorAutoOpenMenuUpload = false;
-}
+import { resetEditorRouteFlags } from "./restaurantRuntimeBridge.js";
 
 function replaceButtonHandler(id, handler) {
   const oldBtn = document.getElementById(id);

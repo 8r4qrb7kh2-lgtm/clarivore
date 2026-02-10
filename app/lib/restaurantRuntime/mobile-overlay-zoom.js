@@ -1,4 +1,9 @@
 import { callRerenderLayer } from "./restaurantRuntimeBridge.js";
+import {
+  getLovedDishesSet as getSessionLovedDishesSet,
+  getOrderItems as getSessionOrderItems,
+  getSupabaseClient as getSessionSupabaseClient,
+} from "./runtimeSessionState.js";
 
 export function initMobileOverlayZoom(deps = {}) {
   const getMenuState =
@@ -39,13 +44,15 @@ export function initMobileOverlayZoom(deps = {}) {
   const getLovedDishesSet =
     typeof deps.getLovedDishesSet === "function"
       ? deps.getLovedDishesSet
-      : () => window.lovedDishesSet;
+      : () => getSessionLovedDishesSet();
   const getOrderItems =
-    typeof deps.getOrderItems === "function" ? deps.getOrderItems : () => window.orderItems;
+    typeof deps.getOrderItems === "function"
+      ? deps.getOrderItems
+      : () => getSessionOrderItems();
   const getSupabaseClient =
     typeof deps.getSupabaseClient === "function"
       ? deps.getSupabaseClient
-      : () => window.supabaseClient;
+      : () => getSessionSupabaseClient();
   const rerenderLayer =
     typeof deps.rerenderLayer === "function" ? deps.rerenderLayer : () => callRerenderLayer();
 

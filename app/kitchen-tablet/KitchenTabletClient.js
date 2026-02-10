@@ -8,6 +8,7 @@ import {
   TabletMonitorPage,
 } from "../components/TabletMonitorLayout";
 import { supabaseClient as supabase } from "../lib/supabase";
+import { setSupabaseClient } from "../lib/restaurantRuntime/runtimeSessionState.js";
 import { resolveManagerRestaurantAccess } from "../lib/managerRestaurants";
 import { showOrderNotification } from "../lib/orderNotifications";
 import {
@@ -16,6 +17,7 @@ import {
   notifyDinerNoticeUpdate,
   upsertTabletOrder,
 } from "../lib/tabletOrderPersistence";
+import { createTabletMonitorTopbarLinks } from "../lib/topbarLinks";
 import {
   KITCHEN_RELEVANT_STATUSES,
   KITCHEN_STATUS_DESCRIPTORS,
@@ -188,7 +190,7 @@ export default function KitchenTabletClient() {
           throw new Error("Supabase env vars are missing.");
         }
 
-        window.supabaseClient = supabase;
+        setSupabaseClient(supabase);
 
         const {
           data: { user },
@@ -726,11 +728,7 @@ export default function KitchenTabletClient() {
 
       <TabletMonitorPage
         brandHref="/restaurants"
-        links={[
-          { href: "/manager-dashboard", label: "Dashboard" },
-          { href: "/server-tablet", label: "Server monitor" },
-          { href: "/help-contact", label: "Help" },
-        ]}
+        links={createTabletMonitorTopbarLinks("kitchen")}
         signedIn={Boolean(authUser)}
         onSignOut={onSignOut}
       >

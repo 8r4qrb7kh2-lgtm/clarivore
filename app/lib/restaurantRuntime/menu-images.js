@@ -1,3 +1,9 @@
+import { getSupabaseClient } from "./runtimeSessionState.js";
+import {
+  consumeEditorAutoOpenMenuUpload,
+  setEditorAutoOpenMenuUpload,
+} from "./restaurantRuntimeBridge.js";
+
 export function initMenuImageEditor(deps = {}) {
   const state = deps.state || {};
   const rs = deps.rs || {};
@@ -45,16 +51,23 @@ export function initMenuImageEditor(deps = {}) {
   let lastUploadedIndex = -1; // Track the most recently uploaded/touched page index
   let menuImagesEditMode = false;
 
+  async function invokeSupabaseFunction(name, body) {
+    const client = getSupabaseClient();
+    if (!client || !client.functions) {
+      throw new Error("Supabase client is unavailable");
+    }
+    return client.functions.invoke(name, { body });
+  }
+
   // --- Document Scanner Logic ---
 
   async function detectCorners(imageData, width, height) {
     try {
-      const result = await window.supabaseClient.functions.invoke(
-        "detect-corners",
-        {
-          body: { image: imageData, width, height },
-        },
-      );
+      const result = await invokeSupabaseFunction("detect-corners", {
+        image: imageData,
+        width,
+        height,
+      });
       if (result.error) throw result.error;
 
       let c = result.data;
@@ -1054,18 +1067,13 @@ export function initMenuImageEditor(deps = {}) {
               saveBtn.textContent = `Analyzing page ${p.pageIndex + 1}...`;
 
               // First AI pass on full image
-              const result = await window.supabaseClient.functions.invoke(
-                "reposition-overlays",
-                {
-                  body: {
-                    oldImageUrl: p.oldImage,
-                    newImageUrl: p.newImage, // 1000x1000 letterboxed
-                    overlays: p.overlays,
-                    imageWidth: 1000,
-                    imageHeight: 1000,
-                  },
-                },
-              );
+              const result = await invokeSupabaseFunction("reposition-overlays", {
+                oldImageUrl: p.oldImage,
+                newImageUrl: p.newImage, // 1000x1000 letterboxed
+                overlays: p.overlays,
+                imageWidth: 1000,
+                imageHeight: 1000,
+              });
 
               // Handle successful result
               if (result.data) {
@@ -1142,19 +1150,16 @@ export function initMenuImageEditor(deps = {}) {
                       );
 
                       // Run AI on section (discovery mode - no old image)
-                      const sectionResult =
-                        await window.supabaseClient.functions.invoke(
-                          "reposition-overlays",
-                          {
-                            body: {
-                              oldImageUrl: null,
-                              newImageUrl: sectionNormalized.dataUrl,
-                              overlays: [],
-                              imageWidth: 1000,
-                              imageHeight: 1000,
-                            },
-                          },
-                        );
+                      const sectionResult = await invokeSupabaseFunction(
+                        "reposition-overlays",
+                        {
+                          oldImageUrl: null,
+                          newImageUrl: sectionNormalized.dataUrl,
+                          overlays: [],
+                          imageWidth: 1000,
+                          imageHeight: 1000,
+                        },
+                      );
 
                       if (
                         sectionResult.data &&
@@ -1544,12 +1549,12 @@ export function initMenuImageEditor(deps = {}) {
         Math.max(0, menuImages.length - 1),
       );
       setCurrentPageIndex(nextPageIndex);
-      window.__editorAutoOpenMenuUpload = true;
+      setEditorAutoOpenMenuUpload(true);
       const didRebuild = syncEditorMenuImages();
       if (didRebuild) {
         return;
       }
-      window.__editorAutoOpenMenuUpload = false;
+      setEditorAutoOpenMenuUpload(false);
       switchMenuPage(getCurrentPageIndex());
 
       // Open upload modal again
@@ -1809,8 +1814,7 @@ export function initMenuImageEditor(deps = {}) {
       });
     };
   }
-  if (window.__editorAutoOpenMenuUpload) {
-    window.__editorAutoOpenMenuUpload = false;
+  if (consumeEditorAutoOpenMenuUpload()) {
     menuImagesEditMode = true;
     setTimeout(() => openMenuUploadModal(), 100);
   }

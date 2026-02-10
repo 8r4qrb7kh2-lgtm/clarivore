@@ -16,6 +16,13 @@ import {
   subscribeToTabletState,
 } from "../tabletSync.js";
 import { saveTabletOrder, fetchTabletOrders } from "../tabletOrdersApi.js";
+import {
+  getOrderItemSelections as getSessionOrderItemSelections,
+  getOrderItems as getSessionOrderItems,
+  getSupabaseClient as getSessionSupabaseClient,
+  setOpenOrderConfirmDrawer as setSessionOpenOrderConfirmDrawer,
+  setOrderItems as setSessionOrderItems,
+} from "./runtimeSessionState.js";
 
 const esc = (s) =>
   (s ?? "").toString().replace(
@@ -98,8 +105,58 @@ export function initOrderFlow({
   send,
   resizeLegendToFit,
   supabaseClient: supabaseClientOverride,
+  getSupabaseClient: getSupabaseClientOverride,
+  getOrderItems: getOrderItemsOverride,
+  setOrderItems: setOrderItemsOverride,
+  getOrderItemSelections: getOrderItemSelectionsOverride,
+  setOpenOrderConfirmDrawer: setOpenOrderConfirmDrawerOverride,
+  setOverlayPulseColor: setOverlayPulseColorOverride,
 } = {}) {
-  const supabaseClient = supabaseClientOverride || window.supabaseClient;
+  const getSupabaseClient = () =>
+    supabaseClientOverride ||
+    (typeof getSupabaseClientOverride === "function"
+      ? getSupabaseClientOverride()
+      : getSessionSupabaseClient()) ||
+    null;
+
+  const readOrderItems =
+    typeof getOrderItemsOverride === "function"
+      ? getOrderItemsOverride
+      : () => getSessionOrderItems();
+
+  const writeOrderItems =
+    typeof setOrderItemsOverride === "function"
+      ? (items) => setOrderItemsOverride(Array.isArray(items) ? items : [])
+      : (items) => setSessionOrderItems(items);
+
+  const readOrderItemSelections =
+    typeof getOrderItemSelectionsOverride === "function"
+      ? getOrderItemSelectionsOverride
+      : () => getSessionOrderItemSelections();
+
+  const setOpenOrderConfirmDrawer =
+    typeof setOpenOrderConfirmDrawerOverride === "function"
+      ? setOpenOrderConfirmDrawerOverride
+      : (fn) => setSessionOpenOrderConfirmDrawer(fn);
+
+  const applyOverlayPulseColor =
+    typeof setOverlayPulseColorOverride === "function"
+      ? setOverlayPulseColorOverride
+      : (overlay) => {
+          if (typeof window.setOverlayPulseColor === "function") {
+            window.setOverlayPulseColor(overlay);
+          }
+        };
+
+  function getOrderItems() {
+    const items = readOrderItems();
+    if (Array.isArray(items)) return items;
+    return writeOrderItems([]);
+  }
+
+  function hasOrderItems() {
+    return getOrderItems().length > 0;
+  }
   const ORDER_STATUS_DESCRIPTORS = {
     [TABLET_ORDER_STATUSES.CODE_ASSIGNED]: {
       label: "Waiting for server confirmation",
@@ -290,7 +347,7 @@ export function initOrderFlow({
   let rescindConfirmOrderId = null;
 
   initializeOrderConfirmDrawer();
-  window.__openOrderConfirmDrawer = openOrderConfirmDrawer;
+  setOpenOrderConfirmDrawer(openOrderConfirmDrawer);
 
   function getSuggestedUserName() {
     if (!state.user) return "";
@@ -327,6 +384,8 @@ export function initOrderFlow({
 
   async function checkUserAuth() {
     try {
+      const supabaseClient = getSupabaseClient();
+      if (!supabaseClient) return false;
       const {
         data: { user },
       } = await supabaseClient.auth.getUser();
@@ -352,7 +411,7 @@ export function initOrderFlow({
       ).map((c) => c.textContent.trim()),
       notes: orderConfirmNotesInput?.value || "",
       code: orderConfirmCodeInput?.value || "",
-      dishes: Array.isArray(window.orderItems) ? [...window.orderItems] : [],
+      dishes: [...getOrderItems()],
       timestamp: Date.now(),
       restaurantSlug: getRestaurantSlug(),
     };
@@ -396,7 +455,7 @@ export function initOrderFlow({
         Array.isArray(formData.dishes) &&
         formData.dishes.length > 0
       ) {
-        window.orderItems = [...formData.dishes];
+        writeOrderItems([...formData.dishes]);
         // Visually select dishes in the menu by finding overlays with matching titles
         formData.dishes.forEach((dishName) => {
           const overlays = document.querySelectorAll(".overlay");
@@ -409,9 +468,7 @@ export function initOrderFlow({
                 title === dishName
               ) {
                 overlay.classList.add("selected");
-                if (typeof window.setOverlayPulseColor === "function") {
-                  window.setOverlayPulseColor(overlay);
-                }
+                applyOverlayPulseColor(overlay);
                 // Also update the "Add to order" button if it exists
                 const addBtn = overlay.querySelector(
                   `.addToOrderBtn[data-dish-name]`,
@@ -485,7 +542,7 @@ export function initOrderFlow({
       openOrderSidebar();
 
       // Automatically proceed to confirmation if there are dishes
-      if (window.orderItems && window.orderItems.length > 0) {
+      if (hasOrderItems()) {
         setTimeout(() => {
           confirmOrder();
           // Ensure summary reflects restored preferences
@@ -1089,8 +1146,7 @@ export function initOrderFlow({
     if (!orderSidebarStatus || !orderSidebarStatusBadge) {
       return;
     }
-    const hasItems =
-      Array.isArray(window.orderItems) && window.orderItems.length > 0;
+    const hasItems = hasOrderItems();
     const sidebarOrders = getSidebarOrders();
 
     if (
@@ -1263,7 +1319,7 @@ export function initOrderFlow({
     if (!orderSidebarItems) return;
     syncOrderItemSelections();
     orderSidebarItems.dataset.mode = orders.length ? "pending" : "cart";
-    const cartItems = Array.isArray(window.orderItems) ? window.orderItems : [];
+    const cartItems = getOrderItems();
     const cartItemsHtml = cartItems.length
       ? `
   <div class="orderSidebarCard">
@@ -1614,6 +1670,15 @@ export function initOrderFlow({
 
   async function handleOrderConfirmSubmit() {
     if (!orderConfirmForm) return;
+    const supabaseClient = getSupabaseClient();
+    if (!supabaseClient) {
+      setStatusMessage(
+        orderConfirmSubmitStatus,
+        "Please sign in or create an account to submit your notice.",
+        "error",
+      );
+      return;
+    }
     const {
       data: { user },
     } = await supabaseClient.auth.getUser();
@@ -1789,9 +1854,7 @@ export function initOrderFlow({
       persistTabletStateAndRender();
       // Clear order items from localStorage since notice has been submitted
       const submittedSet = new Set(selectedItems);
-      window.orderItems = Array.isArray(window.orderItems)
-        ? window.orderItems.filter((item) => !submittedSet.has(item))
-        : [];
+      writeOrderItems(getOrderItems().filter((item) => !submittedSet.has(item)));
       submittedSet.forEach((item) => getOrderItemSelections().delete(item));
       persistOrderItems();
       updateOrderSidebar();
@@ -2770,15 +2833,12 @@ export function initOrderFlow({
   function persistOrderItems() {
     const storageKey = getOrderItemsStorageKey();
     try {
-      if (
-        window.orderItems &&
-        Array.isArray(window.orderItems) &&
-        window.orderItems.length > 0
-      ) {
+      const orderItems = getOrderItems();
+      if (orderItems.length > 0) {
         localStorage.setItem(
           storageKey,
           JSON.stringify({
-            items: window.orderItems,
+            items: orderItems,
             timestamp: Date.now(),
           }),
         );
@@ -2808,7 +2868,7 @@ export function initOrderFlow({
         const isFresh =
           data && data.timestamp && Date.now() - data.timestamp < 86400000;
         if (isValidArray && isFresh && data.items.length) {
-          window.orderItems = [...data.items];
+          writeOrderItems([...data.items]);
           syncOrderItemSelections();
           if (usedLegacyKey) {
             localStorage.removeItem("orderItems");
@@ -2825,14 +2885,13 @@ export function initOrderFlow({
       localStorage.removeItem(storageKey);
       if (storageKey !== "orderItems") localStorage.removeItem("orderItems");
     }
-    window.orderItems = [];
+    writeOrderItems([]);
     clearOrderItemSelections();
     return false;
   }
 
   function getOrderItemSelections() {
-    if (!window.orderItemSelections) window.orderItemSelections = new Set();
-    return window.orderItemSelections;
+    return readOrderItemSelections();
   }
 
   function clearOrderItemSelections() {
@@ -2841,7 +2900,7 @@ export function initOrderFlow({
 
   function syncOrderItemSelections() {
     const selections = getOrderItemSelections();
-    const items = Array.isArray(window.orderItems) ? window.orderItems : [];
+    const items = getOrderItems();
     const itemSet = new Set(items);
     Array.from(selections).forEach((item) => {
       if (!itemSet.has(item)) {
@@ -2870,7 +2929,7 @@ export function initOrderFlow({
   function getSelectedOrderItems() {
     syncOrderItemSelections();
     const selections = getOrderItemSelections();
-    const items = Array.isArray(window.orderItems) ? window.orderItems : [];
+    const items = getOrderItems();
     return items.filter((item) => selections.has(item));
   }
 
@@ -2892,8 +2951,8 @@ export function initOrderFlow({
   }
 
   function addDishToOrder(dishName, options = {}) {
-    if (!window.orderItems) window.orderItems = [];
-    if (window.orderItems.includes(dishName)) {
+    const orderItems = getOrderItems();
+    if (orderItems.includes(dishName)) {
       return { success: false, message: "already-added" };
     }
 
@@ -2983,7 +3042,8 @@ export function initOrderFlow({
     // If dish not found in overlays, allow adding (user can decide)
 
     // Add to order if it can be accommodated
-    window.orderItems.push(dishName);
+    orderItems.push(dishName);
+    writeOrderItems(orderItems);
     persistOrderItems();
     updateOrderSidebar();
     openOrderSidebar();
@@ -2992,10 +3052,11 @@ export function initOrderFlow({
   }
 
   function removeDishFromOrder(dishName) {
-    if (!window.orderItems) window.orderItems = [];
-    const index = window.orderItems.indexOf(dishName);
+    const orderItems = getOrderItems();
+    const index = orderItems.indexOf(dishName);
     if (index > -1) {
-      window.orderItems.splice(index, 1);
+      orderItems.splice(index, 1);
+      writeOrderItems(orderItems);
       getOrderItemSelections().delete(dishName);
       persistOrderItems();
       syncOrderItemSelections();
@@ -3059,8 +3120,7 @@ export function initOrderFlow({
       setOrderSidebarVisibility();
       return;
     }
-    const hasItems =
-      Array.isArray(window.orderItems) && window.orderItems.length > 0;
+    const hasItems = hasOrderItems();
     syncOrderItemSelections();
     if (sidebarItemsContainer.dataset.mode === "cleared" && !hasItems) {
       updateOrderSidebarBadge();
@@ -3074,14 +3134,15 @@ export function initOrderFlow({
       sidebarItemsContainer.dataset.mode = "cart";
     }
 
-    if (!window.orderItems || window.orderItems.length === 0) {
+    const orderItems = getOrderItems();
+    if (!orderItems.length) {
       sidebarItemsContainer.innerHTML =
         '<div class="orderSidebarEmpty">No items added yet</div>';
       setConfirmButtonVisibility(false);
       setConfirmButtonDisabled(true);
       minimizeOrderSidebar();
     } else {
-      const itemsHTML = window.orderItems
+      const itemsHTML = orderItems
         .map(
           (dishName) => `
     <div class="orderSidebarCard">
@@ -3127,8 +3188,7 @@ export function initOrderFlow({
   }
 
   function hasOrderSidebarContent() {
-    const hasItems =
-      Array.isArray(window.orderItems) && window.orderItems.length > 0;
+    const hasItems = hasOrderItems();
     const sidebarOrders = getSidebarOrders();
     return hasItems || (Array.isArray(sidebarOrders) && sidebarOrders.length > 0);
   }
@@ -3219,10 +3279,9 @@ export function initOrderFlow({
       if (dismissed.includes(order.id)) return false;
       return isOrderActiveForBadge(order);
     });
-    const hasCartItems =
-      Array.isArray(window.orderItems) && window.orderItems.length > 0;
+    const hasCartItems = hasOrderItems();
     const isCleared = orderSidebarItems?.dataset.mode === "cleared";
-    const cartCount = hasCartItems && !isCleared ? window.orderItems.length : 0;
+    const cartCount = hasCartItems && !isCleared ? getOrderItems().length : 0;
     if (activeOrders.length > 0) {
       const submittedCount = activeOrders.reduce((sum, order) => {
         const count =
@@ -3413,8 +3472,7 @@ export function initOrderFlow({
   }
 
   function updateConfirmButtonVisibility() {
-    const hasItems =
-      Array.isArray(window.orderItems) && window.orderItems.length > 0;
+    const hasItems = hasOrderItems();
     const clearedMode = orderSidebarItems?.dataset.mode === "cleared";
     if (!hasItems || clearedMode) {
       setConfirmButtonVisibility(false);
@@ -3609,12 +3667,12 @@ export function initOrderFlow({
 
     // Restore order items from localStorage if they exist
     const hasRestoredItems = restoreOrderItems();
-    if (hasRestoredItems && window.orderItems && window.orderItems.length > 0) {
+    if (hasRestoredItems && hasOrderItems()) {
       // Visually restore selected dishes in the menu
       const waitForMenu = () => {
         const menu = document.getElementById("menu");
         if (menu && menu.querySelectorAll(".overlay").length > 0) {
-          window.orderItems.forEach((dishName) => {
+          getOrderItems().forEach((dishName) => {
             const overlays = document.querySelectorAll(".overlay");
             overlays.forEach((overlay) => {
               const titleEl = overlay.querySelector(".tTitle");
@@ -3625,9 +3683,7 @@ export function initOrderFlow({
                   title === dishName
                 ) {
                   overlay.classList.add("selected");
-                  if (typeof window.setOverlayPulseColor === "function") {
-                    window.setOverlayPulseColor(overlay);
-                  }
+                  applyOverlayPulseColor(overlay);
                   const addBtn = overlay.querySelector(
                     `.addToOrderBtn[data-dish-name]`,
                   );

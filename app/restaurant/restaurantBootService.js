@@ -14,9 +14,13 @@ import {
   getStartInEditor,
   setStartInEditor,
 } from "../lib/restaurantRuntime/restaurantRuntimeBridge.js";
+import {
+  setLovedDishesSet,
+  setSupabaseClient,
+} from "../lib/restaurantRuntime/runtimeSessionState.js";
 
 export function initRestaurantBootGlobals(supabaseClient) {
-  window.supabaseClient = supabaseClient;
+  setSupabaseClient(supabaseClient);
   window.SUPABASE_URL = supabaseUrl;
   window.SUPABASE_KEY = supabaseAnonKey;
   window.CLARIVORE_PUSH_PUBLIC_KEY = DEFAULT_PUSH_PUBLIC_KEY;
@@ -107,14 +111,16 @@ export async function buildRestaurantBootPayload({
         .from("user_loved_dishes")
         .select("restaurant_id, dish_name")
         .eq("user_id", user.id);
-      window.lovedDishesSet = new Set(
-        (lovedData || []).map(
-          (entry) => `${String(entry.restaurant_id)}:${entry.dish_name}`,
+      setLovedDishesSet(
+        new Set(
+          (lovedData || []).map(
+            (entry) => `${String(entry.restaurant_id)}:${entry.dish_name}`,
+          ),
         ),
       );
     } catch (error) {
       console.warn("Failed to load loved dishes", error);
-      window.lovedDishesSet = new Set();
+      setLovedDishesSet(new Set());
     }
 
     const { data: managerRecord, error: managerError } = await supabaseClient
@@ -135,7 +141,7 @@ export async function buildRestaurantBootPayload({
     canEdit = isOwner || Boolean(managerRecord) || restaurant.name === "Falafel Café";
     managerRestaurants = await fetchManagerRestaurants(supabaseClient, user);
   } else {
-    window.lovedDishesSet = new Set();
+    setLovedDishesSet(new Set());
   }
 
   let initialPage = "restaurant";

@@ -13,6 +13,7 @@ import {
 } from "../lib/managerRestaurants";
 import { initManagerNotifications } from "../lib/managerNotifications";
 import { formatChatTimestamp } from "../lib/chatMessage";
+import { createDinerTopbarLinks } from "../lib/topbarLinks";
 import { resolveAccountName, resolveManagerDisplayName } from "../lib/userIdentity";
 
 const ADMIN_DISPLAY_NAME = "Matt D (clarivore administrator)";
@@ -582,14 +583,11 @@ export default function HelpContactClient() {
       topbar={
         <SimpleTopbar
           brandHref="/home"
-          links={[
-            { href: "/home", label: "Home" },
-            { href: "/restaurants", label: "Restaurants" },
-            { href: "/favorites", label: "My restaurants" },
-            { href: "/dish-search", label: "Dish search" },
-            { href: "/manager-dashboard", label: "Dashboard", visible: isManagerOrOwner },
-            { href: "/account", label: "Account" },
-          ]}
+          links={createDinerTopbarLinks({
+            includeHelp: false,
+            includeDashboard: true,
+            dashboardVisible: isManagerOrOwner,
+          })}
           showAuthAction
           signedIn={Boolean(user)}
           onSignOut={onSignOut}

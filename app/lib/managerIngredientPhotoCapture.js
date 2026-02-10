@@ -2,6 +2,7 @@ import { initIngredientPhotoAnalysis } from "./ingredientPhotoAnalysis.js";
 import { loadScript } from "../runtime/scriptLoader";
 import { buildAllergenDietConfig } from "./allergenConfig";
 import { supabaseAnonKey, supabaseClient as supabase } from "./supabase";
+import { setSupabaseClient } from "./restaurantRuntime/runtimeSessionState.js";
 
 const OPENCV_URL = "https://docs.opencv.org/4.5.2/opencv.js";
 
@@ -74,7 +75,7 @@ async function createIngredientCaptureApi() {
   }
 
   if (supabase) {
-    window.supabaseClient = supabase;
+    setSupabaseClient(supabase);
   }
 
   try {

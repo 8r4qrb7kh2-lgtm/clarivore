@@ -1,3 +1,8 @@
+import {
+  getEditorMiniMapResizeHandler,
+  setEditorMiniMapResizeHandler,
+} from "./restaurantRuntimeBridge.js";
+
 export function initEditorSections(deps = {}) {
   const menu = deps.menu || null;
   const menuImages = Array.isArray(deps.menuImages) ? deps.menuImages : [];
@@ -100,8 +105,9 @@ export function initEditorSections(deps = {}) {
     } else {
       scrollWrapper.appendChild(miniMap);
     }
-    if (window.__editorMiniMapResizeHandler) {
-      window.removeEventListener("resize", window.__editorMiniMapResizeHandler);
+    const previousMiniMapResizeHandler = getEditorMiniMapResizeHandler();
+    if (previousMiniMapResizeHandler) {
+      window.removeEventListener("resize", previousMiniMapResizeHandler);
     }
     const updateEditorMiniMapViewport = () => {
       const section = editorSections[currentMiniMapPage];
@@ -185,7 +191,7 @@ export function initEditorSections(deps = {}) {
       miniMapFrame.style.height = `${Math.max(60, desiredHeight)}px`;
       updateEditorMiniMapViewport();
     };
-    window.__editorMiniMapResizeHandler = syncMiniMapHeight;
+    setEditorMiniMapResizeHandler(syncMiniMapHeight);
     window.addEventListener("resize", syncMiniMapHeight);
     requestAnimationFrame(syncMiniMapHeight);
 

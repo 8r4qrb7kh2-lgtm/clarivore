@@ -1,3 +1,5 @@
+import { getSupabaseClient } from "./runtimeSessionState.js";
+
 export function initEditorSettings(deps = {}) {
   const state = deps.state || {};
   const esc =
@@ -129,7 +131,7 @@ export function initEditorSettings(deps = {}) {
         }
 
         try {
-          const client = window.supabaseClient;
+          const client = getSupabaseClient();
           if (!client) throw new Error("Database connection not ready");
 
           const restaurantId =

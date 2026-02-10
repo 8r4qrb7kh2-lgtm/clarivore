@@ -15,6 +15,13 @@ import { createPageUtilsRuntime } from "./pageUtilsRuntime.js";
 import { createPageOffsetRuntime } from "./pageOffsetRuntime.js";
 import { createMobileInfoPanelDom } from "./restaurantRuntime/mobile-info-panel-dom.js";
 import { createPageCoreRuntime } from "./pageCoreRuntime.js";
+import {
+  getOrderItemSelections,
+  getOrderItems,
+  getSupabaseClient,
+  setOpenOrderConfirmDrawer,
+  setOrderItems,
+} from "./restaurantRuntime/runtimeSessionState.js";
 
 export function createPageServicesRuntime({
   state,
@@ -91,6 +98,12 @@ export function createPageServicesRuntime({
     send,
     resizeLegendToFit,
     supabaseClient,
+    getSupabaseClient: () => getSupabaseClient() || supabaseClient,
+    getOrderItems,
+    setOrderItems,
+    getOrderItemSelections,
+    setOpenOrderConfirmDrawer,
+    setOverlayPulseColor: (overlay) => setOverlayPulseColor(overlay),
   });
   navigationRuntime.bindQrPromoControls();
 

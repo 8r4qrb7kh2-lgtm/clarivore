@@ -30,6 +30,10 @@
   - `ManagerModeSwitch` for editor/customer mode toggles
 - Refactored 14 app routes/components to use shared `SimpleTopbar`, including restaurant shell compatibility usage.
 - Raw app-level `simple-topbar` markup is now fully removed from page components.
+- Added shared topbar link builders in `app/lib/topbarLinks.js`:
+  - `createDinerTopbarLinks`
+  - `createTabletMonitorTopbarLinks`
+- Refactored diner/tablet routes to consume shared topbar link builders instead of page-local duplicated link arrays (`home`, `restaurants`, `favorites`, `dish-search`, `help-contact`, `report-issue`, `my-dishes`, `order-feedback`, `account`, `kitchen-tablet`, `server-tablet`).
 - Introduced shared tablet monitor layout components in `app/components/TabletMonitorLayout.js`:
   - `TabletMonitorPage`
   - `TabletMonitorHeader`
@@ -207,6 +211,9 @@
 - Refactored key restaurant runtime modules to consume bridge APIs instead of direct `window` globals:
   - `app/restaurant/boot/pageFlags.js`
   - `app/restaurant/restaurantBootService.js`
+  - `app/lib/pageServicesRuntime.js`
+  - `app/lib/restaurantRuntime/order-runtime.js`
+  - `app/lib/restaurantRuntime/order-flow.js`
   - `app/lib/pageUiOptionsRuntime.js`
   - `app/lib/restaurantRuntime/overlay-ui-runtime.js`
   - `app/lib/restaurantRuntime/tooltip-runtime.js`
@@ -228,6 +235,38 @@
   - updated `app/restaurant/runtime/scriptLoader.js` to import `./restaurantPageRuntime.js`
 - Moved the remaining legacy restaurant runtime feature subtree into shared app modules under:
   - `app/lib/restaurantRuntime/*`
+- Expanded shared runtime bridge/session state coverage to centralize editor session globals and cross-surface runtime state:
+  - added bridge-managed editor session keys for dirty state, menu override buffers, save-review control, and mini-map resize handler in `app/lib/restaurantRuntime/restaurantRuntimeBridge.js`
+  - added bridge-managed collector + callback wiring (`setCollectAllBrandItems`, `setUpdateOriginalRestaurantSettings`) to avoid direct global function mutation
+  - fixed `restaurantBootService` to use `setSupabaseClient` from `runtimeSessionState` (instead of importing from the wrong module)
+- Refactored editor/runtime modules to consume bridge APIs instead of direct `window.__editor*` / `window.editorDirty` globals:
+  - `app/lib/restaurantRuntime/editor-session.js`
+  - `app/lib/restaurantRuntime/editor-exit.js`
+  - `app/lib/restaurantRuntime/editor-screen.js`
+  - `app/lib/restaurantRuntime/editor-save.js`
+  - `app/lib/restaurantRuntime/editor-sections.js`
+  - `app/lib/restaurantRuntime/editor-toolbar.js`
+  - `app/lib/restaurantRuntime/editor-history-controls.js`
+  - `app/lib/restaurantRuntime/menu-images.js`
+  - `app/lib/restaurantRuntime/dish-editor.js`
+  - `app/lib/restaurantMessageHandler.js`
+  - `app/restaurant/runtime/restaurantPageRuntime.js`
+- Continued reducing runtime-wide direct `window.supabaseClient` coupling by routing read/write paths through shared session state:
+  - `app/lib/changeLogService.js`
+  - `app/lib/standaloneMessageDispatcher.js`
+  - `app/lib/allergenConfigRuntime.js`
+  - `app/restaurant/runtime/scriptLoader.js`
+  - `app/lib/restaurantRuntime/feedback-modals.js`
+  - `app/lib/restaurantRuntime/editor-settings.js`
+  - `app/lib/ingredientAllergenAnalysis.js`
+  - `app/lib/managerNotifications.js`
+  - `app/lib/chatNotifications.js`
+  - `app/lib/helpAssistantDrawer.js`
+  - `app/lib/managerIngredientPhotoCapture.js`
+  - `app/admin-dashboard/AdminDashboardClient.js`
+  - `app/manager-dashboard/ManagerDashboardClient.js`
+  - `app/kitchen-tablet/KitchenTabletClient.js`
+  - `app/server-tablet/ServerTabletClient.js`
 
 ## Current migration inventory
 - Legacy static HTML pages still present in `public/`: 15

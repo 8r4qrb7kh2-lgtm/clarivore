@@ -30,6 +30,7 @@ import {
   saveDiets,
   toSortedKey,
 } from "./accountService";
+import { createDinerTopbarLinks } from "../lib/topbarLinks";
 
 const NATIVE_AUTH_SCHEME = "com.clarivore.app";
 const NATIVE_AUTH_CALLBACK = "auth-callback";
@@ -789,19 +790,11 @@ export default function AccountClient() {
       topbar={
         <SimpleTopbar
           brandHref="/home"
-          links={[
-            { href: "/home", label: "Home" },
-            { href: "/restaurants", label: "Restaurants" },
-            { href: "/favorites", label: "My restaurants" },
-            { href: "/dish-search", label: "Dish search" },
-            { href: "/help-contact", label: "Help" },
-            {
-              href: backToMenuHref || "/account",
-              label: "Back to menu",
-              visible: Boolean(backToMenuHref && !user),
-            },
-            { href: "/account", label: "Account" },
-          ]}
+          links={createDinerTopbarLinks({
+            includeBackToMenu: true,
+            backToMenuHref: backToMenuHref || "/account",
+            backToMenuVisible: Boolean(backToMenuHref && !user),
+          })}
         />
       }
       afterMain={

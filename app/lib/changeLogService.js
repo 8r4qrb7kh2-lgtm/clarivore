@@ -1,5 +1,7 @@
+import { getSupabaseClient } from "./restaurantRuntime/runtimeSessionState.js";
+
 export async function insertChangeLogEntry(base) {
-  const client = window.supabaseClient;
+  const client = getSupabaseClient();
   if (!client) throw new Error("Supabase client not ready.");
   const payload = {
     restaurant_id: base.restaurantId,
@@ -21,7 +23,7 @@ export async function insertChangeLogEntry(base) {
 }
 
 export async function fetchChangeLogEntries(restaurantId) {
-  const client = window.supabaseClient;
+  const client = getSupabaseClient();
   if (!client) throw new Error("Supabase client not ready.");
   let query = client
     .from("change_logs")

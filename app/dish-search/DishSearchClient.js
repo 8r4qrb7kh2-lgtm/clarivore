@@ -19,6 +19,7 @@ import {
   supabaseAnonKey,
   supabaseUrl,
 } from "../lib/supabase";
+import { createDinerTopbarLinks } from "../lib/topbarLinks";
 
 export default function DishSearchClient() {
   const router = useRouter();
@@ -600,13 +601,7 @@ export default function DishSearchClient() {
       topbar={
         <SimpleTopbar
           brandHref="/home"
-          links={[
-            { href: "/home", label: "Home" },
-            { href: "/restaurants", label: "Restaurants" },
-            { href: "/favorites", label: "My restaurants" },
-            { href: "/account", label: "Account" },
-            { href: "/help-contact", label: "Help" },
-          ]}
+          links={createDinerTopbarLinks({ includeDishSearch: false })}
         />
       }
     >

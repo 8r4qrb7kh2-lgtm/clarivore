@@ -1,3 +1,6 @@
+import { getUpdateOriginalRestaurantSettings } from "./restaurantRuntime/restaurantRuntimeBridge.js";
+import { getSupabaseClient } from "./restaurantRuntime/runtimeSessionState.js";
+
 function buildLegacyAccountUrl(params = {}) {
   const query = new URLSearchParams();
   if (params.slug) query.set("returnSlug", params.slug);
@@ -449,7 +452,7 @@ async function handleSaveOverlays({
   let overlaysToSave = [];
 
   try {
-    const client = window.supabaseClient;
+    const client = getSupabaseClient();
     if (!client) throw new Error("Supabase client not ready.");
     const restaurantId = toRestaurantId(state.restaurant);
     if (!restaurantId) throw new Error("Restaurant not loaded yet.");
@@ -595,11 +598,12 @@ async function handleSaveOverlays({
       state.restaurant = updatedRestaurant;
     }
 
+    const updateOriginalRestaurantSettings = getUpdateOriginalRestaurantSettings();
     if (
       message.restaurantSettings &&
-      typeof window.updateOriginalRestaurantSettings === "function"
+      typeof updateOriginalRestaurantSettings === "function"
     ) {
-      window.updateOriginalRestaurantSettings({
+      updateOriginalRestaurantSettings({
         website: message.restaurantSettings.website,
         phone: message.restaurantSettings.phone,
         delivery_url: message.restaurantSettings.delivery_url,
@@ -694,7 +698,7 @@ async function handleConfirmAllergens({
   insertChangeLogEntry,
 }) {
   try {
-    const client = window.supabaseClient;
+    const client = getSupabaseClient();
     if (!client) throw new Error("Supabase client not ready.");
     const restaurantId = toRestaurantId(state.restaurant);
     if (!restaurantId) throw new Error("Restaurant not loaded yet.");

@@ -57,10 +57,18 @@ import { createRestaurantRuntimeCore } from "./createRestaurantRuntimeCore.js";
 import { createRestaurantPageUiBundle } from "./createRestaurantPageUiBundle.js";
 import { createRestaurantEditorHydrationBundle } from "./createRestaurantEditorHydrationBundle.js";
 import {
+  getEditorDirty,
   getCurrentMobileInfoItem as getBridgeCurrentMobileInfoItem,
+  setCollectAllBrandItems,
   setCurrentMobileInfoItem as setBridgeCurrentMobileInfoItem,
+  setEditorDirty,
   setOpenBrandVerification,
 } from "../../lib/restaurantRuntime/restaurantRuntimeBridge.js";
+import {
+  getLovedDishesSet,
+  getOrderItems,
+  getSupabaseClient,
+} from "../../lib/restaurantRuntime/runtimeSessionState.js";
 
 const { logDebug, setDebugJson } = initializeRestaurantRuntimeEnvironment();
 
@@ -90,7 +98,6 @@ let showPhotoAnalysisLoadingInRow = () => {};
 let hidePhotoAnalysisLoadingInRow = () => {};
 let updatePhotoAnalysisLoadingStatus = () => {};
 let showPhotoAnalysisResultButton = () => {};
-let collectAllBrandItems = null;
 let openChangeLog = () => {};
 let updateLastConfirmedText = () => {};
 let openFeedbackModal = () => {};
@@ -248,7 +255,7 @@ const {
   DIETS,
   ALLERGEN_EMOJI,
   DIET_EMOJI,
-  supabaseClient: window.supabaseClient,
+  supabaseClient: getSupabaseClient(),
   current: {
     openBrandIdentificationChoice,
     showIngredientPhotoUploadModal,
@@ -367,7 +374,7 @@ const {
   hasUnsavedChanges: () => hasUnsavedChanges(),
   showUnsavedChangesModal: (onProceed) => showUnsavedChangesModal(onProceed),
   clearEditorDirty: () => {
-    window.editorDirty = false;
+    setEditorDirty(false);
     if (aiAssistState) aiAssistState.savedToDish = true;
   },
   updateRootOffset,
@@ -383,9 +390,9 @@ const {
   showAddToOrderConfirmation,
   addDishToOrder,
   getDishCompatibilityDetails,
-  getOrderItems: () => window.orderItems,
-  getLovedDishesSet: () => window.lovedDishesSet,
-  getSupabaseClient: () => window.supabaseClient,
+  getOrderItems,
+  getLovedDishesSet,
+  getSupabaseClient,
   ensureMobileInfoPanel,
   getMobileInfoPanel: () => mobileInfoPanel,
   getCurrentMobileInfoItem: () => getBridgeCurrentMobileInfoItem(),
@@ -408,7 +415,7 @@ const {
   DIETS,
   updateOrderSidebar,
   openOrderSidebar,
-  supabaseClient: window.supabaseClient,
+  supabaseClient: getSupabaseClient(),
   getZoomedOverlayItem: () => zoomedOverlayItem,
   zoomOutOverlay,
   zoomToOverlay,
@@ -534,9 +541,7 @@ const {
     editorSaveApi = api;
   },
   onCollectAllBrandItems: (collector) => {
-    collectAllBrandItems = collector;
-    window.collectAllBrandItems = collectAllBrandItems;
-    window.collectAiBrandItems = collectAllBrandItems;
+    setCollectAllBrandItems(collector);
   },
   onOpenBrandVerification: (openFn) => {
     setOpenBrandVerification(openFn);
@@ -560,9 +565,9 @@ const {
   getAiAssistBackdrop,
   getAiAssistState: () => aiAssistState,
   getNameInput: () => document.getElementById("aiAssistNameInput"),
-  getEditorDirty: () => window.editorDirty,
+  getEditorDirty: () => getEditorDirty(),
   onClearDirty: () => {
-    window.editorDirty = false;
+    setEditorDirty(false);
     if (aiAssistState) aiAssistState.savedToDish = true;
   },
   urlQR,

@@ -6,6 +6,7 @@ import AdminDashboardDom from "./components/AdminDashboardDom";
 import { supabaseClient as supabase } from "../lib/supabase";
 import { loadScript } from "../runtime/scriptLoader";
 import { prepareAdminDashboardBootPayload } from "./services/adminDashboardBoot";
+import { setSupabaseClient } from "../lib/restaurantRuntime/runtimeSessionState.js";
 
 export default function AdminDashboardClient() {
   const router = useRouter();
@@ -34,7 +35,7 @@ export default function AdminDashboardClient() {
           throw new Error("Supabase env vars are missing.");
         }
 
-        window.supabaseClient = supabase;
+        setSupabaseClient(supabase);
 
         await loadScript(
           "https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js",

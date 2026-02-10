@@ -1,3 +1,5 @@
+import { setLovedDishesSet } from "../../lib/restaurantRuntime/runtimeSessionState.js";
+
 export const HOW_IT_WORKS_SLUG = "how-it-works";
 const HOW_IT_WORKS_MENU_IMAGE = "images/how-it-works-menu.png";
 
@@ -111,7 +113,7 @@ export async function buildTrainingRestaurantPayload({
     console.warn("Training restaurant: failed to load user profile", error);
   }
 
-  window.lovedDishesSet = new Set();
+  setLovedDishesSet(new Set());
 
   return {
     page: "restaurant",

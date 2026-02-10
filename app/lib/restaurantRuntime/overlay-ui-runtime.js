@@ -1,6 +1,11 @@
 import { createMobileInfoPanelRuntime } from "./mobile-info-panel-runtime.js";
 import { createMobileViewerRuntime } from "./mobile-viewer-runtime.js";
 import { createTooltipRuntime } from "./tooltip-runtime.js";
+import {
+  getLovedDishesSet as getSessionLovedDishesSet,
+  getOrderItems as getSessionOrderItems,
+  getSupabaseClient as getSessionSupabaseClient,
+} from "./runtimeSessionState.js";
 
 export function createOverlayUiRuntime(deps = {}) {
   const state = deps.state || {};
@@ -83,15 +88,17 @@ export function createOverlayUiRuntime(deps = {}) {
   const getMenuState =
     typeof deps.getMenuState === "function" ? deps.getMenuState : () => ({});
   const getOrderItems =
-    typeof deps.getOrderItems === "function" ? deps.getOrderItems : () => window.orderItems;
+    typeof deps.getOrderItems === "function"
+      ? deps.getOrderItems
+      : () => getSessionOrderItems();
   const getLovedDishesSet =
     typeof deps.getLovedDishesSet === "function"
       ? deps.getLovedDishesSet
-      : () => window.lovedDishesSet;
+      : () => getSessionLovedDishesSet();
   const getSupabaseClient =
     typeof deps.getSupabaseClient === "function"
       ? deps.getSupabaseClient
-      : () => window.supabaseClient;
+      : () => getSessionSupabaseClient();
 
   const pageTip = document.getElementById("tip");
   const tooltipRuntime = createTooltipRuntime({

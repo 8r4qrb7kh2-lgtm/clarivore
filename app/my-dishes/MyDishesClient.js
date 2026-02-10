@@ -11,6 +11,7 @@ import {
   isManagerUser,
   isOwnerUser,
 } from "../lib/managerRestaurants";
+import { createDinerTopbarLinks } from "../lib/topbarLinks";
 
 function formatDate(dateValue) {
   if (!dateValue) return "";
@@ -443,14 +444,11 @@ export default function MyDishesClient() {
       topbar={
         <SimpleTopbar
           brandHref="/home"
-          links={[
-            { href: "/home", label: "Home" },
-            { href: "/restaurants", label: "Restaurants" },
-            { href: "/favorites", label: "My restaurants" },
-            { href: "/dish-search", label: "Dish search" },
-            { href: "/manager-dashboard", label: "Dashboard", visible: isManagerOrOwner },
-            { href: "/help-contact", label: "Help" },
-          ]}
+          links={createDinerTopbarLinks({
+            includeDashboard: true,
+            dashboardVisible: isManagerOrOwner,
+            includeAccount: false,
+          })}
           showAuthAction
           signedIn
           onSignOut={onSignOut}

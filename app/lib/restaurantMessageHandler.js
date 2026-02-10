@@ -1,14 +1,21 @@
 import { filterRestaurantsByVisibility } from "./restaurantVisibility.js";
 import {
   callRerenderLayer,
+  getSaveReviewControl,
   getDisplayChangeLog,
   getOpenBrandVerification,
   getOpenConfirmOnLoad,
   getOpenLogOnLoad,
   getStartInEditor,
+  resetEditorRouteFlags,
   setOpenConfirmOnLoad,
   setOpenLogOnLoad,
 } from "./restaurantRuntime/restaurantRuntimeBridge.js";
+import {
+  getOrderItems,
+  setOrderItems,
+  getSupabaseClient,
+} from "./restaurantRuntime/runtimeSessionState.js";
 
 function filterOrdersByRestaurant(orderFlow, restaurantId) {
   if (!orderFlow || !orderFlow.tabletSimState) return;
@@ -33,12 +40,13 @@ function clearCurrentTabletOrderIfNeeded({
 }
 
 function restoreSelectedMenuItems({ updateOrderSidebar, openOrderSidebar }) {
-  if (!Array.isArray(window.orderItems) || !window.orderItems.length) return;
+  const orderItems = getOrderItems();
+  if (!orderItems.length) return;
 
   const waitForMenu = () => {
     const menu = document.getElementById("menu");
     if (menu && menu.querySelectorAll(".overlay").length > 0) {
-      window.orderItems.forEach((dishName) => {
+      orderItems.forEach((dishName) => {
         const overlays = document.querySelectorAll(".overlay");
         overlays.forEach((overlay) => {
           const titleEl = overlay.querySelector(".tTitle");
@@ -115,13 +123,13 @@ function applyRestaurantUpdate({
 
   if (nextRestaurantId) {
     if (previousRestaurantId && nextRestaurantId !== previousRestaurantId) {
-      window.orderItems = [];
+      setOrderItems([]);
       clearOrderItemSelections();
     }
 
     const restored = restoreOrderItems();
     if (!restored) {
-      window.orderItems = [];
+      setOrderItems([]);
       clearOrderItemSelections();
     }
 
@@ -214,10 +222,7 @@ function handleMessageTypes({
   }
 
   if (message.type === "overlaysSaved") {
-    window.__editorOriginalMenuImages = null;
-    window.__editorOverridePendingChanges = null;
-    window.__editorOverrideCurrentPage = null;
-    window.__editorAutoOpenMenuUpload = false;
+    resetEditorRouteFlags();
 
     try {
       const editorSaveApi = getEditorSaveApi();
@@ -228,12 +233,13 @@ function handleMessageTypes({
       // Save-state indicator is optional
     }
 
+    const saveReviewControl = getSaveReviewControl();
     if (
-      window.__saveReviewControl &&
-      typeof window.__saveReviewControl.isOpen === "function" &&
-      window.__saveReviewControl.isOpen()
+      saveReviewControl &&
+      typeof saveReviewControl.isOpen === "function" &&
+      saveReviewControl.isOpen()
     ) {
-      window.__saveReviewControl.close();
+      saveReviewControl.close();
     }
 
     if (message.restaurant) {
@@ -267,16 +273,17 @@ function handleMessageTypes({
         editorSaveApi.setSaveState("error");
       }
 
+      const saveReviewControl = getSaveReviewControl();
       const hasSaveReview =
-        window.__saveReviewControl &&
-        typeof window.__saveReviewControl.isOpen === "function" &&
-        window.__saveReviewControl.isOpen();
+        saveReviewControl &&
+        typeof saveReviewControl.isOpen === "function" &&
+        saveReviewControl.isOpen();
 
       if (
-        window.__saveReviewControl &&
-        typeof window.__saveReviewControl.setError === "function"
+        saveReviewControl &&
+        typeof saveReviewControl.setError === "function"
       ) {
-        window.__saveReviewControl.setError(
+        saveReviewControl.setError(
           "Save failed. Please review and try again.",
         );
       }
@@ -408,7 +415,7 @@ export function createRestaurantMessageHandler(options = {}) {
       state.user = m.user;
       applyDefaultUserName();
       if (state.user?.loggedIn) {
-        initDinerNotifications({ user: state.user, client: window.supabaseClient });
+        initDinerNotifications({ user: state.user, client: getSupabaseClient() });
       }
     }
 

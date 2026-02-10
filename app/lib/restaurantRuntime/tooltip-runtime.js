@@ -1,3 +1,9 @@
+import {
+  getLovedDishesSet as getSessionLovedDishesSet,
+  getOrderItems as getSessionOrderItems,
+  getSupabaseClient as getSessionSupabaseClient,
+} from "./runtimeSessionState.js";
+
 export function createTooltipRuntime(deps = {}) {
   const pageTip = deps.pageTip || null;
   const state = deps.state || {};
@@ -32,15 +38,17 @@ export function createTooltipRuntime(deps = {}) {
       ? deps.setOverlayPulseColor
       : () => {};
   const getOrderItems =
-    typeof deps.getOrderItems === "function" ? deps.getOrderItems : () => window.orderItems;
+    typeof deps.getOrderItems === "function"
+      ? deps.getOrderItems
+      : () => getSessionOrderItems();
   const getLovedDishesSet =
     typeof deps.getLovedDishesSet === "function"
       ? deps.getLovedDishesSet
-      : () => window.lovedDishesSet;
+      : () => getSessionLovedDishesSet();
   const getSupabaseClient =
     typeof deps.getSupabaseClient === "function"
       ? deps.getSupabaseClient
-      : () => window.supabaseClient;
+      : () => getSessionSupabaseClient();
 
   let tipInteracted = false;
   let tipPinned = false;

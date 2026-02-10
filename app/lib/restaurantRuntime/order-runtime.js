@@ -6,12 +6,36 @@ export function createOrderRuntime(deps = {}) {
   const resizeLegendToFit =
     typeof deps.resizeLegendToFit === "function" ? deps.resizeLegendToFit : () => {};
   const supabaseClient = deps.supabaseClient || null;
+  const getSupabaseClient =
+    typeof deps.getSupabaseClient === "function" ? deps.getSupabaseClient : null;
+  const getOrderItems =
+    typeof deps.getOrderItems === "function" ? deps.getOrderItems : null;
+  const setOrderItems =
+    typeof deps.setOrderItems === "function" ? deps.setOrderItems : null;
+  const getOrderItemSelections =
+    typeof deps.getOrderItemSelections === "function"
+      ? deps.getOrderItemSelections
+      : null;
+  const setOpenOrderConfirmDrawer =
+    typeof deps.setOpenOrderConfirmDrawer === "function"
+      ? deps.setOpenOrderConfirmDrawer
+      : null;
+  const setOverlayPulseColor =
+    typeof deps.setOverlayPulseColor === "function"
+      ? deps.setOverlayPulseColor
+      : null;
 
   const orderFlow = initOrderFlow({
     state,
     send,
     resizeLegendToFit,
     supabaseClient,
+    getSupabaseClient,
+    getOrderItems,
+    setOrderItems,
+    getOrderItemSelections,
+    setOpenOrderConfirmDrawer,
+    setOverlayPulseColor,
   });
 
   return {

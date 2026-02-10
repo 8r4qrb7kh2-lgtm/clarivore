@@ -1,3 +1,5 @@
+import { getSupabaseClient } from "./runtimeSessionState.js";
+
 export function initFeedbackModals(deps = {}) {
   const configureModalClose =
     typeof deps.configureModalClose === "function"
@@ -73,7 +75,7 @@ export function initFeedbackModals(deps = {}) {
         }
 
         try {
-          const client = window.supabaseClient;
+          const client = getSupabaseClient();
           if (!client) throw new Error("Database connection not ready");
 
           const restaurantId =
@@ -226,7 +228,8 @@ export function initFeedbackModals(deps = {}) {
         form.querySelector('button[type="submit"]').disabled = true;
 
         try {
-          const client = window.supabaseClient;
+          const client = getSupabaseClient();
+          if (!client) throw new Error("Database connection not ready");
           const restaurantId = state.restaurant?._id || state.restaurant?.id;
           const reportMeta = getIssueReportMeta();
 

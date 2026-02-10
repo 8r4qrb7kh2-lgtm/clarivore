@@ -1,4 +1,5 @@
 import { initIngredientPhotoAnalysis } from "../ingredientPhotoAnalysis.js";
+import { getSupabaseClient } from "./runtimeSessionState.js";
 import { initDishEditorPhotos } from "./dish-editor-photos.js";
 import { requestAiExtraction } from "./dish-editor-extraction.js";
 import { createBrandMemory } from "./dish-editor-brand-memory.js";
@@ -8,6 +9,7 @@ import {
   imageModalTemplate,
 } from "./dish-editor-template.js";
 import {
+  getCollectAllBrandItems,
   getPendingIngredientToScroll,
   setPendingIngredientToScroll,
 } from "./restaurantRuntimeBridge.js";
@@ -65,6 +67,23 @@ export function initDishEditor(deps = {}) {
     } catch (_) {
       return [];
     }
+  };
+
+  const waitForSupabaseClient = async (timeoutMs = 2000) => {
+    const directClient = getSupabaseClient();
+    if (directClient) return directClient;
+
+    await new Promise((resolve) => {
+      const start = Date.now();
+      const interval = setInterval(() => {
+        if (getSupabaseClient() || Date.now() - start >= timeoutMs) {
+          clearInterval(interval);
+          resolve();
+        }
+      }, 50);
+    });
+
+    return getSupabaseClient();
   };
 
 
@@ -133,8 +152,7 @@ export function initDishEditor(deps = {}) {
     updateAiPreview,
     aiAssistSetStatus,
     getDishNameForAi,
-    supabaseClient:
-      typeof window !== "undefined" ? window.supabaseClient : null,
+    supabaseClient: getSupabaseClient(),
     scanDecisionRequests,
     aiAssistState,
     error: console.error,
@@ -189,8 +207,7 @@ export function initDishEditor(deps = {}) {
       endpoint:
         state.aiAssistEndpoint ||
         (typeof window !== "undefined" ? window.__CLE_AI_ENDPOINT__ : null),
-      supabaseClient:
-        typeof window !== "undefined" ? window.supabaseClient : null,
+      supabaseClient: getSupabaseClient(),
       log: debugLog,
       warn: debugWarn,
       error: console.error,
@@ -2829,11 +2846,12 @@ export function initDishEditor(deps = {}) {
     if (hasExistingData) {
       // Restore appeal states from database before rendering
       const restaurantId = state.restaurant?._id || state.restaurant?.id || null;
-      if (restaurantId && window.supabaseClient) {
+      const client = getSupabaseClient();
+      if (restaurantId && client) {
         try {
           // Load appeals for this specific dish (scoped by restaurant_id AND dish_name)
           // Include review_status, review_notes, and reviewed_at to show appeal review information
-          let appealsQuery = window.supabaseClient
+          let appealsQuery = client
             .from("ingredient_scan_appeals")
             .select(
               "ingredient_name, ingredient_row_index, review_status, review_notes, reviewed_at, dish_name",
@@ -3327,15 +3345,14 @@ export function initDishEditor(deps = {}) {
       if (onProgress)
         onProgress(30, "Searching for products...", "Querying product database");
 
-      const response = await window.supabaseClient.functions.invoke(
-        "ai-brand-search",
-        {
-          body: {
-            ingredientName,
-            brandQuery,
-          },
+      const client = getSupabaseClient();
+      if (!client) throw new Error("Supabase client is unavailable");
+      const response = await client.functions.invoke("ai-brand-search", {
+        body: {
+          ingredientName,
+          brandQuery,
         },
-      );
+      });
 
       if (response.error) {
         console.error("AI brand search error:", response.error);
@@ -3636,7 +3653,7 @@ export function initDishEditor(deps = {}) {
     const getBrandItems =
       typeof collectAllBrandItems === "function"
         ? collectAllBrandItems
-        : window.collectAllBrandItems || window.collectAiBrandItems || null;
+        : getCollectAllBrandItems();
     const brandItems = getBrandItems ? getBrandItems() : [];
     const sortedItems = brandItems
       .slice()
@@ -3817,14 +3834,15 @@ export function initDishEditor(deps = {}) {
 
     // Delete appeal from database
     const restaurantId = state.restaurant?._id || state.restaurant?.id || null;
-    if (restaurantId && window.supabaseClient) {
+    const client = getSupabaseClient();
+    if (restaurantId && client) {
       try {
         // Get current dish name to scope the delete to this specific dish
         const dishName = aiAssistState.context?.getCurrentName
           ? aiAssistState.context.getCurrentName()
           : "";
 
-        let deleteQuery = window.supabaseClient
+        let deleteQuery = client
           .from("ingredient_scan_appeals")
           .delete()
           .eq("restaurant_id", restaurantId)
@@ -4086,29 +4104,8 @@ export function initDishEditor(deps = {}) {
       statusDiv.style.color = "#a8b2d6";
 
       try {
-        // Wait for Supabase client to be available
-        let client = null;
-        if (window.supabaseClient) {
-          client = window.supabaseClient;
-        } else if (window.getSupabaseClient) {
-          client = await window.getSupabaseClient();
-        } else {
-          // Wait a bit for client to initialize
-          await new Promise((resolve) => {
-            const check = setInterval(() => {
-              if (window.supabaseClient) {
-                clearInterval(check);
-                client = window.supabaseClient;
-                resolve();
-              }
-            }, 50);
-            setTimeout(() => {
-              clearInterval(check);
-              resolve();
-            }, 2000);
-          });
-          if (!client) throw new Error("Supabase client not available");
-        }
+        const client = await waitForSupabaseClient();
+        if (!client) throw new Error("Supabase client not available");
 
         const restaurantId =
           state.restaurant?._id || state.restaurant?.id || null;

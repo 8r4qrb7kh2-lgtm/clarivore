@@ -1,3 +1,8 @@
+import {
+  getLovedDishesSet,
+  getSupabaseClient,
+} from "./restaurantRuntime/runtimeSessionState.js";
+
 export function prefersMobileInfo() {
   try {
     const hasCoarse =
@@ -37,16 +42,18 @@ export function createMobileInfoHelpers(deps = {}) {
       : (value) => String(value ?? "");
 
   async function toggleLoveDishInTooltip(user, restaurantId, dishName, button) {
-    if (!window.lovedDishesSet) window.lovedDishesSet = new Set();
+    const lovedDishesSet = getLovedDishesSet();
+    const supabaseClient = getSupabaseClient();
+    if (!supabaseClient) return;
     const dishKey = `${String(restaurantId)}:${dishName}`;
-    const isLoved = window.lovedDishesSet.has(dishKey);
+    const isLoved = lovedDishesSet.has(dishKey);
 
     button.disabled = true;
     const labelEl = button.querySelector('[data-role="label"]');
 
     try {
       if (isLoved) {
-        const { error } = await window.supabaseClient
+        const { error } = await supabaseClient
           .from("user_loved_dishes")
           .delete()
           .eq("user_id", user.id)
@@ -54,7 +61,7 @@ export function createMobileInfoHelpers(deps = {}) {
           .eq("dish_name", dishName);
 
         if (error) throw error;
-        window.lovedDishesSet.delete(dishKey);
+        lovedDishesSet.delete(dishKey);
         button.classList.remove("loved");
         button.setAttribute("title", "Add to favorite dishes");
         button.setAttribute("aria-label", "Add to favorites");
@@ -63,7 +70,7 @@ export function createMobileInfoHelpers(deps = {}) {
         if (img) img.src = "images/heart-icon.svg";
         if (labelEl) labelEl.textContent = "Favorite";
       } else {
-        const { error } = await window.supabaseClient
+        const { error } = await supabaseClient
           .from("user_loved_dishes")
           .upsert(
             {
@@ -75,7 +82,7 @@ export function createMobileInfoHelpers(deps = {}) {
           );
 
         if (error) throw error;
-        window.lovedDishesSet.add(dishKey);
+        lovedDishesSet.add(dishKey);
         button.classList.add("loved");
         button.setAttribute("title", "Remove from favorite dishes");
         button.setAttribute("aria-label", "Remove from favorites");

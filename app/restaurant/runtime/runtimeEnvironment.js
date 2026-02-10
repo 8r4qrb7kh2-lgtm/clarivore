@@ -1,3 +1,9 @@
+import {
+  getLovedDishesSet,
+  getOrderItemSelections,
+  getOrderItems,
+} from "../../lib/restaurantRuntime/runtimeSessionState.js";
+
 const noop = () => {};
 
 function canUseWindow() {
@@ -51,10 +57,9 @@ export function ensureRestaurantViewportZoomMeta() {
 
 export function ensureRestaurantRuntimeCollections() {
   if (!canUseWindow()) return;
-
-  window.lovedDishesSet = window.lovedDishesSet || new Set();
-  window.orderItems = window.orderItems || [];
-  window.orderItemSelections = window.orderItemSelections || new Set();
+  getLovedDishesSet();
+  getOrderItems();
+  getOrderItemSelections();
 }
 
 export function initializeRestaurantRuntimeEnvironment() {

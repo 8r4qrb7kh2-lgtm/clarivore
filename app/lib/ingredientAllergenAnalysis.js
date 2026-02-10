@@ -1,5 +1,9 @@
-function getSupabaseClient(options = {}) {
+import { getSupabaseClient as getRuntimeSupabaseClient } from "./restaurantRuntime/runtimeSessionState.js";
+
+function resolveSupabaseClient(options = {}) {
   if (options.supabaseClient) return options.supabaseClient;
+  const runtimeClient = getRuntimeSupabaseClient();
+  if (runtimeClient) return runtimeClient;
   if (typeof window !== "undefined" && window.supabaseClient) {
     return window.supabaseClient;
   }
@@ -23,7 +27,7 @@ export async function analyzeAllergensWithLabelCropper(
     return { success: true, data: { flags: [] } };
   }
 
-  const client = getSupabaseClient(options);
+  const client = resolveSupabaseClient(options);
   if (!client || !client.functions || typeof client.functions.invoke !== "function") {
     console.error("Supabase client not available for label analysis.");
     return { success: true, data: { flags: [] } };

@@ -1,4 +1,11 @@
 import { resolveAccountName } from "../userIdentity.js";
+import {
+  clearSaveReviewControl,
+  setEditorForceDirty,
+  setEditorOverrideMenuImages,
+  setEditorOverrideOverlays,
+  setSaveReviewControl,
+} from "./restaurantRuntimeBridge.js";
 
 export function initEditorSaveFlow(deps = {}) {
   const state = deps.state || {};
@@ -365,9 +372,7 @@ export function initEditorSaveFlow(deps = {}) {
     }
     saveReviewBackdrop = null;
     saveReviewIsSaving = false;
-    if (window.__saveReviewControl) {
-      window.__saveReviewControl = null;
-    }
+    clearSaveReviewControl();
   }
 
   function renderSaveReviewModal(reviewItems, onConfirm, onCancel) {
@@ -426,12 +431,12 @@ export function initEditorSaveFlow(deps = {}) {
       };
     });
 
-    window.__saveReviewControl = {
+    setSaveReviewControl({
       close: closeSaveReviewModal,
       setSaving: setSaveReviewSavingState,
       setError: setSaveReviewErrorState,
       isOpen: () => !!saveReviewBackdrop,
-    };
+    });
     setSaveReviewSavingState(false);
   }
 
@@ -508,13 +513,9 @@ export function initEditorSaveFlow(deps = {}) {
         }
 
         if (isMenuChange) {
-          window.__editorOverrideOverlays = JSON.parse(
-            JSON.stringify(overlays),
-          );
-          window.__editorOverrideMenuImages = JSON.parse(
-            JSON.stringify(originalMenuImages),
-          );
-          window.__editorForceDirty = true;
+          setEditorOverrideOverlays(JSON.parse(JSON.stringify(overlays)));
+          setEditorOverrideMenuImages(JSON.parse(JSON.stringify(originalMenuImages)));
+          setEditorForceDirty(true);
           closeSaveReviewModal();
           renderEditor();
           return;

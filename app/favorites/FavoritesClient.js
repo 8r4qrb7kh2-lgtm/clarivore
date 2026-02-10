@@ -13,6 +13,7 @@ import {
 } from "../lib/managerRestaurants";
 import { filterRestaurantsByVisibility } from "../lib/restaurantVisibility";
 import { supabaseClient as supabase } from "../lib/supabase";
+import { createDinerTopbarLinks } from "../lib/topbarLinks";
 
 export default function FavoritesClient() {
   const router = useRouter();
@@ -202,13 +203,7 @@ export default function FavoritesClient() {
       topbar={
         <SimpleTopbar
           brandHref="/home"
-          links={[
-            { href: "/home", label: "Home" },
-            { href: "/restaurants", label: "Restaurants" },
-            { href: "/dish-search", label: "Dish search" },
-            { href: "/help-contact", label: "Help" },
-            { href: "/account", label: "Account" },
-          ]}
+          links={createDinerTopbarLinks({ includeFavorites: false })}
         />
       }
     >

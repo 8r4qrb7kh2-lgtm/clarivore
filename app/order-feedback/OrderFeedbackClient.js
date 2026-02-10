@@ -8,6 +8,7 @@ import SimpleTopbar from "../components/SimpleTopbar";
 import { supabaseClient as supabase } from "../lib/supabase";
 import { isManagerOrOwnerUser } from "../lib/managerRestaurants";
 import { loadAllergenDietConfig } from "../lib/allergenConfig";
+import { createDinerTopbarLinks } from "../lib/topbarLinks";
 
 function getDefaultConfig() {
   const normalizeAllergen = (value) => String(value ?? "").trim();
@@ -344,13 +345,12 @@ export default function OrderFeedbackClient() {
       topbar={
         <SimpleTopbar
           brandHref="/home"
-          links={[
-            { href: "/home", label: "Home" },
-            { href: "/restaurants", label: "Restaurants" },
-            { href: "/favorites", label: "My restaurants" },
-            { href: "/manager-dashboard", label: "Dashboard", visible: isManagerOrOwner },
-            { href: "/help-contact", label: "Help" },
-          ]}
+          links={createDinerTopbarLinks({
+            includeDishSearch: false,
+            includeDashboard: true,
+            dashboardVisible: isManagerOrOwner,
+            includeAccount: false,
+          })}
           showAuthAction
           signedIn={Boolean(topbarUser)}
           onSignOut={onSignOut}
