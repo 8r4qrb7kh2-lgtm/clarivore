@@ -18,7 +18,6 @@ if (!ENABLE_CONSOLE_REPORTING && typeof console !== "undefined") {
 
 import { ORDER_STATUSES as TabletOrderStatusesConst } from "./tablet-simulation-logic.mjs";
 import { setupTopbar } from "./shared-nav.js";
-import { initIngredientSources } from "./restaurant/ingredient-sources.js";
 import { initDinerNotifications } from "./diner-notifications.js";
 import {
   analyzeBoxSizes,
@@ -35,7 +34,6 @@ import { initEditorHistory } from "./restaurant/editor-history.js";
 import { initEditorSettings } from "./restaurant/editor-settings.js";
 import { initEditorSaveFlow } from "./restaurant/editor-save.js";
 import { mountEditorShell } from "./restaurant/editor-shell-markup.js";
-import { initMobileOverlayZoom } from "./restaurant/mobile-overlay-zoom.js";
 import {
   applyRestaurantShellState,
   mountRestaurantShell,
@@ -61,33 +59,19 @@ import {
   createEditorChangeState,
   applyPendingMenuIndexRemap,
 } from "./restaurant/editor-session.js";
-import {
-  createQrPromoController,
-  deriveQrVisitFlag,
-} from "./restaurant/qr-promo.js";
 import { renderRestaurantReportPage } from "./restaurant/restaurant-report-page.js";
 import {
   fetchChangeLogEntries,
   insertChangeLogEntry,
 } from "./restaurant/change-log-service.js";
-import { createNavigationRuntime } from "./restaurant/navigation-runtime.js";
-import { createOrderRuntime } from "./restaurant/order-runtime.js";
-import {
-  createDishCompatibilityEvaluator,
-  createTooltipBodyHTML,
-} from "./restaurant/dish-compatibility-tooltip.js";
 import { normalizeRestaurantRow } from "./restaurant/restaurant-normalization.js";
-import {
-  createMobileInfoHelpers,
-  prefersMobileInfo,
-} from "./restaurant/mobile-info-helpers.js";
-import { createPageUtilsRuntime } from "./restaurant/page-utils-runtime.js";
-import { createPageOffsetRuntime } from "./restaurant/page-offset-runtime.js";
-import { createMobileInfoPanelDom } from "./restaurant/mobile-info-panel-dom.js";
+import { prefersMobileInfo } from "./restaurant/mobile-info-helpers.js";
 import { createDishEditorRuntime } from "./restaurant/dish-editor-runtime.js";
-import { createPageCoreRuntime } from "./restaurant/page-core-runtime.js";
 import { createPageUiRuntime } from "./restaurant/page-ui-runtime.js";
 import { createPageEditorHydrationRuntime } from "./restaurant/page-editor-hydration-runtime.js";
+import { createPageUiOptions } from "./restaurant/page-ui-options.js";
+import { createPageEditorHydrationOptions } from "./restaurant/page-editor-hydration-options.js";
+import { createPageServicesRuntime } from "./restaurant/page-services-runtime.js";
 import {
   fmtDate,
   fmtDateTime,
@@ -240,10 +224,22 @@ let resizeLegendToFit = () => {};
 let updateRootOffset = () => {};
 let setRootOffsetPadding = () => {};
 let send = () => {};
+let urlQR = false;
+let shouldShowQrPromo = () => false;
+let cancelQrPromoTimer = () => {};
+let queueQrPromoTimer = () => {};
+let closeQrPromo = () => {};
+let orderRuntime = { orderFlow: {} };
 let esc = (value) => String(value ?? "");
 let norm = (value) => String(value ?? "");
 let cap = (value) => String(value ?? "");
 let formatAllergenLabel = (value) => String(value ?? "");
+let normalizeDietLabel = (value) => String(value ?? "");
+let mobileCompactBodyHTML = () => "";
+let toggleLoveDishInTooltip = () => {};
+let computeStatus = () => "unknown";
+let hasCrossContamination = () => false;
+let tooltipBodyHTML = () => "";
 let setOverlayPulseColor = () => {};
 let hidePageLoader = () => {};
 let div = () => document.createElement("div");
@@ -265,63 +261,66 @@ function adjustMobileInfoPanelForZoom() {
   // Keeping function for compatibility
 }
 
-const pageUtilsRuntime = createPageUtilsRuntime({ state });
-getMenuState = pageUtilsRuntime.getMenuState;
-getIssueReportMeta = pageUtilsRuntime.getIssueReportMeta;
-resizeLegendToFit = pageUtilsRuntime.resizeLegendToFit;
-pageUtilsRuntime.bindLegendResizeListener();
-const pageOffsetRuntime = createPageOffsetRuntime();
-updateRootOffset = pageOffsetRuntime.updateRootOffset;
-setRootOffsetPadding = pageOffsetRuntime.setRootOffsetPadding;
-const pageCoreRuntime = createPageCoreRuntime({
-  formatAllergenLabel: allergenConfig.formatAllergenLabel,
+const pageServicesRuntime = createPageServicesRuntime({
+  state,
+  slug,
+  allergenConfig,
+  normalizeRestaurant,
+  insertChangeLogEntry,
+  fetchChangeLogEntries,
+  adjustMobileInfoPanelForZoom,
   getTipPinned: () => getTipPinned(),
-});
-esc = pageCoreRuntime.esc;
-norm = pageCoreRuntime.norm;
-cap = pageCoreRuntime.cap;
-formatAllergenLabel = pageCoreRuntime.formatAllergenLabel;
-setOverlayPulseColor = pageCoreRuntime.setOverlayPulseColor;
-hidePageLoader = pageCoreRuntime.hidePageLoader;
-div = pageCoreRuntime.div;
-configureModalClose = pageCoreRuntime.configureModalClose;
-isDishInfoPopupOpen = pageCoreRuntime.isDishInfoPopupOpen;
-window.setOverlayPulseColor = setOverlayPulseColor;
-const mobileInfoPanelDomRuntime = createMobileInfoPanelDom({
   getMobileInfoPanel: () => mobileInfoPanel,
   setMobileInfoPanel: (panel) => {
     mobileInfoPanel = panel;
   },
-  adjustMobileInfoPanelForZoom,
+  onZoomChange: ({ isZoomed, item }) => {
+    isOverlayZoomed = isZoomed;
+    zoomedOverlayItem = item || null;
+  },
+  normalizeAllergen,
+  getDietAllergenConflicts,
+  ALLERGENS,
+  DIETS,
+  ALLERGEN_EMOJI,
+  DIET_EMOJI,
+  supabaseClient: window.supabaseClient,
 });
-ensureMobileInfoPanel = mobileInfoPanelDomRuntime.ensureMobileInfoPanel;
-const urlQR = deriveQrVisitFlag();
-const {
+({
+  getMenuState,
+  getIssueReportMeta,
+  resizeLegendToFit,
+  updateRootOffset,
+  setRootOffsetPadding,
+  esc,
+  norm,
+  cap,
+  formatAllergenLabel,
+  setOverlayPulseColor,
+  hidePageLoader,
+  div,
+  configureModalClose,
+  isDishInfoPopupOpen,
+  ensureMobileInfoPanel,
+  urlQR,
   shouldShowQrPromo,
   cancelQrPromoTimer,
   queueQrPromoTimer,
   closeQrPromo,
-} = createQrPromoController({
-  state,
-  isDishInfoPopupOpen,
-});
-
-const navigationRuntime = createNavigationRuntime({
-  state,
-  slug,
-  normalizeRestaurant,
-  insertChangeLogEntry,
-  fetchChangeLogEntries,
-  closeQrPromo,
-});
-send = navigationRuntime.send;
-
-const orderRuntime = createOrderRuntime({
-  state,
   send,
-  resizeLegendToFit,
-  supabaseClient: window.supabaseClient,
-});
+  orderRuntime,
+  normalizeDietLabel,
+  mobileCompactBodyHTML,
+  toggleLoveDishInTooltip,
+  computeStatus,
+  hasCrossContamination,
+  zoomToOverlay,
+  zoomOutOverlay,
+  tooltipBodyHTML,
+  renderGroupedSourcesHtml,
+} = pageServicesRuntime);
+window.setOverlayPulseColor = setOverlayPulseColor;
+
 const orderFlow = orderRuntime.orderFlow;
 const {
   applyDefaultUserName,
@@ -353,62 +352,6 @@ const {
   updateOrderConfirmAuthState,
   initOrderSidebar,
 } = orderRuntime;
-navigationRuntime.bindQrPromoControls();
-
-const { renderGroupedSourcesHtml } = initIngredientSources({ esc });
-const normalizeDietLabel =
-  typeof allergenConfig.normalizeDietLabel === "function"
-    ? allergenConfig.normalizeDietLabel
-    : (diet) => {
-      if (!diet) return "";
-      const raw = diet.toString().trim();
-      if (!DIETS.length) return raw;
-      return DIETS.includes(raw) ? raw : "";
-    };
-const { mobileCompactBodyHTML, toggleLoveDishInTooltip } =
-  createMobileInfoHelpers({
-    normalizeAllergen,
-    normalizeDietLabel,
-    formatAllergenLabel,
-    ALLERGEN_EMOJI,
-    DIET_EMOJI,
-    esc,
-  });
-const { computeStatus, hasCrossContamination } =
-  createDishCompatibilityEvaluator({
-    normalizeAllergen,
-    normalizeDietLabel,
-    getDietAllergenConflicts,
-  });
-const mobileZoomApi = initMobileOverlayZoom({
-  state,
-  esc,
-  getMenuState,
-  setOverlayPulseColor,
-  mobileCompactBodyHTML,
-  ensureAddToOrderConfirmContainer,
-  hideAddToOrderConfirmation,
-  showAddToOrderConfirmation,
-  addDishToOrder,
-  getDishCompatibilityDetails,
-  toggleLoveDishInTooltip,
-  onZoomChange: ({ isZoomed, item }) => {
-    isOverlayZoomed = isZoomed;
-    zoomedOverlayItem = item || null;
-  },
-});
-zoomToOverlay = mobileZoomApi.zoomToOverlay;
-zoomOutOverlay = mobileZoomApi.zoomOutOverlay;
-const tooltipBodyHTML = createTooltipBodyHTML({
-  normalizeAllergen,
-  normalizeDietLabel,
-  getDietAllergenConflicts,
-  ALLERGEN_EMOJI,
-  DIET_EMOJI,
-  formatAllergenLabel,
-  esc,
-  prefersMobileInfo: () => prefersMobileInfo(),
-});
 
 const dishEditorRuntime = createDishEditorRuntime({
   esc,
@@ -473,7 +416,7 @@ function normalizeRestaurant(row) {
   });
 }
 
-const pageUiRuntime = createPageUiRuntime({
+const pageUiOptions = createPageUiOptions({
   state,
   slug,
   urlQR,
@@ -488,81 +431,63 @@ const pageUiRuntime = createPageUiRuntime({
   configureModalClose,
   getIssueReportMeta,
   supabaseKey: typeof window !== "undefined" ? window.SUPABASE_KEY : "",
-  overlayOptions: {
-    state,
-    esc,
-    prefersMobileInfo,
-    mobileCompactBodyHTML,
-    toggleLoveDishInTooltip,
-    ensureAddToOrderConfirmContainer,
-    hideAddToOrderConfirmation,
-    showAddToOrderConfirmation,
-    addDishToOrder,
-    getDishCompatibilityDetails,
-    ensureMobileInfoPanel,
-    getMobileInfoPanel: () => mobileInfoPanel,
-    getCurrentMobileInfoItem: () => currentMobileInfoItem,
-    setCurrentMobileInfoItem: (item) => {
-      currentMobileInfoItem = item;
-      window.currentMobileInfoItem = item;
-    },
-    getIsOverlayZoomed: () => isOverlayZoomed,
-    adjustMobileInfoPanelForZoom,
-    setOverlayPulseColor,
-    normalizeAllergen,
-    ALLERGEN_EMOJI,
-    DIET_EMOJI,
-    formatAllergenLabel,
-    getMenuState,
+  esc,
+  prefersMobileInfo,
+  mobileCompactBodyHTML,
+  toggleLoveDishInTooltip,
+  ensureAddToOrderConfirmContainer,
+  hideAddToOrderConfirmation,
+  showAddToOrderConfirmation,
+  addDishToOrder,
+  getDishCompatibilityDetails,
+  ensureMobileInfoPanel,
+  getMobileInfoPanel: () => mobileInfoPanel,
+  getCurrentMobileInfoItem: () => currentMobileInfoItem,
+  setCurrentMobileInfoItem: (item) => {
+    currentMobileInfoItem = item;
+    window.currentMobileInfoItem = item;
   },
-  restaurantViewOptions: {
-    state,
-    div,
-    esc,
-    send,
-    getWeeksAgoInfo,
-    normalizeAllergen,
-    normalizeDietLabel,
-    formatAllergenLabel,
-    ALLERGENS,
-    DIETS,
-    ALLERGEN_EMOJI,
-    DIET_EMOJI,
-    prefersMobileInfo,
-    getCurrentMobileInfoItem: () => currentMobileInfoItem,
-    updateOrderSidebar,
-    openOrderSidebar,
-    getMenuState,
-    supabaseClient: window.supabaseClient,
-    ensureMobileInfoPanel,
-    getIsOverlayZoomed: () => isOverlayZoomed,
-    getZoomedOverlayItem: () => zoomedOverlayItem,
-    zoomOutOverlay,
-    zoomToOverlay,
-    getMobileInfoPanel: () => mobileInfoPanel,
-    clearCurrentMobileInfoItem: () => {
-      currentMobileInfoItem = null;
-    },
-    setOverlayPulseColor,
-    hasCrossContamination,
-    computeStatus,
-    orderFlow,
-    TABLET_ORDER_STATUSES,
-    setRootOffsetPadding,
-    mountRestaurantShell,
-    applyRestaurantShellState,
-    fmtDate,
-    initGuestFilterControls,
-    showRestaurantMenuSurface,
-    resizeLegendToFit,
-    urlQR,
-    shouldShowQrPromo,
-    queueQrPromoTimer,
-    cancelQrPromoTimer,
-    bindSavedPreferenceButtons,
-    bindRestaurantActionButtons,
+  getIsOverlayZoomed: () => isOverlayZoomed,
+  adjustMobileInfoPanelForZoom,
+  setOverlayPulseColor,
+  normalizeAllergen,
+  ALLERGEN_EMOJI,
+  DIET_EMOJI,
+  formatAllergenLabel,
+  getMenuState,
+  div,
+  send,
+  getWeeksAgoInfo,
+  normalizeDietLabel,
+  ALLERGENS,
+  DIETS,
+  updateOrderSidebar,
+  openOrderSidebar,
+  supabaseClient: window.supabaseClient,
+  getZoomedOverlayItem: () => zoomedOverlayItem,
+  zoomOutOverlay,
+  zoomToOverlay,
+  clearCurrentMobileInfoItem: () => {
+    currentMobileInfoItem = null;
   },
+  hasCrossContamination,
+  computeStatus,
+  orderFlow,
+  TABLET_ORDER_STATUSES,
+  setRootOffsetPadding,
+  mountRestaurantShell,
+  applyRestaurantShellState,
+  fmtDate,
+  initGuestFilterControls,
+  showRestaurantMenuSurface,
+  resizeLegendToFit,
+  shouldShowQrPromo,
+  queueQrPromoTimer,
+  cancelQrPromoTimer,
+  bindSavedPreferenceButtons,
+  bindRestaurantActionButtons,
 });
+const pageUiRuntime = createPageUiRuntime(pageUiOptions);
 openFeedbackModal = pageUiRuntime.openFeedbackModal || openFeedbackModal;
 openReportIssueModal =
   pageUiRuntime.openReportIssueModal || openReportIssueModal;
@@ -603,8 +528,8 @@ const {
   pageRouterRuntime,
   unsavedGuardRuntime,
   hydrationRuntime,
-} = createPageEditorHydrationRuntime({
-  editorOptions: {
+} = createPageEditorHydrationRuntime(
+  createPageEditorHydrationOptions({
     state,
     renderTopbar,
     mountEditorShell,
@@ -685,19 +610,12 @@ const {
     renderApp: () => {
       render();
     },
-  },
-  pageRouterOptions: {
-    state,
     setOrderSidebarVisibility,
     renderCardsPage,
     renderRestaurant,
     renderRestaurantReportPage,
-    renderTopbar,
     mountReportShell,
-    send,
     hidePageLoader,
-  },
-  unsavedGuardOptions: {
     collectAiTableData,
     getAiAssistBackdrop,
     getAiAssistState: () => aiAssistState,
@@ -707,19 +625,13 @@ const {
       window.editorDirty = false;
       if (aiAssistState) aiAssistState.savedToDish = true;
     },
-  },
-  hydrationOptions: {
-    state,
     urlQR,
     applyDefaultUserName,
     initDinerNotifications,
     closeQrPromo,
     hideQrBanner,
-    normalizeAllergen,
-    normalizeDietLabel,
     rerenderOrderConfirmDetails,
     normalizeRestaurant,
-    orderFlow,
     stopOrderRefresh,
     persistTabletStateSnapshot,
     renderOrderSidebarStatus,
@@ -734,7 +646,6 @@ const {
     getEditorSaveApi: () => editorSaveApi,
     checkForActiveOrders,
     updateLastConfirmedText,
-    renderTopbar,
     maybeInitHowItWorksTour,
     updateFullScreenAllergySummary,
     openChangeLog: () => openChangeLog(),
@@ -743,8 +654,8 @@ const {
     checkUserAuth,
     restoreOrderFormState,
     updateOrderConfirmAuthState,
-  },
-});
+  }),
+);
 renderEditor = editorRuntime.renderEditor;
 render = pageRouterRuntime.render;
 ({
