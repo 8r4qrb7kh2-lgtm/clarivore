@@ -398,6 +398,18 @@
   - refactored delayed overlay restore paths to use the shared helper in:
     - `app/lib/restaurantRuntime/order-flow.js`
     - `app/lib/restaurantMessageHandler.js`
+- Decomposed `order-flow` sidebar UI/controller responsibilities into dedicated runtime modules:
+  - added shared sidebar UI runtime service:
+    - `app/lib/restaurantRuntime/order-sidebar-ui-runtime.js`
+  - added shared sidebar pending-order rendering service:
+    - `app/lib/restaurantRuntime/order-sidebar-pending-runtime.js`
+  - refactored `app/lib/restaurantRuntime/order-flow.js` to delegate sidebar behavior (visibility, badge, drag/height interaction, open/minimize/toggle, confirm-button state, and pending-order DOM rendering) through these services instead of inlining all sidebar DOM controller logic.
+- Decomposed additional `order-flow` monolith responsibilities into reusable runtime services:
+  - added shared confirmation tablet runtime service:
+    - `app/lib/restaurantRuntime/order-confirm-tablet-runtime.js`
+  - added shared notice update/banner runtime service:
+    - `app/lib/restaurantRuntime/order-notice-updates-runtime.js`
+  - refactored `app/lib/restaurantRuntime/order-flow.js` to delegate server/kitchen confirmation panel rendering + action handlers and external notice update banner orchestration through these services.
 
 ## Current migration inventory
 - Legacy static HTML compatibility pages still present in `public/`: 15 (all are redirect shells; no legacy page UI/runtime logic)

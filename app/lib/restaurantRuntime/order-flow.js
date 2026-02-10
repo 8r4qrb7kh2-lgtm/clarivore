@@ -27,6 +27,10 @@ import {
 import { applyOverlayPulseColor as applyOverlayPulseColorFromBridge } from "./restaurantRuntimeBridge.js";
 import { markOverlayDishesSelected } from "./overlay-dom.js";
 import { waitForMenuOverlays } from "./menu-overlay-ready.js";
+import { createOrderSidebarUiRuntime } from "./order-sidebar-ui-runtime.js";
+import { createOrderSidebarPendingRuntime } from "./order-sidebar-pending-runtime.js";
+import { createOrderConfirmTabletRuntime } from "./order-confirm-tablet-runtime.js";
+import { createOrderNoticeUpdatesRuntime } from "./order-notice-updates-runtime.js";
 
 const esc = (s) =>
   (s ?? "").toString().replace(
@@ -252,9 +256,6 @@ export function initOrderFlow({
   };
   const ORDER_SIDEBAR_DISMISSED_KEY = "orderSidebarDismissedOrders";
   const ORDER_SIDEBAR_OPEN_AFTER_SUBMIT_KEY = "orderSidebarOpenAfterSubmit";
-  let noticeBannerContainer = null;
-  let noticeUpdatesPrimed = false;
-  const noticeUpdateCache = new Map();
 
   let tabletSimState = createTabletInitialState();
   let tabletSimOrderId = null;
@@ -376,6 +377,85 @@ export function initOrderFlow({
   let orderSidebarAutoMinimizedOrderId = null;
   let orderSidebarForceOpenOrderId = null;
   let rescindConfirmOrderId = null;
+  let orderConfirmTabletRuntime = null;
+  let orderNoticeUpdatesRuntime = null;
+  const orderSidebarUiRuntime = createOrderSidebarUiRuntime({
+    state,
+    orderSidebarItems,
+    orderSidebarActions,
+    confirmOrderBtn,
+    confirmOrderHint,
+    orderConfirmDrawer,
+    hasOrderItems: () => hasOrderItems(),
+    getSelectedOrderItems: () => getSelectedOrderItems(),
+    getSidebarOrders: () => getSidebarOrders(),
+    getActiveOrderCount: () => getActiveOrderCount(),
+    getViewportHeight,
+    onRenderOrderConfirmSummary: () => {
+      renderOrderConfirmSummary();
+    },
+    onSidebarUserToggle: () => {
+      orderSidebarUserToggled = true;
+    },
+  });
+  const orderSidebarPendingRuntime = createOrderSidebarPendingRuntime({
+    orderSidebarItems,
+    ORDER_STATUS_DESCRIPTORS,
+    TABLET_ORDER_STATUSES,
+    esc,
+    escapeAttribute,
+    escapeConfirmationHtml,
+    formatOrderListLabel,
+    getBadgeClassForTone,
+    formatTabletTimestamp,
+    getKitchenQuestion,
+    shouldShowClearOrderButton,
+    getRescindConfirmOrderId: () => rescindConfirmOrderId,
+    getOrderItems: () => getOrderItems(),
+    isOrderItemSelected: (dishName) => isOrderItemSelected(dishName),
+    syncOrderItemSelections: () => syncOrderItemSelections(),
+    updateConfirmButtonVisibility: () => updateConfirmButtonVisibility(),
+    removeDishFromOrder: (dishName) => removeDishFromOrder(dishName),
+    bindOrderItemSelectButtons: (container) => bindOrderItemSelectButtons(container),
+    handleRescindNotice,
+    handleRescindConfirm,
+    handleRescindCancel,
+    handleClearOrderFromSidebar,
+    handleKitchenQuestionResponse,
+  });
+  orderConfirmTabletRuntime = createOrderConfirmTabletRuntime({
+    orderConfirmServerPanel,
+    orderConfirmKitchenPanel,
+    ORDER_STATUS_DESCRIPTORS,
+    TABLET_ORDER_STATUSES,
+    serverPanelState,
+    getTabletSimState: () => tabletSimState,
+    ensureOrderServerMetadata,
+    getBadgeClassForTone,
+    formatOrderListLabel,
+    formatTabletTimestamp,
+    getTabletOrderById,
+    persistTabletStateAndRender,
+    tabletServerApprove,
+    tabletServerDispatchToKitchen,
+    tabletServerReject,
+    tabletKitchenAcknowledge,
+    esc,
+    escapeAttribute,
+    escapeConfirmationHtml,
+    showAlert: (message) => {
+      if (typeof alert === "function") {
+        alert(message);
+      }
+    },
+  });
+  orderNoticeUpdatesRuntime = createOrderNoticeUpdatesRuntime({
+    state,
+    ORDER_UPDATE_MESSAGES,
+    esc,
+    onOpenOrderSidebar: () => openOrderSidebar(),
+    onRenderOrderSidebarStatus: (order) => renderOrderSidebarStatus(order),
+  });
 
   initializeOrderConfirmDrawer();
   setOpenOrderConfirmDrawer(openOrderConfirmDrawer);
@@ -957,207 +1037,8 @@ export function initOrderFlow({
       .sort((a, b) => getOrderSortValue(b) - getOrderSortValue(a));
   }
 
-  function ensureNoticeBannerContainer() {
-    if (noticeBannerContainer) return noticeBannerContainer;
-    const container = document.createElement("div");
-    container.className = "noticeUpdateBannerStack";
-    document.body.appendChild(container);
-    noticeBannerContainer = container;
-    return container;
-  }
-
-  function getLatestExternalUpdate(order) {
-    const history = Array.isArray(order?.history) ? order.history : [];
-    for (let i = history.length - 1; i >= 0; i -= 1) {
-      const entry = history[i];
-      if (!entry) continue;
-      if (entry.actor && entry.actor !== "Diner") {
-        return {
-          actor: entry.actor || "Update",
-          message: entry.message || "",
-          at: entry.at || "",
-        };
-      }
-    }
-    return null;
-  }
-
-  function buildNoticeUpdateSnapshot(order) {
-    if (!order || !order.id) return null;
-    const latestExternal = getLatestExternalUpdate(order);
-    return {
-      status: order.status || "",
-      externalAt: latestExternal?.at || "",
-      latestExternal,
-    };
-  }
-
-  function getNoticeUpdateMessage(order, latestExternal) {
-    if (latestExternal?.message) return latestExternal.message;
-    if (order?.status && ORDER_UPDATE_MESSAGES[order.status]) {
-      return ORDER_UPDATE_MESSAGES[order.status];
-    }
-    return "Your notice was updated.";
-  }
-
-  function getNoticeDishTitle(order) {
-    const items = Array.isArray(order?.items) ? order.items : [];
-    const dishNames = items
-      .map((item) => (item ?? "").toString().trim())
-      .filter(Boolean);
-    if (!dishNames.length) return "your dish";
-    if (dishNames.length === 1) return dishNames[0];
-    return `${dishNames[0]} + ${dishNames.length - 1} more`;
-  }
-
-  function attachNoticeBannerInteractions(banner, { onDismiss, onTap } = {}) {
-    let startY = null;
-    let deltaY = 0;
-    let pointerId = null;
-    let moved = false;
-    let suppressClick = false;
-
-    const reset = () => {
-      startY = null;
-      deltaY = 0;
-      pointerId = null;
-      moved = false;
-      banner.style.transition = "";
-      banner.style.transform = "";
-      banner.style.opacity = "";
-    };
-
-    const maybeSuppressClick = () => {
-      suppressClick = true;
-      setTimeout(() => {
-        suppressClick = false;
-      }, 50);
-    };
-
-    banner.addEventListener("pointerdown", (event) => {
-      pointerId = event.pointerId;
-      startY = event.clientY;
-      moved = false;
-      banner.setPointerCapture?.(pointerId);
-      banner.style.transition = "none";
-    });
-
-    banner.addEventListener("pointermove", (event) => {
-      if (pointerId === null || event.pointerId !== pointerId || startY === null)
-        return;
-      const nextDelta = event.clientY - startY;
-      if (nextDelta > 0) return;
-      deltaY = nextDelta;
-      if (Math.abs(deltaY) > 6) moved = true;
-      banner.style.transform = `translateY(${deltaY}px)`;
-      const opacity = Math.max(0.2, 1 + deltaY / 80);
-      banner.style.opacity = `${opacity}`;
-    });
-
-    banner.addEventListener("pointerup", () => {
-      if (deltaY < -40) {
-        maybeSuppressClick();
-        if (typeof onDismiss === "function") onDismiss();
-        reset();
-        return;
-      }
-      if (!moved && typeof onTap === "function") {
-        onTap();
-      }
-      reset();
-    });
-
-    banner.addEventListener("pointercancel", reset);
-
-    banner.addEventListener("click", (event) => {
-      if (suppressClick) {
-        event.preventDefault();
-        return;
-      }
-      if (typeof onTap === "function") onTap();
-    });
-  }
-
-  function dismissNoticeBanner(banner) {
-    if (!banner) return;
-    banner.classList.add("is-dismissed");
-    setTimeout(() => {
-      banner.remove();
-    }, 240);
-  }
-
-  function showNoticeUpdateBanner(order, latestExternal) {
-    const container = ensureNoticeBannerContainer();
-    const banner = document.createElement("div");
-    const dishTitle = getNoticeDishTitle(order);
-    const title = dishTitle ? `Notice update for ${dishTitle}` : "Notice update";
-    const message = getNoticeUpdateMessage(order, latestExternal);
-    banner.className = "noticeUpdateBanner";
-    banner.innerHTML = `
-      <div class="noticeUpdateBannerTitle">${esc(title)}</div>
-      <div class="noticeUpdateBannerBody">${esc(message)}</div>
-    `;
-    container.appendChild(banner);
-    requestAnimationFrame(() => {
-      banner.classList.add("is-visible");
-    });
-
-    const handleDismiss = () => dismissNoticeBanner(banner);
-    attachNoticeBannerInteractions(banner, {
-      onDismiss: handleDismiss,
-      onTap: () => {
-        openOrderSidebar();
-        renderOrderSidebarStatus(order);
-      },
-    });
-
-    setTimeout(() => {
-      dismissNoticeBanner(banner);
-    }, 9000);
-  }
-
   function handleNoticeUpdates(orders) {
-    const currentUserId = state.user?.id || null;
-    const trackedOrders = Array.isArray(orders)
-      ? orders.filter((order) => {
-          if (!order || !order.id) return false;
-          if (currentUserId && order.userId && order.userId !== currentUserId) {
-            return false;
-          }
-          return true;
-        })
-      : [];
-
-    if (!noticeUpdatesPrimed) {
-      trackedOrders.forEach((order) => {
-        const snapshot = buildNoticeUpdateSnapshot(order);
-        if (snapshot) {
-          noticeUpdateCache.set(order.id, snapshot);
-        }
-      });
-      noticeUpdatesPrimed = true;
-      return;
-    }
-
-    const activeIds = new Set();
-    trackedOrders.forEach((order) => {
-      activeIds.add(order.id);
-      const snapshot = buildNoticeUpdateSnapshot(order);
-      if (!snapshot) return;
-      const previous = noticeUpdateCache.get(order.id);
-      if (previous && snapshot.externalAt && snapshot.externalAt !== previous.externalAt) {
-        if (snapshot.latestExternal?.actor && snapshot.latestExternal.actor !== "Diner") {
-          showNoticeUpdateBanner(order, snapshot.latestExternal);
-        }
-      }
-      noticeUpdateCache.set(order.id, snapshot);
-    });
-
-    for (const key of noticeUpdateCache.keys()) {
-      if (!activeIds.has(key)) {
-        noticeUpdateCache.delete(key);
-      }
-    }
+    orderNoticeUpdatesRuntime?.handleNoticeUpdates(orders);
   }
 
   function renderOrderSidebarStatus(order) {
@@ -1217,184 +1098,8 @@ export function initOrderFlow({
     setOrderSidebarVisibility();
   }
 
-  function getOrderTimestamps(order) {
-    const history = Array.isArray(order.history) ? order.history : [];
-    const submittedEntry = history.find(
-      (e) =>
-        e.message &&
-        (e.message.includes("Submitted") || e.message.includes("submitted")),
-    );
-    const submittedTime =
-      submittedEntry?.at || order.updatedAt || order.createdAt;
-    const updates = history
-      .filter((e) => e.at && e.at !== submittedTime)
-      .map((e) => ({
-        actor: e.actor || "System",
-        message: e.message || "Status update",
-        at: e.at,
-      }));
-    return { submittedTime, updates };
-  }
-
-  function buildOrderSidebarPendingOrderHtml(order) {
-    const submittedItems =
-      Array.isArray(order.items) && order.items.length ? order.items : [];
-    const dishName = submittedItems.length
-      ? submittedItems.join(", ")
-      : "No dishes recorded";
-    const allergens =
-      Array.isArray(order.allergies) && order.allergies.length
-        ? order.allergies.map((a) => formatOrderListLabel(a)).join(", ")
-        : "None";
-    const diets =
-      Array.isArray(order.diets) && order.diets.length
-        ? order.diets.map((d) => formatOrderListLabel(d)).join(", ")
-        : "None";
-    const metaParts = [];
-    if (order.tableNumber) {
-      metaParts.push(`Table ${esc(order.tableNumber)}`);
-    }
-    if (order.serverCode) {
-      metaParts.push(`Code ${esc(order.serverCode)}`);
-    }
-    const metaLine = metaParts.length
-      ? metaParts.join(" • ")
-      : "Awaiting table assignment";
-    const descriptor = ORDER_STATUS_DESCRIPTORS[order.status] || {
-      label: order.status,
-      tone: "idle",
-    };
-    const badgeClass = getBadgeClassForTone(descriptor?.tone || "idle");
-    const { submittedTime, updates } = getOrderTimestamps(order);
-    const submittedTimeStr = submittedTime
-      ? formatTabletTimestamp(submittedTime)
-      : "";
-    const nonDinerUpdates = updates.filter((u) => u.actor !== "Diner");
-    const updatesHtml =
-      nonDinerUpdates.length > 0
-        ? `
-  <div class="orderSidebarTimestamps">
-    ${nonDinerUpdates.map((u) => `<div class="orderSidebarTimestamp"><span class="orderSidebarTimestampActor">${esc(u.actor)}:</span> ${esc(u.message)} <span class="orderSidebarTimestampTime">${formatTabletTimestamp(u.at)}</span></div>`).join("")}
-  </div>
-    `
-        : "";
-    const kitchenQuestion = getKitchenQuestion(order);
-    const hasKitchenQuestion =
-      kitchenQuestion && !kitchenQuestion.response;
-    const kitchenQuestionHtml = hasKitchenQuestion
-      ? `
-  <div class="orderSidebarKitchenQuestion">
-    <div class="orderSidebarKitchenQuestionLabel">Kitchen Question</div>
-    <div class="orderSidebarKitchenQuestionText">${esc(kitchenQuestion.text)}</div>
-    <div class="orderSidebarKitchenQuestionActions">
-      <button type="button" class="orderSidebarQuestionBtn orderSidebarQuestionYes" data-order-id="${escapeAttribute(order.id)}" data-response="yes">Yes</button>
-      <button type="button" class="orderSidebarQuestionBtn orderSidebarQuestionNo" data-order-id="${escapeAttribute(order.id)}" data-response="no">No</button>
-    </div>
-  </div>
-    `
-      : "";
-    const showClearBtn = shouldShowClearOrderButton(order);
-    const showRescindConfirm =
-      !showClearBtn && rescindConfirmOrderId === order.id;
-    const actionBtnHtml = showClearBtn
-      ? `<button type="button" class="orderSidebarClearBtn" data-order-id="${escapeAttribute(order.id)}">Clear from dashboard</button>`
-      : showRescindConfirm
-        ? `
-    <div class="orderSidebarRescindConfirm">
-      <div class="orderSidebarRescindPrompt">Rescind this notice? This will cancel the allergy notice submission.</div>
-      <div class="orderSidebarRescindActions">
-        <button type="button" class="orderSidebarRescindConfirmBtn" data-order-id="${escapeAttribute(order.id)}">Yes, rescind</button>
-        <button type="button" class="orderSidebarRescindCancelBtn" data-order-id="${escapeAttribute(order.id)}">Keep notice</button>
-      </div>
-    </div>
-  `
-        : `<button type="button" class="orderSidebarRescindBtn" data-order-id="${escapeAttribute(order.id)}">Rescind notice</button>`;
-    const isRescinded = order.status === TABLET_ORDER_STATUSES.RESCINDED_BY_DINER;
-    const statusLabel = isRescinded ? "Notice rescinded" : "Submitted Notice";
-    const statusMeta = isRescinded
-      ? "Your allergy notice has been rescinded."
-      : metaLine;
-
-    return `
-  <div class="orderSidebarCard orderSidebarPendingCard" data-order-id="${escapeAttribute(order.id)}">
-    <div class="orderSidebarPendingLabel">${statusLabel}</div>
-    <div class="orderSidebarPendingMeta">${statusMeta}</div>
-    <div class="orderSidebarPendingBadge">
-      <span class="${badgeClass}">${escapeConfirmationHtml(descriptor.label || "Updating status")}</span>
-    </div>
-    <div class="orderSidebarPendingMeta"><strong>Order:</strong> ${esc(dishName)}</div>
-    <div class="orderSidebarPendingMeta"><strong>Allergens:</strong> ${esc(allergens)}</div>
-    <div class="orderSidebarPendingMeta"><strong>Diets:</strong> ${esc(diets)}</div>
-    ${submittedTimeStr ? `<div class="orderSidebarTimestamp"><span class="orderSidebarTimestampActor">Diner:</span> notice submitted <span class="orderSidebarTimestampTime">${submittedTimeStr}</span></div>` : ""}
-    ${kitchenQuestionHtml}
-    ${updatesHtml}
-    ${actionBtnHtml}
-  </div>
-    `;
-  }
-
   function renderOrderSidebarPendingOrders(orders) {
-    if (!orderSidebarItems) return;
-    syncOrderItemSelections();
-    orderSidebarItems.dataset.mode = orders.length ? "pending" : "cart";
-    const cartItems = getOrderItems();
-    const cartItemsHtml = cartItems.length
-      ? `
-  <div class="orderSidebarCard">
-    <div class="orderSidebarPendingLabel">New items</div>
-    ${cartItems
-      .map(
-        (itemName) => `
-      <div class="orderItem" data-dish-name="${escapeAttribute(itemName)}">
-        <button type="button" class="orderItemSelect${isOrderItemSelected(itemName) ? " is-selected" : ""}" data-dish-name="${escapeAttribute(itemName)}" aria-pressed="${isOrderItemSelected(itemName) ? "true" : "false"}" aria-label="Select ${escapeAttribute(itemName)}"></button>
-        <div style="flex:1">
-          <div class="orderItemName">${esc(itemName)}</div>
-        </div>
-        <button type="button" class="orderItemRemove" data-dish-name="${esc(itemName)}">Remove</button>
-      </div>
-    `,
-      )
-      .join("")}
-  </div>
-    `
-      : "";
-    const ordersHtml = orders.map(buildOrderSidebarPendingOrderHtml).join("");
-    orderSidebarItems.innerHTML = `${ordersHtml}${cartItemsHtml}`;
-    updateConfirmButtonVisibility();
-    if (cartItems.length > 0) {
-      orderSidebarItems.querySelectorAll(".orderItemRemove").forEach((btn) => {
-        btn.addEventListener("click", (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          const dishName = btn.getAttribute("data-dish-name");
-          if (dishName) removeDishFromOrder(dishName);
-        });
-      });
-      bindOrderItemSelectButtons(orderSidebarItems);
-    }
-    orderSidebarItems
-      .querySelectorAll(".orderSidebarRescindBtn")
-      .forEach((btn) => {
-        btn.addEventListener("click", handleRescindNotice);
-      });
-    orderSidebarItems
-      .querySelectorAll(".orderSidebarRescindConfirmBtn")
-      .forEach((btn) => {
-        btn.addEventListener("click", handleRescindConfirm);
-      });
-    orderSidebarItems
-      .querySelectorAll(".orderSidebarRescindCancelBtn")
-      .forEach((btn) => {
-        btn.addEventListener("click", handleRescindCancel);
-      });
-    orderSidebarItems.querySelectorAll(".orderSidebarClearBtn").forEach((btn) => {
-      btn.addEventListener("click", handleClearOrderFromSidebar);
-    });
-    orderSidebarItems
-      .querySelectorAll(".orderSidebarQuestionBtn")
-      .forEach((btn) => {
-        btn.addEventListener("click", handleKitchenQuestionResponse);
-      });
+    return orderSidebarPendingRuntime.renderOrderSidebarPendingOrders(orders);
   }
 
   function renderOrderSidebarPendingOrder(order) {
@@ -1445,245 +1150,11 @@ export function initOrderFlow({
   }
 
   function renderOrderConfirmServerPanel() {
-    if (!orderConfirmServerPanel) return;
-    const body = orderConfirmServerPanel.querySelector(".orderConfirmTabletBody");
-    if (!body) return;
-    const relevantStatuses = [
-      TABLET_ORDER_STATUSES.SUBMITTED_TO_SERVER,
-      TABLET_ORDER_STATUSES.QUEUED_FOR_KITCHEN,
-      TABLET_ORDER_STATUSES.REJECTED_BY_SERVER,
-    ];
-
-    const serverGroups = new Map();
-    tabletSimState.orders.forEach((order) => {
-      if (!order?.serverCode) return;
-      if (!relevantStatuses.includes(order.status)) return;
-      ensureOrderServerMetadata(order);
-      const serverId = order.serverId || "0000";
-      if (!serverGroups.has(serverId)) {
-        serverGroups.set(serverId, []);
-      }
-      serverGroups.get(serverId).push(order);
-    });
-
-    if (serverGroups.size === 0) {
-      body.innerHTML =
-        '<div class="orderConfirmStatusBadge" data-tone="idle">Waiting for diner</div><p class="orderConfirmEmpty">Share your server code plus their table number when you&rsquo;re ready.</p>';
-      return;
-    }
-
-    if (
-      !serverPanelState.activeServerId ||
-      !serverGroups.has(serverPanelState.activeServerId)
-    ) {
-      serverPanelState.activeServerId = Array.from(serverGroups.keys())[0];
-    }
-
-    const tabsHtml = Array.from(serverGroups.entries())
-      .map(([serverId, orders]) => {
-        const name =
-          ensureOrderServerMetadata(orders[0]).serverName || `Server ${serverId}`;
-        const isActive = serverId === serverPanelState.activeServerId;
-        return `<button type="button" class="orderConfirmServerTab${isActive ? " is-active" : ""}" data-server-tab="${escapeAttribute(serverId)}">${escapeConfirmationHtml(name)}</button>`;
-      })
-      .join("");
-
-    const activeOrders = serverGroups.get(serverPanelState.activeServerId) || [];
-    const orderCards = activeOrders.length
-      ? activeOrders.map(renderServerOrderCard).join("")
-      : '<p class="serverOrderEmpty">No active notices for this server.</p>';
-
-    body.innerHTML = `
-  <div class="orderConfirmServerTabs">${tabsHtml}</div>
-  <div class="orderConfirmServerOrders">${orderCards}</div>
-    `;
-  }
-
-  function renderServerOrderCard(order) {
-    ensureOrderServerMetadata(order);
-    const descriptor = ORDER_STATUS_DESCRIPTORS[order.status] || {
-      label: "Updating status",
-      tone: "info",
-    };
-    const badgeClass = getBadgeClassForTone(descriptor.tone);
-    const dishes =
-      Array.isArray(order.items) && order.items.length
-        ? order.items.map((item) => esc(item)).join(", ")
-        : "No dishes listed";
-    const allergies =
-      Array.isArray(order.allergies) && order.allergies.length
-        ? order.allergies.map((a) => formatOrderListLabel(a)).join(", ")
-        : "None saved";
-    const diets =
-      Array.isArray(order.diets) && order.diets.length
-        ? order.diets.join(", ")
-        : "None saved";
-    const tableLabel = order.tableNumber
-      ? `Table ${esc(order.tableNumber)}`
-      : "Table not recorded";
-    const codeLabel = order.serverCode
-      ? `Code ${esc(order.serverCode)}`
-      : "Code unavailable";
-    const notes = order.customNotes
-      ? `<div>Notes: ${esc(order.customNotes)}</div>`
-      : "";
-    let actionsHtml = "";
-    if (order.status === TABLET_ORDER_STATUSES.SUBMITTED_TO_SERVER) {
-      actionsHtml = `
-    <div class="serverOrderActions">
-      <button type="button" data-server-action="approve" data-order-id="${escapeAttribute(order.id)}">Approve &amp; send to kitchen</button>
-      <button type="button" data-server-action="reject" data-order-id="${escapeAttribute(order.id)}">Reject notice</button>
-  </div>`;
-    } else if (order.status === TABLET_ORDER_STATUSES.QUEUED_FOR_KITCHEN) {
-      actionsHtml = `
-    <div class="serverOrderActions">
-      <button type="button" data-server-action="dispatch" data-order-id="${escapeAttribute(order.id)}">Send to kitchen</button>
-      <button type="button" data-server-action="reject" data-order-id="${escapeAttribute(order.id)}">Reject notice</button>
-  </div>`;
-    } else if (order.status === TABLET_ORDER_STATUSES.REJECTED_BY_SERVER) {
-      actionsHtml =
-        '<p class="serverOrderEmpty">Rejected. Waiting for diner updates.</p>';
-    } else {
-      actionsHtml =
-        '<p class="serverOrderEmpty">This notice has moved to the kitchen tablet.</p>';
-    }
-
-    return `
-  <article class="serverOrderCard" data-order-id="${escapeAttribute(order.id)}">
-    <div class="serverOrderHeader">
-      <div>
-        <div class="serverOrderTitle">${esc(order.customerName || "Guest")}</div>
-        <div class="serverOrderMeta">${tableLabel} • ${codeLabel}</div>
-        <div class="serverOrderMeta">Dishes: ${dishes}</div>
-      </div>
-      <span class="${badgeClass}">${escapeConfirmationHtml(descriptor.label)}</span>
-    </div>
-    <div class="serverOrderDetails">
-      <div>Allergies: ${esc(allergies)}</div>
-      <div>Diets: ${esc(diets)}</div>
-      ${notes}
-    </div>
-    ${actionsHtml}
-  </article>
-    `;
-  }
-
-  async function handleServerOrderAction(action, orderId) {
-    const order = getTabletOrderById(orderId);
-    if (!order) return;
-    try {
-      if (action === "approve") {
-        tabletServerApprove(tabletSimState, orderId);
-        tabletServerDispatchToKitchen(tabletSimState, orderId);
-      } else if (action === "dispatch") {
-        tabletServerDispatchToKitchen(tabletSimState, orderId);
-      } else if (action === "reject") {
-        const reason = await showTextPrompt({
-          title: "Reject notice",
-          message: "Let the diner know why this notice cannot be processed.",
-          placeholder:
-            "e.g. We need a manager to assist before sending this through.",
-          confirmLabel: "Send rejection",
-          cancelLabel: "Cancel",
-        });
-        if (reason === null) return;
-        const rejectionReason = reason || "Rejected the notice.";
-        tabletServerReject(tabletSimState, orderId, rejectionReason);
-      } else {
-        return;
-      }
-      persistTabletStateAndRender();
-    } catch (error) {
-      alert(error?.message || "Unable to update server tablet.");
-    }
-  }
-
-  function renderKitchenOrderCard(order) {
-    ensureOrderServerMetadata(order);
-    const descriptor = ORDER_STATUS_DESCRIPTORS[order.status] || {
-      label: "Updating status",
-      tone: "info",
-    };
-    const badgeClass = getBadgeClassForTone(descriptor.tone);
-    const dishes =
-      Array.isArray(order.items) && order.items.length
-        ? order.items.map((item) => esc(item)).join(", ")
-        : "No dishes listed";
-    const allergies =
-      Array.isArray(order.allergies) && order.allergies.length
-        ? order.allergies.map((a) => formatOrderListLabel(a)).join(", ")
-        : "None saved";
-    const diets =
-      Array.isArray(order.diets) && order.diets.length
-        ? order.diets.join(", ")
-        : "None saved";
-    const tableLabel = order.tableNumber
-      ? `Table ${esc(order.tableNumber)}`
-      : "Table not recorded";
-    const messageLog =
-      Array.isArray(order.kitchenMessages) && order.kitchenMessages.length
-        ? `<div class="kitchenOrderNotes">Messages sent: ${order.kitchenMessages.map((msg) => `${esc(msg.text)} (${formatTabletTimestamp(msg.at)})`).join("; ")}</div>`
-        : "";
-    const questionLog = order.kitchenQuestion
-      ? `<div class="kitchenOrderNotes">Follow-up: ${esc(order.kitchenQuestion.text)}${order.kitchenQuestion.response ? ` • Diner replied ${esc(order.kitchenQuestion.response.toUpperCase())}` : " • Awaiting diner response"}</div>`
-      : "";
-
-    const actions = [];
-    if (order.status === TABLET_ORDER_STATUSES.WITH_KITCHEN) {
-      actions.push(
-        `<button type="button" data-kitchen-action="acknowledge" data-order-id="${escapeAttribute(order.id)}">Acknowledge notice</button>`,
-      );
-    }
-    if (order.status !== TABLET_ORDER_STATUSES.ACKNOWLEDGED) {
-      actions.push(
-        `<button type="button" data-kitchen-action="message" data-order-id="${escapeAttribute(order.id)}">Send follow-up message</button>`,
-      );
-    }
-
-    const actionsHtml = actions.length
-      ? `<div class="kitchenOrderActions">${actions.join("")}</div>`
-      : "";
-
-    return `
-  <article class="kitchenOrderCard" data-order-id="${escapeAttribute(order.id)}">
-    <div class="kitchenOrderHeader">
-      <div>
-        <div class="kitchenOrderTitle">${esc(order.customerName || "Guest")}</div>
-        <div class="kitchenOrderMeta">${tableLabel} • Dishes: ${dishes}</div>
-      </div>
-      <span class="${badgeClass}">${escapeConfirmationHtml(descriptor.label)}</span>
-    </div>
-    <div class="kitchenOrderMeta">Allergies: ${esc(allergies)}</div>
-    <div class="kitchenOrderMeta">Diets: ${esc(diets)}</div>
-    ${messageLog}
-    ${questionLog}
-    ${actionsHtml}
-  </article>
-    `;
+    orderConfirmTabletRuntime?.renderOrderConfirmServerPanel();
   }
 
   function renderOrderConfirmKitchenPanel() {
-    if (!orderConfirmKitchenPanel) return;
-    const body = orderConfirmKitchenPanel.querySelector(
-      ".orderConfirmTabletBody",
-    );
-    if (!body) return;
-    const activeStatuses = [
-      TABLET_ORDER_STATUSES.WITH_KITCHEN,
-      TABLET_ORDER_STATUSES.ACKNOWLEDGED,
-      TABLET_ORDER_STATUSES.AWAITING_USER_RESPONSE,
-      TABLET_ORDER_STATUSES.QUESTION_ANSWERED,
-    ];
-    const orders = tabletSimState.orders.filter((order) =>
-      activeStatuses.includes(order.status),
-    );
-    if (orders.length === 0) {
-      body.innerHTML =
-        '<div class="orderConfirmStatusBadge" data-tone="idle">Kitchen idle</div><p class="orderConfirmEmpty">The request will appear here after the server dispatches it.</p>';
-      return;
-    }
-    const cards = orders.map(renderKitchenOrderCard).join("");
-    body.innerHTML = `<div class="kitchenOrderList">${cards}</div>`;
+    orderConfirmTabletRuntime?.renderOrderConfirmKitchenPanel();
   }
 
   async function handleOrderConfirmSubmit() {
@@ -1894,68 +1365,11 @@ export function initOrderFlow({
   }
 
   function handleOrderConfirmServerPanel(evt) {
-    const tabBtn = evt.target.closest?.("[data-server-tab]");
-    if (tabBtn) {
-      evt.preventDefault();
-      const id = tabBtn.getAttribute("data-server-tab");
-      if (id && id !== serverPanelState.activeServerId) {
-        serverPanelState.activeServerId = id;
-        renderOrderConfirmServerPanel();
-      }
-      return;
-    }
-    const actionBtn = evt.target.closest?.("[data-server-action]");
-    if (actionBtn) {
-      evt.preventDefault();
-      const action = actionBtn.getAttribute("data-server-action");
-      const orderId = actionBtn.getAttribute("data-order-id");
-      if (!action || !orderId) return;
-      handleServerOrderAction(action, orderId).catch((err) => {
-        console.error("Server action failed", err);
-        alert("Unable to update server tablet at this time.");
-      });
-    }
+    orderConfirmTabletRuntime?.handleOrderConfirmServerPanel(evt);
   }
 
   function handleOrderConfirmKitchenPanel(evt) {
-    const actionBtn = evt.target.closest?.("[data-kitchen-action]");
-    if (!actionBtn) return;
-    evt.preventDefault();
-    const action = actionBtn.getAttribute("data-kitchen-action");
-    const orderId = actionBtn.getAttribute("data-order-id");
-    if (!action || !orderId) return;
-    handleKitchenOrderAction(action, orderId).catch((err) => {
-      console.error("Kitchen action failed", err);
-      alert("Unable to update the kitchen tablet right now.");
-    });
-  }
-
-  async function handleKitchenOrderAction(action, orderId) {
-    const order = getTabletOrderById(orderId);
-    if (!order) return;
-    try {
-      if (action === "acknowledge") {
-        const chefId = tabletSimState.chefs[0]?.id || null;
-        if (!chefId) throw new Error("No chefs available.");
-        tabletKitchenAcknowledge(tabletSimState, orderId, chefId);
-      } else if (action === "message") {
-        const text = await showTextPrompt({
-          title: "Send follow-up message",
-          message: "What would you like the diner to see on their side?",
-          placeholder:
-            "e.g. Please confirm if sesame oil is okay before we proceed.",
-          confirmLabel: "Send message",
-          cancelLabel: "Cancel",
-        });
-        if (!text) return;
-        recordKitchenMessage(order, text);
-      } else {
-        return;
-      }
-      persistTabletStateAndRender();
-    } catch (error) {
-      throw error;
-    }
+    orderConfirmTabletRuntime?.handleOrderConfirmKitchenPanel(evt);
   }
 
   function handleOrderConfirmReset() {
@@ -2715,100 +2129,6 @@ export function initOrderFlow({
     return tabletSimState.orders.find((order) => order.id === orderId) || null;
   }
 
-  function recordKitchenMessage(order, message) {
-    if (!order || !message?.trim()) return;
-    const text = message.trim();
-    const entry = {
-      text,
-      at: new Date().toISOString(),
-    };
-    if (!Array.isArray(order.kitchenMessages)) {
-      order.kitchenMessages = [];
-    }
-    order.kitchenMessages.push(entry);
-    order.history.push({
-      actor: "Kitchen",
-      message: `Sent message to diner: "${text}"`,
-      at: entry.at,
-    });
-    order.status = TABLET_ORDER_STATUSES.AWAITING_USER_RESPONSE;
-    order.updatedAt = entry.at;
-  }
-
-  function showTextPrompt({
-    title = "Input",
-    message = "",
-    placeholder = "",
-    confirmLabel = "Confirm",
-    cancelLabel = "Cancel",
-  } = {}) {
-    return new Promise((resolve) => {
-      const backdrop = document.createElement("div");
-      backdrop.className = "appPromptBackdrop";
-      const modal = document.createElement("div");
-      modal.className = "appPromptModal";
-      const heading = document.createElement("h3");
-      heading.textContent = title;
-      modal.appendChild(heading);
-      if (message) {
-        const desc = document.createElement("p");
-        desc.textContent = message;
-        modal.appendChild(desc);
-      }
-      const textarea = document.createElement("textarea");
-      textarea.placeholder = placeholder;
-      modal.appendChild(textarea);
-      const actions = document.createElement("div");
-      actions.className = "appPromptModalActions";
-      const cancelBtn = document.createElement("button");
-      cancelBtn.type = "button";
-      cancelBtn.className = "appPromptCancel";
-      cancelBtn.textContent = cancelLabel;
-      const confirmBtn = document.createElement("button");
-      confirmBtn.type = "button";
-      confirmBtn.className = "appPromptConfirm";
-      confirmBtn.textContent = confirmLabel;
-      actions.appendChild(cancelBtn);
-      actions.appendChild(confirmBtn);
-      modal.appendChild(actions);
-      backdrop.appendChild(modal);
-      document.body.appendChild(backdrop);
-
-      const cleanup = () => {
-        backdrop.remove();
-      };
-
-      cancelBtn.addEventListener("click", () => {
-        cleanup();
-        resolve(null);
-      });
-      confirmBtn.addEventListener("click", () => {
-        const value = textarea.value.trim();
-        cleanup();
-        resolve(value);
-      });
-      backdrop.addEventListener("click", (event) => {
-        if (event.target === backdrop) {
-          cleanup();
-          resolve(null);
-        }
-      });
-      textarea.addEventListener("keydown", (event) => {
-        if (event.key === "Escape") {
-          event.preventDefault();
-          cleanup();
-          resolve(null);
-        } else if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
-          event.preventDefault();
-          const value = textarea.value.trim();
-          cleanup();
-          resolve(value);
-        }
-      });
-      setTimeout(() => textarea.focus(), 50);
-    });
-  }
-
   function formatTabletTimestamp(iso) {
     if (!iso) return "";
     const date = new Date(iso);
@@ -2939,9 +2259,7 @@ export function initOrderFlow({
       selections.add(dishName);
     }
     updateConfirmButtonVisibility();
-    if (orderConfirmDrawer?.classList.contains("show")) {
-      renderOrderConfirmSummary();
-    }
+    orderSidebarUiRuntime.syncConfirmDrawerSummary();
   }
 
   function getSelectedOrderItems() {
@@ -3193,53 +2511,22 @@ export function initOrderFlow({
       updateConfirmButtonVisibility();
     }
 
-    if (orderConfirmDrawer?.classList.contains("show")) {
-      renderOrderConfirmSummary();
-    }
+    orderSidebarUiRuntime.syncConfirmDrawerSummary();
 
     updateOrderSidebarBadge();
     setOrderSidebarVisibility();
   }
 
   function isOrderSidebarDisabled() {
-    return state.page === "editor";
+    return orderSidebarUiRuntime.isOrderSidebarDisabled();
   }
 
   function hasOrderSidebarContent() {
-    const hasItems = hasOrderItems();
-    const sidebarOrders = getSidebarOrders();
-    return hasItems || (Array.isArray(sidebarOrders) && sidebarOrders.length > 0);
+    return orderSidebarUiRuntime.hasOrderSidebarContent();
   }
 
   function setOrderSidebarVisibility() {
-    const sidebar = document.getElementById("orderSidebar");
-    if (!sidebar) return;
-    if (isOrderSidebarDisabled()) {
-      sidebar.style.display = "none";
-      sidebar.classList.remove("open");
-      sidebar.classList.add("minimized");
-      document.body.classList.remove("orderSidebarOpen");
-      return;
-    }
-    const hasContent = hasOrderSidebarContent();
-    sidebar.style.display = hasContent ? "" : "none";
-    if (!hasContent) {
-      sidebar.classList.remove("open");
-      sidebar.classList.add("minimized");
-      document.body.classList.remove("orderSidebarOpen");
-    }
-  }
-
-  function setOrderSidebarToggleLabel(text) {
-    const label = document.getElementById("orderSidebarToggleLabel");
-    const toggleBtn = document.getElementById("orderSidebarToggle");
-    if (label) {
-      label.textContent = text;
-      return;
-    }
-    if (toggleBtn) {
-      toggleBtn.textContent = text;
-    }
+    return orderSidebarUiRuntime.setOrderSidebarVisibility();
   }
 
   function getOrderSortValue(order) {
@@ -3314,243 +2601,39 @@ export function initOrderFlow({
   }
 
   function updateOrderSidebarBadge() {
-    const badge = document.getElementById("orderSidebarBadge");
-    if (!badge) return;
-    const count = getActiveOrderCount();
-    if (count > 0) {
-      badge.textContent = String(count);
-      badge.hidden = false;
-    } else {
-      badge.hidden = true;
-    }
+    return orderSidebarUiRuntime.updateOrderSidebarBadge();
   }
 
   function setConfirmButtonVisibility(visible) {
-    if (confirmOrderBtn) {
-      confirmOrderBtn.hidden = !visible;
-    }
-    if (orderSidebarActions) {
-      orderSidebarActions.style.display = visible ? "" : "none";
-    }
-    if (!visible && confirmOrderHint) {
-      confirmOrderHint.hidden = true;
-    }
+    return orderSidebarUiRuntime.setConfirmButtonVisibility(visible);
   }
 
   function setConfirmButtonDisabled(disabled) {
-    if (confirmOrderBtn) {
-      confirmOrderBtn.disabled = disabled;
-    }
-    if (confirmOrderHint) {
-      const isVisible = !!confirmOrderBtn && !confirmOrderBtn.hidden;
-      confirmOrderHint.hidden = !disabled || !isVisible;
-    }
-  }
-
-  let orderSidebarCustomHeight = null;
-  let orderSidebarLastExpandedHeight = null;
-  let orderSidebarDragState = null;
-
-  function clampValue(value, min, max) {
-    return Math.min(max, Math.max(min, value));
-  }
-
-  function getOrderSidebarHeightBounds(options = {}) {
-    const { allowCollapsed = false } = options;
-    const viewportHeight = getViewportHeight();
-    const collapsedHeight = getOrderSidebarCollapsedHeight();
-    const minHeight = allowCollapsed
-      ? collapsedHeight
-      : Math.max(collapsedHeight + 80, Math.round(viewportHeight * 0.35));
-    const maxHeight = Math.max(
-      minHeight + 140,
-      Math.round(viewportHeight * 0.92),
-    );
-    return { minHeight, maxHeight };
-  }
-
-  function getOrderSidebarCollapsedHeight() {
-    const sidebar = document.getElementById("orderSidebar");
-    if (!sidebar) return 72;
-    const raw = getComputedStyle(sidebar).getPropertyValue(
-      "--order-sidebar-collapsed-height",
-    );
-    const parsed = parseFloat(raw);
-    return Number.isFinite(parsed) ? parsed : 72;
-  }
-
-  function setOrderSidebarHeight(height, persist = true) {
-    const sidebar = document.getElementById("orderSidebar");
-    if (!sidebar) return;
-    if (persist) {
-      orderSidebarCustomHeight = height;
-    }
-    sidebar.style.setProperty("--order-sidebar-height", `${height}px`);
+    return orderSidebarUiRuntime.setConfirmButtonDisabled(disabled);
   }
 
   function updateOrderSidebarHeight() {
-    const sidebar = document.getElementById("orderSidebar");
-    if (!sidebar) return;
-    if (sidebar.classList.contains("minimized")) {
-      return;
-    }
-    const { minHeight, maxHeight } = getOrderSidebarHeightBounds();
-    const menuWrap = document.querySelector(".menuWrap");
-    let baseHeight = menuWrap ? menuWrap.getBoundingClientRect().height : 0;
-    if (!baseHeight || baseHeight < 200) baseHeight = getViewportHeight();
-    let targetHeight = orderSidebarCustomHeight;
-    if (!targetHeight || Number.isNaN(targetHeight)) {
-      targetHeight = Math.round(baseHeight * 0.75);
-    }
-    targetHeight = clampValue(targetHeight, minHeight, maxHeight);
-    setOrderSidebarHeight(targetHeight);
+    return orderSidebarUiRuntime.updateOrderSidebarHeight();
   }
 
   function initOrderSidebarDrag() {
-    const header = document.querySelector(".orderSidebarHeader");
-    const sidebar = document.getElementById("orderSidebar");
-    if (!header || !sidebar) return;
-
-    const onPointerDown = (event) => {
-      if (event.target.closest("button")) return;
-      if (event.pointerType === "mouse" && event.button !== 0) return;
-      orderSidebarDragState = {
-        startY: event.clientY,
-        startHeight: sidebar.getBoundingClientRect().height,
-        lastHeight: null,
-      };
-      orderSidebarLastExpandedHeight =
-        orderSidebarCustomHeight || orderSidebarDragState.startHeight;
-      sidebar.classList.add("dragging");
-      if (header.setPointerCapture) {
-        header.setPointerCapture(event.pointerId);
-      }
-      event.preventDefault();
-    };
-
-    const onPointerMove = (event) => {
-      if (!orderSidebarDragState) return;
-      const delta = orderSidebarDragState.startY - event.clientY;
-      const { minHeight, maxHeight } = getOrderSidebarHeightBounds({
-        allowCollapsed: true,
-      });
-      const collapseThreshold = getOrderSidebarCollapsedHeight() + 24;
-      let nextHeight = orderSidebarDragState.startHeight + delta;
-      nextHeight = clampValue(nextHeight, minHeight, maxHeight);
-      orderSidebarDragState.lastHeight = nextHeight;
-      sidebar.classList.remove("minimized");
-      sidebar.classList.add("open");
-      document.body.classList.add("orderSidebarOpen");
-      const shouldPersist = nextHeight > collapseThreshold;
-      if (shouldPersist) {
-        orderSidebarLastExpandedHeight = nextHeight;
-      }
-      setOrderSidebarHeight(nextHeight, shouldPersist);
-      event.preventDefault();
-    };
-
-    const onPointerUp = () => {
-      if (!orderSidebarDragState) return;
-      const finalHeight =
-        orderSidebarDragState.lastHeight || orderSidebarDragState.startHeight;
-      const collapseThreshold = getOrderSidebarCollapsedHeight() + 24;
-      orderSidebarUserToggled = true;
-      sidebar.classList.remove("dragging");
-      orderSidebarDragState = null;
-      if (finalHeight <= collapseThreshold) {
-        if (orderSidebarLastExpandedHeight) {
-          orderSidebarCustomHeight = orderSidebarLastExpandedHeight;
-        }
-        minimizeOrderSidebar();
-        return;
-      }
-      setOrderSidebarHeight(finalHeight);
-      openOrderSidebar();
-    };
-
-    header.addEventListener("pointerdown", onPointerDown);
-    header.addEventListener("pointermove", onPointerMove);
-    header.addEventListener("pointerup", onPointerUp);
-    header.addEventListener("pointercancel", onPointerUp);
-  }
-
-  function hasSubmittedActiveOrder() {
-    const order = getTabletOrder();
-    if (!order) return false;
-    if (order.status === TABLET_ORDER_STATUSES.CODE_ASSIGNED) return false;
-    if (
-      TABLET_ORDER_STATUSES.DRAFT &&
-      order.status === TABLET_ORDER_STATUSES.DRAFT
-    )
-      return false;
-    if (order.status === TABLET_ORDER_STATUSES.RESCINDED_BY_DINER) return false;
-    if (order.status === TABLET_ORDER_STATUSES.REJECTED_BY_SERVER) return false;
-    if (order.status === TABLET_ORDER_STATUSES.REJECTED_BY_KITCHEN) return false;
-    return true;
+    return orderSidebarUiRuntime.initOrderSidebarDrag();
   }
 
   function updateConfirmButtonVisibility() {
-    const hasItems = hasOrderItems();
-    const clearedMode = orderSidebarItems?.dataset.mode === "cleared";
-    if (!hasItems || clearedMode) {
-      setConfirmButtonVisibility(false);
-      setConfirmButtonDisabled(true);
-      return;
-    }
-    const selectedItems = getSelectedOrderItems();
-    setConfirmButtonVisibility(true);
-    setConfirmButtonDisabled(selectedItems.length === 0);
+    return orderSidebarUiRuntime.updateConfirmButtonVisibility();
   }
 
   function minimizeOrderSidebar() {
-    const sidebar = document.getElementById("orderSidebar");
-    if (!sidebar) return;
-    if (isOrderSidebarDisabled()) {
-      sidebar.classList.remove("open");
-      sidebar.classList.add("minimized");
-      document.body.classList.remove("orderSidebarOpen");
-      return;
-    }
-    sidebar.classList.add("minimized");
-    sidebar.classList.remove("open");
-    setOrderSidebarToggleLabel("+ View order dashboard");
-    document.body.classList.remove("orderSidebarOpen");
-    updateOrderSidebarHeight();
-    updateOrderSidebarBadge();
+    return orderSidebarUiRuntime.minimizeOrderSidebar();
   }
 
   function openOrderSidebar() {
-    const sidebar = document.getElementById("orderSidebar");
-    if (!sidebar) return;
-    if (isOrderSidebarDisabled()) {
-      setOrderSidebarVisibility();
-      return;
-    }
-    if (!hasOrderSidebarContent()) {
-      setOrderSidebarVisibility();
-      return;
-    }
-    sidebar.classList.add("open");
-    sidebar.classList.remove("minimized");
-    setOrderSidebarToggleLabel("−");
-    document.body.classList.add("orderSidebarOpen");
-    updateOrderSidebarHeight();
-    updateOrderSidebarBadge();
+    return orderSidebarUiRuntime.openOrderSidebar();
   }
 
   function toggleOrderSidebar() {
-    const sidebar = document.getElementById("orderSidebar");
-    if (!sidebar || isOrderSidebarDisabled()) return;
-    if (!hasOrderSidebarContent()) {
-      setOrderSidebarVisibility();
-      return;
-    }
-    orderSidebarUserToggled = true;
-    if (sidebar.classList.contains("minimized")) {
-      openOrderSidebar();
-    } else {
-      minimizeOrderSidebar();
-    }
+    return orderSidebarUiRuntime.toggleOrderSidebar();
   }
 
   function confirmOrder() {
