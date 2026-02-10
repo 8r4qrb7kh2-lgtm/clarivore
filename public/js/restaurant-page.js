@@ -18,7 +18,6 @@ if (!ENABLE_CONSOLE_REPORTING && typeof console !== "undefined") {
 
 import { ORDER_STATUSES as TabletOrderStatusesConst } from "./tablet-simulation-logic.mjs";
 import { setupTopbar } from "./shared-nav.js";
-import { createHowItWorksTour } from "./restaurant/how-it-works-tour.js";
 import { initOrderFlow } from "./restaurant/order-flow.js";
 import { initUnsavedChangesGuard } from "./restaurant/unsaved-changes.js";
 import { initAutoOpenDish } from "./restaurant/auto-open-dish.js";
@@ -69,20 +68,12 @@ import {
   applyPendingMenuIndexRemap,
 } from "./restaurant/editor-session.js";
 import { createRestaurantMessageHandler } from "./restaurant/restaurant-message.js";
-import { initRestaurantFilters } from "./restaurant/restaurant-filters.js";
 import { initRestaurantTopbar } from "./restaurant/restaurant-topbar.js";
-import { renderRestaurantCardsPage } from "./restaurant/restaurant-cards-page.js";
-import { renderRestaurantScreen } from "./restaurant/restaurant-screen.js";
 import {
   createQrPromoController,
   deriveQrVisitFlag,
 } from "./restaurant/qr-promo.js";
 import { renderRestaurantReportPage } from "./restaurant/restaurant-report-page.js";
-import { setupMenuPinchZoom } from "./restaurant/menu-pinch-zoom.js";
-import { createDishInteractionTracker } from "./restaurant/menu-dish-tracking.js";
-import { createMenuOverlayRuntime } from "./restaurant/menu-overlays.js";
-import { bindMenuOverlayListeners } from "./restaurant/menu-overlay-listeners.js";
-import { initializeMenuLayout } from "./restaurant/menu-layout.js";
 import {
   fetchChangeLogEntries,
   insertChangeLogEntry,
@@ -100,13 +91,14 @@ import {
 import { createMobileInfoPanelRuntime } from "./restaurant/mobile-info-panel-runtime.js";
 import { createTooltipRuntime } from "./restaurant/tooltip-runtime.js";
 import { createMobileViewerRuntime } from "./restaurant/mobile-viewer-runtime.js";
-import { createMenuDrawRuntime } from "./restaurant/menu-draw-runtime.js";
 import { createPageRouterRuntime } from "./restaurant/page-router-runtime.js";
 import { createBootHydrationRuntime } from "./restaurant/boot-hydration-runtime.js";
 import { createPageUtilsRuntime } from "./restaurant/page-utils-runtime.js";
 import { createPageOffsetRuntime } from "./restaurant/page-offset-runtime.js";
 import { createMobileInfoPanelDom } from "./restaurant/mobile-info-panel-dom.js";
 import { createDishEditorRuntime } from "./restaurant/dish-editor-runtime.js";
+import { createPageCoreRuntime } from "./restaurant/page-core-runtime.js";
+import { createRestaurantViewRuntime } from "./restaurant/restaurant-view-runtime.js";
 import {
   fmtDate,
   fmtDateTime,
@@ -236,6 +228,14 @@ let openMobileViewer = () => {};
 let closeMobileViewer = () => {};
 let getMobileZoomLevel = () => 1;
 let drawMenu = () => {};
+let renderCardsPage = () => {};
+let renderRestaurant = () => {};
+let renderSavedChips = () => {};
+let renderSavedDiets = () => {};
+let renderSelectedChips = () => {};
+let renderSelectedDiets = () => {};
+let renderSelector = () => {};
+let renderDietSelector = () => {};
 let render = () => {};
 let applyRestaurantBootPayload = () => {};
 let getMenuState = () => ({});
@@ -250,6 +250,15 @@ let resizeLegendToFit = () => {};
 let updateRootOffset = () => {};
 let setRootOffsetPadding = () => {};
 let send = () => {};
+let esc = (value) => String(value ?? "");
+let norm = (value) => String(value ?? "");
+let cap = (value) => String(value ?? "");
+let formatAllergenLabel = (value) => String(value ?? "");
+let setOverlayPulseColor = () => {};
+let hidePageLoader = () => {};
+let div = () => document.createElement("div");
+let configureModalClose = () => {};
+let isDishInfoPopupOpen = () => false;
 
 let zoomToOverlay = () => {};
 let zoomOutOverlay = () => {};
@@ -265,16 +274,37 @@ function adjustMobileInfoPanelForZoom() {
   // Keeping function for compatibility
 }
 
+const pageUtilsRuntime = createPageUtilsRuntime({ state });
+getMenuState = pageUtilsRuntime.getMenuState;
+getIssueReportMeta = pageUtilsRuntime.getIssueReportMeta;
+resizeLegendToFit = pageUtilsRuntime.resizeLegendToFit;
+pageUtilsRuntime.bindLegendResizeListener();
+const pageOffsetRuntime = createPageOffsetRuntime();
+updateRootOffset = pageOffsetRuntime.updateRootOffset;
+setRootOffsetPadding = pageOffsetRuntime.setRootOffsetPadding;
+const pageCoreRuntime = createPageCoreRuntime({
+  formatAllergenLabel: allergenConfig.formatAllergenLabel,
+  getTipPinned: () => getTipPinned(),
+});
+esc = pageCoreRuntime.esc;
+norm = pageCoreRuntime.norm;
+cap = pageCoreRuntime.cap;
+formatAllergenLabel = pageCoreRuntime.formatAllergenLabel;
+setOverlayPulseColor = pageCoreRuntime.setOverlayPulseColor;
+hidePageLoader = pageCoreRuntime.hidePageLoader;
+div = pageCoreRuntime.div;
+configureModalClose = pageCoreRuntime.configureModalClose;
+isDishInfoPopupOpen = pageCoreRuntime.isDishInfoPopupOpen;
+window.setOverlayPulseColor = setOverlayPulseColor;
+const mobileInfoPanelDomRuntime = createMobileInfoPanelDom({
+  getMobileInfoPanel: () => mobileInfoPanel,
+  setMobileInfoPanel: (panel) => {
+    mobileInfoPanel = panel;
+  },
+  adjustMobileInfoPanelForZoom,
+});
+ensureMobileInfoPanel = mobileInfoPanelDomRuntime.ensureMobileInfoPanel;
 const urlQR = deriveQrVisitFlag();
-
-function isDishInfoPopupOpen() {
-  // Check if mobile info panel is showing
-  const mobilePanel = document.getElementById("mobileInfoPanel");
-  if (mobilePanel && mobilePanel.classList.contains("show")) return true;
-  // Check if desktop tooltip is pinned open
-  if (getTipPinned()) return true;
-  return false;
-}
 const {
   shouldShowQrPromo,
   cancelQrPromoTimer,
@@ -332,75 +362,6 @@ const {
   initOrderSidebar,
 } = orderFlow;
 navigationRuntime.bindQrPromoControls();
-const esc = (s) =>
-  (s ?? "").toString().replace(
-    /[&<>"']/g,
-    (m) =>
-      ({
-        "&": "&amp;",
-        "<": "&lt;",
-        ">": "&gt;",
-        '"': "&quot;",
-        "'": "&#39;",
-      })[m],
-  );
-const norm = (value) => String(value ?? "").toLowerCase().trim();
-const cap = (s) =>
-  (s || "")
-    .split(" ")
-    .map((w) => (w ? w[0].toUpperCase() + w.slice(1) : ""))
-    .join(" ");
-const formatAllergenLabel =
-  typeof allergenConfig.formatAllergenLabel === "function"
-    ? allergenConfig.formatAllergenLabel
-    : (value) => cap(value);
-
-const setOverlayPulseColor = (overlayElement) => {
-  if (!overlayElement) return;
-
-  const borderColor = getComputedStyle(overlayElement).borderColor || "";
-  const match = borderColor.match(/rgba?\(([^)]+)\)/i);
-  if (match) {
-    const rgbParts = match[1]
-      .split(",")
-      .slice(0, 3)
-      .map((value) => Math.round(parseFloat(value.trim())))
-      .filter((value) => Number.isFinite(value));
-
-    if (rgbParts.length === 3) {
-      overlayElement.style.setProperty("--pulse-rgb", rgbParts.join(", "));
-    }
-  }
-
-  overlayElement.style.zIndex = "1010";
-};
-window.setOverlayPulseColor = setOverlayPulseColor;
-
-function hidePageLoader() {
-  const loader = document.getElementById("pageLoader");
-  if (!loader) return;
-  loader.classList.add("hidden");
-  window.setTimeout(() => {
-    loader.remove();
-  }, 400);
-}
-
-const pageUtilsRuntime = createPageUtilsRuntime({ state });
-getMenuState = pageUtilsRuntime.getMenuState;
-getIssueReportMeta = pageUtilsRuntime.getIssueReportMeta;
-resizeLegendToFit = pageUtilsRuntime.resizeLegendToFit;
-pageUtilsRuntime.bindLegendResizeListener();
-const pageOffsetRuntime = createPageOffsetRuntime();
-updateRootOffset = pageOffsetRuntime.updateRootOffset;
-setRootOffsetPadding = pageOffsetRuntime.setRootOffsetPadding;
-const mobileInfoPanelDomRuntime = createMobileInfoPanelDom({
-  getMobileInfoPanel: () => mobileInfoPanel,
-  setMobileInfoPanel: (panel) => {
-    mobileInfoPanel = panel;
-  },
-  adjustMobileInfoPanelForZoom,
-});
-ensureMobileInfoPanel = mobileInfoPanelDomRuntime.ensureMobileInfoPanel;
 
 const { renderGroupedSourcesHtml } = initIngredientSources({ esc });
 const normalizeDietLabel =
@@ -522,26 +483,12 @@ const feedbackModalsApi = initFeedbackModals({
 openFeedbackModal = feedbackModalsApi.openFeedbackModal || openFeedbackModal;
 openReportIssueModal =
   feedbackModalsApi.openReportIssueModal || openReportIssueModal;
-function div(html, cls) {
-  const d = document.createElement("div");
-  if (cls) d.className = cls;
-  d.innerHTML = html;
-  return d;
-}
 
 function normalizeRestaurant(row) {
   return normalizeRestaurantRow(row, {
     normalizeAllergen,
     normalizeDietLabel,
   });
-}
-
-function configureModalClose({ visible = true, onClick = null } = {}) {
-  const closeBtn = document.getElementById("modalCloseBtn");
-  if (closeBtn) {
-    closeBtn.style.display = visible ? "inline-flex" : "none";
-    closeBtn.onclick = onClick || null;
-  }
 }
 
 const { renderTopbar } = initRestaurantTopbar({
@@ -631,28 +578,13 @@ openMobileViewer = mobileViewerRuntime.openMobileViewer;
 closeMobileViewer = mobileViewerRuntime.closeMobileViewer;
 getMobileZoomLevel = mobileViewerRuntime.getMobileZoomLevel;
 
-/* list */
-const renderCardsPage = () =>
-  renderRestaurantCardsPage({
-    state,
-    renderTopbar,
-    root: document.getElementById("root"),
-    div,
-    esc,
-    send,
-    getWeeksAgoInfo,
-  });
-
-/* chips */
-const {
-  renderSavedChips,
-  renderSavedDiets,
-  renderSelectedChips,
-  renderSelectedDiets,
-  renderSelector,
-  renderDietSelector,
-} = initRestaurantFilters({
+const restaurantViewRuntime = createRestaurantViewRuntime({
   state,
+  renderTopbar,
+  div,
+  esc,
+  send,
+  getWeeksAgoInfo,
   normalizeAllergen,
   normalizeDietLabel,
   formatAllergenLabel,
@@ -660,46 +592,17 @@ const {
   DIETS,
   ALLERGEN_EMOJI,
   DIET_EMOJI,
-  div,
-  esc,
-  send,
   prefersMobileInfo,
   renderMobileInfo,
   getCurrentMobileInfoItem: () => currentMobileInfoItem,
   updateFullScreenAllergySummary,
-  rerenderLayer: () => {
-    if (window.__rerenderLayer__) window.__rerenderLayer__();
-  },
-});
-
-const howItWorksTour = createHowItWorksTour({
-  state,
-  renderSelector,
-  renderDietSelector,
   updateOrderSidebar,
   openOrderSidebar,
-  rerenderLayer: () => {
-    if (window.__rerenderLayer__) window.__rerenderLayer__();
-  },
-});
-maybeInitHowItWorksTour = howItWorksTour.maybeInitHowItWorksTour;
-
-/* draw (simple image that follows page zoom) */
-const menuDrawRuntime = createMenuDrawRuntime({
-  state,
-  div,
   getMenuState,
-  initializeMenuLayout,
   ensureMobileViewerChrome,
   updateZoomIndicator,
-  setupMenuPinchZoom,
-  createDishInteractionTracker,
-  normalizeAllergen,
-  normalizeDietLabel,
   supabaseClient: window.supabaseClient,
-  createMenuOverlayRuntime,
   ensureMobileInfoPanel,
-  prefersMobileInfo,
   getIsOverlayZoomed: () => isOverlayZoomed,
   getZoomedOverlayItem: () => zoomedOverlayItem,
   zoomOutOverlay,
@@ -720,51 +623,35 @@ const menuDrawRuntime = createMenuDrawRuntime({
   captureMenuBaseDimensions,
   setMobileZoom,
   getMobileZoomLevel,
-  bindMenuOverlayListeners,
+  orderFlow,
+  TABLET_ORDER_STATUSES,
+  setRootOffsetPadding,
+  mountRestaurantShell,
+  applyRestaurantShellState,
+  fmtDate,
+  initGuestFilterControls,
+  showRestaurantMenuSurface,
+  resizeLegendToFit,
+  openMobileViewer,
+  urlQR,
+  shouldShowQrPromo,
+  queueQrPromoTimer,
+  cancelQrPromoTimer,
+  bindSavedPreferenceButtons,
+  bindRestaurantActionButtons,
+  openFeedbackModal,
+  openReportIssueModal,
 });
-drawMenu = menuDrawRuntime.drawMenu;
-
-/* restaurant page */
-const renderRestaurant = () =>
-  renderRestaurantScreen({
-    state,
-    orderFlow,
-    TABLET_ORDER_STATUSES,
-    renderTopbar,
-    setRootOffsetPadding,
-    mountRestaurantShell,
-    applyRestaurantShellState,
-    esc,
-    fmtDate,
-    initGuestFilterControls,
-    renderSelector,
-    renderSelectedChips,
-    renderSavedChips,
-    renderDietSelector,
-    renderSelectedDiets,
-    renderSavedDiets,
-    showRestaurantMenuSurface,
-    drawMenu,
-    resizeLegendToFit,
-    getMenuState,
-    ensureMobileViewerChrome,
-    updateZoomIndicator,
-    prefersMobileInfo,
-    openMobileViewer,
-    send,
-    urlQR,
-    shouldShowQrPromo,
-    queueQrPromoTimer,
-    cancelQrPromoTimer,
-    bindSavedPreferenceButtons,
-    bindRestaurantActionButtons,
-    openFeedbackModal,
-    openReportIssueModal,
-    ensureMobileInfoPanel,
-    clearCurrentMobileInfoItem: () => {
-      currentMobileInfoItem = null;
-    },
-  });
+renderCardsPage = restaurantViewRuntime.renderCardsPage;
+drawMenu = restaurantViewRuntime.drawMenu;
+renderRestaurant = restaurantViewRuntime.renderRestaurant;
+renderSavedChips = restaurantViewRuntime.renderSavedChips;
+renderSavedDiets = restaurantViewRuntime.renderSavedDiets;
+renderSelectedChips = restaurantViewRuntime.renderSelectedChips;
+renderSelectedDiets = restaurantViewRuntime.renderSelectedDiets;
+renderSelector = restaurantViewRuntime.renderSelector;
+renderDietSelector = restaurantViewRuntime.renderDietSelector;
+maybeInitHowItWorksTour = restaurantViewRuntime.maybeInitHowItWorksTour;
 
 
 const renderEditor = createEditorRenderer({
