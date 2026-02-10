@@ -19,8 +19,6 @@ if (!ENABLE_CONSOLE_REPORTING && typeof console !== "undefined") {
 import { ORDER_STATUSES as TabletOrderStatusesConst } from "./tablet-simulation-logic.mjs";
 import { setupTopbar } from "./shared-nav.js";
 import { initOrderFlow } from "./restaurant/order-flow.js";
-import { initUnsavedChangesGuard } from "./restaurant/unsaved-changes.js";
-import { initAutoOpenDish } from "./restaurant/auto-open-dish.js";
 import { initIngredientSources } from "./restaurant/ingredient-sources.js";
 import { initFeedbackModals } from "./restaurant/feedback-modals.js";
 import { initDinerNotifications } from "./diner-notifications.js";
@@ -39,7 +37,6 @@ import { initEditorHistory } from "./restaurant/editor-history.js";
 import { initEditorSettings } from "./restaurant/editor-settings.js";
 import { initEditorSaveFlow } from "./restaurant/editor-save.js";
 import { mountEditorShell } from "./restaurant/editor-shell-markup.js";
-import { initOrderConfirmRestore } from "./restaurant/order-confirm-restore.js";
 import { initMobileOverlayZoom } from "./restaurant/mobile-overlay-zoom.js";
 import {
   applyRestaurantShellState,
@@ -60,14 +57,13 @@ import { openPendingDishInEditor } from "./restaurant/editor-pending-dish.js";
 import { createEditorItemEditor } from "./restaurant/editor-item-editor.js";
 import { createEditorLastConfirmedUpdater } from "./restaurant/editor-last-confirmed.js";
 import { bindEditorRuntimeBindings } from "./restaurant/editor-runtime-bindings.js";
-import { createEditorRenderer } from "./restaurant/editor-screen.js";
+import { createEditorRuntime } from "./restaurant/editor-runtime.js";
 import {
   initializeEditorAssets,
   createDirtyController,
   createEditorChangeState,
   applyPendingMenuIndexRemap,
 } from "./restaurant/editor-session.js";
-import { createRestaurantMessageHandler } from "./restaurant/restaurant-message.js";
 import { initRestaurantTopbar } from "./restaurant/restaurant-topbar.js";
 import {
   createQrPromoController,
@@ -88,17 +84,16 @@ import {
   createMobileInfoHelpers,
   prefersMobileInfo,
 } from "./restaurant/mobile-info-helpers.js";
-import { createMobileInfoPanelRuntime } from "./restaurant/mobile-info-panel-runtime.js";
-import { createTooltipRuntime } from "./restaurant/tooltip-runtime.js";
-import { createMobileViewerRuntime } from "./restaurant/mobile-viewer-runtime.js";
 import { createPageRouterRuntime } from "./restaurant/page-router-runtime.js";
-import { createBootHydrationRuntime } from "./restaurant/boot-hydration-runtime.js";
 import { createPageUtilsRuntime } from "./restaurant/page-utils-runtime.js";
 import { createPageOffsetRuntime } from "./restaurant/page-offset-runtime.js";
 import { createMobileInfoPanelDom } from "./restaurant/mobile-info-panel-dom.js";
 import { createDishEditorRuntime } from "./restaurant/dish-editor-runtime.js";
 import { createPageCoreRuntime } from "./restaurant/page-core-runtime.js";
 import { createRestaurantViewRuntime } from "./restaurant/restaurant-view-runtime.js";
+import { createUnsavedGuardRuntime } from "./restaurant/unsaved-guard-runtime.js";
+import { createHydrationRuntime } from "./restaurant/hydration-runtime.js";
+import { createOverlayUiRuntime } from "./restaurant/overlay-ui-runtime.js";
 import {
   fmtDate,
   fmtDateTime,
@@ -230,6 +225,7 @@ let getMobileZoomLevel = () => 1;
 let drawMenu = () => {};
 let renderCardsPage = () => {};
 let renderRestaurant = () => {};
+let renderEditor = () => {};
 let renderSavedChips = () => {};
 let renderSavedDiets = () => {};
 let renderSelectedChips = () => {};
@@ -268,6 +264,7 @@ let showTipIn = () => {};
 let hideTip = () => {};
 let getTipPinned = () => false;
 let getPinnedOverlayItem = () => null;
+let pageTip = null;
 
 function adjustMobileInfoPanelForZoom() {
   // No longer needed since pinch-to-zoom is disabled
@@ -505,26 +502,7 @@ const { renderTopbar } = initRestaurantTopbar({
   updateRootOffset,
 });
 
-/* tooltips */
-const pageTip = document.getElementById("tip");
-const tooltipRuntime = createTooltipRuntime({
-  pageTip,
-  state,
-  esc,
-  toggleLoveDishInTooltip,
-  ensureAddToOrderConfirmContainer,
-  hideAddToOrderConfirmation,
-  showAddToOrderConfirmation,
-  addDishToOrder,
-  getDishCompatibilityDetails,
-  setOverlayPulseColor,
-});
-showTipIn = tooltipRuntime.showTipIn;
-hideTip = tooltipRuntime.hideTip;
-getTipPinned = tooltipRuntime.getTipPinned;
-getPinnedOverlayItem = tooltipRuntime.getPinnedOverlayItem;
-
-const mobileInfoPanelRuntime = createMobileInfoPanelRuntime({
+const overlayUiRuntime = createOverlayUiRuntime({
   state,
   esc,
   prefersMobileInfo,
@@ -544,39 +522,29 @@ const mobileInfoPanelRuntime = createMobileInfoPanelRuntime({
   },
   getIsOverlayZoomed: () => isOverlayZoomed,
   adjustMobileInfoPanelForZoom,
-  hideTip: () => hideTip(),
-});
-renderMobileInfo = mobileInfoPanelRuntime.renderMobileInfo;
-syncMobileInfoPanel = mobileInfoPanelRuntime.syncMobileInfoPanel;
-mobileInfoPanelRuntime.bindSyncListeners();
-ensureMobileInfoPanel();
-const mobileViewerRuntime = createMobileViewerRuntime({
-  state,
+  setOverlayPulseColor,
   normalizeAllergen,
   ALLERGEN_EMOJI,
   DIET_EMOJI,
-  esc,
   formatAllergenLabel,
   getMenuState,
-  setOverlayPulseColor,
-  prefersMobileInfo,
-  getCurrentMobileInfoItem: () => currentMobileInfoItem,
-  setCurrentMobileInfoItem: (item) => {
-    currentMobileInfoItem = item;
-    window.currentMobileInfoItem = item;
-  },
-  getMobileInfoPanel: () => mobileInfoPanel,
-  getRenderMobileInfo: () => renderMobileInfo,
 });
-captureMenuBaseDimensions = mobileViewerRuntime.captureMenuBaseDimensions;
-ensureMobileViewerChrome = mobileViewerRuntime.ensureMobileViewerChrome;
-updateZoomIndicator = mobileViewerRuntime.updateZoomIndicator;
-updateFullScreenAllergySummary = mobileViewerRuntime.updateFullScreenAllergySummary;
-setMobileZoom = mobileViewerRuntime.setMobileZoom;
-resetMobileZoom = mobileViewerRuntime.resetMobileZoom;
-openMobileViewer = mobileViewerRuntime.openMobileViewer;
-closeMobileViewer = mobileViewerRuntime.closeMobileViewer;
-getMobileZoomLevel = mobileViewerRuntime.getMobileZoomLevel;
+pageTip = overlayUiRuntime.pageTip;
+showTipIn = overlayUiRuntime.showTipIn;
+hideTip = overlayUiRuntime.hideTip;
+getTipPinned = overlayUiRuntime.getTipPinned;
+getPinnedOverlayItem = overlayUiRuntime.getPinnedOverlayItem;
+renderMobileInfo = overlayUiRuntime.renderMobileInfo;
+syncMobileInfoPanel = overlayUiRuntime.syncMobileInfoPanel;
+captureMenuBaseDimensions = overlayUiRuntime.captureMenuBaseDimensions;
+ensureMobileViewerChrome = overlayUiRuntime.ensureMobileViewerChrome;
+updateZoomIndicator = overlayUiRuntime.updateZoomIndicator;
+updateFullScreenAllergySummary = overlayUiRuntime.updateFullScreenAllergySummary;
+setMobileZoom = overlayUiRuntime.setMobileZoom;
+resetMobileZoom = overlayUiRuntime.resetMobileZoom;
+openMobileViewer = overlayUiRuntime.openMobileViewer;
+closeMobileViewer = overlayUiRuntime.closeMobileViewer;
+getMobileZoomLevel = overlayUiRuntime.getMobileZoomLevel;
 
 const restaurantViewRuntime = createRestaurantViewRuntime({
   state,
@@ -654,7 +622,7 @@ renderDietSelector = restaurantViewRuntime.renderDietSelector;
 maybeInitHowItWorksTour = restaurantViewRuntime.maybeInitHowItWorksTour;
 
 
-const renderEditor = createEditorRenderer({
+const editorRuntime = createEditorRuntime({
   state,
   renderTopbar,
   mountEditorShell,
@@ -711,27 +679,28 @@ const renderEditor = createEditorRenderer({
   createEditorItemEditor,
   openPendingDishInEditor,
   applyPendingMenuIndexRemap,
-  setEditorSaveApi: (api) => {
+  onEditorSaveApi: (api) => {
     editorSaveApi = api;
   },
-  setCollectAllBrandItems: (collector) => {
+  onCollectAllBrandItems: (collector) => {
     collectAllBrandItems = collector;
     window.collectAllBrandItems = collectAllBrandItems;
     window.collectAiBrandItems = collectAllBrandItems;
   },
-  setOpenBrandVerification: (openFn) => {
+  onOpenBrandVerification: (openFn) => {
     openBrandVerification = openFn;
   },
-  setOpenChangeLog: (openFn) => {
+  onOpenChangeLog: (openFn) => {
     openChangeLog = openFn;
   },
-  setUpdateLastConfirmedText: (updater) => {
+  onUpdateLastConfirmedText: (updater) => {
     updateLastConfirmedText = updater;
   },
   renderApp: () => {
     render();
   },
 });
+renderEditor = editorRuntime.renderEditor;
 
 const pageRouterRuntime = createPageRouterRuntime({
   state,
@@ -747,7 +716,7 @@ const pageRouterRuntime = createPageRouterRuntime({
 });
 render = pageRouterRuntime.render;
 
-const unsavedChangesGuard = initUnsavedChangesGuard({
+const unsavedGuardRuntime = createUnsavedGuardRuntime({
   collectAiTableData,
   getAiAssistBackdrop,
   getAiAssistState: () => aiAssistState,
@@ -758,11 +727,11 @@ const unsavedChangesGuard = initUnsavedChangesGuard({
     if (aiAssistState) aiAssistState.savedToDish = true;
   },
 });
-hasUnsavedChanges = unsavedChangesGuard.hasUnsavedChanges;
-showUnsavedChangesModal = unsavedChangesGuard.showUnsavedChangesModal;
-navigateWithCheck = unsavedChangesGuard.navigateWithCheck;
+hasUnsavedChanges = unsavedGuardRuntime.hasUnsavedChanges;
+showUnsavedChangesModal = unsavedGuardRuntime.showUnsavedChangesModal;
+navigateWithCheck = unsavedGuardRuntime.navigateWithCheck;
 
-const handleRestaurantMessage = createRestaurantMessageHandler({
+const hydrationRuntime = createHydrationRuntime({
   state,
   urlQR,
   applyDefaultUserName,
@@ -793,23 +762,17 @@ const handleRestaurantMessage = createRestaurantMessageHandler({
   maybeInitHowItWorksTour,
   updateFullScreenAllergySummary,
   openChangeLog: () => openChangeLog(),
-});
-const bootHydrationRuntime = createBootHydrationRuntime({
-  handleRestaurantMessage,
-});
-applyRestaurantBootPayload = bootHydrationRuntime.applyRestaurantBootPayload;
-bootHydrationRuntime.bindWindowPayloadListener();
-
-export function hydrateRestaurantBootPayload(payload) {
-  applyRestaurantBootPayload(payload || {});
-}
-
-initAutoOpenDish({ state });
-initOrderConfirmRestore({
   initOrderSidebar,
   getOrderFormStateStorageKey,
   checkUserAuth,
   restoreOrderFormState,
   updateOrderConfirmAuthState,
-  rerenderOrderConfirmDetails,
 });
+applyRestaurantBootPayload = hydrationRuntime.applyRestaurantBootPayload;
+hydrationRuntime.bindWindowPayloadListener();
+
+export function hydrateRestaurantBootPayload(payload) {
+  hydrationRuntime.hydrateRestaurantBootPayload(payload || {});
+}
+
+hydrationRuntime.initializePostBoot();
