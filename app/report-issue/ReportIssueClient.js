@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import PageShell from "../components/PageShell";
 import SimpleTopbar from "../components/SimpleTopbar";
 import { supabaseClient as supabase } from "../lib/supabase";
 import { isManagerOrOwnerUser } from "../lib/managerRestaurants";
@@ -147,134 +148,139 @@ export default function ReportIssueClient() {
   );
 
   return (
-    <div className="page-shell">
-      <SimpleTopbar
-        brandHref="/home"
-        links={[
-          { href: "/home", label: "Home" },
-          { href: "/restaurants", label: "Restaurants" },
-          { href: "/manager-dashboard", label: "Dashboard", visible: isManagerOrOwner },
-          { href: "/help-contact", label: "Help" },
-        ]}
-        showAuthAction
-        signedIn={Boolean(user)}
-        onSignOut={onSignOut}
-      />
+    <PageShell
+      mainClassName=""
+      wrapContent={false}
+      topbar={
+        <SimpleTopbar
+          brandHref="/home"
+          links={[
+            { href: "/home", label: "Home" },
+            { href: "/restaurants", label: "Restaurants" },
+            { href: "/manager-dashboard", label: "Dashboard", visible: isManagerOrOwner },
+            { href: "/help-contact", label: "Help" },
+          ]}
+          showAuthAction
+          signedIn={Boolean(user)}
+          onSignOut={onSignOut}
+        />
+      }
+      afterMain={
+        <>
+          <footer className="reportFooter">
+            <button
+              type="button"
+              className="reportFab"
+              id="reportIssueButton"
+              onClick={() => setIsOpen(true)}
+            >
+              Report an issue
+            </button>
+          </footer>
 
-      <main>
-        <div>
-          <h1>Report an issue</h1>
-          <p>The report form opens in a popup. Tap the button below to continue.</p>
-        </div>
-      </main>
-
-      <footer className="reportFooter">
-        <button
-          type="button"
-          className="reportFab"
-          id="reportIssueButton"
-          onClick={() => setIsOpen(true)}
-        >
-          Report an issue
-        </button>
-      </footer>
-
-      <div
-        className={`reportOverlay ${isOpen ? "show" : ""}`}
-        id="reportIssueOverlay"
-        aria-hidden={!isOpen}
-        onClick={(event) => {
-          if (event.target === event.currentTarget) {
-            setIsOpen(false);
-          }
-        }}
-      >
-        <div
-          className="reportModal"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="reportIssueTitle"
-        >
-          <button
-            className="reportClose"
-            type="button"
-            aria-label="Close report form"
-            onClick={() => setIsOpen(false)}
-          >
-            ×
-          </button>
-          <h2 id="reportIssueTitle">Report an issue</h2>
-          <p
-            style={{
-              margin: 0,
-              textAlign: "center",
-              color: "#a8b2d6",
-              fontSize: "0.95rem",
+          <div
+            className={`reportOverlay ${isOpen ? "show" : ""}`}
+            id="reportIssueOverlay"
+            aria-hidden={!isOpen}
+            onClick={(event) => {
+              if (event.target === event.currentTarget) {
+                setIsOpen(false);
+              }
             }}
           >
-            Tell us what needs attention and we will follow up quickly.
-          </p>
-
-          <form onSubmit={onSubmit}>
-            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-              <input
-                id="reportName"
-                name="name"
-                type="text"
-                placeholder="Your name (optional)"
-                style={{ flex: "1 1 160px" }}
-                value={name}
-                onChange={(event) => setName(event.target.value)}
-              />
-              <input
-                id="reportEmail"
-                name="email"
-                type="email"
-                placeholder="Email (required)"
-                style={{ flex: "1 1 200px" }}
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-              />
-            </div>
-
-            <textarea
-              id="reportMessage"
-              name="message"
-              placeholder="Describe the issue"
-              required
-              value={message}
-              onChange={(event) => setMessage(event.target.value)}
-            />
-
             <div
-              className={`reportStatus ${
-                statusTone === "error"
-                  ? "error"
-                  : statusTone === "success"
-                    ? "success"
-                    : ""
-              }`}
-              id="reportStatus"
-              aria-live="polite"
+              className="reportModal"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="reportIssueTitle"
             >
-              {status}
+              <button
+                className="reportClose"
+                type="button"
+                aria-label="Close report form"
+                onClick={() => setIsOpen(false)}
+              >
+                ×
+              </button>
+              <h2 id="reportIssueTitle">Report an issue</h2>
+              <p
+                style={{
+                  margin: 0,
+                  textAlign: "center",
+                  color: "#a8b2d6",
+                  fontSize: "0.95rem",
+                }}
+              >
+                Tell us what needs attention and we will follow up quickly.
+              </p>
+
+              <form onSubmit={onSubmit}>
+                <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                  <input
+                    id="reportName"
+                    name="name"
+                    type="text"
+                    placeholder="Your name (optional)"
+                    style={{ flex: "1 1 160px" }}
+                    value={name}
+                    onChange={(event) => setName(event.target.value)}
+                  />
+                  <input
+                    id="reportEmail"
+                    name="email"
+                    type="email"
+                    placeholder="Email (required)"
+                    style={{ flex: "1 1 200px" }}
+                    value={email}
+                    onChange={(event) => setEmail(event.target.value)}
+                  />
+                </div>
+
+                <textarea
+                  id="reportMessage"
+                  name="message"
+                  placeholder="Describe the issue"
+                  required
+                  value={message}
+                  onChange={(event) => setMessage(event.target.value)}
+                />
+
+                <div
+                  className={`reportStatus ${
+                    statusTone === "error"
+                      ? "error"
+                      : statusTone === "success"
+                        ? "success"
+                        : ""
+                  }`}
+                  id="reportStatus"
+                  aria-live="polite"
+                >
+                  {status}
+                </div>
+
+                <button type="submit" id="reportSubmit" disabled={isSubmitting}>
+                  {submitLabel}
+                </button>
+              </form>
             </div>
+          </div>
 
-            <button type="submit" id="reportSubmit" disabled={isSubmitting}>
-              {submitLabel}
-            </button>
-          </form>
-        </div>
+          {bootError ? (
+            <p
+              className="status-text error"
+              style={{ margin: "12px auto 0", maxWidth: 900, padding: "0 20px" }}
+            >
+              {bootError}
+            </p>
+          ) : null}
+        </>
+      }
+    >
+      <div>
+        <h1>Report an issue</h1>
+        <p>The report form opens in a popup. Tap the button below to continue.</p>
       </div>
-
-      {bootError ? (
-        <p
-          className="status-text error"
-          style={{ margin: "12px auto 0", maxWidth: 900, padding: "0 20px" }}
-        >
-          {bootError}
-        </p>
-      ) : null}
-    </div>
+    </PageShell>
   );
 }

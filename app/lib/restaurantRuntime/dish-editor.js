@@ -1,4 +1,4 @@
-import { initIngredientPhotoAnalysis } from "../../../../lib/ingredientPhotoAnalysis.js";
+import { initIngredientPhotoAnalysis } from "../ingredientPhotoAnalysis.js";
 import { initDishEditorPhotos } from "./dish-editor-photos.js";
 import { requestAiExtraction } from "./dish-editor-extraction.js";
 import { createBrandMemory } from "./dish-editor-brand-memory.js";

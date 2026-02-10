@@ -9,13 +9,13 @@ import {
   kitchenAcknowledge as tabletKitchenAcknowledge,
   userRespondToQuestion as tabletUserRespondToQuestion,
   ORDER_STATUSES as TabletOrderStatusesConst,
-} from "../../../../lib/tabletSimulationLogic.mjs";
+} from "../tabletSimulationLogic.mjs";
 import {
   getPersistedTabletState,
   persistTabletState,
   subscribeToTabletState,
-} from "../../../../lib/tabletSync.js";
-import { saveTabletOrder, fetchTabletOrders } from "../../../../lib/tabletOrdersApi.js";
+} from "../tabletSync.js";
+import { saveTabletOrder, fetchTabletOrders } from "../tabletOrdersApi.js";
 
 const esc = (s) =>
   (s ?? "").toString().replace(

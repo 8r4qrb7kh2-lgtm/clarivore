@@ -16,67 +16,67 @@ if (!ENABLE_CONSOLE_REPORTING && typeof console !== "undefined") {
     ((data, title) => console.log("[DEBUG-JSON]", title, data));
 }
 
-import { ORDER_STATUSES as TabletOrderStatusesConst } from "../../../lib/tabletSimulationLogic.mjs";
-import { setupTopbar } from "../../../lib/sharedNav.js";
-import { initDinerNotifications } from "../../../lib/dinerNotifications.js";
+import { ORDER_STATUSES as TabletOrderStatusesConst } from "../../lib/tabletSimulationLogic.mjs";
+import { setupTopbar } from "../../lib/sharedNav.js";
+import { initDinerNotifications } from "../../lib/dinerNotifications.js";
 import {
   analyzeBoxSizes,
   splitImageIntoSections,
-} from "./restaurant/menu-image-utils.js";
-import { detectDishesOnMenu } from "./restaurant/menu-dish-detection.js";
-import { initBrandVerification } from "./restaurant/brand-verification.js";
-import { initChangeLog } from "../../../lib/restaurantChangeLogRuntime.js";
-import { initEditorOverlays } from "./restaurant/editor-overlays.js";
-import { initMenuImageEditor } from "./restaurant/menu-images.js";
-import { initEditorNavigation } from "./restaurant/editor-navigation.js";
-import { initEditorSections } from "./restaurant/editor-sections.js";
-import { initEditorHistory } from "./restaurant/editor-history.js";
-import { initEditorSettings } from "./restaurant/editor-settings.js";
-import { initEditorSaveFlow } from "./restaurant/editor-save.js";
-import { mountEditorShell } from "../../../lib/editorShellMarkup.js";
+} from "../../lib/restaurantRuntime/menu-image-utils.js";
+import { detectDishesOnMenu } from "../../lib/restaurantRuntime/menu-dish-detection.js";
+import { initBrandVerification } from "../../lib/restaurantRuntime/brand-verification.js";
+import { initChangeLog } from "../../lib/restaurantChangeLogRuntime.js";
+import { initEditorOverlays } from "../../lib/restaurantRuntime/editor-overlays.js";
+import { initMenuImageEditor } from "../../lib/restaurantRuntime/menu-images.js";
+import { initEditorNavigation } from "../../lib/restaurantRuntime/editor-navigation.js";
+import { initEditorSections } from "../../lib/restaurantRuntime/editor-sections.js";
+import { initEditorHistory } from "../../lib/restaurantRuntime/editor-history.js";
+import { initEditorSettings } from "../../lib/restaurantRuntime/editor-settings.js";
+import { initEditorSaveFlow } from "../../lib/restaurantRuntime/editor-save.js";
+import { mountEditorShell } from "../../lib/editorShellMarkup.js";
 import {
   applyRestaurantShellState,
   mountRestaurantShell,
-} from "../../../lib/restaurantShellMarkup.js";
-import { mountReportShell } from "../../../lib/reportShellMarkup.js";
+} from "../../lib/restaurantShellMarkup.js";
+import { mountReportShell } from "../../lib/reportShellMarkup.js";
 import {
   bindRestaurantActionButtons,
   bindSavedPreferenceButtons,
   initGuestFilterControls,
   showRestaurantMenuSurface,
-} from "../../../lib/restaurantViewBindings.js";
-import { bindEditorBackButton } from "./restaurant/editor-exit.js";
-import { bindDetectDishesButton } from "./restaurant/editor-dish-detection.js";
-import { bindEditorToolbarScale } from "./restaurant/editor-toolbar.js";
-import { bindEditorHistoryControls } from "./restaurant/editor-history-controls.js";
-import { openPendingDishInEditor } from "./restaurant/editor-pending-dish.js";
-import { createEditorItemEditor } from "./restaurant/editor-item-editor.js";
-import { createEditorLastConfirmedUpdater } from "../../../lib/editorLastConfirmedRuntime.js";
-import { bindEditorRuntimeBindings } from "./restaurant/editor-runtime-bindings.js";
+} from "../../lib/restaurantViewBindings.js";
+import { bindEditorBackButton } from "../../lib/restaurantRuntime/editor-exit.js";
+import { bindDetectDishesButton } from "../../lib/restaurantRuntime/editor-dish-detection.js";
+import { bindEditorToolbarScale } from "../../lib/restaurantRuntime/editor-toolbar.js";
+import { bindEditorHistoryControls } from "../../lib/restaurantRuntime/editor-history-controls.js";
+import { openPendingDishInEditor } from "../../lib/restaurantRuntime/editor-pending-dish.js";
+import { createEditorItemEditor } from "../../lib/restaurantRuntime/editor-item-editor.js";
+import { createEditorLastConfirmedUpdater } from "../../lib/editorLastConfirmedRuntime.js";
+import { bindEditorRuntimeBindings } from "../../lib/restaurantRuntime/editor-runtime-bindings.js";
 import {
   initializeEditorAssets,
   createDirtyController,
   createEditorChangeState,
   applyPendingMenuIndexRemap,
-} from "./restaurant/editor-session.js";
-import { renderRestaurantReportPage } from "../../../lib/restaurantReportPageRuntime.js";
+} from "../../lib/restaurantRuntime/editor-session.js";
+import { renderRestaurantReportPage } from "../../lib/restaurantReportPageRuntime.js";
 import {
   fetchChangeLogEntries,
   insertChangeLogEntry,
-} from "../../../lib/changeLogService.js";
-import { normalizeRestaurantRow } from "../../../lib/restaurantNormalization.js";
-import { prefersMobileInfo } from "../../../lib/mobileInfoHelpersRuntime.js";
-import { createDishEditorRuntime } from "./restaurant/dish-editor-runtime.js";
-import { createPageUiRuntime } from "../../../lib/pageUiRuntime.js";
-import { createPageEditorHydrationRuntime } from "../../../lib/pageEditorHydrationRuntime.js";
-import { createPageUiOptions } from "../../../lib/pageUiOptionsRuntime.js";
-import { createPageEditorHydrationOptions } from "../../../lib/pageEditorHydrationOptionsRuntime.js";
-import { createPageServicesRuntime } from "../../../lib/pageServicesRuntime.js";
+} from "../../lib/changeLogService.js";
+import { normalizeRestaurantRow } from "../../lib/restaurantNormalization.js";
+import { prefersMobileInfo } from "../../lib/mobileInfoHelpersRuntime.js";
+import { createDishEditorRuntime } from "../../lib/restaurantRuntime/dish-editor-runtime.js";
+import { createPageUiRuntime } from "../../lib/pageUiRuntime.js";
+import { createPageEditorHydrationRuntime } from "../../lib/pageEditorHydrationRuntime.js";
+import { createPageUiOptions } from "../../lib/pageUiOptionsRuntime.js";
+import { createPageEditorHydrationOptions } from "../../lib/pageEditorHydrationOptionsRuntime.js";
+import { createPageServicesRuntime } from "../../lib/pageServicesRuntime.js";
 import {
   fmtDate,
   fmtDateTime,
   getWeeksAgoInfo,
-} from "../../../lib/timeFormatting.js";
+} from "../../lib/timeFormatting.js";
 
 // Shim globals for module scope
 const logDebug = window.logDebug || noop;

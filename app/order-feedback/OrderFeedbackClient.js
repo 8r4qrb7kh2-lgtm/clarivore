@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import PageShell from "../components/PageShell";
 import SimpleTopbar from "../components/SimpleTopbar";
 import { supabaseClient as supabase } from "../lib/supabase";
 import { isManagerOrOwnerUser } from "../lib/managerRestaurants";
@@ -339,23 +340,23 @@ export default function OrderFeedbackClient() {
   );
 
   return (
-    <div className="page-shell">
-      <SimpleTopbar
-        brandHref="/home"
-        links={[
-          { href: "/home", label: "Home" },
-          { href: "/restaurants", label: "Restaurants" },
-          { href: "/favorites", label: "My restaurants" },
-          { href: "/manager-dashboard", label: "Dashboard", visible: isManagerOrOwner },
-          { href: "/help-contact", label: "Help" },
-        ]}
-        showAuthAction
-        signedIn={Boolean(topbarUser)}
-        onSignOut={onSignOut}
-      />
-
-      <main className="page-main">
-        <div className="page-content">
+    <PageShell
+      topbar={
+        <SimpleTopbar
+          brandHref="/home"
+          links={[
+            { href: "/home", label: "Home" },
+            { href: "/restaurants", label: "Restaurants" },
+            { href: "/favorites", label: "My restaurants" },
+            { href: "/manager-dashboard", label: "Dashboard", visible: isManagerOrOwner },
+            { href: "/help-contact", label: "Help" },
+          ]}
+          showAuthAction
+          signedIn={Boolean(topbarUser)}
+          onSignOut={onSignOut}
+        />
+      }
+    >
           {isLoading ? (
             <div id="loading-state" className="loading-state">
               <p>Loading your feedback form...</p>
@@ -569,8 +570,6 @@ export default function OrderFeedbackClient() {
               </div>
             </div>
           ) : null}
-        </div>
-      </main>
-    </div>
+    </PageShell>
   );
 }

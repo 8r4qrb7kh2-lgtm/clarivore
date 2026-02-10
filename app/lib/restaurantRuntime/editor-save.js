@@ -1,4 +1,4 @@
-import { resolveAccountName } from "../../../../lib/userIdentity.js";
+import { resolveAccountName } from "../userIdentity.js";
 
 export function initEditorSaveFlow(deps = {}) {
   const state = deps.state || {};

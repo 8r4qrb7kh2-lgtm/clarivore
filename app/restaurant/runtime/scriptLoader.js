@@ -15,7 +15,7 @@ let runtimeModulePromise = null;
 
 export async function loadRestaurantRuntimeModule() {
   if (!runtimeModulePromise) {
-    runtimeModulePromise = import("./legacy/restaurant-page.js");
+    runtimeModulePromise = import("./restaurantPageRuntime.js");
   }
   return runtimeModulePromise;
 }

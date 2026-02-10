@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import PageShell from "../components/PageShell";
 import RestaurantCard from "../components/RestaurantCard";
 import SimpleTopbar from "../components/SimpleTopbar";
 import {
@@ -195,89 +196,78 @@ export default function FavoritesClient() {
   };
 
   return (
-    <div className="page-shell">
-      <SimpleTopbar
-        brandHref="/home"
-        links={[
-          { href: "/home", label: "Home" },
-          { href: "/restaurants", label: "Restaurants" },
-          { href: "/dish-search", label: "Dish search" },
-          { href: "/help-contact", label: "Help" },
-          { href: "/account", label: "Account" },
-        ]}
-      />
-
-      <main className="page-main">
-        <div className="page-content favorite-container">
-          <h1 style={{ textAlign: "center", marginBottom: 8 }}>
-            My restaurants
-          </h1>
+    <PageShell
+      contentClassName="favorite-container"
+      topbar={
+        <SimpleTopbar
+          brandHref="/home"
+          links={[
+            { href: "/home", label: "Home" },
+            { href: "/restaurants", label: "Restaurants" },
+            { href: "/dish-search", label: "Dish search" },
+            { href: "/help-contact", label: "Help" },
+            { href: "/account", label: "Account" },
+          ]}
+        />
+      }
+    >
+      <h1 style={{ textAlign: "center", marginBottom: 8 }}>My restaurants</h1>
+      <p className={`status-text ${statusType}`} style={{ textAlign: "center" }}>
+        {status}
+      </p>
+      <div className="restaurant-grid">
+        {loading ? (
           <p
-            className={`status-text ${statusType}`}
-            style={{ textAlign: "center" }}
+            style={{
+              color: "var(--muted)",
+              textAlign: "center",
+              gridColumn: "1 / -1",
+            }}
           >
-            {status}
+            Loading favorites...
           </p>
-          <div className="restaurant-grid">
-            {loading ? (
-              <p
-                style={{
-                  color: "var(--muted)",
-                  textAlign: "center",
-                  gridColumn: "1 / -1",
-                }}
-              >
-                Loading favorites...
-              </p>
-            ) : restaurants.length ? (
-              restaurants.map((restaurant) => {
-                const restaurantKey = restaurant.id
-                  ? String(restaurant.id)
-                  : "";
-                const isFavorite = restaurantKey && favoriteSet.has(restaurantKey);
-                const showAll =
-                  isOwnerUser(user) || isManagerUser(user);
+        ) : restaurants.length ? (
+          restaurants.map((restaurant) => {
+            const restaurantKey = restaurant.id ? String(restaurant.id) : "";
+            const isFavorite = restaurantKey && favoriteSet.has(restaurantKey);
+            const showAll = isOwnerUser(user) || isManagerUser(user);
 
-                return (
-                  <RestaurantCard
-                    key={restaurant.id}
-                    restaurant={restaurant}
-                    confirmationShowAll={showAll}
-                    mediaOverlay={
-                      restaurantKey ? (
-                        <button
-                          className={`favorite-toggle${
-                            isFavorite ? " is-active" : ""
-                          }`}
-                          type="button"
-                          aria-pressed={isFavorite}
-                          aria-label={
-                            isFavorite
-                              ? "Remove from favorites"
-                              : "Add to favorites"
-                          }
-                          disabled={busyId === restaurantKey}
-                          onClick={(event) => {
-                            event.preventDefault();
-                            event.stopPropagation();
-                            toggleFavorite(restaurantKey);
-                          }}
-                        >
-                          {isFavorite ? "★" : "☆"}
-                        </button>
-                      ) : null
-                    }
-                  />
-                );
-              })
-            ) : (
-              <div className="empty-state" style={{ gridColumn: "1 / -1" }}>
-                No favorites yet. Add favorites from the All restaurants page.
-              </div>
-            )}
+            return (
+              <RestaurantCard
+                key={restaurant.id}
+                restaurant={restaurant}
+                confirmationShowAll={showAll}
+                mediaOverlay={
+                  restaurantKey ? (
+                    <button
+                      className={`favorite-toggle${isFavorite ? " is-active" : ""}`}
+                      type="button"
+                      aria-pressed={isFavorite}
+                      aria-label={
+                        isFavorite
+                          ? "Remove from favorites"
+                          : "Add to favorites"
+                      }
+                      disabled={busyId === restaurantKey}
+                      onClick={(event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        toggleFavorite(restaurantKey);
+                      }}
+                    >
+                      {isFavorite ? "★" : "☆"}
+                    </button>
+                  ) : null
+                }
+              />
+            );
+          })
+        ) : (
+          <div className="empty-state" style={{ gridColumn: "1 / -1" }}>
+            No favorites yet. Add favorites from the All restaurants page.
           </div>
-        </div>
-      </main>
-    </div>
+        )}
+      </div>
+    </PageShell>
   );
 }

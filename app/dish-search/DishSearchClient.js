@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import PageShell from "../components/PageShell";
 import SimpleTopbar from "../components/SimpleTopbar";
 import {
   buildAllergenDietConfig,
@@ -595,20 +596,20 @@ export default function DishSearchClient() {
   };
 
   return (
-    <div className="page-shell">
-      <SimpleTopbar
-        brandHref="/home"
-        links={[
-          { href: "/home", label: "Home" },
-          { href: "/restaurants", label: "Restaurants" },
-          { href: "/favorites", label: "My restaurants" },
-          { href: "/account", label: "Account" },
-          { href: "/help-contact", label: "Help" },
-        ]}
-      />
-
-      <main className="page-main">
-        <div className="page-content">
+    <PageShell
+      topbar={
+        <SimpleTopbar
+          brandHref="/home"
+          links={[
+            { href: "/home", label: "Home" },
+            { href: "/restaurants", label: "Restaurants" },
+            { href: "/favorites", label: "My restaurants" },
+            { href: "/account", label: "Account" },
+            { href: "/help-contact", label: "Help" },
+          ]}
+        />
+      }
+    >
           <h1
             style={{
               textAlign: "center",
@@ -912,8 +913,6 @@ export default function DishSearchClient() {
               emptyState()
             )}
           </div>
-        </div>
-      </main>
-    </div>
+    </PageShell>
   );
 }

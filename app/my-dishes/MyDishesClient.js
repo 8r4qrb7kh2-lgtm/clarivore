@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import PageShell from "../components/PageShell";
 import SimpleTopbar from "../components/SimpleTopbar";
 import { supabaseClient as supabase } from "../lib/supabase";
 import {
@@ -438,107 +439,105 @@ export default function MyDishesClient() {
   );
 
   return (
-    <div className="page-shell">
-      <SimpleTopbar
-        brandHref="/home"
-        links={[
-          { href: "/home", label: "Home" },
-          { href: "/restaurants", label: "Restaurants" },
-          { href: "/favorites", label: "My restaurants" },
-          { href: "/dish-search", label: "Dish search" },
-          { href: "/manager-dashboard", label: "Dashboard", visible: isManagerOrOwner },
-          { href: "/help-contact", label: "Help" },
-        ]}
-        showAuthAction
-        signedIn
-        onSignOut={onSignOut}
-      />
+    <PageShell
+      topbar={
+        <SimpleTopbar
+          brandHref="/home"
+          links={[
+            { href: "/home", label: "Home" },
+            { href: "/restaurants", label: "Restaurants" },
+            { href: "/favorites", label: "My restaurants" },
+            { href: "/dish-search", label: "Dish search" },
+            { href: "/manager-dashboard", label: "Dashboard", visible: isManagerOrOwner },
+            { href: "/help-contact", label: "Help" },
+          ]}
+          showAuthAction
+          signedIn
+          onSignOut={onSignOut}
+        />
+      }
+    >
+      <h1 style={{ textAlign: "center", marginBottom: 8 }}>My Dishes</h1>
+      <p style={{ textAlign: "center", color: "var(--muted)", marginBottom: 32 }}>
+        Your favorite and previously ordered dishes
+      </p>
 
-      <main className="page-main">
-        <div className="page-content">
-          <h1 style={{ textAlign: "center", marginBottom: 8 }}>My Dishes</h1>
-          <p style={{ textAlign: "center", color: "var(--muted)", marginBottom: 32 }}>
-            Your favorite and previously ordered dishes
-          </p>
+      {status.text ? (
+        <p className={`status-text ${status.tone || ""}`}>{status.text}</p>
+      ) : null}
+      {bootError ? <p className="status-text error">{bootError}</p> : null}
 
-          {status.text ? (
-            <p className={`status-text ${status.tone || ""}`}>{status.text}</p>
-          ) : null}
-          {bootError ? <p className="status-text error">{bootError}</p> : null}
-
-          <div className="two-column-container">
-            <div className="column">
-              <div className="column-header">
-                <h2>Loved Dishes</h2>
-              </div>
-              <p className="column-description">Dishes you have saved to your favorites</p>
-              <div id="loved-dishes-container">
-                {isLoadingLoved ? <div className="loading">Loading your favorite dishes...</div> : null}
-                {!isLoadingLoved
-                  ? lovedSections.map((section) => (
-                      <div className="restaurant-section" key={`loved-${section.restaurantId}`}>
-                        <div className="restaurant-section-header">
-                          <h3 className="restaurant-section-name">
-                            {section.restaurantSlug ? (
-                              <Link href={`/restaurant?slug=${encodeURIComponent(section.restaurantSlug)}`}>
-                                {section.restaurantName}
-                              </Link>
-                            ) : (
-                              section.restaurantName
-                            )}
-                          </h3>
-                          <span className="restaurant-dish-count">
-                            {section.dishes.length} dish
-                            {section.dishes.length !== 1 ? "es" : ""}
-                          </span>
-                        </div>
-                        {section.dishes.map((dish) =>
-                          renderDish(dish, section.restaurantSlug, true),
+      <div className="two-column-container">
+        <div className="column">
+          <div className="column-header">
+            <h2>Loved Dishes</h2>
+          </div>
+          <p className="column-description">Dishes you have saved to your favorites</p>
+          <div id="loved-dishes-container">
+            {isLoadingLoved ? <div className="loading">Loading your favorite dishes...</div> : null}
+            {!isLoadingLoved
+              ? lovedSections.map((section) => (
+                  <div className="restaurant-section" key={`loved-${section.restaurantId}`}>
+                    <div className="restaurant-section-header">
+                      <h3 className="restaurant-section-name">
+                        {section.restaurantSlug ? (
+                          <Link href={`/restaurant?slug=${encodeURIComponent(section.restaurantSlug)}`}>
+                            {section.restaurantName}
+                          </Link>
+                        ) : (
+                          section.restaurantName
                         )}
-                      </div>
-                    ))
-                  : null}
-                {lovedEmpty}
-              </div>
-            </div>
-
-            <div className="column">
-              <div className="column-header">
-                <h2>Previously Ordered</h2>
-              </div>
-              <p className="column-description">Dishes from your approved orders</p>
-              <div id="ordered-dishes-container">
-                {isLoadingOrdered ? <div className="loading">Loading your order history...</div> : null}
-                {!isLoadingOrdered
-                  ? orderedSections.map((section) => (
-                      <div className="restaurant-section" key={`ordered-${section.restaurantId}`}>
-                        <div className="restaurant-section-header">
-                          <h3 className="restaurant-section-name">
-                            {section.restaurantSlug ? (
-                              <Link href={`/restaurant?slug=${encodeURIComponent(section.restaurantSlug)}`}>
-                                {section.restaurantName}
-                              </Link>
-                            ) : (
-                              section.restaurantName
-                            )}
-                          </h3>
-                          <span className="restaurant-dish-count">
-                            {section.dishes.length} dish
-                            {section.dishes.length !== 1 ? "es" : ""}
-                          </span>
-                        </div>
-                        {section.dishes.map((dish) =>
-                          renderDish(dish, section.restaurantSlug, false),
-                        )}
-                      </div>
-                    ))
-                  : null}
-                {orderedEmpty}
-              </div>
-            </div>
+                      </h3>
+                      <span className="restaurant-dish-count">
+                        {section.dishes.length} dish
+                        {section.dishes.length !== 1 ? "es" : ""}
+                      </span>
+                    </div>
+                    {section.dishes.map((dish) =>
+                      renderDish(dish, section.restaurantSlug, true),
+                    )}
+                  </div>
+                ))
+              : null}
+            {lovedEmpty}
           </div>
         </div>
-      </main>
-    </div>
+
+        <div className="column">
+          <div className="column-header">
+            <h2>Previously Ordered</h2>
+          </div>
+          <p className="column-description">Dishes from your approved orders</p>
+          <div id="ordered-dishes-container">
+            {isLoadingOrdered ? <div className="loading">Loading your order history...</div> : null}
+            {!isLoadingOrdered
+              ? orderedSections.map((section) => (
+                  <div className="restaurant-section" key={`ordered-${section.restaurantId}`}>
+                    <div className="restaurant-section-header">
+                      <h3 className="restaurant-section-name">
+                        {section.restaurantSlug ? (
+                          <Link href={`/restaurant?slug=${encodeURIComponent(section.restaurantSlug)}`}>
+                            {section.restaurantName}
+                          </Link>
+                        ) : (
+                          section.restaurantName
+                        )}
+                      </h3>
+                      <span className="restaurant-dish-count">
+                        {section.dishes.length} dish
+                        {section.dishes.length !== 1 ? "es" : ""}
+                      </span>
+                    </div>
+                    {section.dishes.map((dish) =>
+                      renderDish(dish, section.restaurantSlug, false),
+                    )}
+                  </div>
+                ))
+              : null}
+            {orderedEmpty}
+          </div>
+        </div>
+      </div>
+    </PageShell>
   );
 }

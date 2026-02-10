@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import PageShell from "../components/PageShell";
 import SimpleTopbar, { ManagerModeSwitch } from "../components/SimpleTopbar";
 import ChatMessageText from "../components/chat/ChatMessageText";
 import { supabaseClient as supabase } from "../lib/supabase";
@@ -575,32 +576,44 @@ export default function HelpContactClient() {
   );
 
   return (
-    <div className="page-shell">
-      <SimpleTopbar
-        brandHref="/home"
-        links={[
-          { href: "/home", label: "Home" },
-          { href: "/restaurants", label: "Restaurants" },
-          { href: "/favorites", label: "My restaurants" },
-          { href: "/dish-search", label: "Dish search" },
-          { href: "/manager-dashboard", label: "Dashboard", visible: isManagerOrOwner },
-          { href: "/account", label: "Account" },
-        ]}
-        showAuthAction
-        signedIn={Boolean(user)}
-        onSignOut={onSignOut}
-        rightContent={
-          isManagerOrOwner ? (
-            <ManagerModeSwitch
-              mode={isEditorMode ? "editor" : "customer"}
-              onChange={onModeChange}
-            />
-          ) : null
-        }
-      />
-
-      <main className="help-main">
-        <div className="help-container">
+    <PageShell
+      mainClassName="help-main"
+      contentClassName="help-container"
+      topbar={
+        <SimpleTopbar
+          brandHref="/home"
+          links={[
+            { href: "/home", label: "Home" },
+            { href: "/restaurants", label: "Restaurants" },
+            { href: "/favorites", label: "My restaurants" },
+            { href: "/dish-search", label: "Dish search" },
+            { href: "/manager-dashboard", label: "Dashboard", visible: isManagerOrOwner },
+            { href: "/account", label: "Account" },
+          ]}
+          showAuthAction
+          signedIn={Boolean(user)}
+          onSignOut={onSignOut}
+          rightContent={
+            isManagerOrOwner ? (
+              <ManagerModeSwitch
+                mode={isEditorMode ? "editor" : "customer"}
+                onChange={onModeChange}
+              />
+            ) : null
+          }
+        />
+      }
+      afterMain={
+        bootError ? (
+          <p
+            className="status-text error"
+            style={{ margin: "12px auto 0", maxWidth: 1100, padding: "0 20px" }}
+          >
+            {bootError}
+          </p>
+        ) : null
+      }
+    >
           <div className="help-header">
             <h1>Help</h1>
             <p>Ask how to use Clarivore, or send feedback and issues to the team.</p>
@@ -831,17 +844,6 @@ export default function HelpContactClient() {
               </>
             )}
           </section>
-        </div>
-      </main>
-
-      {bootError ? (
-        <p
-          className="status-text error"
-          style={{ margin: "12px auto 0", maxWidth: 1100, padding: "0 20px" }}
-        >
-          {bootError}
-        </p>
-      ) : null}
-    </div>
+    </PageShell>
   );
 }

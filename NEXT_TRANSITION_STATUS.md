@@ -167,6 +167,22 @@
   - `app/restaurant/runtime/legacy/restaurant/page-services-runtime.js` (removed)
   - `app/restaurant/runtime/legacy/restaurant/mobile-info-helpers.js` (removed)
   - `app/restaurant/runtime/legacy/restaurant/restaurant-view.js` (removed)
+- Consolidated the remaining route-level page frame markup into a shared component:
+  - `app/components/PageShell.js`
+- Refactored additional routes to use the shared page shell layout instead of duplicating `page-shell/page-main/page-content` wrappers:
+  - `app/home/HomeClient.js`
+  - `app/restaurants/RestaurantsClient.js`
+  - `app/favorites/FavoritesClient.js`
+  - `app/dish-search/DishSearchClient.js`
+  - `app/my-dishes/MyDishesClient.js`
+  - `app/order-feedback/OrderFeedbackClient.js`
+  - `app/help-contact/HelpContactClient.js`
+  - `app/report-issue/ReportIssueClient.js`
+- Removed the final app-local `restaurant` runtime legacy entrypoint:
+  - moved `app/restaurant/runtime/legacy/restaurant-page.js` to `app/restaurant/runtime/restaurantPageRuntime.js`
+  - updated `app/restaurant/runtime/scriptLoader.js` to import `./restaurantPageRuntime.js`
+- Moved the remaining legacy restaurant runtime feature subtree into shared app modules under:
+  - `app/lib/restaurantRuntime/*`
 
 ## Current migration inventory
 - Legacy static HTML pages still present in `public/`: 15
@@ -176,12 +192,12 @@
 - App-local legacy runtime files:
   - `app/admin-dashboard/runtime/legacy`: 0
   - `app/manager-dashboard/runtime/legacy`: 0
-  - `app/restaurant/runtime/legacy`: 47
+  - `app/restaurant/runtime/legacy`: 0
 - App routes still rendering raw topbar markup directly: 0
 
 ## Remaining high-priority work
-1. Replace remaining app-local legacy runtime tree (`app/restaurant/runtime/legacy/*`) with native React/Next feature modules page-by-page.
-2. De-duplicate remaining copied legacy utilities in `app/restaurant/runtime/legacy/*` against shared app modules.
+1. Replace the monolithic `restaurant` runtime entry (`app/restaurant/runtime/restaurantPageRuntime.js`) with native React/Next feature modules page-by-page.
+2. Continue reducing global window-coupled runtime state in `app/lib/restaurantRuntime/*` into testable app-level services/hooks.
 3. Retire `public/*.html` and unused `public/js/*` runtime files after parity, leaving only static assets.
 
 ## Validation commands

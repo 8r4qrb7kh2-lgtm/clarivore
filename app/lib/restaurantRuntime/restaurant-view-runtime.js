@@ -1,5 +1,5 @@
 import { createHowItWorksTour } from "./how-it-works-tour.js";
-import { initRestaurantFilters } from "../../../../lib/restaurantFiltersRuntime.js";
+import { initRestaurantFilters } from "../restaurantFiltersRuntime.js";
 import { renderRestaurantScreen } from "./restaurant-screen.js";
 import { createMenuDrawRuntime } from "./menu-draw-runtime.js";
 import { createDishInteractionTracker } from "./menu-dish-tracking.js";

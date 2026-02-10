@@ -1,4 +1,4 @@
-import { createEditorRenderer } from "../restaurant/runtime/legacy/restaurant/editor-screen.js";
+import { createEditorRenderer } from "./restaurantRuntime/editor-screen.js";
 
 export function createEditorRuntime(options = {}) {
   const onEditorSaveApi =

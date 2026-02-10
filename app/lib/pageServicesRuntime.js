@@ -1,19 +1,19 @@
 import { initIngredientSources } from "./ingredientSources.js";
-import { initMobileOverlayZoom } from "../restaurant/runtime/legacy/restaurant/mobile-overlay-zoom.js";
+import { initMobileOverlayZoom } from "./restaurantRuntime/mobile-overlay-zoom.js";
 import {
   createQrPromoController,
   deriveQrVisitFlag,
-} from "../restaurant/runtime/legacy/restaurant/qr-promo.js";
+} from "./restaurantRuntime/qr-promo.js";
 import { createNavigationRuntime } from "./restaurantNavigationRuntime.js";
-import { createOrderRuntime } from "../restaurant/runtime/legacy/restaurant/order-runtime.js";
+import { createOrderRuntime } from "./restaurantRuntime/order-runtime.js";
 import {
   createDishCompatibilityEvaluator,
   createTooltipBodyHTML,
-} from "../restaurant/runtime/legacy/restaurant/dish-compatibility-tooltip.js";
+} from "./restaurantRuntime/dish-compatibility-tooltip.js";
 import { createMobileInfoHelpers, prefersMobileInfo } from "./mobileInfoHelpersRuntime.js";
 import { createPageUtilsRuntime } from "./pageUtilsRuntime.js";
 import { createPageOffsetRuntime } from "./pageOffsetRuntime.js";
-import { createMobileInfoPanelDom } from "../restaurant/runtime/legacy/restaurant/mobile-info-panel-dom.js";
+import { createMobileInfoPanelDom } from "./restaurantRuntime/mobile-info-panel-dom.js";
 import { createPageCoreRuntime } from "./pageCoreRuntime.js";
 
 export function createPageServicesRuntime({
