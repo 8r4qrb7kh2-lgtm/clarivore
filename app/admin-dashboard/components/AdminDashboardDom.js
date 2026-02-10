@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import SimpleTopbar from "../../components/SimpleTopbar";
 import ChatMessageText from "../../components/chat/ChatMessageText";
 import { notifyManagerChat } from "../../lib/chatNotifications";
+import { formatChatTimestamp } from "../../lib/chatMessage";
 import { loadScript } from "../../runtime/scriptLoader";
 import { supabaseClient as supabase } from "../../lib/supabase";
 
@@ -226,12 +227,9 @@ function ChatThread({
               const sender =
                 message.sender_name ||
                 (isOutgoing ? ADMIN_DISPLAY_NAME : restaurantName || "Restaurant");
-              const createdAt = message.created_at
-                ? new Date(message.created_at).toLocaleTimeString("en-US", {
-                    hour: "numeric",
-                    minute: "2-digit",
-                  })
-                : "";
+              const createdAt = formatChatTimestamp(message.created_at, {
+                withDate: false,
+              });
               const messageAcks = ackEntries.filter((entry) => entry.index === index);
 
               return (
@@ -257,10 +255,7 @@ function ChatThread({
                       className="chat-ack"
                     >
                       {entry.name} acknowledged ·{" "}
-                      {new Date(entry.acknowledgedAt).toLocaleTimeString("en-US", {
-                        hour: "numeric",
-                        minute: "2-digit",
-                      })}
+                      {formatChatTimestamp(entry.acknowledgedAt, { withDate: false })}
                     </div>
                   ))}
                 </div>

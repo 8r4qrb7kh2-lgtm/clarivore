@@ -9,7 +9,7 @@
 import {
   initHelpAssistantDrawer,
   setHelpAssistantMode,
-} from '../../../lib/helpAssistantDrawer.js';
+} from "./helpAssistantDrawer.js";
 
 initHelpAssistantDrawer();
 

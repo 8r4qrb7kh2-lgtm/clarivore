@@ -5,20 +5,7 @@ import { useRouter } from "next/navigation";
 import SimpleTopbar from "../components/SimpleTopbar";
 import { supabaseClient as supabase } from "../lib/supabase";
 import { isManagerOrOwnerUser } from "../lib/managerRestaurants";
-
-function resolveAccountName(user, fallbackName = "") {
-  if (!user) return (fallbackName || "").trim() || null;
-  const firstName = user.user_metadata?.first_name || "";
-  const lastName = user.user_metadata?.last_name || "";
-  let fullName = `${firstName} ${lastName}`.trim();
-  if (!fullName) fullName = (user.user_metadata?.full_name || "").trim();
-  if (!fullName) fullName = (user.raw_user_meta_data?.full_name || "").trim();
-  if (!fullName) fullName = (user.user_metadata?.name || "").trim();
-  if (!fullName) fullName = (user.user_metadata?.display_name || "").trim();
-  if (!fullName) fullName = (user.name || "").trim();
-  if (!fullName && fallbackName) fullName = fallbackName.trim();
-  return fullName || null;
-}
+import { resolveAccountName } from "../lib/userIdentity";
 
 export default function ReportIssueClient() {
   const router = useRouter();

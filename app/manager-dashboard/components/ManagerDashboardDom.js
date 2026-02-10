@@ -5,8 +5,9 @@ import SimpleTopbar, { ManagerModeSwitch } from "../../components/SimpleTopbar";
 import ChatMessageText from "../../components/chat/ChatMessageText";
 import { notifyManagerChat } from "../../lib/chatNotifications";
 import { buildAllergenDietConfig } from "../../lib/allergenConfig";
-import { resolveChatLink } from "../../lib/chatMessage";
+import { formatChatTimestamp, resolveChatLink } from "../../lib/chatMessage";
 import { supabaseClient as supabase } from "../../lib/supabase";
+import { resolveManagerDisplayName } from "../../lib/userIdentity";
 
 const ADMIN_DISPLAY_NAME = "Matt D (clarivore administrator)";
 const AUTO_ALERT_SENDER = "Automated alert system";
@@ -53,27 +54,6 @@ function getOverlayDishName(overlay, fallbackIndex = 0) {
     overlay?.label ||
     overlay?.name ||
     `Dish ${fallbackIndex + 1}`
-  );
-}
-
-function resolveManagerDisplayName(user) {
-  const current = user || {};
-  const meta = current.user_metadata || {};
-  const rawMeta = current.raw_user_meta_data || {};
-  const first = String(meta.first_name || rawMeta.first_name || "").trim();
-  const last = String(meta.last_name || rawMeta.last_name || "").trim();
-  const combined = `${first} ${last}`.trim();
-  const fallbackEmail = current.email
-    ? current.email.split("@")[0].replace(/[._]+/g, " ").trim()
-    : "";
-
-  return (
-    combined ||
-    String(meta.full_name || rawMeta.full_name || "").trim() ||
-    String(meta.name || rawMeta.name || "").trim() ||
-    String(meta.display_name || rawMeta.display_name || "").trim() ||
-    fallbackEmail ||
-    "Manager"
   );
 }
 
@@ -2344,14 +2324,7 @@ export default function ManagerDashboardDom({
                               ? senderName
                               : managerDisplayName
                             : senderName || ADMIN_DISPLAY_NAME;
-                          const timestamp = message.created_at
-                            ? new Date(message.created_at).toLocaleString("en-US", {
-                                month: "short",
-                                day: "numeric",
-                                hour: "numeric",
-                                minute: "2-digit",
-                              })
-                            : "";
+                          const timestamp = formatChatTimestamp(message.created_at);
 
                           const acknowledgements = [];
                           if (chatReadState.admin?.acknowledged_at) {
@@ -2435,12 +2408,7 @@ export default function ManagerDashboardDom({
                                   className="chat-ack"
                                   key={`${entry.name}-${entry.at}-${message.id}`}
                                 >
-                                  {entry.name} acknowledged · {new Date(entry.at).toLocaleString("en-US", {
-                                    month: "short",
-                                    day: "numeric",
-                                    hour: "numeric",
-                                    minute: "2-digit",
-                                  })}
+                                  {entry.name} acknowledged · {formatChatTimestamp(entry.at)}
                                 </div>
                               ))}
                             </div>

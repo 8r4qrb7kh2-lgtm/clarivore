@@ -1,4 +1,4 @@
-import { createIngredientNormalizer } from "./ingredient-row-utils.js";
+import { createIngredientNormalizer } from "../../../../lib/ingredientNormalizer.js";
 
 export function initBrandVerification(deps = {}) {
   const overlays = Array.isArray(deps.overlays) ? deps.overlays : [];

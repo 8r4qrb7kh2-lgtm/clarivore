@@ -6,9 +6,9 @@ function getSupabaseClient(options = {}) {
   return null;
 }
 
-// Label transcript -> Claude allergen/diet flagging via Supabase Edge Function
-// Input: array of transcript line strings
-// Output: { success, data: { flags: [{ ingredient, word_indices, allergens, diets, risk_type }] } }
+// Label transcript -> allergen/diet flags via Supabase Edge Function.
+// Input: array of transcript lines.
+// Output: { success, data: { flags: [...] } }.
 export async function analyzeAllergensWithLabelCropper(
   transcriptLines,
   options = {},
@@ -42,8 +42,8 @@ export async function analyzeAllergensWithLabelCropper(
     if (error) throw error;
     const flags = Array.isArray(data?.flags) ? data.flags : [];
     return { success: true, data: { flags } };
-  } catch (err) {
-    console.error("Allergen label analysis failed:", err);
+  } catch (error) {
+    console.error("Allergen label analysis failed:", error);
     return { success: true, data: { flags: [] } };
   }
 }

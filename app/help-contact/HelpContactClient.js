@@ -4,57 +4,17 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import SimpleTopbar, { ManagerModeSwitch } from "../components/SimpleTopbar";
+import ChatMessageText from "../components/chat/ChatMessageText";
 import { supabaseClient as supabase } from "../lib/supabase";
 import {
   fetchManagerRestaurants,
   isManagerOrOwnerUser,
 } from "../lib/managerRestaurants";
 import { initManagerNotifications } from "../lib/managerNotifications";
+import { formatChatTimestamp } from "../lib/chatMessage";
+import { resolveAccountName, resolveManagerDisplayName } from "../lib/userIdentity";
 
 const ADMIN_DISPLAY_NAME = "Matt D (clarivore administrator)";
-
-function escapeHtml(value) {
-  return String(value ?? "")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/\"/g, "&quot;")
-    .replace(/'/g, "&#39;");
-}
-
-function formatChatMessageHtml(text) {
-  const escaped = escapeHtml(text || "");
-  return escaped.replace(
-    /(https?:\/\/[^\s<]+)/g,
-    '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>',
-  );
-}
-
-function formatChatTimestamp(value) {
-  if (!value) return "";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "";
-  return date.toLocaleString("en-US", {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
-}
-
-function resolveAccountName(user, fallbackName = "") {
-  if (!user) return (fallbackName || "").trim() || null;
-  const firstName = user.user_metadata?.first_name || "";
-  const lastName = user.user_metadata?.last_name || "";
-  let fullName = `${firstName} ${lastName}`.trim();
-  if (!fullName) fullName = (user.user_metadata?.full_name || "").trim();
-  if (!fullName) fullName = (user.raw_user_meta_data?.full_name || "").trim();
-  if (!fullName) fullName = (user.user_metadata?.name || "").trim();
-  if (!fullName) fullName = (user.user_metadata?.display_name || "").trim();
-  if (!fullName) fullName = (user.name || "").trim();
-  if (!fullName && fallbackName) fullName = fallbackName.trim();
-  return fullName || null;
-}
 
 function setAutoRestaurant(restaurants, preferRecent = true) {
   if (!Array.isArray(restaurants) || !restaurants.length) return null;
@@ -128,25 +88,7 @@ export default function HelpContactClient() {
   const helpNewConversationBtnRef = useRef(null);
   const assistantBoundModeRef = useRef("");
 
-  const getManagerDisplayName = useCallback(() => {
-    const current = user || {};
-    const meta = current.user_metadata || {};
-    const rawMeta = current.raw_user_meta_data || {};
-    const first = (meta.first_name || rawMeta.first_name || "").trim();
-    const last = (meta.last_name || rawMeta.last_name || "").trim();
-    const combined = `${first} ${last}`.trim();
-    const fallbackEmail = current.email
-      ? current.email.split("@")[0].replace(/[._]+/g, " ").trim()
-      : "";
-    return (
-      combined ||
-      (meta.full_name || rawMeta.full_name || "").trim() ||
-      (meta.name || rawMeta.name || "").trim() ||
-      (meta.display_name || rawMeta.display_name || "").trim() ||
-      fallbackEmail ||
-      "Manager"
-    );
-  }, [user]);
+  const managerDisplayName = useMemo(() => resolveManagerDisplayName(user), [user]);
 
   const mode = isEditorMode ? "manager" : "customer";
   const isManagerOrOwner = isManagerOrOwnerUser(user);
@@ -320,13 +262,13 @@ export default function HelpContactClient() {
         chatReadState.restaurant.acknowledged_at,
       );
       pushAck(index, {
-        name: getManagerDisplayName(),
+        name: managerDisplayName,
         acknowledgedAt: chatReadState.restaurant.acknowledged_at,
       });
     }
 
     return { messages, ackByIndex: byIndex };
-  }, [chatMessages, chatReadState, getManagerDisplayName]);
+  }, [chatMessages, chatReadState, managerDisplayName]);
 
   const sendChatMessage = useCallback(async () => {
     if (!supabase || !selectedRestaurantId) {
@@ -340,7 +282,7 @@ export default function HelpContactClient() {
 
     setChatSending(true);
     try {
-      const senderName = getManagerDisplayName();
+      const senderName = managerDisplayName;
       const { error } = await supabase.from("restaurant_direct_messages").insert({
         restaurant_id: selectedRestaurantId,
         message,
@@ -359,7 +301,7 @@ export default function HelpContactClient() {
     } finally {
       setChatSending(false);
     }
-  }, [chatInput, chatSending, getManagerDisplayName, loadChatMessages, selectedRestaurantId, user]);
+  }, [chatInput, chatSending, loadChatMessages, managerDisplayName, selectedRestaurantId, user]);
 
   const acknowledgeChat = useCallback(async () => {
     if (!supabase || !selectedRestaurantId) return;
@@ -724,7 +666,7 @@ export default function HelpContactClient() {
                         const senderLabel = isOutgoing
                           ? rawSenderName && rawSenderName.toLowerCase() !== "you"
                             ? rawSenderName
-                            : getManagerDisplayName()
+                            : managerDisplayName
                           : rawSenderName || ADMIN_DISPLAY_NAME;
                         const timestamp = formatChatTimestamp(message.created_at);
                         const acknowledgements =
@@ -737,11 +679,9 @@ export default function HelpContactClient() {
                                 isOutgoing ? "outgoing" : "incoming"
                               }`}
                             >
-                              <div
-                                dangerouslySetInnerHTML={{
-                                  __html: formatChatMessageHtml(message.message),
-                                }}
-                              />
+                              <div>
+                                <ChatMessageText text={message.message} />
+                              </div>
                               <div className="chat-preview-meta">
                                 {senderLabel}
                                 {timestamp ? ` · ${timestamp}` : ""}

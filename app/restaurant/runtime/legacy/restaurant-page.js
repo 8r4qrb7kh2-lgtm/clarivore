@@ -16,9 +16,9 @@ if (!ENABLE_CONSOLE_REPORTING && typeof console !== "undefined") {
     ((data, title) => console.log("[DEBUG-JSON]", title, data));
 }
 
-import { ORDER_STATUSES as TabletOrderStatusesConst } from "./tablet-simulation-logic.mjs";
-import { setupTopbar } from "./shared-nav.js";
-import { initDinerNotifications } from "./diner-notifications.js";
+import { ORDER_STATUSES as TabletOrderStatusesConst } from "../../../lib/tabletSimulationLogic.mjs";
+import { setupTopbar } from "../../../lib/sharedNav.js";
+import { initDinerNotifications } from "../../../lib/dinerNotifications.js";
 import {
   analyzeBoxSizes,
   splitImageIntoSections,
@@ -63,8 +63,8 @@ import { renderRestaurantReportPage } from "./restaurant/restaurant-report-page.
 import {
   fetchChangeLogEntries,
   insertChangeLogEntry,
-} from "./restaurant/change-log-service.js";
-import { normalizeRestaurantRow } from "./restaurant/restaurant-normalization.js";
+} from "../../../lib/changeLogService.js";
+import { normalizeRestaurantRow } from "../../../lib/restaurantNormalization.js";
 import { prefersMobileInfo } from "./restaurant/mobile-info-helpers.js";
 import { createDishEditorRuntime } from "./restaurant/dish-editor-runtime.js";
 import { createPageUiRuntime } from "./restaurant/page-ui-runtime.js";
@@ -76,7 +76,7 @@ import {
   fmtDate,
   fmtDateTime,
   getWeeksAgoInfo,
-} from "./restaurant/time-formatting.js";
+} from "../../../lib/timeFormatting.js";
 
 // Shim globals for module scope
 const logDebug = window.logDebug || noop;

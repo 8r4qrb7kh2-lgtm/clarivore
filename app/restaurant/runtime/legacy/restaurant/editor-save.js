@@ -1,3 +1,5 @@
+import { resolveAccountName } from "../../../../lib/userIdentity.js";
+
 export function initEditorSaveFlow(deps = {}) {
   const state = deps.state || {};
   const rs = deps.rs || {};
@@ -158,25 +160,8 @@ export function initEditorSaveFlow(deps = {}) {
   }
 
   function formatChangesForLog(changesList) {
-    // Try multiple sources for full name
-    const firstName = state.user?.user_metadata?.first_name || "";
-    const lastName = state.user?.user_metadata?.last_name || "";
-    let fullName = `${firstName} ${lastName}`.trim();
-    // Check for full_name field
-    if (!fullName)
-      fullName = (state.user?.user_metadata?.full_name || "").trim();
-    // Check raw_user_meta_data (Supabase sometimes uses this)
-    if (!fullName) {
-      const rawFirst = state.user?.raw_user_meta_data?.first_name || "";
-      const rawLast = state.user?.raw_user_meta_data?.last_name || "";
-      fullName = `${rawFirst} ${rawLast}`.trim();
-    }
-    if (!fullName)
-      fullName = (state.user?.raw_user_meta_data?.full_name || "").trim();
-    // Fallback to name field
-    if (!fullName) fullName = (state.user?.name || "").trim();
-    if (!fullName) fullName = (state.user?.email || "").trim();
-    if (!fullName) fullName = "User";
+    const fullName =
+      resolveAccountName(state.user, state.user?.email || "User") || "User";
 
     console.log("formatChangesForLog: user data =", {
       user_metadata: state.user?.user_metadata,

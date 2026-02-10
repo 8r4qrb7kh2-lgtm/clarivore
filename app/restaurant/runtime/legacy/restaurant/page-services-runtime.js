@@ -1,4 +1,4 @@
-import { initIngredientSources } from "./ingredient-sources.js";
+import { initIngredientSources } from "../../../../lib/ingredientSources.js";
 import { initMobileOverlayZoom } from "./mobile-overlay-zoom.js";
 import {
   createQrPromoController,

@@ -24,7 +24,7 @@
   - `admin-dashboard` legacy tree reduced to 0 files
   - `manager-dashboard` legacy tree reduced to 0 files
 - Consolidated duplicated manager chat notification logic into `app/lib/chatNotifications.js`.
-- Consolidated help-assistant drawer logic through shared app module usage (restaurant legacy `shared-nav` now imports `app/lib/helpAssistantDrawer.js`).
+- Consolidated help-assistant drawer logic through shared app module usage (`app/lib/sharedNav.js` imports `app/lib/helpAssistantDrawer.js`).
 - Introduced shared topbar components in `app/components/SimpleTopbar.js`:
   - `SimpleTopbar` for common brand/nav/auth shell
   - `ManagerModeSwitch` for editor/customer mode toggles
@@ -38,7 +38,7 @@
 - Introduced shared restaurant card component in `app/components/RestaurantCard.js`.
 - Refactored `home`, `restaurants`, and `favorites` to render the same shared restaurant card UI component.
 - Removed duplicated route-level inline restaurant card CSS from `app/restaurants/head.js` in favor of shared stylesheet classes.
-- Consolidated duplicated legacy runtime Supabase bridge modules into `app/runtime/legacy/supabase-client.js` and re-exported from app-local runtime trees.
+- Consolidated duplicated legacy runtime Supabase bridge modules into `app/runtime/legacy/supabase-client.js`.
 - Added shared owner/manager access helpers in `app/lib/managerRestaurants.js`:
   - `isOwnerUser`
   - `isManagerUser`
@@ -56,11 +56,41 @@
 - Removed `manager-dashboard` legacy floating report modal runtime import/file (`app/manager-dashboard/runtime/legacy/report-modal.js`) in favor of existing Next-native reporting/help routes.
 - Removed `manager-dashboard` legacy orchestration runtime (`app/manager-dashboard/runtime/legacy/manager-dashboard.js`) and local bridge re-export (`app/manager-dashboard/runtime/legacy/supabase-client.js`).
 - Removed remaining manager-specific ingredient capture runtimes (`app/manager-dashboard/runtime/legacy/ingredient-label-capture.js`, `app/manager-dashboard/runtime/legacy/ingredient-allergen-analysis.js`).
-- Added shared manager ingredient capture bridge `app/lib/managerIngredientPhotoCapture.js` that reuses the existing restaurant ingredient-photo runtime module.
+- Added shared manager ingredient capture bridge `app/lib/managerIngredientPhotoCapture.js`.
+- Added shared ingredient label analysis helper `app/lib/ingredientAllergenAnalysis.js`.
+- Removed restaurant-local legacy Supabase bridge (`app/restaurant/runtime/legacy/supabase-client.js`); legacy restaurant notification/order modules now consume shared `app/lib/supabase.js`.
+- Moved diner notification bootstrap into shared app module `app/lib/dinerNotifications.js` and updated restaurant runtime imports.
+- Moved tablet order persistence/bootstrap API into shared app module `app/lib/tabletOrdersApi.js` and updated restaurant runtime imports.
+- Moved tablet sync transport helpers into shared app module `app/lib/tabletSync.js` and updated restaurant runtime imports.
+- Moved tablet simulation logic into shared app module `app/lib/tabletSimulationLogic.mjs` and updated restaurant runtime imports.
+- Moved shared navigation runtime helper into `app/lib/sharedNav.js` and updated restaurant runtime imports.
 - Added shared chat message parsing/rendering primitives:
   - `app/lib/chatMessage.js`
   - `app/components/chat/ChatMessageText.js`
 - Refactored both admin and manager dashboards to reuse shared chat message rendering instead of duplicated inline parsers/components.
+- Added shared user identity/name resolution helpers in `app/lib/userIdentity.js`:
+  - `resolveAccountName`
+  - `resolveManagerDisplayName`
+  - `resolveGreetingFirstName`
+- Refactored `help-contact`, `report-issue`, `home`, `manager-dashboard`, and key restaurant runtime utilities to consume shared user identity helpers instead of duplicated local resolvers.
+- Added shared chat timestamp formatting in `app/lib/chatMessage.js` (`formatChatTimestamp`) and refactored `help-contact`, `admin-dashboard`, and `manager-dashboard` chat UIs to consume it.
+- Refactored `help-contact` chat message rendering to use shared `ChatMessageText` instead of local HTML string formatting.
+- Moved reusable ingredient/time runtime utilities out of `app/restaurant/runtime/legacy` into shared app modules:
+  - `app/lib/ingredientPhotoAnalysis.js`
+  - `app/lib/ingredientNormalizer.js`
+  - `app/lib/timeFormatting.js`
+- Updated restaurant runtime imports to consume those shared modules and removed legacy duplicates:
+  - `app/restaurant/runtime/legacy/restaurant/ingredient-photo.js` (removed)
+  - `app/restaurant/runtime/legacy/restaurant/ingredient-row-utils.js` (removed)
+  - `app/restaurant/runtime/legacy/restaurant/time-formatting.js` (removed)
+- Moved additional pure service/normalization utilities out of `app/restaurant/runtime/legacy` into shared app modules:
+  - `app/lib/changeLogService.js`
+  - `app/lib/restaurantNormalization.js`
+  - `app/lib/ingredientSources.js`
+- Updated restaurant runtime imports to consume those shared modules and removed legacy duplicates:
+  - `app/restaurant/runtime/legacy/restaurant/change-log-service.js` (removed)
+  - `app/restaurant/runtime/legacy/restaurant/restaurant-normalization.js` (removed)
+  - `app/restaurant/runtime/legacy/restaurant/ingredient-sources.js` (removed)
 
 ## Current migration inventory
 - Legacy static HTML pages still present in `public/`: 15
@@ -70,7 +100,7 @@
 - App-local legacy runtime files:
   - `app/admin-dashboard/runtime/legacy`: 0
   - `app/manager-dashboard/runtime/legacy`: 0
-  - `app/restaurant/runtime/legacy`: 90
+  - `app/restaurant/runtime/legacy`: 77
 - App routes still rendering raw topbar markup directly: 0
 
 ## Remaining high-priority work

@@ -1,3 +1,5 @@
+import { resolveAccountName } from "../../../../lib/userIdentity.js";
+
 export function createPageUtilsRuntime(deps = {}) {
   const state = deps.state || {};
 
@@ -9,16 +11,7 @@ export function createPageUtilsRuntime(deps = {}) {
   function getIssueReportMeta() {
     const user = state?.user || null;
     const pageUrl = window.location.href;
-    let accountName = "";
-    if (user) {
-      const firstName = user.user_metadata?.first_name || "";
-      const lastName = user.user_metadata?.last_name || "";
-      accountName = `${firstName} ${lastName}`.trim();
-      if (!accountName) accountName = (user.user_metadata?.full_name || "").trim();
-      if (!accountName) accountName = (user.raw_user_meta_data?.full_name || "").trim();
-      if (!accountName) accountName = (user.name || "").trim();
-      if (!accountName) accountName = (user.email || "").trim();
-    }
+    const accountName = resolveAccountName(user, user?.email || "");
 
     return {
       pageUrl,

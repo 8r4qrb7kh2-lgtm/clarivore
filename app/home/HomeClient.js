@@ -6,18 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import SimpleTopbar from "../components/SimpleTopbar";
 import RestaurantCard from "../components/RestaurantCard";
 import { supabaseClient as supabase } from "../lib/supabase";
-
-function getDisplayName(user) {
-  if (!user) return "there";
-  const meta = user.user_metadata || {};
-  const name =
-    meta.first_name ||
-    meta.full_name ||
-    meta.name ||
-    user.email ||
-    "there";
-  return String(name).split(" ")[0];
-}
+import { resolveGreetingFirstName } from "../lib/userIdentity";
 
 export default function HomeClient() {
   const router = useRouter();
@@ -84,7 +73,7 @@ export default function HomeClient() {
     };
   }, [isQR, router]);
 
-  const greeting = useMemo(() => getDisplayName(user), [user]);
+  const greeting = useMemo(() => resolveGreetingFirstName(user), [user]);
 
   return (
     <div className="page-shell">

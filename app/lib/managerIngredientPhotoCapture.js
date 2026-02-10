@@ -1,4 +1,4 @@
-import { initIngredientPhotoAnalysis } from "../restaurant/runtime/legacy/restaurant/ingredient-photo";
+import { initIngredientPhotoAnalysis } from "./ingredientPhotoAnalysis.js";
 import { loadScript } from "../runtime/scriptLoader";
 import { buildAllergenDietConfig } from "./allergenConfig";
 import { supabaseAnonKey, supabaseClient as supabase } from "./supabase";

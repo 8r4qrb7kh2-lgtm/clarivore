@@ -1,7 +1,13 @@
-import supabaseClient from './supabase-client.js';
+import {
+  DEFAULT_PUSH_PUBLIC_KEY,
+  supabaseClient as sharedSupabaseClient,
+} from "./supabase";
 
 const SW_PATH = '/manager-push-sw.js';
-const PUBLIC_KEY = window.CLARIVORE_PUSH_PUBLIC_KEY || '';
+const PUBLIC_KEY =
+  (typeof window !== "undefined" ? window.CLARIVORE_PUSH_PUBLIC_KEY : "") ||
+  DEFAULT_PUSH_PUBLIC_KEY ||
+  "";
 const IOS_BUNDLE_ID = 'com.clarivore.app';
 let webInitDone = false;
 let nativeInitDone = false;
@@ -175,7 +181,7 @@ async function initWebPush({ user, client }) {
 }
 
 export async function initDinerNotifications({ user, client } = {}) {
-  const supabase = client || supabaseClient;
+  const supabase = client || sharedSupabaseClient;
   if (!user?.id) return;
   await initNativePush({ user, client: supabase });
   await initWebPush({ user, client: supabase });

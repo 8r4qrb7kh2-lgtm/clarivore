@@ -1,5 +1,5 @@
-import { analyzeAllergensWithLabelCropper } from "../ingredient-allergen-analysis.js";
-import { createIngredientNormalizer } from "./ingredient-row-utils.js";
+import { analyzeAllergensWithLabelCropper } from "./ingredientAllergenAnalysis.js";
+import { createIngredientNormalizer } from "./ingredientNormalizer.js";
 
 export function initIngredientPhotoAnalysis(deps = {}) {
   const esc =

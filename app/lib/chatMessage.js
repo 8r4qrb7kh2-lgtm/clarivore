@@ -78,3 +78,26 @@ export function resolveChatLink(url, { internalHostSuffixes = [] } = {}) {
 
   return { href: url, external: true };
 }
+
+export function formatChatTimestamp(
+  value,
+  { locale = "en-US", withDate = true } = {},
+) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+
+  if (!withDate) {
+    return date.toLocaleTimeString(locale, {
+      hour: "numeric",
+      minute: "2-digit",
+    });
+  }
+
+  return date.toLocaleString(locale, {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}

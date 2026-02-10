@@ -1,13 +1,16 @@
-import supabaseClient from './supabase-client.js';
+import {
+  supabaseAnonKey,
+  supabaseClient as sharedSupabaseClient,
+} from "./supabase";
 
 const MISSING_TABLE_ERROR_CODES = new Set(['PGRST205', 'PGRST117', '42P01']);
 let bootstrapPromise = null;
 
 function ensureSupabase() {
-  if (!supabaseClient) {
+  if (!sharedSupabaseClient) {
     throw new Error('Supabase client not available');
   }
-  return supabaseClient;
+  return sharedSupabaseClient;
 }
 
 function normalizeArray(value) {
@@ -39,6 +42,7 @@ function getSupabaseUrl(client) {
 
 function getAnonKey() {
   return (
+    (typeof supabaseAnonKey === "string" && supabaseAnonKey) ||
     (typeof globalThis.SUPABASE_ANON_KEY === 'string' && globalThis.SUPABASE_ANON_KEY) ||
     (typeof globalThis.SUPABASE_KEY === 'string' && globalThis.SUPABASE_KEY) ||
     ''
@@ -246,4 +250,3 @@ export async function subscribeToTabletOrderChanges(callback) {
     }
   };
 }
-
