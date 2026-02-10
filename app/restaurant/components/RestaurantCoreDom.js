@@ -1,20 +1,25 @@
 import RestaurantEditorShellTemplate from "./RestaurantEditorShellTemplate";
 import RestaurantShellTemplate from "./RestaurantShellTemplate";
 import RestaurantReportShellTemplate from "./RestaurantReportShellTemplate";
+import SimpleTopbar from "../../components/SimpleTopbar";
 
 export default function RestaurantCoreDom({ managerDashboardHref }) {
   return (
     <>
       <div className="wrap">
-        <header className="simple-topbar" id="topbarOuter">
-          <div className="simple-topbar-inner" id="topbar">
+        <SimpleTopbar
+          headerId="topbarOuter"
+          innerId="topbar"
+          showBrand={false}
+          showNav={false}
+          rightContent={
             <div
               className="mode-toggle-container"
               id="modeToggleContainer"
               style={{ display: "none" }}
             />
-          </div>
-        </header>
+          }
+        />
         <div className="content" id="root" />
       </div>
 

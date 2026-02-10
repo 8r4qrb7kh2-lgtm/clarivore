@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import SimpleTopbar from "../components/SimpleTopbar";
 import { getWeeksAgoInfo } from "../lib/confirmationAge";
 import { supabaseClient as supabase } from "../lib/supabase";
 
@@ -86,21 +86,13 @@ export default function RestaurantsClient() {
 
   return (
     <div className="page-shell">
-      <header className="simple-topbar">
-        <div className="simple-topbar-inner">
-          <Link className="simple-brand" href="/home">
-            <img
-              src="https://static.wixstatic.com/media/945e9d_2b97098295d341d493e4a07d80d6b57c~mv2.png"
-              alt="Clarivore logo"
-            />
-            <span>Clarivore</span>
-          </Link>
-          <div className="simple-nav">
-            <Link href="/home">Home</Link>
-            <Link href="/account">Account</Link>
-          </div>
-        </div>
-      </header>
+      <SimpleTopbar
+        brandHref="/home"
+        links={[
+          { href: "/home", label: "Home" },
+          { href: "/account", label: "Account" },
+        ]}
+      />
 
       <main className="page-main">
         <div className="page-content">

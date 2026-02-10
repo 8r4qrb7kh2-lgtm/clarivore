@@ -1,31 +1,19 @@
-import Link from "next/link";
+import SimpleTopbar from "../../components/SimpleTopbar";
 
 export default function AdminDashboardDom({ user, onSignOut }) {
   return (
     <div className="page-shell">
-      <header className="simple-topbar">
-        <div className="simple-topbar-inner">
-          <Link className="simple-brand" href="/home">
-            <img
-              src="https://static.wixstatic.com/media/945e9d_2b97098295d341d493e4a07d80d6b57c~mv2.png"
-              alt="Clarivore logo"
-            />
-            <span>Clarivore</span>
-          </Link>
-          <div className="simple-nav">
-            <Link href="/manager-dashboard">Dashboard</Link>
-            <Link href="/restaurants">Restaurants</Link>
-            <Link href="/help-contact">Help</Link>
-            {user ? (
-              <button type="button" className="btnLink" onClick={onSignOut}>
-                Sign out
-              </button>
-            ) : (
-              <Link href="/account?mode=signin">Sign in</Link>
-            )}
-          </div>
-        </div>
-      </header>
+      <SimpleTopbar
+        brandHref="/home"
+        links={[
+          { href: "/manager-dashboard", label: "Dashboard" },
+          { href: "/restaurants", label: "Restaurants" },
+          { href: "/help-contact", label: "Help" },
+        ]}
+        showAuthAction
+        signedIn={Boolean(user)}
+        onSignOut={onSignOut}
+      />
 
       <main className="admin-container">
         <div id="access-denied" className="access-denied" style={{ display: "none" }}>

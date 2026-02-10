@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import SimpleTopbar from "../components/SimpleTopbar";
 import { supabaseClient as supabase } from "../lib/supabase";
 import { OWNER_EMAIL, fetchManagerRestaurants } from "../lib/managerRestaurants";
 
@@ -434,30 +435,20 @@ export default function MyDishesClient() {
 
   return (
     <div className="page-shell">
-      <header className="simple-topbar">
-        <div className="simple-topbar-inner">
-          <Link className="simple-brand" href="/home">
-            <img
-              src="https://static.wixstatic.com/media/945e9d_2b97098295d341d493e4a07d80d6b57c~mv2.png"
-              alt="Clarivore logo"
-            />
-            <span>Clarivore</span>
-          </Link>
-          <div className="simple-nav">
-            <Link href="/home">Home</Link>
-            <Link href="/restaurants">Restaurants</Link>
-            <Link href="/favorites">My restaurants</Link>
-            <Link href="/dish-search">Dish search</Link>
-            {isManagerOrOwner ? (
-              <Link href="/manager-dashboard">Dashboard</Link>
-            ) : null}
-            <Link href="/help-contact">Help</Link>
-            <button type="button" className="btnLink" onClick={onSignOut}>
-              Sign out
-            </button>
-          </div>
-        </div>
-      </header>
+      <SimpleTopbar
+        brandHref="/home"
+        links={[
+          { href: "/home", label: "Home" },
+          { href: "/restaurants", label: "Restaurants" },
+          { href: "/favorites", label: "My restaurants" },
+          { href: "/dish-search", label: "Dish search" },
+          { href: "/manager-dashboard", label: "Dashboard", visible: isManagerOrOwner },
+          { href: "/help-contact", label: "Help" },
+        ]}
+        showAuthAction
+        signedIn
+        onSignOut={onSignOut}
+      />
 
       <main className="page-main">
         <div className="page-content">

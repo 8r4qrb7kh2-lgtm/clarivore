@@ -6,7 +6,10 @@
  * Updated: 2025-01-22 - Added dish-search to navigation
  */
 
-import { initHelpAssistantDrawer, setHelpAssistantMode } from './help-assistant-drawer.js';
+import {
+  initHelpAssistantDrawer,
+  setHelpAssistantMode,
+} from '../../../lib/helpAssistantDrawer.js';
 
 initHelpAssistantDrawer();
 

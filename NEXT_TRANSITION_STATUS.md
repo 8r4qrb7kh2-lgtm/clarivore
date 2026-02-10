@@ -20,16 +20,31 @@
   - `app/lib/orderNotifications.js`
   - `app/lib/managerNotifications.js`
   - `app/lib/allergenConfigRuntime.js`
+- Removed redundant dashboard fallback imports and files from app-local legacy trees:
+  - `admin-dashboard` legacy tree reduced to 2 files
+  - `manager-dashboard` legacy tree reduced to 5 files
+- Consolidated duplicated manager chat notification logic into `app/lib/chatNotifications.js`.
+- Consolidated help-assistant drawer logic through shared app module usage (restaurant legacy `shared-nav` now imports `app/lib/helpAssistantDrawer.js`).
+- Introduced shared topbar components in `app/components/SimpleTopbar.js`:
+  - `SimpleTopbar` for common brand/nav/auth shell
+  - `ManagerModeSwitch` for editor/customer mode toggles
+- Refactored 14 app routes/components to use shared `SimpleTopbar`, including restaurant shell compatibility usage.
+- Raw app-level `simple-topbar` markup is now fully removed from page components.
 
 ## Current migration inventory
 - Legacy static HTML pages still present in `public/`: 15
 - Legacy runtime JS files in `public/js/`: 109
 - Next clients still booting legacy runtime modules via `/js/*`: 0 imports
 - App-level `webpackIgnore` imports: 0
+- App-local legacy runtime files:
+  - `app/admin-dashboard/runtime/legacy`: 2
+  - `app/manager-dashboard/runtime/legacy`: 5
+  - `app/restaurant/runtime/legacy`: 90
+- App routes still rendering raw topbar markup directly: 0
 
 ## Remaining high-priority work
 1. Replace app-local legacy runtime trees (`app/**/runtime/legacy/*`) with native React/Next feature modules page-by-page.
-2. De-duplicate copied legacy utilities now present in multiple runtime trees (notifications, shared nav, assistant drawer, context helpers).
+2. De-duplicate remaining copied legacy utilities in `app/restaurant/runtime/legacy/*` against shared app modules.
 3. Retire `public/*.html` and unused `public/js/*` runtime files after parity, leaving only static assets.
 
 ## Validation commands

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import SimpleTopbar from "../components/SimpleTopbar";
 import {
   buildAllergenDietConfig,
   loadAllergenDietConfig,
@@ -591,24 +592,16 @@ export default function DishSearchClient() {
 
   return (
     <div className="page-shell">
-      <header className="simple-topbar">
-        <div className="simple-topbar-inner">
-          <Link className="simple-brand" href="/home">
-            <img
-              src="https://static.wixstatic.com/media/945e9d_2b97098295d341d493e4a07d80d6b57c~mv2.png"
-              alt="Clarivore logo"
-            />
-            <span>Clarivore</span>
-          </Link>
-          <div className="simple-nav">
-            <Link href="/home">Home</Link>
-            <Link href="/restaurants">Restaurants</Link>
-            <Link href="/favorites">My restaurants</Link>
-            <Link href="/account">Account</Link>
-            <Link href="/help-contact">Help</Link>
-          </div>
-        </div>
-      </header>
+      <SimpleTopbar
+        brandHref="/home"
+        links={[
+          { href: "/home", label: "Home" },
+          { href: "/restaurants", label: "Restaurants" },
+          { href: "/favorites", label: "My restaurants" },
+          { href: "/account", label: "Account" },
+          { href: "/help-contact", label: "Help" },
+        ]}
+      />
 
       <main className="page-main">
         <div className="page-content">

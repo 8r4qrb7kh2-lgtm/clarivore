@@ -1,8 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
+import SimpleTopbar from "../components/SimpleTopbar";
 import { supabaseClient as supabase } from "../lib/supabase";
 import { OWNER_EMAIL, fetchManagerRestaurants } from "../lib/managerRestaurants";
 import { showOrderNotification } from "../lib/orderNotifications";
@@ -768,29 +768,17 @@ export default function KitchenTabletClient() {
         }
       `}</style>
 
-      <header className="simple-topbar">
-        <div className="simple-topbar-inner">
-          <Link className="simple-brand" href="/restaurants">
-            <img
-              src="https://static.wixstatic.com/media/945e9d_2b97098295d341d493e4a07d80d6b57c~mv2.png"
-              alt="Clarivore logo"
-            />
-            <span>Clarivore</span>
-          </Link>
-          <div className="simple-nav">
-            <Link href="/manager-dashboard">Dashboard</Link>
-            <Link href="/server-tablet">Server monitor</Link>
-            <Link href="/help-contact">Help</Link>
-            {authUser ? (
-              <button type="button" className="btnLink" onClick={onSignOut}>
-                Sign out
-              </button>
-            ) : (
-              <Link href="/account?mode=signin">Sign in</Link>
-            )}
-          </div>
-        </div>
-      </header>
+      <SimpleTopbar
+        brandHref="/restaurants"
+        links={[
+          { href: "/manager-dashboard", label: "Dashboard" },
+          { href: "/server-tablet", label: "Server monitor" },
+          { href: "/help-contact", label: "Help" },
+        ]}
+        showAuthAction
+        signedIn={Boolean(authUser)}
+        onSignOut={onSignOut}
+      />
 
       <main className="page-main">
         <div className="page-content tablet-page">

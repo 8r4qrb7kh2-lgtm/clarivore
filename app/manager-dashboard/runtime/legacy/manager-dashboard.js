@@ -1,5 +1,5 @@
     import supabaseClient from './supabase-client.js';
-    import { notifyManagerChat } from './chat-notifications.js';
+    import { notifyManagerChat } from '../../../lib/chatNotifications.js';
 
     const allergenConfig = window.ALLERGEN_DIET_CONFIG || {};
 
@@ -112,14 +112,6 @@
             ? preloadedBoot.isManager
             : user.user_metadata?.role === 'manager';
 
-        let navRestaurants = Array.isArray(preloadedBoot?.managerRestaurants)
-          ? preloadedBoot.managerRestaurants
-          : [];
-        if (!navRestaurants.length && (isManager || isOwner)) {
-          const { fetchManagerRestaurants } = await import('./manager-context.js');
-          navRestaurants = await fetchManagerRestaurants(supabaseClient, user.id);
-        }
-
         const currentMode =
           typeof preloadedBoot?.currentMode === 'string'
             ? preloadedBoot.currentMode
@@ -138,11 +130,6 @@
             '[manager-dashboard] topbar was not preloaded; skipping legacy nav bootstrap',
           );
         }
-        if ((isManager || isOwner) && !preloadedBoot?.managerNotificationsReady) {
-          const { initManagerNotifications } = await import('./manager-notifications.js');
-          initManagerNotifications({ user: currentUser, client: supabaseClient });
-        }
-
         const preloadedManagedRestaurants = Array.isArray(
           preloadedBoot?.managedRestaurants,
         )

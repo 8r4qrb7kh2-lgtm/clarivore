@@ -1,8 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import SimpleTopbar from "../components/SimpleTopbar";
 import { buildAllergenDietConfig, loadAllergenDietConfig } from "../lib/allergenConfig";
 import { fetchManagerRestaurants, OWNER_EMAIL } from "../lib/managerRestaurants";
 import {
@@ -783,26 +783,22 @@ export default function AccountClient() {
 
   return (
     <div className="page-shell">
-      <header className="simple-topbar">
-        <div className="simple-topbar-inner">
-          <Link className="simple-brand" href="/home">
-            <img
-              src="https://static.wixstatic.com/media/945e9d_2b97098295d341d493e4a07d80d6b57c~mv2.png"
-              alt="Clarivore logo"
-            />
-            <span>Clarivore</span>
-          </Link>
-          <div className="simple-nav">
-            <Link href="/home">Home</Link>
-            <Link href="/restaurants">Restaurants</Link>
-            <Link href="/favorites">My restaurants</Link>
-            <Link href="/dish-search">Dish search</Link>
-            <Link href="/help-contact">Help</Link>
-            {backToMenuHref && !user ? <Link href={backToMenuHref}>Back to menu</Link> : null}
-            <Link href="/account">Account</Link>
-          </div>
-        </div>
-      </header>
+      <SimpleTopbar
+        brandHref="/home"
+        links={[
+          { href: "/home", label: "Home" },
+          { href: "/restaurants", label: "Restaurants" },
+          { href: "/favorites", label: "My restaurants" },
+          { href: "/dish-search", label: "Dish search" },
+          { href: "/help-contact", label: "Help" },
+          {
+            href: backToMenuHref || "/account",
+            label: "Back to menu",
+            visible: Boolean(backToMenuHref && !user),
+          },
+          { href: "/account", label: "Account" },
+        ]}
+      />
 
       <main className="page-main">
         <div className="page-content">

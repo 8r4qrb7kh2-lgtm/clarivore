@@ -1,7 +1,5 @@
     import supabase from './supabase-client.js';
-    import { setupTopbar, attachSignOutHandler } from './shared-nav.js';
-    import { fetchManagerRestaurants } from './manager-context.js';
-    import { notifyManagerChat } from './chat-notifications.js';
+    import { notifyManagerChat } from '../../../lib/chatNotifications.js';
 
     const ADMIN_EMAIL = 'matt.29.ds@gmail.com';
     const preloadedBoot = window.__adminDashboardBootPayload || null;
@@ -31,20 +29,6 @@
       if (!user) {
         const authResult = await supabase.auth.getUser();
         user = authResult?.data?.user || null;
-      }
-
-      let managerRestaurants = Array.isArray(preloadedBoot?.managerRestaurants)
-        ? preloadedBoot.managerRestaurants
-        : [];
-      if (!managerRestaurants.length && user && user.email === ADMIN_EMAIL) {
-        managerRestaurants = await fetchManagerRestaurants(supabase, user.id);
-      }
-
-      if (!preloadedBoot?.topbarSetupDone) {
-        setupTopbar('admin', user, { managerRestaurants });
-      }
-      if (user && !preloadedBoot?.signOutHandlerBound) {
-        attachSignOutHandler(supabase);
       }
 
       if (!user || user.email !== ADMIN_EMAIL) {

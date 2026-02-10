@@ -1,4 +1,4 @@
-import Link from "next/link";
+import SimpleTopbar, { ManagerModeSwitch } from "../../components/SimpleTopbar";
 
 export default function ManagerDashboardDom({
   user,
@@ -9,68 +9,30 @@ export default function ManagerDashboardDom({
   onSignOut,
 }) {
   const firstRestaurantSlug = managerRestaurants[0]?.slug || "";
+  const webpageEditorHref = firstRestaurantSlug
+    ? `/restaurant?slug=${encodeURIComponent(firstRestaurantSlug)}&edit=1`
+    : "";
 
   return (
     <div className="page-shell">
-      <header className="simple-topbar">
-        <div className="simple-topbar-inner">
-          <Link className="simple-brand" href="/manager-dashboard">
-            <img
-              src="https://static.wixstatic.com/media/945e9d_2b97098295d341d493e4a07d80d6b57c~mv2.png"
-              alt="Clarivore logo"
-            />
-            <span>Clarivore</span>
-          </Link>
-          <div className="simple-nav">
-            <Link href="/manager-dashboard">Dashboard</Link>
-            {firstRestaurantSlug ? (
-              <Link
-                href={`/restaurant?slug=${encodeURIComponent(
-                  firstRestaurantSlug,
-                )}&edit=1`}
-              >
-                Webpage editor
-              </Link>
-            ) : null}
-            <Link href="/server-tablet">Server monitor</Link>
-            <Link href="/kitchen-tablet">Kitchen monitor</Link>
-            <Link href="/help-contact">Help</Link>
-            {user ? (
-              <button type="button" className="btnLink" onClick={onSignOut}>
-                Sign out
-              </button>
-            ) : (
-              <Link href="/account?mode=signin">Sign in</Link>
-            )}
-          </div>
-          {isManagerOrOwner ? (
-            <div className="mode-toggle-container" style={{ display: "flex" }}>
-              <button
-                type="button"
-                className="btnLink"
-                style={{
-                  opacity: managerMode === "customer" ? 1 : 0.65,
-                  fontWeight: managerMode === "customer" ? 700 : 500,
-                }}
-                onClick={() => onModeChange?.("customer")}
-              >
-                Customer
-              </button>
-              <button
-                type="button"
-                className="btnLink"
-                style={{
-                  opacity: managerMode === "editor" ? 1 : 0.65,
-                  fontWeight: managerMode === "editor" ? 700 : 500,
-                }}
-                onClick={() => onModeChange?.("editor")}
-              >
-                Editor
-              </button>
-            </div>
-          ) : null}
-        </div>
-      </header>
+      <SimpleTopbar
+        brandHref="/manager-dashboard"
+        links={[
+          { href: "/manager-dashboard", label: "Dashboard" },
+          { href: webpageEditorHref || "/manager-dashboard", label: "Webpage editor", visible: Boolean(webpageEditorHref) },
+          { href: "/server-tablet", label: "Server monitor" },
+          { href: "/kitchen-tablet", label: "Kitchen monitor" },
+          { href: "/help-contact", label: "Help" },
+        ]}
+        showAuthAction
+        signedIn={Boolean(user)}
+        onSignOut={onSignOut}
+        rightContent={
+          isManagerOrOwner ? (
+            <ManagerModeSwitch mode={managerMode} onChange={onModeChange} />
+          ) : null
+        }
+      />
 
       <main className="page-main">
         <div className="dashboard-container">
