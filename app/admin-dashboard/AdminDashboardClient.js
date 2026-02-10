@@ -10,7 +10,9 @@ import { prepareAdminDashboardBootPayload } from "./services/adminDashboardBoot"
 export default function AdminDashboardClient() {
   const router = useRouter();
   const [error, setError] = useState("");
+  const [isBooting, setIsBooting] = useState(true);
   const [authUser, setAuthUser] = useState(null);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   const onSignOut = useCallback(async () => {
     if (!supabase) return;
@@ -42,17 +44,18 @@ export default function AdminDashboardClient() {
         const bootPayload = await prepareAdminDashboardBootPayload();
         if (!cancelled) {
           setAuthUser(bootPayload.user || null);
+          setIsAdmin(Boolean(bootPayload.isAdmin));
         }
-
-        window.__adminDashboardBootPayload = bootPayload;
-
-        await import("./runtime/legacy/admin-dashboard-page.js");
       } catch (runtimeError) {
         console.error("[admin-dashboard-next] boot failed", runtimeError);
         if (!cancelled) {
           setError(
-            runtimeError?.message || "Failed to load admin dashboard runtime.",
+            runtimeError?.message || "Failed to load admin dashboard.",
           );
+        }
+      } finally {
+        if (!cancelled) {
+          setIsBooting(false);
         }
       }
     }
@@ -66,7 +69,12 @@ export default function AdminDashboardClient() {
 
   return (
     <>
-      <AdminDashboardDom user={authUser} onSignOut={onSignOut} />
+      <AdminDashboardDom
+        user={authUser}
+        isAdmin={isAdmin}
+        isBooting={isBooting}
+        onSignOut={onSignOut}
+      />
       {error ? (
         <p
           className="status-text error"

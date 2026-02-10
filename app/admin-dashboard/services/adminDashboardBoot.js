@@ -1,7 +1,4 @@
-import {
-  fetchManagerRestaurants,
-  isOwnerUser,
-} from "../../lib/managerRestaurants";
+import { isOwnerUser } from "../../lib/managerRestaurants";
 import { supabaseClient as supabase } from "../../lib/supabase";
 
 export async function prepareAdminDashboardBootPayload() {
@@ -9,9 +6,6 @@ export async function prepareAdminDashboardBootPayload() {
     return {
       user: null,
       isAdmin: false,
-      managerRestaurants: [],
-      topbarSetupDone: false,
-      signOutHandlerBound: false,
     };
   }
 
@@ -24,22 +18,13 @@ export async function prepareAdminDashboardBootPayload() {
     return {
       user: null,
       isAdmin: false,
-      managerRestaurants: [],
-      topbarSetupDone: false,
-      signOutHandlerBound: false,
     };
   }
 
   const isAdmin = isOwnerUser(user);
-  const managerRestaurants = isAdmin
-    ? await fetchManagerRestaurants(supabase, user)
-    : [];
 
   return {
     user,
     isAdmin,
-    managerRestaurants,
-    topbarSetupDone: false,
-    signOutHandlerBound: false,
   };
 }

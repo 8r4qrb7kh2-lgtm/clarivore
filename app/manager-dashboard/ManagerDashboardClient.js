@@ -99,7 +99,6 @@ export default function ManagerDashboardClient() {
 
         await import("./runtime/legacy/ingredient-label-capture.js");
         await import("./runtime/legacy/manager-dashboard.js");
-        await import("./runtime/legacy/report-modal.js");
       } catch (runtimeError) {
         console.error("[manager-dashboard-next] boot failed", runtimeError);
         if (!cancelled) {

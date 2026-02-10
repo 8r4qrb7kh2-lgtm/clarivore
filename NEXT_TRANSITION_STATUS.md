@@ -14,7 +14,7 @@
 - Hardcoded Supabase credentials removed from `api/ai-proxy.js` in favor of env vars.
 - `report-issue`, `my-dishes`, `order-feedback`, `kitchen-tablet`, `server-tablet`, `admin-dashboard`, `manager-dashboard`, and `help-contact` no longer depend on legacy `/js/shared-nav.js`.
 - App-level `shared-nav` imports are now fully removed.
-- `restaurant`, `manager-dashboard`, and `admin-dashboard` runtime entry points are now app-local modules (`app/**/runtime/legacy/*`) instead of `/public/js/*` URL imports.
+- `restaurant` and `manager-dashboard` runtime entry points are app-local modules (`app/**/runtime/legacy/*`) instead of `/public/js/*` URL imports.
 - App-level `webpackIgnore` imports are fully removed.
 - Shared notification/allergen helpers moved into app modules:
   - `app/lib/orderNotifications.js`
@@ -51,6 +51,9 @@
   - `upsertTabletOrder`
   - `notifyDinerNoticeUpdate`
 - Refactored both tablet monitor routes (`kitchen-tablet`, `server-tablet`) to use shared tablet order persistence helpers.
+- Replaced `admin-dashboard` legacy runtime boot (`app/admin-dashboard/runtime/legacy/admin-dashboard-page.js`) with native React/Next stateful UI in `app/admin-dashboard/components/AdminDashboardDom.js`.
+- Removed all app-local admin legacy runtime files (`app/admin-dashboard/runtime/legacy/*`).
+- Removed `manager-dashboard` legacy floating report modal runtime import/file (`app/manager-dashboard/runtime/legacy/report-modal.js`) in favor of existing Next-native reporting/help routes.
 
 ## Current migration inventory
 - Legacy static HTML pages still present in `public/`: 15
@@ -58,13 +61,13 @@
 - Next clients still booting legacy runtime modules via `/js/*`: 0 imports
 - App-level `webpackIgnore` imports: 0
 - App-local legacy runtime files:
-  - `app/admin-dashboard/runtime/legacy`: 2
-  - `app/manager-dashboard/runtime/legacy`: 5
+  - `app/admin-dashboard/runtime/legacy`: 0
+  - `app/manager-dashboard/runtime/legacy`: 4
   - `app/restaurant/runtime/legacy`: 90
 - App routes still rendering raw topbar markup directly: 0
 
 ## Remaining high-priority work
-1. Replace app-local legacy runtime trees (`app/**/runtime/legacy/*`) with native React/Next feature modules page-by-page.
+1. Replace remaining app-local legacy runtime trees (`app/manager-dashboard/runtime/legacy/*`, `app/restaurant/runtime/legacy/*`) with native React/Next feature modules page-by-page.
 2. De-duplicate remaining copied legacy utilities in `app/restaurant/runtime/legacy/*` against shared app modules.
 3. Retire `public/*.html` and unused `public/js/*` runtime files after parity, leaving only static assets.
 
