@@ -361,6 +361,20 @@
     - `app/lib/restaurantRuntime/restaurant-screen.js`
     - `app/lib/restaurantRuntime/dish-editor.js`
   - removed `window.__howTour` global storage in favor of module-local controller state in `app/lib/restaurantRuntime/how-it-works-tour.js`
+- Continued decomposing `restaurant` runtime entrypoint wiring into explicit option/service modules:
+  - added and wired:
+    - `app/restaurant/runtime/createRestaurantRuntimeCoreOptions.js`
+    - `app/restaurant/runtime/createRestaurantPageUiBundleOptions.js`
+    - `app/restaurant/runtime/createRestaurantEditorHydrationBundleOptions.js`
+  - `app/restaurant/runtime/restaurantPageRuntime.js` now composes runtime bundles through these option builders instead of inlining all bundle wiring object literals directly.
+  - added `app/restaurant/runtime/createRestaurantRuntimeBrowserServices.js` and switched runtime entry DOM/global access (`navigate`, `createElement`, `getElementById`, runtime global resolver) to explicit browser service hooks.
+- Reduced broad viewport/event coupling and duplicate listener wiring in restaurant runtime modules:
+  - added shared viewport listener service:
+    - `app/lib/restaurantRuntime/viewport-listeners.js`
+  - refactored:
+    - `app/lib/restaurantRuntime/menu-overlay-listeners.js` to use shared viewport listener binding
+    - `app/lib/restaurantRuntime/mobile-info-panel-runtime.js` to use shared viewport listener binding with explicit cleanup hook
+    - `app/lib/restaurantRuntime/menu-draw-runtime.js` to dispose/rebind overlay listeners per draw cycle (prevents stacking duplicate global listeners across redraws)
 
 ## Current migration inventory
 - Legacy static HTML compatibility pages still present in `public/`: 15 (all are redirect shells; no legacy page UI/runtime logic)

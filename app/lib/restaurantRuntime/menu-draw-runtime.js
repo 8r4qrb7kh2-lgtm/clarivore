@@ -105,6 +105,7 @@ export function createMenuDrawRuntime(deps = {}) {
     typeof deps.bindMenuOverlayListeners === "function"
       ? deps.bindMenuOverlayListeners
       : () => {};
+  let cleanupMenuOverlayListeners = () => {};
 
   function drawMenu(
     container,
@@ -112,6 +113,8 @@ export function createMenuDrawRuntime(deps = {}) {
     menuImagesArray = null,
     currentPage = 0,
   ) {
+    cleanupMenuOverlayListeners();
+    cleanupMenuOverlayListeners = () => {};
     container.innerHTML = "";
 
     const images = menuImagesArray || (imageURL ? [imageURL] : []);
@@ -226,11 +229,14 @@ export function createMenuDrawRuntime(deps = {}) {
       };
     }
 
-    bindMenuOverlayListeners({
+    const maybeCleanupOverlayListeners = bindMenuOverlayListeners({
       isOverlayZoomed: getIsOverlayZoomed,
       renderLayer,
       pageTip,
     });
+    if (typeof maybeCleanupOverlayListeners === "function") {
+      cleanupMenuOverlayListeners = maybeCleanupOverlayListeners;
+    }
   }
 
   return { drawMenu };

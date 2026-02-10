@@ -8,6 +8,7 @@ import {
   getOrderItems as getSessionOrderItems,
   getSupabaseClient as getSessionSupabaseClient,
 } from "./runtimeSessionState.js";
+import { bindViewportListeners } from "./viewport-listeners.js";
 
 export function createMobileInfoPanelRuntime(deps = {}) {
   const state = deps.state || {};
@@ -79,6 +80,7 @@ export function createMobileInfoPanelRuntime(deps = {}) {
     typeof deps.getSupabaseClient === "function"
       ? deps.getSupabaseClient
       : () => getSessionSupabaseClient();
+  let unbindSyncListeners = null;
 
   function renderMobileInfo(item) {
     setRenderMobileInfo(renderMobileInfo);
@@ -288,14 +290,23 @@ export function createMobileInfoPanelRuntime(deps = {}) {
   }
 
   function bindSyncListeners() {
-    addEventListener("resize", () => syncMobileInfoPanel(), { passive: true });
-    if (typeof visualViewport !== "undefined" && visualViewport) {
-      visualViewport.addEventListener("resize", () => syncMobileInfoPanel(), {
-        passive: true,
-      });
-      visualViewport.addEventListener("scroll", () => syncMobileInfoPanel(), {
-        passive: true,
-      });
+    if (typeof unbindSyncListeners === "function") {
+      return unbindSyncListeners;
+    }
+    const sync = () => syncMobileInfoPanel();
+    unbindSyncListeners = bindViewportListeners({
+      onResize: sync,
+      onVisualViewportResize: sync,
+      onVisualViewportScroll: sync,
+    });
+    return unbindSyncListeners;
+  }
+
+  function cleanupSyncListeners() {
+    if (typeof unbindSyncListeners === "function") {
+      const cleanup = unbindSyncListeners;
+      unbindSyncListeners = null;
+      cleanup();
     }
   }
 
@@ -303,5 +314,6 @@ export function createMobileInfoPanelRuntime(deps = {}) {
     renderMobileInfo,
     syncMobileInfoPanel,
     bindSyncListeners,
+    cleanupSyncListeners,
   };
 }
