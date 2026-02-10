@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import SimpleTopbar from "../../components/SimpleTopbar";
+import ChatMessageText from "../../components/chat/ChatMessageText";
 import { notifyManagerChat } from "../../lib/chatNotifications";
 import { loadScript } from "../../runtime/scriptLoader";
 import { supabaseClient as supabase } from "../../lib/supabase";
@@ -61,35 +62,6 @@ function getInviteUrl(token, entryPage) {
     return `${origin}/restaurant?slug=${encodeURIComponent(slug)}&qr=1&invite=${token}`;
   }
   return `${origin}/account?invite=${token}`;
-}
-
-function parseChatMessage(text) {
-  const raw = String(text || "");
-  const pattern = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)|(https?:\/\/[^\s]+)/g;
-  const tokens = [];
-  let lastIndex = 0;
-  let match;
-
-  while ((match = pattern.exec(raw)) !== null) {
-    if (match.index > lastIndex) {
-      tokens.push({ type: "text", value: raw.slice(lastIndex, match.index) });
-    }
-    if (match[1] && match[2]) {
-      tokens.push({ type: "link", value: match[2], label: match[1] });
-    } else if (match[3]) {
-      tokens.push({ type: "link", value: match[3], label: match[3] });
-    }
-    lastIndex = pattern.lastIndex;
-  }
-
-  if (lastIndex < raw.length) {
-    tokens.push({ type: "text", value: raw.slice(lastIndex) });
-  }
-
-  if (!tokens.length) {
-    return [{ type: "text", value: raw }];
-  }
-  return tokens;
 }
 
 function buildAppealDetailsLink(appeal) {
@@ -185,30 +157,6 @@ function resolveAckIndex(messages, targetRole, acknowledgedAt) {
   return index;
 }
 
-function MessageText({ text }) {
-  const tokens = useMemo(() => parseChatMessage(text), [text]);
-
-  return (
-    <>
-      {tokens.map((token, index) => {
-        if (token.type === "link") {
-          return (
-            <a
-              key={`${token.value}-${index}`}
-              href={token.value}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              {token.label}
-            </a>
-          );
-        }
-        return <span key={`${token.value}-${index}`}>{token.value}</span>;
-      })}
-    </>
-  );
-}
-
 function ChatThread({
   restaurantId,
   restaurantName,
@@ -295,7 +243,7 @@ function ChatThread({
                   >
                     <div className="restaurant-chat-bubble">
                       <div className="restaurant-chat-text">
-                        <MessageText text={message.message} />
+                        <ChatMessageText text={message.message} />
                       </div>
                       <div className="restaurant-chat-meta">
                         {sender}

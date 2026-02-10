@@ -14,15 +14,15 @@
 - Hardcoded Supabase credentials removed from `api/ai-proxy.js` in favor of env vars.
 - `report-issue`, `my-dishes`, `order-feedback`, `kitchen-tablet`, `server-tablet`, `admin-dashboard`, `manager-dashboard`, and `help-contact` no longer depend on legacy `/js/shared-nav.js`.
 - App-level `shared-nav` imports are now fully removed.
-- `restaurant` and `manager-dashboard` runtime entry points are app-local modules (`app/**/runtime/legacy/*`) instead of `/public/js/*` URL imports.
+- `restaurant` runtime entry points are app-local modules (`app/**/runtime/legacy/*`) instead of `/public/js/*` URL imports.
 - App-level `webpackIgnore` imports are fully removed.
 - Shared notification/allergen helpers moved into app modules:
   - `app/lib/orderNotifications.js`
   - `app/lib/managerNotifications.js`
   - `app/lib/allergenConfigRuntime.js`
 - Removed redundant dashboard fallback imports and files from app-local legacy trees:
-  - `admin-dashboard` legacy tree reduced to 2 files
-  - `manager-dashboard` legacy tree reduced to 5 files
+  - `admin-dashboard` legacy tree reduced to 0 files
+  - `manager-dashboard` legacy tree reduced to 0 files
 - Consolidated duplicated manager chat notification logic into `app/lib/chatNotifications.js`.
 - Consolidated help-assistant drawer logic through shared app module usage (restaurant legacy `shared-nav` now imports `app/lib/helpAssistantDrawer.js`).
 - Introduced shared topbar components in `app/components/SimpleTopbar.js`:
@@ -54,20 +54,27 @@
 - Replaced `admin-dashboard` legacy runtime boot (`app/admin-dashboard/runtime/legacy/admin-dashboard-page.js`) with native React/Next stateful UI in `app/admin-dashboard/components/AdminDashboardDom.js`.
 - Removed all app-local admin legacy runtime files (`app/admin-dashboard/runtime/legacy/*`).
 - Removed `manager-dashboard` legacy floating report modal runtime import/file (`app/manager-dashboard/runtime/legacy/report-modal.js`) in favor of existing Next-native reporting/help routes.
+- Removed `manager-dashboard` legacy orchestration runtime (`app/manager-dashboard/runtime/legacy/manager-dashboard.js`) and local bridge re-export (`app/manager-dashboard/runtime/legacy/supabase-client.js`).
+- Removed remaining manager-specific ingredient capture runtimes (`app/manager-dashboard/runtime/legacy/ingredient-label-capture.js`, `app/manager-dashboard/runtime/legacy/ingredient-allergen-analysis.js`).
+- Added shared manager ingredient capture bridge `app/lib/managerIngredientPhotoCapture.js` that reuses the existing restaurant ingredient-photo runtime module.
+- Added shared chat message parsing/rendering primitives:
+  - `app/lib/chatMessage.js`
+  - `app/components/chat/ChatMessageText.js`
+- Refactored both admin and manager dashboards to reuse shared chat message rendering instead of duplicated inline parsers/components.
 
 ## Current migration inventory
 - Legacy static HTML pages still present in `public/`: 15
-- Legacy runtime JS files in `public/js/`: 109
+- Legacy runtime JS files in `public/js/`: 108
 - Next clients still booting legacy runtime modules via `/js/*`: 0 imports
 - App-level `webpackIgnore` imports: 0
 - App-local legacy runtime files:
   - `app/admin-dashboard/runtime/legacy`: 0
-  - `app/manager-dashboard/runtime/legacy`: 4
+  - `app/manager-dashboard/runtime/legacy`: 0
   - `app/restaurant/runtime/legacy`: 90
 - App routes still rendering raw topbar markup directly: 0
 
 ## Remaining high-priority work
-1. Replace remaining app-local legacy runtime trees (`app/manager-dashboard/runtime/legacy/*`, `app/restaurant/runtime/legacy/*`) with native React/Next feature modules page-by-page.
+1. Replace remaining app-local legacy runtime tree (`app/restaurant/runtime/legacy/*`) with native React/Next feature modules page-by-page.
 2. De-duplicate remaining copied legacy utilities in `app/restaurant/runtime/legacy/*` against shared app modules.
 3. Retire `public/*.html` and unused `public/js/*` runtime files after parity, leaving only static assets.
 
