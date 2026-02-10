@@ -384,7 +384,7 @@ export default function KitchenTabletClient() {
   }, [promptDraft, runAction]);
 
   return (
-    <div className="page-shell">
+    <>
       <style>{`
         .tablet-page {
           display: flex;
@@ -964,6 +964,6 @@ export default function KitchenTabletClient() {
           </div>
         </div>
       ) : null}
-    </div>
+    </>
   );
 }

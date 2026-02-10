@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import PageShell from "../components/PageShell";
 import SimpleTopbar from "../components/SimpleTopbar";
 import { buildAllergenDietConfig, loadAllergenDietConfig } from "../lib/allergenConfig";
 import {
@@ -775,38 +776,87 @@ export default function AccountClient() {
 
   if (loading) {
     return (
-      <div className="page-shell">
-        <main className="page-main">
-          <div className="page-content" style={{ textAlign: "center" }}>
-            <p className="status-text">Loading account…</p>
-          </div>
-        </main>
-      </div>
+      <PageShell>
+        <div style={{ textAlign: "center" }}>
+          <p className="status-text">Loading account…</p>
+        </div>
+      </PageShell>
     );
   }
 
   return (
-    <div className="page-shell">
-      <SimpleTopbar
-        brandHref="/home"
-        links={[
-          { href: "/home", label: "Home" },
-          { href: "/restaurants", label: "Restaurants" },
-          { href: "/favorites", label: "My restaurants" },
-          { href: "/dish-search", label: "Dish search" },
-          { href: "/help-contact", label: "Help" },
-          {
-            href: backToMenuHref || "/account",
-            label: "Back to menu",
-            visible: Boolean(backToMenuHref && !user),
-          },
-          { href: "/account", label: "Account" },
-        ]}
-      />
-
-      <main className="page-main">
-        <div className="page-content">
-          <div className="account-layout">
+    <PageShell
+      topbar={
+        <SimpleTopbar
+          brandHref="/home"
+          links={[
+            { href: "/home", label: "Home" },
+            { href: "/restaurants", label: "Restaurants" },
+            { href: "/favorites", label: "My restaurants" },
+            { href: "/dish-search", label: "Dish search" },
+            { href: "/help-contact", label: "Help" },
+            {
+              href: backToMenuHref || "/account",
+              label: "Back to menu",
+              visible: Boolean(backToMenuHref && !user),
+            },
+            { href: "/account", label: "Account" },
+          ]}
+        />
+      }
+      afterMain={
+        invitePrompt ? (
+          <div
+            style={{
+              position: "fixed",
+              inset: 0,
+              background: "rgba(8, 12, 26, 0.82)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 10001,
+              padding: 20,
+            }}
+          >
+            <div
+              style={{
+                width: "min(520px, 100%)",
+                background: "#0f1638",
+                border: "1px solid rgba(76,90,212,0.4)",
+                borderRadius: 16,
+                padding: 24,
+                color: "#e9ecff",
+              }}
+            >
+              <h3 style={{ margin: "0 0 12px", fontSize: "1.2rem" }}>Apply manager invite</h3>
+              <p style={{ margin: "0 0 20px", color: "#a8b2d6", lineHeight: 1.5 }}>
+                You are already signed in. Grant manager access to this account or create a new account for the invite.
+              </p>
+              <div style={{ display: "grid", gap: 12 }}>
+                <button
+                  type="button"
+                  className="primary-btn"
+                  style={{ background: "#17663a", borderColor: "#22c55e" }}
+                  disabled={invitePromptBusy}
+                  onClick={handleInviteUseCurrent}
+                >
+                  {invitePromptBusy ? "Granting access..." : "Use current account"}
+                </button>
+                <button
+                  type="button"
+                  className="secondary-btn"
+                  disabled={invitePromptBusy}
+                  onClick={handleInviteCreateNew}
+                >
+                  {invitePromptBusy ? "Redirecting..." : "Create a new account"}
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null
+      }
+    >
+      <div className="account-layout">
             {inviteBannerVisible ? (
               <div className="auth-card" style={{ background: "linear-gradient(135deg,#4c5ad4,#6366f1)", border: "none" }}>
                 <h3 style={{ margin: "0 0 8px", color: "white" }}>
@@ -1127,57 +1177,6 @@ export default function AccountClient() {
               </>
             ) : null}
           </div>
-        </div>
-      </main>
-
-      {invitePrompt ? (
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(8, 12, 26, 0.82)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 10001,
-            padding: 20,
-          }}
-        >
-          <div
-            style={{
-              width: "min(520px, 100%)",
-              background: "#0f1638",
-              border: "1px solid rgba(76,90,212,0.4)",
-              borderRadius: 16,
-              padding: 24,
-              color: "#e9ecff",
-            }}
-          >
-            <h3 style={{ margin: "0 0 12px", fontSize: "1.2rem" }}>Apply manager invite</h3>
-            <p style={{ margin: "0 0 20px", color: "#a8b2d6", lineHeight: 1.5 }}>
-              You are already signed in. Grant manager access to this account or create a new account for the invite.
-            </p>
-            <div style={{ display: "grid", gap: 12 }}>
-              <button
-                type="button"
-                className="primary-btn"
-                style={{ background: "#17663a", borderColor: "#22c55e" }}
-                disabled={invitePromptBusy}
-                onClick={handleInviteUseCurrent}
-              >
-                {invitePromptBusy ? "Granting access..." : "Use current account"}
-              </button>
-              <button
-                type="button"
-                className="secondary-btn"
-                disabled={invitePromptBusy}
-                onClick={handleInviteCreateNew}
-              >
-                {invitePromptBusy ? "Redirecting..." : "Create a new account"}
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}</div>
+    </PageShell>
   );
 }

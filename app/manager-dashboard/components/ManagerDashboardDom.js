@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import PageShell from "../../components/PageShell";
 import SimpleTopbar, { ManagerModeSwitch } from "../../components/SimpleTopbar";
 import ChatMessageText from "../../components/chat/ChatMessageText";
 import { notifyManagerChat } from "../../lib/chatNotifications";
@@ -2176,32 +2177,33 @@ export default function ManagerDashboardDom({
   const dashboardVisible = hasManagerAccess && !isLoadingDashboard;
 
   return (
-    <div className="page-shell">
-      <SimpleTopbar
-        brandHref="/manager-dashboard"
-        links={[
-          { href: "/manager-dashboard", label: "Dashboard" },
-          {
-            href: webpageEditorHref || "/manager-dashboard",
-            label: "Webpage editor",
-            visible: Boolean(webpageEditorHref),
-          },
-          { href: "/server-tablet", label: "Server monitor" },
-          { href: "/kitchen-tablet", label: "Kitchen monitor" },
-          { href: "/help-contact", label: "Help" },
-        ]}
-        showAuthAction
-        signedIn={Boolean(user)}
-        onSignOut={onSignOut}
-        rightContent={
-          isManagerOrOwner ? (
-            <ManagerModeSwitch mode={managerMode} onChange={onModeChange} />
-          ) : null
-        }
-      />
-
-      <main className="page-main">
-        <div className="dashboard-container">
+    <PageShell
+      contentClassName="dashboard-container"
+      topbar={
+        <SimpleTopbar
+          brandHref="/manager-dashboard"
+          links={[
+            { href: "/manager-dashboard", label: "Dashboard" },
+            {
+              href: webpageEditorHref || "/manager-dashboard",
+              label: "Webpage editor",
+              visible: Boolean(webpageEditorHref),
+            },
+            { href: "/server-tablet", label: "Server monitor" },
+            { href: "/kitchen-tablet", label: "Kitchen monitor" },
+            { href: "/help-contact", label: "Help" },
+          ]}
+          showAuthAction
+          signedIn={Boolean(user)}
+          onSignOut={onSignOut}
+          rightContent={
+            isManagerOrOwner ? (
+              <ManagerModeSwitch mode={managerMode} onChange={onModeChange} />
+            ) : null
+          }
+        />
+      }
+    >
           <div className="dashboard-header">
             <h1>Restaurant Manager Dashboard</h1>
             <p>View customer dietary analytics and accommodation requests</p>
@@ -3248,9 +3250,6 @@ export default function ManagerDashboardDom({
               ) : null}
             </div>
           ) : null}
-        </div>
-      </main>
-
       <div
         className={`response-modal${activeRequestAction ? " show" : ""}`}
         id="response-modal"
@@ -3492,6 +3491,6 @@ export default function ManagerDashboardDom({
           </div>
         ) : null}
       </div>
-    </div>
+    </PageShell>
   );
 }

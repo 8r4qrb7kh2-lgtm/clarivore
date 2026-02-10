@@ -1,21 +1,3 @@
-// --- DEBUG STUBS (Global) ---
-const ENABLE_CONSOLE_REPORTING =
-  typeof window !== "undefined" && window.__enableConsoleReporting === true;
-const noop = () => {};
-if (!ENABLE_CONSOLE_REPORTING && typeof console !== "undefined") {
-  console.log = noop;
-  console.info = noop;
-  console.warn = noop;
-  window.logDebug = noop;
-  window.setDebugJson = noop;
-} else {
-  // Provide stub implementations for debug functions that may be called elsewhere
-  window.logDebug = window.logDebug || ((msg) => console.log("[DEBUG]", msg));
-  window.setDebugJson =
-    window.setDebugJson ||
-    ((data, title) => console.log("[DEBUG-JSON]", title, data));
-}
-
 import { ORDER_STATUSES as TabletOrderStatusesConst } from "../../lib/tabletSimulationLogic.mjs";
 import { setupTopbar } from "../../lib/sharedNav.js";
 import { initDinerNotifications } from "../../lib/dinerNotifications.js";
@@ -77,10 +59,9 @@ import {
   fmtDateTime,
   getWeeksAgoInfo,
 } from "../../lib/timeFormatting.js";
+import { initializeRestaurantRuntimeEnvironment } from "./runtimeEnvironment.js";
 
-// Shim globals for module scope
-const logDebug = window.logDebug || noop;
-const setDebugJson = window.setDebugJson || noop;
+const { logDebug, setDebugJson } = initializeRestaurantRuntimeEnvironment();
 
 const TABLET_ORDER_STATUSES = TabletOrderStatusesConst ?? {
   DRAFT: "draft",
@@ -95,17 +76,6 @@ const TABLET_ORDER_STATUSES = TabletOrderStatusesConst ?? {
   RESCINDED_BY_DINER: "rescinded_by_diner",
   REJECTED_BY_KITCHEN: "rejected_by_kitchen",
 };
-
-// Ensure zoom is always allowed on mobile Safari
-(function () {
-  var m = document.querySelector('meta[name="viewport"]');
-  if (m && !/maximum-scale/i.test(m.content)) {
-    m.content += ", user-scalable=yes, maximum-scale=10";
-  }
-  ["touchstart", "touchmove"].forEach(function (t) {
-    document.addEventListener(t, function () {}, { passive: true });
-  });
-})();
 
 const allergenConfig = window.ALLERGEN_DIET_CONFIG || {};
 const ALLERGENS = Array.isArray(allergenConfig.ALLERGENS)
@@ -180,10 +150,6 @@ let editorSaveApi = null;
 let navigateWithCheck = (url) => {
   window.location.href = url;
 };
-window.lovedDishesSet = window.lovedDishesSet || new Set();
-window.orderItems = window.orderItems || [];
-window.orderItemSelections = window.orderItemSelections || new Set();
-
 let mobileInfoPanel = null;
 let currentMobileInfoItem = null;
 let ensureMobileInfoPanel = () => null;

@@ -178,6 +178,18 @@
   - `app/order-feedback/OrderFeedbackClient.js`
   - `app/help-contact/HelpContactClient.js`
   - `app/report-issue/ReportIssueClient.js`
+- Refactored remaining non-tablet route holdouts to use shared page shell structure:
+  - `app/account/AccountClient.js`
+  - `app/admin-dashboard/components/AdminDashboardDom.js`
+  - `app/manager-dashboard/components/ManagerDashboardDom.js`
+- Removed redundant outer `page-shell` wrappers around tablet monitor pages; shared `TabletMonitorPage` now owns page shell markup:
+  - `app/kitchen-tablet/KitchenTabletClient.js`
+  - `app/server-tablet/ServerTabletClient.js`
+- Began decomposing `restaurant` monolithic runtime bootstrap into reusable modules/hooks:
+  - added `app/restaurant/runtime/runtimeEnvironment.js` for debug bridge, viewport setup, and runtime collection initialization
+  - added `app/restaurant/hooks/useRestaurantRuntimeEnvironment.js`
+  - wired `app/restaurant/RestaurantClient.js` and `app/restaurant/hooks/useRestaurantRuntime.js` to initialize runtime environment via shared helper/hook
+  - removed inline runtime environment bootstrapping code from `app/restaurant/runtime/restaurantPageRuntime.js`
 - Removed the final app-local `restaurant` runtime legacy entrypoint:
   - moved `app/restaurant/runtime/legacy/restaurant-page.js` to `app/restaurant/runtime/restaurantPageRuntime.js`
   - updated `app/restaurant/runtime/scriptLoader.js` to import `./restaurantPageRuntime.js`
@@ -194,6 +206,7 @@
   - `app/manager-dashboard/runtime/legacy`: 0
   - `app/restaurant/runtime/legacy`: 0
 - App routes still rendering raw topbar markup directly: 0
+- App routes still rendering direct raw `page-shell` wrappers: 0 (excluding `RouteSuspense` fallback UI)
 
 ## Remaining high-priority work
 1. Replace the monolithic `restaurant` runtime entry (`app/restaurant/runtime/restaurantPageRuntime.js`) with native React/Next feature modules page-by-page.

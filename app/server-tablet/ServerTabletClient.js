@@ -498,7 +498,7 @@ export default function ServerTabletClient() {
   }, [rejectDraft, runAction]);
 
   return (
-    <div className="page-shell">
+    <>
       <style>{`
         .tablet-page {
           display: flex;
@@ -1147,6 +1147,6 @@ export default function ServerTabletClient() {
           </div>
         </div>
       ) : null}
-    </div>
+    </>
   );
 }

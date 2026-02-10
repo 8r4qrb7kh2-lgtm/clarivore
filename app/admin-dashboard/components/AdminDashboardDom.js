@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import PageShell from "../../components/PageShell";
 import SimpleTopbar from "../../components/SimpleTopbar";
 import ChatMessageText from "../../components/chat/ChatMessageText";
 import { notifyManagerChat } from "../../lib/chatNotifications";
@@ -1242,20 +1243,38 @@ export default function AdminDashboardDom({
   }, [managerAccessRestaurants, selectedRestaurant]);
 
   return (
-    <div className="page-shell">
-      <SimpleTopbar
-        brandHref="/home"
-        links={[
-          { href: "/manager-dashboard", label: "Dashboard" },
-          { href: "/restaurants", label: "Restaurants" },
-          { href: "/help-contact", label: "Help" },
-        ]}
-        showAuthAction
-        signedIn={Boolean(currentUser)}
-        onSignOut={onSignOut}
-      />
-
-      <main className="admin-container">
+    <PageShell
+      mainClassName="admin-container"
+      wrapContent={false}
+      topbar={
+        <SimpleTopbar
+          brandHref="/home"
+          links={[
+            { href: "/manager-dashboard", label: "Dashboard" },
+            { href: "/restaurants", label: "Restaurants" },
+            { href: "/help-contact", label: "Help" },
+          ]}
+          showAuthAction
+          signedIn={Boolean(currentUser)}
+          onSignOut={onSignOut}
+        />
+      }
+      afterMain={
+        photoModalUrl ? (
+          <div
+            id="photo-modal"
+            className="photo-modal show"
+            onClick={(event) => {
+              if (event.target === event.currentTarget) {
+                setPhotoModalUrl("");
+              }
+            }}
+          >
+            <img id="modal-photo" src={photoModalUrl} alt="Appeal" />
+          </div>
+        ) : null
+      }
+    >
         {!isBooting && !isAdmin ? (
           <div className="access-denied">
             <h1>🔒 Access Denied</h1>
@@ -2265,21 +2284,6 @@ export default function AdminDashboardDom({
             ) : null}
           </>
         ) : null}
-      </main>
-
-      {photoModalUrl ? (
-        <div
-          id="photo-modal"
-          className="photo-modal show"
-          onClick={(event) => {
-            if (event.target === event.currentTarget) {
-              setPhotoModalUrl("");
-            }
-          }}
-        >
-          <img id="modal-photo" src={photoModalUrl} alt="Appeal" />
-        </div>
-      ) : null}
-    </div>
+    </PageShell>
   );
 }

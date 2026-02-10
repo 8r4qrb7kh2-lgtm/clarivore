@@ -12,6 +12,7 @@ import {
   loadRestaurantDependencies,
   loadRestaurantRuntimeModule,
 } from "../runtime/scriptLoader";
+import { initializeRestaurantRuntimeEnvironment } from "../runtime/runtimeEnvironment";
 
 export function useRestaurantRuntime({ slug, isQrVisit, inviteToken }) {
   const router = useRouter();
@@ -34,6 +35,7 @@ export function useRestaurantRuntime({ slug, isQrVisit, inviteToken }) {
 
         applyConsoleReportingPreference();
         initRestaurantBootGlobals(supabase);
+        initializeRestaurantRuntimeEnvironment();
 
         setStatus("Loading restaurant data...");
         const [result] = await Promise.all([

@@ -4,10 +4,12 @@ import { useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 import RestaurantCoreDom from "./components/RestaurantCoreDom";
 import RestaurantLoaderOverlay from "./components/RestaurantLoaderOverlay";
+import { useRestaurantRuntimeEnvironment } from "./hooks/useRestaurantRuntimeEnvironment";
 import { useRestaurantRuntime } from "./hooks/useRestaurantRuntime";
 
 export default function RestaurantClient() {
   const searchParams = useSearchParams();
+  useRestaurantRuntimeEnvironment();
 
   const slug = searchParams?.get("slug") || "";
   const qrParam = searchParams?.get("qr");
