@@ -21,7 +21,6 @@ import { setupTopbar } from "./shared-nav.js";
 import { createHowItWorksTour } from "./restaurant/how-it-works-tour.js";
 import { initOrderFlow } from "./restaurant/order-flow.js";
 import { initUnsavedChangesGuard } from "./restaurant/unsaved-changes.js";
-import { initDishEditor } from "./restaurant/dish-editor.js";
 import { initAutoOpenDish } from "./restaurant/auto-open-dish.js";
 import { initIngredientSources } from "./restaurant/ingredient-sources.js";
 import { initFeedbackModals } from "./restaurant/feedback-modals.js";
@@ -88,7 +87,7 @@ import {
   fetchChangeLogEntries,
   insertChangeLogEntry,
 } from "./restaurant/change-log-service.js";
-import { createStandaloneMessageDispatcher } from "./restaurant/standalone-message-dispatcher.js";
+import { createNavigationRuntime } from "./restaurant/navigation-runtime.js";
 import {
   createDishCompatibilityEvaluator,
   createTooltipBodyHTML,
@@ -105,6 +104,9 @@ import { createMenuDrawRuntime } from "./restaurant/menu-draw-runtime.js";
 import { createPageRouterRuntime } from "./restaurant/page-router-runtime.js";
 import { createBootHydrationRuntime } from "./restaurant/boot-hydration-runtime.js";
 import { createPageUtilsRuntime } from "./restaurant/page-utils-runtime.js";
+import { createPageOffsetRuntime } from "./restaurant/page-offset-runtime.js";
+import { createMobileInfoPanelDom } from "./restaurant/mobile-info-panel-dom.js";
+import { createDishEditorRuntime } from "./restaurant/dish-editor-runtime.js";
 import {
   fmtDate,
   fmtDateTime,
@@ -218,10 +220,10 @@ let navigateWithCheck = (url) => {
 window.lovedDishesSet = window.lovedDishesSet || new Set();
 window.orderItems = window.orderItems || [];
 window.orderItemSelections = window.orderItemSelections || new Set();
-let rootOffsetPadding = "0";
 
 let mobileInfoPanel = null;
 let currentMobileInfoItem = null;
+let ensureMobileInfoPanel = () => null;
 let renderMobileInfo = () => {};
 let syncMobileInfoPanel = () => {};
 let captureMenuBaseDimensions = () => {};
@@ -245,6 +247,9 @@ let getIssueReportMeta = () => ({
   accountId: null,
 });
 let resizeLegendToFit = () => {};
+let updateRootOffset = () => {};
+let setRootOffsetPadding = () => {};
+let send = () => {};
 
 let zoomToOverlay = () => {};
 let zoomOutOverlay = () => {};
@@ -254,42 +259,6 @@ let showTipIn = () => {};
 let hideTip = () => {};
 let getTipPinned = () => false;
 let getPinnedOverlayItem = () => null;
-
-function ensureMobileInfoPanel() {
-  if (mobileInfoPanel && mobileInfoPanel.isConnected) return mobileInfoPanel;
-  if (!mobileInfoPanel) {
-    mobileInfoPanel = document.createElement("div");
-    mobileInfoPanel.id = "mobileInfoPanel";
-    mobileInfoPanel.className = "mobileInfoPanel";
-    mobileInfoPanel.setAttribute("aria-live", "polite");
-    mobileInfoPanel.style.position = "fixed";
-    mobileInfoPanel.style.width = "auto";
-    mobileInfoPanel.style.zIndex = "3500";
-    mobileInfoPanel.style.background = "rgba(11,16,32,0.94)";
-    mobileInfoPanel.style.backdropFilter = "blur(14px)";
-    mobileInfoPanel.style.webkitBackdropFilter = "blur(14px)";
-    mobileInfoPanel.style.paddingBottom =
-      "calc(24px + env(safe-area-inset-bottom,0))";
-    mobileInfoPanel.style.borderRadius = "20px";
-    mobileInfoPanel.style.display = "none";
-  }
-  // Set positioning based on full-screen mode
-  if (document.body.classList.contains("mobileViewerActive")) {
-    mobileInfoPanel.style.setProperty("left", "0", "important");
-    mobileInfoPanel.style.setProperty("right", "0", "important");
-    mobileInfoPanel.style.setProperty("bottom", "0", "important");
-  } else {
-    mobileInfoPanel.style.left = "12px";
-    mobileInfoPanel.style.right = "12px";
-    mobileInfoPanel.style.bottom = "12px";
-  }
-  mobileInfoPanel.innerHTML = "";
-  mobileInfoPanel.classList.remove("show");
-  mobileInfoPanel.style.display = "none";
-  document.body.appendChild(mobileInfoPanel);
-  adjustMobileInfoPanelForZoom();
-  return mobileInfoPanel;
-}
 
 function adjustMobileInfoPanelForZoom() {
   // No longer needed since pinch-to-zoom is disabled
@@ -316,24 +285,16 @@ const {
   isDishInfoPopupOpen,
 });
 
-// Handle navigation in standalone mode
-const isStandalone = window === window.parent;
-const dispatchStandaloneMessage = createStandaloneMessageDispatcher({
+const navigationRuntime = createNavigationRuntime({
   state,
+  slug,
   normalizeRestaurant,
   insertChangeLogEntry,
   fetchChangeLogEntries,
+  closeQrPromo,
 });
-const send = (p) => {
-  if (isStandalone) {
-    const handled = dispatchStandaloneMessage(p);
-    if (!handled) {
-      console.log("Message sent:", p);
-    }
-  } else {
-    parent.postMessage(p, "*");
-  }
-};
+send = navigationRuntime.send;
+
 const orderFlow = initOrderFlow({
   state,
   send,
@@ -370,39 +331,7 @@ const {
   updateOrderConfirmAuthState,
   initOrderSidebar,
 } = orderFlow;
-function requestSignIn(origin) {
-  const slugParam = (state.restaurant && state.restaurant.slug) || slug || "";
-  const payload = { type: "signIn" };
-  if (slugParam) payload.slug = slugParam;
-  if (origin === "restaurants") payload.redirect = "restaurants";
-  if (origin === "qr") payload.from = "qr";
-  send(payload);
-}
-const qrPromoBackdrop = document.getElementById("qrPromoBackdrop");
-const qrPromoCloseBtn = document.getElementById("qrPromoClose");
-const qrPromoSignupBtn = document.getElementById("qrPromoSignup");
-if (qrPromoBackdrop) {
-  qrPromoBackdrop.addEventListener("click", (e) => {
-    if (e.target === qrPromoBackdrop) closeQrPromo("dismiss");
-  });
-}
-if (qrPromoCloseBtn) {
-  qrPromoCloseBtn.onclick = () => closeQrPromo("dismiss");
-}
-if (qrPromoSignupBtn) {
-  qrPromoSignupBtn.onclick = () => {
-    closeQrPromo("signup");
-    // Check for invite token and redirect directly to preserve it
-    const inviteParam = new URLSearchParams(window.location.search).get(
-      "invite",
-    );
-    if (inviteParam) {
-      window.location.href = `account.html?invite=${encodeURIComponent(inviteParam)}`;
-    } else {
-      requestSignIn("qr");
-    }
-  };
-}
+navigationRuntime.bindQrPromoControls();
 const esc = (s) =>
   (s ?? "").toString().replace(
     /[&<>"']/g,
@@ -461,6 +390,17 @@ getMenuState = pageUtilsRuntime.getMenuState;
 getIssueReportMeta = pageUtilsRuntime.getIssueReportMeta;
 resizeLegendToFit = pageUtilsRuntime.resizeLegendToFit;
 pageUtilsRuntime.bindLegendResizeListener();
+const pageOffsetRuntime = createPageOffsetRuntime();
+updateRootOffset = pageOffsetRuntime.updateRootOffset;
+setRootOffsetPadding = pageOffsetRuntime.setRootOffsetPadding;
+const mobileInfoPanelDomRuntime = createMobileInfoPanelDom({
+  getMobileInfoPanel: () => mobileInfoPanel,
+  setMobileInfoPanel: (panel) => {
+    mobileInfoPanel = panel;
+  },
+  adjustMobileInfoPanelForZoom,
+});
+ensureMobileInfoPanel = mobileInfoPanelDomRuntime.ensureMobileInfoPanel;
 
 const { renderGroupedSourcesHtml } = initIngredientSources({ esc });
 const normalizeDietLabel =
@@ -517,7 +457,7 @@ const tooltipBodyHTML = createTooltipBodyHTML({
   prefersMobileInfo: () => prefersMobileInfo(),
 });
 
-const dishEditorApi = initDishEditor({
+const dishEditorRuntime = createDishEditorRuntime({
   esc,
   state,
   normalizeDietLabel,
@@ -533,38 +473,45 @@ const dishEditorApi = initDishEditor({
   norm,
   tooltipBodyHTML,
   send,
+  current: {
+    openBrandIdentificationChoice,
+    showIngredientPhotoUploadModal,
+    showPhotoAnalysisLoadingInRow,
+    hidePhotoAnalysisLoadingInRow,
+    updatePhotoAnalysisLoadingStatus,
+    showPhotoAnalysisResultButton,
+    aiAssistState,
+    aiAssistSetStatus,
+    ensureAiAssistElements,
+    collectAiTableData,
+    renderAiTable,
+    openDishEditor,
+    handleDishEditorResult,
+    handleDishEditorError,
+    rebuildBrandMemoryFromRestaurant,
+    getAiAssistBackdrop,
+    getAiAssistTableBody,
+  },
 });
-openBrandIdentificationChoice =
-  dishEditorApi.openBrandIdentificationChoice || openBrandIdentificationChoice;
-showIngredientPhotoUploadModal =
-  dishEditorApi.showIngredientPhotoUploadModal || showIngredientPhotoUploadModal;
-showPhotoAnalysisLoadingInRow =
-  dishEditorApi.showPhotoAnalysisLoadingInRow || showPhotoAnalysisLoadingInRow;
-hidePhotoAnalysisLoadingInRow =
-  dishEditorApi.hidePhotoAnalysisLoadingInRow || hidePhotoAnalysisLoadingInRow;
+openBrandIdentificationChoice = dishEditorRuntime.openBrandIdentificationChoice;
+showIngredientPhotoUploadModal = dishEditorRuntime.showIngredientPhotoUploadModal;
+showPhotoAnalysisLoadingInRow = dishEditorRuntime.showPhotoAnalysisLoadingInRow;
+hidePhotoAnalysisLoadingInRow = dishEditorRuntime.hidePhotoAnalysisLoadingInRow;
 updatePhotoAnalysisLoadingStatus =
-  dishEditorApi.updatePhotoAnalysisLoadingStatus ||
-  updatePhotoAnalysisLoadingStatus;
-showPhotoAnalysisResultButton =
-  dishEditorApi.showPhotoAnalysisResultButton || showPhotoAnalysisResultButton;
-aiAssistState = dishEditorApi.aiAssistState;
-aiAssistSetStatus = dishEditorApi.aiAssistSetStatus || aiAssistSetStatus;
-ensureAiAssistElements =
-  dishEditorApi.ensureAiAssistElements || ensureAiAssistElements;
-collectAiTableData = dishEditorApi.collectAiTableData || collectAiTableData;
-renderAiTable = dishEditorApi.renderAiTable || renderAiTable;
-openDishEditor = dishEditorApi.openDishEditor || openDishEditor;
-handleDishEditorResult =
-  dishEditorApi.handleDishEditorResult || handleDishEditorResult;
-handleDishEditorError =
-  dishEditorApi.handleDishEditorError || handleDishEditorError;
+  dishEditorRuntime.updatePhotoAnalysisLoadingStatus;
+showPhotoAnalysisResultButton = dishEditorRuntime.showPhotoAnalysisResultButton;
+aiAssistState = dishEditorRuntime.aiAssistState;
+aiAssistSetStatus = dishEditorRuntime.aiAssistSetStatus;
+ensureAiAssistElements = dishEditorRuntime.ensureAiAssistElements;
+collectAiTableData = dishEditorRuntime.collectAiTableData;
+renderAiTable = dishEditorRuntime.renderAiTable;
+openDishEditor = dishEditorRuntime.openDishEditor;
+handleDishEditorResult = dishEditorRuntime.handleDishEditorResult;
+handleDishEditorError = dishEditorRuntime.handleDishEditorError;
 rebuildBrandMemoryFromRestaurant =
-  dishEditorApi.rebuildBrandMemoryFromRestaurant ||
-  rebuildBrandMemoryFromRestaurant;
-getAiAssistBackdrop =
-  dishEditorApi.getAiAssistBackdrop || getAiAssistBackdrop;
-getAiAssistTableBody =
-  dishEditorApi.getAiAssistTableBody || getAiAssistTableBody;
+  dishEditorRuntime.rebuildBrandMemoryFromRestaurant;
+getAiAssistBackdrop = dishEditorRuntime.getAiAssistBackdrop;
+getAiAssistTableBody = dishEditorRuntime.getAiAssistTableBody;
 
 const feedbackModalsApi = initFeedbackModals({
   configureModalClose,
@@ -898,20 +845,6 @@ const renderEditor = createEditorRenderer({
     render();
   },
 });
-
-function updateRootOffset() {
-  const root = document.getElementById("root");
-  const topbar = document.getElementById("topbarOuter");
-  if (!root || !topbar) return;
-  if (!document.body.classList.contains("menuScrollLocked")) return;
-  const topbarBottom = Math.round(topbar.getBoundingClientRect().bottom);
-  root.style.cssText = `position:fixed;top:${topbarBottom}px;left:0;right:0;bottom:0;display:flex;flex-direction:column;overflow:hidden;padding:${rootOffsetPadding};box-sizing:border-box;`;
-}
-
-function setRootOffsetPadding(padding) {
-  rootOffsetPadding = padding;
-  updateRootOffset();
-}
 
 const pageRouterRuntime = createPageRouterRuntime({
   state,
