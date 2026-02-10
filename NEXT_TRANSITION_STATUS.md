@@ -410,6 +410,15 @@
   - added shared notice update/banner runtime service:
     - `app/lib/restaurantRuntime/order-notice-updates-runtime.js`
   - refactored `app/lib/restaurantRuntime/order-flow.js` to delegate server/kitchen confirmation panel rendering + action handlers and external notice update banner orchestration through these services.
+- Continued `order-flow` decomposition for reuse and simplification of duplicate compatibility/cart logic:
+  - added shared order dish compatibility runtime service:
+    - `app/lib/restaurantRuntime/order-dish-compatibility-runtime.js`
+  - added shared order sidebar cart runtime service:
+    - `app/lib/restaurantRuntime/order-sidebar-cart-runtime.js`
+  - refactored `app/lib/restaurantRuntime/order-flow.js` to delegate:
+    - dish compatibility summary/warning rendering through one compatibility service
+    - cart sidebar rendering + order-item selection binding through one cart runtime service
+  - simplified `addDishToOrder` to use the same compatibility evaluation source as confirmation UI (removed duplicate compatibility-check implementation in `order-flow`).
 
 ## Current migration inventory
 - Legacy static HTML compatibility pages still present in `public/`: 15 (all are redirect shells; no legacy page UI/runtime logic)

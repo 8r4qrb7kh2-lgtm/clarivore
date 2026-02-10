@@ -29,8 +29,10 @@ import { markOverlayDishesSelected } from "./overlay-dom.js";
 import { waitForMenuOverlays } from "./menu-overlay-ready.js";
 import { createOrderSidebarUiRuntime } from "./order-sidebar-ui-runtime.js";
 import { createOrderSidebarPendingRuntime } from "./order-sidebar-pending-runtime.js";
+import { createOrderSidebarCartRuntime } from "./order-sidebar-cart-runtime.js";
 import { createOrderConfirmTabletRuntime } from "./order-confirm-tablet-runtime.js";
 import { createOrderNoticeUpdatesRuntime } from "./order-notice-updates-runtime.js";
+import { createOrderDishCompatibilityRuntime } from "./order-dish-compatibility-runtime.js";
 
 const esc = (s) =>
   (s ?? "").toString().replace(
@@ -377,6 +379,7 @@ export function initOrderFlow({
   let orderSidebarAutoMinimizedOrderId = null;
   let orderSidebarForceOpenOrderId = null;
   let rescindConfirmOrderId = null;
+  let orderSidebarCartRuntime = null;
   let orderConfirmTabletRuntime = null;
   let orderNoticeUpdatesRuntime = null;
   const orderSidebarUiRuntime = createOrderSidebarUiRuntime({
@@ -398,6 +401,21 @@ export function initOrderFlow({
       orderSidebarUserToggled = true;
     },
   });
+  orderSidebarCartRuntime = createOrderSidebarCartRuntime({
+    orderSidebarItems,
+    esc,
+    escapeAttribute,
+    hasOrderItems: () => hasOrderItems(),
+    getOrderItems: () => getOrderItems(),
+    isOrderItemSelected: (dishName) => isOrderItemSelected(dishName),
+    syncOrderItemSelections: () => syncOrderItemSelections(),
+    toggleOrderItemSelection: (dishName) => toggleOrderItemSelection(dishName),
+    removeDishFromOrder: (dishName) => removeDishFromOrder(dishName),
+    setConfirmButtonVisibility: (visible) => setConfirmButtonVisibility(visible),
+    setConfirmButtonDisabled: (disabled) => setConfirmButtonDisabled(disabled),
+    updateConfirmButtonVisibility: () => updateConfirmButtonVisibility(),
+    minimizeOrderSidebar: () => minimizeOrderSidebar(),
+  });
   const orderSidebarPendingRuntime = createOrderSidebarPendingRuntime({
     orderSidebarItems,
     ORDER_STATUS_DESCRIPTORS,
@@ -416,12 +434,25 @@ export function initOrderFlow({
     syncOrderItemSelections: () => syncOrderItemSelections(),
     updateConfirmButtonVisibility: () => updateConfirmButtonVisibility(),
     removeDishFromOrder: (dishName) => removeDishFromOrder(dishName),
-    bindOrderItemSelectButtons: (container) => bindOrderItemSelectButtons(container),
+    bindOrderItemSelectButtons: (container) =>
+      orderSidebarCartRuntime?.bindOrderItemSelectButtons(container),
     handleRescindNotice,
     handleRescindConfirm,
     handleRescindCancel,
     handleClearOrderFromSidebar,
     handleKitchenQuestionResponse,
+  });
+  const orderDishCompatibilityRuntime = createOrderDishCompatibilityRuntime({
+    getRestaurantOverlays: () =>
+      Array.isArray(state.restaurant?.overlays) ? state.restaurant.overlays : [],
+    getUserAllergies: () =>
+      Array.isArray(state.allergies) ? state.allergies : [],
+    getUserDiets: () => (Array.isArray(state.diets) ? state.diets : []),
+    normalizeAllergen,
+    normalizeDietLabel,
+    getDietAllergenConflicts,
+    formatOrderListLabel,
+    esc,
   });
   orderConfirmTabletRuntime = createOrderConfirmTabletRuntime({
     orderConfirmServerPanel,
@@ -1718,20 +1749,18 @@ export function initOrderFlow({
     return formatPreferenceLabel(value);
   }
 
-  function getDishOverlayByName(dishName) {
-    const overlays = Array.isArray(state.restaurant?.overlays)
-      ? state.restaurant.overlays
-      : [];
-    const target = (dishName || "").toString().trim().toLowerCase();
-    if (!target) return null;
-    return (
-      overlays.find((overlay) => {
-        const candidate = (overlay.id || overlay.name || "")
-          .toString()
-          .trim()
-          .toLowerCase();
-        return candidate === target;
-      }) || null
+  function getDishCompatibilityDetails(dishName) {
+    return orderDishCompatibilityRuntime.getDishCompatibilityDetails(dishName);
+  }
+
+  function createDishSummaryCard(dishName) {
+    return orderDishCompatibilityRuntime.createDishSummaryCard(dishName);
+  }
+
+  function buildAddToOrderWarningMessage(dishName, details) {
+    return orderDishCompatibilityRuntime.buildAddToOrderWarningMessage(
+      dishName,
+      details,
     );
   }
 
@@ -1761,235 +1790,6 @@ export function initOrderFlow({
     return deriveKitchenQuestionFromHistory(order);
   }
 
-  function renderCompatibilityList(messages, extraClass) {
-    if (!messages || messages.length === 0) return "";
-    const className = extraClass
-      ? `orderDishStatusList ${extraClass}`
-      : "orderDishStatusList";
-    const items = messages
-      .map((msg) => {
-        const type = msg.type || "info";
-        return `<li class="${type}">${esc(msg.text)}</li>`;
-      })
-      .join("");
-    return `<ul class="${className}">${items}</ul>`;
-  }
-
-  function getDishCompatibilityDetails(dishName) {
-    const userAllergies = Array.isArray(state.allergies) ? state.allergies : [];
-    const userDiets = Array.isArray(state.diets) ? state.diets : [];
-    const dish = getDishOverlayByName(dishName);
-    const details = {
-      dish,
-      severity: "success",
-      badgeLabel: "Meets all requirements",
-      allergenMessages: [],
-      dietMessages: [],
-      hasPreferences: userAllergies.length > 0 || userDiets.length > 0,
-      issues: {
-        allergens: [],
-        diets: [],
-      },
-    };
-
-    const severityRank = { success: 0, warn: 1, danger: 2 };
-    let highestRank = -1;
-    const trackSeverity = (type) => {
-      const rank = severityRank[type];
-      if (rank !== undefined && rank > highestRank) {
-        highestRank = rank;
-      }
-    };
-
-    if (!dish) {
-      if (details.hasPreferences) {
-        details.severity = "warn";
-        details.badgeLabel = "Check with staff";
-        if (userAllergies.length) {
-          details.allergenMessages.push({
-            type: "warn",
-            text: "Allergen details unavailable for this item.",
-          });
-          trackSeverity("warn");
-        } else {
-          details.allergenMessages.push({
-            type: "info",
-            text: "Allergen details unavailable for this item.",
-          });
-        }
-        if (userDiets.length) {
-          details.dietMessages.push({
-            type: "warn",
-            text: "Dietary compatibility unknown.",
-          });
-          trackSeverity("warn");
-        }
-      } else {
-        details.severity = "info";
-        details.badgeLabel = "No saved preferences";
-        details.allergenMessages.push({
-          type: "info",
-          text: "No allergies saved",
-        });
-        details.dietMessages.push({
-          type: "info",
-          text: "No diets saved",
-        });
-      }
-      return details;
-    }
-
-    const dishAllergens = (dish.allergens || [])
-      .map(normalizeAllergen)
-      .filter(Boolean);
-    const dishDietSet = new Set(
-      (dish.diets || []).map(normalizeDietLabel).filter(Boolean),
-    );
-    const removableAllergens = new Set(
-      (dish.removable || [])
-        .map((r) => normalizeAllergen(r.allergen || ""))
-        .filter(Boolean),
-    );
-
-    if (userAllergies.length === 0) {
-      details.allergenMessages.push({ type: "info", text: "No allergies saved" });
-    } else {
-      userAllergies.forEach((allergen) => {
-        const normalized = normalizeAllergen(allergen);
-        if (!normalized) return;
-        const friendly = formatOrderListLabel(allergen);
-        const hasAllergen = dishAllergens.includes(normalized);
-        if (!hasAllergen) {
-          details.allergenMessages.push({
-            type: "success",
-            text: `Doesn't contain ${friendly}`,
-          });
-        } else if (removableAllergens.has(normalized)) {
-          details.allergenMessages.push({
-            type: "warn",
-            text: `Can be made ${friendly}-free`,
-          });
-          trackSeverity("warn");
-        } else {
-          details.allergenMessages.push({
-            type: "danger",
-            text: `Contains ${friendly}`,
-          });
-          trackSeverity("danger");
-          details.issues.allergens.push(friendly);
-        }
-      });
-    }
-
-    const normalizedDiets = (userDiets || [])
-      .map(normalizeDietLabel)
-      .filter(Boolean);
-
-    if (normalizedDiets.length === 0) {
-      details.dietMessages.push({
-        type: "info",
-        text: "No diets saved",
-      });
-    } else {
-      normalizedDiets.forEach((diet) => {
-        const friendlyDiet = formatOrderListLabel(diet);
-        const conflicts = getDietAllergenConflicts(diet);
-        const blockingAllergens = conflicts.filter((allergen) =>
-          dishAllergens.includes(allergen),
-        );
-        const allBlockingRemovable =
-          blockingAllergens.length > 0 &&
-          blockingAllergens.every((allergen) =>
-            removableAllergens.has(allergen),
-          );
-
-        if (dishDietSet.has(diet)) {
-          details.dietMessages.push({
-            type: "success",
-            text: `Meets ${friendlyDiet}`,
-          });
-        } else if (allBlockingRemovable) {
-          details.dietMessages.push({
-            type: "warn",
-            text: `Can be made ${friendlyDiet}`,
-          });
-          trackSeverity("warn");
-        } else if (blockingAllergens.length > 0) {
-          details.dietMessages.push({
-            type: "danger",
-            text: `Not ${friendlyDiet}`,
-          });
-          trackSeverity("danger");
-          details.issues.diets.push(friendlyDiet);
-        } else {
-          details.dietMessages.push({
-            type: "danger",
-            text: `Not ${friendlyDiet}`,
-          });
-          trackSeverity("danger");
-          details.issues.diets.push(friendlyDiet);
-        }
-      });
-    }
-
-    if (details.issues.allergens.length > 0 || details.issues.diets.length > 0) {
-      details.severity = "danger";
-      details.badgeLabel = "Cannot be accommodated";
-    } else if (highestRank === 1) {
-      details.severity = "warn";
-      details.badgeLabel = "Can be removed/replaced";
-    } else if (details.hasPreferences) {
-      details.severity = "success";
-      details.badgeLabel = "Meets all requirements";
-    } else {
-      details.severity = "info";
-      details.badgeLabel = "No saved preferences";
-    }
-
-    return details;
-  }
-
-  function renderCompatibilitySection(title, messages) {
-    const list = renderCompatibilityList(messages);
-    if (!list) return "";
-    return `<div class="orderConfirmDishSection">
-  <div class="orderConfirmDishSectionTitle">${esc(title)}</div>
-  ${list}
-    </div>`;
-  }
-
-  function createDishSummaryCard(dishName) {
-    const details = getDishCompatibilityDetails(dishName);
-    const severityClass =
-      {
-        success: "orderConfirmDishBadge--success",
-        warn: "orderConfirmDishBadge--warn",
-        danger: "orderConfirmDishBadge--danger",
-        info: "orderConfirmDishBadge--info",
-      }[details.severity] || "orderConfirmDishBadge--info";
-    const allergenSection = renderCompatibilitySection(
-      "Allergens",
-      details.allergenMessages,
-    );
-    const dietSection = renderCompatibilitySection(
-      "Diets",
-      details.dietMessages,
-    );
-    const sections = [allergenSection, dietSection].filter(Boolean).join("");
-    const body =
-      sections ||
-      '<p class="orderConfirmDishNote">No saved allergies or diets.</p>';
-    return `
-  <article class="orderConfirmDishCard" data-severity="${details.severity}">
-    <div class="orderConfirmDishCardHeader">
-      <div class="orderConfirmDishName">${esc(dishName)}</div>
-      <span class="orderConfirmDishBadge ${severityClass}">${esc(details.badgeLabel)}</span>
-    </div>
-    ${body}
-  </article>
-    `;
-  }
-
   function getBadgeClassForTone(tone) {
     switch (tone) {
       case "success":
@@ -2001,24 +1801,6 @@ export function initOrderFlow({
       default:
         return "orderConfirmDishBadge orderConfirmDishBadge--info";
     }
-  }
-
-  function buildAddToOrderWarningMessage(dishName, details) {
-    const parts = [];
-    if (details.issues?.allergens?.length) {
-      const list = details.issues.allergens.join(", ");
-      parts.push(`${dishName} contains ${list} that cannot be accommodated.`);
-    }
-    if (details.issues?.diets?.length) {
-      const list = details.issues.diets.join(", ");
-      parts.push(
-        `${dishName} does not meet your ${list} preference${details.issues.diets.length > 1 ? "s" : ""}.`,
-      );
-    }
-    const intro = parts.length
-      ? parts.join(" ")
-      : "This dish may not align with your saved preferences.";
-    return `${intro} Are you sure you want to add this to your order?`;
   }
 
   function ensureAddToOrderConfirmContainer(tipEl) {
@@ -2294,90 +2076,17 @@ export function initOrderFlow({
 
     const force = !!options.force;
 
-    // Check if dish can be accommodated with user's allergens and diets
-    const userAllergies = (state.allergies || [])
-      .map(normalizeAllergen)
-      .filter(Boolean);
-    const userDiets = (state.diets || [])
-      .map(normalizeDietLabel)
-      .filter(Boolean);
-    const issues = {
-      allergens: [],
-      diets: [],
-    };
-
-    // Get dish data from overlays (use same function as getDishCompatibilityDetails for consistency)
-    const dish = getDishOverlayByName(dishName);
-
-    if (dish) {
-      const dishAllergens = (dish.allergens || [])
-        .map(normalizeAllergen)
-        .filter(Boolean);
-      const removableAllergens = new Set(
-        (dish.removable || [])
-          .map((r) => normalizeAllergen(r.allergen || ""))
-          .filter(Boolean),
-      );
-
-      // Check if any user allergen is present and cannot be accommodated
-      if (userAllergies.length > 0) {
-        const nonAccommodatableAllergens = userAllergies.filter((allergen) => {
-          const hasAllergen = dishAllergens.includes(allergen);
-          return hasAllergen && !removableAllergens.has(allergen);
-        });
-
-        if (nonAccommodatableAllergens.length > 0) {
-          issues.allergens = nonAccommodatableAllergens.map((a) =>
-            formatOrderListLabel(a),
-          );
-        }
-      }
-
-      // Check diet incompatibilities (check even if no allergies)
-      if (userDiets.length > 0) {
-        const dishDietSet = new Set(
-          (dish.diets || []).map(normalizeDietLabel).filter(Boolean),
-        );
-        userDiets.forEach((diet) => {
-          const conflicts = getDietAllergenConflicts(diet);
-          // Use exact same logic as getDishCompatibilityDetails
-          const blockingAllergens = conflicts.filter((allergen) =>
-            dishAllergens.includes(allergen),
-          );
-          const friendlyDiet = formatOrderListLabel(diet);
-          const meetsDiet = dishDietSet.has(diet);
-          const allBlockingRemovable =
-            blockingAllergens.length > 0 &&
-            blockingAllergens.every((allergen) =>
-              removableAllergens.has(allergen),
-            );
-
-          // Match the exact logic from getDishCompatibilityDetails:
-          // - If diet is explicitly met, no issue
-          // - If all blocking allergens are removable, no issue (can be made)
-          // - Otherwise, add to issues (cannot be made or unknown)
-          if (meetsDiet) {
-            // Diet is explicitly met, no issue
-          } else if (allBlockingRemovable) {
-            // Can be made vegan, no issue
-          } else {
-            // Cannot be made or unknown, require confirmation
-            issues.diets.push(friendlyDiet);
-          }
-        });
-      }
-
-      if ((issues.allergens.length > 0 || issues.diets.length > 0) && !force) {
-        return {
-          success: false,
-          needsConfirmation: true,
-          issues,
-        };
-      }
+    const details = getDishCompatibilityDetails(dishName);
+    const hasBlockingIssues =
+      orderDishCompatibilityRuntime.hasBlockingCompatibilityIssues(details);
+    if (hasBlockingIssues && !force) {
+      return {
+        success: false,
+        needsConfirmation: true,
+        issues: details.issues,
+      };
     }
-    // If dish not found in overlays, allow adding (user can decide)
 
-    // Add to order if it can be accommodated
     orderItems.push(dishName);
     writeOrderItems(orderItems);
     persistOrderItems();
@@ -2408,47 +2117,7 @@ export function initOrderFlow({
     }
   }
 
-  function bindOrderItemSelectButtons(container) {
-    if (!container) return;
-    container.querySelectorAll(".orderItemSelect").forEach((btn) => {
-      if (btn.__selectionBound) return;
-      btn.__selectionBound = true;
-      const applySelectionState = (dishName) => {
-        toggleOrderItemSelection(dishName);
-        const isSelected = isOrderItemSelected(dishName);
-        btn.classList.toggle("is-selected", isSelected);
-        btn.setAttribute("aria-pressed", isSelected ? "true" : "false");
-        btn.setAttribute(
-          "aria-label",
-          `${isSelected ? "Deselect" : "Select"} ${dishName}`,
-        );
-      };
-      btn.addEventListener("click", (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        const dishName = btn.getAttribute("data-dish-name");
-        if (!dishName) return;
-        applySelectionState(dishName);
-      });
-      const row = btn.closest(".orderItem");
-      if (row && !row.__rowSelectionBound) {
-        row.__rowSelectionBound = true;
-        row.addEventListener("click", (e) => {
-          if (e.target.closest(".orderItemRemove")) return;
-          if (e.target.closest(".orderItemSelect")) return;
-          const dishName =
-            row.getAttribute("data-dish-name") ||
-            btn.getAttribute("data-dish-name");
-          if (!dishName) return;
-          applySelectionState(dishName);
-        });
-      }
-    });
-  }
-
   function updateOrderSidebar() {
-    const sidebarItemsContainer = document.getElementById("orderSidebarItems");
-    if (!sidebarItemsContainer) return;
     const sidebarOrders = getSidebarOrders();
     if (sidebarOrders.length) {
       renderOrderSidebarPendingOrders(sidebarOrders);
@@ -2456,59 +2125,9 @@ export function initOrderFlow({
       setOrderSidebarVisibility();
       return;
     }
-    const hasItems = hasOrderItems();
-    syncOrderItemSelections();
-    if (sidebarItemsContainer.dataset.mode === "cleared" && !hasItems) {
-      updateOrderSidebarBadge();
-      setOrderSidebarVisibility();
+    const rendered = orderSidebarCartRuntime?.renderOrderSidebarCart();
+    if (!rendered) {
       return;
-    }
-    if (sidebarItemsContainer.dataset.mode === "cleared" && hasItems) {
-      sidebarItemsContainer.dataset.mode = "cart";
-    }
-    if (!sidebarItemsContainer.dataset.mode) {
-      sidebarItemsContainer.dataset.mode = "cart";
-    }
-
-    const orderItems = getOrderItems();
-    if (!orderItems.length) {
-      sidebarItemsContainer.innerHTML =
-        '<div class="orderSidebarEmpty">No items added yet</div>';
-      setConfirmButtonVisibility(false);
-      setConfirmButtonDisabled(true);
-      minimizeOrderSidebar();
-    } else {
-      const itemsHTML = orderItems
-        .map(
-          (dishName) => `
-    <div class="orderSidebarCard">
-      <div class="orderItem" data-dish-name="${escapeAttribute(dishName)}">
-        <button type="button" class="orderItemSelect${isOrderItemSelected(dishName) ? " is-selected" : ""}" data-dish-name="${escapeAttribute(dishName)}" aria-pressed="${isOrderItemSelected(dishName) ? "true" : "false"}" aria-label="Select ${escapeAttribute(dishName)}"></button>
-        <div style="flex:1">
-          <div class="orderItemName">${esc(dishName)}</div>
-        </div>
-        <button type="button" class="orderItemRemove" data-dish-name="${esc(dishName)}">Remove</button>
-      </div>
-    </div>
-  `,
-        )
-        .join("");
-      sidebarItemsContainer.innerHTML = itemsHTML;
-
-      // Attach remove handlers
-      sidebarItemsContainer
-        .querySelectorAll(".orderItemRemove")
-        .forEach((btn) => {
-          btn.addEventListener("click", (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            const dishName = btn.getAttribute("data-dish-name");
-            if (dishName) removeDishFromOrder(dishName);
-          });
-        });
-      bindOrderItemSelectButtons(sidebarItemsContainer);
-
-      updateConfirmButtonVisibility();
     }
 
     orderSidebarUiRuntime.syncConfirmDrawerSummary();
