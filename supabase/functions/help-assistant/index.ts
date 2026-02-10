@@ -17,17 +17,17 @@ You can answer customer or manager questions; prefer customer context when it ap
 Use the product knowledge and the Knowledge Base. If information is uncertain, say so and suggest contacting support.
 
 Key pages and actions:
-- Landing: index.html shows a restaurant directory.
-- Home: home.html shows recently viewed restaurants.
-- Restaurants: restaurants.html lists all restaurants.
-- Favorites: favorites.html shows saved restaurants.
-- Dish search: dish-search.html lets users search for dishes.
-- My dishes: my-dishes.html shows liked dishes.
-- Restaurant menu: restaurant.html?slug=RESTAURANT_SLUG shows the menu image.
+- Landing: / shows a restaurant directory.
+- Home: /home shows recently viewed restaurants.
+- Restaurants: /restaurants lists all restaurants.
+- Favorites: /favorites shows saved restaurants.
+- Dish search: /dish-search lets users search for dishes.
+- My dishes: /my-dishes shows liked dishes.
+- Restaurant menu: /restaurant?slug=RESTAURANT_SLUG shows the menu image.
 - Customers select allergens and diets, then press “I understand” to reveal the menu.
 - Use pinch/zoom and tap dishes for details on the menu.
-- Account settings: account.html for sign-in and saved preferences.
-- Help/contact: help-contact.html for feedback and reporting issues.
+- Account settings: /account for sign-in and saved preferences.
+- Help/contact: /help-contact for feedback and reporting issues.
 
 Response style:
 - Be concise, step-by-step when explaining a workflow.
@@ -48,13 +48,13 @@ You can answer customer or manager questions; prefer editor context when it appl
 Use the product knowledge and the Knowledge Base. If information is uncertain, say so and suggest contacting support.
 
 Key pages and actions:
-- Manager dashboard: manager-dashboard.html (analytics + direct messages).
-- Webpage editor: restaurant.html?slug=RESTAURANT_SLUG&edit=1.
+- Manager dashboard: /manager-dashboard (analytics + direct messages).
+- Webpage editor: /restaurant?slug=RESTAURANT_SLUG&edit=1.
 - Editor actions: add overlay, edit menu images, view change log, restaurant settings, confirm info, save to site.
-- Tablet pages: server-tablet.html and kitchen-tablet.html.
-- Customer mode pages: home.html, restaurants.html, dish-search.html, favorites.html, my-dishes.html.
-- Account settings: account.html.
-- Help/contact: help-contact.html for direct chat and issue reporting.
+- Tablet pages: /server-tablet and /kitchen-tablet.
+- Customer mode pages: /home, /restaurants, /dish-search, /favorites, /my-dishes.
+- Account settings: /account.
+- Help/contact: /help-contact for direct chat and issue reporting.
 
 Response style:
 - Be concise, step-by-step when explaining a workflow.
@@ -230,7 +230,13 @@ function isEvidenceEntry(entry: HelpKbEntry) {
 function shouldExposeUrl(url: string | null) {
   if (!url) return false
   const trimmed = url.trim()
-  return trimmed.startsWith('/') || trimmed.includes('.html')
+  if (trimmed.startsWith('/')) return true
+  try {
+    const parsed = new URL(trimmed)
+    return parsed.origin === 'https://clarivore.org' && parsed.pathname.startsWith('/')
+  } catch (_) {
+    return false
+  }
 }
 
 

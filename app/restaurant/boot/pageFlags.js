@@ -1,4 +1,6 @@
 import {
+  getEnableConsoleReporting,
+  setEnableConsoleReporting,
   setOpenConfirmOnLoad,
   setOpenLogOnLoad,
   setStartInEditor,
@@ -9,9 +11,9 @@ export function applyConsoleReportingPreference() {
   const enabled =
     search.includes("debug=1") ||
     localStorage.getItem("enableConsoleReporting") === "true" ||
-    window.__enableConsoleReporting === true;
+    getEnableConsoleReporting();
 
-  window.__enableConsoleReporting = enabled;
+  setEnableConsoleReporting(enabled);
   if (!enabled && typeof console !== "undefined") {
     console.log = () => {};
     console.info = () => {};

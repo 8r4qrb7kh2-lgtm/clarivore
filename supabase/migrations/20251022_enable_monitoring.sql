@@ -5,7 +5,7 @@ WHERE slug IN ('falafel-cafe', 'guarinos', 'mama-santa-s');
 
 -- Set menu URLs for restaurants if not already set
 UPDATE restaurants
-SET menu_url = 'https://clarivore.org/restaurant.html?slug=' || slug
+SET menu_url = 'https://clarivore.org/restaurant?slug=' || slug
 WHERE menu_url IS NULL
   AND slug IN ('falafel-cafe', 'guarinos', 'mama-santa-s');
 

@@ -47,6 +47,7 @@ export function createEditorRenderer(options) {
     norm,
     getSupabaseKey,
     getFetchProductByBarcode,
+    getOpenImageModal,
     getShowReplacementPreview,
     initChangeLog,
     initEditorSettings,
@@ -260,33 +261,6 @@ export function createEditorRenderer(options) {
     });
     setUpdateLastConfirmedText(updateLastConfirmedText);
 
-    const brandVerificationApi = initBrandVerification({
-      overlays,
-      rs,
-      setDirty,
-      drawAll,
-      send,
-      updateLastConfirmedText,
-      getIssueReportMeta,
-      openDishEditor,
-      getAiAssistTableBody,
-      showIngredientPhotoUploadModal,
-      renderGroupedSourcesHtml,
-      configureModalClose,
-      openImageModal: typeof window !== "undefined" ? window.openImageModal : null,
-      normalizeDietLabel,
-      normalizeAllergen,
-      ALLERGENS,
-      DIETS,
-      esc,
-      norm,
-      SUPABASE_KEY: getSupabaseKey(),
-      fetchProductByBarcode: getFetchProductByBarcode(),
-      showReplacementPreview: getShowReplacementPreview(),
-    });
-    setCollectAllBrandItems(brandVerificationApi.collectAllBrandItems);
-    setOpenBrandVerification(brandVerificationApi.openBrandVerification);
-
     const changeLogApi = initChangeLog({
       esc,
       fmtDateTime,
@@ -301,6 +275,35 @@ export function createEditorRenderer(options) {
       pushHistory,
     });
     setOpenChangeLog(changeLogApi.openChangeLog);
+
+    const brandVerificationApi = initBrandVerification({
+      overlays,
+      rs,
+      setDirty,
+      drawAll,
+      send,
+      updateLastConfirmedText,
+      getIssueReportMeta,
+      openDishEditor,
+      getAiAssistTableBody,
+      showIngredientPhotoUploadModal,
+      renderGroupedSourcesHtml,
+      configureModalClose,
+      normalizeDietLabel,
+      normalizeAllergen,
+      ALLERGENS,
+      DIETS,
+      esc,
+      norm,
+      SUPABASE_KEY: getSupabaseKey(),
+      fetchProductByBarcode: getFetchProductByBarcode(),
+      showReplacementPreview: getShowReplacementPreview(),
+      openImageModal:
+        typeof getOpenImageModal === "function" ? getOpenImageModal() : null,
+      showPhotoPreview: changeLogApi.showPhotoPreview,
+    });
+    setCollectAllBrandItems(brandVerificationApi.collectAllBrandItems);
+    setOpenBrandVerification(brandVerificationApi.openBrandVerification);
 
     const editorSettingsApi = initEditorSettings({
       state,

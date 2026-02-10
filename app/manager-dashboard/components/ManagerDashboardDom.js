@@ -5,7 +5,7 @@ import PageShell from "../../components/PageShell";
 import SimpleTopbar, { ManagerModeSwitch } from "../../components/SimpleTopbar";
 import ChatMessageText from "../../components/chat/ChatMessageText";
 import { notifyManagerChat } from "../../lib/chatNotifications";
-import { buildAllergenDietConfig } from "../../lib/allergenConfig";
+import { getActiveAllergenDietConfig } from "../../lib/allergenConfigRuntime";
 import { formatChatTimestamp, resolveChatLink } from "../../lib/chatMessage";
 import { supabaseClient as supabase } from "../../lib/supabase";
 import { resolveManagerDisplayName } from "../../lib/userIdentity";
@@ -722,10 +722,7 @@ export default function ManagerDashboardDom({
   onModeChange,
   onSignOut,
 }) {
-  const runtimeConfig =
-    typeof window !== "undefined" && window.ALLERGEN_DIET_CONFIG
-      ? window.ALLERGEN_DIET_CONFIG
-      : buildAllergenDietConfig();
+  const runtimeConfig = getActiveAllergenDietConfig();
 
   const ALLERGENS = Array.isArray(runtimeConfig.ALLERGENS)
     ? runtimeConfig.ALLERGENS

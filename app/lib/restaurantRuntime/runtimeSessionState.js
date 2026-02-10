@@ -4,6 +4,7 @@ const fallbackSessionState = {
   lovedDishesSet: new Set(),
   supabaseClient: null,
   __openOrderConfirmDrawer: null,
+  aiAssistPhotos: [],
 };
 
 function getSessionRoot() {
@@ -62,4 +63,22 @@ export function setOpenOrderConfirmDrawer(fn) {
   const root = getSessionRoot();
   root.__openOrderConfirmDrawer = typeof fn === "function" ? fn : null;
   return root.__openOrderConfirmDrawer;
+}
+
+export function getAiAssistPhotos() {
+  const root = getSessionRoot();
+  if (!Array.isArray(root.aiAssistPhotos)) {
+    root.aiAssistPhotos = [];
+  }
+  return root.aiAssistPhotos;
+}
+
+export function setAiAssistPhotos(photos) {
+  const root = getSessionRoot();
+  root.aiAssistPhotos = Array.isArray(photos) ? photos : [];
+  return root.aiAssistPhotos;
+}
+
+export function clearAiAssistPhotos() {
+  return setAiAssistPhotos([]);
 }

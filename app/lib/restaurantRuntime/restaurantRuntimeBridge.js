@@ -5,9 +5,11 @@ const bridgeState = {
   currentMobileInfoItem: null,
   lastSelectedOverlay: null,
   openBrandVerification: null,
+  setOverlayPulseColor: null,
   displayChangeLog: null,
   collectAllBrandItems: null,
   startInEditor: false,
+  enableConsoleReporting: false,
   pendingDishToOpen: null,
   pendingIngredientToScroll: null,
   openLogOnLoad: false,
@@ -32,9 +34,11 @@ const windowKeys = {
   currentMobileInfoItem: "currentMobileInfoItem",
   lastSelectedOverlay: "__lastSelectedOverlay",
   openBrandVerification: "openBrandVerification",
+  setOverlayPulseColor: "setOverlayPulseColor",
   displayChangeLog: "displayChangeLog",
   collectAllBrandItems: "collectAllBrandItems",
   startInEditor: "__startInEditor",
+  enableConsoleReporting: "__enableConsoleReporting",
   pendingDishToOpen: "__pendingDishToOpen",
   pendingIngredientToScroll: "__pendingIngredientToScroll",
   openLogOnLoad: "__openLogOnLoad",
@@ -136,6 +140,25 @@ export function getOpenBrandVerification() {
   return typeof value === "function" ? value : null;
 }
 
+export function setOverlayPulseColorHandler(fn) {
+  return setBridgeValue(
+    "setOverlayPulseColor",
+    typeof fn === "function" ? fn : null,
+  );
+}
+
+export function getOverlayPulseColorHandler() {
+  const value = getBridgeValue("setOverlayPulseColor");
+  return typeof value === "function" ? value : null;
+}
+
+export function applyOverlayPulseColor(overlay) {
+  const handler = getOverlayPulseColorHandler();
+  if (typeof handler === "function") {
+    handler(overlay);
+  }
+}
+
 export function setDisplayChangeLog(fn) {
   return setBridgeValue("displayChangeLog", typeof fn === "function" ? fn : null);
 }
@@ -151,6 +174,14 @@ export function setStartInEditor(value) {
 
 export function getStartInEditor() {
   return getBridgeValue("startInEditor") === true;
+}
+
+export function setEnableConsoleReporting(value) {
+  return setBridgeValue("enableConsoleReporting", value === true);
+}
+
+export function getEnableConsoleReporting() {
+  return getBridgeValue("enableConsoleReporting") === true;
 }
 
 export function setPendingDishToOpen(value) {

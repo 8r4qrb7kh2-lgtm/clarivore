@@ -3,8 +3,10 @@ import {
   getOrderItemSelections,
   getOrderItems,
 } from "../../lib/restaurantRuntime/runtimeSessionState.js";
+import { getEnableConsoleReporting } from "../../lib/restaurantRuntime/restaurantRuntimeBridge.js";
 
 const noop = () => {};
+let viewportZoomMetaInitialized = false;
 
 function canUseWindow() {
   return typeof window !== "undefined";
@@ -18,32 +20,31 @@ export function ensureRestaurantDebugBridge() {
     };
   }
 
-  const enableConsoleReporting = window.__enableConsoleReporting === true;
+  const enableConsoleReporting = getEnableConsoleReporting();
+  const logDebug = enableConsoleReporting
+    ? (msg) => console.log("[DEBUG]", msg)
+    : noop;
+  const setDebugJson = enableConsoleReporting
+    ? (data, title) => console.log("[DEBUG-JSON]", title, data)
+    : noop;
 
   if (!enableConsoleReporting && typeof console !== "undefined") {
     console.log = noop;
     console.info = noop;
     console.warn = noop;
-    window.logDebug = noop;
-    window.setDebugJson = noop;
-  } else {
-    window.logDebug = window.logDebug || ((msg) => console.log("[DEBUG]", msg));
-    window.setDebugJson =
-      window.setDebugJson ||
-      ((data, title) => console.log("[DEBUG-JSON]", title, data));
+    console.debug = noop;
   }
 
   return {
-    logDebug: typeof window.logDebug === "function" ? window.logDebug : noop,
-    setDebugJson:
-      typeof window.setDebugJson === "function" ? window.setDebugJson : noop,
+    logDebug,
+    setDebugJson,
   };
 }
 
 export function ensureRestaurantViewportZoomMeta() {
   if (!canUseWindow()) return;
-  if (window.__restaurantViewportZoomInit) return;
-  window.__restaurantViewportZoomInit = true;
+  if (viewportZoomMetaInitialized) return;
+  viewportZoomMetaInitialized = true;
 
   const meta = document.querySelector('meta[name="viewport"]');
   if (meta && !/maximum-scale/i.test(meta.content)) {

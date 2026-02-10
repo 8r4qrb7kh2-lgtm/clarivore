@@ -1,6 +1,8 @@
 import { ORDER_STATUSES as TabletOrderStatusesConst } from "../../lib/tabletSimulationLogic.mjs";
 import { setupTopbar } from "../../lib/sharedNav.js";
 import { initDinerNotifications } from "../../lib/dinerNotifications.js";
+import { getActiveAllergenDietConfig } from "../../lib/allergenConfigRuntime.js";
+import { supabaseAnonKey } from "../../lib/supabase.js";
 import {
   analyzeBoxSizes,
   splitImageIntoSections,
@@ -62,6 +64,7 @@ import {
   setCollectAllBrandItems,
   setCurrentMobileInfoItem as setBridgeCurrentMobileInfoItem,
   setEditorDirty,
+  setOverlayPulseColorHandler,
   setOpenBrandVerification,
 } from "../../lib/restaurantRuntime/restaurantRuntimeBridge.js";
 import {
@@ -86,7 +89,7 @@ const TABLET_ORDER_STATUSES = TabletOrderStatusesConst ?? {
   REJECTED_BY_KITCHEN: "rejected_by_kitchen",
 };
 
-const allergenConfig = window.ALLERGEN_DIET_CONFIG || {};
+const allergenConfig = getActiveAllergenDietConfig();
 const ALLERGENS = Array.isArray(allergenConfig.ALLERGENS)
   ? allergenConfig.ALLERGENS
   : [];
@@ -109,6 +112,7 @@ let ensureAiAssistElements = () => {};
 let collectAiTableData = () => [];
 let renderAiTable = () => {};
 let openDishEditor = () => {};
+let openImageModal = () => {};
 let handleDishEditorResult = () => {};
 let handleDishEditorError = () => {};
 let getAiAssistBackdrop = () => null;
@@ -155,7 +159,9 @@ let hasUnsavedChanges = () => false;
 let showUnsavedChangesModal = () => {};
 let editorSaveApi = null;
 let navigateWithCheck = (url) => {
-  window.location.href = url;
+  if (typeof window !== "undefined") {
+    window.location.href = url;
+  }
 };
 let mobileInfoPanel = null;
 let ensureMobileInfoPanel = () => null;
@@ -226,6 +232,7 @@ let hideTip = () => {};
 let getTipPinned = () => false;
 let getPinnedOverlayItem = () => null;
 let pageTip = null;
+const runtimeSupabaseAnonKey = supabaseAnonKey || "";
 
 const {
   pageServicesRuntime,
@@ -269,6 +276,7 @@ const {
     collectAiTableData,
     renderAiTable,
     openDishEditor,
+    openImageModal,
     handleDishEditorResult,
     handleDishEditorError,
     rebuildBrandMemoryFromRestaurant,
@@ -309,7 +317,7 @@ const {
   tooltipBodyHTML,
   renderGroupedSourcesHtml,
 } = pageServicesRuntime);
-window.setOverlayPulseColor = setOverlayPulseColor;
+setOverlayPulseColorHandler(setOverlayPulseColor);
 
 const {
   applyDefaultUserName,
@@ -354,6 +362,7 @@ const {
   collectAiTableData,
   renderAiTable,
   openDishEditor,
+  openImageModal,
   handleDishEditorResult,
   handleDishEditorError,
   rebuildBrandMemoryFromRestaurant,
@@ -380,7 +389,7 @@ const {
   updateRootOffset,
   configureModalClose,
   getIssueReportMeta,
-  supabaseKey: typeof window !== "undefined" ? window.SUPABASE_KEY : "",
+  supabaseKey: runtimeSupabaseAnonKey,
   esc,
   prefersMobileInfo,
   mobileCompactBodyHTML,
@@ -514,12 +523,12 @@ const {
   ALLERGENS,
   DIETS,
   norm,
-  getSupabaseKey: () =>
-    typeof window !== "undefined" ? window.SUPABASE_KEY || "" : "",
+  getSupabaseKey: () => runtimeSupabaseAnonKey,
   getFetchProductByBarcode: () =>
     typeof window !== "undefined"
       ? window.fetchProductByBarcode || null
       : null,
+  getOpenImageModal: () => openImageModal,
   getShowReplacementPreview: () =>
     typeof window !== "undefined" ? window.showReplacementPreview || null : null,
   initChangeLog,

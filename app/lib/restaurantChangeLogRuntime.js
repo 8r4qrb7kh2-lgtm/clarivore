@@ -133,7 +133,7 @@ export function initChangeLog(deps = {}) {
 
       return `<li style="position:relative">
           <span>${displayText}</span>
-          <button type="button" class="logDetailsBtn" onclick="document.getElementById('${detailsId}').classList.toggle('show')" style="margin-left:8px;background:none;border:1px solid #4b5563;color:#9ca3af;padding:2px 6px;border-radius:4px;font-size:11px;cursor:pointer;vertical-align:middle" title="Show before/after details">ℹ️</button>
+          <button type="button" class="logDetailsBtn" data-details-target="${detailsId}" style="margin-left:8px;background:none;border:1px solid #4b5563;color:#9ca3af;padding:2px 6px;border-radius:4px;font-size:11px;cursor:pointer;vertical-align:middle" title="Show before/after details">ℹ️</button>
           <ul id="${detailsId}" class="logDetailsExpanded" style="display:none;margin-top:8px;margin-left:0;padding:10px;background:rgba(0,0,0,0.3);border-radius:6px;font-size:12px;list-style:none">
             <li style="margin-bottom:8px"><strong style="color:#9ca3af">Before:</strong><br>${formatData(details.before)}</li>
             <li><strong style="color:#9ca3af">After:</strong><br>${formatData(details.after)}</li>
@@ -147,8 +147,9 @@ export function initChangeLog(deps = {}) {
         body.innerHTML = `
       <div class="note" style="color:var(--bad);">${esc(errorMsg)}</div>
       <div style="margin-top:12px;text-align:center">
-        <button class="btn" onclick="document.getElementById('modalBack').style.display='none'">Close</button>
+        <button type="button" class="btn closeChangeLogBtn">Close</button>
       </div>`;
+        bindChangeLogModalControls(body);
         return;
       }
       const restaurantId = state.restaurant?._id || state.restaurant?.id || null;
@@ -163,8 +164,9 @@ export function initChangeLog(deps = {}) {
         body.innerHTML = `
       <div class="note">No changes recorded yet.</div>
       <div style="margin-top:12px;text-align:center">
-        <button class="btn" onclick="document.getElementById('modalBack').style.display='none'">Close</button>
+        <button type="button" class="btn closeChangeLogBtn">Close</button>
       </div>`;
+        bindChangeLogModalControls(body);
         return;
       }
 
@@ -237,30 +239,73 @@ export function initChangeLog(deps = {}) {
         const photos = log.photos || [];
         if (Array.isArray(photos) && photos.length > 0) {
           photos.forEach((photoUrl) => {
-            const photoEsc = esc(photoUrl).replace(/'/g, "&#39;");
-            html += `<img src="${esc(photoUrl)}" class="logThumbnail" onclick="window.showPhotoPreview('${photoEsc}')" alt="Confirmation photo">`;
+            const encodedPhoto = esc(encodeURIComponent(photoUrl));
+            html += `<img src="${esc(photoUrl)}" class="logThumbnail" data-photo-url="${encodedPhoto}" alt="Confirmation photo">`;
           });
         }
         // Add restore button if this log entry has overlays data and is an update
         if (log.type === "update" && log.overlays) {
           const logDataEsc = esc(
-            JSON.stringify({
-              overlays: log.overlays,
-              menuImage: log.menu_image || log.menuImage,
-            }),
-          ).replace(/'/g, "&#39;");
+            encodeURIComponent(
+              JSON.stringify({
+                overlays: log.overlays,
+                menuImage: log.menu_image || log.menuImage,
+              }),
+            ),
+          );
           html += `<div style="margin-top:12px;text-align:right">
-        <button class="btn btnPrimary" onclick="window.restoreFromLog('${logDataEsc}')" style="font-size:0.9rem;padding:6px 12px">↶ Restore this version</button>
+        <button type="button" class="btn btnPrimary restoreFromLogBtn" data-restore-log="${logDataEsc}" style="font-size:0.9rem;padding:6px 12px">↶ Restore this version</button>
       </div>`;
         }
         html += `</div>`;
       });
 
       html += `<div style="margin-top:12px;text-align:center">
-    <button class="btn" onclick="document.getElementById('modalBack').style.display='none'">Close</button>
+    <button type="button" class="btn closeChangeLogBtn">Close</button>
   </div>`;
 
       body.innerHTML = html;
+      bindChangeLogModalControls(body);
+    };
+
+    const bindChangeLogModalControls = (bodyEl) => {
+      if (!bodyEl) return;
+      bodyEl.querySelectorAll(".closeChangeLogBtn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const modalBack = document.getElementById("modalBack");
+          if (modalBack) {
+            modalBack.style.display = "none";
+          }
+        });
+      });
+
+      bodyEl.querySelectorAll(".logDetailsBtn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const detailsId = btn.getAttribute("data-details-target");
+          if (!detailsId) return;
+          const detailsEl = document.getElementById(detailsId);
+          if (!detailsEl) return;
+          const isOpen = detailsEl.style.display !== "none";
+          detailsEl.style.display = isOpen ? "none" : "block";
+          detailsEl.classList.toggle("show", !isOpen);
+        });
+      });
+
+      bodyEl.querySelectorAll(".logThumbnail[data-photo-url]").forEach((img) => {
+        img.addEventListener("click", () => {
+          const encoded = img.getAttribute("data-photo-url");
+          if (!encoded) return;
+          showPhotoPreview(decodeURIComponent(encoded));
+        });
+      });
+
+      bodyEl.querySelectorAll(".restoreFromLogBtn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const encoded = btn.getAttribute("data-restore-log");
+          if (!encoded) return;
+          restoreFromLog(decodeURIComponent(encoded));
+        });
+      });
     };
 
     const showPhotoPreview = (photoUrl) => {
@@ -341,8 +386,6 @@ export function initChangeLog(deps = {}) {
   }
   if (typeof window !== "undefined") {
     setDisplayChangeLog(displayChangeLog);
-    window.showPhotoPreview = showPhotoPreview;
-    window.restoreFromLog = restoreFromLog;
   }
 
   bindPhotoModalHandlers();

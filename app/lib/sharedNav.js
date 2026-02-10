@@ -21,46 +21,23 @@ const IS_EMBEDDED = (() => {
     return false;
   }
 })();
-const IS_NATIVE = (() => {
-  const protocol = window.location.protocol;
-  if (protocol === 'capacitor:' || protocol === 'ionic:' || protocol === 'file:') {
-    return true;
-  }
-  if (window.Capacitor?.isNativePlatform) {
-    return window.Capacitor.isNativePlatform();
-  }
-  if (window.Capacitor?.getPlatform) {
-    return window.Capacitor.getPlatform() !== 'web';
-  }
-  if (window.navigator?.userAgent?.includes('Capacitor')) {
-    return true;
-  }
-  return false;
-})();
-const preferNextRoutes = !IS_NATIVE;
-const route = (nextPath, legacyPath) => (preferNextRoutes ? nextPath : legacyPath);
-const routeWithQuery = (nextPath, legacyPath) =>
-  preferNextRoutes ? nextPath : legacyPath;
 
 const ROUTES = {
-  index: route('/', 'index.html'),
-  home: route('/home', 'home.html'),
-  account: route('/account', 'account.html'),
-  restaurants: route('/restaurants', 'restaurants.html'),
-  favorites: route('/favorites', 'favorites.html'),
-  dishSearch: route('/dish-search', 'dish-search.html'),
-  myDishes: route('/my-dishes', 'my-dishes.html'),
-  help: route('/help-contact', 'help-contact.html'),
-  reportIssue: route('/report-issue', 'report-issue.html'),
+  index: '/',
+  home: '/home',
+  account: '/account',
+  restaurants: '/restaurants',
+  favorites: '/favorites',
+  dishSearch: '/dish-search',
+  myDishes: '/my-dishes',
+  help: '/help-contact',
+  reportIssue: '/report-issue',
   restaurantEditor: (slug) =>
-    routeWithQuery(
-      `/restaurant?slug=${encodeURIComponent(slug)}&edit=1`,
-      `restaurant.html?slug=${encodeURIComponent(slug)}&edit=1`,
-    ),
-  managerDashboard: route('/manager-dashboard', 'manager-dashboard.html'),
-  serverTablet: route('/server-tablet', 'server-tablet.html'),
-  kitchenTablet: route('/kitchen-tablet', 'kitchen-tablet.html'),
-  adminDashboard: route('/admin-dashboard', 'admin-dashboard.html'),
+    `/restaurant?slug=${encodeURIComponent(slug)}&edit=1`,
+  managerDashboard: '/manager-dashboard',
+  serverTablet: '/server-tablet',
+  kitchenTablet: '/kitchen-tablet',
+  adminDashboard: '/admin-dashboard',
 };
 
 function getUserFlags(user) {
@@ -83,22 +60,14 @@ function getManagerMode(user) {
 
 /**
  * Universal auth redirect - automatically redirects to landing page if not logged in
- * Exceptions: index.html (landing page), account.html (login page), QR users
+ * Exceptions: landing page, account page, QR users
  */
 export async function checkAuthRedirect(supabaseClient) {
-  // Get current page
-  const currentPath = window.location.pathname;
-  const currentPage = currentPath.split('/').filter(Boolean).pop() || '';
+  const normalizedPath = (window.location.pathname || '/').replace(/\/+$/, '') || '/';
   const urlParams = new URLSearchParams(window.location.search);
   const isQRUser = urlParams.get('qr') === '1';
-  const isLanding =
-    currentPage === '' ||
-    currentPage === '/' ||
-    currentPage === 'index.html' ||
-    currentPage === 'index';
-  const isAccount =
-    currentPage === 'account.html' ||
-    currentPage === 'account';
+  const isLanding = normalizedPath === '/' || normalizedPath === '/index';
+  const isAccount = normalizedPath === '/account';
 
   // Skip redirect for landing page, account page, and QR users
   if (isLanding || isAccount || isQRUser) {

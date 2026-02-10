@@ -166,7 +166,6 @@ export function bindEditorRuntimeBindings(options = {}) {
   });
 
   const openItemEditor = createEditorItemEditor(editorItemEditorDeps);
-  window.openItemEditor = openItemEditor;
   openPendingDishInEditor({ overlays, openItemEditor });
 
   return {

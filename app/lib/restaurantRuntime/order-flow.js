@@ -16,6 +16,7 @@ import {
   subscribeToTabletState,
 } from "../tabletSync.js";
 import { saveTabletOrder, fetchTabletOrders } from "../tabletOrdersApi.js";
+import { getActiveAllergenDietConfig } from "../allergenConfigRuntime.js";
 import {
   getOrderItemSelections as getSessionOrderItemSelections,
   getOrderItems as getSessionOrderItems,
@@ -23,6 +24,7 @@ import {
   setOpenOrderConfirmDrawer as setSessionOpenOrderConfirmDrawer,
   setOrderItems as setSessionOrderItems,
 } from "./runtimeSessionState.js";
+import { applyOverlayPulseColor as applyOverlayPulseColorFromBridge } from "./restaurantRuntimeBridge.js";
 
 const esc = (s) =>
   (s ?? "").toString().replace(
@@ -37,8 +39,7 @@ const esc = (s) =>
       })[m],
   );
 
-const allergenConfig =
-  typeof window !== "undefined" ? window.ALLERGEN_DIET_CONFIG || {} : {};
+const allergenConfig = getActiveAllergenDietConfig();
 const ALLERGENS = Array.isArray(allergenConfig.ALLERGENS)
   ? allergenConfig.ALLERGENS
   : [];
@@ -111,6 +112,10 @@ export function initOrderFlow({
   getOrderItemSelections: getOrderItemSelectionsOverride,
   setOpenOrderConfirmDrawer: setOpenOrderConfirmDrawerOverride,
   setOverlayPulseColor: setOverlayPulseColorOverride,
+  getLocationHref: getLocationHrefOverride,
+  navigateToUrl: navigateToUrlOverride,
+  getViewportHeight: getViewportHeightOverride,
+  addWindowResizeListener: addWindowResizeListenerOverride,
 } = {}) {
   const getSupabaseClient = () =>
     supabaseClientOverride ||
@@ -142,9 +147,33 @@ export function initOrderFlow({
   const applyOverlayPulseColor =
     typeof setOverlayPulseColorOverride === "function"
       ? setOverlayPulseColorOverride
-      : (overlay) => {
-          if (typeof window.setOverlayPulseColor === "function") {
-            window.setOverlayPulseColor(overlay);
+      : (overlay) => applyOverlayPulseColorFromBridge(overlay);
+
+  const getLocationHref =
+    typeof getLocationHrefOverride === "function"
+      ? getLocationHrefOverride
+      : () => (typeof window !== "undefined" ? window.location.href : "");
+
+  const navigateToUrl =
+    typeof navigateToUrlOverride === "function"
+      ? navigateToUrlOverride
+      : (url) => {
+          if (typeof window !== "undefined") {
+            window.location.href = url;
+          }
+        };
+
+  const getViewportHeight =
+    typeof getViewportHeightOverride === "function"
+      ? getViewportHeightOverride
+      : () => (typeof window !== "undefined" ? window.innerHeight || 0 : 0);
+
+  const addWindowResizeListener =
+    typeof addWindowResizeListenerOverride === "function"
+      ? addWindowResizeListenerOverride
+      : (handler) => {
+          if (typeof window !== "undefined") {
+            window.addEventListener("resize", handler);
           }
         };
 
@@ -565,14 +594,18 @@ export function initOrderFlow({
 
   function handleSignInClick() {
     saveOrderFormState();
-    const currentUrl = window.location.href;
-    window.location.href = `/account?redirect=${encodeURIComponent(currentUrl)}&mode=signin`;
+    const currentUrl = getLocationHref();
+    navigateToUrl(
+      `/account?redirect=${encodeURIComponent(currentUrl)}&mode=signin`,
+    );
   }
 
   function handleSignUpClick() {
     saveOrderFormState();
-    const currentUrl = window.location.href;
-    window.location.href = `/account?redirect=${encodeURIComponent(currentUrl)}&mode=signup`;
+    const currentUrl = getLocationHref();
+    navigateToUrl(
+      `/account?redirect=${encodeURIComponent(currentUrl)}&mode=signup`,
+    );
   }
 
   async function updateOrderConfirmAuthState() {
@@ -3339,7 +3372,7 @@ export function initOrderFlow({
 
   function getOrderSidebarHeightBounds(options = {}) {
     const { allowCollapsed = false } = options;
-    const viewportHeight = window.innerHeight || 0;
+    const viewportHeight = getViewportHeight();
     const collapsedHeight = getOrderSidebarCollapsedHeight();
     const minHeight = allowCollapsed
       ? collapsedHeight
@@ -3379,7 +3412,7 @@ export function initOrderFlow({
     const { minHeight, maxHeight } = getOrderSidebarHeightBounds();
     const menuWrap = document.querySelector(".menuWrap");
     let baseHeight = menuWrap ? menuWrap.getBoundingClientRect().height : 0;
-    if (!baseHeight || baseHeight < 200) baseHeight = window.innerHeight || 0;
+    if (!baseHeight || baseHeight < 200) baseHeight = getViewportHeight();
     let targetHeight = orderSidebarCustomHeight;
     if (!targetHeight || Number.isNaN(targetHeight)) {
       targetHeight = Math.round(baseHeight * 0.75);
@@ -3636,7 +3669,7 @@ export function initOrderFlow({
 
     setOrderSidebarVisibility();
     updateOrderSidebarHeight();
-    window.addEventListener("resize", updateOrderSidebarHeight);
+    addWindowResizeListener(updateOrderSidebarHeight);
     initOrderSidebarDrag();
 
     if (confirmBtn) {

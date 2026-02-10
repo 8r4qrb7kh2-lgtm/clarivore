@@ -44,7 +44,7 @@ serve(async (req) => {
         <p><strong>Restaurant:</strong> ${restaurantName}</p>
         <p><strong>Ingredient:</strong> ${ingredientName}</p>
         ${photoUrl ? `<p><strong>Photo:</strong> <a href="${photoUrl}">View label image</a></p>` : ''}
-        <p><a href="https://clarivore.org/restaurant.html?slug=${restaurantSlug}" style="background: #4c5ad4; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">View Menu</a></p>
+        <p><a href="https://clarivore.org/restaurant?slug=${restaurantSlug}" style="background: #4c5ad4; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">View Menu</a></p>
       `
     } else if (type === 'feedback') {
       subject = `📝 New Feedback: ${restaurantName}`
@@ -52,7 +52,7 @@ serve(async (req) => {
         <h2 style="color: #333;">Anonymous Feedback</h2>
         <p><strong>Restaurant:</strong> ${restaurantName}</p>
         <p style="white-space:pre-wrap">${feedbackText || 'No feedback text provided.'}</p>
-        <p><a href="https://clarivore.org/restaurant.html?slug=${restaurantSlug}" style="background: #4c5ad4; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">View Menu</a></p>
+        <p><a href="https://clarivore.org/restaurant?slug=${restaurantSlug}" style="background: #4c5ad4; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">View Menu</a></p>
       `
     } else {
       htmlContent += `
@@ -87,7 +87,7 @@ serve(async (req) => {
       htmlContent += `
         <hr style="margin: 20px 0; border: none; border-top: 1px solid #ddd;">
         <p><strong>Review Changes:</strong></p>
-        <p><a href="https://clarivore.org/restaurant.html?slug=${restaurantSlug}" style="background: #4c5ad4; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">View Menu</a></p>
+        <p><a href="https://clarivore.org/restaurant?slug=${restaurantSlug}" style="background: #4c5ad4; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">View Menu</a></p>
       `
     }
 

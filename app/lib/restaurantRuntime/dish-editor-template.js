@@ -138,6 +138,6 @@ export const dishEditorTemplate = () => `
     </div>`;
 
 export const imageModalTemplate = () => `
-      <button type="button" class="closeModal" onclick="closeImageModal()" aria-label="Close">×</button>
+      <button type="button" class="closeModal" id="imageModalCloseBtn" aria-label="Close">×</button>
       <img id="imageModalImg" src="" alt="Full size image">
     `;

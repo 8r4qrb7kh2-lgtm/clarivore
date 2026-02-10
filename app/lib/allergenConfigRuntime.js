@@ -14,6 +14,13 @@ function toLoadedConfig(config) {
   };
 }
 
+export function getActiveAllergenDietConfig() {
+  if (typeof window !== "undefined" && window.ALLERGEN_DIET_CONFIG) {
+    return window.ALLERGEN_DIET_CONFIG;
+  }
+  return toLoadedConfig(buildAllergenDietConfig());
+}
+
 export async function ensureAllergenDietConfigGlobals(supabaseClient = null) {
   if (typeof window === "undefined") {
     return toLoadedConfig(buildAllergenDietConfig());

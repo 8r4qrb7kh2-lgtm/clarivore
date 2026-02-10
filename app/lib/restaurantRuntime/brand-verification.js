@@ -68,6 +68,10 @@ export function initBrandVerification(deps = {}) {
     typeof deps.openImageModal === "function"
       ? deps.openImageModal
       : () => {};
+  const showPhotoPreview =
+    typeof deps.showPhotoPreview === "function"
+      ? deps.showPhotoPreview
+      : () => {};
   const fetchProductByBarcode =
     typeof deps.fetchProductByBarcode === "function"
       ? deps.fetchProductByBarcode
@@ -251,7 +255,7 @@ export function initBrandVerification(deps = {}) {
         <p style="margin-top:12px">Add brand items to your dishes to verify them here.</p>
       </div>
       <div style="text-align:center;margin-top:20px">
-        <button class="btn" onclick="document.getElementById('modalBack').style.display='none'">Close</button>
+        <button class="btn" type="button" id="closeBrandVerificationEmptyBtn">Close</button>
       </div>
     `;
         mb.style.display = "flex";
@@ -261,6 +265,12 @@ export function initBrandVerification(deps = {}) {
             mb.style.display = "none";
           },
         });
+        const closeEmptyBtn = body.querySelector("#closeBrandVerificationEmptyBtn");
+        if (closeEmptyBtn) {
+          closeEmptyBtn.addEventListener("click", () => {
+            mb.style.display = "none";
+          });
+        }
         return;
       }
 
@@ -326,7 +336,7 @@ export function initBrandVerification(deps = {}) {
                   background:rgba(255,255,255,0.1);
                   border:1px solid rgba(255,255,255,0.2);
                   cursor:pointer;
-                " onclick="openImageModal('${esc(item.brandImage)}')" title="Click to enlarge">
+                " data-open-image-src="${esc(item.brandImage)}" title="Click to enlarge">
               </div>
             `
                 : ""
@@ -474,6 +484,14 @@ export function initBrandVerification(deps = {}) {
     `;
 
         body.innerHTML = html;
+
+        const imagePreviewTriggers = body.querySelectorAll("[data-open-image-src]");
+        imagePreviewTriggers.forEach((trigger) => {
+          trigger.addEventListener("click", () => {
+            const src = trigger.getAttribute("data-open-image-src");
+            if (src) openImageModal(src);
+          });
+        });
 
         // Attach event handlers
         brandItems.forEach((item, idx) => {
@@ -2544,7 +2562,7 @@ export function initBrandVerification(deps = {}) {
           img.src = photoData;
           img.style.cssText =
             "max-width:120px;max-height:80px;object-fit:cover;border-radius:6px;border:1px solid #2a3466;cursor:pointer";
-          img.onclick = () => window.showPhotoPreview(photoData);
+          img.onclick = () => showPhotoPreview(photoData);
           const removeBtn = document.createElement("button");
           removeBtn.textContent = "×";
           removeBtn.className = "btn btnDanger";

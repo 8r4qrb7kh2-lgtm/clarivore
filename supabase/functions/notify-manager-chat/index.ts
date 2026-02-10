@@ -479,7 +479,7 @@ serve(async (req) => {
 
   const senderName = message.sender_name || "Clarivore team";
   const restaurantName = restaurant?.name || "Your restaurant";
-  const dashboardUrl = "https://clarivore.org/manager-dashboard.html";
+  const dashboardUrl = "https://clarivore.org/manager-dashboard";
   const messageText = message.message ? String(message.message) : "";
   const notificationText = messageText.replace(
     /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g,
@@ -509,7 +509,7 @@ serve(async (req) => {
     subscriptions: subscriptions || [],
     title: `New message from ${senderName}`,
     body: trimmedMessage,
-    url: "/manager-dashboard.html",
+    url: "/manager-dashboard",
     tag: `chat-${message.id}`,
   });
 

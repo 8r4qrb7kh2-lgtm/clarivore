@@ -556,7 +556,7 @@ export function initMenuImageEditor(deps = {}) {
     transition: all 0.2s;
     ${idx === currentImageIndex ? "box-shadow: 0 0 0 2px rgba(76,90,212,0.5);" : ""}
   ">
-    <button class="preview-remove-thumbnail" data-index="${idx}" style="
+    <button type="button" class="preview-remove-thumbnail" data-index="${idx}" style="
       position: absolute;
       top: 4px;
       right: 4px;
@@ -575,7 +575,7 @@ export function initMenuImageEditor(deps = {}) {
       z-index: 10;
       transition: all 0.2s;
       padding: 0;
-    " title="Remove page ${idx + 1}" onclick="event.stopPropagation();">×</button>
+    " title="Remove page ${idx + 1}">×</button>
     <img src="${img}" alt="Page ${idx + 1}" style="
       width: 100px;
       height: 100px;

@@ -67,7 +67,7 @@ export function initEditorSettings(deps = {}) {
       </label>
       <div id="settingsStatus" style="font-size:14px;min-height:20px;text-align:center"></div>
       <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
-        <button type="button" class="btn" onclick="document.getElementById('modalBack').style.display='none'" style="padding:10px 20px;cursor:pointer">
+        <button type="button" class="btn" id="settingsCancelBtn" style="padding:10px 20px;cursor:pointer">
           Cancel
         </button>
         <button type="submit" class="btn btnPrimary" style="padding:10px 20px;cursor:pointer">
@@ -78,14 +78,15 @@ export function initEditorSettings(deps = {}) {
   </div>
     `;
 
+    const closeSettingsModal = () => {
+      mb.style.display = "none";
+      mb.onclick = null;
+      const currentForm = document.getElementById("settingsForm");
+      if (currentForm) currentForm.innerHTML = "";
+    };
     configureModalClose({
       visible: true,
-      onClick: () => {
-        mb.style.display = "none";
-        mb.onclick = null;
-        const form = document.getElementById("settingsForm");
-        if (form) form.innerHTML = "";
-      },
+      onClick: closeSettingsModal,
     });
 
     mb.style.display = "flex";
@@ -96,6 +97,11 @@ export function initEditorSettings(deps = {}) {
     const websiteInput = document.getElementById("settingsWebsite");
     const phoneInput = document.getElementById("settingsPhone");
     const deliveryUrlInput = document.getElementById("settingsDeliveryUrl");
+    const cancelBtn = document.getElementById("settingsCancelBtn");
+
+    if (cancelBtn) {
+      cancelBtn.addEventListener("click", closeSettingsModal);
+    }
 
     if (form) {
       form.onsubmit = async (e) => {

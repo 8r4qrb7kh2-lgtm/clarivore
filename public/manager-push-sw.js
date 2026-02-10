@@ -12,7 +12,7 @@ self.addEventListener('push', (event) => {
     icon: payload.icon || '/favicon.png',
     badge: payload.badge || '/favicon.png',
     data: {
-      url: payload.url || '/manager-dashboard.html'
+      url: payload.url || '/manager-dashboard'
     },
     tag: payload.tag || 'manager-chat',
     renotify: true
@@ -23,7 +23,7 @@ self.addEventListener('push', (event) => {
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  const targetUrl = event.notification?.data?.url || '/manager-dashboard.html';
+  const targetUrl = event.notification?.data?.url || '/manager-dashboard';
   const resolvedUrl = new URL(targetUrl, self.location.origin).href;
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {

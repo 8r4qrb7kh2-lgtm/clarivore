@@ -1,5 +1,9 @@
 import { initIngredientPhotoAnalysis } from "../ingredientPhotoAnalysis.js";
-import { getSupabaseClient } from "./runtimeSessionState.js";
+import {
+  clearAiAssistPhotos,
+  getAiAssistPhotos,
+  getSupabaseClient,
+} from "./runtimeSessionState.js";
 import { initDishEditorPhotos } from "./dish-editor-photos.js";
 import { requestAiExtraction } from "./dish-editor-extraction.js";
 import { createBrandMemory } from "./dish-editor-brand-memory.js";
@@ -108,6 +112,7 @@ export function initDishEditor(deps = {}) {
   let renderPhotoPreviews = () => {};
   let handleMultipleRecipePhotoUpload = () => {};
   let handleRecipePhotoCamera = () => {};
+  let updateGenerateButtonText = () => {};
 
   const aiAssistState = {
     context: null,
@@ -273,6 +278,12 @@ export function initDishEditor(deps = {}) {
         modal.id = "imageModal";
         modal.className = "imageModal";
         modal.innerHTML = imageModalTemplate();
+        const closeModalBtn = modal.querySelector("#imageModalCloseBtn");
+        if (closeModalBtn) {
+          closeModalBtn.addEventListener("click", () => {
+            closeImageModal();
+          });
+        }
         modal.addEventListener("click", (e) => {
           if (e.target.classList.contains("imageModal")) {
             closeImageModal();
@@ -297,12 +308,20 @@ export function initDishEditor(deps = {}) {
         "#aiAssistCancelCameraBtn",
       );
       aiAssistMediaPreview = backdrop.querySelector("#aiAssistMediaPreview");
-      window.aiAssistPhotos = []; // Store multiple photos
+      clearAiAssistPhotos(); // Store multiple photos
 
       aiAssistElementsBound = false;
     }
     if (!aiAssistElementsBound) {
       aiAssistBackdrop.addEventListener("click", (event) => {
+        const imageTrigger = event.target?.closest?.("[data-open-image-src]");
+        if (imageTrigger) {
+          const imageSrc = imageTrigger.getAttribute("data-open-image-src");
+          if (imageSrc) {
+            openImageModal(imageSrc);
+          }
+          return;
+        }
         if (event.target === aiAssistBackdrop) closeDishEditor();
       });
       aiAssistCloseBtn.addEventListener("click", () => closeDishEditor());
@@ -313,7 +332,7 @@ export function initDishEditor(deps = {}) {
         );
 
         // Create update function that we can call from multiple places
-        const updateGenerateButtonText = () => {
+        updateGenerateButtonText = () => {
           const nameInput = document.getElementById("aiAssistNameInput");
           if (nameInput && aiAssistGenerateBtn) {
             const dishName = nameInput.value?.trim() || "recipe";
@@ -392,8 +411,6 @@ export function initDishEditor(deps = {}) {
           checkForChanges();
         }
 
-        // Store the update function globally so we can call it when modal opens
-        window.updateGenerateButtonText = updateGenerateButtonText;
       }
       aiAssistProcessBtn.addEventListener("click", () => handleAiProcess());
 
@@ -429,7 +446,7 @@ export function initDishEditor(deps = {}) {
       );
       if (clearAllPhotosBtn) {
         clearAllPhotosBtn.addEventListener("click", () => {
-          window.aiAssistPhotos = [];
+          clearAiAssistPhotos();
           renderPhotoPreviews();
         });
       }
@@ -861,8 +878,8 @@ export function initDishEditor(deps = {}) {
     if (!aiAssistBackdrop) return;
     if (show) {
       // Update generate button text when assistant opens
-      if (typeof window.updateGenerateButtonText === "function") {
-        window.updateGenerateButtonText();
+      if (typeof updateGenerateButtonText === "function") {
+        updateGenerateButtonText();
       } else if (aiAssistGenerateBtn) {
         const nameInput = document.getElementById("aiAssistNameInput");
         if (nameInput) {
@@ -973,6 +990,7 @@ export function initDishEditor(deps = {}) {
     aiAssistSetStatus,
     updateAiAssistMediaPreview,
     getVideoEl: () => aiAssistVideo,
+    openImageModal,
   });
   renderPhotoPreviews = photoApi.renderPhotoPreviews;
   handleMultipleRecipePhotoUpload = photoApi.handleMultipleRecipePhotoUpload;
@@ -1060,8 +1078,8 @@ export function initDishEditor(deps = {}) {
     const compressed = await compressImage(rawImage);
 
     // Add to photos array for multi-photo workflow
-    if (!window.aiAssistPhotos) window.aiAssistPhotos = [];
-    window.aiAssistPhotos.push(compressed);
+    const photos = getAiAssistPhotos();
+    photos.push(compressed);
 
     stopAiCamera();
     renderPhotoPreviews();
@@ -1082,7 +1100,7 @@ export function initDishEditor(deps = {}) {
       // Only show brandImage (product front photo) in thumbnail, not ingredientsImage
       if (brandImage)
         parts.push(
-          `<img src="${esc(brandImage)}" alt="Brand preview" loading="lazy" onclick="openImageModal('${esc(brandImage)}')" title="Click to enlarge">`,
+          `<img src="${esc(brandImage)}" alt="Brand preview" loading="lazy" data-open-image-src="${esc(brandImage)}" style="cursor:pointer" title="Click to enlarge">`,
         );
       brandPreview.innerHTML = parts.join("");
     }
@@ -1318,9 +1336,6 @@ export function initDishEditor(deps = {}) {
     debugLog("collectAiTableData final data:", data);
     return data;
   }
-
-  // Make collectAiTableData globally accessible for auto-fill
-  window.collectAiTableData = collectAiTableData;
 
   function resetConfirmButton(rowElement) {
     if (!rowElement) return;
@@ -1909,7 +1924,7 @@ export function initDishEditor(deps = {}) {
 
                 // Only show brandImage (product front photo) in thumbnail, not ingredientsImage
                 if (brand.brandImage) {
-                  const imgTag = `<img src="${esc(brand.brandImage)}" alt="${esc(brand.name || "Brand")}" loading="lazy" onclick="openImageModal('${esc(brand.brandImage)}')" title="Click to enlarge">`;
+                  const imgTag = `<img src="${esc(brand.brandImage)}" alt="${esc(brand.name || "Brand")}" loading="lazy" data-open-image-src="${esc(brand.brandImage)}" style="cursor:pointer" title="Click to enlarge">`;
                   debugLog(
                     `  - Adding brandImage tag (length: ${imgTag.length})`,
                   );
@@ -2080,7 +2095,7 @@ export function initDishEditor(deps = {}) {
                       <strong>Product Front</strong>
                     </div>
                     <div class="aiBrandPreview">
-                      <img src="${esc(row.brandImage)}" alt="Product front" loading="lazy" onclick="openImageModal('${esc(row.brandImage)}')" title="Click to enlarge">
+                      <img src="${esc(row.brandImage)}" alt="Product front" loading="lazy" data-open-image-src="${esc(row.brandImage)}" style="cursor:pointer" title="Click to enlarge">
                     </div>
                   </div>
                 </div>
@@ -2662,8 +2677,6 @@ export function initDishEditor(deps = {}) {
     return false;
   }
 
-  window.scrollDishEditorToIngredient = scrollDishEditorToIngredient;
-
   function normalizeIngredientName(name) {
     const lower = name.toLowerCase().trim();
     // Map common variations to standard names
@@ -3010,9 +3023,6 @@ export function initDishEditor(deps = {}) {
     }
   }
 
-  window.openImageModal = openImageModal;
-  window.closeImageModal = closeImageModal;
-
   function closeDishEditor() {
     ensureAiAssistElements();
 
@@ -3102,8 +3112,8 @@ export function initDishEditor(deps = {}) {
               aiAssistState.originalDishName = currentDishName;
               aiAssistState.dishNameModified = true; // Mark as modified
               // Update generate button text to reflect saved name
-              if (typeof window.updateGenerateButtonText === "function") {
-                window.updateGenerateButtonText();
+              if (typeof updateGenerateButtonText === "function") {
+                updateGenerateButtonText();
               }
               // Hide save button
               if (saveNameBtn) saveNameBtn.style.display = "none";
@@ -4548,7 +4558,8 @@ export function initDishEditor(deps = {}) {
     ensureAiAssistElements();
     if (!aiAssistInput) return;
     const text = aiAssistInput.value.trim();
-    const hasPhotos = window.aiAssistPhotos && window.aiAssistPhotos.length > 0;
+    const photos = getAiAssistPhotos();
+    const hasPhotos = photos.length > 0;
     if (!text && !hasPhotos) {
       aiAssistSetStatus(
         "Describe the dish or add recipe photos before processing.",
@@ -4565,7 +4576,7 @@ export function initDishEditor(deps = {}) {
     if (hasPhotos) {
       aiAssistSetStatus(
         "Processing " +
-          window.aiAssistPhotos.length +
+          photos.length +
           " recipe photo(s) using AI...",
       );
 
@@ -4585,8 +4596,8 @@ export function initDishEditor(deps = {}) {
           ? aiAssistState.context.getCurrentName()
           : "");
 
-      for (let i = 0; i < window.aiAssistPhotos.length; i++) {
-        const photoData = window.aiAssistPhotos[i];
+      for (let i = 0; i < photos.length; i++) {
+        const photoData = photos[i];
         const payload = {
           imageData: photoData,
           imageFileName: `recipe_${i + 1}.jpg`,
@@ -4596,7 +4607,7 @@ export function initDishEditor(deps = {}) {
 
         // Update progress for current photo
         if (progressBarFill) {
-          const progress = 20 + (i / window.aiAssistPhotos.length) * 70;
+          const progress = 20 + (i / photos.length) * 70;
           progressBarFill.style.width = progress + "%";
         }
 
@@ -4630,7 +4641,7 @@ export function initDishEditor(deps = {}) {
             renderAiTable(allRows);
             autoAnalyzeIngredientRows();
 
-            let statusMsg = `Photo ${i + 1}/${window.aiAssistPhotos.length} processed.`;
+            let statusMsg = `Photo ${i + 1}/${photos.length} processed.`;
             if (dishDietaryOptions.length > 0) {
               statusMsg += ` Detected: ${dishDietaryOptions.join(", ")}.`;
             }
@@ -4987,6 +4998,8 @@ export function initDishEditor(deps = {}) {
     collectAiTableData,
     renderAiTable,
     openDishEditor,
+    openImageModal,
+    closeImageModal,
     handleDishEditorResult,
     handleDishEditorError,
     getAiAssistBackdrop: () => aiAssistBackdrop,

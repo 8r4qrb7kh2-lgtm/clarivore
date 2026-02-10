@@ -24,6 +24,16 @@ export function createOrderRuntime(deps = {}) {
     typeof deps.setOverlayPulseColor === "function"
       ? deps.setOverlayPulseColor
       : null;
+  const getLocationHref =
+    typeof deps.getLocationHref === "function" ? deps.getLocationHref : null;
+  const navigateToUrl =
+    typeof deps.navigateToUrl === "function" ? deps.navigateToUrl : null;
+  const getViewportHeight =
+    typeof deps.getViewportHeight === "function" ? deps.getViewportHeight : null;
+  const addWindowResizeListener =
+    typeof deps.addWindowResizeListener === "function"
+      ? deps.addWindowResizeListener
+      : null;
 
   const orderFlow = initOrderFlow({
     state,
@@ -36,6 +46,10 @@ export function createOrderRuntime(deps = {}) {
     getOrderItemSelections,
     setOpenOrderConfirmDrawer,
     setOverlayPulseColor,
+    getLocationHref,
+    navigateToUrl,
+    getViewportHeight,
+    addWindowResizeListener,
   });
 
   return {

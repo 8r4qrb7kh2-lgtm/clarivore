@@ -26,6 +26,8 @@ export function createDishEditorRuntime(options = {}) {
     collectAiTableData: api.collectAiTableData || current.collectAiTableData,
     renderAiTable: api.renderAiTable || current.renderAiTable,
     openDishEditor: api.openDishEditor || current.openDishEditor,
+    openImageModal: api.openImageModal || current.openImageModal,
+    closeImageModal: api.closeImageModal || current.closeImageModal,
     handleDishEditorResult:
       api.handleDishEditorResult || current.handleDishEditorResult,
     handleDishEditorError:

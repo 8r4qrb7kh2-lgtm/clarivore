@@ -342,8 +342,7 @@ function ensureRestaurantMenuUrl(url) {
     return url;
   }
   const normalizedPath = parsed.pathname.replace(/\/+$/, '') || '/';
-  const isRestaurantPath =
-    normalizedPath === '/restaurant' || /\/restaurant\.html$/i.test(normalizedPath);
+  const isRestaurantPath = normalizedPath === '/restaurant';
   if (!isRestaurantPath) {
     return `${parsed.pathname}${parsed.search}`;
   }
@@ -372,8 +371,7 @@ function resolveDashboardUrl(url, label) {
   try {
     const parsed = new URL(url, window.location.origin);
     const normalizedPath = parsed.pathname.replace(/\/+$/, '') || '/';
-    const isHomeRoute =
-      normalizedPath === '/home' || /\/home\.html$/i.test(normalizedPath);
+    const isHomeRoute = normalizedPath === '/home';
     if (isHomeRoute) {
       parsed.pathname = '/manager-dashboard';
       return `${parsed.pathname}${parsed.search}`;

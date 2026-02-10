@@ -366,8 +366,8 @@ serve(async (req) => {
   const dishTitle = buildDishTitle(orderPayload.items);
   const title = dishTitle ? `Notice update for ${dishTitle}` : "Notice update";
   const url = restaurantSlug
-    ? `/restaurant.html?slug=${encodeURIComponent(restaurantSlug)}`
-    : "/restaurants.html";
+    ? `/restaurant?slug=${encodeURIComponent(restaurantSlug)}`
+    : "/restaurants";
 
   const { data: subscriptions } = await supabase
     .from("diner_push_subscriptions")

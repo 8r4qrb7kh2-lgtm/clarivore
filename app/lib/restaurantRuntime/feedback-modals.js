@@ -32,7 +32,7 @@ export function initFeedbackModals(deps = {}) {
     ></textarea>
     <div id="feedbackStatus" style="font-size:14px;min-height:20px;text-align:center"></div>
     <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
-      <button type="button" class="btn" onclick="document.getElementById('modalBack').style.display='none'" style="padding:10px 20px;cursor:pointer">
+      <button type="button" class="btn" id="feedbackCancelBtn" style="padding:10px 20px;cursor:pointer">
         Cancel
       </button>
       <button type="submit" class="btn btnSecondary" style="padding:10px 20px;cursor:pointer">
@@ -43,14 +43,15 @@ export function initFeedbackModals(deps = {}) {
 </div>
   `;
 
+    const closeFeedbackModal = () => {
+      mb.style.display = "none";
+      mb.onclick = null;
+      const currentForm = document.getElementById("feedbackForm");
+      if (currentForm) currentForm.innerHTML = "";
+    };
     configureModalClose({
       visible: true,
-      onClick: () => {
-        mb.style.display = "none";
-        mb.onclick = null;
-        const form = document.getElementById("feedbackForm");
-        if (form) form.innerHTML = "";
-      },
+      onClick: closeFeedbackModal,
     });
 
     mb.style.display = "flex";
@@ -58,6 +59,11 @@ export function initFeedbackModals(deps = {}) {
     const form = document.getElementById("feedbackForm");
     const statusDiv = document.getElementById("feedbackStatus");
     const feedbackText = document.getElementById("feedbackText");
+    const cancelBtn = document.getElementById("feedbackCancelBtn");
+
+    if (cancelBtn) {
+      cancelBtn.addEventListener("click", closeFeedbackModal);
+    }
 
     if (form) {
       form.onsubmit = async (e) => {
@@ -134,8 +140,7 @@ export function initFeedbackModals(deps = {}) {
           if (feedbackText) feedbackText.value = "";
 
           setTimeout(() => {
-            mb.style.display = "none";
-            mb.onclick = null;
+            closeFeedbackModal();
           }, 1500);
         } catch (err) {
           console.error("Feedback submission error:", err);
@@ -160,8 +165,7 @@ export function initFeedbackModals(deps = {}) {
 
     mb.onclick = (e) => {
       if (e.target === mb) {
-        mb.style.display = "none";
-        mb.onclick = null;
+        closeFeedbackModal();
       }
     };
 
@@ -190,7 +194,7 @@ export function initFeedbackModals(deps = {}) {
     ></textarea>
     <div id="reportStatus" style="font-size:14px;min-height:20px;text-align:center"></div>
     <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
-      <button type="button" class="btn" onclick="document.getElementById('modalBack').style.display='none'" style="padding:10px 20px;cursor:pointer">
+      <button type="button" class="btn" id="reportIssueCancelBtn" style="padding:10px 20px;cursor:pointer">
         Cancel
       </button>
       <button type="submit" class="btn btnSecondary" style="padding:10px 20px;cursor:pointer">
@@ -201,18 +205,24 @@ export function initFeedbackModals(deps = {}) {
 </div>
   `;
 
+    const closeReportIssueModal = () => {
+      mb.style.display = "none";
+      mb.onclick = null;
+    };
     configureModalClose({
       visible: true,
-      onClick: () => {
-        mb.style.display = "none";
-        mb.onclick = null;
-      },
+      onClick: closeReportIssueModal,
     });
 
     mb.style.display = "flex";
 
     const form = document.getElementById("reportIssueForm");
     const statusDiv = document.getElementById("reportStatus");
+    const cancelBtn = document.getElementById("reportIssueCancelBtn");
+
+    if (cancelBtn) {
+      cancelBtn.addEventListener("click", closeReportIssueModal);
+    }
 
     if (form) {
       form.onsubmit = async (e) => {
@@ -255,8 +265,7 @@ export function initFeedbackModals(deps = {}) {
           }
 
           setTimeout(() => {
-            mb.style.display = "none";
-            mb.onclick = null;
+            closeReportIssueModal();
           }, 1500);
         } catch (err) {
           console.error("Report issue error:", err);
@@ -272,8 +281,7 @@ export function initFeedbackModals(deps = {}) {
 
     mb.onclick = (e) => {
       if (e.target === mb) {
-        mb.style.display = "none";
-        mb.onclick = null;
+        closeReportIssueModal();
       }
     };
   }

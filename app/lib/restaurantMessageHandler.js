@@ -1,5 +1,6 @@
 import { filterRestaurantsByVisibility } from "./restaurantVisibility.js";
 import {
+  applyOverlayPulseColor,
   callRerenderLayer,
   getSaveReviewControl,
   getDisplayChangeLog,
@@ -60,9 +61,7 @@ function restoreSelectedMenuItems({ updateOrderSidebar, openOrderSidebar }) {
           }
 
           overlay.classList.add("selected");
-          if (typeof window.setOverlayPulseColor === "function") {
-            window.setOverlayPulseColor(overlay);
-          }
+          applyOverlayPulseColor(overlay);
 
           const addBtn = overlay.querySelector(`.addToOrderBtn[data-dish-name]`);
           if (addBtn) {

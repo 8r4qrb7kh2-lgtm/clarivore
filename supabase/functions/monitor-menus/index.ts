@@ -512,7 +512,7 @@ async function sendNotification(params: {
     }
 
     // Create Clarivore editor link with dish name and AI assistant if available
-    let clarivoreLink = `https://clarivore.org/restaurant.html?slug=${restaurantSlug}&edit=1`
+    let clarivoreLink = `https://clarivore.org/restaurant?slug=${restaurantSlug}&edit=1`
     if (params.dishName) {
       clarivoreLink += `&dishName=${encodeURIComponent(params.dishName)}&openAI=true`
     }

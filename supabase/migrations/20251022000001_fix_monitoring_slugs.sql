@@ -5,7 +5,7 @@ WHERE slug IN ('guarinos', 'mama-santa-s');
 
 -- Set menu URLs for Guarinos and Mama Santa's
 UPDATE restaurants
-SET menu_url = 'https://clarivore.org/restaurant.html?slug=' || slug
+SET menu_url = 'https://clarivore.org/restaurant?slug=' || slug
 WHERE menu_url IS NULL
   AND slug IN ('guarinos', 'mama-santa-s');
 

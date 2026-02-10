@@ -267,18 +267,58 @@
   - `app/manager-dashboard/ManagerDashboardClient.js`
   - `app/kitchen-tablet/KitchenTabletClient.js`
   - `app/server-tablet/ServerTabletClient.js`
+- Added shared allergen config accessor `getActiveAllergenDietConfig` in `app/lib/allergenConfigRuntime.js` and refactored runtime consumers to use it:
+  - `app/restaurant/runtime/restaurantPageRuntime.js`
+  - `app/lib/restaurantRuntime/order-flow.js`
+  - `app/manager-dashboard/components/ManagerDashboardDom.js`
+- Removed more editor runtime global state by migrating AI recipe photo/session behavior off `window` globals:
+  - added `getAiAssistPhotos` / `setAiAssistPhotos` / `clearAiAssistPhotos` in `app/lib/restaurantRuntime/runtimeSessionState.js`
+  - refactored `app/lib/restaurantRuntime/dish-editor-photos.js` to use shared session state and local event listeners (no inline `onclick` global remover handler)
+  - refactored `app/lib/restaurantRuntime/dish-editor.js` to stop using `window.aiAssistPhotos`, `window.updateGenerateButtonText`, and unnecessary global exports for local helpers
+- Centralized overlay pulse callback wiring through shared bridge state:
+  - added `setOverlayPulseColorHandler` / `applyOverlayPulseColor` in `app/lib/restaurantRuntime/restaurantRuntimeBridge.js`
+  - updated `app/restaurant/runtime/restaurantPageRuntime.js`, `app/lib/restaurantRuntime/order-flow.js`, and `app/lib/restaurantMessageHandler.js` to use bridge APIs instead of direct `window.setOverlayPulseColor`
+- Reduced additional editor bootstrap globals:
+  - removed direct `window.openItemEditor` export in `app/lib/restaurantRuntime/editor-runtime-bindings.js`
+  - moved console-reporting preference state to bridge-managed flag (`setEnableConsoleReporting` / `getEnableConsoleReporting`) in:
+    - `app/restaurant/boot/pageFlags.js`
+    - `app/restaurant/runtime/runtimeEnvironment.js`
+- Finished image-modal de-globalization in brand verification/editor flows:
+  - replaced the last inline `openImageModal(...)` usage in `app/lib/restaurantRuntime/brand-verification.js` with data attributes and local event listeners
+  - retained `openImageModal` as an injected runtime dependency instead of a global function export
+- Removed remaining app-runtime inline click handlers in modal flows:
+  - `app/lib/restaurantRuntime/brand-verification.js`
+  - `app/lib/restaurantRuntime/editor-settings.js`
+  - `app/lib/restaurantRuntime/feedback-modals.js`
+  - `app/lib/restaurantRuntime/menu-images.js`
+- Removed remaining inline click handlers in shared change-log runtime:
+  - `app/lib/restaurantChangeLogRuntime.js` now binds close/details/photo-preview/restore actions via data attributes and event listeners
+- Reduced change-log/photo-preview global coupling:
+  - `app/lib/restaurantRuntime/editor-screen.js` now wires `showPhotoPreview` from `initChangeLog` into `initBrandVerification`
+  - `app/lib/restaurantChangeLogRuntime.js` no longer exports `showPhotoPreview` / `restoreFromLog` on `window`
+- Standardized app-side navigation assumptions to Next routes (no `.html` fallback checks) in:
+  - `app/lib/helpAssistantDrawer.js`
+  - `app/lib/sharedNav.js`
+- Updated backend route normalization to Next-first paths:
+  - tightened `shouldExposeUrl` in `supabase/functions/help-assistant/index.ts` to canonical path/clarivore URLs
+  - switched monitoring migration menu URLs to `https://clarivore.org/restaurant?slug=...` in:
+    - `supabase/migrations/20251022_enable_monitoring.sql`
+    - `supabase/migrations/20251022000001_fix_monitoring_slugs.sql`
 
 ## Current migration inventory
 - Legacy static HTML pages still present in `public/`: 15
 - Legacy runtime JS files in `public/js/`: 108
 - Next clients still booting legacy runtime modules via `/js/*`: 0 imports
 - App-level `webpackIgnore` imports: 0
+- Inline `onclick` handlers in `app/*`: 0
+- App-side `.html` route references in `app/*`: 0
 - App-local legacy runtime files:
   - `app/admin-dashboard/runtime/legacy`: 0
   - `app/manager-dashboard/runtime/legacy`: 0
   - `app/restaurant/runtime/legacy`: 0
 - App routes still rendering raw topbar markup directly: 0
 - App routes still rendering direct raw `page-shell` wrappers: 0 (excluding `RouteSuspense` fallback UI)
+- Remaining `window.*` references in `app/lib/restaurantRuntime` + `app/restaurant/runtime`: 73 (down from 122 in prior pass)
 
 ## Remaining high-priority work
 1. Replace the monolithic `restaurant` runtime entry (`app/restaurant/runtime/restaurantPageRuntime.js`) with native React/Next feature modules page-by-page.
