@@ -1,20 +1,20 @@
-import { initIngredientSources } from "../../../../lib/ingredientSources.js";
-import { initMobileOverlayZoom } from "./mobile-overlay-zoom.js";
+import { initIngredientSources } from "./ingredientSources.js";
+import { initMobileOverlayZoom } from "../restaurant/runtime/legacy/restaurant/mobile-overlay-zoom.js";
 import {
   createQrPromoController,
   deriveQrVisitFlag,
-} from "./qr-promo.js";
-import { createNavigationRuntime } from "./navigation-runtime.js";
-import { createOrderRuntime } from "./order-runtime.js";
+} from "../restaurant/runtime/legacy/restaurant/qr-promo.js";
+import { createNavigationRuntime } from "./restaurantNavigationRuntime.js";
+import { createOrderRuntime } from "../restaurant/runtime/legacy/restaurant/order-runtime.js";
 import {
   createDishCompatibilityEvaluator,
   createTooltipBodyHTML,
-} from "./dish-compatibility-tooltip.js";
-import { createMobileInfoHelpers, prefersMobileInfo } from "./mobile-info-helpers.js";
-import { createPageUtilsRuntime } from "./page-utils-runtime.js";
-import { createPageOffsetRuntime } from "./page-offset-runtime.js";
-import { createMobileInfoPanelDom } from "./mobile-info-panel-dom.js";
-import { createPageCoreRuntime } from "./page-core-runtime.js";
+} from "../restaurant/runtime/legacy/restaurant/dish-compatibility-tooltip.js";
+import { createMobileInfoHelpers, prefersMobileInfo } from "./mobileInfoHelpersRuntime.js";
+import { createPageUtilsRuntime } from "./pageUtilsRuntime.js";
+import { createPageOffsetRuntime } from "./pageOffsetRuntime.js";
+import { createMobileInfoPanelDom } from "../restaurant/runtime/legacy/restaurant/mobile-info-panel-dom.js";
+import { createPageCoreRuntime } from "./pageCoreRuntime.js";
 
 export function createPageServicesRuntime({
   state,

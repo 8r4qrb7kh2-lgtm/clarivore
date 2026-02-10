@@ -129,6 +129,44 @@
   - `app/restaurant/runtime/legacy/restaurant/auto-open-dish.js` (removed)
   - `app/restaurant/runtime/legacy/restaurant/boot-hydration-runtime.js` (removed)
   - `app/restaurant/runtime/legacy/restaurant/order-confirm-restore.js` (removed)
+- Moved additional restaurant runtime orchestration modules out of `app/restaurant/runtime/legacy` into shared app modules:
+  - `app/lib/restaurantNavigationRuntime.js`
+  - `app/lib/standaloneMessageDispatcher.js`
+  - `app/lib/pageCoreRuntime.js`
+  - `app/lib/pageOffsetRuntime.js`
+  - `app/lib/pageUtilsRuntime.js`
+  - `app/lib/pageUiOptionsRuntime.js`
+  - `app/lib/pageUiRuntime.js`
+  - `app/lib/pageRouterRuntime.js`
+  - `app/lib/editorRuntime.js`
+  - `app/lib/unsavedChangesRuntime.js`
+  - `app/lib/unsavedGuardRuntime.js`
+  - `app/lib/hydrationRuntime.js`
+  - `app/lib/pageEditorHydrationOptionsRuntime.js`
+  - `app/lib/pageEditorHydrationRuntime.js`
+- Updated restaurant runtime imports to consume those shared modules and removed legacy duplicates:
+  - `app/restaurant/runtime/legacy/restaurant/navigation-runtime.js` (removed)
+  - `app/restaurant/runtime/legacy/restaurant/standalone-message-dispatcher.js` (removed)
+  - `app/restaurant/runtime/legacy/restaurant/page-core-runtime.js` (removed)
+  - `app/restaurant/runtime/legacy/restaurant/page-offset-runtime.js` (removed)
+  - `app/restaurant/runtime/legacy/restaurant/page-utils-runtime.js` (removed)
+  - `app/restaurant/runtime/legacy/restaurant/page-ui-options.js` (removed)
+  - `app/restaurant/runtime/legacy/restaurant/page-ui-runtime.js` (removed)
+  - `app/restaurant/runtime/legacy/restaurant/page-router-runtime.js` (removed)
+  - `app/restaurant/runtime/legacy/restaurant/editor-runtime.js` (removed)
+  - `app/restaurant/runtime/legacy/restaurant/unsaved-changes.js` (removed)
+  - `app/restaurant/runtime/legacy/restaurant/unsaved-guard-runtime.js` (removed)
+  - `app/restaurant/runtime/legacy/restaurant/hydration-runtime.js` (removed)
+  - `app/restaurant/runtime/legacy/restaurant/page-editor-hydration-options.js` (removed)
+  - `app/restaurant/runtime/legacy/restaurant/page-editor-hydration-runtime.js` (removed)
+- Moved additional restaurant view/service helper modules out of `app/restaurant/runtime/legacy` into shared app modules:
+  - `app/lib/pageServicesRuntime.js`
+  - `app/lib/mobileInfoHelpersRuntime.js`
+  - `app/lib/restaurantViewBindings.js`
+- Updated restaurant runtime imports to consume those shared modules and removed legacy duplicates:
+  - `app/restaurant/runtime/legacy/restaurant/page-services-runtime.js` (removed)
+  - `app/restaurant/runtime/legacy/restaurant/mobile-info-helpers.js` (removed)
+  - `app/restaurant/runtime/legacy/restaurant/restaurant-view.js` (removed)
 
 ## Current migration inventory
 - Legacy static HTML pages still present in `public/`: 15
@@ -138,7 +176,7 @@
 - App-local legacy runtime files:
   - `app/admin-dashboard/runtime/legacy`: 0
   - `app/manager-dashboard/runtime/legacy`: 0
-  - `app/restaurant/runtime/legacy`: 64
+  - `app/restaurant/runtime/legacy`: 47
 - App routes still rendering raw topbar markup directly: 0
 
 ## Remaining high-priority work

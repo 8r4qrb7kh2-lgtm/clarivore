@@ -1,7 +1,7 @@
-import { initAutoOpenDish } from "../../../../lib/autoOpenDishRuntime.js";
-import { createBootHydrationRuntime } from "../../../../lib/bootHydrationRuntime.js";
-import { initOrderConfirmRestore } from "../../../../lib/orderConfirmRestoreRuntime.js";
-import { createRestaurantMessageHandler } from "../../../../lib/restaurantMessageHandler.js";
+import { initAutoOpenDish } from "./autoOpenDishRuntime.js";
+import { createBootHydrationRuntime } from "./bootHydrationRuntime.js";
+import { initOrderConfirmRestore } from "./orderConfirmRestoreRuntime.js";
+import { createRestaurantMessageHandler } from "./restaurantMessageHandler.js";
 
 export function createHydrationRuntime(deps = {}) {
   const state = deps.state || {};

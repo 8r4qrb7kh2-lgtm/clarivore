@@ -1,7 +1,7 @@
-import { createEditorRuntime } from "./editor-runtime.js";
-import { createPageRouterRuntime } from "./page-router-runtime.js";
-import { createUnsavedGuardRuntime } from "./unsaved-guard-runtime.js";
-import { createHydrationRuntime } from "./hydration-runtime.js";
+import { createEditorRuntime } from "./editorRuntime.js";
+import { createPageRouterRuntime } from "./pageRouterRuntime.js";
+import { createUnsavedGuardRuntime } from "./unsavedGuardRuntime.js";
+import { createHydrationRuntime } from "./hydrationRuntime.js";
 
 export function createPageEditorHydrationRuntime({
   editorOptions,

@@ -1,7 +1,7 @@
-import { initFeedbackModals } from "./feedback-modals.js";
-import { initRestaurantTopbar } from "../../../../lib/restaurantTopbarRuntime.js";
-import { createOverlayUiRuntime } from "./overlay-ui-runtime.js";
-import { createRestaurantViewRuntime } from "./restaurant-view-runtime.js";
+import { initRestaurantTopbar } from "./restaurantTopbarRuntime.js";
+import { initFeedbackModals } from "../restaurant/runtime/legacy/restaurant/feedback-modals.js";
+import { createOverlayUiRuntime } from "../restaurant/runtime/legacy/restaurant/overlay-ui-runtime.js";
+import { createRestaurantViewRuntime } from "../restaurant/runtime/legacy/restaurant/restaurant-view-runtime.js";
 
 const noop = () => {};
 

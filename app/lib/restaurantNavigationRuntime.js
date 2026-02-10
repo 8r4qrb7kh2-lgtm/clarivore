@@ -1,4 +1,4 @@
-import { createStandaloneMessageDispatcher } from "./standalone-message-dispatcher.js";
+import { createStandaloneMessageDispatcher } from "./standaloneMessageDispatcher.js";
 
 export function createNavigationRuntime(deps = {}) {
   const state = deps.state || {};

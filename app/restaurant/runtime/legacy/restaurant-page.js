@@ -44,7 +44,7 @@ import {
   bindSavedPreferenceButtons,
   initGuestFilterControls,
   showRestaurantMenuSurface,
-} from "./restaurant/restaurant-view.js";
+} from "../../../lib/restaurantViewBindings.js";
 import { bindEditorBackButton } from "./restaurant/editor-exit.js";
 import { bindDetectDishesButton } from "./restaurant/editor-dish-detection.js";
 import { bindEditorToolbarScale } from "./restaurant/editor-toolbar.js";
@@ -65,13 +65,13 @@ import {
   insertChangeLogEntry,
 } from "../../../lib/changeLogService.js";
 import { normalizeRestaurantRow } from "../../../lib/restaurantNormalization.js";
-import { prefersMobileInfo } from "./restaurant/mobile-info-helpers.js";
+import { prefersMobileInfo } from "../../../lib/mobileInfoHelpersRuntime.js";
 import { createDishEditorRuntime } from "./restaurant/dish-editor-runtime.js";
-import { createPageUiRuntime } from "./restaurant/page-ui-runtime.js";
-import { createPageEditorHydrationRuntime } from "./restaurant/page-editor-hydration-runtime.js";
-import { createPageUiOptions } from "./restaurant/page-ui-options.js";
-import { createPageEditorHydrationOptions } from "./restaurant/page-editor-hydration-options.js";
-import { createPageServicesRuntime } from "./restaurant/page-services-runtime.js";
+import { createPageUiRuntime } from "../../../lib/pageUiRuntime.js";
+import { createPageEditorHydrationRuntime } from "../../../lib/pageEditorHydrationRuntime.js";
+import { createPageUiOptions } from "../../../lib/pageUiOptionsRuntime.js";
+import { createPageEditorHydrationOptions } from "../../../lib/pageEditorHydrationOptionsRuntime.js";
+import { createPageServicesRuntime } from "../../../lib/pageServicesRuntime.js";
 import {
   fmtDate,
   fmtDateTime,
