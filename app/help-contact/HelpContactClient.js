@@ -2,8 +2,10 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { supabaseClient as supabase } from "../lib/supabase";
 import { OWNER_EMAIL, fetchManagerRestaurants } from "../lib/managerRestaurants";
+import { initManagerNotifications } from "../lib/managerNotifications";
 
 const ADMIN_DISPLAY_NAME = "Matt D (clarivore administrator)";
 
@@ -88,8 +90,11 @@ function setAutoRestaurant(restaurants, preferRecent = true) {
 }
 
 export default function HelpContactClient() {
+  const router = useRouter();
   const [bootError, setBootError] = useState("");
   const [user, setUser] = useState(null);
+  const [managerRestaurants, setManagerRestaurants] = useState([]);
+  const [allRestaurants, setAllRestaurants] = useState([]);
   const [isEditorMode, setIsEditorMode] = useState(false);
   const [assistantModeReady, setAssistantModeReady] = useState(false);
   const [restaurants, setRestaurants] = useState([]);
@@ -140,6 +145,53 @@ export default function HelpContactClient() {
   }, [user]);
 
   const mode = isEditorMode ? "manager" : "customer";
+  const isManagerOrOwner =
+    user?.email === OWNER_EMAIL || user?.user_metadata?.role === "manager";
+
+  const applyRestaurantSelection = useCallback((availableRestaurants, preferRecent) => {
+    setRestaurants(availableRestaurants);
+    const initialSelection = setAutoRestaurant(availableRestaurants, preferRecent);
+    if (initialSelection) {
+      setSelectedRestaurantId(String(initialSelection.id));
+      setSelectedRestaurant(initialSelection);
+    } else {
+      setSelectedRestaurantId("");
+      setSelectedRestaurant(null);
+    }
+  }, []);
+
+  const onModeChange = useCallback(
+    (nextMode) => {
+      if (!isManagerOrOwner) return;
+      if (nextMode !== "editor" && nextMode !== "customer") return;
+
+      localStorage.setItem("clarivoreManagerMode", nextMode);
+      const nextEditorMode = nextMode === "editor";
+      setIsEditorMode(nextEditorMode);
+
+      const nextRestaurants = nextEditorMode
+        ? managerRestaurants
+        : allRestaurants;
+      applyRestaurantSelection(nextRestaurants, !nextEditorMode);
+    },
+    [
+      allRestaurants,
+      applyRestaurantSelection,
+      isManagerOrOwner,
+      managerRestaurants,
+    ],
+  );
+
+  const onSignOut = useCallback(async () => {
+    if (!supabase) return;
+    try {
+      await supabase.auth.signOut();
+      router.replace("/account?mode=signin");
+    } catch (error) {
+      console.error("[help-contact] sign-out failed", error);
+      setBootError("Unable to sign out right now.");
+    }
+  }, [router]);
 
   const loadChatReadState = useCallback(async () => {
     if (!supabase || !selectedRestaurantId) {
@@ -442,7 +494,7 @@ export default function HelpContactClient() {
         if (error) throw error;
 
         if (!authUser) {
-          window.location.href = "/";
+          router.replace("/account?mode=signin");
           return;
         }
 
@@ -457,59 +509,32 @@ export default function HelpContactClient() {
         if (isManagerOrOwner) {
           managerRestaurants = await fetchManagerRestaurants(supabase, authUser);
         }
+        setManagerRestaurants(managerRestaurants);
 
         if (isManagerOrOwner) {
-          const { initManagerNotifications } = await import(
-            /* webpackIgnore: true */
-            "/js/manager-notifications.js"
-          );
           initManagerNotifications({ user: authUser, client: supabase });
         }
-
-        const { setupTopbar } = await import(
-          /* webpackIgnore: true */
-          "/js/shared-nav.js"
-        );
-
-        if (!mounted) return;
-
-        setupTopbar("help-contact", authUser, {
-          managerRestaurants,
-          modeToggle: {
-            resolveTarget: () => "/help-contact",
-          },
-        });
 
         const storedMode = localStorage.getItem("clarivoreManagerMode");
         const nextEditorMode = isManagerOrOwner && storedMode === "editor";
         setIsEditorMode(nextEditorMode);
 
-        let availableRestaurants = [];
-        if (nextEditorMode && isManagerOrOwner) {
-          availableRestaurants = managerRestaurants;
-        } else {
-          const { data, error: restaurantsError } = await supabase
-            .from("restaurants")
-            .select("id, name, slug")
-            .order("name");
-          if (restaurantsError) throw restaurantsError;
-          availableRestaurants = data || [];
-        }
+        const { data, error: restaurantsError } = await supabase
+          .from("restaurants")
+          .select("id, name, slug")
+          .order("name");
+        if (restaurantsError) throw restaurantsError;
+
+        const availableAllRestaurants = data || [];
+        setAllRestaurants(availableAllRestaurants);
 
         if (!mounted) return;
 
-        setRestaurants(availableRestaurants);
-        const initialSelection = setAutoRestaurant(
-          availableRestaurants,
-          !nextEditorMode,
-        );
-        if (initialSelection) {
-          setSelectedRestaurantId(String(initialSelection.id));
-          setSelectedRestaurant(initialSelection);
-        } else {
-          setSelectedRestaurantId("");
-          setSelectedRestaurant(null);
-        }
+        const initialRestaurants =
+          nextEditorMode && isManagerOrOwner
+            ? managerRestaurants
+            : availableAllRestaurants;
+        applyRestaurantSelection(initialRestaurants, !nextEditorMode);
         setAssistantModeReady(true);
       } catch (initError) {
         console.error("[help-contact] boot failed", initError);
@@ -525,7 +550,7 @@ export default function HelpContactClient() {
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [applyRestaurantSelection, router]);
 
   useEffect(() => {
     if (!selectedRestaurantId || !restaurants.length) {
@@ -567,10 +592,7 @@ export default function HelpContactClient() {
         const {
           initHelpAssistantPanel,
           setHelpAssistantMode,
-        } = await import(
-          /* webpackIgnore: true */
-          "/js/help-assistant-drawer.js"
-        );
+        } = await import("../lib/helpAssistantDrawer");
 
         if (cancelled) return;
 
@@ -620,12 +642,47 @@ export default function HelpContactClient() {
             />
             <span>Clarivore</span>
           </Link>
-          <div className="simple-nav" />
-          <div
-            className="mode-toggle-container"
-            id="modeToggleContainer"
-            style={{ display: "none" }}
-          />
+          <div className="simple-nav">
+            <Link href="/home">Home</Link>
+            <Link href="/restaurants">Restaurants</Link>
+            <Link href="/favorites">My restaurants</Link>
+            <Link href="/dish-search">Dish search</Link>
+            {isManagerOrOwner ? (
+              <Link href="/manager-dashboard">Dashboard</Link>
+            ) : null}
+            <Link href="/account">Account</Link>
+            {user ? (
+              <button type="button" className="btnLink" onClick={onSignOut}>
+                Sign out
+              </button>
+            ) : null}
+          </div>
+          {isManagerOrOwner ? (
+            <div className="mode-toggle-container" style={{ display: "flex" }}>
+              <button
+                type="button"
+                className="btnLink"
+                style={{
+                  opacity: !isEditorMode ? 1 : 0.65,
+                  fontWeight: !isEditorMode ? 700 : 500,
+                }}
+                onClick={() => onModeChange("customer")}
+              >
+                Customer
+              </button>
+              <button
+                type="button"
+                className="btnLink"
+                style={{
+                  opacity: isEditorMode ? 1 : 0.65,
+                  fontWeight: isEditorMode ? 700 : 500,
+                }}
+                onClick={() => onModeChange("editor")}
+              >
+                Editor
+              </button>
+            </div>
+          ) : null}
         </div>
       </header>
 

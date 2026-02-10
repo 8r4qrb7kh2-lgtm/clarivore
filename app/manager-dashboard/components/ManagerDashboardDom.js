@@ -1,21 +1,74 @@
-export default function ManagerDashboardDom() {
+import Link from "next/link";
+
+export default function ManagerDashboardDom({
+  user,
+  isManagerOrOwner = false,
+  managerRestaurants = [],
+  managerMode = "editor",
+  onModeChange,
+  onSignOut,
+}) {
+  const firstRestaurantSlug = managerRestaurants[0]?.slug || "";
+
   return (
     <div className="page-shell">
       <header className="simple-topbar">
         <div className="simple-topbar-inner">
-          <a className="simple-brand" href="/home">
+          <Link className="simple-brand" href="/manager-dashboard">
             <img
               src="https://static.wixstatic.com/media/945e9d_2b97098295d341d493e4a07d80d6b57c~mv2.png"
               alt="Clarivore logo"
             />
             <span>Clarivore</span>
-          </a>
-          <div className="simple-nav" />
-          <div
-            className="mode-toggle-container"
-            id="modeToggleContainer"
-            style={{ display: "none" }}
-          />
+          </Link>
+          <div className="simple-nav">
+            <Link href="/manager-dashboard">Dashboard</Link>
+            {firstRestaurantSlug ? (
+              <Link
+                href={`/restaurant?slug=${encodeURIComponent(
+                  firstRestaurantSlug,
+                )}&edit=1`}
+              >
+                Webpage editor
+              </Link>
+            ) : null}
+            <Link href="/server-tablet">Server monitor</Link>
+            <Link href="/kitchen-tablet">Kitchen monitor</Link>
+            <Link href="/help-contact">Help</Link>
+            {user ? (
+              <button type="button" className="btnLink" onClick={onSignOut}>
+                Sign out
+              </button>
+            ) : (
+              <Link href="/account?mode=signin">Sign in</Link>
+            )}
+          </div>
+          {isManagerOrOwner ? (
+            <div className="mode-toggle-container" style={{ display: "flex" }}>
+              <button
+                type="button"
+                className="btnLink"
+                style={{
+                  opacity: managerMode === "customer" ? 1 : 0.65,
+                  fontWeight: managerMode === "customer" ? 700 : 500,
+                }}
+                onClick={() => onModeChange?.("customer")}
+              >
+                Customer
+              </button>
+              <button
+                type="button"
+                className="btnLink"
+                style={{
+                  opacity: managerMode === "editor" ? 1 : 0.65,
+                  fontWeight: managerMode === "editor" ? 700 : 500,
+                }}
+                onClick={() => onModeChange?.("editor")}
+              >
+                Editor
+              </button>
+            </div>
+          ) : null}
         </div>
       </header>
 

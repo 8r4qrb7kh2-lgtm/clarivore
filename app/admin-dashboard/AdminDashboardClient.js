@@ -46,10 +46,7 @@ export default function AdminDashboardClient() {
 
         window.__adminDashboardBootPayload = bootPayload;
 
-        await import(
-          /* webpackIgnore: true */
-          "/js/admin-dashboard-page.js"
-        );
+        await import("./runtime/legacy/admin-dashboard-page.js");
       } catch (runtimeError) {
         console.error("[admin-dashboard-next] boot failed", runtimeError);
         if (!cancelled) {

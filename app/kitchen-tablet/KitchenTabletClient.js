@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabaseClient as supabase } from "../lib/supabase";
 import { OWNER_EMAIL, fetchManagerRestaurants } from "../lib/managerRestaurants";
+import { showOrderNotification } from "../lib/orderNotifications";
 import {
   KITCHEN_RELEVANT_STATUSES,
   KITCHEN_STATUS_DESCRIPTORS,
@@ -55,7 +56,7 @@ export default function KitchenTabletClient() {
   const ordersRef = useRef([]);
   const previousStatusesRef = useRef(new Map());
   const activeRefreshPromiseRef = useRef(null);
-  const notifyStatusChangeRef = useRef(null);
+  const notifyStatusChangeRef = useRef(showOrderNotification);
 
   useEffect(() => {
     ordersRef.current = orders;
@@ -241,18 +242,7 @@ export default function KitchenTabletClient() {
             ? await fetchManagerRestaurants(supabase, user)
             : [];
 
-        const [notifications] = await Promise.all([
-          import(
-            /* webpackIgnore: true */
-            "/js/order-notifications.js"
-          ).catch(() => null),
-        ]);
-
         if (!active) return;
-
-        if (typeof notifications?.showOrderNotification === "function") {
-          notifyStatusChangeRef.current = notifications.showOrderNotification;
-        }
 
         const hasAccess =
           (isOwner || isManager) &&

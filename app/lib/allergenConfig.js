@@ -93,6 +93,14 @@ export const buildAllergenDietConfig = ({
     return titleCase(value);
   };
 
+  const formatPreferenceLabel = (value) => {
+    const allergen = normalizeAllergen(value);
+    if (allergen) return formatAllergenLabel(allergen);
+    const diet = normalizeDietLabel(value);
+    if (diet) return formatDietLabel(diet);
+    return titleCase(value);
+  };
+
   const getAllergenEmoji = (value) => {
     const normalized = normalizeAllergen(value);
     return normalized ? ALLERGEN_EMOJI[normalized] || "" : "";
@@ -113,11 +121,16 @@ export const buildAllergenDietConfig = ({
 
   return {
     ALLERGENS,
+    ALLERGEN_LABELS,
+    ALLERGEN_EMOJI,
     DIETS,
+    DIET_EMOJI,
+    DIET_ALLERGEN_CONFLICTS,
     normalizeAllergen,
     normalizeDietLabel,
     formatAllergenLabel,
     formatDietLabel,
+    formatPreferenceLabel,
     getAllergenEmoji,
     getDietEmoji,
     getDietAllergenConflicts,
@@ -168,4 +181,8 @@ export const loadAllergenDietConfig = async (supabaseClient) => {
   })();
 
   return configPromise;
+};
+
+export const resetAllergenDietConfigCache = () => {
+  configPromise = null;
 };

@@ -136,8 +136,9 @@
         }
 
         if (!preloadedBoot?.topbarSetupDone) {
-          const { setupTopbar } = await import('./shared-nav.js');
-          setupTopbar('home', user, { managerRestaurants: navRestaurants });
+          console.warn(
+            '[manager-dashboard] topbar was not preloaded; skipping legacy nav bootstrap',
+          );
         }
         if ((isManager || isOwner) && !preloadedBoot?.managerNotificationsReady) {
           const { initManagerNotifications } = await import('./manager-notifications.js');

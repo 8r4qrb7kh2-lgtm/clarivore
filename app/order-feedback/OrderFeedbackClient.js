@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabaseClient as supabase } from "../lib/supabase";
 import { OWNER_EMAIL } from "../lib/managerRestaurants";
+import { loadAllergenDietConfig } from "../lib/allergenConfig";
 
 function getDefaultConfig() {
   const normalizeAllergen = (value) => String(value ?? "").trim();
@@ -268,13 +269,7 @@ export default function OrderFeedbackClient() {
           return;
         }
 
-        await import(
-          /* webpackIgnore: true */
-          "/js/allergen-diet-config.js"
-        );
-        const loadedConfig = window.loadAllergenDietConfig
-          ? await window.loadAllergenDietConfig({ supabaseClient: supabase })
-          : getDefaultConfig();
+        const loadedConfig = await loadAllergenDietConfig(supabase);
         if (!isMounted) return;
         setConfig({
           normalizeAllergen:

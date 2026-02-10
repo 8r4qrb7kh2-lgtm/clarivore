@@ -1,13 +1,46 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import ManagerDashboardDom from "./components/ManagerDashboardDom";
 import { prepareManagerDashboardBootPayload } from "./services/managerDashboardBoot";
 import { supabaseClient as supabase } from "../lib/supabase";
 import { loadScript } from "../runtime/scriptLoader";
+import { initManagerNotifications } from "../lib/managerNotifications";
+import { ensureAllergenDietConfigGlobals } from "../lib/allergenConfigRuntime";
 
 export default function ManagerDashboardClient() {
+  const router = useRouter();
   const [error, setError] = useState("");
+  const [authUser, setAuthUser] = useState(null);
+  const [managerRestaurants, setManagerRestaurants] = useState([]);
+  const [managerMode, setManagerMode] = useState("editor");
+  const [isManagerOrOwner, setIsManagerOrOwner] = useState(false);
+
+  const onModeChange = useCallback(
+    (nextMode) => {
+      if (!nextMode || nextMode === managerMode) return;
+      localStorage.setItem("clarivoreManagerMode", nextMode);
+      setManagerMode(nextMode);
+      if (nextMode === "customer") {
+        router.replace("/home");
+      } else {
+        router.replace("/manager-dashboard");
+      }
+    },
+    [managerMode, router],
+  );
+
+  const onSignOut = useCallback(async () => {
+    if (!supabase) return;
+    try {
+      await supabase.auth.signOut();
+      router.replace("/account?mode=signin");
+    } catch (signOutError) {
+      console.error("[manager-dashboard-next] sign-out failed", signOutError);
+      setError("Unable to sign out right now.");
+    }
+  }, [router]);
 
   useEffect(() => {
     let cancelled = false;
@@ -21,11 +54,12 @@ export default function ManagerDashboardClient() {
         window.supabaseClient = supabase;
 
         await loadScript("https://docs.opencv.org/4.5.2/opencv.js");
-        await loadScript("/js/auth-redirect.js", { defer: true });
-        await loadScript("/js/allergen-diet-config.js");
+        await ensureAllergenDietConfigGlobals(supabase);
 
         const bootPayload = await prepareManagerDashboardBootPayload();
-        const hasManagerAccess = Boolean(bootPayload.isOwner || bootPayload.isManager);
+        const hasManagerAccess = Boolean(
+          bootPayload.isOwner || bootPayload.isManager,
+        );
 
         if (hasManagerAccess) {
           bootPayload.currentMode =
@@ -34,25 +68,19 @@ export default function ManagerDashboardClient() {
           bootPayload.currentMode = null;
         }
 
+        if (!cancelled) {
+          setAuthUser(bootPayload.user || null);
+          setManagerRestaurants(bootPayload.managerRestaurants || []);
+          setManagerMode(bootPayload.currentMode || "editor");
+          setIsManagerOrOwner(hasManagerAccess);
+        }
+
+        if (hasManagerAccess && bootPayload.currentMode !== "editor") {
+          router.replace("/home");
+          return;
+        }
+
         if (bootPayload.user) {
-          const [{ setupTopbar }, { initManagerNotifications }] = await Promise.all([
-            import(
-              /* webpackIgnore: true */
-              "/js/shared-nav.js"
-            ),
-            hasManagerAccess
-              ? import(
-                  /* webpackIgnore: true */
-                  "/js/manager-notifications.js"
-                )
-              : Promise.resolve({ initManagerNotifications: null }),
-          ]);
-
-          setupTopbar("home", bootPayload.user, {
-            managerRestaurants: bootPayload.managerRestaurants || [],
-          });
-          bootPayload.topbarSetupDone = true;
-
           if (hasManagerAccess && typeof initManagerNotifications === "function") {
             initManagerNotifications({
               user: bootPayload.user,
@@ -63,24 +91,15 @@ export default function ManagerDashboardClient() {
             bootPayload.managerNotificationsReady = false;
           }
         } else {
-          bootPayload.topbarSetupDone = false;
           bootPayload.managerNotificationsReady = false;
         }
+        bootPayload.topbarSetupDone = true;
 
         window.__managerDashboardBootPayload = bootPayload;
 
-        await import(
-          /* webpackIgnore: true */
-          "/js/ingredient-label-capture.js"
-        );
-        await import(
-          /* webpackIgnore: true */
-          "/js/manager-dashboard.js"
-        );
-        await import(
-          /* webpackIgnore: true */
-          "/js/report-modal.js"
-        );
+        await import("./runtime/legacy/ingredient-label-capture.js");
+        await import("./runtime/legacy/manager-dashboard.js");
+        await import("./runtime/legacy/report-modal.js");
       } catch (runtimeError) {
         console.error("[manager-dashboard-next] boot failed", runtimeError);
         if (!cancelled) {
@@ -96,11 +115,18 @@ export default function ManagerDashboardClient() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [router]);
 
   return (
     <>
-      <ManagerDashboardDom />
+      <ManagerDashboardDom
+        user={authUser}
+        isManagerOrOwner={isManagerOrOwner}
+        managerRestaurants={managerRestaurants}
+        managerMode={managerMode}
+        onModeChange={onModeChange}
+        onSignOut={onSignOut}
+      />
       {error ? (
         <p
           className="status-text error"
