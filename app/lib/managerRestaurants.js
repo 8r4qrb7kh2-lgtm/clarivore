@@ -5,7 +5,7 @@ export function isOwnerUser(user) {
 }
 
 export function isManagerUser(user) {
-  return user?.user_metadata?.role === "manager";
+  return (user?.user_metadata?.role || user?.role || null) === "manager";
 }
 
 export function isManagerOrOwnerUser(user) {

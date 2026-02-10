@@ -1,3 +1,5 @@
+import { filterRestaurantsByVisibility } from "./restaurantVisibility.js";
+
 function filterOrdersByRestaurant(orderFlow, restaurantId) {
   if (!orderFlow || !orderFlow.tabletSimState) return;
   orderFlow.tabletSimState.orders = (orderFlow.tabletSimState.orders || []).filter(
@@ -123,22 +125,8 @@ function applyRestaurantUpdate({
 
 function applyRestaurantsUpdate({ message, state }) {
   if (!message.restaurants) return;
-
-  const isAdmin = state.user?.email === "matt.29.ds@gmail.com";
-  const isManager = state.user?.role === "manager";
-
-  if (isAdmin || isManager) {
-    state.restaurants = message.restaurants || [];
-    return;
-  }
-
-  const thirtyDaysAgo = new Date();
-  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
-  state.restaurants = (message.restaurants || []).filter((restaurant) => {
-    if (!restaurant.lastConfirmed) return false;
-    const lastConfirmed = new Date(restaurant.lastConfirmed);
-    return lastConfirmed >= thirtyDaysAgo;
+  state.restaurants = filterRestaurantsByVisibility(message.restaurants || [], {
+    user: state.user || null,
   });
 }
 

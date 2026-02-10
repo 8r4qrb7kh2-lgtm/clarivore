@@ -9,6 +9,7 @@ import {
   isManagerUser,
   isOwnerUser,
 } from "../lib/managerRestaurants";
+import { filterRestaurantsByVisibility } from "../lib/restaurantVisibility";
 import { supabaseClient as supabase } from "../lib/supabase";
 
 export default function FavoritesClient() {
@@ -110,16 +111,9 @@ export default function FavoritesClient() {
           return;
         }
 
-        let filtered = restaurantsData || [];
-        if (!isOwner && !isManager) {
-          const thirtyDaysAgo = new Date();
-          thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-          filtered = filtered.filter((restaurant) => {
-            if (!restaurant.last_confirmed) return false;
-            const lastConfirmed = new Date(restaurant.last_confirmed);
-            return lastConfirmed >= thirtyDaysAgo;
-          });
-        }
+        const filtered = filterRestaurantsByVisibility(restaurantsData || [], {
+          user,
+        });
 
         if (isMounted) {
           setRestaurants(filtered);

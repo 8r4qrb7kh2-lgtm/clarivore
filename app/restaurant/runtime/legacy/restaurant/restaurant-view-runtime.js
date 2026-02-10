@@ -1,6 +1,6 @@
 import { createHowItWorksTour } from "./how-it-works-tour.js";
-import { initRestaurantFilters } from "./restaurant-filters.js";
-import { renderRestaurantCardsPage } from "./restaurant-cards-page.js";
+import { initRestaurantFilters } from "../../../../lib/restaurantFiltersRuntime.js";
+import { renderRestaurantCardsPage } from "../../../../lib/restaurantCardsPageRuntime.js";
 import { renderRestaurantScreen } from "./restaurant-screen.js";
 import { createMenuDrawRuntime } from "./menu-draw-runtime.js";
 import { createDishInteractionTracker } from "./menu-dish-tracking.js";

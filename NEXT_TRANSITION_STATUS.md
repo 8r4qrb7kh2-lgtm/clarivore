@@ -91,6 +91,36 @@
   - `app/restaurant/runtime/legacy/restaurant/change-log-service.js` (removed)
   - `app/restaurant/runtime/legacy/restaurant/restaurant-normalization.js` (removed)
   - `app/restaurant/runtime/legacy/restaurant/ingredient-sources.js` (removed)
+- Added shared restaurant visibility rules in `app/lib/restaurantVisibility.js`:
+  - `getRestaurantLastConfirmedDate`
+  - `isRestaurantRecentlyConfirmed`
+  - `filterRestaurantsByVisibility`
+- Refactored `home`, `restaurants`, `favorites`, and restaurant runtime message/cards flows to consume shared visibility filtering logic.
+- Expanded shared manager role detection in `app/lib/managerRestaurants.js` (`isManagerUser`) to support both `user.user_metadata.role` and legacy `user.role` payloads.
+- Moved additional restaurant runtime view orchestration modules into shared app modules:
+  - `app/lib/restaurantMessageHandler.js`
+  - `app/lib/restaurantFiltersRuntime.js`
+  - `app/lib/restaurantCardsPageRuntime.js`
+  - `app/lib/restaurantTopbarRuntime.js`
+- Updated restaurant runtime imports to consume those shared modules and removed legacy duplicates:
+  - `app/restaurant/runtime/legacy/restaurant/restaurant-message.js` (removed)
+  - `app/restaurant/runtime/legacy/restaurant/restaurant-filters.js` (removed)
+  - `app/restaurant/runtime/legacy/restaurant/restaurant-cards-page.js` (removed)
+  - `app/restaurant/runtime/legacy/restaurant/restaurant-topbar.js` (removed)
+- Moved additional restaurant shell/report/editor view helpers out of `app/restaurant/runtime/legacy` into shared app modules:
+  - `app/lib/restaurantChangeLogRuntime.js`
+  - `app/lib/editorLastConfirmedRuntime.js`
+  - `app/lib/editorShellMarkup.js`
+  - `app/lib/reportShellMarkup.js`
+  - `app/lib/restaurantShellMarkup.js`
+  - `app/lib/restaurantReportPageRuntime.js`
+- Updated restaurant runtime imports to consume those shared modules and removed legacy duplicates:
+  - `app/restaurant/runtime/legacy/restaurant/change-log.js` (removed)
+  - `app/restaurant/runtime/legacy/restaurant/editor-last-confirmed.js` (removed)
+  - `app/restaurant/runtime/legacy/restaurant/editor-shell-markup.js` (removed)
+  - `app/restaurant/runtime/legacy/restaurant/report-shell-markup.js` (removed)
+  - `app/restaurant/runtime/legacy/restaurant/restaurant-shell-markup.js` (removed)
+  - `app/restaurant/runtime/legacy/restaurant/restaurant-report-page.js` (removed)
 
 ## Current migration inventory
 - Legacy static HTML pages still present in `public/`: 15
@@ -100,7 +130,7 @@
 - App-local legacy runtime files:
   - `app/admin-dashboard/runtime/legacy`: 0
   - `app/manager-dashboard/runtime/legacy`: 0
-  - `app/restaurant/runtime/legacy`: 77
+  - `app/restaurant/runtime/legacy`: 67
 - App routes still rendering raw topbar markup directly: 0
 
 ## Remaining high-priority work

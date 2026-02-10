@@ -1,5 +1,5 @@
 import { initFeedbackModals } from "./feedback-modals.js";
-import { initRestaurantTopbar } from "./restaurant-topbar.js";
+import { initRestaurantTopbar } from "../../../../lib/restaurantTopbarRuntime.js";
 import { createOverlayUiRuntime } from "./overlay-ui-runtime.js";
 import { createRestaurantViewRuntime } from "./restaurant-view-runtime.js";
 

@@ -1,3 +1,5 @@
+import { isManagerOrOwnerUser } from "./managerRestaurants.js";
+
 export function createEditorLastConfirmedUpdater(options = {}) {
   const { state, getWeeksAgoInfo, fmtDateTime } = options;
 
@@ -6,9 +8,7 @@ export function createEditorLastConfirmedUpdater(options = {}) {
     if (!lastConfirmedText) return;
 
     const now = new Date();
-    const isAdmin = state.user?.email === "matt.29.ds@gmail.com";
-    const isManager = state.user?.role === "manager";
-    const showAll = isAdmin || isManager;
+    const showAll = isManagerOrOwnerUser(state.user);
     const info = getWeeksAgoInfo(now, showAll);
 
     if (info && info.text) {

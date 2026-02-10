@@ -25,7 +25,7 @@ import {
 } from "./restaurant/menu-image-utils.js";
 import { detectDishesOnMenu } from "./restaurant/menu-dish-detection.js";
 import { initBrandVerification } from "./restaurant/brand-verification.js";
-import { initChangeLog } from "./restaurant/change-log.js";
+import { initChangeLog } from "../../../lib/restaurantChangeLogRuntime.js";
 import { initEditorOverlays } from "./restaurant/editor-overlays.js";
 import { initMenuImageEditor } from "./restaurant/menu-images.js";
 import { initEditorNavigation } from "./restaurant/editor-navigation.js";
@@ -33,12 +33,12 @@ import { initEditorSections } from "./restaurant/editor-sections.js";
 import { initEditorHistory } from "./restaurant/editor-history.js";
 import { initEditorSettings } from "./restaurant/editor-settings.js";
 import { initEditorSaveFlow } from "./restaurant/editor-save.js";
-import { mountEditorShell } from "./restaurant/editor-shell-markup.js";
+import { mountEditorShell } from "../../../lib/editorShellMarkup.js";
 import {
   applyRestaurantShellState,
   mountRestaurantShell,
-} from "./restaurant/restaurant-shell-markup.js";
-import { mountReportShell } from "./restaurant/report-shell-markup.js";
+} from "../../../lib/restaurantShellMarkup.js";
+import { mountReportShell } from "../../../lib/reportShellMarkup.js";
 import {
   bindRestaurantActionButtons,
   bindSavedPreferenceButtons,
@@ -51,7 +51,7 @@ import { bindEditorToolbarScale } from "./restaurant/editor-toolbar.js";
 import { bindEditorHistoryControls } from "./restaurant/editor-history-controls.js";
 import { openPendingDishInEditor } from "./restaurant/editor-pending-dish.js";
 import { createEditorItemEditor } from "./restaurant/editor-item-editor.js";
-import { createEditorLastConfirmedUpdater } from "./restaurant/editor-last-confirmed.js";
+import { createEditorLastConfirmedUpdater } from "../../../lib/editorLastConfirmedRuntime.js";
 import { bindEditorRuntimeBindings } from "./restaurant/editor-runtime-bindings.js";
 import {
   initializeEditorAssets,
@@ -59,7 +59,7 @@ import {
   createEditorChangeState,
   applyPendingMenuIndexRemap,
 } from "./restaurant/editor-session.js";
-import { renderRestaurantReportPage } from "./restaurant/restaurant-report-page.js";
+import { renderRestaurantReportPage } from "../../../lib/restaurantReportPageRuntime.js";
 import {
   fetchChangeLogEntries,
   insertChangeLogEntry,

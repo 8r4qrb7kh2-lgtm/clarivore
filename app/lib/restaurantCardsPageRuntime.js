@@ -1,3 +1,6 @@
+import { isManagerOrOwnerUser } from "./managerRestaurants.js";
+import { filterRestaurantsByVisibility } from "./restaurantVisibility.js";
+
 export function renderRestaurantCardsPage(options = {}) {
   const { state, renderTopbar, root, div, esc, send, getWeeksAgoInfo } = options;
 
@@ -9,20 +12,10 @@ export function renderRestaurantCardsPage(options = {}) {
   const grid = document.getElementById("grid");
   if (!grid) return;
 
-  const isAdmin = state.user?.email === "matt.29.ds@gmail.com";
-  const isManager = state.user?.role === "manager";
-
-  let filteredRestaurants = state.restaurants || [];
-  if (!isAdmin && !isManager) {
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
-    filteredRestaurants = filteredRestaurants.filter((restaurant) => {
-      if (!restaurant.lastConfirmed) return false;
-      const lastConfirmed = new Date(restaurant.lastConfirmed);
-      return lastConfirmed >= thirtyDaysAgo;
-    });
-  }
+  const showAll = isManagerOrOwnerUser(state.user);
+  const filteredRestaurants = filterRestaurantsByVisibility(state.restaurants || [], {
+    user: state.user || null,
+  });
 
   filteredRestaurants.forEach((restaurant) => {
     const card = div(`<div class="card">
@@ -33,7 +26,6 @@ export function renderRestaurantCardsPage(options = {}) {
         if (!restaurant.lastConfirmed) {
           return '<div class="note">Last confirmed by staff: —</div>';
         }
-        const showAll = isAdmin || isManager;
         const info = getWeeksAgoInfo(restaurant.lastConfirmed, showAll);
         if (!info) return "";
         return `<div class="note" style="color: ${info.color}">Last confirmed by staff: ${esc(info.text)}</div>`;

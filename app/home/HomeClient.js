@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import SimpleTopbar from "../components/SimpleTopbar";
 import RestaurantCard from "../components/RestaurantCard";
+import { filterRestaurantsByVisibility } from "../lib/restaurantVisibility";
 import { supabaseClient as supabase } from "../lib/supabase";
 import { resolveGreetingFirstName } from "../lib/userIdentity";
 
@@ -27,15 +28,17 @@ export default function HomeClient() {
         return;
       }
 
+      let authUser = null;
       try {
         const { data: authData, error: authError } =
           await supabase.auth.getUser();
         if (authError) throw authError;
-        if (!authData?.user && !isQR) {
+        authUser = authData?.user || null;
+        if (!authUser && !isQR) {
           router.replace("/account?mode=signin");
           return;
         }
-        if (isMounted) setUser(authData?.user || null);
+        if (isMounted) setUser(authUser);
       } catch (error) {
         console.error("Auth check failed", error);
         router.replace("/account?mode=signin");
@@ -52,7 +55,11 @@ export default function HomeClient() {
 
         if (error) throw error;
         if (isMounted) {
-          setRestaurants(Array.isArray(data) ? data : []);
+          setRestaurants(
+            filterRestaurantsByVisibility(Array.isArray(data) ? data : [], {
+              user: authUser,
+            }),
+          );
           setStatus("");
         }
       } catch (error) {

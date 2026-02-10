@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import RestaurantCard from "../components/RestaurantCard";
 import SimpleTopbar from "../components/SimpleTopbar";
+import { filterRestaurantsByVisibility } from "../lib/restaurantVisibility";
 import { supabaseClient as supabase } from "../lib/supabase";
 
 export default function RestaurantsClient() {
@@ -29,7 +30,8 @@ export default function RestaurantsClient() {
         const { data: authData, error: authError } =
           await supabase.auth.getUser();
         if (authError) throw authError;
-        if (!authData?.user && !isQR) {
+        const authUser = authData?.user || null;
+        if (!authUser && !isQR) {
           router.replace("/account?redirect=restaurants");
           return;
         }
@@ -50,7 +52,11 @@ export default function RestaurantsClient() {
 
         if (error) throw error;
         if (isMounted) {
-          setRestaurants(Array.isArray(data) ? data : []);
+          setRestaurants(
+            filterRestaurantsByVisibility(Array.isArray(data) ? data : [], {
+              user: authUser,
+            }),
+          );
           setStatus("");
         }
       } catch (error) {
