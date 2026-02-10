@@ -46,20 +46,21 @@ import {
   fetchChangeLogEntries,
   insertChangeLogEntry,
 } from "../../lib/changeLogService.js";
-import { normalizeRestaurantRow } from "../../lib/restaurantNormalization.js";
 import { prefersMobileInfo } from "../../lib/mobileInfoHelpersRuntime.js";
-import { createDishEditorRuntime } from "../../lib/restaurantRuntime/dish-editor-runtime.js";
-import { createPageUiRuntime } from "../../lib/pageUiRuntime.js";
-import { createPageEditorHydrationRuntime } from "../../lib/pageEditorHydrationRuntime.js";
-import { createPageUiOptions } from "../../lib/pageUiOptionsRuntime.js";
-import { createPageEditorHydrationOptions } from "../../lib/pageEditorHydrationOptionsRuntime.js";
-import { createPageServicesRuntime } from "../../lib/pageServicesRuntime.js";
 import {
   fmtDate,
   fmtDateTime,
   getWeeksAgoInfo,
 } from "../../lib/timeFormatting.js";
 import { initializeRestaurantRuntimeEnvironment } from "./runtimeEnvironment.js";
+import { createRestaurantRuntimeCore } from "./createRestaurantRuntimeCore.js";
+import { createRestaurantPageUiBundle } from "./createRestaurantPageUiBundle.js";
+import { createRestaurantEditorHydrationBundle } from "./createRestaurantEditorHydrationBundle.js";
+import {
+  getCurrentMobileInfoItem as getBridgeCurrentMobileInfoItem,
+  setCurrentMobileInfoItem as setBridgeCurrentMobileInfoItem,
+  setOpenBrandVerification,
+} from "../../lib/restaurantRuntime/restaurantRuntimeBridge.js";
 
 const { logDebug, setDebugJson } = initializeRestaurantRuntimeEnvironment();
 
@@ -90,7 +91,6 @@ let hidePhotoAnalysisLoadingInRow = () => {};
 let updatePhotoAnalysisLoadingStatus = () => {};
 let showPhotoAnalysisResultButton = () => {};
 let collectAllBrandItems = null;
-let openBrandVerification = () => {};
 let openChangeLog = () => {};
 let updateLastConfirmedText = () => {};
 let openFeedbackModal = () => {};
@@ -151,7 +151,6 @@ let navigateWithCheck = (url) => {
   window.location.href = url;
 };
 let mobileInfoPanel = null;
-let currentMobileInfoItem = null;
 let ensureMobileInfoPanel = () => null;
 let renderMobileInfo = () => {};
 let syncMobileInfoPanel = () => {};
@@ -204,6 +203,7 @@ let toggleLoveDishInTooltip = () => {};
 let computeStatus = () => "unknown";
 let hasCrossContamination = () => false;
 let tooltipBodyHTML = () => "";
+let renderGroupedSourcesHtml = () => "";
 let setOverlayPulseColor = () => {};
 let hidePageLoader = () => {};
 let div = () => document.createElement("div");
@@ -220,19 +220,18 @@ let getTipPinned = () => false;
 let getPinnedOverlayItem = () => null;
 let pageTip = null;
 
-function adjustMobileInfoPanelForZoom() {
-  // No longer needed since pinch-to-zoom is disabled
-  // Keeping function for compatibility
-}
-
-const pageServicesRuntime = createPageServicesRuntime({
+const {
+  pageServicesRuntime,
+  orderFlow,
+  dishEditorRuntime,
+  normalizeRestaurant,
+  adjustMobileInfoPanelForZoom,
+} = createRestaurantRuntimeCore({
   state,
   slug,
   allergenConfig,
-  normalizeRestaurant,
   insertChangeLogEntry,
   fetchChangeLogEntries,
-  adjustMobileInfoPanelForZoom,
   getTipPinned: () => getTipPinned(),
   getMobileInfoPanel: () => mobileInfoPanel,
   setMobileInfoPanel: (panel) => {
@@ -243,12 +242,32 @@ const pageServicesRuntime = createPageServicesRuntime({
     zoomedOverlayItem = item || null;
   },
   normalizeAllergen,
+  normalizeDietLabel,
   getDietAllergenConflicts,
   ALLERGENS,
   DIETS,
   ALLERGEN_EMOJI,
   DIET_EMOJI,
   supabaseClient: window.supabaseClient,
+  current: {
+    openBrandIdentificationChoice,
+    showIngredientPhotoUploadModal,
+    showPhotoAnalysisLoadingInRow,
+    hidePhotoAnalysisLoadingInRow,
+    updatePhotoAnalysisLoadingStatus,
+    showPhotoAnalysisResultButton,
+    aiAssistState,
+    aiAssistSetStatus,
+    ensureAiAssistElements,
+    collectAiTableData,
+    renderAiTable,
+    openDishEditor,
+    handleDishEditorResult,
+    handleDishEditorError,
+    rebuildBrandMemoryFromRestaurant,
+    getAiAssistBackdrop,
+    getAiAssistTableBody,
+  },
 });
 ({
   getMenuState,
@@ -285,7 +304,6 @@ const pageServicesRuntime = createPageServicesRuntime({
 } = pageServicesRuntime);
 window.setOverlayPulseColor = setOverlayPulseColor;
 
-const orderFlow = orderRuntime.orderFlow;
 const {
   applyDefaultUserName,
   rerenderOrderConfirmDetails,
@@ -316,43 +334,6 @@ const {
   updateOrderConfirmAuthState,
   initOrderSidebar,
 } = orderRuntime;
-
-const dishEditorRuntime = createDishEditorRuntime({
-  esc,
-  state,
-  normalizeDietLabel,
-  normalizeAllergen,
-  formatAllergenLabel,
-  getDietAllergenConflicts,
-  getIssueReportMeta,
-  ALLERGENS,
-  ALLERGEN_EMOJI,
-  DIETS,
-  DIET_EMOJI,
-  cap,
-  norm,
-  tooltipBodyHTML,
-  send,
-  current: {
-    openBrandIdentificationChoice,
-    showIngredientPhotoUploadModal,
-    showPhotoAnalysisLoadingInRow,
-    hidePhotoAnalysisLoadingInRow,
-    updatePhotoAnalysisLoadingStatus,
-    showPhotoAnalysisResultButton,
-    aiAssistState,
-    aiAssistSetStatus,
-    ensureAiAssistElements,
-    collectAiTableData,
-    renderAiTable,
-    openDishEditor,
-    handleDishEditorResult,
-    handleDishEditorError,
-    rebuildBrandMemoryFromRestaurant,
-    getAiAssistBackdrop,
-    getAiAssistTableBody,
-  },
-});
 ({
   openBrandIdentificationChoice,
   showIngredientPhotoUploadModal,
@@ -373,14 +354,12 @@ const dishEditorRuntime = createDishEditorRuntime({
   getAiAssistTableBody,
 } = dishEditorRuntime);
 
-function normalizeRestaurant(row) {
-  return normalizeRestaurantRow(row, {
-    normalizeAllergen,
-    normalizeDietLabel,
-  });
-}
-
-const pageUiOptions = createPageUiOptions({
+const {
+  pageUiRuntime,
+  renderTopbar,
+  overlayUiRuntime,
+  restaurantViewRuntime,
+} = createRestaurantPageUiBundle({
   state,
   slug,
   urlQR,
@@ -404,12 +383,14 @@ const pageUiOptions = createPageUiOptions({
   showAddToOrderConfirmation,
   addDishToOrder,
   getDishCompatibilityDetails,
+  getOrderItems: () => window.orderItems,
+  getLovedDishesSet: () => window.lovedDishesSet,
+  getSupabaseClient: () => window.supabaseClient,
   ensureMobileInfoPanel,
   getMobileInfoPanel: () => mobileInfoPanel,
-  getCurrentMobileInfoItem: () => currentMobileInfoItem,
+  getCurrentMobileInfoItem: () => getBridgeCurrentMobileInfoItem(),
   setCurrentMobileInfoItem: (item) => {
-    currentMobileInfoItem = item;
-    window.currentMobileInfoItem = item;
+    setBridgeCurrentMobileInfoItem(item);
   },
   getIsOverlayZoomed: () => isOverlayZoomed,
   adjustMobileInfoPanelForZoom,
@@ -432,7 +413,7 @@ const pageUiOptions = createPageUiOptions({
   zoomOutOverlay,
   zoomToOverlay,
   clearCurrentMobileInfoItem: () => {
-    currentMobileInfoItem = null;
+    setBridgeCurrentMobileInfoItem(null);
   },
   hasCrossContamination,
   computeStatus,
@@ -451,11 +432,9 @@ const pageUiOptions = createPageUiOptions({
   bindSavedPreferenceButtons,
   bindRestaurantActionButtons,
 });
-const pageUiRuntime = createPageUiRuntime(pageUiOptions);
 openFeedbackModal = pageUiRuntime.openFeedbackModal || openFeedbackModal;
 openReportIssueModal =
   pageUiRuntime.openReportIssueModal || openReportIssueModal;
-const { renderTopbar, overlayUiRuntime, restaurantViewRuntime } = pageUiRuntime;
 ({
   pageTip,
   showTipIn,
@@ -492,134 +471,130 @@ const {
   pageRouterRuntime,
   unsavedGuardRuntime,
   hydrationRuntime,
-} = createPageEditorHydrationRuntime(
-  createPageEditorHydrationOptions({
-    state,
-    renderTopbar,
-    mountEditorShell,
-    setRootOffsetPadding,
-    bindEditorToolbarScale,
-    initializeEditorAssets,
-    initEditorSections,
-    div,
-    createDirtyController,
-    createEditorChangeState,
-    initEditorHistory,
-    initEditorOverlays,
-    initEditorSaveFlow,
-    send,
-    esc,
-    aiAssistSetStatus,
-    cap,
-    formatAllergenLabel,
-    getDietAllergenConflicts,
-    tooltipBodyHTML,
-    createEditorLastConfirmedUpdater,
-    getWeeksAgoInfo,
-    fmtDateTime,
-    initBrandVerification,
-    getIssueReportMeta,
-    openDishEditor,
-    getAiAssistTableBody,
-    showIngredientPhotoUploadModal,
-    renderGroupedSourcesHtml,
-    configureModalClose,
-    normalizeDietLabel,
-    normalizeAllergen,
-    ALLERGENS,
-    DIETS,
-    norm,
-    getSupabaseKey: () =>
-      typeof window !== "undefined" ? window.SUPABASE_KEY || "" : "",
-    getFetchProductByBarcode: () =>
-      typeof window !== "undefined"
-        ? window.fetchProductByBarcode || null
-        : null,
-    getShowReplacementPreview: () =>
-      typeof window !== "undefined"
-        ? window.showReplacementPreview || null
-        : null,
-    initChangeLog,
-    initEditorSettings,
-    orderFlow,
-    bindEditorRuntimeBindings,
-    bindEditorHistoryControls,
-    bindDetectDishesButton,
-    detectDishesOnMenu,
-    initEditorNavigation,
-    initMenuImageEditor,
-    analyzeBoxSizes,
-    splitImageIntoSections,
-    bindEditorBackButton,
-    createEditorItemEditor,
-    openPendingDishInEditor,
-    applyPendingMenuIndexRemap,
-    onEditorSaveApi: (api) => {
-      editorSaveApi = api;
-    },
-    onCollectAllBrandItems: (collector) => {
-      collectAllBrandItems = collector;
-      window.collectAllBrandItems = collectAllBrandItems;
-      window.collectAiBrandItems = collectAllBrandItems;
-    },
-    onOpenBrandVerification: (openFn) => {
-      openBrandVerification = openFn;
-    },
-    onOpenChangeLog: (openFn) => {
-      openChangeLog = openFn;
-    },
-    onUpdateLastConfirmedText: (updater) => {
-      updateLastConfirmedText = updater;
-    },
-    renderApp: () => {
-      render();
-    },
-    setOrderSidebarVisibility,
-    renderCardsPage,
-    renderRestaurant,
-    renderRestaurantReportPage,
-    mountReportShell,
-    hidePageLoader,
-    collectAiTableData,
-    getAiAssistBackdrop,
-    getAiAssistState: () => aiAssistState,
-    getNameInput: () => document.getElementById("aiAssistNameInput"),
-    getEditorDirty: () => window.editorDirty,
-    onClearDirty: () => {
-      window.editorDirty = false;
-      if (aiAssistState) aiAssistState.savedToDish = true;
-    },
-    urlQR,
-    applyDefaultUserName,
-    initDinerNotifications,
-    closeQrPromo,
-    hideQrBanner,
-    rerenderOrderConfirmDetails,
-    normalizeRestaurant,
-    stopOrderRefresh,
-    persistTabletStateSnapshot,
-    renderOrderSidebarStatus,
-    clearOrderItemSelections,
-    restoreOrderItems,
-    persistOrderItems,
-    updateOrderSidebar,
-    openOrderSidebar,
-    rebuildBrandMemoryFromRestaurant,
-    handleDishEditorResult,
-    handleDishEditorError,
-    getEditorSaveApi: () => editorSaveApi,
-    checkForActiveOrders,
-    updateLastConfirmedText,
-    maybeInitHowItWorksTour,
-    updateFullScreenAllergySummary,
-    openChangeLog: () => openChangeLog(),
-    initOrderSidebar,
-    getOrderFormStateStorageKey,
-    checkUserAuth,
-    restoreOrderFormState,
-    updateOrderConfirmAuthState,
-  }),
-);
+} = createRestaurantEditorHydrationBundle({
+  state,
+  renderTopbar,
+  mountEditorShell,
+  setRootOffsetPadding,
+  bindEditorToolbarScale,
+  initializeEditorAssets,
+  initEditorSections,
+  div,
+  createDirtyController,
+  createEditorChangeState,
+  initEditorHistory,
+  initEditorOverlays,
+  initEditorSaveFlow,
+  send,
+  esc,
+  aiAssistSetStatus,
+  cap,
+  formatAllergenLabel,
+  getDietAllergenConflicts,
+  tooltipBodyHTML,
+  createEditorLastConfirmedUpdater,
+  getWeeksAgoInfo,
+  fmtDateTime,
+  initBrandVerification,
+  getIssueReportMeta,
+  openDishEditor,
+  getAiAssistTableBody,
+  showIngredientPhotoUploadModal,
+  renderGroupedSourcesHtml,
+  configureModalClose,
+  normalizeDietLabel,
+  normalizeAllergen,
+  ALLERGENS,
+  DIETS,
+  norm,
+  getSupabaseKey: () =>
+    typeof window !== "undefined" ? window.SUPABASE_KEY || "" : "",
+  getFetchProductByBarcode: () =>
+    typeof window !== "undefined"
+      ? window.fetchProductByBarcode || null
+      : null,
+  getShowReplacementPreview: () =>
+    typeof window !== "undefined" ? window.showReplacementPreview || null : null,
+  initChangeLog,
+  initEditorSettings,
+  orderFlow,
+  bindEditorRuntimeBindings,
+  bindEditorHistoryControls,
+  bindDetectDishesButton,
+  detectDishesOnMenu,
+  initEditorNavigation,
+  initMenuImageEditor,
+  analyzeBoxSizes,
+  splitImageIntoSections,
+  bindEditorBackButton,
+  createEditorItemEditor,
+  openPendingDishInEditor,
+  applyPendingMenuIndexRemap,
+  onEditorSaveApi: (api) => {
+    editorSaveApi = api;
+  },
+  onCollectAllBrandItems: (collector) => {
+    collectAllBrandItems = collector;
+    window.collectAllBrandItems = collectAllBrandItems;
+    window.collectAiBrandItems = collectAllBrandItems;
+  },
+  onOpenBrandVerification: (openFn) => {
+    setOpenBrandVerification(openFn);
+  },
+  onOpenChangeLog: (openFn) => {
+    openChangeLog = openFn;
+  },
+  onUpdateLastConfirmedText: (updater) => {
+    updateLastConfirmedText = updater;
+  },
+  renderApp: () => {
+    render();
+  },
+  setOrderSidebarVisibility,
+  renderCardsPage,
+  renderRestaurant,
+  renderRestaurantReportPage,
+  mountReportShell,
+  hidePageLoader,
+  collectAiTableData,
+  getAiAssistBackdrop,
+  getAiAssistState: () => aiAssistState,
+  getNameInput: () => document.getElementById("aiAssistNameInput"),
+  getEditorDirty: () => window.editorDirty,
+  onClearDirty: () => {
+    window.editorDirty = false;
+    if (aiAssistState) aiAssistState.savedToDish = true;
+  },
+  urlQR,
+  applyDefaultUserName,
+  initDinerNotifications,
+  closeQrPromo,
+  hideQrBanner,
+  rerenderOrderConfirmDetails,
+  normalizeRestaurant,
+  stopOrderRefresh,
+  persistTabletStateSnapshot,
+  renderOrderSidebarStatus,
+  clearOrderItemSelections,
+  restoreOrderItems,
+  persistOrderItems,
+  updateOrderSidebar,
+  openOrderSidebar,
+  rebuildBrandMemoryFromRestaurant,
+  handleDishEditorResult,
+  handleDishEditorError,
+  getEditorSaveApi: () => editorSaveApi,
+  checkForActiveOrders,
+  updateLastConfirmedText,
+  maybeInitHowItWorksTour,
+  updateFullScreenAllergySummary,
+  openChangeLog: () => openChangeLog(),
+  initOrderSidebar,
+  getOrderFormStateStorageKey,
+  checkUserAuth,
+  restoreOrderFormState,
+  updateOrderConfirmAuthState,
+});
 renderEditor = editorRuntime.renderEditor;
 render = pageRouterRuntime.render;
 ({

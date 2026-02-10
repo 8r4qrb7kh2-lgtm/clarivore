@@ -1,3 +1,9 @@
+import {
+  getOpenConfirmOnLoad,
+  setOpenBrandVerification,
+  setOpenConfirmOnLoad,
+} from "./restaurantRuntimeBridge.js";
+
 export function bindEditorRuntimeBindings(options = {}) {
   const {
     confirmBtn,
@@ -54,11 +60,11 @@ export function bindEditorRuntimeBindings(options = {}) {
       openBrandVerification();
     };
   }
-  window.openBrandVerification = openBrandVerification;
-  if (window.__openConfirmOnLoad) {
+  setOpenBrandVerification(openBrandVerification);
+  if (getOpenConfirmOnLoad()) {
     setTimeout(() => {
       openBrandVerification();
-      window.__openConfirmOnLoad = false;
+      setOpenConfirmOnLoad(false);
     }, 120);
   }
 

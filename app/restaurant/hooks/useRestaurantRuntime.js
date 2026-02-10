@@ -66,14 +66,7 @@ export function useRestaurantRuntime({ slug, isQrVisit, inviteToken }) {
 
         if (cancelled) return;
 
-        if (typeof runtimeModule?.hydrateRestaurantBootPayload === "function") {
-          runtimeModule.hydrateRestaurantBootPayload(result.payload);
-        } else {
-          // Legacy fallback while older module bundles are still present.
-          window.__restaurantBootPayload = result.payload;
-          window.__restaurantBootPayloadConsumed = false;
-          window.postMessage(result.payload, "*");
-        }
+        runtimeModule.hydrateRestaurantBootPayload(result.payload);
 
         if (!cancelled) {
           setStatus("");

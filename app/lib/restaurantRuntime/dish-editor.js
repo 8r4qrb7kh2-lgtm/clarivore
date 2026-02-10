@@ -7,6 +7,10 @@ import {
   dishEditorTemplate,
   imageModalTemplate,
 } from "./dish-editor-template.js";
+import {
+  getPendingIngredientToScroll,
+  setPendingIngredientToScroll,
+} from "./restaurantRuntimeBridge.js";
 
 export function initDishEditor(deps = {}) {
   const esc =
@@ -2604,11 +2608,12 @@ export function initDishEditor(deps = {}) {
       }
     }
 
-    if (window.__pendingIngredientToScroll) {
-      const pendingIngredient = window.__pendingIngredientToScroll;
+    const pendingIngredientToScroll = getPendingIngredientToScroll();
+    if (pendingIngredientToScroll) {
+      const pendingIngredient = pendingIngredientToScroll;
       requestAnimationFrame(() => {
         if (scrollDishEditorToIngredient(pendingIngredient)) {
-          window.__pendingIngredientToScroll = null;
+          setPendingIngredientToScroll(null);
         }
       });
     }

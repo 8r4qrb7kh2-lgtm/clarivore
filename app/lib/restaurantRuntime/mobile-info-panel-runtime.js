@@ -1,3 +1,9 @@
+import {
+  setCurrentMobileInfoItem as setBridgeCurrentMobileInfoItem,
+  setLastSelectedOverlay,
+  setRenderMobileInfo,
+} from "./restaurantRuntimeBridge.js";
+
 export function createMobileInfoPanelRuntime(deps = {}) {
   const state = deps.state || {};
   const esc = typeof deps.esc === "function" ? deps.esc : (value) => String(value ?? "");
@@ -56,10 +62,20 @@ export function createMobileInfoPanelRuntime(deps = {}) {
       ? deps.adjustMobileInfoPanelForZoom
       : () => {};
   const hideTip = typeof deps.hideTip === "function" ? deps.hideTip : () => {};
+  const getOrderItems =
+    typeof deps.getOrderItems === "function" ? deps.getOrderItems : () => window.orderItems;
+  const getLovedDishesSet =
+    typeof deps.getLovedDishesSet === "function"
+      ? deps.getLovedDishesSet
+      : () => window.lovedDishesSet;
+  const getSupabaseClient =
+    typeof deps.getSupabaseClient === "function"
+      ? deps.getSupabaseClient
+      : () => window.supabaseClient;
 
   function renderMobileInfo(item) {
-    window.renderMobileInfo = renderMobileInfo;
-    window.currentMobileInfoItem = item;
+    setRenderMobileInfo(renderMobileInfo);
+    setBridgeCurrentMobileInfoItem(item);
     setCurrentMobileInfoItem(item);
 
     ensureMobileInfoPanel();
@@ -96,7 +112,7 @@ export function createMobileInfoPanelRuntime(deps = {}) {
         document
           .querySelectorAll(".overlay")
           .forEach((overlay) => overlay.classList.remove("selected"));
-        window.__lastSelectedOverlay = null;
+        setLastSelectedOverlay(null);
       }
       return;
     }
@@ -109,13 +125,13 @@ export function createMobileInfoPanelRuntime(deps = {}) {
       state.diets || [],
     );
     const isInOrder =
-      (window.orderItems && dishName && window.orderItems.includes(dishName)) ||
+      (getOrderItems() && dishName && getOrderItems().includes(dishName)) ||
       false;
     const restaurantId = state.restaurant?._id || state.restaurant?.id || null;
     const dishKey = restaurantId ? `${String(restaurantId)}:${dishName}` : null;
     const isLoved =
-      dishKey && window.lovedDishesSet && window.lovedDishesSet.has(dishKey);
-    const showFavorite = !!(state.user?.loggedIn && window.supabaseClient && restaurantId);
+      dishKey && getLovedDishesSet() && getLovedDishesSet().has(dishKey);
+    const showFavorite = !!(state.user?.loggedIn && getSupabaseClient() && restaurantId);
 
     mobileInfoPanel.innerHTML = `
 <div class="mobileInfoHeaderRow">

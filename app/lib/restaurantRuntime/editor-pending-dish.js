@@ -1,12 +1,18 @@
+import {
+  getPendingDishToOpen,
+  setPendingDishToOpen,
+  setPendingIngredientToScroll,
+} from "./restaurantRuntimeBridge.js";
+
 export function openPendingDishInEditor(options = {}) {
   const { overlays = [], openItemEditor } = options;
 
-  if (!window.__pendingDishToOpen || typeof openItemEditor !== "function") {
+  const pendingDish = getPendingDishToOpen();
+  if (!pendingDish || typeof openItemEditor !== "function") {
     return;
   }
 
-  const pendingDish = window.__pendingDishToOpen;
-  window.__pendingDishToOpen = null;
+  setPendingDishToOpen(null);
 
   setTimeout(() => {
     const matchIndex = overlays.findIndex((item) => {
@@ -45,7 +51,7 @@ export function openPendingDishInEditor(options = {}) {
         const aiBtn = document.getElementById("aiAssistBtn");
         if (!aiBtn) return;
         if (pendingDish.ingredientName) {
-          window.__pendingIngredientToScroll = pendingDish.ingredientName;
+          setPendingIngredientToScroll(pendingDish.ingredientName);
         }
         aiBtn.click();
       }, 500);

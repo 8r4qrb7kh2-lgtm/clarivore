@@ -218,6 +218,16 @@ h2 {
   gap: 20px;
 }
 
+.restaurant-grid-message {
+  color: var(--muted);
+  text-align: center;
+  grid-column: 1 / -1;
+}
+
+.restaurant-grid-empty {
+  grid-column: 1 / -1;
+}
+
 .restaurant-card {
   background: rgba(17, 22, 48, 0.9);
   border: 1px solid var(--border);

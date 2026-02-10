@@ -1,3 +1,12 @@
+import {
+  getCurrentMobileInfoItem,
+  getRenderMobileInfo,
+  getShowOverlayDetails,
+  setPendingDishToOpen,
+  setPendingIngredientToScroll,
+  setStartInEditor,
+} from "./restaurantRuntime/restaurantRuntimeBridge.js";
+
 export function initAutoOpenDish(deps = {}) {
   const state = deps.state || {};
 
@@ -15,15 +24,15 @@ export function initAutoOpenDish(deps = {}) {
       dishId,
     );
 
-    window.__startInEditor = true;
-    window.__pendingDishToOpen = {
+    setStartInEditor(true);
+    setPendingDishToOpen({
       dishId: dishId,
       dishName: dishName,
       openAI: openAI === "true",
       ingredientName: ingredientName,
-    };
+    });
     if (ingredientName) {
-      window.__pendingIngredientToScroll = ingredientName;
+      setPendingIngredientToScroll(ingredientName);
     }
 
     console.log("Set __startInEditor and __pendingDishToOpen flags");
@@ -102,7 +111,7 @@ export function initAutoOpenDish(deps = {}) {
         const layer = document.querySelector(".overlayLayer");
         if (layer) {
           const boxes = layer.querySelectorAll(".overlay");
-          const showOverlayFn = window.showOverlayDetails;
+          const showOverlayFn = getShowOverlayDetails();
           if (
             boxes.length > 0 &&
             boxes[matchIndex] &&
@@ -127,11 +136,13 @@ export function initAutoOpenDish(deps = {}) {
                         panel.style.setProperty("left", "0", "important");
                         panel.style.setProperty("right", "0", "important");
                         panel.style.setProperty("bottom", "0", "important");
+                        const renderMobileInfo = getRenderMobileInfo();
+                        const currentMobileInfoItem = getCurrentMobileInfoItem();
                         if (
-                          window.renderMobileInfo &&
-                          window.currentMobileInfoItem
+                          typeof renderMobileInfo === "function" &&
+                          currentMobileInfoItem
                         ) {
-                          window.renderMobileInfo(window.currentMobileInfoItem);
+                          renderMobileInfo(currentMobileInfoItem);
                         }
                       }
                       observer.disconnect();

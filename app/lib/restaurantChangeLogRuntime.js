@@ -1,3 +1,5 @@
+import { setDisplayChangeLog } from "./restaurantRuntime/restaurantRuntimeBridge.js";
+
 export function initChangeLog(deps = {}) {
   const esc =
     typeof deps.esc === "function"
@@ -338,7 +340,7 @@ export function initChangeLog(deps = {}) {
     }
   }
   if (typeof window !== "undefined") {
-    window.displayChangeLog = displayChangeLog;
+    setDisplayChangeLog(displayChangeLog);
     window.showPhotoPreview = showPhotoPreview;
     window.restoreFromLog = restoreFromLog;
   }

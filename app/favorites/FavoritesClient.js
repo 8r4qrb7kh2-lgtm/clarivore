@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import PageShell from "../components/PageShell";
 import RestaurantCard from "../components/RestaurantCard";
+import RestaurantGridState from "../components/RestaurantGridState";
 import SimpleTopbar from "../components/SimpleTopbar";
 import {
   fetchManagerRestaurants,
@@ -212,62 +213,47 @@ export default function FavoritesClient() {
       }
     >
       <h1 style={{ textAlign: "center", marginBottom: 8 }}>My restaurants</h1>
-      <p className={`status-text ${statusType}`} style={{ textAlign: "center" }}>
-        {status}
-      </p>
-      <div className="restaurant-grid">
-        {loading ? (
-          <p
-            style={{
-              color: "var(--muted)",
-              textAlign: "center",
-              gridColumn: "1 / -1",
-            }}
-          >
-            Loading favorites...
-          </p>
-        ) : restaurants.length ? (
-          restaurants.map((restaurant) => {
-            const restaurantKey = restaurant.id ? String(restaurant.id) : "";
-            const isFavorite = restaurantKey && favoriteSet.has(restaurantKey);
-            const showAll = isOwnerUser(user) || isManagerUser(user);
+      <RestaurantGridState
+        status={status}
+        statusTone={statusType}
+        loading={loading}
+        loadingText="Loading favorites..."
+        restaurants={restaurants}
+        emptyText="No favorites yet. Add favorites from the All restaurants page."
+        renderRestaurant={(restaurant) => {
+          const restaurantKey = restaurant.id ? String(restaurant.id) : "";
+          const isFavorite = restaurantKey && favoriteSet.has(restaurantKey);
+          const showAll = isOwnerUser(user) || isManagerUser(user);
 
-            return (
-              <RestaurantCard
-                key={restaurant.id}
-                restaurant={restaurant}
-                confirmationShowAll={showAll}
-                mediaOverlay={
-                  restaurantKey ? (
-                    <button
-                      className={`favorite-toggle${isFavorite ? " is-active" : ""}`}
-                      type="button"
-                      aria-pressed={isFavorite}
-                      aria-label={
-                        isFavorite
-                          ? "Remove from favorites"
-                          : "Add to favorites"
-                      }
-                      disabled={busyId === restaurantKey}
-                      onClick={(event) => {
-                        event.preventDefault();
-                        event.stopPropagation();
-                        toggleFavorite(restaurantKey);
-                      }}
-                    >
-                      {isFavorite ? "★" : "☆"}
-                    </button>
-                  ) : null
-                }
-              />
-            );
-          })
-        ) : (
-          <div className="empty-state" style={{ gridColumn: "1 / -1" }}>
-            No favorites yet. Add favorites from the All restaurants page.
-          </div>
-        )}
-      </div>
+          return (
+            <RestaurantCard
+              key={restaurant.id}
+              restaurant={restaurant}
+              confirmationShowAll={showAll}
+              mediaOverlay={
+                restaurantKey ? (
+                  <button
+                    className={`favorite-toggle${isFavorite ? " is-active" : ""}`}
+                    type="button"
+                    aria-pressed={isFavorite}
+                    aria-label={
+                      isFavorite ? "Remove from favorites" : "Add to favorites"
+                    }
+                    disabled={busyId === restaurantKey}
+                    onClick={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      toggleFavorite(restaurantKey);
+                    }}
+                  >
+                    {isFavorite ? "★" : "☆"}
+                  </button>
+                ) : null
+              }
+            />
+          );
+        }}
+      />
     </PageShell>
   );
 }

@@ -1,3 +1,8 @@
+import {
+  callRerenderLayer,
+  getLastSelectedOverlay as readLastSelectedOverlay,
+} from "./restaurantRuntimeBridge.js";
+
 export function createMobileViewerRuntime(deps = {}) {
   const state = deps.state || {};
   const normalizeAllergen =
@@ -44,6 +49,12 @@ export function createMobileViewerRuntime(deps = {}) {
     typeof deps.setOverlayPulseColor === "function"
       ? deps.setOverlayPulseColor
       : () => {};
+  const rerenderLayer =
+    typeof deps.rerenderLayer === "function" ? deps.rerenderLayer : () => callRerenderLayer();
+  const getLastSelectedOverlay =
+    typeof deps.getLastSelectedOverlay === "function"
+      ? deps.getLastSelectedOverlay
+      : () => readLastSelectedOverlay();
 
   let mobileViewerChrome = null;
   let mobileZoomLevel = 1;
@@ -128,7 +139,7 @@ export function createMobileViewerRuntime(deps = {}) {
     if (inner) inner.style.width = width + "px";
     if (layer) layer.style.width = width + "px";
     requestAnimationFrame(() => {
-      if (window.__rerenderLayer__) window.__rerenderLayer__();
+      rerenderLayer();
       updateZoomIndicator();
     });
   }
@@ -143,7 +154,7 @@ export function createMobileViewerRuntime(deps = {}) {
       if (menuState.layer) menuState.layer.style.width = "";
     }
     requestAnimationFrame(() => {
-      if (window.__rerenderLayer__) window.__rerenderLayer__();
+      rerenderLayer();
       captureMenuBaseDimensions(true);
       updateZoomIndicator();
     });
@@ -216,13 +227,14 @@ export function createMobileViewerRuntime(deps = {}) {
       setTimeout(updatePanel, 50);
       setTimeout(updatePanel, 150);
 
-      if (getCurrentMobileInfoItem() && window.__lastSelectedOverlay) {
+      const lastSelectedOverlay = getLastSelectedOverlay();
+      if (getCurrentMobileInfoItem() && lastSelectedOverlay) {
         const reapplySelection = () => {
           const layer = document.querySelector(".overlayLayer");
           if (!layer) return;
           const boxes = layer.querySelectorAll(".overlay");
           boxes.forEach((box, idx) => {
-            if (idx === window.__lastSelectedOverlay.index) {
+            if (idx === lastSelectedOverlay.index) {
               document
                 .querySelectorAll(".overlay")
                 .forEach((overlay) => overlay.classList.remove("selected"));

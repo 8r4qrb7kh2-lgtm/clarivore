@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import PageShell from "../components/PageShell";
 import SimpleTopbar from "../components/SimpleTopbar";
 import RestaurantCard from "../components/RestaurantCard";
+import RestaurantGridState from "../components/RestaurantGridState";
 import { filterRestaurantsByVisibility } from "../lib/restaurantVisibility";
 import { supabaseClient as supabase } from "../lib/supabase";
 import { resolveGreetingFirstName } from "../lib/userIdentity";
@@ -147,41 +148,21 @@ export default function HomeClient() {
           </Link>
         </div>
 
-        <p className={`status-text ${status ? "error" : ""}`} style={{ textAlign: "center" }}>
-          {status}
-        </p>
-
-        <div className="restaurant-grid">
-          {loading ? (
-            <p
-              style={{
-                color: "var(--muted)",
-                textAlign: "center",
-                gridColumn: "1 / -1",
-              }}
-            >
-              Loading restaurants...
-            </p>
-          ) : restaurants.length ? (
-            restaurants.map((restaurant) => (
-              <RestaurantCard
-                key={restaurant.id}
-                restaurant={restaurant}
-                confirmationUseMonthLabel
-              />
-            ))
-          ) : (
-            <p
-              style={{
-                color: "var(--muted)",
-                textAlign: "center",
-                gridColumn: "1 / -1",
-              }}
-            >
-              No recent confirmations yet.
-            </p>
+        <RestaurantGridState
+          status={status}
+          statusTone={status ? "error" : ""}
+          loading={loading}
+          loadingText="Loading restaurants..."
+          restaurants={restaurants}
+          emptyText="No recent confirmations yet."
+          renderRestaurant={(restaurant) => (
+            <RestaurantCard
+              key={restaurant.id}
+              restaurant={restaurant}
+              confirmationUseMonthLabel
+            />
           )}
-        </div>
+        />
       </section>
     </PageShell>
   );

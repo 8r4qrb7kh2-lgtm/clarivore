@@ -7,6 +7,7 @@ import { createMenuOverlayRuntime } from "./menu-overlays.js";
 import { bindMenuOverlayListeners } from "./menu-overlay-listeners.js";
 import { initializeMenuLayout } from "./menu-layout.js";
 import { setupMenuPinchZoom } from "./menu-pinch-zoom.js";
+import { callRerenderLayer } from "./restaurantRuntimeBridge.js";
 
 export function createRestaurantViewRuntime(deps = {}) {
   const state = deps.state || {};
@@ -199,7 +200,7 @@ export function createRestaurantViewRuntime(deps = {}) {
     getCurrentMobileInfoItem,
     updateFullScreenAllergySummary,
     rerenderLayer: () => {
-      if (window.__rerenderLayer__) window.__rerenderLayer__();
+      callRerenderLayer();
     },
   });
 
@@ -210,7 +211,7 @@ export function createRestaurantViewRuntime(deps = {}) {
     updateOrderSidebar,
     openOrderSidebar,
     rerenderLayer: () => {
-      if (window.__rerenderLayer__) window.__rerenderLayer__();
+      callRerenderLayer();
     },
   });
 

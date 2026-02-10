@@ -14,7 +14,7 @@
 - Hardcoded Supabase credentials removed from `api/ai-proxy.js` in favor of env vars.
 - `report-issue`, `my-dishes`, `order-feedback`, `kitchen-tablet`, `server-tablet`, `admin-dashboard`, `manager-dashboard`, and `help-contact` no longer depend on legacy `/js/shared-nav.js`.
 - App-level `shared-nav` imports are now fully removed.
-- `restaurant` runtime entry points are app-local modules (`app/**/runtime/legacy/*`) instead of `/public/js/*` URL imports.
+- `restaurant` runtime entry points are app-local modules (`app/restaurant/runtime/*` + `app/lib/restaurantRuntime/*`) instead of `/public/js/*` URL imports.
 - App-level `webpackIgnore` imports are fully removed.
 - Shared notification/allergen helpers moved into app modules:
   - `app/lib/orderNotifications.js`
@@ -37,8 +37,12 @@
 - Refactored both tablet monitor routes (`kitchen-tablet`, `server-tablet`) to use shared monitor layout components.
 - Introduced shared restaurant card component in `app/components/RestaurantCard.js`.
 - Refactored `home`, `restaurants`, and `favorites` to render the same shared restaurant card UI component.
+- Introduced shared restaurant list state component in `app/components/RestaurantGridState.js`.
+- Refactored `home`, `restaurants`, and `favorites` to reuse one shared status/loading/empty + grid rendering component instead of duplicating page-local list markup.
 - Removed duplicated route-level inline restaurant card CSS from `app/restaurants/head.js` in favor of shared stylesheet classes.
-- Consolidated duplicated legacy runtime Supabase bridge modules into `app/runtime/legacy/supabase-client.js`.
+- Removed the final app-level legacy runtime Supabase bridge and legacy runtime folder:
+  - `app/runtime/legacy/supabase-client.js` (removed)
+  - `app/runtime/legacy` (removed)
 - Added shared owner/manager access helpers in `app/lib/managerRestaurants.js`:
   - `isOwnerUser`
   - `isManagerUser`
@@ -190,6 +194,35 @@
   - added `app/restaurant/hooks/useRestaurantRuntimeEnvironment.js`
   - wired `app/restaurant/RestaurantClient.js` and `app/restaurant/hooks/useRestaurantRuntime.js` to initialize runtime environment via shared helper/hook
   - removed inline runtime environment bootstrapping code from `app/restaurant/runtime/restaurantPageRuntime.js`
+- Continued decomposing `restaurant` runtime orchestration into focused bootstrap modules:
+  - added `app/restaurant/runtime/createRestaurantRuntimeCore.js` (page services + dish editor core wiring)
+  - added `app/restaurant/runtime/createRestaurantPageUiBundle.js` (page UI option/runtime composition)
+  - added `app/restaurant/runtime/createRestaurantEditorHydrationBundle.js` (editor/hydration bundle composition)
+  - updated `app/restaurant/runtime/restaurantPageRuntime.js` to consume these modules instead of inlining all orchestration setup
+- Added shared restaurant runtime bridge state module `app/lib/restaurantRuntime/restaurantRuntimeBridge.js` to centralize cross-module globals and progressively replace direct `window.*` coupling for:
+  - overlay detail callbacks + layer rerender (`showOverlayDetails`, `__rerenderLayer__`)
+  - mobile info panel/render state (`renderMobileInfo`, `currentMobileInfoItem`, `__lastSelectedOverlay`)
+  - editor/deep-link/open-on-load flags (`__startInEditor`, `__pendingDishToOpen`, `__pendingIngredientToScroll`, `__openLogOnLoad`, `__openConfirmOnLoad`)
+  - editor modal/change-log callbacks (`openBrandVerification`, `displayChangeLog`)
+- Refactored key restaurant runtime modules to consume bridge APIs instead of direct `window` globals:
+  - `app/restaurant/boot/pageFlags.js`
+  - `app/restaurant/restaurantBootService.js`
+  - `app/lib/pageUiOptionsRuntime.js`
+  - `app/lib/restaurantRuntime/overlay-ui-runtime.js`
+  - `app/lib/restaurantRuntime/tooltip-runtime.js`
+  - `app/lib/autoOpenDishRuntime.js`
+  - `app/lib/restaurantMessageHandler.js`
+  - `app/lib/restaurantChangeLogRuntime.js`
+  - `app/lib/restaurantRuntime/menu-draw-runtime.js`
+  - `app/lib/restaurantRuntime/mobile-viewer-runtime.js`
+  - `app/lib/restaurantRuntime/mobile-info-panel-runtime.js`
+  - `app/lib/restaurantRuntime/mobile-overlay-zoom.js`
+  - `app/lib/restaurantRuntime/editor-runtime-bindings.js`
+  - `app/lib/restaurantRuntime/editor-pending-dish.js`
+  - `app/lib/restaurantRuntime/dish-editor.js`
+  - `app/restaurant/runtime/restaurantPageRuntime.js`
+- Removed obsolete restaurant runtime hydration fallback in `app/restaurant/hooks/useRestaurantRuntime.js`; the Next runtime now directly hydrates through `restaurantPageRuntime` export only.
+- Removed legacy-only local dev server command (`dev:legacy`) from `package.json`.
 - Removed the final app-local `restaurant` runtime legacy entrypoint:
   - moved `app/restaurant/runtime/legacy/restaurant-page.js` to `app/restaurant/runtime/restaurantPageRuntime.js`
   - updated `app/restaurant/runtime/scriptLoader.js` to import `./restaurantPageRuntime.js`

@@ -1,3 +1,5 @@
+import { callRerenderLayer } from "./restaurantRuntimeBridge.js";
+
 export function initMobileOverlayZoom(deps = {}) {
   const getMenuState =
     typeof deps.getMenuState === "function" ? deps.getMenuState : () => ({});
@@ -34,6 +36,18 @@ export function initMobileOverlayZoom(deps = {}) {
   const onZoomChange =
     typeof deps.onZoomChange === "function" ? deps.onZoomChange : () => {};
   const state = deps.state || {};
+  const getLovedDishesSet =
+    typeof deps.getLovedDishesSet === "function"
+      ? deps.getLovedDishesSet
+      : () => window.lovedDishesSet;
+  const getOrderItems =
+    typeof deps.getOrderItems === "function" ? deps.getOrderItems : () => window.orderItems;
+  const getSupabaseClient =
+    typeof deps.getSupabaseClient === "function"
+      ? deps.getSupabaseClient
+      : () => window.supabaseClient;
+  const rerenderLayer =
+    typeof deps.rerenderLayer === "function" ? deps.rerenderLayer : () => callRerenderLayer();
 
   let isOverlayZoomed = false;
   let zoomedOverlayItem = null;
@@ -72,14 +86,14 @@ export function initMobileOverlayZoom(deps = {}) {
       const restaurantId = state.restaurant?._id || state.restaurant?.id || null;
       const dishKey = restaurantId ? `${String(restaurantId)}:${dishName}` : null;
       const isLoved =
-        dishKey && window.lovedDishesSet && window.lovedDishesSet.has(dishKey);
+        dishKey && getLovedDishesSet() && getLovedDishesSet().has(dishKey);
       const showFavorite = !!(
         state.user?.loggedIn &&
-        window.supabaseClient &&
+        getSupabaseClient() &&
         restaurantId
       );
       const isInOrder =
-        (window.orderItems && dishName && window.orderItems.includes(dishName)) ||
+        (getOrderItems() && dishName && getOrderItems().includes(dishName)) ||
         false;
 
       actionsEl.innerHTML = `
@@ -411,9 +425,7 @@ export function initMobileOverlayZoom(deps = {}) {
         void document.body.offsetHeight;
 
         requestAnimationFrame(() => {
-          if (typeof window.__rerenderLayer__ === "function") {
-            window.__rerenderLayer__();
-          }
+          rerenderLayer();
 
           window.scrollTo(preZoomScrollPos.x, preZoomScrollPos.y);
 

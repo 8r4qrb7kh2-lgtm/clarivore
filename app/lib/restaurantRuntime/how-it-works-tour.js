@@ -1,3 +1,5 @@
+import { getShowOverlayDetails } from "./restaurantRuntimeBridge.js";
+
 const HOW_IT_WORKS_TOUR_STEPS = [
   {
     id: "intro",
@@ -229,8 +231,9 @@ export function createHowItWorksTour({
     const overlayEl = document.querySelector(`[data-item-id="${escaped}"]`);
     if (overlayEl) {
       overlayEl.scrollIntoView({ behavior: "smooth", block: "center" });
-      if (typeof window.showOverlayDetails === "function" && item) {
-        window.showOverlayDetails(
+      const showOverlayDetails = getShowOverlayDetails();
+      if (typeof showOverlayDetails === "function" && item) {
+        showOverlayDetails(
           { type: "click", pointerType: "mouse" },
           item,
           overlayEl,

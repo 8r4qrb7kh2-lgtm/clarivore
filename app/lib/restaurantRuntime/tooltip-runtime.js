@@ -31,6 +31,16 @@ export function createTooltipRuntime(deps = {}) {
     typeof deps.setOverlayPulseColor === "function"
       ? deps.setOverlayPulseColor
       : () => {};
+  const getOrderItems =
+    typeof deps.getOrderItems === "function" ? deps.getOrderItems : () => window.orderItems;
+  const getLovedDishesSet =
+    typeof deps.getLovedDishesSet === "function"
+      ? deps.getLovedDishesSet
+      : () => window.lovedDishesSet;
+  const getSupabaseClient =
+    typeof deps.getSupabaseClient === "function"
+      ? deps.getSupabaseClient
+      : () => window.supabaseClient;
 
   let tipInteracted = false;
   let tipPinned = false;
@@ -114,8 +124,9 @@ export function createTooltipRuntime(deps = {}) {
     const restaurantId = state.restaurant?._id || state.restaurant?.id || null;
     const dishName = title || "Unnamed dish";
     const dishKey = restaurantId ? `${String(restaurantId)}:${dishName}` : null;
+    const lovedDishesSet = getLovedDishesSet();
     const isLoved =
-      dishKey && window.lovedDishesSet && window.lovedDishesSet.has(dishKey);
+      dishKey && lovedDishesSet && lovedDishesSet.has(dishKey);
     const loveButtonId = dishKey
       ? `love-btn-tooltip-${dishKey.replace(/[^a-zA-Z0-9]/g, "-")}`
       : null;
@@ -132,8 +143,9 @@ export function createTooltipRuntime(deps = {}) {
         ? '<div class="tipHoverMessage">Select item for more options</div>'
         : "";
 
+    const orderItems = getOrderItems();
     const isInOrder =
-      (window.orderItems && title && window.orderItems.includes(title)) || false;
+      (orderItems && title && orderItems.includes(title)) || false;
     const addToOrderButton =
       showButtons && title
         ? `<button type="button" class="addToOrderBtn" data-dish-name="${esc(title)}" id="addToOrderBtn_${esc(title).replace(/[^a-zA-Z0-9]/g, "_")}" ${isInOrder ? "disabled" : ""}>${isInOrder ? "Added" : "Add to order"}</button>`
@@ -171,7 +183,7 @@ ${addToOrderButton}
     }
 
     const loveBtn = el.querySelector(".love-button-tooltip");
-    if (loveBtn && window.supabaseClient && state.user?.loggedIn) {
+    if (loveBtn && getSupabaseClient() && state.user?.loggedIn) {
       const restaurantIdAttr = loveBtn.getAttribute("data-restaurant-id");
       const dishNameAttr = loveBtn.getAttribute("data-dish-name");
       if (restaurantIdAttr && dishNameAttr) {

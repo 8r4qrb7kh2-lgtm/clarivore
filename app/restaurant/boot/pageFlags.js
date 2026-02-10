@@ -1,3 +1,9 @@
+import {
+  setOpenConfirmOnLoad,
+  setOpenLogOnLoad,
+  setStartInEditor,
+} from "../../lib/restaurantRuntime/restaurantRuntimeBridge.js";
+
 export function applyConsoleReportingPreference() {
   const search = window.location.search || "";
   const enabled =
@@ -26,10 +32,9 @@ export function applyModeFlags({ editParam, isQrVisit, openLogParam, openConfirm
     } catch (_) {}
   }
 
-  window.__startInEditor = shouldStartInEditor;
-  window.__openLogOnLoad = openLogParam === "true" || openLogParam === "1";
-  window.__openConfirmOnLoad =
-    openConfirmParam === "true" || openConfirmParam === "1";
+  setStartInEditor(shouldStartInEditor);
+  setOpenLogOnLoad(openLogParam === "true" || openLogParam === "1");
+  setOpenConfirmOnLoad(openConfirmParam === "true" || openConfirmParam === "1");
 }
 
 export function attachInviteBanner(inviteToken) {

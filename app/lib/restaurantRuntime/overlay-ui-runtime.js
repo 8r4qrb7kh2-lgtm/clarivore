@@ -82,6 +82,16 @@ export function createOverlayUiRuntime(deps = {}) {
       : (value) => String(value ?? "");
   const getMenuState =
     typeof deps.getMenuState === "function" ? deps.getMenuState : () => ({});
+  const getOrderItems =
+    typeof deps.getOrderItems === "function" ? deps.getOrderItems : () => window.orderItems;
+  const getLovedDishesSet =
+    typeof deps.getLovedDishesSet === "function"
+      ? deps.getLovedDishesSet
+      : () => window.lovedDishesSet;
+  const getSupabaseClient =
+    typeof deps.getSupabaseClient === "function"
+      ? deps.getSupabaseClient
+      : () => window.supabaseClient;
 
   const pageTip = document.getElementById("tip");
   const tooltipRuntime = createTooltipRuntime({
@@ -95,6 +105,9 @@ export function createOverlayUiRuntime(deps = {}) {
     addDishToOrder,
     getDishCompatibilityDetails,
     setOverlayPulseColor,
+    getOrderItems,
+    getLovedDishesSet,
+    getSupabaseClient,
   });
 
   const mobileInfoPanelRuntime = createMobileInfoPanelRuntime({
@@ -114,6 +127,9 @@ export function createOverlayUiRuntime(deps = {}) {
     setCurrentMobileInfoItem,
     getIsOverlayZoomed,
     adjustMobileInfoPanelForZoom,
+    getOrderItems,
+    getLovedDishesSet,
+    getSupabaseClient,
     hideTip: () => tooltipRuntime.hideTip(),
   });
 

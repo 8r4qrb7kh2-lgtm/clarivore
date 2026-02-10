@@ -1,4 +1,14 @@
 import { filterRestaurantsByVisibility } from "./restaurantVisibility.js";
+import {
+  callRerenderLayer,
+  getDisplayChangeLog,
+  getOpenBrandVerification,
+  getOpenConfirmOnLoad,
+  getOpenLogOnLoad,
+  getStartInEditor,
+  setOpenConfirmOnLoad,
+  setOpenLogOnLoad,
+} from "./restaurantRuntime/restaurantRuntimeBridge.js";
 
 function filterOrdersByRestaurant(orderFlow, restaurantId) {
   if (!orderFlow || !orderFlow.tabletSimState) return;
@@ -246,7 +256,7 @@ function handleMessageTypes({
       }
     }
 
-    if (window.__rerenderLayer__) window.__rerenderLayer__();
+    callRerenderLayer();
     return { stop: false };
   }
 
@@ -318,8 +328,9 @@ function handleMessageTypes({
 
   if (message.type === "changeLog") {
     try {
-      if (window.displayChangeLog) {
-        window.displayChangeLog(message.logs || [], message.error);
+      const displayChangeLog = getDisplayChangeLog();
+      if (typeof displayChangeLog === "function") {
+        displayChangeLog(message.logs || [], message.error);
       }
     } catch (_) {
       // Ignore change-log modal failures
@@ -331,20 +342,21 @@ function handleMessageTypes({
 }
 
 function runEditorLoadHooks({ state, openChangeLog }) {
-  if (window.__openLogOnLoad && state.page === "editor") {
+  if (getOpenLogOnLoad() && state.page === "editor") {
     setTimeout(() => {
       if (typeof openChangeLog === "function") {
         openChangeLog();
-        window.__openLogOnLoad = false;
+        setOpenLogOnLoad(false);
       }
     }, 100);
   }
 
-  if (window.__openConfirmOnLoad && state.page === "editor") {
+  if (getOpenConfirmOnLoad() && state.page === "editor") {
     setTimeout(() => {
-      if (typeof window.openBrandVerification === "function") {
-        window.openBrandVerification();
-        window.__openConfirmOnLoad = false;
+      const openBrandVerification = getOpenBrandVerification();
+      if (typeof openBrandVerification === "function") {
+        openBrandVerification();
+        setOpenConfirmOnLoad(false);
       }
     }, 120);
   }
@@ -444,13 +456,13 @@ export function createRestaurantMessageHandler(options = {}) {
 
     if (m.page) state.page = m.page;
 
-    if (window.__startInEditor && state.canEdit) {
+    if (getStartInEditor() && state.canEdit) {
       console.log(
         "Activating editor mode from URL parameter, canEdit:",
         state.canEdit,
       );
       state.page = "editor";
-    } else if (window.__startInEditor) {
+    } else if (getStartInEditor()) {
       console.log("Editor mode requested but canEdit is:", state.canEdit);
     }
 

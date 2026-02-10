@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import PageShell from "../components/PageShell";
 import RestaurantCard from "../components/RestaurantCard";
+import RestaurantGridState from "../components/RestaurantGridState";
 import SimpleTopbar from "../components/SimpleTopbar";
 import { filterRestaurantsByVisibility } from "../lib/restaurantVisibility";
 import { supabaseClient as supabase } from "../lib/supabase";
@@ -104,56 +105,42 @@ export default function RestaurantsClient() {
       }
     >
       <h1 style={{ textAlign: "center", marginBottom: 8 }}>All restaurants</h1>
-      <p
-        id="restaurant-status"
-        className={`status-text ${status ? "error" : ""}`}
-        style={{ textAlign: "center", marginBottom: 16 }}
-      >
-        {status}
-      </p>
-      <select
-        value={sortMode}
-        onChange={(event) => setSortMode(event.target.value)}
-        style={{
-          display: "block",
-          maxWidth: 300,
-          margin: "0 auto 20px",
-          padding: "12px 14px",
-          borderRadius: 12,
-          border: "1px solid var(--border)",
-          background: "var(--panel)",
-          color: "var(--text)",
-        }}
-      >
-        <option value="name">Sort: Name (A-Z)</option>
-        <option value="last_confirmed">Sort: Allergens last confirmed</option>
-      </select>
-
-      <div className="restaurant-grid">
-        {loading ? (
-          <p
+      <RestaurantGridState
+        status={status}
+        statusTone={status ? "error" : ""}
+        statusId="restaurant-status"
+        statusMarginBottom={16}
+        betweenContent={
+          <select
+            value={sortMode}
+            onChange={(event) => setSortMode(event.target.value)}
             style={{
-              color: "var(--muted)",
-              textAlign: "center",
-              gridColumn: "1 / -1",
+              display: "block",
+              maxWidth: 300,
+              margin: "0 auto 20px",
+              padding: "12px 14px",
+              borderRadius: 12,
+              border: "1px solid var(--border)",
+              background: "var(--panel)",
+              color: "var(--text)",
             }}
           >
-            Loading restaurants...
-          </p>
-        ) : sorted.length ? (
-          sorted.map((restaurant) => (
-            <RestaurantCard
-              key={restaurant.id}
-              restaurant={restaurant}
-              confirmationUseMonthLabel
-            />
-          ))
-        ) : (
-          <div className="empty-state">
-            No restaurants yet. Encourage your favorite spots to join!
-          </div>
+            <option value="name">Sort: Name (A-Z)</option>
+            <option value="last_confirmed">Sort: Allergens last confirmed</option>
+          </select>
+        }
+        loading={loading}
+        loadingText="Loading restaurants..."
+        restaurants={sorted}
+        emptyText="No restaurants yet. Encourage your favorite spots to join!"
+        renderRestaurant={(restaurant) => (
+          <RestaurantCard
+            key={restaurant.id}
+            restaurant={restaurant}
+            confirmationUseMonthLabel
+          />
         )}
-      </div>
+      />
     </PageShell>
   );
 }

@@ -10,6 +10,10 @@ import {
 import { buildTrainingRestaurantPayload, HOW_IT_WORKS_SLUG } from "./boot/trainingRestaurant";
 import { applyConsoleReportingPreference, applyModeFlags, attachInviteBanner, trackRecentlyViewed } from "./boot/pageFlags";
 import { createEditorLock, hideEditorLockModal, showEditorLockModal } from "./boot/editorLock";
+import {
+  getStartInEditor,
+  setStartInEditor,
+} from "../lib/restaurantRuntime/restaurantRuntimeBridge.js";
 
 export function initRestaurantBootGlobals(supabaseClient) {
   window.supabaseClient = supabaseClient;
@@ -135,7 +139,7 @@ export async function buildRestaurantBootPayload({
   }
 
   let initialPage = "restaurant";
-  const wantsEditorMode = window.__startInEditor && canEdit;
+  const wantsEditorMode = getStartInEditor() && canEdit;
 
   if (wantsEditorMode && user) {
     const lockResult = await lock.acquire(
@@ -153,11 +157,11 @@ export async function buildRestaurantBootPayload({
         sameUser: lockResult.sameUser,
       });
       initialPage = "restaurant";
-      window.__startInEditor = false;
+      setStartInEditor(false);
     } else {
       console.error("Could not acquire editor lock", lockResult.error);
       initialPage = "restaurant";
-      window.__startInEditor = false;
+      setStartInEditor(false);
     }
   }
 

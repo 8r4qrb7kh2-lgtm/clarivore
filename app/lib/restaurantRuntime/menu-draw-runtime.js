@@ -1,3 +1,8 @@
+import {
+  setRerenderLayer,
+  setShowOverlayDetails,
+} from "./restaurantRuntimeBridge.js";
+
 export function createMenuDrawRuntime(deps = {}) {
   const state = deps.state || {};
   const div = typeof deps.div === "function" ? deps.div : () => document.createElement("div");
@@ -173,9 +178,8 @@ export function createMenuDrawRuntime(deps = {}) {
       trackDishInteraction,
     });
 
-    window.showOverlayDetails = showOverlayDetails;
-
-    window.__rerenderLayer__ = renderLayer;
+    setShowOverlayDetails(showOverlayDetails);
+    setRerenderLayer(renderLayer);
     captureMenuBaseDimensions(true);
 
     function applyInitialZoom() {
