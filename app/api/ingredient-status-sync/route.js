@@ -1,14 +1,13 @@
-const { PrismaClient } = require("@prisma/client");
-const { createClient } = require("@supabase/supabase-js");
+import { NextResponse } from "next/server";
+import { PrismaClient } from "@prisma/client";
+import { createClient } from "@supabase/supabase-js";
 
-let prisma;
-if (process.env.NODE_ENV === "production") {
-  prisma = new PrismaClient();
-} else {
-  if (!global.__clarivorePrisma) {
-    global.__clarivorePrisma = new PrismaClient();
-  }
-  prisma = global.__clarivorePrisma;
+export const runtime = "nodejs";
+
+const globalForPrisma = globalThis;
+const prisma = globalForPrisma.__clarivorePrisma || new PrismaClient();
+if (process.env.NODE_ENV !== "production") {
+  globalForPrisma.__clarivorePrisma = prisma;
 }
 
 const parseAiIngredients = (value) => {
@@ -40,47 +39,50 @@ const coerceRowIndex = (value, fallback) => {
   return Number.isFinite(parsed) ? parsed : fallback;
 };
 
-const respond = (res, status, payload) => {
-  res.status(status).json(payload);
-};
-
-module.exports = async (req, res) => {
-  if (req.method !== "POST") {
-    res.setHeader("Allow", "POST");
-    return respond(res, 405, { error: "Method not allowed" });
-  }
-
-  const authHeader = req.headers.authorization || "";
+export async function POST(request) {
+  const authHeader = request.headers.get("authorization") || "";
   const token = authHeader.startsWith("Bearer ")
     ? authHeader.slice("Bearer ".length)
     : null;
   if (!token) {
-    return respond(res, 401, { error: "Missing authorization token" });
+    return NextResponse.json(
+      { error: "Missing authorization token" },
+      { status: 401 },
+    );
   }
 
   const supabaseUrl =
     process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!supabaseUrl || !serviceRoleKey) {
-    return respond(res, 500, { error: "Supabase server credentials missing" });
+    return NextResponse.json(
+      { error: "Supabase server credentials missing" },
+      { status: 500 },
+    );
+  }
+
+  let body;
+  try {
+    body = await request.json();
+  } catch (_) {
+    return NextResponse.json({ error: "Invalid JSON payload" }, { status: 400 });
+  }
+
+  const { restaurantId, overlays } = body || {};
+  if (!restaurantId || !Array.isArray(overlays)) {
+    return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
   }
 
   const supabase = createClient(supabaseUrl, serviceRoleKey, {
     auth: { persistSession: false },
   });
 
-  const { data: userData, error: userError } = await supabase.auth.getUser(
-    token,
-  );
+  const { data: userData, error: userError } = await supabase.auth.getUser(token);
   if (userError || !userData?.user) {
-    return respond(res, 401, { error: "Invalid user session" });
+    return NextResponse.json({ error: "Invalid user session" }, { status: 401 });
   }
 
   const userId = userData.user.id;
-  const { restaurantId, overlays } = req.body || {};
-  if (!restaurantId || !Array.isArray(overlays)) {
-    return respond(res, 400, { error: "Invalid payload" });
-  }
 
   const manager = await prisma.restaurant_managers.findFirst({
     where: {
@@ -89,7 +91,7 @@ module.exports = async (req, res) => {
     },
   });
   if (!manager) {
-    return respond(res, 403, { error: "Not authorized" });
+    return NextResponse.json({ error: "Not authorized" }, { status: 403 });
   }
 
   const allergens = await prisma.allergens.findMany({
@@ -101,9 +103,7 @@ module.exports = async (req, res) => {
     select: { id: true, label: true },
   });
 
-  const allergenIdByKey = new Map(
-    allergens.map((row) => [row.key, row.id]),
-  );
+  const allergenIdByKey = new Map(allergens.map((row) => [row.key, row.id]));
   const dietIdByLabel = new Map(diets.map((row) => [row.label, row.id]));
   const supportedDietLabels = diets.map((row) => row.label);
 
@@ -143,9 +143,7 @@ module.exports = async (req, res) => {
       select: { id: true, row_index: true },
     });
 
-    const rowIdByIndex = new Map(
-      insertedRows.map((row) => [row.row_index, row.id]),
-    );
+    const rowIdByIndex = new Map(insertedRows.map((row) => [row.row_index, row.id]));
 
     const allergenEntries = [];
     const dietEntries = [];
@@ -171,12 +169,10 @@ module.exports = async (req, res) => {
       });
       crossContamination.forEach((key) => {
         if (!key) return;
-        const existing =
-          allergenStatus.get(key) ||
-          {
-            is_violation: false,
-            is_cross_contamination: false,
-          };
+        const existing = allergenStatus.get(key) || {
+          is_violation: false,
+          is_cross_contamination: false,
+        };
         existing.is_cross_contamination = true;
         allergenStatus.set(key, existing);
       });
@@ -227,9 +223,7 @@ module.exports = async (req, res) => {
     });
 
     if (allergenEntries.length) {
-      await prisma.dish_ingredient_allergens.createMany({
-        data: allergenEntries,
-      });
+      await prisma.dish_ingredient_allergens.createMany({ data: allergenEntries });
     }
     if (dietEntries.length) {
       await prisma.dish_ingredient_diets.createMany({ data: dietEntries });
@@ -240,10 +234,13 @@ module.exports = async (req, res) => {
     dietCount += dietEntries.length;
   }
 
-  return respond(res, 200, {
-    ok: true,
-    rows: rowCount,
-    allergens: allergenCount,
-    diets: dietCount,
-  });
-};
+  return NextResponse.json(
+    {
+      ok: true,
+      rows: rowCount,
+      allergens: allergenCount,
+      diets: dietCount,
+    },
+    { status: 200 },
+  );
+}

@@ -28,6 +28,7 @@ const PUBLIC_DIR = path.join(ROOT, 'public');
 const SOURCE_ROOTS = [
   { dir: path.join(ROOT, 'public', 'js'), modes: ['customer', 'manager'], label: 'frontend' },
   { dir: path.join(ROOT, 'supabase', 'functions'), modes: ['customer', 'manager'], label: 'backend' },
+  { dir: path.join(ROOT, 'app', 'api'), modes: ['customer', 'manager'], label: 'api' },
   { dir: path.join(ROOT, 'api'), modes: ['customer', 'manager'], label: 'api' },
   { dir: path.join(ROOT, 'docs'), modes: ['customer', 'manager'], label: 'docs' }
 ];

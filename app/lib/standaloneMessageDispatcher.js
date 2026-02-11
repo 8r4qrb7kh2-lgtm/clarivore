@@ -394,7 +394,7 @@ async function syncIngredientStatusTables({ client, restaurantId, overlays }) {
   }));
 
   try {
-    const response = await fetch("/api/ingredient-status-sync", {
+    const response = await fetch("/api/ingredient-status-sync/", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

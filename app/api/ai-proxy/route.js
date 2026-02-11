@@ -1,0 +1,67 @@
+import { NextResponse } from "next/server";
+
+export const runtime = "nodejs";
+
+export async function POST(request) {
+  let body;
+  try {
+    body = await request.json();
+  } catch (_) {
+    return NextResponse.json({ error: "Invalid JSON payload" }, { status: 400 });
+  }
+
+  const { functionName, payload } = body || {};
+
+  if (!functionName) {
+    return NextResponse.json({ error: "functionName is required" }, { status: 400 });
+  }
+
+  const supabaseUrl =
+    process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseAnonKey =
+    process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  if (!supabaseUrl || !supabaseAnonKey) {
+    return NextResponse.json(
+      { error: "Supabase env vars are missing" },
+      { status: 500 },
+    );
+  }
+
+  try {
+    const response = await fetch(`${supabaseUrl}/functions/v1/${functionName}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${supabaseAnonKey}`,
+        apikey: supabaseAnonKey,
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const text = await response.text();
+    let data = {};
+    if (text) {
+      try {
+        data = JSON.parse(text);
+      } catch {
+        data = { raw: text };
+      }
+    }
+
+    if (!response.ok) {
+      return NextResponse.json(data, { status: response.status });
+    }
+
+    return NextResponse.json(data, { status: 200 });
+  } catch (error) {
+    console.error("Proxy error:", error);
+    return NextResponse.json(
+      {
+        error: "Failed to proxy request",
+        message: error?.message || "Unknown proxy error",
+      },
+      { status: 500 },
+    );
+  }
+}

@@ -4,14 +4,15 @@
 - Web app routes are provided by the Next app router (`/app/*`).
 - Internal auth and navigation redirects now use Next routes on web.
 - Vercel config is Next-first (`vercel.json`).
-- Capacitor now uses Next export output (`webDir: "out"`).
+- Backend API endpoints now run as Next route handlers under `app/api/*`.
+- Capacitor now targets the hosted Next web app via `server.url` (no `out/` export dependency).
 - `cap:copy` and `cap:sync` now build Next before copying/syncing.
 
 ## Simplifications completed
 - Shared route fallback UI extracted to `app/components/RouteSuspense.js`.
 - Shared "last confirmed" formatting extracted to `app/lib/confirmationAge.js`.
 - Duplicate Supabase client bootstraps removed in key pages.
-- Hardcoded Supabase credentials removed from `api/ai-proxy.js` in favor of env vars.
+- Hardcoded Supabase credentials removed from the AI proxy endpoint in favor of env vars.
 - `report-issue`, `my-dishes`, `order-feedback`, `kitchen-tablet`, `server-tablet`, `admin-dashboard`, `manager-dashboard`, and `help-contact` no longer depend on legacy `/js/shared-nav.js`.
 - App-level `shared-nav` imports are now fully removed.
 - `restaurant` runtime entry points are app-local modules (`app/restaurant/runtime/*` + `app/lib/restaurantRuntime/*`) instead of `/public/js/*` URL imports.
@@ -326,28 +327,19 @@
 - Simplified runtime navigation/viewport defaults away from direct `window.*` reads:
   - `app/lib/restaurantRuntime/order-flow.js` defaults now use `location`, `innerHeight`, and global event APIs
   - `app/restaurant/runtime/restaurantPageRuntime.js` default `navigateWithCheck` now uses `location.href`
-- Replaced all legacy static route pages with thin Next compatibility redirect shells:
-  - updated these `public/*.html` files to redirect to canonical Next routes while preserving query/hash:
-    - `public/index.html` -> `/`
-    - `public/home.html` -> `/home/`
-    - `public/restaurants.html` -> `/restaurants/`
-    - `public/favorites.html` -> `/favorites/`
-    - `public/dish-search.html` -> `/dish-search/`
-    - `public/my-dishes.html` -> `/my-dishes/`
-    - `public/restaurant.html` -> `/restaurant/`
-    - `public/account.html` -> `/account/`
-    - `public/help-contact.html` -> `/help-contact/`
-    - `public/report-issue.html` -> `/report-issue/`
-    - `public/order-feedback.html` -> `/order-feedback/`
-    - `public/manager-dashboard.html` -> `/manager-dashboard/`
-    - `public/admin-dashboard.html` -> `/admin-dashboard/`
-    - `public/kitchen-tablet.html` -> `/kitchen-tablet/`
-    - `public/server-tablet.html` -> `/server-tablet/`
-  - added shared redirect helper script `public/js/legacy-route-redirect.js` so compatibility logic is centralized and reused
-- Removed unused legacy static runtime bundle files under `public/js`:
-  - deleted obsolete legacy page/runtime scripts (including full `public/js/restaurant/*` legacy tree and legacy top-level page scripts)
-  - retained only active compatibility asset in `public/js`:
-    - `public/js/legacy-route-redirect.js`
+- Retired legacy static compatibility pages and script assets:
+  - removed legacy route shells from `public/*.html`
+  - removed `public/js/legacy-route-redirect.js`
+  - added canonical `.html` deep-link redirects in `next.config.js` so old URLs resolve to App Router paths without public static pages
+- Migrated Vercel root API functions into Next route handlers:
+  - `app/api/ai-proxy/route.js`
+  - `app/api/ingredient-status-sync/route.js`
+  - removed legacy root functions:
+    - `api/ai-proxy.js`
+    - `api/ingredient-status-sync.js`
+- Dropped `output: "export"` and switched local preview to `next start`:
+  - `next.config.js` no longer exports static `out/`
+  - `package.json` preview scripts now run the Next server
 - Completed full de-windowing pass for restaurant runtime modules:
   - removed direct `window.*` usage in:
     - `app/lib/restaurantRuntime/mobile-overlay-zoom.js`
@@ -454,8 +446,8 @@
     - add/remove dish order actions through one shared dish-actions service (keeping compatibility checks and sidebar synchronization centralized)
 
 ## Current migration inventory
-- Legacy static HTML compatibility pages still present in `public/`: 15 (all are redirect shells; no legacy page UI/runtime logic)
-- Legacy runtime JS files in `public/js/`: 1 (`legacy-route-redirect.js`)
+- Legacy static HTML compatibility pages in `public/`: 0 (fully retired)
+- Legacy runtime JS files in `public/js/`: 0 (fully retired)
 - Next clients still booting legacy runtime modules via `/js/*`: 0 imports
 - App-level `webpackIgnore` imports: 0
 - Inline `onclick` handlers in `app/*`: 0
@@ -471,7 +463,6 @@
 ## Remaining high-priority work
 1. Replace the monolithic `restaurant` runtime entry (`app/restaurant/runtime/restaurantPageRuntime.js`) with native React/Next feature modules page-by-page.
 2. Continue reducing broad global DOM coupling (event bus/state lifecycle) in `app/lib/restaurantRuntime/*` into testable app-level services/hooks.
-3. Decide whether to fully remove compatibility redirect pages (`public/*.html`) once legacy deep links are no longer needed, or keep them permanently as compatibility aliases.
 
 ## Validation commands
 - `npm run build`

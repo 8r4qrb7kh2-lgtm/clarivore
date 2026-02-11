@@ -539,7 +539,7 @@ export async function requestHelpAssistant({ query, mode, messages }) {
 
   if (!data) {
     try {
-      const res = await fetch('/api/ai-proxy', {
+      const res = await fetch('/api/ai-proxy/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ functionName: 'help-assistant', payload })

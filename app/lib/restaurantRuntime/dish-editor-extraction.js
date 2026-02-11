@@ -4,7 +4,7 @@ const DEFAULT_SUPABASE_ANON_KEY =
 
 export async function requestAiExtraction(payload, options = {}) {
   const endpoint = options.endpoint || null;
-  const proxyUrl = options.proxyUrl || "/api/ai-proxy";
+  const proxyUrl = options.proxyUrl || "/api/ai-proxy/";
   const supabaseClient = options.supabaseClient || null;
   const supabaseUrl = options.supabaseUrl || DEFAULT_SUPABASE_URL;
   const supabaseAnonKey =
