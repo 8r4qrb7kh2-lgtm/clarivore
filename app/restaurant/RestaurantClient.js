@@ -16,7 +16,6 @@ import { queryKeys } from "../lib/queryKeys";
 import { supabaseClient as supabase } from "../lib/supabase";
 import { buildTrainingRestaurantPayload, HOW_IT_WORKS_SLUG } from "./boot/trainingRestaurant";
 import RestaurantEditor from "./features/editor/RestaurantEditor";
-import RestaurantOrderFlowPanel from "./features/order/RestaurantOrderFlowPanel";
 import RestaurantViewer from "./features/viewer/RestaurantViewer";
 import { useOrderFlow } from "./hooks/useOrderFlow";
 import { useRestaurantEditor } from "./hooks/useRestaurantEditor";
@@ -432,6 +431,20 @@ export default function RestaurantClient() {
     }
   }, []);
 
+  const isViewerMode = !(activeView === "editor" && boot?.canEdit);
+
+  useEffect(() => {
+    if (!boot?.restaurant || !isViewerMode) return undefined;
+    const previousBodyOverflow = document.body.style.overflow;
+    const previousHtmlOverflow = document.documentElement.style.overflow;
+    document.body.style.overflow = "hidden";
+    document.documentElement.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousBodyOverflow;
+      document.documentElement.style.overflow = previousHtmlOverflow;
+    };
+  }, [boot?.restaurant, isViewerMode]);
+
   if (!supabase) {
     return (
       <PageShell>
@@ -468,6 +481,9 @@ export default function RestaurantClient() {
 
   return (
     <PageShell
+      shellClassName={isViewerMode ? "page-shell restaurant-legacy-shell" : "page-shell"}
+      mainClassName={isViewerMode ? "page-main restaurant-legacy-main" : "page-main"}
+      contentClassName={isViewerMode ? "restaurant-legacy-content" : ""}
       topbar={
         <header className="simple-topbar restaurant-legacy-topbar">
           <div className="restaurant-legacy-topbar-inner">
@@ -545,16 +561,13 @@ export default function RestaurantClient() {
       {activeView === "editor" && boot.canEdit ? (
         <RestaurantEditor editor={editor} />
       ) : (
-        <div className="space-y-4">
-          <RestaurantViewer
-            restaurant={boot.restaurant}
-            viewer={viewer}
-            orderFlow={orderFlow}
-            lovedDishes={lovedDishesSet}
-            favoriteBusyDish={favoriteBusyDish}
-          />
-          <RestaurantOrderFlowPanel orderFlow={orderFlow} user={boot.user} />
-        </div>
+        <RestaurantViewer
+          restaurant={boot.restaurant}
+          viewer={viewer}
+          orderFlow={orderFlow}
+          lovedDishes={lovedDishesSet}
+          favoriteBusyDish={favoriteBusyDish}
+        />
       )}
     </PageShell>
   );

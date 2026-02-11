@@ -24,22 +24,35 @@ function normalizeOverlay(overlay, index) {
   };
 }
 
-function clamp(value, min, max) {
-  if (value < min) return min;
-  if (value > max) return max;
-  return value;
-}
-
-function normalizeImageList(restaurant) {
-  if (Array.isArray(restaurant?.menu_images) && restaurant.menu_images.length) {
-    return restaurant.menu_images.filter(Boolean);
-  }
-  if (restaurant?.menu_image) return [restaurant.menu_image];
-  return [];
-}
-
 function asText(value) {
   return String(value || "").trim();
+}
+
+function normalizeImageList(restaurant, overlays) {
+  const explicit = Array.isArray(restaurant?.menu_images)
+    ? restaurant.menu_images.filter(Boolean)
+    : [];
+
+  if (!explicit.length && restaurant?.menu_image) {
+    explicit.push(restaurant.menu_image);
+  }
+
+  const maxOverlayPage = overlays.reduce((max, overlay) => {
+    const pageIndex = Number.isFinite(Number(overlay?.pageIndex))
+      ? Number(overlay.pageIndex)
+      : 0;
+    return Math.max(max, pageIndex);
+  }, 0);
+
+  const requiredLength = Math.max(explicit.length, maxOverlayPage + 1, 1);
+  const fallbackImage = explicit[0] || restaurant?.menu_image || "";
+  const out = [...explicit];
+
+  while (out.length < requiredLength) {
+    out.push(fallbackImage);
+  }
+
+  return out;
 }
 
 export function useRestaurantViewer({
@@ -53,7 +66,6 @@ export function useRestaurantViewer({
   const [selectedDishId, setSelectedDishId] = useState("");
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [currentPageIndex, setCurrentPageIndex] = useState(0);
   const [initialDishResolved, setInitialDishResolved] = useState(false);
 
   const engine = useMemo(
@@ -70,13 +82,6 @@ export function useRestaurantViewer({
     ],
   );
 
-  const menuImages = useMemo(() => normalizeImageList(restaurant), [restaurant]);
-  const pageCount = menuImages.length || 1;
-
-  useEffect(() => {
-    setCurrentPageIndex((previous) => clamp(previous, 0, pageCount - 1));
-  }, [pageCount]);
-
   const normalizedOverlays = useMemo(() => {
     const list = Array.isArray(overlays)
       ? overlays
@@ -86,6 +91,12 @@ export function useRestaurantViewer({
 
     return list.map((overlay, index) => normalizeOverlay(overlay, index));
   }, [overlays, restaurant?.overlays]);
+
+  const menuImages = useMemo(
+    () => normalizeImageList(restaurant, normalizedOverlays),
+    [normalizedOverlays, restaurant],
+  );
+  const pageCount = menuImages.length;
 
   const overlaysWithStatus = useMemo(() => {
     return normalizedOverlays.map((overlay) => {
@@ -134,10 +145,9 @@ export function useRestaurantViewer({
 
     if (match) {
       setSelectedDishId(match.id);
-      setCurrentPageIndex(clamp(match.pageIndex || 0, 0, pageCount - 1));
     }
     setInitialDishResolved(true);
-  }, [initialDishName, initialDishResolved, overlaysWithStatus, pageCount]);
+  }, [initialDishName, initialDishResolved, overlaysWithStatus]);
 
   const filteredOverlays = useMemo(() => {
     const normalizedQuery = String(query || "").toLowerCase().trim();
@@ -159,24 +169,28 @@ export function useRestaurantViewer({
     });
   }, [overlaysWithStatus, query, statusFilter]);
 
-  const currentPageOverlays = useMemo(
-    () =>
-      filteredOverlays.filter((overlay) => {
-        const pageIndex = Number.isFinite(Number(overlay.pageIndex))
-          ? Number(overlay.pageIndex)
-          : 0;
-        return pageIndex === currentPageIndex;
-      }),
-    [currentPageIndex, filteredOverlays],
-  );
-
   const selectedDish = useMemo(() => {
-    if (!selectedDishId) return currentPageOverlays[0] || null;
+    if (!selectedDishId) return filteredOverlays[0] || overlaysWithStatus[0] || null;
     return (
-      currentPageOverlays.find((overlay) => overlay.id === selectedDishId) ||
+      overlaysWithStatus.find((overlay) => overlay.id === selectedDishId) ||
       null
     );
-  }, [currentPageOverlays, selectedDishId]);
+  }, [filteredOverlays, overlaysWithStatus, selectedDishId]);
+
+  const menuPages = useMemo(
+    () =>
+      menuImages.map((image, pageIndex) => ({
+        pageIndex,
+        image,
+        overlays: filteredOverlays.filter((overlay) => {
+          const overlayPage = Number.isFinite(Number(overlay.pageIndex))
+            ? Number(overlay.pageIndex)
+            : 0;
+          return overlayPage === pageIndex;
+        }),
+      })),
+    [filteredOverlays, menuImages],
+  );
 
   const statusCounts = useMemo(() => {
     return overlaysWithStatus.reduce(
@@ -192,25 +206,9 @@ export function useRestaurantViewer({
     );
   }, [overlaysWithStatus]);
 
-  const selectDish = useCallback((dishId, pageIndex = currentPageIndex) => {
+  const selectDish = useCallback((dishId) => {
     setSelectedDishId(String(dishId || ""));
-    setCurrentPageIndex(clamp(Number(pageIndex) || 0, 0, pageCount - 1));
-  }, [currentPageIndex, pageCount]);
-
-  const setPageIndex = useCallback((nextPageIndex) => {
-    setCurrentPageIndex(clamp(Number(nextPageIndex) || 0, 0, pageCount - 1));
-    setSelectedDishId("");
-  }, [pageCount]);
-
-  const nextPage = useCallback(() => {
-    setCurrentPageIndex((current) => clamp(current + 1, 0, pageCount - 1));
-    setSelectedDishId("");
-  }, [pageCount]);
-
-  const previousPage = useCallback(() => {
-    setCurrentPageIndex((current) => clamp(current - 1, 0, pageCount - 1));
-    setSelectedDishId("");
-  }, [pageCount]);
+  }, []);
 
   const addDishToOrder = useCallback(
     (dish) => {
@@ -266,20 +264,15 @@ export function useRestaurantViewer({
     setStatusFilter,
     overlays: overlaysWithStatus,
     filteredOverlays,
-    currentPageOverlays,
+    menuPages,
     selectedDish,
     selectedDishId,
     selectDish,
     statusCounts,
     addDishToOrder,
     toggleFavoriteDish,
-    menuImages,
-    currentPageIndex,
     pageCount,
-    currentPageImage: menuImages[currentPageIndex] || menuImages[0] || "",
-    setPageIndex,
-    nextPage,
-    previousPage,
+    menuImages,
     savedAllergens,
     savedDiets,
   };

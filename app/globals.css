@@ -949,9 +949,38 @@ h2 {
   white-space: nowrap;
 }
 
+.restaurant-legacy-shell {
+  height: 100vh;
+  overflow: hidden;
+}
+
+.restaurant-legacy-main {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  padding: 20px 20px 18px;
+}
+
+.restaurant-legacy-content {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
 .restaurant-legacy-viewer {
-  max-width: 1120px;
+  width: 100%;
+  max-width: 1140px;
   margin: 0 auto;
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.restaurant-legacy-header {
+  flex-shrink: 0;
 }
 
 .restaurant-legacy-title {
@@ -975,12 +1004,13 @@ h2 {
 }
 
 .restaurant-legacy-page-thumb {
+  position: relative;
   border: none;
   padding: 0;
   width: 100%;
   display: block;
-  cursor: pointer;
   background: #070b16;
+  cursor: pointer;
 }
 
 .restaurant-legacy-page-thumb img {
@@ -988,6 +1018,17 @@ h2 {
   width: 100%;
   aspect-ratio: 3 / 4;
   object-fit: cover;
+}
+
+.restaurant-legacy-page-thumb-viewport {
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  border: 1px solid rgba(230, 237, 255, 0.95);
+  border-radius: 4px;
+  box-shadow: inset 0 0 0 1px rgba(78, 101, 255, 0.5);
+  background: rgba(76, 101, 255, 0.14);
+  pointer-events: none;
 }
 
 .restaurant-legacy-page-footer {
@@ -1017,6 +1058,32 @@ h2 {
   display: flex;
   flex-direction: column;
   gap: 6px;
+}
+
+.restaurant-legacy-reference-note {
+  border-radius: 12px;
+  border: 1px solid rgba(229, 61, 58, 0.62);
+  background: rgba(96, 26, 25, 0.82);
+  color: #f7d9d9;
+  min-height: 48px;
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 0.72rem;
+}
+
+.restaurant-legacy-reference-note button {
+  border: 1px solid #a21d1d;
+  background: #bd2020;
+  color: #fff;
+  border-radius: 999px;
+  min-height: 28px;
+  padding: 0 12px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
 }
 
 .restaurant-legacy-actions-row {
@@ -1091,6 +1158,8 @@ h2 {
 }
 
 .restaurant-legacy-menu-stage {
+  flex: 1;
+  min-height: 320px;
   position: relative;
   border-radius: 18px;
   overflow: hidden;
@@ -1098,11 +1167,41 @@ h2 {
   background: #030713;
 }
 
+.restaurant-legacy-menu-scroll {
+  height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(124, 156, 255, 0.4) rgba(7, 11, 22, 0.75);
+  display: flex;
+  flex-direction: column;
+}
+
+.restaurant-legacy-menu-scroll::-webkit-scrollbar {
+  width: 10px;
+}
+
+.restaurant-legacy-menu-scroll::-webkit-scrollbar-thumb {
+  background: rgba(124, 156, 255, 0.45);
+  border-radius: 99px;
+  border: 2px solid rgba(7, 11, 22, 0.92);
+}
+
+.restaurant-legacy-menu-scroll::-webkit-scrollbar-track {
+  background: rgba(7, 11, 22, 0.92);
+}
+
+.restaurant-legacy-menu-page {
+  position: relative;
+  width: 100%;
+  display: block;
+}
+
 .restaurant-legacy-menu-image {
   display: block;
   width: 100%;
-  object-fit: contain;
-  max-height: 75vh;
+  height: auto;
 }
 
 .restaurant-legacy-no-image {
@@ -1116,14 +1215,23 @@ h2 {
 .restaurant-legacy-overlay {
   position: absolute;
   border: 2px solid #ef4444;
-  background: rgba(255, 255, 255, 0.02);
+  background: rgba(255, 255, 255, 0.01);
   border-radius: 4px;
   cursor: pointer;
-  transition: box-shadow 0.15s ease, transform 0.15s ease;
+  transition:
+    box-shadow 0.15s ease,
+    transform 0.15s ease,
+    border-color 0.15s ease;
 }
 
 .restaurant-legacy-overlay:hover {
   transform: translateY(-1px);
+}
+
+.restaurant-legacy-overlay.is-selected {
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.92),
+    0 0 0 3px rgba(76, 101, 255, 0.72);
 }
 
 .restaurant-legacy-overlay-warning {
@@ -1149,6 +1257,115 @@ h2 {
   justify-content: center;
   font-weight: 700;
   line-height: 1;
+}
+
+.restaurant-legacy-dish-popover {
+  position: absolute;
+  width: min(330px, calc(100% - 20px));
+  border-radius: 12px;
+  border: 1px solid rgba(79, 101, 255, 0.5);
+  background: rgba(17, 24, 59, 0.98);
+  box-shadow: 0 20px 56px rgba(0, 0, 0, 0.55);
+  z-index: 30;
+}
+
+.restaurant-legacy-dish-popover-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 10px 8px;
+  border-bottom: 1px solid rgba(124, 156, 255, 0.25);
+}
+
+.restaurant-legacy-dish-popover-header h2 {
+  margin: 0;
+  font-size: 2rem;
+  line-height: 1.1;
+  color: #f2f7ff;
+}
+
+.restaurant-legacy-dish-popover-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.restaurant-legacy-dish-popover-actions button {
+  border: 1px solid rgba(93, 119, 255, 0.65);
+  background: rgba(47, 67, 172, 0.8);
+  color: #f4f6ff;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  font-size: 1.15rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.restaurant-legacy-dish-popover-actions button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.restaurant-legacy-dish-popover-section {
+  padding: 8px 12px 0;
+}
+
+.restaurant-legacy-dish-popover-section h3 {
+  margin: 0 0 6px;
+  font-size: 0.95rem;
+  color: #e7edff;
+}
+
+.restaurant-legacy-dish-popover-section .dish-row {
+  margin-bottom: 6px;
+}
+
+.restaurant-legacy-dish-popover-section .dish-row.good .dish-row-title {
+  color: #4fe279;
+}
+
+.restaurant-legacy-dish-popover-section .dish-row.bad .dish-row-title {
+  color: #ff5050;
+}
+
+.restaurant-legacy-dish-popover-section .dish-row-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.restaurant-legacy-dish-popover-section .dish-row-detail {
+  font-size: 0.86rem;
+  color: #ff5959;
+  margin-top: 2px;
+}
+
+.restaurant-legacy-dish-popover-section .dish-row-empty {
+  margin: 0;
+  color: #a9b5d9;
+  font-size: 0.88rem;
+}
+
+.restaurant-legacy-dish-cross-warning {
+  margin: 8px 12px 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(250, 204, 21, 0.55);
+  background: rgba(250, 204, 21, 0.14);
+  color: #ffeaa0;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.restaurant-legacy-dish-order-btn {
+  width: calc(100% - 24px);
+  margin: 10px 12px 12px;
+  justify-content: center;
 }
 
 .restaurant-legacy-help-fab {
