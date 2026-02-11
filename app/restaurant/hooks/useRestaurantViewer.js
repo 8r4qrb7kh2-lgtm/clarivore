@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { createCompatibilityEngine } from "../features/shared/compatibility";
 
 function normalizeOverlay(overlay, index) {
@@ -8,15 +8,38 @@ function normalizeOverlay(overlay, index) {
     String(overlay?.id || overlay?.name || overlay?.title || `Dish ${index + 1}`).trim() ||
     `Dish ${index + 1}`;
 
+  const pageIndex = Number.isFinite(Number(overlay?.pageIndex))
+    ? Number(overlay.pageIndex)
+    : 0;
+
   return {
     ...overlay,
     id: dishName,
     name: dishName,
+    pageIndex: Math.max(0, pageIndex),
     x: Number(overlay?.x || 0),
     y: Number(overlay?.y || 0),
     w: Number(overlay?.w || 0),
     h: Number(overlay?.h || 0),
   };
+}
+
+function clamp(value, min, max) {
+  if (value < min) return min;
+  if (value > max) return max;
+  return value;
+}
+
+function normalizeImageList(restaurant) {
+  if (Array.isArray(restaurant?.menu_images) && restaurant.menu_images.length) {
+    return restaurant.menu_images.filter(Boolean);
+  }
+  if (restaurant?.menu_image) return [restaurant.menu_image];
+  return [];
+}
+
+function asText(value) {
+  return String(value || "").trim();
 }
 
 export function useRestaurantViewer({
@@ -25,10 +48,13 @@ export function useRestaurantViewer({
   preferences,
   mode,
   callbacks,
+  initialDishName = "",
 }) {
   const [selectedDishId, setSelectedDishId] = useState("");
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [currentPageIndex, setCurrentPageIndex] = useState(0);
+  const [initialDishResolved, setInitialDishResolved] = useState(false);
 
   const engine = useMemo(
     () =>
@@ -43,6 +69,13 @@ export function useRestaurantViewer({
       preferences?.normalizeDietLabel,
     ],
   );
+
+  const menuImages = useMemo(() => normalizeImageList(restaurant), [restaurant]);
+  const pageCount = menuImages.length || 1;
+
+  useEffect(() => {
+    setCurrentPageIndex((previous) => clamp(previous, 0, pageCount - 1));
+  }, [pageCount]);
 
   const normalizedOverlays = useMemo(() => {
     const list = Array.isArray(overlays)
@@ -80,6 +113,32 @@ export function useRestaurantViewer({
     preferences?.diets,
   ]);
 
+  useEffect(() => {
+    setInitialDishResolved(false);
+  }, [initialDishName]);
+
+  useEffect(() => {
+    if (!initialDishName || initialDishResolved || !overlaysWithStatus.length) {
+      return;
+    }
+    const normalized = asText(initialDishName).toLowerCase();
+    if (!normalized) {
+      setInitialDishResolved(true);
+      return;
+    }
+
+    const match = overlaysWithStatus.find((overlay) => {
+      const name = asText(overlay?.name || overlay?.id).toLowerCase();
+      return name === normalized;
+    });
+
+    if (match) {
+      setSelectedDishId(match.id);
+      setCurrentPageIndex(clamp(match.pageIndex || 0, 0, pageCount - 1));
+    }
+    setInitialDishResolved(true);
+  }, [initialDishName, initialDishResolved, overlaysWithStatus, pageCount]);
+
   const filteredOverlays = useMemo(() => {
     const normalizedQuery = String(query || "").toLowerCase().trim();
 
@@ -100,13 +159,24 @@ export function useRestaurantViewer({
     });
   }, [overlaysWithStatus, query, statusFilter]);
 
+  const currentPageOverlays = useMemo(
+    () =>
+      filteredOverlays.filter((overlay) => {
+        const pageIndex = Number.isFinite(Number(overlay.pageIndex))
+          ? Number(overlay.pageIndex)
+          : 0;
+        return pageIndex === currentPageIndex;
+      }),
+    [currentPageIndex, filteredOverlays],
+  );
+
   const selectedDish = useMemo(() => {
-    if (!selectedDishId) return filteredOverlays[0] || overlaysWithStatus[0] || null;
+    if (!selectedDishId) return currentPageOverlays[0] || null;
     return (
-      overlaysWithStatus.find((overlay) => overlay.id === selectedDishId) ||
+      currentPageOverlays.find((overlay) => overlay.id === selectedDishId) ||
       null
     );
-  }, [filteredOverlays, overlaysWithStatus, selectedDishId]);
+  }, [currentPageOverlays, selectedDishId]);
 
   const statusCounts = useMemo(() => {
     return overlaysWithStatus.reduce(
@@ -122,9 +192,25 @@ export function useRestaurantViewer({
     );
   }, [overlaysWithStatus]);
 
-  const selectDish = useCallback((dishId) => {
+  const selectDish = useCallback((dishId, pageIndex = currentPageIndex) => {
     setSelectedDishId(String(dishId || ""));
-  }, []);
+    setCurrentPageIndex(clamp(Number(pageIndex) || 0, 0, pageCount - 1));
+  }, [currentPageIndex, pageCount]);
+
+  const setPageIndex = useCallback((nextPageIndex) => {
+    setCurrentPageIndex(clamp(Number(nextPageIndex) || 0, 0, pageCount - 1));
+    setSelectedDishId("");
+  }, [pageCount]);
+
+  const nextPage = useCallback(() => {
+    setCurrentPageIndex((current) => clamp(current + 1, 0, pageCount - 1));
+    setSelectedDishId("");
+  }, [pageCount]);
+
+  const previousPage = useCallback(() => {
+    setCurrentPageIndex((current) => clamp(current - 1, 0, pageCount - 1));
+    setSelectedDishId("");
+  }, [pageCount]);
 
   const addDishToOrder = useCallback(
     (dish) => {
@@ -142,6 +228,36 @@ export function useRestaurantViewer({
     [callbacks],
   );
 
+  const savedAllergens = useMemo(
+    () =>
+      (preferences?.allergies || []).map((value) => ({
+        key: value,
+        label: preferences?.formatAllergenLabel
+          ? preferences.formatAllergenLabel(value)
+          : asText(value),
+        emoji: preferences?.getAllergenEmoji
+          ? preferences.getAllergenEmoji(value)
+          : "",
+      })),
+    [
+      preferences?.allergies,
+      preferences?.formatAllergenLabel,
+      preferences?.getAllergenEmoji,
+    ],
+  );
+
+  const savedDiets = useMemo(
+    () =>
+      (preferences?.diets || []).map((value) => ({
+        key: value,
+        label: preferences?.formatDietLabel
+          ? preferences.formatDietLabel(value)
+          : asText(value),
+        emoji: preferences?.getDietEmoji ? preferences.getDietEmoji(value) : "",
+      })),
+    [preferences?.diets, preferences?.formatDietLabel, preferences?.getDietEmoji],
+  );
+
   return {
     mode,
     query,
@@ -150,12 +266,22 @@ export function useRestaurantViewer({
     setStatusFilter,
     overlays: overlaysWithStatus,
     filteredOverlays,
+    currentPageOverlays,
     selectedDish,
     selectedDishId,
     selectDish,
     statusCounts,
     addDishToOrder,
     toggleFavoriteDish,
+    menuImages,
+    currentPageIndex,
+    pageCount,
+    currentPageImage: menuImages[currentPageIndex] || menuImages[0] || "",
+    setPageIndex,
+    nextPage,
+    previousPage,
+    savedAllergens,
+    savedDiets,
   };
 }
 

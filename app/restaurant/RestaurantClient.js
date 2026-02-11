@@ -3,9 +3,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import Link from "next/link";
 import PageShell from "../components/PageShell";
-import SimpleTopbar from "../components/SimpleTopbar";
-import { Badge, Tabs, useToast } from "../components/ui";
+import { useToast } from "../components/ui";
 import { loadAllergenDietConfig } from "../lib/allergenConfig";
 import {
   fetchManagerRestaurants,
@@ -14,15 +14,16 @@ import {
 } from "../lib/managerRestaurants";
 import { queryKeys } from "../lib/queryKeys";
 import { supabaseClient as supabase } from "../lib/supabase";
-import { createDinerTopbarLinks } from "../lib/topbarLinks";
 import { buildTrainingRestaurantPayload, HOW_IT_WORKS_SLUG } from "./boot/trainingRestaurant";
 import RestaurantEditor from "./features/editor/RestaurantEditor";
 import RestaurantOrderFlowPanel from "./features/order/RestaurantOrderFlowPanel";
 import RestaurantViewer from "./features/viewer/RestaurantViewer";
-import { useManagerActions } from "./hooks/useManagerActions";
 import { useOrderFlow } from "./hooks/useOrderFlow";
 import { useRestaurantEditor } from "./hooks/useRestaurantEditor";
 import { useRestaurantViewer } from "./hooks/useRestaurantViewer";
+
+const CLARIVORE_LOGO_SRC =
+  "https://static.wixstatic.com/media/945e9d_2b97098295d341d493e4a07d80d6b57c~mv2.png";
 
 function isTruthyFlag(value) {
   return /^(1|true|yes|editor)$/i.test(String(value || ""));
@@ -222,6 +223,7 @@ export default function RestaurantClient() {
   const slug = searchParams?.get("slug") || "";
   const qrParam = searchParams?.get("qr");
   const inviteToken = searchParams?.get("invite") || "";
+  const dishNameParam = searchParams?.get("dishName") || "";
   const editParam = searchParams?.get("edit") || searchParams?.get("mode");
   const isQrVisit = isTruthyFlag(qrParam);
 
@@ -257,19 +259,6 @@ export default function RestaurantClient() {
   const lovedDishesSet = useMemo(() => {
     return new Set(boot?.lovedDishNames || []);
   }, [boot?.lovedDishNames]);
-
-  const managerActions = useManagerActions({
-    restaurantId: boot?.restaurant?.id,
-    user: {
-      ...boot?.user,
-      managerRestaurants: boot?.managerRestaurants,
-    },
-    permissions: {
-      canEdit: boot?.canEdit,
-      isOwner: isOwnerUser(boot?.user),
-      isManager: isManagerUser(boot?.user),
-    },
-  });
 
   const saveOverlaysMutation = useMutation({
     mutationFn: async (nextOverlays) => {
@@ -374,12 +363,17 @@ export default function RestaurantClient() {
   const viewer = useRestaurantViewer({
     restaurant: boot?.restaurant,
     overlays: boot?.restaurant?.overlays || [],
+    initialDishName: dishNameParam,
     preferences: {
       allergies: boot?.allergies || [],
       diets: boot?.diets || [],
       normalizeAllergen: boot?.config?.normalizeAllergen,
       normalizeDietLabel: boot?.config?.normalizeDietLabel,
       getDietAllergenConflicts: boot?.config?.getDietAllergenConflicts,
+      formatAllergenLabel: boot?.config?.formatAllergenLabel,
+      formatDietLabel: boot?.config?.formatDietLabel,
+      getAllergenEmoji: boot?.config?.getAllergenEmoji,
+      getDietEmoji: boot?.config?.getDietEmoji,
     },
     mode: activeView,
     callbacks: {
@@ -419,20 +413,24 @@ export default function RestaurantClient() {
     },
   });
 
-  const topbarLinks = createDinerTopbarLinks({
-    includeRestaurants: true,
-    includeFavorites: true,
-    includeDishSearch: true,
-    includeHelp: true,
-    includeDashboard: managerActions.canManage,
-    dashboardVisible: managerActions.canManage,
-  });
-
   const onSignOut = useCallback(async () => {
     if (!supabase) return;
     await supabase.auth.signOut();
     router.replace("/account?mode=signin");
   }, [router]);
+
+  const setMode = useCallback((nextMode) => {
+    const normalized = nextMode === "editor" ? "editor" : "viewer";
+    setActiveView(normalized);
+    try {
+      localStorage.setItem(
+        "clarivoreManagerMode",
+        normalized === "editor" ? "editor" : "viewer",
+      );
+    } catch {
+      // Ignore local storage failures.
+    }
+  }, []);
 
   if (!supabase) {
     return (
@@ -471,13 +469,63 @@ export default function RestaurantClient() {
   return (
     <PageShell
       topbar={
-        <SimpleTopbar
-          brandHref="/home"
-          links={topbarLinks}
-          showAuthAction
-          signedIn={Boolean(boot?.user?.id)}
-          onSignOut={onSignOut}
-        />
+        <header className="simple-topbar restaurant-legacy-topbar">
+          <div className="restaurant-legacy-topbar-inner">
+            <div className="restaurant-legacy-mode-slot">
+              {boot?.canEdit ? (
+                <button
+                  type="button"
+                  className="restaurant-legacy-mode-toggle"
+                  onClick={() => setMode(activeView === "editor" ? "viewer" : "editor")}
+                  aria-label={
+                    activeView === "editor"
+                      ? "Switch to customer mode"
+                      : "Switch to editor mode"
+                  }
+                >
+                  <span className="restaurant-legacy-mode-label">
+                    {activeView === "editor" ? "Editor mode" : "Customer mode"}
+                  </span>
+                  <span
+                    className={`mode-toggle ${activeView === "editor" ? "active" : ""}`}
+                    role="switch"
+                    aria-checked={activeView === "editor"}
+                  />
+                </button>
+              ) : null}
+            </div>
+
+            <div className="restaurant-legacy-brand-nav">
+              <Link className="simple-brand restaurant-legacy-brand" href="/home">
+                <img src={CLARIVORE_LOGO_SRC} alt="Clarivore logo" />
+                <span>Clarivore</span>
+              </Link>
+              <nav className="simple-nav restaurant-legacy-nav">
+                <Link href="/home">Home</Link>
+                <Link href="/restaurants">By restaurant ▾</Link>
+                <Link href="/dish-search">By dish ▾</Link>
+                <Link href="/help-contact">Help</Link>
+                <Link href="/account">Account settings</Link>
+              </nav>
+            </div>
+
+            <div className="restaurant-legacy-auth-slot">
+              {boot?.user?.id ? (
+                <button
+                  type="button"
+                  className="btnLink restaurant-legacy-signout"
+                  onClick={onSignOut}
+                >
+                  Sign out
+                </button>
+              ) : (
+                <Link href="/account?mode=signin" className="btnLink restaurant-legacy-signout">
+                  Sign in
+                </Link>
+              )}
+            </div>
+          </div>
+        </header>
       }
     >
       {inviteToken && !boot?.user?.id ? (
@@ -494,48 +542,20 @@ export default function RestaurantClient() {
         </div>
       ) : null}
 
-      <Tabs
-        value={activeView}
-        onValueChange={setActiveView}
-        items={[
-          {
-            value: "viewer",
-            label: "Viewer",
-            content: (
-              <div className="space-y-4">
-                <RestaurantViewer
-                  restaurant={boot.restaurant}
-                  viewer={viewer}
-                  orderFlow={orderFlow}
-                  lovedDishes={lovedDishesSet}
-                  favoriteBusyDish={favoriteBusyDish}
-                />
-                <RestaurantOrderFlowPanel orderFlow={orderFlow} user={boot.user} />
-              </div>
-            ),
-          },
-          ...(boot.canEdit
-            ? [
-                {
-                  value: "editor",
-                  label: "Editor",
-                  content: <RestaurantEditor editor={editor} />,
-                },
-              ]
-            : []),
-        ]}
-      />
-
-      {managerActions.canManage ? (
-        <div className="mt-4 flex flex-wrap gap-2">
-          <Badge tone="neutral">Manager access enabled</Badge>
-          {managerActions.managerDashboardHref ? (
-            <a href={managerActions.managerDashboardHref} className="btn btnGhost">
-              Open dashboard
-            </a>
-          ) : null}
+      {activeView === "editor" && boot.canEdit ? (
+        <RestaurantEditor editor={editor} />
+      ) : (
+        <div className="space-y-4">
+          <RestaurantViewer
+            restaurant={boot.restaurant}
+            viewer={viewer}
+            orderFlow={orderFlow}
+            lovedDishes={lovedDishesSet}
+            favoriteBusyDish={favoriteBusyDish}
+          />
+          <RestaurantOrderFlowPanel orderFlow={orderFlow} user={boot.user} />
         </div>
-      ) : null}
+      )}
     </PageShell>
   );
 }

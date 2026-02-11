@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo } from "react";
-import { Badge, Button, Input } from "../../../components/ui";
+import { useMemo, useState } from "react";
+import Link from "next/link";
+import { Button, Modal } from "../../../components/ui";
 import RestaurantStatusPill from "../shared/RestaurantStatusPill";
 
 function parseLastConfirmed(value) {
@@ -10,20 +11,37 @@ function parseLastConfirmed(value) {
   if (Number.isNaN(parsed.getTime())) return "Not available";
   return parsed.toLocaleDateString(undefined, {
     year: "numeric",
-    month: "short",
+    month: "numeric",
     day: "numeric",
   });
 }
 
 function statusBorderColor(status) {
-  if (status === "safe") return "#2ccf6d";
-  if (status === "removable") return "#f4b740";
-  if (status === "unsafe") return "#eb5757";
+  if (status === "safe") return "#22c55e";
+  if (status === "removable") return "#facc15";
+  if (status === "unsafe") return "#ef4444";
   return "rgba(255,255,255,0.45)";
 }
 
-function uniqueId(value, index) {
-  return `${String(value || "overlay").replace(/[^a-zA-Z0-9_-]/g, "-")}-${index}`;
+function overlayKey(overlay, index) {
+  return `${String(overlay?.id || "dish").replace(/[^a-zA-Z0-9_-]/g, "-")}-${
+    overlay?.pageIndex || 0
+  }-${index}`;
+}
+
+function dishSummaryLines(dish) {
+  if (!dish) return [];
+  const lines = [];
+  if (dish.description) {
+    lines.push(dish.description);
+  }
+  if (dish.details && typeof dish.details === "object") {
+    Object.entries(dish.details).forEach(([key, value]) => {
+      if (!value || String(key).startsWith("__")) return;
+      lines.push(`${key}: ${value}`);
+    });
+  }
+  return lines.slice(0, 4);
 }
 
 export function RestaurantViewer({
@@ -33,6 +51,7 @@ export function RestaurantViewer({
   lovedDishes,
   favoriteBusyDish,
 }) {
+  const [detailsOpen, setDetailsOpen] = useState(false);
   const selectedDish = viewer.selectedDish;
 
   const lastConfirmedLabel = useMemo(
@@ -40,201 +59,282 @@ export function RestaurantViewer({
     [restaurant?.last_confirmed],
   );
 
+  const openDishDetails = (overlay) => {
+    if (!overlay) return;
+    viewer.selectDish(overlay.id, overlay.pageIndex);
+    setDetailsOpen(true);
+  };
+
+  const actionButtons = [
+    {
+      key: "website",
+      label: "Restaurant website",
+      href: restaurant?.website || "",
+      disabled: !restaurant?.website,
+      tone: "primary",
+      external: true,
+    },
+    {
+      key: "call",
+      label: "Call restaurant",
+      href: restaurant?.phone ? `tel:${restaurant.phone}` : "",
+      disabled: !restaurant?.phone,
+      tone: "primary",
+      external: true,
+    },
+    {
+      key: "feedback",
+      label: "Send feedback",
+      href: "/help-contact",
+      disabled: false,
+      tone: "primary",
+      external: false,
+    },
+    {
+      key: "report",
+      label: "Report issue",
+      href: "/report-issue",
+      disabled: false,
+      tone: "danger",
+      external: false,
+    },
+  ];
+
   return (
-    <section className="space-y-4">
-      <header className="rounded-2xl border border-[rgba(124,156,255,0.25)] bg-[rgba(17,22,48,0.72)] p-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h1 className="m-0 text-[1.5rem] font-semibold text-[#eef3ff]">
-              {restaurant?.name || "Restaurant"}
-            </h1>
-            <p className="m-0 mt-1 text-sm text-[#a7b2d1]">
-              Last confirmed {lastConfirmedLabel}
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Badge tone="neutral">{viewer.statusCounts.all} dishes</Badge>
-            <Badge tone="success">{viewer.statusCounts.safe} safe</Badge>
-            <Badge tone="warn">{viewer.statusCounts.removable} adjustable</Badge>
-            <Badge tone="danger">{viewer.statusCounts.unsafe} unsafe</Badge>
-          </div>
-        </div>
-      </header>
+    <section className="restaurant-legacy-viewer">
+      <h1 className="restaurant-legacy-title">{restaurant?.name || "Restaurant"}</h1>
 
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(320px,1fr)]">
-        <div className="rounded-2xl border border-[rgba(124,156,255,0.2)] bg-[rgba(11,14,34,0.82)] p-3">
-          <div className="mb-3 flex items-center gap-2">
-            <Input
-              value={viewer.query}
-              onChange={(event) => viewer.setQuery(event.target.value)}
-              placeholder="Search dish"
-              size="standard"
-            />
-            <select
-              value={viewer.statusFilter}
-              onChange={(event) => viewer.setStatusFilter(event.target.value)}
-              className="h-[44px] rounded-xl border border-[#2a3261] bg-[rgba(17,22,48,0.95)] px-3 text-[#dce5ff]"
-            >
-              <option value="all">All</option>
-              <option value="safe">Safe</option>
-              <option value="removable">Can be adjusted</option>
-              <option value="unsafe">Unsafe</option>
-              <option value="neutral">Unknown</option>
-            </select>
-          </div>
-
-          <div className="relative overflow-hidden rounded-xl border border-[rgba(124,156,255,0.24)] bg-[#02040f]">
-            {restaurant?.menu_image ? (
-              <img
-                src={restaurant.menu_image}
-                alt={`${restaurant.name || "Restaurant"} menu`}
-                className="block max-h-[70vh] w-full object-contain"
-              />
+      <div className="restaurant-legacy-meta-row">
+        <div className="restaurant-legacy-page-card">
+          <button
+            type="button"
+            className="restaurant-legacy-page-thumb"
+            onClick={() => {
+              if (viewer.pageCount > 1) viewer.nextPage();
+            }}
+            title={viewer.pageCount > 1 ? "Next page" : "Menu page"}
+          >
+            {viewer.currentPageImage ? (
+              <img src={viewer.currentPageImage} alt="Current menu page" />
             ) : (
-              <div className="flex min-h-[280px] items-center justify-center text-[#98a6cf]">
-                No menu image available
-              </div>
+              <span>No page</span>
             )}
-
-            {viewer.filteredOverlays.map((overlay, index) => (
-              <button
-                key={uniqueId(overlay.id, index)}
-                type="button"
-                onClick={() => viewer.selectDish(overlay.id)}
-                title={overlay.name}
-                className="absolute rounded-sm transition-all duration-150"
-                style={{
-                  left: `${overlay.x}%`,
-                  top: `${overlay.y}%`,
-                  width: `${overlay.w}%`,
-                  height: `${overlay.h}%`,
-                  border: `2px solid ${statusBorderColor(overlay.compatibilityStatus)}`,
-                  background:
-                    selectedDish?.id === overlay.id
-                      ? "rgba(124,156,255,0.24)"
-                      : "rgba(255,255,255,0.02)",
-                  boxShadow:
-                    selectedDish?.id === overlay.id
-                      ? "0 0 0 2px rgba(255,255,255,0.35)"
-                      : "none",
-                }}
-              />
-            ))}
+          </button>
+          <div className="restaurant-legacy-page-footer">
+            Page {viewer.currentPageIndex + 1} of {viewer.pageCount}
           </div>
+          {viewer.pageCount > 1 ? (
+            <div className="restaurant-legacy-page-controls">
+              <button type="button" onClick={viewer.previousPage}>
+                Prev
+              </button>
+              <button type="button" onClick={viewer.nextPage}>
+                Next
+              </button>
+            </div>
+          ) : null}
         </div>
 
-        <aside className="space-y-3 rounded-2xl border border-[rgba(124,156,255,0.2)] bg-[rgba(11,14,34,0.82)] p-3">
-          <h2 className="m-0 text-lg font-semibold text-[#eef3ff]">Dish details</h2>
-
-          {selectedDish ? (
-            <div className="space-y-3 rounded-xl border border-[rgba(124,156,255,0.2)] bg-[rgba(17,22,48,0.95)] p-3">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <h3 className="m-0 text-[1.06rem] text-[#f7f9ff]">{selectedDish.name}</h3>
-                  {selectedDish.description ? (
-                    <p className="m-0 mt-1 text-sm text-[#a7b2d1]">
-                      {selectedDish.description}
-                    </p>
-                  ) : null}
-                </div>
-                <RestaurantStatusPill status={selectedDish.compatibilityStatus} />
+        <div className="restaurant-legacy-preference-wrap">
+          <div className="preference-row">
+            <div className="preference-panel pill">
+              <div className="preference-header">
+                <div className="preference-title">Saved allergens</div>
+                <Link href="/account" className="btnLink preference-edit">
+                  Edit
+                </Link>
               </div>
-
-              <div className="grid grid-cols-2 gap-2 text-xs">
-                <div className="rounded-lg border border-[rgba(124,156,255,0.18)] bg-[rgba(3,6,19,0.7)] p-2 text-[#b8c5eb]">
-                  Allergens
-                  <div className="mt-1 text-[#eef3ff]">
-                    {Array.isArray(selectedDish.allergens) && selectedDish.allergens.length
-                      ? selectedDish.allergens.join(", ")
-                      : "None listed"}
-                  </div>
-                </div>
-                <div className="rounded-lg border border-[rgba(124,156,255,0.18)] bg-[rgba(3,6,19,0.7)] p-2 text-[#b8c5eb]">
-                  Diets
-                  <div className="mt-1 text-[#eef3ff]">
-                    {Array.isArray(selectedDish.diets) && selectedDish.diets.length
-                      ? selectedDish.diets.join(", ")
-                      : "None listed"}
-                  </div>
-                </div>
-              </div>
-
-              {selectedDish.hasCrossContamination ? (
-                <p className="m-0 rounded-lg border border-[rgba(250,204,21,0.45)] bg-[rgba(250,204,21,0.13)] p-2 text-xs text-[#fff1a3]">
-                  Cross-contamination risk is flagged for this dish.
-                </p>
-              ) : null}
-
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  size="compact"
-                  tone="primary"
-                  onClick={() => {
-                    viewer.addDishToOrder(selectedDish);
-                    orderFlow.addDish(selectedDish);
-                  }}
-                >
-                  Add to order
-                </Button>
-                <Button
-                  size="compact"
-                  variant="outline"
-                  loading={favoriteBusyDish === selectedDish.id}
-                  onClick={() => viewer.toggleFavoriteDish(selectedDish)}
-                >
-                  {lovedDishes.has(selectedDish.id) ? "Loved" : "Love dish"}
-                </Button>
+              <div className="preference-chips chips">
+                {viewer.savedAllergens.length ? (
+                  viewer.savedAllergens.map((item) => (
+                    <span key={item.key} className="chip active preference-chip">
+                      {item.emoji || "⚠"} {item.label}
+                    </span>
+                  ))
+                ) : (
+                  <span className="note">No saved allergens</span>
+                )}
               </div>
             </div>
-          ) : (
-            <p className="m-0 rounded-xl border border-[rgba(124,156,255,0.2)] bg-[rgba(17,22,48,0.95)] p-3 text-sm text-[#a7b2d1]">
-              Select a dish overlay to review details.
-            </p>
-          )}
 
-          <div className="max-h-[42vh] space-y-2 overflow-auto pr-1">
-            {viewer.filteredOverlays.map((overlay, index) => {
-              const selected = selectedDish?.id === overlay.id;
-              const inOrder = orderFlow.selectedDishNames.includes(overlay.id);
-
-              return (
-                <button
-                  key={uniqueId(overlay.id, index)}
-                  type="button"
-                  onClick={() => viewer.selectDish(overlay.id)}
-                  className="w-full rounded-xl border p-2 text-left transition-colors"
-                  style={{
-                    borderColor: selected
-                      ? "rgba(124,156,255,0.66)"
-                      : "rgba(124,156,255,0.18)",
-                    background: selected
-                      ? "rgba(76,90,212,0.22)"
-                      : "rgba(17,22,48,0.7)",
-                  }}
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-sm font-medium text-[#eff3ff]">
-                      {overlay.name}
+            <div className="preference-panel pill">
+              <div className="preference-header">
+                <div className="preference-title">Saved diets</div>
+                <Link href="/account" className="btnLink preference-edit">
+                  Edit
+                </Link>
+              </div>
+              <div className="preference-chips chips">
+                {viewer.savedDiets.length ? (
+                  viewer.savedDiets.map((item) => (
+                    <span key={item.key} className="chip active preference-chip">
+                      {item.emoji || "✓"} {item.label}
                     </span>
-                    <RestaurantStatusPill status={overlay.compatibilityStatus} />
-                  </div>
-                  <p className="m-0 mt-1 text-xs text-[#a7b2d1]">
-                    {overlay.description || "No description"}
-                  </p>
-                  {inOrder ? (
-                    <p className="m-0 mt-1 text-[11px] text-[#7ce0a2]">Added to order</p>
-                  ) : null}
+                  ))
+                ) : (
+                  <span className="note">No saved diets</span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="restaurant-legacy-actions-row">
+            {actionButtons.map((action) =>
+              action.disabled ? (
+                <button
+                  key={action.key}
+                  type="button"
+                  className={`restaurant-legacy-action-btn ${action.tone === "danger" ? "danger" : ""}`}
+                  disabled
+                >
+                  {action.label}
                 </button>
-              );
-            })}
-            {!viewer.filteredOverlays.length ? (
-              <p className="m-0 rounded-xl border border-[rgba(124,156,255,0.2)] bg-[rgba(17,22,48,0.65)] p-3 text-xs text-[#9ca9cf]">
-                No dishes match the current filter.
+              ) : action.external ? (
+                <a
+                  key={action.key}
+                  href={action.href}
+                  className={`restaurant-legacy-action-btn ${action.tone === "danger" ? "danger" : ""}`}
+                  target={action.href.startsWith("http") ? "_blank" : undefined}
+                  rel={action.href.startsWith("http") ? "noopener noreferrer" : undefined}
+                >
+                  {action.label}
+                </a>
+              ) : (
+                <Link
+                  key={action.key}
+                  href={action.href}
+                  className={`restaurant-legacy-action-btn ${action.tone === "danger" ? "danger" : ""}`}
+                >
+                  {action.label}
+                </Link>
+              ),
+            )}
+          </div>
+
+          <p className="restaurant-legacy-confirmed-text">
+            Last confirmed by restaurant staff: {lastConfirmedLabel}
+          </p>
+        </div>
+      </div>
+
+      <div className="restaurant-legacy-legend">
+        <p>
+          <span className="legend-box safe" /> Complies ·{" "}
+          <span className="legend-box removable" /> Can be modified to comply ·{" "}
+          <span className="legend-box unsafe" /> Cannot be modified to comply
+        </p>
+        <p>⚠ Cross-contamination risk · Tap dishes for details · Pinch menu to zoom in/out</p>
+      </div>
+
+      <div className="restaurant-legacy-menu-stage">
+        {viewer.currentPageImage ? (
+          <img
+            src={viewer.currentPageImage}
+            alt={`${restaurant?.name || "Restaurant"} menu page ${viewer.currentPageIndex + 1}`}
+            className="restaurant-legacy-menu-image"
+          />
+        ) : (
+          <div className="restaurant-legacy-no-image">No menu image available.</div>
+        )}
+
+        {viewer.currentPageOverlays.map((overlay, index) => (
+          <button
+            key={overlayKey(overlay, index)}
+            type="button"
+            onClick={() => openDishDetails(overlay)}
+            className="restaurant-legacy-overlay"
+            style={{
+              left: `${overlay.x}%`,
+              top: `${overlay.y}%`,
+              width: `${overlay.w}%`,
+              height: `${overlay.h}%`,
+              borderColor: statusBorderColor(overlay.compatibilityStatus),
+              boxShadow:
+                selectedDish?.id === overlay.id
+                  ? "0 0 0 2px rgba(76,101,255,0.85)"
+                  : "none",
+            }}
+          >
+            <span className="restaurant-legacy-overlay-warning">
+              {overlay.hasCrossContamination ? "⚠" : ""}
+            </span>
+            <span className="restaurant-legacy-overlay-info">i</span>
+          </button>
+        ))}
+      </div>
+
+      <Modal
+        open={detailsOpen && Boolean(selectedDish)}
+        onOpenChange={setDetailsOpen}
+        title={selectedDish?.name || "Dish details"}
+      >
+        {selectedDish ? (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between gap-3">
+              <p className="m-0 text-sm text-[#b7c4e8]">Dish compatibility</p>
+              <RestaurantStatusPill status={selectedDish.compatibilityStatus} />
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div className="rounded-lg border border-[rgba(124,156,255,0.18)] bg-[rgba(3,6,19,0.7)] p-2 text-[#b8c5eb]">
+                Allergens
+                <div className="mt-1 text-[#eef3ff]">
+                  {Array.isArray(selectedDish.allergens) && selectedDish.allergens.length
+                    ? selectedDish.allergens.join(", ")
+                    : "None listed"}
+                </div>
+              </div>
+              <div className="rounded-lg border border-[rgba(124,156,255,0.18)] bg-[rgba(3,6,19,0.7)] p-2 text-[#b8c5eb]">
+                Diets
+                <div className="mt-1 text-[#eef3ff]">
+                  {Array.isArray(selectedDish.diets) && selectedDish.diets.length
+                    ? selectedDish.diets.join(", ")
+                    : "None listed"}
+                </div>
+              </div>
+            </div>
+
+            {selectedDish.hasCrossContamination ? (
+              <p className="m-0 rounded-lg border border-[rgba(250,204,21,0.45)] bg-[rgba(250,204,21,0.13)] p-2 text-xs text-[#fff1a3]">
+                Cross-contamination risk is flagged for this dish.
               </p>
             ) : null}
+
+            {dishSummaryLines(selectedDish).length ? (
+              <ul className="m-0 list-disc space-y-1 pl-5 text-sm text-[#dce5ff]">
+                {dishSummaryLines(selectedDish).map((line, index) => (
+                  <li key={`${line}-${index}`}>{line}</li>
+                ))}
+              </ul>
+            ) : null}
+
+            <div className="flex flex-wrap gap-2 pt-1">
+              <Button
+                size="compact"
+                tone="primary"
+                onClick={() => {
+                  viewer.addDishToOrder(selectedDish);
+                  orderFlow.addDish(selectedDish);
+                }}
+              >
+                Add to order
+              </Button>
+              <Button
+                size="compact"
+                variant="outline"
+                loading={favoriteBusyDish === selectedDish.id}
+                onClick={() => viewer.toggleFavoriteDish(selectedDish)}
+              >
+                {lovedDishes.has(selectedDish.id) ? "Loved" : "Love dish"}
+              </Button>
+            </div>
           </div>
-        </aside>
-      </div>
+        ) : null}
+      </Modal>
+
+      <footer className="restaurant-legacy-help-fab">
+        <Link href="/help-contact">Help</Link>
+      </footer>
     </section>
   );
 }
