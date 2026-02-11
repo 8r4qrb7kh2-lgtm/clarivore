@@ -4,8 +4,8 @@
   "scripts": {
     "dev": "next dev",
     "dev:next": "next dev",
-    "build": "next build",
-    "build:next": "next build",
+    "build": "prisma generate && next build",
+    "build:next": "prisma generate && next build",
     "preview": "next start -p 8081",
     "preview:next": "next start -p 8081",
     "prisma:pull": "prisma db pull",
