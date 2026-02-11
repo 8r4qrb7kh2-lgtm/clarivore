@@ -1,4 +1,4 @@
-import { getSupabaseClient as getRuntimeSupabaseClient } from "./restaurantRuntime/runtimeSessionState.js";
+import { supabaseClient as defaultSupabaseClient } from "./supabase";
 
 const SW_PATH = "/manager-push-sw.js";
 const IOS_BUNDLE_ID = "com.clarivore.app";
@@ -180,8 +180,10 @@ async function initWebPush({ user, client }) {
 }
 
 export async function initManagerNotifications({ user, client } = {}) {
-  const runtimeClient = getRuntimeSupabaseClient();
-  const supabase = client || runtimeClient || window.supabaseClient || null;
+  const supabase =
+    client ||
+    defaultSupabaseClient ||
+    (typeof window !== "undefined" ? window.supabaseClient || null : null);
   if (!user || !supabase) return;
   await initNativePush({ user, client: supabase });
   await initWebPush({ user, client: supabase });

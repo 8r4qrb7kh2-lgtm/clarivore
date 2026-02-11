@@ -8,7 +8,6 @@ import {
   TabletMonitorPage,
 } from "../components/TabletMonitorLayout";
 import { supabaseClient as supabase } from "../lib/supabase";
-import { setSupabaseClient } from "../lib/restaurantRuntime/runtimeSessionState.js";
 import { resolveManagerRestaurantAccess } from "../lib/managerRestaurants";
 import { showOrderNotification } from "../lib/orderNotifications";
 import {
@@ -189,8 +188,6 @@ export default function KitchenTabletClient() {
         if (!supabase) {
           throw new Error("Supabase env vars are missing.");
         }
-
-        setSupabaseClient(supabase);
 
         const {
           data: { user },

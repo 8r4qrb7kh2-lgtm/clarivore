@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import PageShell from "../components/PageShell";
 import RestaurantCard from "../components/RestaurantCard";
 import RestaurantGridState from "../components/RestaurantGridState";
@@ -11,156 +12,147 @@ import {
   isManagerUser,
   isOwnerUser,
 } from "../lib/managerRestaurants";
+import { queryKeys } from "../lib/queryKeys";
 import { filterRestaurantsByVisibility } from "../lib/restaurantVisibility";
 import { supabaseClient as supabase } from "../lib/supabase";
 import { createDinerTopbarLinks } from "../lib/topbarLinks";
 
 export default function FavoritesClient() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const searchParams = useSearchParams();
   const isQR = searchParams?.get("qr") === "1";
 
   const [status, setStatus] = useState("");
   const [statusType, setStatusType] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [restaurants, setRestaurants] = useState([]);
-  const [favoriteIds, setFavoriteIds] = useState(new Set());
   const [busyId, setBusyId] = useState(null);
-  const [user, setUser] = useState(null);
+
+  const authQuery = useQuery({
+    queryKey: queryKeys.auth.user("favorites"),
+    queryFn: async () => {
+      if (!supabase) return null;
+      const { data, error } = await supabase.auth.getUser();
+      if (error) throw error;
+      return data?.user || null;
+    },
+    staleTime: 30 * 1000,
+  });
 
   useEffect(() => {
-    let isMounted = true;
+    if (!isQR && authQuery.isSuccess && !authQuery.data) {
+      router.replace("/account?redirect=favorites");
+      return;
+    }
+    if (!isQR && authQuery.isError) {
+      router.replace("/account?redirect=favorites");
+    }
+  }, [authQuery.data, authQuery.isError, authQuery.isSuccess, isQR, router]);
 
-    async function load() {
-      if (!supabase) {
-        setStatus("Supabase env vars are missing.");
-        setLoading(false);
-        return;
-      }
-
-      const { data: authData, error: authError } = await supabase.auth.getUser();
-      if (authError) {
-        console.error("Auth error", authError);
-      }
-      const user = authData?.user;
-      if (!user && !isQR) {
-        router.replace("/account?redirect=favorites");
-        return;
-      }
-      if (!user) {
-        setLoading(false);
-        return;
-      }
-      if (isMounted) setUser(user);
-
+  const managerAccessQuery = useQuery({
+    queryKey: [
+      "favorites",
+      "manager-access",
+      { userId: authQuery.data?.id || null },
+    ],
+    enabled: Boolean(supabase) && Boolean(authQuery.data),
+    queryFn: async () => {
+      const user = authQuery.data;
       const isOwner = isOwnerUser(user);
       const isManager = isManagerUser(user);
-
       let managerRestaurants = [];
+
       if (isManager || isOwner) {
         managerRestaurants = await fetchManagerRestaurants(supabase, user);
       }
 
-      if (isManager && !isOwner) {
-        const targetRestaurant = managerRestaurants[0];
-        router.replace(
-          targetRestaurant
-            ? `/restaurant?slug=${encodeURIComponent(targetRestaurant.slug)}`
-            : "/server-tablet",
-        );
-        return;
-      }
+      return {
+        isOwner,
+        isManager,
+        managerRestaurants,
+      };
+    },
+    staleTime: 60 * 1000,
+  });
 
-      try {
-        setLoading(true);
-        const { data: favorites, error: favoritesError } = await supabase
-          .from("user_favorites")
-          .select("restaurant_id")
-          .eq("user_id", user.id);
-
-        if (favoritesError) {
-          console.error("Failed to load favorites", favoritesError);
-          if (isMounted) {
-            setStatus("Unable to load favorites.");
-            setStatusType("error");
-            setRestaurants([]);
-          }
-          return;
-        }
-
-        const ids = (favorites || [])
-          .map((row) => row.restaurant_id)
-          .filter(Boolean);
-        const nextFavorites = new Set(ids.map(String));
-        if (isMounted) setFavoriteIds(nextFavorites);
-
-        if (!ids.length) {
-          if (isMounted) setRestaurants([]);
-          return;
-        }
-
-        const { data: restaurantsData, error } = await supabase
-          .from("restaurants")
-          .select("*")
-          .in("id", ids)
-          .order("name");
-
-        if (error) {
-          console.error("Failed to load restaurant details", error);
-          if (isMounted) {
-            setStatus("Unable to load my restaurants.");
-            setStatusType("error");
-          }
-          return;
-        }
-
-        const filtered = filterRestaurantsByVisibility(restaurantsData || [], {
-          user,
-        });
-
-        if (isMounted) {
-          setRestaurants(filtered);
-          if (!filtered.length) {
-            setFavoriteIds(new Set());
-          }
-        }
-      } catch (error) {
-        console.error("Favorites load failed", error);
-        if (isMounted) {
-          setStatus("Unable to load favorites.");
-          setStatusType("error");
-          setRestaurants([]);
-        }
-      } finally {
-        if (isMounted) setLoading(false);
-      }
+  useEffect(() => {
+    const access = managerAccessQuery.data;
+    if (!access) return;
+    if (access.isManager && !access.isOwner) {
+      const targetRestaurant = access.managerRestaurants[0];
+      router.replace(
+        targetRestaurant
+          ? `/restaurant?slug=${encodeURIComponent(targetRestaurant.slug)}`
+          : "/server-tablet",
+      );
     }
+  }, [managerAccessQuery.data, router]);
 
-    load();
+  const favoritesQuery = useQuery({
+    queryKey: queryKeys.favorites.page(authQuery.data?.id || null),
+    enabled:
+      Boolean(supabase) &&
+      Boolean(authQuery.data) &&
+      !(managerAccessQuery.data?.isManager && !managerAccessQuery.data?.isOwner),
+    queryFn: async () => {
+      const user = authQuery.data;
 
-    return () => {
-      isMounted = false;
-    };
-  }, [isQR, router]);
+      const { data: favorites, error: favoritesError } = await supabase
+        .from("user_favorites")
+        .select("restaurant_id")
+        .eq("user_id", user.id);
 
-  const favoriteSet = useMemo(() => favoriteIds, [favoriteIds]);
+      if (favoritesError) {
+        throw new Error("Unable to load favorites.");
+      }
 
-  const toggleFavorite = async (restaurantId) => {
-    if (!supabase || !restaurantId) return;
-    if (busyId) return;
-    setBusyId(restaurantId);
-    setStatus("");
-    setStatusType("");
+      const ids = (favorites || [])
+        .map((row) => row.restaurant_id)
+        .filter(Boolean)
+        .map((id) => String(id));
 
-    try {
+      if (!ids.length) {
+        return {
+          restaurants: [],
+          favoriteIds: [],
+        };
+      }
+
+      const { data: restaurantsData, error: restaurantsError } = await supabase
+        .from("restaurants")
+        .select("*")
+        .in("id", ids)
+        .order("name");
+
+      if (restaurantsError) {
+        throw new Error("Unable to load my restaurants.");
+      }
+
+      const filtered = filterRestaurantsByVisibility(restaurantsData || [], {
+        user,
+      });
+      const visibleIds = new Set(filtered.map((restaurant) => String(restaurant.id)));
+
+      return {
+        restaurants: filtered,
+        favoriteIds: ids.filter((id) => visibleIds.has(id)),
+      };
+    },
+    staleTime: 60 * 1000,
+  });
+
+  const favoritesMutation = useMutation({
+    mutationFn: async ({ restaurantId, isFavorite }) => {
+      if (!supabase) {
+        throw new Error("Supabase env vars are missing.");
+      }
+
       const { data: authData } = await supabase.auth.getUser();
       const user = authData?.user;
       if (!user) {
         router.replace("/account?redirect=favorites");
-        return;
+        return null;
       }
 
-      const isFavorite = favoriteSet.has(String(restaurantId));
       if (isFavorite) {
         const { error } = await supabase
           .from("user_favorites")
@@ -168,33 +160,95 @@ export default function FavoritesClient() {
           .eq("user_id", user.id)
           .eq("restaurant_id", restaurantId);
         if (error) throw error;
-
-        setFavoriteIds((prev) => {
-          const next = new Set(prev);
-          next.delete(String(restaurantId));
-          return next;
-        });
-        setRestaurants((prev) =>
-          prev.filter((restaurant) => String(restaurant.id) !== String(restaurantId)),
-        );
-        setStatus("Removed from favorites.");
-        setStatusType("success");
       } else {
         const { error } = await supabase
           .from("user_favorites")
           .insert([{ user_id: user.id, restaurant_id: restaurantId }]);
         if (error) throw error;
-        setFavoriteIds((prev) => new Set(prev).add(String(restaurantId)));
-        setStatus("Added to favorites!");
-        setStatusType("success");
       }
-    } catch (error) {
+
+      return { restaurantId: String(restaurantId), isFavorite };
+    },
+    onMutate: ({ restaurantId }) => {
+      setBusyId(String(restaurantId));
+      setStatus("");
+      setStatusType("");
+    },
+    onSuccess: (result) => {
+      if (!result) return;
+      queryClient.setQueryData(
+        queryKeys.favorites.page(authQuery.data?.id || null),
+        (current) => {
+          const base = current || { restaurants: [], favoriteIds: [] };
+          const favoriteIds = new Set((base.favoriteIds || []).map(String));
+          let restaurants = Array.isArray(base.restaurants)
+            ? [...base.restaurants]
+            : [];
+
+          if (result.isFavorite) {
+            favoriteIds.delete(result.restaurantId);
+            restaurants = restaurants.filter(
+              (restaurant) => String(restaurant.id) !== result.restaurantId,
+            );
+          } else {
+            favoriteIds.add(result.restaurantId);
+          }
+
+          return {
+            ...base,
+            restaurants,
+            favoriteIds: Array.from(favoriteIds),
+          };
+        },
+      );
+
+      setStatus(result.isFavorite ? "Removed from favorites." : "Added to favorites!");
+      setStatusType("success");
+    },
+    onError: (error) => {
       console.error("Favorite toggle failed", error);
-      setStatus(error.message || "Unable to update favorite.");
+      setStatus(error?.message || "Unable to update favorite.");
       setStatusType("error");
-    } finally {
+    },
+    onSettled: () => {
       setBusyId(null);
-    }
+    },
+  });
+
+  const loading =
+    authQuery.isPending ||
+    managerAccessQuery.isPending ||
+    favoritesQuery.isPending;
+
+  const queryStatus = !supabase
+    ? "Supabase env vars are missing."
+    : favoritesQuery.isError
+      ? favoritesQuery.error?.message || "Unable to load favorites."
+      : "";
+
+  const effectiveStatus = status || queryStatus;
+  const effectiveStatusType =
+    statusType || (queryStatus ? "error" : "");
+
+  const restaurants = favoritesQuery.data?.restaurants || [];
+  const favoriteSet = useMemo(
+    () => new Set((favoritesQuery.data?.favoriteIds || []).map(String)),
+    [favoritesQuery.data?.favoriteIds],
+  );
+
+  const user = authQuery.data || null;
+
+  const toggleFavorite = async (restaurantId) => {
+    if (!restaurantId) return;
+    if (busyId) return;
+
+    const restaurantKey = String(restaurantId);
+    const isFavorite = favoriteSet.has(restaurantKey);
+
+    favoritesMutation.mutate({
+      restaurantId: restaurantKey,
+      isFavorite,
+    });
   };
 
   return (
@@ -209,8 +263,8 @@ export default function FavoritesClient() {
     >
       <h1 style={{ textAlign: "center", marginBottom: 8 }}>My restaurants</h1>
       <RestaurantGridState
-        status={status}
-        statusTone={statusType}
+        status={effectiveStatus}
+        statusTone={effectiveStatusType}
         loading={loading}
         loadingText="Loading favorites..."
         restaurants={restaurants}

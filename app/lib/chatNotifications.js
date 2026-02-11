@@ -1,9 +1,11 @@
-import { getSupabaseClient as getRuntimeSupabaseClient } from "./restaurantRuntime/runtimeSessionState.js";
+import { supabaseClient as defaultSupabaseClient } from "./supabase";
 
 export async function notifyManagerChat({ messageId, client } = {}) {
   if (!messageId) return null;
-  const runtimeClient = getRuntimeSupabaseClient();
-  const supabase = client || runtimeClient || window.supabaseClient || null;
+  const supabase =
+    client ||
+    defaultSupabaseClient ||
+    (typeof window !== "undefined" ? window.supabaseClient || null : null);
   if (!supabase) return null;
 
   try {

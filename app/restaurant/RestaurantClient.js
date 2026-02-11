@@ -1,33 +1,534 @@
 "use client";
 
-import { useMemo } from "react";
-import { useSearchParams } from "next/navigation";
-import RestaurantCoreDom from "./components/RestaurantCoreDom";
-import RestaurantLoaderOverlay from "./components/RestaurantLoaderOverlay";
-import { useRestaurantRuntimeEnvironment } from "./hooks/useRestaurantRuntimeEnvironment";
-import { useRestaurantRuntime } from "./hooks/useRestaurantRuntime";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import PageShell from "../components/PageShell";
+import SimpleTopbar from "../components/SimpleTopbar";
+import { Badge, Tabs, useToast } from "../components/ui";
+import { loadAllergenDietConfig } from "../lib/allergenConfig";
+import {
+  fetchManagerRestaurants,
+  isManagerUser,
+  isOwnerUser,
+} from "../lib/managerRestaurants";
+import { queryKeys } from "../lib/queryKeys";
+import { supabaseClient as supabase } from "../lib/supabase";
+import { createDinerTopbarLinks } from "../lib/topbarLinks";
+import { buildTrainingRestaurantPayload, HOW_IT_WORKS_SLUG } from "./boot/trainingRestaurant";
+import RestaurantEditor from "./features/editor/RestaurantEditor";
+import RestaurantOrderFlowPanel from "./features/order/RestaurantOrderFlowPanel";
+import RestaurantViewer from "./features/viewer/RestaurantViewer";
+import { useManagerActions } from "./hooks/useManagerActions";
+import { useOrderFlow } from "./hooks/useOrderFlow";
+import { useRestaurantEditor } from "./hooks/useRestaurantEditor";
+import { useRestaurantViewer } from "./hooks/useRestaurantViewer";
+
+function isTruthyFlag(value) {
+  return /^(1|true|yes|editor)$/i.test(String(value || ""));
+}
+
+function readManagerModeDefault({ editParam, isQrVisit }) {
+  if (isTruthyFlag(editParam)) return "editor";
+  if (editParam !== null) return "viewer";
+  if (isQrVisit) return "viewer";
+
+  try {
+    return localStorage.getItem("clarivoreManagerMode") === "editor"
+      ? "editor"
+      : "viewer";
+  } catch {
+    return "viewer";
+  }
+}
+
+function trackRecentlyViewed(slug) {
+  if (!slug) return;
+  try {
+    const current = JSON.parse(
+      localStorage.getItem("recentlyViewedRestaurants") || "[]",
+    );
+    const filtered = Array.isArray(current)
+      ? current.filter((value) => value !== slug)
+      : [];
+    filtered.unshift(slug);
+    localStorage.setItem(
+      "recentlyViewedRestaurants",
+      JSON.stringify(filtered.slice(0, 10)),
+    );
+  } catch {
+    // Ignore local storage failures.
+  }
+}
+
+async function loadRestaurantBoot({ slug, isQrVisit, inviteToken }) {
+  if (!supabase) {
+    throw new Error("Supabase env vars are missing.");
+  }
+
+  if (!slug) {
+    throw new Error("No restaurant specified.");
+  }
+
+  trackRecentlyViewed(slug);
+
+  const config = await loadAllergenDietConfig(supabase);
+
+  if (slug === HOW_IT_WORKS_SLUG) {
+    const managerRestaurants = [];
+    const payload = await buildTrainingRestaurantPayload({
+      supabaseClient: supabase,
+      isQrVisit,
+      managerRestaurants,
+    });
+
+    return {
+      config,
+      restaurant: payload.restaurant,
+      user: payload.user,
+      allergies: payload.allergies || [],
+      diets: payload.diets || [],
+      canEdit: false,
+      managerRestaurants,
+      lovedDishNames: [],
+      redirect: "",
+      inviteToken,
+      isHowItWorks: true,
+    };
+  }
+
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+
+  if (userError) {
+    throw userError;
+  }
+
+  const { data: restaurant, error: restaurantError } = await supabase
+    .from("restaurants")
+    .select("*")
+    .eq("slug", slug)
+    .single();
+
+  if (restaurantError || !restaurant) {
+    throw new Error(restaurantError?.message || "Restaurant not found.");
+  }
+
+  let allergies = [];
+  let diets = [];
+  let canEdit = false;
+  let managerRestaurants = [];
+  let lovedDishNames = [];
+
+  if (user) {
+    const isOwner = isOwnerUser(user);
+    const isManager = isManagerUser(user);
+
+    const [{ data: allergyRecord }, { data: managerRecord, error: managerError }] =
+      await Promise.all([
+        supabase
+          .from("user_allergies")
+          .select("allergens, diets")
+          .eq("user_id", user.id)
+          .maybeSingle(),
+        supabase
+          .from("restaurant_managers")
+          .select("id")
+          .eq("user_id", user.id)
+          .eq("restaurant_id", restaurant.id)
+          .maybeSingle(),
+      ]);
+
+    if (managerError) {
+      console.error("[restaurant] manager lookup failed", managerError);
+    }
+
+    allergies = Array.isArray(allergyRecord?.allergens)
+      ? allergyRecord.allergens
+      : [];
+    diets = Array.isArray(allergyRecord?.diets) ? allergyRecord.diets : [];
+
+    canEdit =
+      isOwner || Boolean(managerRecord) || restaurant.name === "Falafel Café";
+
+    if (isManager || isOwner) {
+      managerRestaurants = await fetchManagerRestaurants(supabase, user);
+    }
+
+    if (isManager && !isOwner && !managerRecord) {
+      return {
+        config,
+        restaurant,
+        user,
+        allergies,
+        diets,
+        canEdit: false,
+        managerRestaurants,
+        lovedDishNames: [],
+        redirect: "/restaurants",
+        inviteToken,
+        isHowItWorks: false,
+      };
+    }
+
+    const { data: lovedRows } = await supabase
+      .from("user_loved_dishes")
+      .select("dish_name")
+      .eq("user_id", user.id)
+      .eq("restaurant_id", restaurant.id);
+
+    lovedDishNames = Array.isArray(lovedRows)
+      ? lovedRows
+          .map((row) => String(row?.dish_name || "").trim())
+          .filter(Boolean)
+      : [];
+  }
+
+  return {
+    config,
+    restaurant,
+    user: user
+      ? {
+          ...user,
+          managerRestaurants,
+        }
+      : { loggedIn: false },
+    allergies,
+    diets,
+    canEdit,
+    managerRestaurants,
+    lovedDishNames,
+    redirect: "",
+    inviteToken,
+    isHowItWorks: false,
+  };
+}
 
 export default function RestaurantClient() {
+  const router = useRouter();
+  const queryClient = useQueryClient();
+  const { push: pushToast } = useToast();
   const searchParams = useSearchParams();
-  useRestaurantRuntimeEnvironment();
 
   const slug = searchParams?.get("slug") || "";
   const qrParam = searchParams?.get("qr");
   const inviteToken = searchParams?.get("invite") || "";
-  const isQrVisit = qrParam ? /^(1|true|yes)$/i.test(qrParam) : false;
+  const editParam = searchParams?.get("edit") || searchParams?.get("mode");
+  const isQrVisit = isTruthyFlag(qrParam);
 
-  const { status, error } = useRestaurantRuntime({
-    slug,
-    isQrVisit,
-    inviteToken,
+  const [activeView, setActiveView] = useState("viewer");
+  const [favoriteBusyDish, setFavoriteBusyDish] = useState("");
+
+  const bootQuery = useQuery({
+    queryKey: queryKeys.restaurant.boot(slug, inviteToken, isQrVisit),
+    enabled: Boolean(supabase) && Boolean(slug),
+    queryFn: async () =>
+      loadRestaurantBoot({
+        slug,
+        isQrVisit,
+        inviteToken,
+      }),
+    staleTime: 30 * 1000,
   });
 
-  const managerDashboardHref = useMemo(() => "/manager-dashboard", []);
+  const boot = bootQuery.data;
+
+  useEffect(() => {
+    if (!boot?.redirect) return;
+    router.replace(boot.redirect);
+  }, [boot?.redirect, router]);
+
+  useEffect(() => {
+    if (!boot) return;
+    const defaultMode = readManagerModeDefault({ editParam, isQrVisit });
+    const nextMode = boot.canEdit ? defaultMode : "viewer";
+    setActiveView(nextMode);
+  }, [boot, editParam, isQrVisit]);
+
+  const lovedDishesSet = useMemo(() => {
+    return new Set(boot?.lovedDishNames || []);
+  }, [boot?.lovedDishNames]);
+
+  const managerActions = useManagerActions({
+    restaurantId: boot?.restaurant?.id,
+    user: {
+      ...boot?.user,
+      managerRestaurants: boot?.managerRestaurants,
+    },
+    permissions: {
+      canEdit: boot?.canEdit,
+      isOwner: isOwnerUser(boot?.user),
+      isManager: isManagerUser(boot?.user),
+    },
+  });
+
+  const saveOverlaysMutation = useMutation({
+    mutationFn: async (nextOverlays) => {
+      if (!supabase) throw new Error("Supabase is not configured.");
+      if (!boot?.restaurant?.id) throw new Error("Restaurant missing.");
+
+      const sanitized = Array.isArray(nextOverlays) ? nextOverlays : [];
+      const { error } = await supabase
+        .from("restaurants")
+        .update({
+          overlays: sanitized,
+          last_confirmed: new Date().toISOString(),
+        })
+        .eq("id", boot.restaurant.id);
+
+      if (error) throw error;
+      return sanitized;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.restaurant.boot(slug, inviteToken, isQrVisit),
+      });
+      pushToast({
+        tone: "success",
+        title: "Saved",
+        description: "Menu overlays were updated.",
+      });
+    },
+  });
+
+  const toggleFavoriteMutation = useMutation({
+    mutationFn: async ({ dishName, shouldLove }) => {
+      if (!supabase) throw new Error("Supabase is not configured.");
+      const user = boot?.user;
+      if (!user?.id) {
+        throw new Error("Sign in to save loved dishes.");
+      }
+      if (!boot?.restaurant?.id) {
+        throw new Error("Restaurant is not loaded yet.");
+      }
+
+      if (shouldLove) {
+        const { error } = await supabase.from("user_loved_dishes").upsert(
+          {
+            user_id: user.id,
+            restaurant_id: boot.restaurant.id,
+            dish_name: dishName,
+          },
+          {
+            onConflict: "user_id,restaurant_id,dish_name",
+          },
+        );
+        if (error) throw error;
+        return { dishName, loved: true };
+      }
+
+      const { error } = await supabase
+        .from("user_loved_dishes")
+        .delete()
+        .eq("user_id", user.id)
+        .eq("restaurant_id", boot.restaurant.id)
+        .eq("dish_name", dishName);
+
+      if (error) throw error;
+      return { dishName, loved: false };
+    },
+    onSuccess: (result) => {
+      queryClient.setQueryData(
+        queryKeys.restaurant.boot(slug, inviteToken, isQrVisit),
+        (current) => {
+          if (!current) return current;
+          const lovedSet = new Set(current.lovedDishNames || []);
+          if (result.loved) {
+            lovedSet.add(result.dishName);
+          } else {
+            lovedSet.delete(result.dishName);
+          }
+          return {
+            ...current,
+            lovedDishNames: Array.from(lovedSet),
+          };
+        },
+      );
+      pushToast({
+        tone: result.loved ? "success" : "neutral",
+        title: result.loved ? "Loved dish saved" : "Loved dish removed",
+        description: result.dishName,
+      });
+    },
+  });
+
+  const orderFlow = useOrderFlow({
+    restaurantId: boot?.restaurant?.id,
+    user: boot?.user,
+    overlays: boot?.restaurant?.overlays || [],
+    preferences: {
+      allergies: boot?.allergies || [],
+      diets: boot?.diets || [],
+    },
+  });
+
+  const viewer = useRestaurantViewer({
+    restaurant: boot?.restaurant,
+    overlays: boot?.restaurant?.overlays || [],
+    preferences: {
+      allergies: boot?.allergies || [],
+      diets: boot?.diets || [],
+      normalizeAllergen: boot?.config?.normalizeAllergen,
+      normalizeDietLabel: boot?.config?.normalizeDietLabel,
+      getDietAllergenConflicts: boot?.config?.getDietAllergenConflicts,
+    },
+    mode: activeView,
+    callbacks: {
+      onAddDishToOrder: (dish) => {
+        orderFlow.addDish(dish);
+      },
+      onToggleFavoriteDish: async (dish) => {
+        const dishName = String(dish?.id || dish?.name || "").trim();
+        if (!dishName) return;
+        const shouldLove = !lovedDishesSet.has(dishName);
+
+        try {
+          setFavoriteBusyDish(dishName);
+          await toggleFavoriteMutation.mutateAsync({ dishName, shouldLove });
+        } catch (error) {
+          pushToast({
+            tone: "danger",
+            title: "Favorite update failed",
+            description:
+              error?.message || "Unable to update favorite right now.",
+          });
+        } finally {
+          setFavoriteBusyDish("");
+        }
+      },
+    },
+  });
+
+  const editor = useRestaurantEditor({
+    restaurant: boot?.restaurant,
+    overlays: boot?.restaurant?.overlays || [],
+    permissions: {
+      canEdit: boot?.canEdit,
+    },
+    callbacks: {
+      onSave: (nextOverlays) => saveOverlaysMutation.mutateAsync(nextOverlays),
+    },
+  });
+
+  const topbarLinks = createDinerTopbarLinks({
+    includeRestaurants: true,
+    includeFavorites: true,
+    includeDishSearch: true,
+    includeHelp: true,
+    includeDashboard: managerActions.canManage,
+    dashboardVisible: managerActions.canManage,
+  });
+
+  const onSignOut = useCallback(async () => {
+    if (!supabase) return;
+    await supabase.auth.signOut();
+    router.replace("/account?mode=signin");
+  }, [router]);
+
+  if (!supabase) {
+    return (
+      <PageShell>
+        <p className="status-text error">Supabase env vars are missing.</p>
+      </PageShell>
+    );
+  }
+
+  if (!slug) {
+    return (
+      <PageShell>
+        <p className="status-text error">No restaurant specified.</p>
+      </PageShell>
+    );
+  }
+
+  if (bootQuery.isLoading) {
+    return (
+      <PageShell>
+        <p className="status-text">Loading restaurant...</p>
+      </PageShell>
+    );
+  }
+
+  if (bootQuery.isError || !boot?.restaurant) {
+    return (
+      <PageShell>
+        <p className="status-text error">
+          {bootQuery.error?.message || "Failed to load restaurant page."}
+        </p>
+      </PageShell>
+    );
+  }
 
   return (
-    <>
-      <RestaurantLoaderOverlay status={status} error={error} />
-      <RestaurantCoreDom managerDashboardHref={managerDashboardHref} />
-    </>
+    <PageShell
+      topbar={
+        <SimpleTopbar
+          brandHref="/home"
+          links={topbarLinks}
+          showAuthAction
+          signedIn={Boolean(boot?.user?.id)}
+          onSignOut={onSignOut}
+        />
+      }
+    >
+      {inviteToken && !boot?.user?.id ? (
+        <div className="mb-4 rounded-xl border border-[rgba(76,90,212,0.5)] bg-[rgba(76,90,212,0.2)] p-3 text-[#dce5ff]">
+          <p className="m-0 text-sm">
+            You have been invited as a manager. Sign up to activate manager access.
+          </p>
+          <a
+            href={`/account?invite=${encodeURIComponent(inviteToken)}`}
+            className="btn btnPrimary mt-2 inline-flex"
+          >
+            Sign up to activate access
+          </a>
+        </div>
+      ) : null}
+
+      <Tabs
+        value={activeView}
+        onValueChange={setActiveView}
+        items={[
+          {
+            value: "viewer",
+            label: "Viewer",
+            content: (
+              <div className="space-y-4">
+                <RestaurantViewer
+                  restaurant={boot.restaurant}
+                  viewer={viewer}
+                  orderFlow={orderFlow}
+                  lovedDishes={lovedDishesSet}
+                  favoriteBusyDish={favoriteBusyDish}
+                />
+                <RestaurantOrderFlowPanel orderFlow={orderFlow} user={boot.user} />
+              </div>
+            ),
+          },
+          ...(boot.canEdit
+            ? [
+                {
+                  value: "editor",
+                  label: "Editor",
+                  content: <RestaurantEditor editor={editor} />,
+                },
+              ]
+            : []),
+        ]}
+      />
+
+      {managerActions.canManage ? (
+        <div className="mt-4 flex flex-wrap gap-2">
+          <Badge tone="neutral">Manager access enabled</Badge>
+          {managerActions.managerDashboardHref ? (
+            <a href={managerActions.managerDashboardHref} className="btn btnGhost">
+              Open dashboard
+            </a>
+          ) : null}
+        </div>
+      ) : null}
+    </PageShell>
   );
 }

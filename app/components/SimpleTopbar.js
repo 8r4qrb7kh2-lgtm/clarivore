@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Button } from "./ui";
 
 const CLARIVORE_LOGO_SRC =
   "https://static.wixstatic.com/media/945e9d_2b97098295d341d493e4a07d80d6b57c~mv2.png";
@@ -11,9 +12,8 @@ export function ManagerModeSwitch({
 }) {
   return (
     <div className="mode-toggle-container" style={{ display: "flex" }}>
-      <button
-        type="button"
-        className="btnLink"
+      <Button
+        variant="link"
         style={{
           opacity: mode === "customer" ? 1 : 0.65,
           fontWeight: mode === "customer" ? 700 : 500,
@@ -21,10 +21,9 @@ export function ManagerModeSwitch({
         onClick={() => onChange?.("customer")}
       >
         {customerLabel}
-      </button>
-      <button
-        type="button"
-        className="btnLink"
+      </Button>
+      <Button
+        variant="link"
         style={{
           opacity: mode === "editor" ? 1 : 0.65,
           fontWeight: mode === "editor" ? 700 : 500,
@@ -32,7 +31,7 @@ export function ManagerModeSwitch({
         onClick={() => onChange?.("editor")}
       >
         {editorLabel}
-      </button>
+      </Button>
     </div>
   );
 }
@@ -75,9 +74,9 @@ export default function SimpleTopbar({
             {showAuthAction
               ? signedIn
                 ? (
-                    <button type="button" className="btnLink" onClick={onSignOut}>
+                    <Button variant="link" type="button" onClick={onSignOut}>
                       {signOutLabel}
-                    </button>
+                    </Button>
                   )
                 : (
                     <Link href={signInHref}>{signInLabel}</Link>

@@ -6,10 +6,6 @@ import ManagerDashboardDom from "./components/ManagerDashboardDom";
 import { prepareManagerDashboardBootPayload } from "./services/managerDashboardBoot";
 import { supabaseClient as supabase } from "../lib/supabase";
 import { initManagerNotifications } from "../lib/managerNotifications";
-import {
-  getSupabaseClient,
-  setSupabaseClient,
-} from "../lib/restaurantRuntime/runtimeSessionState.js";
 
 export default function ManagerDashboardClient() {
   const router = useRouter();
@@ -54,8 +50,6 @@ export default function ManagerDashboardClient() {
           throw new Error("Supabase env vars are missing.");
         }
 
-        setSupabaseClient(supabase);
-
         const bootPayload = await prepareManagerDashboardBootPayload();
         const hasManagerAccess = Boolean(
           bootPayload.isOwner || bootPayload.isManager,
@@ -81,7 +75,7 @@ export default function ManagerDashboardClient() {
           if (hasManagerAccess && typeof initManagerNotifications === "function") {
             initManagerNotifications({
               user: bootPayload.user,
-              client: getSupabaseClient(),
+              client: supabase,
             });
           }
         }

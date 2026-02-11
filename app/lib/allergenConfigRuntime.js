@@ -2,7 +2,7 @@ import {
   buildAllergenDietConfig,
   loadAllergenDietConfig,
 } from "./allergenConfig";
-import { getSupabaseClient as getRuntimeSupabaseClient } from "./restaurantRuntime/runtimeSessionState.js";
+import { supabaseClient as defaultSupabaseClient } from "./supabase";
 
 let browserConfigPromise = null;
 
@@ -32,8 +32,11 @@ export async function ensureAllergenDietConfigGlobals(supabaseClient = null) {
 
   if (!browserConfigPromise) {
     browserConfigPromise = (async () => {
-      const runtimeClient = getRuntimeSupabaseClient();
-      const resolvedClient = supabaseClient || runtimeClient || window.supabaseClient || null;
+      const resolvedClient =
+        supabaseClient ||
+        defaultSupabaseClient ||
+        window.supabaseClient ||
+        null;
       const config = await loadAllergenDietConfig(resolvedClient);
       return toLoadedConfig(config);
     })();

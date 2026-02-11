@@ -1,4 +1,4 @@
-import { getSupabaseClient as getRuntimeSupabaseClient } from './restaurantRuntime/runtimeSessionState.js';
+import { supabaseClient as defaultSupabaseClient } from "./supabase";
 
 const HELP_ASSISTANT_MODE_KEY = 'helpAssistantMode';
 const HELP_ASSISTANT_CONVO_PREFIX = 'helpAssistantConversation';
@@ -525,7 +525,9 @@ export function attachHelpLinkHandlers(container) {
 export async function requestHelpAssistant({ query, mode, messages }) {
   const payload = { query, mode, messages, pageContext: collectPageContext() };
   let data = null;
-  const client = getRuntimeSupabaseClient() || window.supabaseClient || null;
+  const client =
+    defaultSupabaseClient ||
+    (typeof window !== "undefined" ? window.supabaseClient || null : null);
   if (client?.functions?.invoke) {
     try {
       const invokeRes = await client.functions.invoke('help-assistant', { body: payload });

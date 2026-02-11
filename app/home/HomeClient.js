@@ -1,12 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
 import PageShell from "../components/PageShell";
 import SimpleTopbar from "../components/SimpleTopbar";
 import RestaurantCard from "../components/RestaurantCard";
 import RestaurantGridState from "../components/RestaurantGridState";
+import { queryKeys } from "../lib/queryKeys";
 import { filterRestaurantsByVisibility } from "../lib/restaurantVisibility";
 import { supabaseClient as supabase } from "../lib/supabase";
 import { createDinerTopbarLinks } from "../lib/topbarLinks";
@@ -16,74 +18,60 @@ export default function HomeClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const isQR = searchParams?.get("qr") === "1";
-  const [status, setStatus] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [restaurants, setRestaurants] = useState([]);
-  const [user, setUser] = useState(null);
+  const authQuery = useQuery({
+    queryKey: queryKeys.auth.user("home"),
+    queryFn: async () => {
+      if (!supabase) return null;
+      const { data, error } = await supabase.auth.getUser();
+      if (error) throw error;
+      return data?.user || null;
+    },
+    staleTime: 30 * 1000,
+  });
 
   useEffect(() => {
-    let isMounted = true;
-
-    async function load() {
-      if (!supabase) {
-        setStatus("Supabase env vars are missing.");
-        setLoading(false);
-        return;
-      }
-
-      let authUser = null;
-      try {
-        const { data: authData, error: authError } =
-          await supabase.auth.getUser();
-        if (authError) throw authError;
-        authUser = authData?.user || null;
-        if (!authUser && !isQR) {
-          router.replace("/account?mode=signin");
-          return;
-        }
-        if (isMounted) setUser(authUser);
-      } catch (error) {
-        console.error("Auth check failed", error);
-        router.replace("/account?mode=signin");
-        return;
-      }
-
-      try {
-        setLoading(true);
-        const { data, error } = await supabase
-          .from("restaurants")
-          .select("id, name, slug, menu_image, last_confirmed")
-          .order("last_confirmed", { ascending: false })
-          .limit(6);
-
-        if (error) throw error;
-        if (isMounted) {
-          setRestaurants(
-            filterRestaurantsByVisibility(Array.isArray(data) ? data : [], {
-              user: authUser,
-            }),
-          );
-          setStatus("");
-        }
-      } catch (error) {
-        console.error("Failed to load restaurants", error);
-        if (isMounted) {
-          setStatus("Error loading restaurants.");
-          setRestaurants([]);
-        }
-      } finally {
-        if (isMounted) setLoading(false);
-      }
+    if (!isQR && authQuery.isError) {
+      router.replace("/account?mode=signin");
+      return;
     }
+    if (!isQR && authQuery.isSuccess && !authQuery.data) {
+      router.replace("/account?mode=signin");
+    }
+  }, [authQuery.data, authQuery.isError, authQuery.isSuccess, isQR, router]);
 
-    load();
+  const restaurantsQuery = useQuery({
+    queryKey: [
+      "restaurants",
+      "home",
+      { isQR, userId: authQuery.data?.id || null },
+    ],
+    enabled: Boolean(supabase) && (isQR || Boolean(authQuery.data)),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("restaurants")
+        .select("id, name, slug, menu_image, last_confirmed")
+        .order("last_confirmed", { ascending: false })
+        .limit(6);
+      if (error) throw error;
+      return filterRestaurantsByVisibility(Array.isArray(data) ? data : [], {
+        user: authQuery.data || null,
+      });
+    },
+    staleTime: 60 * 1000,
+  });
 
-    return () => {
-      isMounted = false;
-    };
-  }, [isQR, router]);
+  const greeting = useMemo(
+    () => resolveGreetingFirstName(authQuery.data || null),
+    [authQuery.data],
+  );
 
-  const greeting = useMemo(() => resolveGreetingFirstName(user), [user]);
+  const restaurants = restaurantsQuery.data || [];
+  const loading = authQuery.isPending || restaurantsQuery.isPending;
+  const status = !supabase
+    ? "Supabase env vars are missing."
+    : restaurantsQuery.isError
+      ? "Error loading restaurants."
+      : "";
 
   return (
     <PageShell

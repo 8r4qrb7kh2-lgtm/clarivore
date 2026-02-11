@@ -1,9 +1,8 @@
-import { getSupabaseClient as getRuntimeSupabaseClient } from "./restaurantRuntime/runtimeSessionState.js";
+import { supabaseClient as defaultSupabaseClient } from "./supabase";
 
 function resolveSupabaseClient(options = {}) {
   if (options.supabaseClient) return options.supabaseClient;
-  const runtimeClient = getRuntimeSupabaseClient();
-  if (runtimeClient) return runtimeClient;
+  if (defaultSupabaseClient) return defaultSupabaseClient;
   if (typeof window !== "undefined" && window.supabaseClient) {
     return window.supabaseClient;
   }
