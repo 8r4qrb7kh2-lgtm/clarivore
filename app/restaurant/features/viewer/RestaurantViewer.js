@@ -4,8 +4,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { Button } from "../../../components/ui";
 
-const REFERENCE_NOTE_ACK_KEY = "clarivoreReferenceNoteAcked";
-
 function clamp(value, min, max) {
   return Math.min(Math.max(value, min), max);
 }
@@ -50,6 +48,13 @@ function statusBorderColor(status) {
   if (status === "removable") return "#facc15";
   if (status === "unsafe") return "#ef4444";
   return "rgba(255,255,255,0.45)";
+}
+
+function statusPulseColor(status) {
+  if (status === "safe") return "rgba(34, 197, 94, 0.55)";
+  if (status === "removable") return "rgba(250, 204, 21, 0.55)";
+  if (status === "unsafe") return "rgba(239, 68, 68, 0.58)";
+  return "rgba(226, 236, 255, 0.42)";
 }
 
 function includesPreference(values, preference) {
@@ -160,23 +165,8 @@ export function RestaurantViewer({
   const selectedDish = selectedOverlay;
   const selectedOverlaySignature = selectedDish ? overlaySignature(selectedDish) : "";
 
-  useEffect(() => {
-    try {
-      setAcknowledgedReferenceNote(
-        localStorage.getItem(REFERENCE_NOTE_ACK_KEY) === "1",
-      );
-    } catch {
-      setAcknowledgedReferenceNote(false);
-    }
-  }, []);
-
   const dismissReferenceNote = useCallback(() => {
     setAcknowledgedReferenceNote(true);
-    try {
-      localStorage.setItem(REFERENCE_NOTE_ACK_KEY, "1");
-    } catch {
-      // Ignore local storage failures.
-    }
   }, []);
 
   const lastConfirmedLabel = useMemo(
@@ -273,20 +263,23 @@ export function RestaurantViewer({
   const jumpFromMinimap = useCallback(
     (event) => {
       const scrollNode = menuScrollRef.current;
-      if (!scrollNode) return;
+      const pageNode = pageRefs.current[activePageIndex];
+      if (!scrollNode || !pageNode) return;
       const bounds = event.currentTarget.getBoundingClientRect();
       const ratio = clamp((event.clientY - bounds.top) / bounds.height, 0, 1);
+      const pageHeight = Math.max(pageNode.offsetHeight, 1);
       const maxScroll = Math.max(
         scrollSnapshot.scrollHeight - scrollSnapshot.clientHeight,
         0,
       );
-      const target = ratio * scrollSnapshot.scrollHeight - scrollSnapshot.clientHeight / 2;
+      const targetWithinPage = ratio * pageHeight - scrollSnapshot.clientHeight / 2;
+      const target = pageNode.offsetTop + targetWithinPage;
       scrollNode.scrollTo({
         top: clamp(target, 0, maxScroll),
         behavior: "smooth",
       });
     },
-    [scrollSnapshot.clientHeight, scrollSnapshot.scrollHeight],
+    [activePageIndex, scrollSnapshot.clientHeight, scrollSnapshot.scrollHeight],
   );
 
   const actionButtons = [
@@ -324,18 +317,33 @@ export function RestaurantViewer({
     },
   ];
 
-  const maxScrollable = Math.max(
-    scrollSnapshot.scrollHeight - scrollSnapshot.clientHeight,
-    0,
-  );
-  const viewportTopRatio = maxScrollable
-    ? scrollSnapshot.scrollTop / maxScrollable
-    : 0;
-  const viewportHeightRatio = clamp(
-    scrollSnapshot.clientHeight / scrollSnapshot.scrollHeight,
-    0.08,
-    1,
-  );
+  const minimapViewport = useMemo(() => {
+    const pageNode = pageRefs.current[activePageIndex];
+    if (!pageNode) {
+      return {
+        topRatio: 0,
+        heightRatio: 1,
+      };
+    }
+
+    const pageHeight = Math.max(pageNode.offsetHeight, 1);
+    const pageTop = pageNode.offsetTop;
+    const pageBottom = pageTop + pageHeight;
+    const viewportTop = scrollSnapshot.scrollTop;
+    const viewportBottom = viewportTop + scrollSnapshot.clientHeight;
+    const visibleTop = clamp(viewportTop - pageTop, 0, pageHeight);
+    const visibleBottom = clamp(viewportBottom - pageTop, 0, pageHeight);
+    const visibleHeight = Math.max(visibleBottom - visibleTop, pageHeight * 0.06);
+    const topRatio = clamp(visibleTop / pageHeight, 0, 1);
+    const heightRatio = clamp(visibleHeight / pageHeight, 0.06, 1);
+
+    return {
+      topRatio: clamp(topRatio, 0, Math.max(1 - heightRatio, 0)),
+      heightRatio,
+      pageBottom,
+      pageTop,
+    };
+  }, [activePageIndex, scrollSnapshot.clientHeight, scrollSnapshot.scrollTop]);
 
   const selectedDishAllergenRows = useMemo(
     () => buildAllergenRows(selectedDish, viewer.savedAllergens),
@@ -360,8 +368,8 @@ export function RestaurantViewer({
 
     const pageHeight = Math.max(selectedDishPageNode.offsetHeight, 1);
     const pageWidth = Math.max(selectedDishPageNode.offsetWidth, 1);
-    const popupWidth = 330;
-    const popupHeight = 350;
+    const popupWidth = 340;
+    const popupHeight = 400;
 
     const overlayX = (parseOverlayNumber(selectedDish.x) / 100) * pageWidth;
     const overlayY = (parseOverlayNumber(selectedDish.y) / 100) * pageHeight;
@@ -422,8 +430,8 @@ export function RestaurantViewer({
               <span
                 className="restaurant-legacy-page-thumb-viewport"
                 style={{
-                  top: `${viewportTopRatio * 100}%`,
-                  height: `${viewportHeightRatio * 100}%`,
+                  top: `${minimapViewport.topRatio * 100}%`,
+                  height: `${minimapViewport.heightRatio * 100}%`,
                 }}
               />
             </button>
@@ -543,140 +551,159 @@ export function RestaurantViewer({
           </div>
         </div>
 
-        <div className="restaurant-legacy-legend">
-          <p>
-            <span className="legend-box safe" /> Complies ·{" "}
-            <span className="legend-box removable" /> Can be modified to comply ·{" "}
-            <span className="legend-box unsafe" /> Cannot be modified to comply
-          </p>
-          <p>⚠ Cross-contamination risk · Tap dishes for details · Pinch menu to zoom in/out</p>
-        </div>
-      </div>
-
-      <div className="restaurant-legacy-menu-stage">
-        <div ref={menuScrollRef} className="restaurant-legacy-menu-scroll">
-          {viewer.menuPages.map((page) => (
-            <div
-              key={`page-${page.pageIndex}`}
-              className="restaurant-legacy-menu-page"
-              ref={(node) => {
-                pageRefs.current[page.pageIndex] = node;
-              }}
-            >
-              {page.image ? (
-                <img
-                  src={page.image}
-                  alt={`${restaurant?.name || "Restaurant"} menu page ${page.pageIndex + 1}`}
-                  className="restaurant-legacy-menu-image"
-                />
-              ) : (
-                <div className="restaurant-legacy-no-image">No menu image available.</div>
-              )}
-
-              {page.overlays.map((overlay, index) => (
-                <button
-                  key={overlayKey(overlay, index)}
-                  type="button"
-                  onClick={() => {
-                    viewer.selectDish(overlay.id);
-                    setSelectedOverlay(overlay);
-                    scrollToPage(overlay.pageIndex, "smooth");
-                  }}
-                  className={`restaurant-legacy-overlay ${
-                    selectedOverlaySignature &&
-                    overlaySignature(overlay) === selectedOverlaySignature
-                      ? "is-selected"
-                      : ""
-                  }`}
-                  style={{
-                    left: `${parseOverlayNumber(overlay.x)}%`,
-                    top: `${parseOverlayNumber(overlay.y)}%`,
-                    width: `${parseOverlayNumber(overlay.w)}%`,
-                    height: `${parseOverlayNumber(overlay.h)}%`,
-                    borderColor: statusBorderColor(overlay.compatibilityStatus),
-                  }}
-                >
-                  <span className="restaurant-legacy-overlay-warning">
-                    {overlay.hasCrossContamination ? "⚠" : ""}
-                  </span>
-                  <span className="restaurant-legacy-overlay-info">i</span>
-                </button>
-              ))}
-            </div>
-          ))}
-        </div>
-
-        {selectedDish ? (
-          <aside className="restaurant-legacy-dish-popover" style={selectedDishPopupStyle}>
-            <header className="restaurant-legacy-dish-popover-header">
-              <h2>{selectedDish.name || "Dish details"}</h2>
-              <div className="restaurant-legacy-dish-popover-actions">
-                <button
-                  type="button"
-                  aria-label="Toggle favorite dish"
-                  onClick={() => viewer.toggleFavoriteDish(selectedDish)}
-                  disabled={favoriteBusyDish === selectedDish.id}
-                >
-                  {lovedDishes.has(selectedDish.id) ? "♥" : "♡"}
-                </button>
-                <button
-                  type="button"
-                  aria-label="Close dish details"
-                  onClick={() => setSelectedOverlay(null)}
-                >
-                  ×
-                </button>
-              </div>
-            </header>
-
-            <section className="restaurant-legacy-dish-popover-section">
-              <h3>Allergens:</h3>
-              {selectedDishAllergenRows.length ? (
-                selectedDishAllergenRows.map((row) => (
-                  <div key={row.key} className={`dish-row ${row.tone}`}>
-                    <div className="dish-row-title">{row.title}</div>
-                    {row.detail ? <div className="dish-row-detail">{row.detail}</div> : null}
-                  </div>
-                ))
-              ) : (
-                <p className="dish-row-empty">No allergen data listed.</p>
-              )}
-            </section>
-
-            <section className="restaurant-legacy-dish-popover-section">
-              <h3>Diets:</h3>
-              {selectedDishDietRows.length ? (
-                selectedDishDietRows.map((row) => (
-                  <div key={row.key} className={`dish-row ${row.tone}`}>
-                    <div className="dish-row-title">{row.title}</div>
-                    {row.detail ? <div className="dish-row-detail">{row.detail}</div> : null}
-                  </div>
-                ))
-              ) : (
-                <p className="dish-row-empty">No diet data listed.</p>
-              )}
-            </section>
-
-            {selectedDish.hasCrossContamination ? (
-              <p className="restaurant-legacy-dish-cross-warning">
-                ⚠ Cross-contamination risk is flagged for this dish.
-              </p>
-            ) : null}
-
-            <Button
-              size="compact"
-              tone="primary"
-              className="restaurant-legacy-dish-order-btn"
-              onClick={() => {
-                viewer.addDishToOrder(selectedDish);
-                orderFlow.addDish(selectedDish);
-              }}
-            >
-              Add to order
-            </Button>
-          </aside>
+        {acknowledgedReferenceNote ? (
+          <div className="restaurant-legacy-legend">
+            <p>
+              <span className="legend-box safe" /> Complies ·{" "}
+              <span className="legend-box removable" /> Can be modified to comply ·{" "}
+              <span className="legend-box unsafe" /> Cannot be modified to comply
+            </p>
+            <p>⚠ Cross-contamination risk · Tap dishes for details · Pinch menu to zoom in/out</p>
+          </div>
         ) : null}
       </div>
+
+      {acknowledgedReferenceNote ? (
+        <div className="restaurant-legacy-menu-stage">
+          <div ref={menuScrollRef} className="restaurant-legacy-menu-scroll">
+            {viewer.menuPages.map((page) => (
+              <div
+                key={`page-${page.pageIndex}`}
+                className="restaurant-legacy-menu-page"
+                ref={(node) => {
+                  pageRefs.current[page.pageIndex] = node;
+                }}
+              >
+                {page.image ? (
+                  <img
+                    src={page.image}
+                    alt={`${restaurant?.name || "Restaurant"} menu page ${page.pageIndex + 1}`}
+                    className="restaurant-legacy-menu-image"
+                  />
+                ) : (
+                  <div className="restaurant-legacy-no-image">No menu image available.</div>
+                )}
+
+                {page.overlays.map((overlay, index) => (
+                  <button
+                    key={overlayKey(overlay, index)}
+                    type="button"
+                    onClick={() => {
+                      viewer.selectDish(overlay.id);
+                      setSelectedOverlay(overlay);
+                      scrollToPage(overlay.pageIndex, "smooth");
+                    }}
+                    className={`restaurant-legacy-overlay ${
+                      selectedOverlaySignature &&
+                      overlaySignature(overlay) === selectedOverlaySignature
+                        ? "is-selected"
+                        : ""
+                    }`}
+                    style={{
+                      left: `${parseOverlayNumber(overlay.x)}%`,
+                      top: `${parseOverlayNumber(overlay.y)}%`,
+                      width: `${parseOverlayNumber(overlay.w)}%`,
+                      height: `${parseOverlayNumber(overlay.h)}%`,
+                      borderColor: statusBorderColor(overlay.compatibilityStatus),
+                      "--overlay-pulse-color": statusPulseColor(
+                        overlay.compatibilityStatus,
+                      ),
+                    }}
+                  >
+                    <span className="restaurant-legacy-overlay-warning">
+                      {overlay.hasCrossContamination ? "⚠" : ""}
+                    </span>
+                    <span className="restaurant-legacy-overlay-info">i</span>
+                  </button>
+                ))}
+              </div>
+            ))}
+          </div>
+
+          {selectedDish ? (
+            <aside className="restaurant-legacy-dish-popover" style={selectedDishPopupStyle}>
+              <header className="restaurant-legacy-dish-popover-header">
+                <h2>{selectedDish.name || "Dish details"}</h2>
+                <div className="restaurant-legacy-dish-popover-actions">
+                  <button
+                    type="button"
+                    aria-label="Toggle favorite dish"
+                    onClick={() => viewer.toggleFavoriteDish(selectedDish)}
+                    disabled={favoriteBusyDish === selectedDish.id}
+                  >
+                    {lovedDishes.has(selectedDish.id) ? "♥" : "♡"}
+                  </button>
+                  <button
+                    type="button"
+                    aria-label="Close dish details"
+                    onClick={() => setSelectedOverlay(null)}
+                  >
+                    ×
+                  </button>
+                </div>
+              </header>
+
+              <div className="restaurant-legacy-dish-popover-body">
+                <section className="restaurant-legacy-dish-popover-section">
+                  <h3>Allergens:</h3>
+                  {selectedDishAllergenRows.length ? (
+                    selectedDishAllergenRows.map((row) => (
+                      <div key={row.key} className={`dish-row ${row.tone}`}>
+                        <div className="dish-row-title">{row.title}</div>
+                        {row.detail ? <div className="dish-row-detail">{row.detail}</div> : null}
+                      </div>
+                    ))
+                  ) : (
+                    <p className="dish-row-empty">No allergen data listed.</p>
+                  )}
+                </section>
+
+                <section className="restaurant-legacy-dish-popover-section">
+                  <h3>Diets:</h3>
+                  {selectedDishDietRows.length ? (
+                    selectedDishDietRows.map((row) => (
+                      <div key={row.key} className={`dish-row ${row.tone}`}>
+                        <div className="dish-row-title">{row.title}</div>
+                        {row.detail ? <div className="dish-row-detail">{row.detail}</div> : null}
+                      </div>
+                    ))
+                  ) : (
+                    <p className="dish-row-empty">No diet data listed.</p>
+                  )}
+                </section>
+
+                {selectedDish.hasCrossContamination ? (
+                  <p className="restaurant-legacy-dish-cross-warning">
+                    ⚠ Cross-contamination risk:{" "}
+                    {viewer.savedAllergens.length
+                      ? viewer.savedAllergens.map((item) => item.emoji || item.label).join(", ")
+                      : "flagged"}
+                    {viewer.savedDiets.length
+                      ? `, ${viewer.savedDiets.map((item) => item.emoji || item.label).join(", ")}`
+                      : ""}
+                  </p>
+                ) : null}
+              </div>
+
+              <Button
+                size="compact"
+                tone="primary"
+                className="restaurant-legacy-dish-order-btn"
+                onClick={() => {
+                  viewer.addDishToOrder(selectedDish);
+                  orderFlow.addDish(selectedDish);
+                }}
+              >
+                Add to order
+              </Button>
+            </aside>
+          ) : null}
+        </div>
+      ) : (
+        <div className="restaurant-legacy-menu-locked">
+          Select <strong>I understand</strong> to view the menu.
+        </div>
+      )}
 
       <footer className="restaurant-legacy-help-fab">
         <Link href="/help-contact">Help</Link>

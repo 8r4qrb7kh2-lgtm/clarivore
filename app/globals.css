@@ -1167,6 +1167,21 @@ h2 {
   background: #030713;
 }
 
+.restaurant-legacy-menu-locked {
+  flex: 1;
+  min-height: 280px;
+  border-radius: 18px;
+  border: 1px dashed rgba(124, 156, 255, 0.38);
+  background: rgba(5, 11, 27, 0.72);
+  color: #d3ddfb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  font-size: 1rem;
+  padding: 20px;
+}
+
 .restaurant-legacy-menu-scroll {
   height: 100%;
   overflow-x: hidden;
@@ -1229,9 +1244,32 @@ h2 {
 }
 
 .restaurant-legacy-overlay.is-selected {
-  box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.92),
-    0 0 0 3px rgba(76, 101, 255, 0.72);
+  box-shadow: none;
+}
+
+.restaurant-legacy-overlay.is-selected::after {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: 5px;
+  border: 2px solid var(--overlay-pulse-color, rgba(226, 236, 255, 0.42));
+  pointer-events: none;
+  animation: restaurantOverlayPulse 1.2s ease-out infinite;
+}
+
+@keyframes restaurantOverlayPulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.95;
+  }
+  70% {
+    transform: scale(1.08);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1.08);
+    opacity: 0;
+  }
 }
 
 .restaurant-legacy-overlay-warning {
@@ -1261,12 +1299,16 @@ h2 {
 
 .restaurant-legacy-dish-popover {
   position: absolute;
-  width: min(330px, calc(100% - 20px));
+  width: min(340px, calc(100% - 20px));
+  max-height: min(74vh, 540px);
   border-radius: 12px;
   border: 1px solid rgba(79, 101, 255, 0.5);
   background: rgba(17, 24, 59, 0.98);
   box-shadow: 0 20px 56px rgba(0, 0, 0, 0.55);
   z-index: 30;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .restaurant-legacy-dish-popover-header {
@@ -1280,8 +1322,9 @@ h2 {
 
 .restaurant-legacy-dish-popover-header h2 {
   margin: 0;
-  font-size: 2rem;
-  line-height: 1.1;
+  font-size: 1.1rem;
+  line-height: 1.15;
+  max-width: 230px;
   color: #f2f7ff;
 }
 
@@ -1306,9 +1349,20 @@ h2 {
   line-height: 1;
 }
 
+.restaurant-legacy-dish-popover-actions button:first-child {
+  border-color: rgba(255, 96, 96, 0.75);
+  color: #ff9a9a;
+}
+
 .restaurant-legacy-dish-popover-actions button:disabled {
   opacity: 0.55;
   cursor: not-allowed;
+}
+
+.restaurant-legacy-dish-popover-body {
+  flex: 1;
+  overflow-y: auto;
+  padding-bottom: 2px;
 }
 
 .restaurant-legacy-dish-popover-section {
