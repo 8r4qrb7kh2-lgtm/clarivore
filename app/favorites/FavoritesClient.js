@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import PageShell from "../components/PageShell";
@@ -251,13 +251,26 @@ export default function FavoritesClient() {
     });
   };
 
+  const onSignOut = useCallback(async () => {
+    if (!supabase) return;
+    await supabase.auth.signOut();
+    router.replace("/account?mode=signin");
+  }, [router]);
+
   return (
     <PageShell
       contentClassName="favorite-container"
       topbar={
         <SimpleTopbar
           brandHref="/home"
-          links={createDinerTopbarLinks({ includeFavorites: false })}
+          links={createDinerTopbarLinks({
+            includeFavorites: false,
+            includeDashboard: Boolean(managerAccessQuery.data?.hasAccess),
+            dashboardVisible: Boolean(managerAccessQuery.data?.hasAccess),
+          })}
+          showAuthAction
+          signedIn={Boolean(user?.id)}
+          onSignOut={onSignOut}
         />
       }
     >

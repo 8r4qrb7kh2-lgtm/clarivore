@@ -61,6 +61,12 @@ function trackRecentlyViewed(slug) {
   }
 }
 
+function isMissingSessionError(error) {
+  const message = String(error?.message || "");
+  if (!message) return false;
+  return /auth session missing|session missing|refresh token/i.test(message);
+}
+
 async function loadRestaurantBoot({ slug, isQrVisit, inviteToken }) {
   if (!supabase) {
     throw new Error("Supabase env vars are missing.");
@@ -97,13 +103,14 @@ async function loadRestaurantBoot({ slug, isQrVisit, inviteToken }) {
     };
   }
 
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
-
+  const { data: userData, error: userError } = await supabase.auth.getUser();
+  let user = userData?.user || null;
   if (userError) {
-    throw userError;
+    if (isMissingSessionError(userError)) {
+      user = null;
+    } else {
+      throw userError;
+    }
   }
 
   const { data: restaurant, error: restaurantError } = await supabase

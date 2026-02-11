@@ -1,10 +1,10 @@
-import LegacyRestaurantDocumentClient from "./LegacyRestaurantDocumentClient";
-import { getLegacyRestaurantHtml } from "./getLegacyRestaurantHtml";
+import RestaurantClient from "./RestaurantClient";
+import RouteSuspense from "../components/RouteSuspense";
 
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
-
-export default async function RestaurantPage() {
-  const legacyHtml = await getLegacyRestaurantHtml();
-  return <LegacyRestaurantDocumentClient html={legacyHtml} />;
+export default function RestaurantPage() {
+  return (
+    <RouteSuspense label="restaurant">
+      <RestaurantClient />
+    </RouteSuspense>
+  );
 }
