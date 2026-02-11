@@ -17,9 +17,16 @@ function normalizeToken(value) {
 }
 
 function parseOverlayNumber(value) {
-  const parsed = Number(value);
+  const parsed =
+    typeof value === "string" ? Number.parseFloat(value) : Number(value);
   if (!Number.isFinite(parsed)) return 0;
-  return clamp(parsed, 0, 100);
+  let next = parsed;
+  if (Math.abs(next) > 0 && Math.abs(next) <= 1.2) {
+    next *= 100;
+  } else if (Math.abs(next) > 150 && Math.abs(next) <= 1200) {
+    next /= 10;
+  }
+  return clamp(next, 0, 100);
 }
 
 function getVisibleSlice(imageNode, viewportNode) {
@@ -153,13 +160,20 @@ function DishEditorModal({ editor }) {
   );
 
   const diets = useMemo(() => buildDietDisplay(editor, overlay), [editor, overlay]);
+  const ingredients = Array.isArray(overlay?.ingredients) ? overlay.ingredients : [];
 
   useEffect(() => {
     if (!editor.dishEditorOpen) {
       setShowDeleteWarning(false);
-      editor.setDishAiAssistOpen(false);
     }
-  }, [editor]);
+  }, [editor.dishEditorOpen]);
+
+  const onProcessInput = async () => {
+    const result = await editor.runAiDishAnalysis();
+    if (result?.success && result?.result) {
+      editor.applyAiResultToSelectedOverlay(result.result);
+    }
+  };
 
   return (
     <Modal
@@ -170,17 +184,39 @@ function DishEditorModal({ editor }) {
           editor.closeDishEditor();
         }
       }}
-      title="Edit item"
-      className="max-w-[980px]"
+      className="restaurant-legacy-editor-dish-modal-shell"
     >
       {!overlay ? (
         <p className="note">Select an overlay to edit.</p>
       ) : (
-        <div className="space-y-3">
-          <div className="algRow" style={{ gridTemplateColumns: "1fr" }}>
+        <div className="restaurant-legacy-editor-dish-modal">
+          <div className="restaurant-legacy-editor-dish-head">
+            <h2>Dish editor</h2>
+            <div className="restaurant-legacy-editor-dish-head-actions">
+              <button
+                type="button"
+                className="btn btnDanger"
+                onClick={() => setShowDeleteWarning(true)}
+              >
+                🗑 Delete
+              </button>
+              <button
+                type="button"
+                className="btn"
+                onClick={() => {
+                  editor.pushHistory();
+                  editor.closeDishEditor();
+                }}
+              >
+                ×
+              </button>
+            </div>
+          </div>
+
+          <label className="restaurant-legacy-editor-dish-label">
+            Dish name:
             <input
-              className="algInput"
-              style={{ fontWeight: 700 }}
+              className="restaurant-legacy-editor-dish-name-input"
               value={overlay.id || ""}
               placeholder="Item name"
               aria-label="Dish name"
@@ -191,152 +227,271 @@ function DishEditorModal({ editor }) {
                 })
               }
             />
+          </label>
+
+          <p className="restaurant-legacy-editor-dish-subcopy">
+            Upload recipe photos or describe the dish ingredients below.
+          </p>
+
+          <div className="restaurant-legacy-editor-dish-media-row">
+            <label className="btn" htmlFor="dish-editor-upload-photo">
+              📁 Upload photos
+            </label>
+            <input
+              id="dish-editor-upload-photo"
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={async (event) => {
+                const file = event.target.files?.[0];
+                if (!file) return;
+                const imageData = await fileToDataUrl(file);
+                editor.setAiAssistDraft((current) => ({
+                  ...current,
+                  imageData,
+                }));
+                event.target.value = "";
+              }}
+            />
+            <label className="btn" htmlFor="dish-editor-take-photo">
+              📷 Take photo
+            </label>
+            <input
+              id="dish-editor-take-photo"
+              type="file"
+              accept="image/*"
+              capture="environment"
+              className="hidden"
+              onChange={async (event) => {
+                const file = event.target.files?.[0];
+                if (!file) return;
+                const imageData = await fileToDataUrl(file);
+                editor.setAiAssistDraft((current) => ({
+                  ...current,
+                  imageData,
+                }));
+                event.target.value = "";
+              }}
+            />
           </div>
 
-          <div className="grid gap-3 md:grid-cols-2">
-            <label className="space-y-1 text-sm text-[#bdd0ff]">
-              Description
-              <Input
-                value={overlay.description || ""}
-                onChange={(event) =>
-                  editor.updateSelectedOverlay({ description: event.target.value })
+          <div className="restaurant-legacy-editor-dish-or">OR</div>
+
+          <div className="restaurant-legacy-editor-dish-text-wrap">
+            <Textarea
+              rows={5}
+              value={editor.aiAssistDraft.text}
+              className="restaurant-legacy-editor-dish-textarea"
+              onChange={(event) =>
+                editor.setAiAssistDraft((current) => ({
+                  ...current,
+                  text: event.target.value,
+                }))
+              }
+            />
+            <div className="restaurant-legacy-editor-dish-text-actions">
+              <button
+                type="button"
+                className="btn"
+                onClick={() =>
+                  editor.setAiAssistDraft((current) => ({
+                    ...current,
+                    text:
+                      current.text ||
+                      `Ingredients for ${overlay.id || overlay.name || "this dish"}: `,
+                  }))
                 }
-              />
-            </label>
-            <label className="space-y-1 text-sm text-[#bdd0ff]">
-              Notes
-              <Input
-                value={asText(overlay.details?.__notes)}
-                onChange={(event) =>
-                  editor.updateSelectedOverlay({
-                    details: {
-                      ...(overlay.details || {}),
-                      __notes: event.target.value,
-                    },
-                  })
+              >
+                🎙 Dictate
+              </button>
+              <button
+                type="button"
+                className="btn btnPrimary"
+                onClick={() =>
+                  editor.setAiAssistDraft((current) => ({
+                    ...current,
+                    text:
+                      current.text ||
+                      `Create a generic recipe for ${overlay.id || overlay.name || "this dish"}.`,
+                  }))
                 }
-              />
-            </label>
+              >
+                ✨ Generate generic {overlay.id || "dish"} recipe
+              </button>
+            </div>
           </div>
 
-          <div>
-            <h3 style={{ margin: "0 0 12px", color: "var(--ink)" }}>
-              Allergen Information
-            </h3>
-            <div className="space-y-2">
-              {allergens.map((allergen) => {
-                const active = Array.isArray(overlay.allergens)
-                  ? overlay.allergens.some(
-                      (item) => normalizeToken(item) === normalizeToken(allergen),
-                    )
-                  : false;
-                return (
-                  <div key={allergen} className="rounded-lg border border-[#2a3261] bg-[rgba(12,18,44,0.7)] p-3">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <button
-                        type="button"
-                        className={`algBtn ${active ? "active" : ""}`}
-                        onClick={() => editor.toggleSelectedAllergen(allergen)}
+          {editor.aiAssistDraft.error ? (
+            <p className="m-0 rounded-lg border border-[#a12525] bg-[rgba(139,29,29,0.32)] px-3 py-2 text-sm text-[#ffd0d0]">
+              {editor.aiAssistDraft.error}
+            </p>
+          ) : null}
+
+          <Button
+            tone="success"
+            loading={editor.aiAssistDraft.loading}
+            onClick={onProcessInput}
+            className="restaurant-legacy-editor-dish-process-btn"
+          >
+            ✓ Process Input
+          </Button>
+
+          <div className="restaurant-legacy-editor-dish-ingredients">
+            <h3>Ingredients</h3>
+            {ingredients.length ? (
+              <div className="restaurant-legacy-editor-dish-ingredient-list">
+                {ingredients.slice(0, 12).map((ingredient, index) => (
+                  <div
+                    key={`${ingredient?.name || "ingredient"}-${index}`}
+                    className="restaurant-legacy-editor-dish-ingredient-row"
+                  >
+                    <Input
+                      readOnly
+                      value={asText(ingredient?.name) || `Ingredient ${index + 1}`}
+                    />
+                    <div className="restaurant-legacy-editor-dish-ingredient-meta">
+                      {Array.isArray(ingredient?.allergens) &&
+                      ingredient.allergens.length ? (
+                        <span>Contains {ingredient.allergens.join(", ")}</span>
+                      ) : (
+                        <span>No allergens flagged</span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="note m-0 text-sm">
+                Run <strong>Process Input</strong> to infer ingredient allergens and diets.
+              </p>
+            )}
+          </div>
+
+          <details className="restaurant-legacy-editor-dish-manual">
+            <summary>Manual allergen and diet controls</summary>
+            <div className="space-y-3 pt-3">
+              <label className="space-y-1 text-sm text-[#bdd0ff] block">
+                Description
+                <Input
+                  value={overlay.description || ""}
+                  onChange={(event) =>
+                    editor.updateSelectedOverlay({ description: event.target.value })
+                  }
+                />
+              </label>
+              <label className="space-y-1 text-sm text-[#bdd0ff] block">
+                Notes
+                <Input
+                  value={asText(overlay.details?.__notes)}
+                  onChange={(event) =>
+                    editor.updateSelectedOverlay({
+                      details: {
+                        ...(overlay.details || {}),
+                        __notes: event.target.value,
+                      },
+                    })
+                  }
+                />
+              </label>
+
+              <div>
+                <h3 style={{ margin: "0 0 12px", color: "var(--ink)" }}>
+                  Allergen Information
+                </h3>
+                <div className="space-y-2">
+                  {allergens.map((allergen) => {
+                    const active = Array.isArray(overlay.allergens)
+                      ? overlay.allergens.some(
+                          (item) => normalizeToken(item) === normalizeToken(allergen),
+                        )
+                      : false;
+                    return (
+                      <div
+                        key={allergen}
+                        className="rounded-lg border border-[#2a3261] bg-[rgba(12,18,44,0.7)] p-3"
                       >
-                        {editor.config.formatAllergenLabel(allergen)}
-                      </button>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <button
+                            type="button"
+                            className={`algBtn ${active ? "active" : ""}`}
+                            onClick={() => editor.toggleSelectedAllergen(allergen)}
+                          >
+                            {editor.config.formatAllergenLabel(allergen)}
+                          </button>
 
-                      {active ? (
-                        <label className="algChk">
+                          {active ? (
+                            <label className="algChk">
+                              <input
+                                type="checkbox"
+                                checked={hasRemovable(overlay, allergen)}
+                                onChange={(event) =>
+                                  editor.setSelectedAllergenRemovable(
+                                    allergen,
+                                    event.target.checked,
+                                  )
+                                }
+                              />
+                              can be substituted out
+                            </label>
+                          ) : null}
+
+                          <label className="algChk">
+                            <input
+                              type="checkbox"
+                              checked={hasCrossContamination(overlay, allergen)}
+                              onChange={(event) =>
+                                editor.setSelectedAllergenCrossContamination(
+                                  allergen,
+                                  event.target.checked,
+                                )
+                              }
+                            />
+                            cross-contamination risk
+                          </label>
+                        </div>
+
+                        {active ? (
                           <input
-                            type="checkbox"
-                            checked={hasRemovable(overlay, allergen)}
+                            className="algInput mt-2"
+                            placeholder="Which part of the dish contains the allergen?"
+                            value={readAllergenDetail(overlay, allergen)}
                             onChange={(event) =>
-                              editor.setSelectedAllergenRemovable(
-                                allergen,
-                                event.target.checked,
-                              )
+                              editor.setSelectedAllergenDetail(allergen, event.target.value)
                             }
                           />
-                          can be substituted out
-                        </label>
-                      ) : null}
+                        ) : null}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
 
-                      <label className="algChk">
-                        <input
-                          type="checkbox"
-                          checked={hasCrossContamination(overlay, allergen)}
-                          onChange={(event) =>
-                            editor.setSelectedAllergenCrossContamination(
-                              allergen,
-                              event.target.checked,
-                            )
-                          }
-                        />
-                        cross-contamination risk
-                      </label>
-                    </div>
-
-                    {active ? (
-                      <input
-                        className="algInput mt-2"
-                        placeholder="Which part of the dish contains the allergen?"
-                        value={readAllergenDetail(overlay, allergen)}
-                        onChange={(event) =>
-                          editor.setSelectedAllergenDetail(allergen, event.target.value)
-                        }
-                      />
-                    ) : null}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          <div>
-            <h3 style={{ margin: "18px 0 10px", color: "var(--ink)" }}>
-              Dietary Preferences
-            </h3>
-            <div className="flex flex-wrap gap-2">
-              {diets.map((diet) => {
-                const active = Array.isArray(overlay.diets)
-                  ? overlay.diets.some((item) => normalizeToken(item) === normalizeToken(diet))
-                  : false;
-                return (
-                  <button
-                    key={diet}
-                    type="button"
-                    className={`algBtn ${active ? "active" : ""}`}
-                    onClick={() => editor.toggleSelectedDiet(diet)}
-                  >
-                    {editor.config.formatDietLabel(diet)}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          <div className="space-y-2 rounded-lg border border-[#2a3261] bg-[rgba(12,18,44,0.5)] p-3">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <h3 className="m-0 text-sm font-semibold text-[#e7edff]">AI ingredient helper</h3>
-              <div className="flex gap-2">
-                <Button
-                  size="compact"
-                  variant="outline"
-                  onClick={() => editor.setDishAiAssistOpen(true)}
-                >
-                  Open helper
-                </Button>
-                <Button
-                  size="compact"
-                  variant="outline"
-                  onClick={async () => {
-                    await editor.runIngredientLabelScan();
-                  }}
-                >
-                  Scan ingredient label
-                </Button>
+              <div>
+                <h3 style={{ margin: "18px 0 10px", color: "var(--ink)" }}>
+                  Dietary Preferences
+                </h3>
+                <div className="flex flex-wrap gap-2">
+                  {diets.map((diet) => {
+                    const active = Array.isArray(overlay.diets)
+                      ? overlay.diets.some(
+                          (item) => normalizeToken(item) === normalizeToken(diet),
+                        )
+                      : false;
+                    return (
+                      <button
+                        key={diet}
+                        type="button"
+                        className={`algBtn ${active ? "active" : ""}`}
+                        onClick={() => editor.toggleSelectedDiet(diet)}
+                      >
+                        {editor.config.formatDietLabel(diet)}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             </div>
-            <p className="m-0 text-xs text-[#a7b2d1]">
-              Use AI to infer allergens/diets from text or ingredient labels and apply results to this dish.
-            </p>
-          </div>
+          </details>
 
           {showDeleteWarning ? (
             <div id="editorDeleteWarning" style={{ display: "block", background: "#1a0a0a", border: "2px solid #dc2626", borderRadius: 8, padding: 20, margin: "16px 0" }}>
@@ -375,137 +530,28 @@ function DishEditorModal({ editor }) {
             </div>
           ) : null}
 
-          <div className="editorActionRow" style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
+          <div className="editorActionRow" style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap", justifyContent: "space-between" }}>
+            <button
+              className="btn"
+              onClick={async () => {
+                await editor.runIngredientLabelScan();
+              }}
+            >
+              Scan ingredient label
+            </button>
             <button
               className="btn btnPrimary"
+              aria-label="Done"
               onClick={() => {
                 editor.pushHistory();
                 editor.closeDishEditor();
               }}
             >
-              Done
-            </button>
-            <button className="btn btnDanger" onClick={() => setShowDeleteWarning(true)}>
-              Delete overlay
+              ✓ Confirmed
             </button>
           </div>
         </div>
       )}
-
-      <Modal
-        open={editor.dishAiAssistOpen}
-        onOpenChange={(open) => {
-          editor.setDishAiAssistOpen(open);
-        }}
-        title="AI Ingredient Helper"
-        className="max-w-[820px]"
-      >
-        <div className="space-y-3">
-          <p className="note m-0 text-sm">
-            Describe the dish or upload a label/menu image. AI results can be applied directly to this dish.
-          </p>
-
-          <label className="space-y-1 text-sm text-[#bdd0ff] block">
-            Description / ingredients
-            <Textarea
-              rows={5}
-              value={editor.aiAssistDraft.text}
-              onChange={(event) =>
-                editor.setAiAssistDraft((current) => ({
-                  ...current,
-                  text: event.target.value,
-                }))
-              }
-            />
-          </label>
-
-          <div className="flex items-center gap-3">
-            <label className="btn" htmlFor="dish-ai-image-input">
-              Upload image
-            </label>
-            <input
-              id="dish-ai-image-input"
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={async (event) => {
-                const file = event.target.files?.[0];
-                if (!file) return;
-                const imageData = await fileToDataUrl(file);
-                editor.setAiAssistDraft((current) => ({
-                  ...current,
-                  imageData,
-                }));
-                event.target.value = "";
-              }}
-            />
-            {editor.aiAssistDraft.imageData ? (
-              <span className="text-xs text-[#a7b2d1]">Image attached</span>
-            ) : (
-              <span className="text-xs text-[#a7b2d1]">No image attached</span>
-            )}
-          </div>
-
-          {editor.aiAssistDraft.error ? (
-            <p className="m-0 rounded-lg border border-[#a12525] bg-[rgba(139,29,29,0.32)] px-3 py-2 text-sm text-[#ffd0d0]">
-              {editor.aiAssistDraft.error}
-            </p>
-          ) : null}
-
-          <div className="flex gap-2">
-            <Button
-              size="compact"
-              tone="primary"
-              loading={editor.aiAssistDraft.loading}
-              onClick={editor.runAiDishAnalysis}
-            >
-              Analyze
-            </Button>
-            <Button
-              size="compact"
-              variant="outline"
-              onClick={() => editor.setDishAiAssistOpen(false)}
-            >
-              Close
-            </Button>
-          </div>
-
-          {editor.aiAssistDraft.result ? (
-            <div className="rounded-lg border border-[#2a3261] bg-[rgba(6,10,28,0.55)] p-3">
-              <p className="m-0 mb-2 text-sm text-[#dbe3ff]">
-                Detected diets: {Array.isArray(editor.aiAssistDraft.result.dietaryOptions)
-                  ? editor.aiAssistDraft.result.dietaryOptions.join(", ") || "None"
-                  : "None"}
-              </p>
-              <ul className="m-0 list-disc pl-5 text-sm text-[#c9d4f2]">
-                {(Array.isArray(editor.aiAssistDraft.result.ingredients)
-                  ? editor.aiAssistDraft.result.ingredients
-                  : []
-                ).map((ingredient, index) => (
-                  <li key={`${ingredient?.name || "ing"}-${index}`}>
-                    <strong>{ingredient?.name || "Ingredient"}</strong>
-                    {Array.isArray(ingredient?.allergens) && ingredient.allergens.length
-                      ? ` · allergens: ${ingredient.allergens.join(", ")}`
-                      : " · no allergens flagged"}
-                  </li>
-                ))}
-              </ul>
-              <div className="mt-3">
-                <Button
-                  size="compact"
-                  tone="success"
-                  onClick={() => {
-                    editor.applyAiResultToSelectedOverlay(editor.aiAssistDraft.result);
-                    editor.setDishAiAssistOpen(false);
-                  }}
-                >
-                  Apply to dish
-                </Button>
-              </div>
-            </div>
-          ) : null}
-        </div>
-      </Modal>
     </Modal>
   );
 }
@@ -1694,11 +1740,11 @@ export function RestaurantEditor({ editor }) {
 
         <div
           ref={menuScrollRef}
-          className="menuWrap show restaurant-legacy-editor-stage"
+          className="restaurant-legacy-editor-stage restaurant-legacy-editor-scroll"
           style={{ cursor: mappingEnabled ? "crosshair" : "default" }}
         >
           <div
-            className="menuInner"
+            className="restaurant-legacy-editor-canvas"
             style={{
               zoom: editor.zoomScale,
             }}
@@ -1717,7 +1763,7 @@ export function RestaurantEditor({ editor }) {
                   <img
                     src={page.image}
                     alt={`Menu page ${page.pageIndex + 1}`}
-                    className="menuImg"
+                    className="restaurant-legacy-editor-image"
                     ref={(node) => {
                       pageImageRefs.current[page.pageIndex] = node;
                     }}

@@ -18,18 +18,104 @@ function normalizeNumber(value, fallback = 0) {
   return parsed;
 }
 
+function firstFiniteNumber(...values) {
+  for (const value of values) {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return null;
+}
+
 function normalizeRectValue(value, fallback = 0) {
   return clamp(normalizeNumber(value, fallback), 0, 100);
 }
 
-function normalizeOverlay(overlay, index, fallbackKey) {
+function resolveOverlayScale(overlays) {
+  const values = [];
+
+  (Array.isArray(overlays) ? overlays : []).forEach((overlay) => {
+    const candidates = [
+      overlay?.x,
+      overlay?.y,
+      overlay?.w,
+      overlay?.h,
+      overlay?.left,
+      overlay?.top,
+      overlay?.width,
+      overlay?.height,
+    ];
+
+    candidates.forEach((value) => {
+      const parsed = Number(value);
+      if (Number.isFinite(parsed)) values.push(Math.abs(parsed));
+    });
+  });
+
+  if (!values.length) return "percent";
+  const maxCoord = Math.max(...values);
+  if (maxCoord > 0 && maxCoord <= 1.2) return "ratio";
+  if (maxCoord > 150 && maxCoord <= 1200) return "thousand";
+  return "percent";
+}
+
+function resolvePageOffset(overlays, pageCount) {
+  const values = (Array.isArray(overlays) ? overlays : [])
+    .map((overlay) =>
+      firstFiniteNumber(
+        overlay?.pageIndex,
+        overlay?.page,
+        overlay?.pageNumber,
+        overlay?.page_number,
+      ),
+    )
+    .filter((value) => Number.isFinite(value));
+
+  if (!values.length) return 0;
+  const minPage = Math.min(...values);
+  const maxPage = Math.max(...values);
+  const hasZero = values.some((value) => value === 0);
+
+  // Legacy exports occasionally store page numbers as 1-based.
+  if (!hasZero && minPage >= 1 && pageCount > 0 && maxPage <= pageCount) {
+    return 1;
+  }
+  return 0;
+}
+
+function buildOverlayNormalizationContext(overlays, pageCount) {
+  return {
+    scale: resolveOverlayScale(overlays),
+    pageOffset: resolvePageOffset(overlays, pageCount),
+  };
+}
+
+function normalizeOverlay(overlay, index, fallbackKey, context = {}) {
   const fallbackName = `Dish ${index + 1}`;
   const rawName = asText(overlay?.id || overlay?.name || fallbackName);
   const name = rawName || fallbackName;
 
-  const pageIndex = Number.isFinite(Number(overlay?.pageIndex))
-    ? Math.max(0, Math.floor(Number(overlay.pageIndex)))
+  const scale =
+    context?.scale === "ratio"
+      ? 100
+      : context?.scale === "thousand"
+        ? 0.1
+        : 1;
+
+  const rawPage = firstFiniteNumber(
+    overlay?.pageIndex,
+    overlay?.page,
+    overlay?.pageNumber,
+    overlay?.page_number,
+  );
+  const pageOffset = Number(context?.pageOffset) || 0;
+  const pageIndex = Number.isFinite(rawPage)
+    ? Math.max(0, Math.floor(rawPage - pageOffset))
     : 0;
+
+  const rawX = firstFiniteNumber(overlay?.x, overlay?.left);
+  const rawY = firstFiniteNumber(overlay?.y, overlay?.top);
+  const rawW = firstFiniteNumber(overlay?.w, overlay?.width);
+  const rawH = firstFiniteNumber(overlay?.h, overlay?.height);
 
   return {
     ...overlay,
@@ -38,10 +124,10 @@ function normalizeOverlay(overlay, index, fallbackKey) {
     id: name,
     name,
     description: asText(overlay?.description),
-    x: normalizeRectValue(overlay?.x, 8),
-    y: normalizeRectValue(overlay?.y, 8),
-    w: clamp(normalizeRectValue(overlay?.w, 20), 0.5, 100),
-    h: clamp(normalizeRectValue(overlay?.h, 8), 0.5, 100),
+    x: normalizeRectValue(Number.isFinite(rawX) ? rawX * scale : 8, 8),
+    y: normalizeRectValue(Number.isFinite(rawY) ? rawY * scale : 8, 8),
+    w: clamp(normalizeRectValue(Number.isFinite(rawW) ? rawW * scale : 20, 20), 0.5, 100),
+    h: clamp(normalizeRectValue(Number.isFinite(rawH) ? rawH * scale : 8, 8), 0.5, 100),
     pageIndex,
     allergens: Array.isArray(overlay?.allergens) ? overlay.allergens.filter(Boolean) : [],
     diets: Array.isArray(overlay?.diets) ? overlay.diets.filter(Boolean) : [],
@@ -341,14 +427,20 @@ export function useRestaurantEditor({
 
   const restoreHistorySnapshot = useCallback((snapshot) => {
     if (!snapshot) return;
-    const overlaysList = Array.isArray(snapshot.overlays)
-      ? snapshot.overlays.map((overlay, index) =>
-          normalizeOverlay(overlay, index, overlay?._editorKey || `ov-${Date.now()}-${index}`),
-        )
-      : [];
     const images = Array.isArray(snapshot.menuImages) && snapshot.menuImages.length
       ? snapshot.menuImages
       : [""];
+    const context = buildOverlayNormalizationContext(snapshot.overlays, images.length);
+    const overlaysList = Array.isArray(snapshot.overlays)
+      ? snapshot.overlays.map((overlay, index) =>
+          normalizeOverlay(
+            overlay,
+            index,
+            overlay?._editorKey || `ov-${Date.now()}-${index}`,
+            context,
+          ),
+        )
+      : [];
 
     setDraftOverlays(overlaysList);
     setDraftMenuImages(images);
@@ -392,11 +484,16 @@ export function useRestaurantEditor({
         ? restaurant.overlays
         : [];
 
-    const nextOverlays = nextOverlaysRaw.map((overlay, index) =>
-      normalizeOverlay(overlay, index, overlay?._editorKey || `ov-${Date.now()}-${index}`),
-    );
-
     const nextMenuImages = buildMenuImages(restaurant);
+    const context = buildOverlayNormalizationContext(nextOverlaysRaw, nextMenuImages.length);
+    const nextOverlays = nextOverlaysRaw.map((overlay, index) =>
+      normalizeOverlay(
+        overlay,
+        index,
+        overlay?._editorKey || `ov-${Date.now()}-${index}`,
+        context,
+      ),
+    );
 
     const nextBaseline = serializeEditorState(nextOverlays, nextMenuImages);
     baselineRef.current = nextBaseline;
