@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import PageShell from "../components/PageShell";
-import { useToast } from "../components/ui";
+import { Button, Modal, useToast } from "../components/ui";
 import { loadAllergenDietConfig } from "../lib/allergenConfig";
 import {
   fetchManagerRestaurants,
@@ -17,6 +17,13 @@ import { supabaseClient as supabase } from "../lib/supabase";
 import { buildTrainingRestaurantPayload, HOW_IT_WORKS_SLUG } from "./boot/trainingRestaurant";
 import RestaurantEditor from "./features/editor/RestaurantEditor";
 import RestaurantViewer from "./features/viewer/RestaurantViewer";
+import {
+  analyzeDishWithAi,
+  compareDishSets,
+  dataUrlFromImageSource,
+  detectMenuDishes,
+  sendMenuUpdateNotification,
+} from "./features/editor/editorServices";
 import { useOrderFlow } from "./hooks/useOrderFlow";
 import { useRestaurantEditor } from "./hooks/useRestaurantEditor";
 import { useRestaurantViewer } from "./hooks/useRestaurantViewer";
@@ -261,11 +268,21 @@ export default function RestaurantClient() {
   const qrParam = searchParams?.get("qr");
   const inviteToken = searchParams?.get("invite") || "";
   const dishNameParam = searchParams?.get("dishName") || "";
+  const ingredientNameParam = searchParams?.get("ingredientName") || "";
   const editParam = searchParams?.get("edit") || searchParams?.get("mode");
+  const openLogParam = searchParams?.get("openLog");
+  const openConfirmParam = searchParams?.get("openConfirm");
+  const openAiParam = searchParams?.get("openAI");
   const isQrVisit = isTruthyFlag(qrParam);
+  const shouldOpenLog = isTruthyFlag(openLogParam);
+  const shouldOpenConfirm = isTruthyFlag(openConfirmParam);
+  const shouldOpenAi = isTruthyFlag(openAiParam);
 
   const [activeView, setActiveView] = useState("viewer");
   const [favoriteBusyDish, setFavoriteBusyDish] = useState("");
+  const [showModeSwitchPrompt, setShowModeSwitchPrompt] = useState(false);
+  const [pendingModeSwitch, setPendingModeSwitch] = useState("");
+  const [modeSwitchSaving, setModeSwitchSaving] = useState(false);
 
   const bootQuery = useQuery({
     queryKey: queryKeys.restaurant.boot(slug, inviteToken, isQrVisit),
@@ -297,22 +314,68 @@ export default function RestaurantClient() {
     return new Set(boot?.lovedDishNames || []);
   }, [boot?.lovedDishNames]);
 
-  const saveOverlaysMutation = useMutation({
-    mutationFn: async (nextOverlays) => {
+  const editorAuthorName = useMemo(() => {
+    const firstName = boot?.user?.user_metadata?.first_name || "";
+    const lastName = boot?.user?.user_metadata?.last_name || "";
+    const fullName = `${firstName} ${lastName}`.trim();
+    if (fullName) return fullName;
+    if (boot?.user?.name) return String(boot.user.name);
+    if (boot?.user?.email) return String(boot.user.email).split("@")[0];
+    return "Manager";
+  }, [boot?.user]);
+
+  const insertChangeLogEntry = useCallback(
+    async ({ type, description, changes, photos }) => {
+      if (!supabase) throw new Error("Supabase is not configured.");
+      if (!boot?.restaurant?.id) throw new Error("Restaurant missing.");
+
+      const payload = {
+        restaurant_id: boot.restaurant.id,
+        type: type || "update",
+        description: description || editorAuthorName,
+        changes:
+          typeof changes === "string"
+            ? changes
+            : JSON.stringify(changes || {}),
+        user_email: boot?.user?.email || null,
+        photos: Array.isArray(photos) ? photos : [],
+        timestamp: new Date().toISOString(),
+      };
+
+      const { error } = await supabase.from("change_logs").insert(payload);
+      if (error) throw error;
+      return payload;
+    },
+    [boot?.restaurant?.id, boot?.user?.email, editorAuthorName],
+  );
+
+  const saveEditorDraftMutation = useMutation({
+    mutationFn: async ({ overlays: nextOverlays, menuImage, menuImages }) => {
       if (!supabase) throw new Error("Supabase is not configured.");
       if (!boot?.restaurant?.id) throw new Error("Restaurant missing.");
 
       const sanitized = Array.isArray(nextOverlays) ? nextOverlays : [];
+      const imageList = Array.isArray(menuImages)
+        ? menuImages.filter(Boolean)
+        : [];
+
+      const patch = {
+        overlays: sanitized,
+      };
+      if (typeof menuImage === "string") {
+        patch.menu_image = menuImage;
+      }
+      if (imageList.length) {
+        patch.menu_images = imageList;
+      }
+
       const { error } = await supabase
         .from("restaurants")
-        .update({
-          overlays: sanitized,
-          last_confirmed: new Date().toISOString(),
-        })
+        .update(patch)
         .eq("id", boot.restaurant.id);
 
       if (error) throw error;
-      return sanitized;
+      return { overlays: sanitized, menuImage, menuImages: imageList };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
@@ -321,7 +384,77 @@ export default function RestaurantClient() {
       pushToast({
         tone: "success",
         title: "Saved",
-        description: "Menu overlays were updated.",
+        description: "Webpage editor changes were saved.",
+      });
+    },
+  });
+
+  const confirmInfoMutation = useMutation({
+    mutationFn: async ({ timestamp, photos, changePayload }) => {
+      if (!supabase) throw new Error("Supabase is not configured.");
+      if (!boot?.restaurant?.id) throw new Error("Restaurant missing.");
+
+      const confirmedAt = timestamp || new Date().toISOString();
+      const { error } = await supabase
+        .from("restaurants")
+        .update({
+          last_confirmed: confirmedAt,
+        })
+        .eq("id", boot.restaurant.id);
+
+      if (error) throw error;
+
+      await insertChangeLogEntry({
+        type: "confirm",
+        description: editorAuthorName,
+        changes: changePayload || {
+          author: editorAuthorName,
+          general: ["Allergen information confirmed"],
+          items: {},
+        },
+        photos: Array.isArray(photos) ? photos : [],
+      });
+
+      return { confirmedAt };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.restaurant.boot(slug, inviteToken, isQrVisit),
+      });
+      pushToast({
+        tone: "success",
+        title: "Confirmed",
+        description: "Confirmation recorded.",
+      });
+    },
+  });
+
+  const saveRestaurantSettingsMutation = useMutation({
+    mutationFn: async ({ website, phone, delivery_url, menu_url }) => {
+      if (!supabase) throw new Error("Supabase is not configured.");
+      if (!boot?.restaurant?.id) throw new Error("Restaurant missing.");
+
+      const { error } = await supabase
+        .from("restaurants")
+        .update({
+          website: website || null,
+          phone: phone || null,
+          delivery_url: delivery_url || null,
+          menu_url: menu_url || null,
+        })
+        .eq("id", boot.restaurant.id);
+
+      if (error) throw error;
+      return { website, phone, delivery_url, menu_url };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.restaurant.boot(slug, inviteToken, isQrVisit),
+      });
+      pushToast({
+        tone: "success",
+        title: "Saved",
+        description: "Restaurant settings were updated.",
       });
     },
   });
@@ -445,8 +578,112 @@ export default function RestaurantClient() {
     permissions: {
       canEdit: boot?.canEdit,
     },
+    config: boot?.config,
+    params: {
+      openLog: shouldOpenLog,
+      openConfirm: shouldOpenConfirm,
+      dishName: dishNameParam,
+      openAI: shouldOpenAi,
+      ingredientName: ingredientNameParam,
+    },
     callbacks: {
-      onSave: (nextOverlays) => saveOverlaysMutation.mutateAsync(nextOverlays),
+      getAuthorName: () => editorAuthorName,
+      onSaveDraft: async ({ overlays: nextOverlays, menuImage, menuImages, changePayload }) => {
+        const existingMenuImage =
+          boot?.restaurant?.menu_image || boot?.restaurant?.menuImage || "";
+        const menuImageChanged = Boolean(menuImage && menuImage !== existingMenuImage);
+
+        const result = await saveEditorDraftMutation.mutateAsync({
+          overlays: nextOverlays,
+          menuImage,
+          menuImages,
+        });
+
+        await insertChangeLogEntry({
+          type: "update",
+          description: editorAuthorName,
+          changes: changePayload,
+          photos: [],
+        });
+
+        if (menuImageChanged) {
+          try {
+            const imageData = await dataUrlFromImageSource(menuImage);
+            const detection = await detectMenuDishes({ imageData });
+            if (detection?.success) {
+              const existingDishNames = (nextOverlays || []).map(
+                (overlay) => overlay?.id || overlay?.name || "",
+              );
+              const diff = compareDishSets({
+                detectedDishes: detection.dishes,
+                existingDishNames,
+              });
+              if (diff.addedItems.length || diff.removedItems.length) {
+                await sendMenuUpdateNotification({
+                  restaurantName: boot?.restaurant?.name || "Restaurant",
+                  restaurantSlug: boot?.restaurant?.slug || slug,
+                  addedItems: diff.addedItems,
+                  removedItems: diff.removedItems,
+                  keptItems: diff.keptItems,
+                });
+              }
+            }
+          } catch (error) {
+            console.error("[restaurant] menu-update notification failed", error);
+          }
+        }
+
+        return result;
+      },
+      onConfirmInfo: async ({ timestamp, photos }) => {
+        const changePayload = {
+          author: editorAuthorName,
+          general: ["Allergen information confirmed"],
+          items: {},
+        };
+        return await confirmInfoMutation.mutateAsync({
+          timestamp,
+          photos,
+          changePayload,
+        });
+      },
+      onLoadChangeLogs: async () => {
+        if (!supabase) throw new Error("Supabase is not configured.");
+        if (!boot?.restaurant?.id) return [];
+
+        const { data, error } = await supabase
+          .from("change_logs")
+          .select("*")
+          .eq("restaurant_id", boot.restaurant.id)
+          .order("timestamp", { ascending: false })
+          .limit(80);
+
+        if (error) throw error;
+        return Array.isArray(data) ? data : [];
+      },
+      onSaveRestaurantSettings: async (payload) => {
+        return await saveRestaurantSettingsMutation.mutateAsync(payload);
+      },
+      onAnalyzeDish: async ({ dishName, text, imageData }) => {
+        return await analyzeDishWithAi({ dishName, text, imageData });
+      },
+      onDetectMenuDishes: async ({ imageData }) => {
+        return await detectMenuDishes({ imageData });
+      },
+      onOpenIngredientLabelScan: async ({ ingredientName }) => {
+        const { showManagerIngredientPhotoUploadModal } = await import(
+          "../lib/managerIngredientPhotoCapture"
+        );
+        let result = null;
+        await showManagerIngredientPhotoUploadModal(ingredientName, {
+          inlineResults: true,
+          skipRowUpdates: true,
+          onApplyResults: async (payload) => {
+            result = payload;
+          },
+        });
+        return result;
+      },
     },
   });
 
@@ -456,7 +693,7 @@ export default function RestaurantClient() {
     router.replace("/account?mode=signin");
   }, [router]);
 
-  const setMode = useCallback((nextMode) => {
+  const commitMode = useCallback((nextMode) => {
     const normalized = nextMode === "editor" ? "editor" : "viewer";
     setActiveView(normalized);
     try {
@@ -469,7 +706,31 @@ export default function RestaurantClient() {
     }
   }, []);
 
+  const setMode = useCallback(
+    (nextMode) => {
+      const normalized = nextMode === "editor" ? "editor" : "viewer";
+      if (normalized === activeView) return;
+      if (
+        activeView === "editor" &&
+        normalized === "viewer" &&
+        editor?.isDirty
+      ) {
+        setPendingModeSwitch(normalized);
+        setShowModeSwitchPrompt(true);
+        return;
+      }
+      commitMode(normalized);
+    },
+    [activeView, commitMode, editor?.isDirty],
+  );
+
   const isViewerMode = !(activeView === "editor" && boot?.canEdit);
+
+  useEffect(() => {
+    if (activeView === "editor") return;
+    setShowModeSwitchPrompt(false);
+    setPendingModeSwitch("");
+  }, [activeView]);
 
   useEffect(() => {
     if (!boot?.restaurant || !isViewerMode) return undefined;
@@ -517,6 +778,26 @@ export default function RestaurantClient() {
     );
   }
 
+  const isEditorMode = activeView === "editor" && boot?.canEdit;
+  const editorHref = `/restaurant?slug=${encodeURIComponent(
+    boot?.restaurant?.slug || slug,
+  )}&edit=1`;
+  const topNavLinks = isEditorMode
+    ? [
+        { href: "/manager-dashboard", label: "Dashboard" },
+        { href: editorHref, label: "Webpage editor ▾" },
+        { href: "/server-tablet", label: "Tablet pages ▾" },
+        { href: "/help-contact", label: "Help" },
+        { href: "/account", label: "Account settings" },
+      ]
+    : [
+        { href: "/home", label: "Home" },
+        { href: "/restaurants", label: "By restaurant ▾" },
+        { href: "/dish-search", label: "By dish ▾" },
+        { href: "/help-contact", label: "Help" },
+        { href: "/account", label: "Account settings" },
+      ];
+
   return (
     <PageShell
       shellClassName={isViewerMode ? "page-shell restaurant-legacy-shell" : "page-shell"}
@@ -550,16 +831,19 @@ export default function RestaurantClient() {
             </div>
 
             <div className="restaurant-legacy-brand-nav">
-              <Link className="simple-brand restaurant-legacy-brand" href="/home">
+              <Link
+                className="simple-brand restaurant-legacy-brand"
+                href={isEditorMode ? "/manager-dashboard" : "/home"}
+              >
                 <img src={CLARIVORE_LOGO_SRC} alt="Clarivore logo" />
                 <span>Clarivore</span>
               </Link>
               <nav className="simple-nav restaurant-legacy-nav">
-                <Link href="/home">Home</Link>
-                <Link href="/restaurants">By restaurant ▾</Link>
-                <Link href="/dish-search">By dish ▾</Link>
-                <Link href="/help-contact">Help</Link>
-                <Link href="/account">Account settings</Link>
+                {topNavLinks.map((item) => (
+                  <Link key={`${item.href}-${item.label}`} href={item.href}>
+                    {item.label}
+                  </Link>
+                ))}
               </nav>
             </div>
 
@@ -607,6 +891,65 @@ export default function RestaurantClient() {
           favoriteBusyDish={favoriteBusyDish}
         />
       )}
+
+      <Modal
+        open={showModeSwitchPrompt}
+        onOpenChange={(open) => {
+          if (!open) {
+            setShowModeSwitchPrompt(false);
+            setPendingModeSwitch("");
+          }
+        }}
+        title="You have unsaved changes"
+        className="max-w-[560px]"
+      >
+        <div className="space-y-3">
+          <p className="m-0 text-sm text-[#cfd8f6]">
+            Would you like to save before leaving editor mode?
+          </p>
+          <div className="flex flex-wrap gap-2 justify-end">
+            <Button
+              size="compact"
+              tone="primary"
+              loading={modeSwitchSaving}
+              onClick={async () => {
+                setModeSwitchSaving(true);
+                const result = await editor.save();
+                setModeSwitchSaving(false);
+                if (result?.success) {
+                  setShowModeSwitchPrompt(false);
+                  commitMode(pendingModeSwitch || "viewer");
+                  setPendingModeSwitch("");
+                }
+              }}
+            >
+              Save and switch
+            </Button>
+            <Button
+              size="compact"
+              tone="danger"
+              variant="outline"
+              onClick={() => {
+                setShowModeSwitchPrompt(false);
+                commitMode(pendingModeSwitch || "viewer");
+                setPendingModeSwitch("");
+              }}
+            >
+              Exit without saving
+            </Button>
+            <Button
+              size="compact"
+              variant="outline"
+              onClick={() => {
+                setShowModeSwitchPrompt(false);
+                setPendingModeSwitch("");
+              }}
+            >
+              Cancel
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </PageShell>
   );
 }

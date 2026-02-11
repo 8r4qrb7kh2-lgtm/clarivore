@@ -799,11 +799,13 @@ async function runManagerFlow(browser) {
       { waitUntil: "domcontentloaded" },
     );
 
-    await page.getByRole("tab", { name: "Editor" }).click();
+    await ensureRestaurantMode(page, "editor");
     await page.getByRole("button", { name: "Add overlay" }).click();
 
+    await page.getByTitle("Edit this item").first().click();
     const dishNameInput = page.getByLabel("Dish name").first();
     await dishNameInput.fill(testData.dishName);
+    await page.getByRole("button", { name: "Done" }).click();
     await waitForText(page, "Unsaved changes", 10_000);
 
     await page.getByRole("button", { name: "Save changes" }).click();
@@ -811,7 +813,8 @@ async function runManagerFlow(browser) {
     const unsavedBadge = page.getByText("Unsaved changes").first();
     await tryWaitHidden(unsavedBadge, 20_000);
 
-    await page.getByRole("tab", { name: "Viewer" }).click();
+    await ensureRestaurantMode(page, "viewer");
+    await acknowledgeReferenceDisclaimerIfVisible(page);
     await page.locator(`button[title="${cssEscape(testData.dishName)}"]`).click();
 
     await page.getByRole("button", { name: "Add to order" }).click();
@@ -854,6 +857,7 @@ async function runDinerFlow(browser) {
     );
 
     await waitForText(page, testData.restaurantName, 20_000);
+    await acknowledgeReferenceDisclaimerIfVisible(page);
     await page.locator(`button[title="${cssEscape(testData.dishName)}"]`).click();
     await page.getByRole("button", { name: "Add to order" }).click();
     await page.getByLabel("Additional notes").fill(testData.dinerOrderNote);
@@ -1485,6 +1489,40 @@ async function tryWaitHidden(locator, timeoutMs) {
   } catch {
     return false;
   }
+}
+
+async function ensureRestaurantMode(page, targetMode) {
+  const normalized = targetMode === "editor" ? "editor" : "viewer";
+  const modeToggle = page.locator(".restaurant-legacy-mode-toggle").first();
+  const isVisible = await tryWaitVisible(modeToggle, 8_000);
+  if (!isVisible) return;
+
+  const labelNode = modeToggle.locator(".restaurant-legacy-mode-label").first();
+  const readCurrentMode = async () => {
+    const text = String(await labelNode.innerText()).toLowerCase();
+    return text.includes("editor mode") ? "editor" : "viewer";
+  };
+
+  const currentMode = await readCurrentMode();
+  if (currentMode === normalized) return;
+
+  await modeToggle.click();
+  await waitFor(
+    async () => (await readCurrentMode()) === normalized,
+    10_000,
+    `Mode toggle did not switch to ${normalized}.`,
+  );
+}
+
+async function acknowledgeReferenceDisclaimerIfVisible(page) {
+  const acknowledgeButton = page.getByRole("button", {
+    name: "I understand",
+    exact: true,
+  });
+  const isVisible = await tryWaitVisible(acknowledgeButton, 3_500);
+  if (!isVisible) return;
+  await acknowledgeButton.click();
+  await tryWaitHidden(acknowledgeButton, 10_000);
 }
 
 async function waitFor(fn, timeoutMs, timeoutMessage) {
