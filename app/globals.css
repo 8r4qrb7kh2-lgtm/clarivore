@@ -1244,16 +1244,18 @@ h2 {
 }
 
 .restaurant-legacy-overlay.is-selected {
-  animation: restaurantOverlayPulse 1.4s ease-in-out infinite;
+  animation: restaurantOverlayPulse 1.9s ease-out infinite;
 }
 
 @keyframes restaurantOverlayPulse {
-  0%,
+  0% {
+    box-shadow: 0 0 0 0 var(--overlay-pulse-color, rgba(255, 255, 255, 0.46));
+  }
+  70% {
+    box-shadow: 0 0 0 4px rgba(0, 0, 0, 0);
+  }
   100% {
     box-shadow: 0 0 0 0 rgba(0, 0, 0, 0);
-  }
-  50% {
-    box-shadow: 0 0 0 3px var(--overlay-pulse-color, rgba(226, 236, 255, 0.42));
   }
 }
 
@@ -1396,27 +1398,6 @@ h2 {
   margin: 0;
   color: #a9b5d9;
   font-size: 0.88rem;
-}
-
-.restaurant-legacy-dish-cross-warning {
-  margin: 8px 12px 0;
-  padding: 8px 10px;
-  border-radius: 8px;
-  border: 1px solid rgba(250, 204, 21, 0.55);
-  background: rgba(250, 204, 21, 0.14);
-  color: #ffeaa0;
-  font-size: 0.9rem;
-  font-weight: 600;
-}
-
-.restaurant-legacy-dish-popover-section.cross-section {
-  margin-top: 6px;
-  border-top: 1px solid rgba(124, 156, 255, 0.25);
-  padding-top: 10px;
-}
-
-.restaurant-legacy-dish-popover-section.cross-section h3 {
-  color: #f4df85;
 }
 
 .restaurant-legacy-dish-popover-section .dish-row.cross .dish-row-title {
