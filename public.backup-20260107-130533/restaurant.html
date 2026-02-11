@@ -1226,10 +1226,10 @@ function rebuildBrandMemoryFromRestaurant(){
       }
     }
 
-    // Also check for legacy ingredients array format
+    // Also check for previous ingredients array format
     if(!ingredients.length && Array.isArray(overlay.ingredients)){
       ingredients = overlay.ingredients;
-      console.log(`Dish ${overlayIdx} (${dishName}): Using legacy ingredients array with ${ingredients.length} ingredients`);
+      console.log(`Dish ${overlayIdx} (${dishName}): Using previous ingredients array with ${ingredients.length} ingredients`);
     }
 
     if(!ingredients.length){
@@ -8669,7 +8669,7 @@ function renderEditor(){
       // Convert existing allergen data into ingredient rows for editing
       // This handles dishes created before the AI ingredient system
       existingIngredientRows = [];
-      console.log('Converting legacy allergen data to ingredients, allergens:', it.allergens, 'details:', it.details);
+      console.log('Converting previous allergen data to ingredients, allergens:', it.allergens, 'details:', it.details);
 
       // If we have details with allergen descriptions, use those
       if(it.details && Object.keys(it.details).length > 0){

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import PageShell from "../components/PageShell";
@@ -13,6 +14,7 @@ import {
 } from "../lib/managerRestaurants";
 import { initManagerNotifications } from "../lib/managerNotifications";
 import { formatChatTimestamp } from "../lib/chatMessage";
+import { queryKeys } from "../lib/queryKeys";
 import { createDinerTopbarLinks } from "../lib/topbarLinks";
 import { resolveAccountName, resolveManagerDisplayName } from "../lib/userIdentity";
 
@@ -106,6 +108,57 @@ export default function HelpContactClient() {
       setSelectedRestaurant(null);
     }
   }, []);
+
+  const bootQuery = useQuery({
+    queryKey: queryKeys.auth.user("help-contact"),
+    enabled: Boolean(supabase),
+    queryFn: async () => {
+      if (!supabase) {
+        throw new Error("Supabase env vars are missing.");
+      }
+
+      const {
+        data: { user: authUser },
+        error,
+      } = await supabase.auth.getUser();
+      if (error) throw error;
+
+      if (!authUser) {
+        return { redirect: "/account?mode=signin" };
+      }
+
+      const hasManagerAccess = isManagerOrOwnerUser(authUser);
+      const managerRestaurants = hasManagerAccess
+        ? await fetchManagerRestaurants(supabase, authUser)
+        : [];
+
+      const storedMode = localStorage.getItem("clarivoreManagerMode");
+      const nextEditorMode = hasManagerAccess && storedMode === "editor";
+
+      const { data, error: restaurantsError } = await supabase
+        .from("restaurants")
+        .select("id, name, slug")
+        .order("name");
+      if (restaurantsError) throw restaurantsError;
+
+      const availableAllRestaurants = data || [];
+      const initialRestaurants =
+        nextEditorMode && hasManagerAccess
+          ? managerRestaurants
+          : availableAllRestaurants;
+
+      return {
+        redirect: "",
+        user: authUser,
+        hasManagerAccess,
+        managerRestaurants,
+        allRestaurants: availableAllRestaurants,
+        nextEditorMode,
+        initialRestaurants,
+      };
+    },
+    staleTime: 30 * 1000,
+  });
 
   const onModeChange = useCallback(
     (nextMode) => {
@@ -426,76 +479,32 @@ export default function HelpContactClient() {
   }, [isEditorMode, issueText, selectedRestaurant, selectedRestaurantId, user]);
 
   useEffect(() => {
-    let mounted = true;
-
-    async function init() {
-      try {
-        if (!supabase) {
-          throw new Error("Supabase env vars are missing.");
-        }
-
-        const {
-          data: { user: authUser },
-          error,
-        } = await supabase.auth.getUser();
-        if (error) throw error;
-
-        if (!authUser) {
-          router.replace("/account?mode=signin");
-          return;
-        }
-
-        if (!mounted) return;
-        setUser(authUser);
-
-        const isManagerOrOwner = isManagerOrOwnerUser(authUser);
-
-        let managerRestaurants = [];
-        if (isManagerOrOwner) {
-          managerRestaurants = await fetchManagerRestaurants(supabase, authUser);
-        }
-        setManagerRestaurants(managerRestaurants);
-
-        if (isManagerOrOwner) {
-          initManagerNotifications({ user: authUser, client: supabase });
-        }
-
-        const storedMode = localStorage.getItem("clarivoreManagerMode");
-        const nextEditorMode = isManagerOrOwner && storedMode === "editor";
-        setIsEditorMode(nextEditorMode);
-
-        const { data, error: restaurantsError } = await supabase
-          .from("restaurants")
-          .select("id, name, slug")
-          .order("name");
-        if (restaurantsError) throw restaurantsError;
-
-        const availableAllRestaurants = data || [];
-        setAllRestaurants(availableAllRestaurants);
-
-        if (!mounted) return;
-
-        const initialRestaurants =
-          nextEditorMode && isManagerOrOwner
-            ? managerRestaurants
-            : availableAllRestaurants;
-        applyRestaurantSelection(initialRestaurants, !nextEditorMode);
-        setAssistantModeReady(true);
-      } catch (initError) {
-        console.error("[help-contact] boot failed", initError);
-        if (mounted) {
-          setBootError(initError?.message || "Failed to load help page.");
-          setAssistantModeReady(false);
-        }
-      }
+    if (!bootQuery.data) return;
+    if (bootQuery.data.redirect) {
+      router.replace(bootQuery.data.redirect);
+      return;
     }
 
-    init();
+    setUser(bootQuery.data.user || null);
+    setManagerRestaurants(bootQuery.data.managerRestaurants || []);
+    setAllRestaurants(bootQuery.data.allRestaurants || []);
+    setIsEditorMode(Boolean(bootQuery.data.nextEditorMode));
+    applyRestaurantSelection(
+      bootQuery.data.initialRestaurants || [],
+      !bootQuery.data.nextEditorMode,
+    );
+    setAssistantModeReady(true);
 
-    return () => {
-      mounted = false;
-    };
-  }, [applyRestaurantSelection, router]);
+    if (bootQuery.data.hasManagerAccess) {
+      initManagerNotifications({ user: bootQuery.data.user, client: supabase });
+    }
+  }, [applyRestaurantSelection, bootQuery.data, router]);
+
+  useEffect(() => {
+    if (!bootQuery.isError) return;
+    setBootError(bootQuery.error?.message || "Failed to load help page.");
+    setAssistantModeReady(false);
+  }, [bootQuery.error, bootQuery.isError]);
 
   useEffect(() => {
     if (!selectedRestaurantId || !restaurants.length) {

@@ -2,8 +2,11 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import PageShell from "../components/PageShell";
 import SimpleTopbar from "../components/SimpleTopbar";
+import { Button, Input, Textarea } from "../components/ui";
+import { queryKeys } from "../lib/queryKeys";
 import { supabaseClient as supabase } from "../lib/supabase";
 import { isManagerOrOwnerUser } from "../lib/managerRestaurants";
 import { createDinerTopbarLinks } from "../lib/topbarLinks";
@@ -19,47 +22,52 @@ export default function ReportIssueClient() {
   const [message, setMessage] = useState("");
   const [status, setStatus] = useState("");
   const [statusTone, setStatusTone] = useState("idle");
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const authQuery = useQuery({
+    queryKey: queryKeys.auth.user("report-issue"),
+    enabled: Boolean(supabase),
+    queryFn: async () => {
+      const {
+        data: { user: authUser },
+        error: authError,
+      } = await supabase.auth.getUser();
+      if (authError) throw authError;
+      return authUser || null;
+    },
+    staleTime: 30 * 1000,
+  });
+
+  const submitMutation = useMutation({
+    mutationFn: async (payload) => {
+      const { error } = await supabase.functions.invoke("report-issue", {
+        body: payload,
+      });
+      if (error) throw error;
+      return true;
+    },
+  });
 
   const submitLabel = useMemo(
-    () => (isSubmitting ? "Sending..." : "Send"),
-    [isSubmitting],
+    () => (submitMutation.isPending ? "Sending..." : "Send"),
+    [submitMutation.isPending],
   );
   const isManagerOrOwner = isManagerOrOwnerUser(user);
 
   useEffect(() => {
-    let isMounted = true;
-
-    async function init() {
-      try {
-        if (!supabase) {
-          throw new Error("Supabase env vars are missing.");
-        }
-
-        const {
-          data: { user: authUser },
-          error: authError,
-        } = await supabase.auth.getUser();
-        if (authError) throw authError;
-        if (!isMounted) return;
-
-        setUser(authUser || null);
-        if (authUser?.email) {
-          setEmail(authUser.email);
-        }
-      } catch (error) {
-        console.error("[report-issue] boot failed", error);
-        if (isMounted) {
-          setBootError(error?.message || "Failed to load report issue page.");
-        }
-      }
+    if (!supabase) {
+      setBootError("Supabase env vars are missing.");
+      return;
     }
+    if (!authQuery.isError) return;
+    setBootError(authQuery.error?.message || "Failed to load report issue page.");
+  }, [authQuery.error, authQuery.isError]);
 
-    init();
-    return () => {
-      isMounted = false;
-    };
-  }, []);
+  useEffect(() => {
+    const authUser = authQuery.data || null;
+    setUser(authUser);
+    if (authUser?.email) {
+      setEmail((current) => current || authUser.email);
+    }
+  }, [authQuery.data]);
 
   useEffect(() => {
     if (!isOpen) return undefined;
@@ -109,7 +117,6 @@ export default function ReportIssueClient() {
         return;
       }
 
-      setIsSubmitting(true);
       setStatus("");
       setStatusTone("idle");
 
@@ -124,10 +131,7 @@ export default function ReportIssueClient() {
           accountId: user?.id || null,
         };
 
-        const { error } = await supabase.functions.invoke("report-issue", {
-          body: payload,
-        });
-        if (error) throw error;
+        await submitMutation.mutateAsync(payload);
 
         setStatus("Thanks. We received your report.");
         setStatusTone("success");
@@ -141,11 +145,9 @@ export default function ReportIssueClient() {
         console.error("[report-issue] submit failed", error);
         setStatus("Something went wrong. Please try again.");
         setStatusTone("error");
-      } finally {
-        setIsSubmitting(false);
       }
     },
-    [email, message, name, user],
+    [email, message, name, submitMutation, user],
   );
 
   return (
@@ -219,27 +221,27 @@ export default function ReportIssueClient() {
 
               <form onSubmit={onSubmit}>
                 <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                  <input
+                  <Input
                     id="reportName"
                     name="name"
                     type="text"
                     placeholder="Your name (optional)"
-                    style={{ flex: "1 1 160px" }}
+                    wrapperClassName="flex-[1_1_160px]"
                     value={name}
                     onChange={(event) => setName(event.target.value)}
                   />
-                  <input
+                  <Input
                     id="reportEmail"
                     name="email"
                     type="email"
                     placeholder="Email (required)"
-                    style={{ flex: "1 1 200px" }}
+                    wrapperClassName="flex-[1_1_200px]"
                     value={email}
                     onChange={(event) => setEmail(event.target.value)}
                   />
                 </div>
 
-                <textarea
+                <Textarea
                   id="reportMessage"
                   name="message"
                   placeholder="Describe the issue"
@@ -262,9 +264,14 @@ export default function ReportIssueClient() {
                   {status}
                 </div>
 
-                <button type="submit" id="reportSubmit" disabled={isSubmitting}>
+                <Button
+                  type="submit"
+                  id="reportSubmit"
+                  loading={submitMutation.isPending}
+                  disabled={submitMutation.isPending}
+                >
                   {submitLabel}
-                </button>
+                </Button>
               </form>
             </div>
           </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import PageShell from "../components/PageShell";
@@ -19,6 +20,7 @@ import {
   supabaseAnonKey,
   supabaseUrl,
 } from "../lib/supabase";
+import { queryKeys } from "../lib/queryKeys";
 import { createDinerTopbarLinks } from "../lib/topbarLinks";
 
 export default function DishSearchClient() {
@@ -29,7 +31,6 @@ export default function DishSearchClient() {
   const [config, setConfig] = useState(() => buildAllergenDietConfig());
   const [status, setStatus] = useState("");
   const [statusType, setStatusType] = useState("");
-  const [loading, setLoading] = useState(true);
   const [user, setUser] = useState(null);
   const [userAllergies, setUserAllergies] = useState([]);
   const [userDiets, setUserDiets] = useState([]);
@@ -54,15 +55,11 @@ export default function DishSearchClient() {
     getDietAllergenConflicts,
   } = config;
 
-  useEffect(() => {
-    let isMounted = true;
-
-    async function load() {
+  const bootQuery = useQuery({
+    queryKey: queryKeys.dishes.search("boot", { isQR }, ""),
+    queryFn: async () => {
       if (!supabase) {
-        setStatus("Supabase env vars are missing.");
-        setStatusType("error");
-        setLoading(false);
-        return;
+        throw new Error("Supabase env vars are missing.");
       }
 
       const { data: authData, error: authError } =
@@ -72,15 +69,21 @@ export default function DishSearchClient() {
       }
       const currentUser = authData?.user;
       if (!currentUser && !isQR) {
-        router.replace("/account?redirect=dish-search");
-        return;
+        return { redirect: "/account?redirect=dish-search" };
       }
       if (!currentUser) {
-        setLoading(false);
-        return;
+        return {
+          redirect: "",
+          user: null,
+          config: buildAllergenDietConfig(),
+          userAllergies: [],
+          userDiets: [],
+          favoriteRestaurantIds: new Set(),
+          restaurants: [],
+          selectedRestaurantIds: new Set(),
+          dishViewCounts: {},
+        };
       }
-
-      if (isMounted) setUser(currentUser);
 
       const isOwner = isOwnerUser(currentUser);
       const isManager = isManagerUser(currentUser);
@@ -92,16 +95,20 @@ export default function DishSearchClient() {
 
       if (isManager && !isOwner) {
         const targetRestaurant = managerRestaurants[0];
-        router.replace(
-          targetRestaurant
+        return {
+          redirect: targetRestaurant
             ? `/restaurant?slug=${encodeURIComponent(targetRestaurant.slug)}`
             : "/server-tablet",
-        );
-        return;
+        };
       }
 
       const loadedConfig = await loadAllergenDietConfig(supabase);
-      if (isMounted) setConfig(loadedConfig);
+      let allergies = [];
+      let diets = [];
+      let favoriteRestaurantIds = new Set();
+      let restaurants = [];
+      let selectedRestaurantIds = new Set();
+      let dishViewCounts = {};
 
       try {
         const { data: record } = await supabase
@@ -110,17 +117,12 @@ export default function DishSearchClient() {
           .eq("user_id", currentUser.id)
           .maybeSingle();
 
-        const allergies = (record?.allergens || [])
+        allergies = (record?.allergens || [])
           .map(loadedConfig.normalizeAllergen)
           .filter(Boolean);
-        const diets = (record?.diets || [])
+        diets = (record?.diets || [])
           .map(loadedConfig.normalizeDietLabel)
           .filter(Boolean);
-
-        if (isMounted) {
-          setUserAllergies(allergies);
-          setUserDiets(diets);
-        }
       } catch (error) {
         console.warn("Failed to load user preferences", error);
       }
@@ -131,11 +133,9 @@ export default function DishSearchClient() {
           .select("restaurant_id")
           .eq("user_id", currentUser.id);
         if (!error) {
-          if (isMounted) {
-            setFavoriteRestaurantIds(
-              new Set((favorites || []).map((row) => String(row.restaurant_id))),
-            );
-          }
+          favoriteRestaurantIds = new Set(
+            (favorites || []).map((row) => String(row.restaurant_id)),
+          );
         }
       } catch (error) {
         console.warn("Failed to load favorites", error);
@@ -147,12 +147,10 @@ export default function DishSearchClient() {
           .select("id, name, slug, overlays")
           .order("name");
         if (!error) {
-          if (isMounted) {
-            setRestaurants(Array.isArray(data) ? data : []);
-            setSelectedRestaurantIds(
-              new Set((data || []).map((row) => String(row.id))),
-            );
-          }
+          restaurants = Array.isArray(data) ? data : [];
+          selectedRestaurantIds = new Set(
+            (data || []).map((row) => String(row.id)),
+          );
         }
       } catch (error) {
         console.error("Failed to load restaurants", error);
@@ -162,27 +160,54 @@ export default function DishSearchClient() {
         const { data: interactions } = await supabase
           .from("dish_interactions")
           .select("restaurant_id, dish_name");
-        if (isMounted) {
-          const counts = {};
-          (interactions || []).forEach((row) => {
-            const key = `${row.restaurant_id}:${row.dish_name}`;
-            counts[key] = (counts[key] || 0) + 1;
-          });
-          setDishViewCounts(counts);
-        }
+        const counts = {};
+        (interactions || []).forEach((row) => {
+          const key = `${row.restaurant_id}:${row.dish_name}`;
+          counts[key] = (counts[key] || 0) + 1;
+        });
+        dishViewCounts = counts;
       } catch (error) {
         console.warn("Failed to load dish view counts", error);
       }
 
-      if (isMounted) setLoading(false);
+      return {
+        redirect: "",
+        user: currentUser,
+        config: loadedConfig,
+        userAllergies: allergies,
+        userDiets: diets,
+        favoriteRestaurantIds,
+        restaurants,
+        selectedRestaurantIds,
+        dishViewCounts,
+      };
+    },
+    staleTime: 60 * 1000,
+  });
+
+  useEffect(() => {
+    if (!bootQuery.data?.redirect) return;
+    router.replace(bootQuery.data.redirect);
+  }, [bootQuery.data?.redirect, router]);
+
+  useEffect(() => {
+    if (bootQuery.isError) {
+      setStatus(bootQuery.error?.message || "Failed to load dish search.");
+      setStatusType("error");
+      return;
     }
+    if (!bootQuery.data || bootQuery.data.redirect) return;
+    setConfig(bootQuery.data.config || buildAllergenDietConfig());
+    setUser(bootQuery.data.user || null);
+    setUserAllergies(bootQuery.data.userAllergies || []);
+    setUserDiets(bootQuery.data.userDiets || []);
+    setFavoriteRestaurantIds(bootQuery.data.favoriteRestaurantIds || new Set());
+    setRestaurants(bootQuery.data.restaurants || []);
+    setSelectedRestaurantIds(bootQuery.data.selectedRestaurantIds || new Set());
+    setDishViewCounts(bootQuery.data.dishViewCounts || {});
+  }, [bootQuery.data, bootQuery.error, bootQuery.isError]);
 
-    load();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [isQR, router]);
+  const loading = bootQuery.isPending;
 
   useEffect(() => {
     if (!dropdownOpen) return;

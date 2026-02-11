@@ -1,4 +1,4 @@
-const legacyHtmlRedirects = [
+const htmlRedirects = [
   { source: "/index.html", destination: "/", permanent: true },
   { source: "/home.html", destination: "/home/", permanent: true },
   { source: "/restaurants.html", destination: "/restaurants/", permanent: true },
@@ -24,7 +24,7 @@ const nextConfig = {
   },
   reactStrictMode: true,
   async redirects() {
-    return legacyHtmlRedirects;
+    return htmlRedirects;
   },
 };
 

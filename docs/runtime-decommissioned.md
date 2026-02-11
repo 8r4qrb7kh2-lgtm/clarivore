@@ -1,6 +1,6 @@
 # Runtime Decommissioned
 
-This migration removes the legacy restaurant runtime wrapper architecture and replaces it with route-native React modules.
+This migration removes the previous restaurant runtime wrapper architecture and replaces it with route-native React modules.
 
 ## Removed Wrapper Entry Points
 
@@ -29,7 +29,7 @@ This migration removes the legacy restaurant runtime wrapper architecture and re
 - `app/lib/pageUiOptionsRuntime.js`
 - `app/lib/pageUtilsRuntime.js`
 
-## Removed Legacy Restaurant Runtime Module Tree
+## Removed Restaurant Runtime Module Tree
 
 - Entire folder removed: `app/lib/restaurantRuntime/`
 

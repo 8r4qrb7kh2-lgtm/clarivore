@@ -32,5 +32,5 @@ This checklist tracks route-level parity for the full Next-native rewrite.
 
 - [x] No active runtime wrappers under `app/restaurant/runtime/*`.
 - [x] No active `app/lib/restaurantRuntime/*` dependency chain.
-- [x] No `LEGACY_` constants in `app/*`.
+- [x] No deprecated runtime constants in `app/*`.
 - [x] Restaurant route uses React hooks/components as source of truth.

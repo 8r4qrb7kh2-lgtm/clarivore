@@ -458,7 +458,7 @@
         .select('allergens')
         .eq('user_id', currentUser.id)
         .maybeSingle();
-      // Filter out any allergens not in current ALLERGENS list (removes legacy data like 'gluten')
+      // Filter out any allergens not in current ALLERGENS list (removes older data like 'gluten')
       const dbAllergens = data?.allergens || [];
       selectedAllergies = dbAllergens.filter(a => ALLERGENS.includes(a));
       // Save initial state for change detection

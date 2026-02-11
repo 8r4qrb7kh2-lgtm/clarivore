@@ -12,7 +12,7 @@ The app is now running on a Next-native architecture across all user routes.
 
 ## Completed Runtime Decommission
 
-Removed legacy runtime wrapper architecture:
+Removed previous runtime wrapper architecture:
 
 - `app/restaurant/runtime/*`
 - `app/lib/restaurantRuntime/*`

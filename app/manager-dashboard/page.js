@@ -1,7 +1,7 @@
 import ManagerDashboardClient from "./ManagerDashboardClient";
 import RouteSuspense from "../components/RouteSuspense";
 
-export default function ManagerDashboardLegacyPage() {
+export default function ManagerDashboardPage() {
   return (
     <RouteSuspense label="manager dashboard">
       <ManagerDashboardClient />

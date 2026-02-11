@@ -4514,7 +4514,7 @@ Each block covers up to 10 lines of code and includes a short explanation of wha
 - Lines 271-280: Continues saveOrderFormState. Declares formData. Selects elements: input[name="orderConfirmMode"]:checked, .chip.selected. Iterates collections. Purpose: connect logic to DOM elements.
 - Lines 281-290: Continues saveOrderFormState. Serializes or parses JSON. Iterates collections. Branches on conditions. Purpose: implement module logic.
 - Lines 291-300: Defines function restoreOrderFormState. Declares storageKey. Uses storage keys: removeItem:orderConfirmFormState. Purpose: implement module logic.
-- Lines 301-310: Continues restoreOrderFormState. Declares saved, usedLegacyKey, formData, restaurantMatches. Uses storage keys: getItem:orderConfirmFormState. Serializes or parses JSON. Branches on conditions. Returns values from this block. Purpose: implement module logic.
+- Lines 301-310: Continues restoreOrderFormState. Declares saved, usedFallbackKey, formData, restaurantMatches. Uses storage keys: getItem:orderConfirmFormState. Serializes or parses JSON. Branches on conditions. Returns values from this block. Purpose: implement module logic.
 - Lines 311-320: Continues restoreOrderFormState. Uses storage keys: removeItem:orderConfirmFormState. Branches on conditions. Returns values from this block. Purpose: implement module logic.
 - Lines 321-330: Continues restoreOrderFormState. Iterates collections. Branches on conditions. Purpose: implement module logic.
 - Lines 331-340: Continues restoreOrderFormState. Declares overlays, titleEl, title. Selects elements: .overlay, .tTitle. Updates classes (add: selected). Iterates collections. Branches on conditions. Purpose: update UI state and presentation.
@@ -4732,7 +4732,7 @@ Each block covers up to 10 lines of code and includes a short explanation of wha
 - Lines 2451-2460: Defines function persistOrderItems. Declares storageKey. Branches on conditions. Purpose: implement module logic.
 - Lines 2461-2470: Continues persistOrderItems. Serializes or parses JSON. Purpose: implement module logic.
 - Lines 2471-2480: Defines function restoreOrderItems. Uses storage keys: removeItem:orderItems. Branches on conditions. Purpose: implement module logic.
-- Lines 2481-2490: Continues restoreOrderItems. Declares storageKey, saved, usedLegacyKey, data. Uses storage keys: getItem:orderItems. Serializes or parses JSON. Branches on conditions. Purpose: implement module logic.
+- Lines 2481-2490: Continues restoreOrderItems. Declares storageKey, saved, usedFallbackKey, data. Uses storage keys: getItem:orderItems. Serializes or parses JSON. Branches on conditions. Purpose: implement module logic.
 - Lines 2491-2500: Continues restoreOrderItems. Declares isValidArray, isFresh. Uses storage keys: removeItem:orderItems. Branches on conditions. Purpose: implement module logic.
 - Lines 2501-2510: Continues restoreOrderItems. Uses storage keys: removeItem:orderItems. Branches on conditions. Returns values from this block. Purpose: implement module logic.
 - Lines 2511-2520: Defines function getOrderItemSelections. Branches on conditions. Returns values from this block. Purpose: implement module logic.

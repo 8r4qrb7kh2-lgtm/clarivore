@@ -1,13 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import PageShell from "../components/PageShell";
 import SimpleTopbar from "../components/SimpleTopbar";
+import { Button, Textarea } from "../components/ui";
 import { supabaseClient as supabase } from "../lib/supabase";
 import { isManagerOrOwnerUser } from "../lib/managerRestaurants";
 import { loadAllergenDietConfig } from "../lib/allergenConfig";
+import { queryKeys } from "../lib/queryKeys";
 import { createDinerTopbarLinks } from "../lib/topbarLinks";
 
 function getDefaultConfig() {
@@ -26,8 +29,6 @@ export default function OrderFeedbackClient() {
   const token = searchParams?.get("token") || "";
 
   const [bootError, setBootError] = useState("");
-  const [isLoading, setIsLoading] = useState(true);
-  const [isInvalidToken, setIsInvalidToken] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [restaurantData, setRestaurantData] = useState(null);
   const [feedbackData, setFeedbackData] = useState(null);
@@ -40,10 +41,87 @@ export default function OrderFeedbackClient() {
   const [restaurantIncludeEmail, setRestaurantIncludeEmail] = useState(false);
   const [websiteIncludeEmail, setWebsiteIncludeEmail] = useState(false);
   const [submitError, setSubmitError] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [config, setConfig] = useState(() => getDefaultConfig());
   const [topbarUser, setTopbarUser] = useState(null);
   const isManagerOrOwner = isManagerOrOwnerUser(topbarUser);
+  const topbarUserQuery = useQuery({
+    queryKey: queryKeys.auth.user("order-feedback"),
+    enabled: Boolean(supabase),
+    queryFn: async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      return user || null;
+    },
+    staleTime: 30 * 1000,
+  });
+
+  const bootQuery = useQuery({
+    queryKey: ["order-feedback", "boot", { token }],
+    enabled: Boolean(supabase),
+    queryFn: async () => {
+      if (!token) {
+        return { invalid: true };
+      }
+
+      const loadedConfig = await loadAllergenDietConfig(supabase);
+
+      const { data: queueEntry, error: queueError } = await supabase
+        .from("feedback_email_queue")
+        .select("*")
+        .eq("feedback_token", token)
+        .maybeSingle();
+
+      if (queueError || !queueEntry) {
+        return { invalid: true };
+      }
+
+      const { data: restaurant, error: restaurantError } = await supabase
+        .from("restaurants")
+        .select("id, name, slug, overlays, menu_images")
+        .eq("id", queueEntry.restaurant_id)
+        .maybeSingle();
+
+      if (restaurantError || !restaurant) {
+        return { invalid: true };
+      }
+
+      return {
+        invalid: false,
+        loadedConfig,
+        queueEntry,
+        restaurant,
+      };
+    },
+  });
+
+  const submitMutation = useMutation({
+    mutationFn: async (payload) => {
+      const { data: feedbackRecord, error: feedbackError } = await supabase
+        .from("order_feedback")
+        .insert(payload.feedbackRecord)
+        .select()
+        .single();
+      if (feedbackError) throw feedbackError;
+
+      if (payload.accommodationRequests.length > 0) {
+        const { error: requestsError } = await supabase
+          .from("accommodation_requests")
+          .insert(payload.accommodationRequests.map((request) => ({
+            ...request,
+            feedback_id: feedbackRecord.id,
+          })));
+        if (requestsError) throw requestsError;
+      }
+
+      await supabase
+        .from("feedback_email_queue")
+        .update({ sent_at: new Date().toISOString() })
+        .eq("id", payload.queueId);
+
+      return true;
+    },
+  });
 
   const menuImages = useMemo(
     () => (Array.isArray(restaurantData?.menu_images) ? restaurantData.menu_images : []),
@@ -168,11 +246,8 @@ export default function OrderFeedbackClient() {
       return;
     }
 
-    setIsSubmitting(true);
     try {
-      const { data: feedbackRecord, error: feedbackError } = await supabase
-        .from("order_feedback")
-        .insert({
+      const feedbackRecord = {
           order_id: feedbackData.order_id,
           restaurant_id: feedbackData.restaurant_id,
           user_id: feedbackData.user_id || null,
@@ -184,37 +259,29 @@ export default function OrderFeedbackClient() {
             restaurantIncludeEmail || websiteIncludeEmail
               ? feedbackData.user_email
               : null,
-        })
-        .select()
-        .single();
-      if (feedbackError) throw feedbackError;
+      };
 
-      if (selectedDishes.length > 0) {
-        const accommodationRequests = selectedDishes.map((dishName) => ({
-          feedback_id: feedbackRecord.id,
+      const accommodationRequests =
+        selectedDishes.length > 0
+          ? selectedDishes.map((dishName) => ({
           restaurant_id: feedbackData.restaurant_id,
           user_id: feedbackData.user_id || null,
           dish_name: dishName,
           user_allergens: userAllergens,
           user_diets: userDiets,
-        }));
-        const { error: requestsError } = await supabase
-          .from("accommodation_requests")
-          .insert(accommodationRequests);
-        if (requestsError) throw requestsError;
-      }
+        }))
+          : [];
 
-      await supabase
-        .from("feedback_email_queue")
-        .update({ sent_at: new Date().toISOString() })
-        .eq("id", feedbackData.id);
+      await submitMutation.mutateAsync({
+        feedbackRecord,
+        accommodationRequests,
+        queueId: feedbackData.id,
+      });
 
       setIsSubmitted(true);
     } catch (error) {
       console.error("[order-feedback] submit failed", error);
       setSubmitError("Failed to submit feedback. Please try again.");
-    } finally {
-      setIsSubmitting(false);
     }
   }, [
     feedbackData,
@@ -223,29 +290,14 @@ export default function OrderFeedbackClient() {
     selectedDishes,
     restaurantIncludeEmail,
     websiteIncludeEmail,
+    submitMutation,
     userAllergens,
     userDiets,
   ]);
 
   useEffect(() => {
-    let isMounted = true;
-    async function initTopbar() {
-      try {
-        if (!supabase) return;
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-        if (!isMounted) return;
-        setTopbarUser(user || null);
-      } catch (error) {
-        console.error("[order-feedback] topbar init failed", error);
-      }
-    }
-    initTopbar();
-    return () => {
-      isMounted = false;
-    };
-  }, []);
+    setTopbarUser(topbarUserQuery.data || null);
+  }, [topbarUserQuery.data]);
 
   const onSignOut = useCallback(async () => {
     if (!supabase) return;
@@ -259,81 +311,50 @@ export default function OrderFeedbackClient() {
   }, [router]);
 
   useEffect(() => {
-    let isMounted = true;
-    async function init() {
-      try {
-        if (!supabase) {
-          throw new Error("Supabase env vars are missing.");
-        }
-        if (!token) {
-          setIsInvalidToken(true);
-          return;
-        }
-
-        const loadedConfig = await loadAllergenDietConfig(supabase);
-        if (!isMounted) return;
-        setConfig({
-          normalizeAllergen:
-            typeof loadedConfig.normalizeAllergen === "function"
-              ? loadedConfig.normalizeAllergen
-              : getDefaultConfig().normalizeAllergen,
-          normalizeDietLabel:
-            typeof loadedConfig.normalizeDietLabel === "function"
-              ? loadedConfig.normalizeDietLabel
-              : getDefaultConfig().normalizeDietLabel,
-          getDietAllergenConflicts:
-            typeof loadedConfig.getDietAllergenConflicts === "function"
-              ? loadedConfig.getDietAllergenConflicts
-              : () => [],
-        });
-
-        const { data: queueEntry, error: queueError } = await supabase
-          .from("feedback_email_queue")
-          .select("*")
-          .eq("feedback_token", token)
-          .maybeSingle();
-        if (queueError || !queueEntry) {
-          setIsInvalidToken(true);
-          return;
-        }
-
-        const { data: restaurant, error: restaurantError } = await supabase
-          .from("restaurants")
-          .select("id, name, slug, overlays, menu_images")
-          .eq("id", queueEntry.restaurant_id)
-          .maybeSingle();
-        if (restaurantError || !restaurant) {
-          setIsInvalidToken(true);
-          return;
-        }
-
-        if (!isMounted) return;
-        setFeedbackData(queueEntry);
-        setRestaurantData(restaurant);
-        setUserAllergens(
-          (queueEntry.user_allergens || [])
-            .map((value) => loadedConfig.normalizeAllergen?.(value))
-            .filter(Boolean),
-        );
-        setUserDiets(
-          (queueEntry.user_diets || [])
-            .map((value) => loadedConfig.normalizeDietLabel?.(value))
-            .filter(Boolean),
-        );
-      } catch (error) {
-        console.error("[order-feedback] init failed", error);
-        if (isMounted) {
-          setBootError(error?.message || "Failed to load feedback form.");
-        }
-      } finally {
-        if (isMounted) setIsLoading(false);
-      }
+    if (!supabase) {
+      setBootError("Supabase env vars are missing.");
+      return;
     }
-    init();
-    return () => {
-      isMounted = false;
-    };
-  }, [token]);
+    if (bootQuery.isError) {
+      setBootError(bootQuery.error?.message || "Failed to load feedback form.");
+      return;
+    }
+    if (!bootQuery.data || bootQuery.data.invalid) return;
+
+    const loadedConfig = bootQuery.data.loadedConfig || getDefaultConfig();
+    const queueEntry = bootQuery.data.queueEntry;
+    const restaurant = bootQuery.data.restaurant;
+
+    setConfig({
+      normalizeAllergen:
+        typeof loadedConfig.normalizeAllergen === "function"
+          ? loadedConfig.normalizeAllergen
+          : getDefaultConfig().normalizeAllergen,
+      normalizeDietLabel:
+        typeof loadedConfig.normalizeDietLabel === "function"
+          ? loadedConfig.normalizeDietLabel
+          : getDefaultConfig().normalizeDietLabel,
+      getDietAllergenConflicts:
+        typeof loadedConfig.getDietAllergenConflicts === "function"
+          ? loadedConfig.getDietAllergenConflicts
+          : () => [],
+    });
+    setFeedbackData(queueEntry);
+    setRestaurantData(restaurant);
+    setUserAllergens(
+      (queueEntry.user_allergens || [])
+        .map((value) => loadedConfig.normalizeAllergen?.(value))
+        .filter(Boolean),
+    );
+    setUserDiets(
+      (queueEntry.user_diets || [])
+        .map((value) => loadedConfig.normalizeDietLabel?.(value))
+        .filter(Boolean),
+    );
+  }, [bootQuery.data, bootQuery.error, bootQuery.isError]);
+
+  const isLoading = bootQuery.isPending;
+  const isInvalidToken = !isLoading && Boolean(bootQuery.data?.invalid);
 
   const currentPageOverlays = useMemo(
     () => overlays.filter((item) => (item.pageIndex || 0) === currentPage),
@@ -415,7 +436,7 @@ export default function OrderFeedbackClient() {
                   Share your experience with the restaurant. What did they do
                   well? What could be improved?
                 </p>
-                <textarea
+                <Textarea
                   id="restaurant-feedback"
                   className="feedback-textarea"
                   placeholder="Optional: Share your thoughts about the food, service, or how they handled your dietary needs..."
@@ -439,7 +460,7 @@ export default function OrderFeedbackClient() {
               <div className="feedback-section">
                 <h2>Feedback for Clarivore</h2>
                 <p>Help us improve! Let us know about your experience using our service.</p>
-                <textarea
+                <Textarea
                   id="website-feedback"
                   className="feedback-textarea"
                   placeholder="Optional: How can we make Clarivore better for you?"
@@ -559,14 +580,15 @@ export default function OrderFeedbackClient() {
               </div>
 
               <div className="submit-section">
-                <button
+                <Button
                   id="submit-btn"
                   className="submit-btn"
-                  disabled={isSubmitting}
+                  loading={submitMutation.isPending}
+                  disabled={submitMutation.isPending}
                   onClick={submitFeedback}
                 >
-                  {isSubmitting ? "Submitting..." : "Submit Feedback"}
-                </button>
+                  {submitMutation.isPending ? "Submitting..." : "Submit Feedback"}
+                </Button>
               </div>
             </div>
           ) : null}

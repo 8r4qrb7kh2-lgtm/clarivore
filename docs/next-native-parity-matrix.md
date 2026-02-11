@@ -2,7 +2,7 @@
 
 ## Route Matrix
 
-| Route | Primary Client Entry | Legacy Runtime Wrapper In Path | Status |
+| Route | Primary Client Entry | Previous Runtime Wrapper In Path | Status |
 | --- | --- | --- | --- |
 | `/` | `app/page.js` | No | Next route shell |
 | `/home` | `app/home/HomeClient.js` | No | React Query page |

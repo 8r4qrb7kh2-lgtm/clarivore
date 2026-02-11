@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import PageShell from "../components/PageShell";
@@ -11,6 +12,7 @@ import {
   isManagerUser,
   isOwnerUser,
 } from "../lib/managerRestaurants";
+import { queryKeys } from "../lib/queryKeys";
 import { createDinerTopbarLinks } from "../lib/topbarLinks";
 
 function formatDate(dateValue) {
@@ -40,6 +42,40 @@ export default function MyDishesClient() {
   const [isLoadingOrdered, setIsLoadingOrdered] = useState(true);
   const [lovedSections, setLovedSections] = useState([]);
   const [orderedSections, setOrderedSections] = useState([]);
+  const authQuery = useQuery({
+    queryKey: queryKeys.auth.user("my-dishes"),
+    enabled: Boolean(supabase),
+    queryFn: async () => {
+      if (!supabase) throw new Error("Supabase env vars are missing.");
+      const {
+        data: { user: authUser },
+        error: authError,
+      } = await supabase.auth.getUser();
+      if (authError) throw authError;
+      return authUser || null;
+    },
+    staleTime: 30 * 1000,
+  });
+
+  const managerAccessQuery = useQuery({
+    queryKey: [
+      "my-dishes",
+      "manager-access",
+      { userId: authQuery.data?.id || null },
+    ],
+    enabled: Boolean(supabase) && Boolean(authQuery.data),
+    queryFn: async () => {
+      const authUser = authQuery.data;
+      const isOwner = isOwnerUser(authUser);
+      const isManager = isManagerUser(authUser);
+      const managerRestaurants =
+        isManager || isOwner
+          ? await fetchManagerRestaurants(supabase, authUser)
+          : [];
+      return { isOwner, isManager, managerRestaurants };
+    },
+    staleTime: 60 * 1000,
+  });
 
   const showStatus = useCallback((text, tone = "") => {
     setStatus({ text, tone });
@@ -240,59 +276,55 @@ export default function MyDishesClient() {
     [loadLovedDishes, loadPreviouslyOrderedDishes],
   );
 
+  const shouldSkipDataQuery =
+    managerAccessQuery.data?.isManager && !managerAccessQuery.data?.isOwner;
+
+  const dataQuery = useQuery({
+    queryKey: ["my-dishes", "data", { userId: authQuery.data?.id || null }],
+    enabled:
+      Boolean(supabase) && Boolean(authQuery.data) && !shouldSkipDataQuery,
+    queryFn: async () => {
+      await reloadData(authQuery.data);
+      return true;
+    },
+    staleTime: 30 * 1000,
+  });
+
   useEffect(() => {
-    let isMounted = true;
-
-    async function init() {
-      try {
-        if (!supabase) {
-          throw new Error("Supabase env vars are missing.");
-        }
-
-        const {
-          data: { user: authUser },
-          error: authError,
-        } = await supabase.auth.getUser();
-        if (authError) throw authError;
-        if (!authUser) {
-          router.replace("/account?redirect=my-dishes");
-          return;
-        }
-
-        const isOwner = isOwnerUser(authUser);
-        const isManager = isManagerUser(authUser);
-        const managerRestaurants =
-          isManager || isOwner
-            ? await fetchManagerRestaurants(supabase, authUser)
-            : [];
-
-        if (isManager && !isOwner) {
-          const targetRestaurant = managerRestaurants[0];
-          router.replace(
-            targetRestaurant
-            ? `/restaurant?slug=${encodeURIComponent(targetRestaurant.slug)}`
-            : "/server-tablet",
-          );
-          return;
-        }
-        if (!isMounted) return;
-        setUser(authUser);
-        await reloadData(authUser);
-      } catch (error) {
-        console.error("[my-dishes] boot failed", error);
-        if (isMounted) {
-          setBootError(error?.message || "Failed to load My Dishes.");
-          setIsLoadingLoved(false);
-          setIsLoadingOrdered(false);
-        }
-      }
+    if (!supabase) {
+      setBootError("Supabase env vars are missing.");
+      setIsLoadingLoved(false);
+      setIsLoadingOrdered(false);
+      return;
     }
+    if (!authQuery.isSuccess) return;
+    if (!authQuery.data) {
+      router.replace("/account?redirect=my-dishes");
+      return;
+    }
+    setUser(authQuery.data);
+  }, [authQuery.data, authQuery.isSuccess, router]);
 
-    init();
-    return () => {
-      isMounted = false;
-    };
-  }, [reloadData, router]);
+  useEffect(() => {
+    if (!managerAccessQuery.data) return;
+    if (managerAccessQuery.data.isManager && !managerAccessQuery.data.isOwner) {
+      const targetRestaurant = managerAccessQuery.data.managerRestaurants[0];
+      router.replace(
+        targetRestaurant
+          ? `/restaurant?slug=${encodeURIComponent(targetRestaurant.slug)}`
+          : "/server-tablet",
+      );
+    }
+  }, [managerAccessQuery.data, router]);
+
+  useEffect(() => {
+    const queryError =
+      authQuery.error || managerAccessQuery.error || dataQuery.error;
+    if (!queryError) return;
+    setBootError(queryError.message || "Failed to load My Dishes.");
+    setIsLoadingLoved(false);
+    setIsLoadingOrdered(false);
+  }, [authQuery.error, dataQuery.error, managerAccessQuery.error]);
 
   const isManagerOrOwner =
     isOwnerUser(user) || isManagerUser(user);
@@ -308,17 +340,24 @@ export default function MyDishesClient() {
     }
   }, [router, showStatus]);
 
+  const unloveMutation = useMutation({
+    mutationFn: async ({ restaurantId, dishName }) => {
+      const { error } = await supabase
+        .from("user_loved_dishes")
+        .delete()
+        .eq("user_id", user.id)
+        .eq("restaurant_id", restaurantId)
+        .eq("dish_name", dishName);
+      if (error) throw error;
+      return { restaurantId, dishName };
+    },
+  });
+
   const onUnloveDish = useCallback(
     async (restaurantId, dishName) => {
       if (!supabase || !user?.id || !restaurantId || !dishName) return;
       try {
-        const { error } = await supabase
-          .from("user_loved_dishes")
-          .delete()
-          .eq("user_id", user.id)
-          .eq("restaurant_id", restaurantId)
-          .eq("dish_name", dishName);
-        if (error) throw error;
+        await unloveMutation.mutateAsync({ restaurantId, dishName });
 
         setLovedSections((sections) =>
           sections
@@ -353,7 +392,7 @@ export default function MyDishesClient() {
         showStatus("Failed to remove dish", "error");
       }
     },
-    [showStatus, user],
+    [showStatus, unloveMutation, user],
   );
 
   const renderDish = useCallback((dish, restaurantSlug, canUnlove = false) => {
