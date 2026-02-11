@@ -1,0 +1,68 @@
+name: Next Transition Guard
+
+on:
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Build (Next.js)
+        run: npm run build
+
+      - name: Structural Next transition checks
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # App Router route must exist.
+          test -f app/restaurant/page.js
+
+          # Legacy restaurant runtime directory must remain removed.
+          if [ -d app/restaurant/runtime ]; then
+            echo "Legacy runtime directory detected: app/restaurant/runtime"
+            exit 1
+          fi
+
+          # Legacy runtime identifier chain must not be referenced.
+          LEGACY_PATTERN='createRestaurantRuntimeCore|createRestaurantRuntimeBrowserServices|createRestaurantPageUiBundleOptions|createRestaurantEditorHydrationBundleOptions|createRestaurantEditorHydrationBundle'
+          if command -v rg >/dev/null 2>&1; then
+            if rg -n "${LEGACY_PATTERN}" app; then
+              echo "Legacy runtime identifier reference detected in app/"
+              exit 1
+            fi
+          else
+            if grep -RInE "${LEGACY_PATTERN}" app; then
+              echo "Legacy runtime identifier reference detected in app/"
+              exit 1
+            fi
+          fi
+
+          # Next config must not switch to static export mode.
+          if command -v rg >/dev/null 2>&1; then
+            if rg -n 'output:\s*["'"'"']export["'"'"']' next.config.*; then
+              echo "next.config output=export is not allowed"
+              exit 1
+            fi
+          else
+            if grep -InE 'output:[[:space:]]*["'"'"'"'"'"'"'"'"']export["'"'"'"'"'"'"'"'"']' next.config.*; then
+              echo "next.config output=export is not allowed"
+              exit 1
+            fi
+          fi

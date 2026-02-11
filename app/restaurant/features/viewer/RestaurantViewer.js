@@ -65,6 +65,20 @@ function includesPreference(values, preference) {
   );
 }
 
+function dedupeByToken(values) {
+  const seen = new Set();
+  const output = [];
+  (Array.isArray(values) ? values : []).forEach((value) => {
+    const text = String(value || "").trim();
+    if (!text) return;
+    const token = normalizeToken(text);
+    if (!token || seen.has(token)) return;
+    seen.add(token);
+    output.push(text);
+  });
+  return output;
+}
+
 function lookupDetailByKey(dish, key) {
   if (!dish?.details || typeof dish.details !== "object") return "";
   const target = normalizeToken(key);
@@ -78,64 +92,171 @@ function lookupDetailByKey(dish, key) {
   return "";
 }
 
-function buildAllergenRows(dish, savedAllergens) {
-  if (!savedAllergens.length) {
-    const dishAllergens = Array.isArray(dish?.allergens) ? dish.allergens : [];
-    if (!dishAllergens.length) return [];
-    return dishAllergens.map((label) => ({
-      key: normalizeToken(label),
-      tone: "bad",
-      title: `Contains ${label}`,
-      detail: lookupDetailByKey(dish, label),
-    }));
+function lookupDetailByKeys(dish, keys) {
+  for (const key of keys) {
+    const detail = lookupDetailByKey(dish, key);
+    if (detail) return detail;
   }
+  return "";
+}
+
+function parseDetailReasons(detail) {
+  return dedupeByToken(
+    String(detail || "")
+      .split(/\n|;|,/)
+      .map((part) => part.trim()),
+  );
+}
+
+function readIngredientNames(dish, matcher) {
+  const ingredients = Array.isArray(dish?.ingredients) ? dish.ingredients : [];
+  return dedupeByToken(
+    ingredients
+      .filter((ingredient) => matcher(ingredient || {}))
+      .map((ingredient) => ingredient?.name),
+  );
+}
+
+function toDueReasons(values) {
+  return dedupeByToken(values).map((value) => `due to ${value}`);
+}
+
+function buildAllergenRows(dish, savedAllergens) {
+  if (!savedAllergens.length) return [];
 
   return savedAllergens.map((item) => {
     const contains =
       includesPreference(dish?.allergens, item.key) ||
       includesPreference(dish?.allergens, item.label);
     const detail = contains
-      ? lookupDetailByKey(dish, item.key) || lookupDetailByKey(dish, item.label)
+      ? lookupDetailByKeys(dish, [item.key, item.label])
       : "";
+    const detailReasons = parseDetailReasons(detail);
+    const ingredientReasons = contains
+      ? readIngredientNames(dish, (ingredient) =>
+          includesPreference(ingredient?.allergens, item.key) ||
+          includesPreference(ingredient?.allergens, item.label),
+        )
+      : [];
+    const reasons = toDueReasons(
+      detailReasons.length ? detailReasons : ingredientReasons,
+    );
     return {
       key: item.key,
       tone: contains ? "bad" : "good",
       title: contains
         ? `${item.emoji || "⚠"} Contains ${item.label}`
         : `${item.emoji || "✓"} This dish is free of ${item.label}`,
-      detail,
+      reasons,
     };
   });
 }
 
 function buildDietRows(dish, savedDiets) {
-  if (!savedDiets.length) {
-    const dishDiets = Array.isArray(dish?.diets) ? dish.diets : [];
-    if (!dishDiets.length) return [];
-    return dishDiets.map((label) => ({
-      key: normalizeToken(label),
-      tone: "good",
-      title: `This dish is ${label}`,
-      detail: lookupDetailByKey(dish, label),
-    }));
-  }
+  if (!savedDiets.length) return [];
 
   return savedDiets.map((item) => {
     const compatible =
       includesPreference(dish?.diets, item.key) ||
       includesPreference(dish?.diets, item.label);
     const detail = !compatible
-      ? lookupDetailByKey(dish, item.key) || lookupDetailByKey(dish, item.label)
+      ? lookupDetailByKeys(dish, [item.key, item.label])
       : "";
+    const detailReasons = parseDetailReasons(detail);
+    const blockers = Array.isArray(dish?.ingredientsBlockingDiets?.[item.label])
+      ? dish.ingredientsBlockingDiets[item.label]
+      : Array.isArray(dish?.ingredientsBlockingDiets?.[item.key])
+        ? dish.ingredientsBlockingDiets[item.key]
+        : [];
+    const blockerReasons = blockers.map(
+      (entry) => entry?.ingredient || entry?.name || "",
+    );
+    const reasons = toDueReasons(detailReasons.length ? detailReasons : blockerReasons);
     return {
       key: item.key,
       tone: compatible ? "good" : "bad",
       title: compatible
         ? `${item.emoji || "✓"} This dish is ${item.label}`
         : `${item.emoji || "⚠"} This dish is not ${item.label}`,
-      detail,
+      reasons,
     };
   });
+}
+
+function buildCrossContaminationRows(dish, savedAllergens, savedDiets) {
+  const rows = [];
+  const crossAllergens = Array.isArray(dish?.crossContamination)
+    ? dish.crossContamination
+    : [];
+  const crossDiets = Array.isArray(dish?.crossContaminationDiets)
+    ? dish.crossContaminationDiets
+    : [];
+
+  savedAllergens.forEach((item) => {
+    const isHit =
+      includesPreference(crossAllergens, item.key) ||
+      includesPreference(crossAllergens, item.label);
+    if (!isHit) return;
+
+    const detail = lookupDetailByKeys(dish, [
+      `cross contamination ${item.key}`,
+      `cross contamination ${item.label}`,
+      `cross ${item.key}`,
+      `cross ${item.label}`,
+      `crosscontamination ${item.key}`,
+      `crosscontamination ${item.label}`,
+    ]);
+    const detailReasons = parseDetailReasons(detail);
+    const ingredientReasons = readIngredientNames(dish, (ingredient) => {
+      return (
+        includesPreference(ingredient?.crossContamination, item.key) ||
+        includesPreference(ingredient?.crossContamination, item.label) ||
+        includesPreference(ingredient?.allergens, item.key) ||
+        includesPreference(ingredient?.allergens, item.label)
+      );
+    });
+
+    rows.push({
+      key: `cross-allergen-${item.key}`,
+      title: `Cross-contamination risk for ${item.label}`,
+      reasons: toDueReasons(
+        detailReasons.length ? detailReasons : ingredientReasons,
+      ),
+    });
+  });
+
+  savedDiets.forEach((item) => {
+    const isHit =
+      includesPreference(crossDiets, item.key) ||
+      includesPreference(crossDiets, item.label);
+    if (!isHit) return;
+
+    const detail = lookupDetailByKeys(dish, [
+      `cross contamination ${item.key}`,
+      `cross contamination ${item.label}`,
+      `cross ${item.key}`,
+      `cross ${item.label}`,
+      `crosscontamination ${item.key}`,
+      `crosscontamination ${item.label}`,
+    ]);
+    const detailReasons = parseDetailReasons(detail);
+    const ingredientReasons = readIngredientNames(dish, (ingredient) => {
+      return (
+        includesPreference(ingredient?.crossContaminationDiets, item.key) ||
+        includesPreference(ingredient?.crossContaminationDiets, item.label)
+      );
+    });
+
+    rows.push({
+      key: `cross-diet-${item.key}`,
+      title: `Cross-contamination risk for ${item.label}`,
+      reasons: toDueReasons(
+        detailReasons.length ? detailReasons : ingredientReasons,
+      ),
+    });
+  });
+
+  return rows;
 }
 
 function parseOverlayNumber(value) {
@@ -195,7 +316,7 @@ export function RestaurantViewer({
       return next;
     });
 
-    const marker = next.scrollTop + next.clientHeight * 0.45;
+    const marker = next.scrollTop + 1;
     let resolvedPage = 0;
     pageRefs.current.forEach((node, index) => {
       if (!node) return;
@@ -254,6 +375,41 @@ export function RestaurantViewer({
       if (!scrollNode || !pageNode) return;
       scrollNode.scrollTo({
         top: pageNode.offsetTop,
+        behavior,
+      });
+    },
+    [viewer.pageCount],
+  );
+
+  const centerOverlayInView = useCallback(
+    (overlay, behavior = "smooth") => {
+      if (!overlay) return;
+      const scrollNode = menuScrollRef.current;
+      if (!scrollNode) return;
+
+      const pageIndex = clamp(
+        Number(overlay.pageIndex) || 0,
+        0,
+        Math.max(viewer.pageCount - 1, 0),
+      );
+      const pageNode = pageRefs.current[pageIndex];
+      if (!pageNode) return;
+
+      const pageHeight = Math.max(pageNode.offsetHeight, 1);
+      const overlayTop =
+        pageNode.offsetTop +
+        (parseOverlayNumber(overlay.y) / 100) * pageHeight;
+      const overlayHeight =
+        (parseOverlayNumber(overlay.h) / 100) * pageHeight;
+      const overlayCenter = overlayTop + overlayHeight / 2;
+      const targetTop = overlayCenter - scrollNode.clientHeight / 2;
+      const maxScroll = Math.max(
+        scrollNode.scrollHeight - scrollNode.clientHeight,
+        0,
+      );
+
+      scrollNode.scrollTo({
+        top: clamp(targetTop, 0, maxScroll),
         behavior,
       });
     },
@@ -328,7 +484,6 @@ export function RestaurantViewer({
 
     const pageHeight = Math.max(pageNode.offsetHeight, 1);
     const pageTop = pageNode.offsetTop;
-    const pageBottom = pageTop + pageHeight;
     const viewportTop = scrollSnapshot.scrollTop;
     const viewportBottom = viewportTop + scrollSnapshot.clientHeight;
     const visibleTop = clamp(viewportTop - pageTop, 0, pageHeight);
@@ -340,8 +495,6 @@ export function RestaurantViewer({
     return {
       topRatio: clamp(topRatio, 0, Math.max(1 - heightRatio, 0)),
       heightRatio,
-      pageBottom,
-      pageTop,
     };
   }, [activePageIndex, scrollSnapshot.clientHeight, scrollSnapshot.scrollTop]);
 
@@ -352,6 +505,15 @@ export function RestaurantViewer({
   const selectedDishDietRows = useMemo(
     () => buildDietRows(selectedDish, viewer.savedDiets),
     [selectedDish, viewer.savedDiets],
+  );
+  const selectedDishCrossRows = useMemo(
+    () =>
+      buildCrossContaminationRows(
+        selectedDish,
+        viewer.savedAllergens,
+        viewer.savedDiets,
+      ),
+    [selectedDish, viewer.savedAllergens, viewer.savedDiets],
   );
 
   const selectedDishPageIndex = selectedDish
@@ -369,36 +531,40 @@ export function RestaurantViewer({
     const pageHeight = Math.max(selectedDishPageNode.offsetHeight, 1);
     const pageWidth = Math.max(selectedDishPageNode.offsetWidth, 1);
     const popupWidth = 340;
-    const popupHeight = 400;
+    const popupHeight = 420;
 
     const overlayX = (parseOverlayNumber(selectedDish.x) / 100) * pageWidth;
     const overlayY = (parseOverlayNumber(selectedDish.y) / 100) * pageHeight;
+    const overlayW = (parseOverlayNumber(selectedDish.w) / 100) * pageWidth;
     const overlayH = (parseOverlayNumber(selectedDish.h) / 100) * pageHeight;
 
-    const rawTop =
+    const overlayViewportTop =
       selectedDishPageNode.offsetTop +
       overlayY -
-      scrollSnapshot.scrollTop -
-      popupHeight -
-      14;
-    const rawLeft =
+      scrollSnapshot.scrollTop;
+    const overlayViewportLeft =
       (selectedDishPageNode.offsetLeft || 0) +
-      overlayX -
-      12;
+      overlayX;
 
     const stageWidth = menuScrollRef.current?.clientWidth || pageWidth;
     const stageHeight = menuScrollRef.current?.clientHeight || pageHeight;
+    const maxLeft = Math.max(stageWidth - popupWidth - 10, 10);
+    const maxTop = Math.max(stageHeight - popupHeight - 10, 10);
 
-    const fallbackBelow =
-      selectedDishPageNode.offsetTop +
-      overlayY +
-      overlayH -
-      scrollSnapshot.scrollTop +
-      12;
+    const rightCandidate = overlayViewportLeft + overlayW + 16;
+    const leftCandidate = overlayViewportLeft - popupWidth - 16;
+    const centeredCandidate = overlayViewportLeft + overlayW / 2 - popupWidth / 2;
+
+    let left = centeredCandidate;
+    if (rightCandidate + popupWidth <= stageWidth - 10) {
+      left = rightCandidate;
+    } else if (leftCandidate >= 10) {
+      left = leftCandidate;
+    }
 
     return {
-      top: `${clamp(rawTop < 12 ? fallbackBelow : rawTop, 10, Math.max(stageHeight - 24, 10))}px`,
-      left: `${clamp(rawLeft, 10, Math.max(stageWidth - popupWidth - 12, 10))}px`,
+      top: `${clamp(overlayViewportTop + 4, 10, maxTop)}px`,
+      left: `${clamp(left, 10, maxLeft)}px`,
     };
   }, [
     scrollSnapshot.scrollTop,
@@ -591,7 +757,10 @@ export function RestaurantViewer({
                     onClick={() => {
                       viewer.selectDish(overlay.id);
                       setSelectedOverlay(overlay);
-                      scrollToPage(overlay.pageIndex, "smooth");
+                      centerOverlayInView(overlay, "smooth");
+                      window.requestAnimationFrame(() => {
+                        centerOverlayInView(overlay, "smooth");
+                      });
                     }}
                     className={`restaurant-legacy-overlay ${
                       selectedOverlaySignature &&
@@ -650,11 +819,17 @@ export function RestaurantViewer({
                     selectedDishAllergenRows.map((row) => (
                       <div key={row.key} className={`dish-row ${row.tone}`}>
                         <div className="dish-row-title">{row.title}</div>
-                        {row.detail ? <div className="dish-row-detail">{row.detail}</div> : null}
+                        {row.reasons?.length ? (
+                          <ul className="dish-row-reasons">
+                            {row.reasons.map((reason) => (
+                              <li key={`${row.key}-${reason}`}>{reason}</li>
+                            ))}
+                          </ul>
+                        ) : null}
                       </div>
                     ))
                   ) : (
-                    <p className="dish-row-empty">No allergen data listed.</p>
+                    <p className="dish-row-empty">No saved allergens.</p>
                   )}
                 </section>
 
@@ -664,24 +839,40 @@ export function RestaurantViewer({
                     selectedDishDietRows.map((row) => (
                       <div key={row.key} className={`dish-row ${row.tone}`}>
                         <div className="dish-row-title">{row.title}</div>
-                        {row.detail ? <div className="dish-row-detail">{row.detail}</div> : null}
+                        {row.reasons?.length ? (
+                          <ul className="dish-row-reasons">
+                            {row.reasons.map((reason) => (
+                              <li key={`${row.key}-${reason}`}>{reason}</li>
+                            ))}
+                          </ul>
+                        ) : null}
                       </div>
                     ))
                   ) : (
-                    <p className="dish-row-empty">No diet data listed.</p>
+                    <p className="dish-row-empty">No saved diets.</p>
                   )}
                 </section>
 
-                {selectedDish.hasCrossContamination ? (
-                  <p className="restaurant-legacy-dish-cross-warning">
-                    ⚠ Cross-contamination risk:{" "}
-                    {viewer.savedAllergens.length
-                      ? viewer.savedAllergens.map((item) => item.emoji || item.label).join(", ")
-                      : "flagged"}
-                    {viewer.savedDiets.length
-                      ? `, ${viewer.savedDiets.map((item) => item.emoji || item.label).join(", ")}`
-                      : ""}
-                  </p>
+                {selectedDishCrossRows.length ? (
+                  <section className="restaurant-legacy-dish-popover-section cross-section">
+                    <h3>Cross-contamination risks:</h3>
+                    {selectedDishCrossRows.map((row) => (
+                      <div key={row.key} className="dish-row cross">
+                        <div className="dish-row-title">{row.title}</div>
+                        {row.reasons?.length ? (
+                          <ul className="dish-row-reasons">
+                            {row.reasons.map((reason) => (
+                              <li key={`${row.key}-${reason}`}>{reason}</li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <ul className="dish-row-reasons">
+                            <li>due to flagged menu entry</li>
+                          </ul>
+                        )}
+                      </div>
+                    ))}
+                  </section>
                 ) : null}
               </div>
 

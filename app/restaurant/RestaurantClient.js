@@ -67,6 +67,37 @@ function isMissingSessionError(error) {
   return /auth session missing|session missing|refresh token/i.test(message);
 }
 
+function readSessionSavedPreferences(config) {
+  const output = { allergies: [], diets: [] };
+  if (typeof window === "undefined" || !config) {
+    return output;
+  }
+
+  try {
+    const parsed = JSON.parse(sessionStorage.getItem("qrAllergies") || "[]");
+    if (Array.isArray(parsed)) {
+      output.allergies = parsed
+        .map((value) => config.normalizeAllergen(value))
+        .filter(Boolean);
+    }
+  } catch {
+    output.allergies = [];
+  }
+
+  try {
+    const parsed = JSON.parse(sessionStorage.getItem("qrDiets") || "[]");
+    if (Array.isArray(parsed)) {
+      output.diets = parsed
+        .map((value) => config.normalizeDietLabel(value))
+        .filter(Boolean);
+    }
+  } catch {
+    output.diets = [];
+  }
+
+  return output;
+}
+
 async function loadRestaurantBoot({ slug, isQrVisit, inviteToken }) {
   if (!supabase) {
     throw new Error("Supabase env vars are missing.");
@@ -79,6 +110,7 @@ async function loadRestaurantBoot({ slug, isQrVisit, inviteToken }) {
   trackRecentlyViewed(slug);
 
   const config = await loadAllergenDietConfig(supabase);
+  const sessionSavedPreferences = readSessionSavedPreferences(config);
 
   if (slug === HOW_IT_WORKS_SLUG) {
     const managerRestaurants = [];
@@ -123,8 +155,8 @@ async function loadRestaurantBoot({ slug, isQrVisit, inviteToken }) {
     throw new Error(restaurantError?.message || "Restaurant not found.");
   }
 
-  let allergies = [];
-  let diets = [];
+  let allergies = sessionSavedPreferences.allergies;
+  let diets = sessionSavedPreferences.diets;
   let canEdit = false;
   let managerRestaurants = [];
   let lovedDishNames = [];
@@ -152,10 +184,16 @@ async function loadRestaurantBoot({ slug, isQrVisit, inviteToken }) {
       console.error("[restaurant] manager lookup failed", managerError);
     }
 
-    allergies = Array.isArray(allergyRecord?.allergens)
+    const dbAllergies = Array.isArray(allergyRecord?.allergens)
       ? allergyRecord.allergens
       : [];
-    diets = Array.isArray(allergyRecord?.diets) ? allergyRecord.diets : [];
+    const dbDiets = Array.isArray(allergyRecord?.diets) ? allergyRecord.diets : [];
+
+    // Prefer authenticated profile data; if absent, preserve session QR selections.
+    if (dbAllergies.length || dbDiets.length) {
+      allergies = dbAllergies;
+      diets = dbDiets;
+    }
 
     canEdit =
       isOwner || Boolean(managerRecord) || restaurant.name === "Falafel Café";
