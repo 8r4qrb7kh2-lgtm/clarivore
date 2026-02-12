@@ -4,14 +4,13 @@ import { useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
+import AppTopbar from "../components/AppTopbar";
 import PageShell from "../components/PageShell";
-import SimpleTopbar from "../components/SimpleTopbar";
 import RestaurantCard from "../components/RestaurantCard";
 import RestaurantGridState from "../components/RestaurantGridState";
 import { queryKeys } from "../lib/queryKeys";
 import { filterRestaurantsByVisibility } from "../lib/restaurantVisibility";
 import { supabaseClient as supabase } from "../lib/supabase";
-import { createDinerTopbarLinks } from "../lib/topbarLinks";
 import { resolveGreetingFirstName } from "../lib/userIdentity";
 
 export default function HomeClient() {
@@ -77,10 +76,7 @@ export default function HomeClient() {
     <PageShell
       wrapContent={false}
       topbar={
-        <SimpleTopbar
-          brandHref="/home"
-          links={createDinerTopbarLinks({ includeHome: false })}
-        />
+        <AppTopbar mode="customer" user={authQuery.data || null} />
       }
     >
       <section className="home-hero">

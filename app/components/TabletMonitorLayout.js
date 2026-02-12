@@ -1,4 +1,4 @@
-import SimpleTopbar from "./SimpleTopbar";
+import AppTopbar from "./AppTopbar";
 
 const HEADER_ROW_STYLE = {
   display: "flex",
@@ -9,18 +9,16 @@ const HEADER_ROW_STYLE = {
 };
 
 export function TabletMonitorPage({
-  brandHref = "/restaurants",
-  links = [],
+  user = null,
   signedIn = false,
   onSignOut,
   children,
 }) {
   return (
     <>
-      <SimpleTopbar
-        brandHref={brandHref}
-        links={links}
-        showAuthAction
+      <AppTopbar
+        mode="editor"
+        user={user}
         signedIn={signedIn}
         onSignOut={onSignOut}
       />

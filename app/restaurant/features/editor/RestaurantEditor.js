@@ -1510,8 +1510,11 @@ export function RestaurantEditor({ editor, parityMode = "current", onNavigate })
 
     let bestPage = editor.activePageIndex;
     let bestVisible = 0;
-    pageImageRefs.current.forEach((imageNode, index) => {
-      const slice = getVisibleSlice(imageNode, scrollNode);
+    editor.overlaysByPage.forEach((_, index) => {
+      const pageNode = pageRefs.current[index];
+      const visualNode = pageImageRefs.current[index] || pageNode;
+      if (!visualNode) return;
+      const slice = getVisibleSlice(visualNode, scrollNode);
       const visible = slice?.visibleHeight || 0;
       if (visible > bestVisible) {
         bestVisible = visible;
@@ -1586,25 +1589,25 @@ export function RestaurantEditor({ editor, parityMode = "current", onNavigate })
 
   const minimapViewport = useMemo(() => {
     const scrollNode = menuScrollRef.current;
-    const pageNode =
-      pageImageRefs.current[editor.activePageIndex] ||
-      pageRefs.current[editor.activePageIndex];
-    if (!scrollNode || !pageNode) {
+    const pageContainer = pageRefs.current[editor.activePageIndex];
+    const pageVisualNode = pageImageRefs.current[editor.activePageIndex] || pageContainer;
+    if (!scrollNode || !pageContainer || !pageVisualNode) {
       return { topRatio: 0, heightRatio: 0.2 };
     }
 
-    const slice = getVisibleSlice(pageNode, scrollNode);
+    const slice = getVisibleSlice(pageVisualNode, scrollNode);
     if (slice && slice.visibleHeight > 0) {
-      const topRatio = clamp(slice.offsetTop / slice.imageHeight, 0, 1);
-      const heightRatio = clamp(slice.visibleHeight / slice.imageHeight, 0.03, 1);
+      const imageHeight = Math.max(slice.imageHeight, 1);
+      const topRatio = clamp(slice.offsetTop / imageHeight, 0, 1);
+      const heightRatio = clamp(slice.visibleHeight / imageHeight, 0.03, 1);
       return {
         topRatio: clamp(topRatio, 0, Math.max(1 - heightRatio, 0)),
         heightRatio,
       };
     }
 
-    const pageHeight = Math.max(pageNode.offsetHeight, 1);
-    const pageTop = pageNode.offsetTop;
+    const pageHeight = Math.max(pageContainer.offsetHeight, 1);
+    const pageTop = pageContainer.offsetTop;
     const viewportTop = scrollSnapshot.scrollTop;
     const viewportBottom = viewportTop + scrollSnapshot.clientHeight;
     const visibleTop = clamp(viewportTop - pageTop, 0, pageHeight);
@@ -1640,17 +1643,16 @@ export function RestaurantEditor({ editor, parityMode = "current", onNavigate })
   const jumpFromMinimap = useCallback(
     (event) => {
       const scrollNode = menuScrollRef.current;
-      const pageNode =
-        pageImageRefs.current[editor.activePageIndex] ||
-        pageRefs.current[editor.activePageIndex];
-      if (!scrollNode || !pageNode) return;
+      const pageContainer = pageRefs.current[editor.activePageIndex];
+      const pageVisualNode = pageImageRefs.current[editor.activePageIndex] || pageContainer;
+      if (!scrollNode || !pageContainer || !pageVisualNode) return;
 
       const bounds = event.currentTarget.getBoundingClientRect();
       const ratio = clamp((event.clientY - bounds.top) / bounds.height, 0, 1);
-      const pageHeight = Math.max(pageNode.offsetHeight, 1);
+      const pageHeight = Math.max(pageVisualNode.offsetHeight, pageContainer.offsetHeight, 1);
       const maxScroll = Math.max(scrollNode.scrollHeight - scrollNode.clientHeight, 0);
       const targetWithinPage = ratio * pageHeight - scrollNode.clientHeight / 2;
-      const target = pageNode.offsetTop + targetWithinPage;
+      const target = pageContainer.offsetTop + targetWithinPage;
 
       scrollNode.scrollTo({ top: clamp(target, 0, maxScroll), behavior: "smooth" });
     },
@@ -2085,6 +2087,7 @@ export function RestaurantEditor({ editor, parityMode = "current", onNavigate })
                 <button
                   type="button"
                   className="restaurant-legacy-page-thumb"
+                  onPointerDown={jumpFromMinimap}
                   onClick={jumpFromMinimap}
                   title="Jump to menu area"
                 >

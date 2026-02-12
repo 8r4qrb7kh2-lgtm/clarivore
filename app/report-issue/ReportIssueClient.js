@@ -3,13 +3,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation, useQuery } from "@tanstack/react-query";
+import AppTopbar from "../components/AppTopbar";
 import PageShell from "../components/PageShell";
-import SimpleTopbar from "../components/SimpleTopbar";
 import { Button, Input, Textarea } from "../components/ui";
 import { queryKeys } from "../lib/queryKeys";
 import { supabaseClient as supabase } from "../lib/supabase";
-import { isManagerOrOwnerUser } from "../lib/managerRestaurants";
-import { createDinerTopbarLinks } from "../lib/topbarLinks";
 import { resolveAccountName } from "../lib/userIdentity";
 
 export default function ReportIssueClient() {
@@ -50,7 +48,6 @@ export default function ReportIssueClient() {
     () => (submitMutation.isPending ? "Sending..." : "Send"),
     [submitMutation.isPending],
   );
-  const isManagerOrOwner = isManagerOrOwnerUser(user);
 
   useEffect(() => {
     if (!supabase) {
@@ -155,20 +152,7 @@ export default function ReportIssueClient() {
       mainClassName=""
       wrapContent={false}
       topbar={
-        <SimpleTopbar
-          brandHref="/home"
-          links={createDinerTopbarLinks({
-            includeFavorites: false,
-            includeDishSearch: false,
-            includeHelp: true,
-            includeDashboard: true,
-            dashboardVisible: isManagerOrOwner,
-            includeAccount: false,
-          })}
-          showAuthAction
-          signedIn={Boolean(user)}
-          onSignOut={onSignOut}
-        />
+        <AppTopbar mode="customer" user={user || null} onSignOut={onSignOut} />
       }
       afterMain={
         <>

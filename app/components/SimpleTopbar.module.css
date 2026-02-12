@@ -1,0 +1,253 @@
+.topbar {
+  position: sticky;
+  top: 0;
+  width: 100%;
+  background: linear-gradient(180deg, #0f1530, #0b1020);
+  border-bottom: 1px solid #1c2347;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
+  z-index: 40;
+  overflow: visible;
+}
+
+.inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
+  padding: 12px 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  overflow: visible;
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  text-decoration: none;
+  color: var(--ink);
+  font-weight: 700;
+  font-size: 1.4rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.brand img {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  object-fit: cover;
+}
+
+.modeToggleContainer {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.modeToggleLabel {
+  font-size: 0.95rem;
+  color: #d5dfff;
+  white-space: nowrap;
+}
+
+.modeToggle {
+  position: relative;
+  width: 56px;
+  height: 30px;
+  background: #1a2351;
+  border: 1px solid #2a3261;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.modeToggle::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 22px;
+  height: 22px;
+  background: #fff;
+  border-radius: 50%;
+  transition: transform 0.2s ease;
+}
+
+.modeToggleActive {
+  background: #3651ff;
+  border-color: #4e65ff;
+}
+
+.modeToggleActive::after {
+  transform: translateX(26px);
+}
+
+.nav {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1 1 auto;
+  min-width: 0;
+  flex-wrap: nowrap;
+  margin: 0;
+  padding: 2px 0;
+  overflow: visible;
+  overflow-y: visible;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid #2a3261;
+  background: rgba(17, 22, 48, 0.75);
+  color: var(--ink);
+  text-decoration: none;
+  font-size: 0.9rem;
+  line-height: 1.1;
+  cursor: pointer;
+  transition: border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+  white-space: nowrap;
+}
+
+.pill:hover {
+  border-color: #4c5ad4;
+  transform: translateY(-1px);
+}
+
+.currentPage {
+  border-color: #4c5ad4;
+  box-shadow: 0 0 0 2px #7c9cff;
+}
+
+.navGroup {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.groupTrigger {
+  gap: 6px;
+}
+
+.caret {
+  width: 0;
+  height: 0;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-top: 5px solid #a8b2d6;
+}
+
+.dropdown {
+  display: none;
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  min-width: 200px;
+  max-width: 280px;
+  background: #111630;
+  border: 1px solid #2a3261;
+  border-radius: 12px;
+  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.45);
+  padding: 8px;
+  z-index: 200;
+}
+
+.dropdownOpen {
+  display: grid;
+  gap: 4px;
+}
+
+.dropdownItem {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 9px 12px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink);
+  text-decoration: none;
+  font-size: 0.9rem;
+  line-height: 1.2;
+  cursor: pointer;
+}
+
+.dropdownItem:hover {
+  background: rgba(124, 156, 255, 0.14);
+}
+
+.authLink {
+  margin-left: auto;
+  background: transparent;
+  border: none;
+  color: #8ca1ff;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  font-size: 0.95rem;
+  cursor: pointer;
+  padding: 4px 0;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+
+.authLink:hover {
+  color: #a9b7ff;
+}
+
+.rightSlot {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+}
+
+.managerModeSwitch {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.managerModeLink {
+  border: none;
+  background: transparent;
+  color: #8ca1ff;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  font-size: 1.05rem;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0.7;
+}
+
+.managerModeLink.activeMode {
+  opacity: 1;
+  font-weight: 700;
+}
+
+@media (max-width: 960px) {
+  .inner {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    padding: 10px 14px;
+  }
+
+  .nav {
+    width: 100%;
+    order: 4;
+    flex-wrap: wrap;
+    overflow: visible;
+    padding-bottom: 2px;
+  }
+
+  .authLink {
+    margin-left: 0;
+  }
+
+  .rightSlot {
+    margin-left: auto;
+  }
+}

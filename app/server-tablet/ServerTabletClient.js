@@ -16,7 +16,6 @@ import {
   notifyDinerNoticeUpdate,
   upsertTabletOrder,
 } from "../lib/tabletOrderPersistence";
-import { createTabletMonitorTopbarLinks } from "../lib/topbarLinks";
 import {
   ORDER_STATUSES,
   applyServerApprove,
@@ -916,8 +915,7 @@ export default function ServerTabletClient() {
       `}</style>
 
       <TabletMonitorPage
-        brandHref="/restaurants"
-        links={createTabletMonitorTopbarLinks("server")}
+        user={authUser}
         signedIn={Boolean(authUser)}
         onSignOut={onSignOut}
       >

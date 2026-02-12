@@ -4,14 +4,12 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import AppTopbar from "../components/AppTopbar";
 import PageShell from "../components/PageShell";
-import SimpleTopbar from "../components/SimpleTopbar";
 import { Button, Textarea } from "../components/ui";
 import { supabaseClient as supabase } from "../lib/supabase";
-import { isManagerOrOwnerUser } from "../lib/managerRestaurants";
 import { loadAllergenDietConfig } from "../lib/allergenConfig";
 import { queryKeys } from "../lib/queryKeys";
-import { createDinerTopbarLinks } from "../lib/topbarLinks";
 
 function getDefaultConfig() {
   const normalizeAllergen = (value) => String(value ?? "").trim();
@@ -43,7 +41,6 @@ export default function OrderFeedbackClient() {
   const [submitError, setSubmitError] = useState("");
   const [config, setConfig] = useState(() => getDefaultConfig());
   const [topbarUser, setTopbarUser] = useState(null);
-  const isManagerOrOwner = isManagerOrOwnerUser(topbarUser);
   const topbarUserQuery = useQuery({
     queryKey: queryKeys.auth.user("order-feedback"),
     enabled: Boolean(supabase),
@@ -364,18 +361,7 @@ export default function OrderFeedbackClient() {
   return (
     <PageShell
       topbar={
-        <SimpleTopbar
-          brandHref="/home"
-          links={createDinerTopbarLinks({
-            includeDishSearch: false,
-            includeDashboard: true,
-            dashboardVisible: isManagerOrOwner,
-            includeAccount: false,
-          })}
-          showAuthAction
-          signedIn={Boolean(topbarUser)}
-          onSignOut={onSignOut}
-        />
+        <AppTopbar mode="customer" user={topbarUser || null} onSignOut={onSignOut} />
       }
     >
           {isLoading ? (

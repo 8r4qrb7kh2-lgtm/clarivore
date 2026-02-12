@@ -4,8 +4,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import AppTopbar from "../components/AppTopbar";
 import PageShell from "../components/PageShell";
-import SimpleTopbar from "../components/SimpleTopbar";
 import {
   buildAllergenDietConfig,
   loadAllergenDietConfig,
@@ -21,7 +21,6 @@ import {
   supabaseUrl,
 } from "../lib/supabase";
 import { queryKeys } from "../lib/queryKeys";
-import { createDinerTopbarLinks } from "../lib/topbarLinks";
 
 export default function DishSearchClient() {
   const router = useRouter();
@@ -624,9 +623,10 @@ export default function DishSearchClient() {
   return (
     <PageShell
       topbar={
-        <SimpleTopbar
-          brandHref="/home"
-          links={createDinerTopbarLinks({ includeDishSearch: false })}
+        <AppTopbar
+          mode="customer"
+          user={user || null}
+          showAuthAction={!isQR}
         />
       }
     >

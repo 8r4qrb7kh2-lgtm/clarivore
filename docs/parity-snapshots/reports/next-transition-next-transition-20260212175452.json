@@ -1,0 +1,61 @@
+{
+  "title": "Next Transition Verification",
+  "stages": [
+    {
+      "name": "Environment Validation",
+      "startedAt": "2026-02-12T17:54:52.905Z",
+      "status": "failed",
+      "details": [],
+      "error": "Missing required env vars: TARGET_ENV, NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, DATABASE_URL, QA_ADMIN_EMAIL, QA_ADMIN_PASSWORD, QA_MANAGER_EMAIL, QA_MANAGER_PASSWORD, QA_DINER_EMAIL, QA_DINER_PASSWORD, CAPACITOR_SERVER_URL",
+      "finishedAt": "2026-02-12T17:54:52.905Z"
+    },
+    {
+      "name": "Deterministic Cleanup",
+      "startedAt": "2026-02-12T17:54:52.905Z",
+      "status": "failed",
+      "details": [],
+      "error": "Command failed: psql  -v ON_ERROR_STOP=1 -c \n    DELETE FROM public.restaurant_direct_message_reads\n    WHERE restaurant_id = NULL\n      OR restaurant_id IN (\n        SELECT id FROM public.restaurants\n        WHERE name ILIKE '%' || 'next-transition-20260212175452' || '%'\n           OR slug ILIKE '%' || 'next-transition-20260212175452' || '%'\n      );\n  \npsql: error: connection to server on socket \"/tmp/.s.PGSQL.5432\" failed: FATAL:  database \"undefined\" does not exist",
+      "finishedAt": "2026-02-12T17:54:53.262Z"
+    },
+    {
+      "name": "Capacitor Copy Verification",
+      "startedAt": "2026-02-12T17:54:53.263Z",
+      "finishedAt": "2026-02-12T17:54:53.263Z",
+      "status": "skipped",
+      "reason": "Skipped because a prior required stage failed."
+    },
+    {
+      "name": "Git Delta Guard",
+      "startedAt": "2026-02-12T17:54:53.263Z",
+      "finishedAt": "2026-02-12T17:54:53.263Z",
+      "status": "skipped",
+      "reason": "Skipped because a prior required stage failed."
+    }
+  ],
+  "summary": {
+    "runId": "next-transition-20260212175452",
+    "baseUrl": "http://127.0.0.1:8081",
+    "verdict": "FAIL",
+    "finishedAt": "2026-02-12T17:54:53.263Z",
+    "generatedAt": "2026-02-12T17:54:53.263Z",
+    "restaurant": null,
+    "inviteTokenCaptured": false,
+    "checks": {
+      "routeChecks": [],
+      "legacyChecks": [],
+      "apiChecks": [],
+      "parityChecks": []
+    },
+    "failedStageCount": 2,
+    "failedStages": [
+      {
+        "name": "Environment Validation",
+        "error": "Missing required env vars: TARGET_ENV, NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, DATABASE_URL, QA_ADMIN_EMAIL, QA_ADMIN_PASSWORD, QA_MANAGER_EMAIL, QA_MANAGER_PASSWORD, QA_DINER_EMAIL, QA_DINER_PASSWORD, CAPACITOR_SERVER_URL"
+      },
+      {
+        "name": "Deterministic Cleanup",
+        "error": "Command failed: psql  -v ON_ERROR_STOP=1 -c \n    DELETE FROM public.restaurant_direct_message_reads\n    WHERE restaurant_id = NULL\n      OR restaurant_id IN (\n        SELECT id FROM public.restaurants\n        WHERE name ILIKE '%' || 'next-transition-20260212175452' || '%'\n           OR slug ILIKE '%' || 'next-transition-20260212175452' || '%'\n      );\n  \npsql: error: connection to server on socket \"/tmp/.s.PGSQL.5432\" failed: FATAL:  database \"undefined\" does not exist"
+      }
+    ]
+  }
+}

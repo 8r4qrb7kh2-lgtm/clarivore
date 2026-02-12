@@ -4,8 +4,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import AppTopbar from "../components/AppTopbar";
 import PageShell from "../components/PageShell";
-import SimpleTopbar, { ManagerModeSwitch } from "../components/SimpleTopbar";
 import ChatMessageText from "../components/chat/ChatMessageText";
 import { supabaseClient as supabase } from "../lib/supabase";
 import {
@@ -15,7 +15,6 @@ import {
 import { initManagerNotifications } from "../lib/managerNotifications";
 import { formatChatTimestamp } from "../lib/chatMessage";
 import { queryKeys } from "../lib/queryKeys";
-import { createDinerTopbarLinks } from "../lib/topbarLinks";
 import { resolveAccountName, resolveManagerDisplayName } from "../lib/userIdentity";
 
 const ADMIN_DISPLAY_NAME = "Matt D (clarivore administrator)";
@@ -590,24 +589,13 @@ export default function HelpContactClient() {
       mainClassName="help-main"
       contentClassName="help-container"
       topbar={
-        <SimpleTopbar
-          brandHref="/home"
-          links={createDinerTopbarLinks({
-            includeHelp: false,
-            includeDashboard: true,
-            dashboardVisible: isManagerOrOwner,
-          })}
-          showAuthAction
-          signedIn={Boolean(user)}
+        <AppTopbar
+          mode={isEditorMode ? "editor" : "customer"}
+          user={user || null}
+          managerRestaurants={managerRestaurants}
+          currentRestaurantSlug={selectedRestaurant?.slug || ""}
           onSignOut={onSignOut}
-          rightContent={
-            isManagerOrOwner ? (
-              <ManagerModeSwitch
-                mode={isEditorMode ? "editor" : "customer"}
-                onChange={onModeChange}
-              />
-            ) : null
-          }
+          onModeChange={onModeChange}
         />
       }
       afterMain={

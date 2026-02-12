@@ -379,7 +379,7 @@ nav a:hover {
 .simple-nav {
   --nav-pad-inline: 0px;
   --nav-gap: clamp(4px, 1.4vw, 10px);
-  --nav-pill-pad-y: min(1.2vw, 8px);
+  --nav-pill-pad-y: min(0.8vw, 5px);
   --nav-pill-pad-x: 5px;
   --nav-pill-font: min(2.1vw, 0.9rem);
   display: flex;
@@ -388,7 +388,7 @@ nav a:hover {
   justify-content: flex-start;
   align-items: center;
   width: 100%;
-  padding: 2px calc(var(--nav-pad-inline) + env(safe-area-inset-right, 0px)) 8px
+  padding: 0 calc(var(--nav-pad-inline) + env(safe-area-inset-right, 0px)) 4px
     calc(var(--nav-pad-inline) + env(safe-area-inset-left, 0px));
   overflow-x: auto;
   overflow-y: visible;

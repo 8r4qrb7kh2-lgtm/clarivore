@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
+import AppTopbar from "../components/AppTopbar";
 import PageShell from "../components/PageShell";
 import { Button, Modal, useToast } from "../components/ui";
 import { loadAllergenDietConfig } from "../lib/allergenConfig";
@@ -17,7 +18,6 @@ import { supabaseClient as supabase } from "../lib/supabase";
 import { buildTrainingRestaurantPayload, HOW_IT_WORKS_SLUG } from "./boot/trainingRestaurant";
 import RestaurantEditor from "./features/editor/RestaurantEditor";
 import RestaurantViewer from "./features/viewer/RestaurantViewer";
-import LegacyRestaurantTopbar from "./features/shared/LegacyRestaurantTopbar";
 import {
   analyzeDishWithAi,
   compareDishSets,
@@ -31,13 +31,10 @@ import {
   EDITOR_PARITY_QUERY_KEY,
   EDITOR_PARITY_STORAGE_KEY,
   resolveEditorParityMode,
-} from "./parityMode";
+} from "./features/legacy-parity/parityMode";
 import { useOrderFlow } from "./hooks/useOrderFlow";
 import { useRestaurantEditor } from "./hooks/useRestaurantEditor";
 import { useRestaurantViewer } from "./hooks/useRestaurantViewer";
-
-const CLARIVORE_LOGO_SRC =
-  "https://static.wixstatic.com/media/945e9d_2b97098295d341d493e4a07d80d6b57c~mv2.png";
 
 function isTruthyFlag(value) {
   return /^(1|true|yes|editor)$/i.test(String(value || ""));
@@ -325,6 +322,7 @@ export default function RestaurantClient() {
   const [unsavedPromptError, setUnsavedPromptError] = useState("");
   const [unsavedPromptSaving, setUnsavedPromptSaving] = useState(false);
   const pendingNavigationRef = useRef(null);
+  const isLegacyParityMode = editorParityMode === "legacy";
 
   useEffect(() => {
     const queryMode = searchParams?.get(EDITOR_PARITY_QUERY_KEY);
@@ -354,7 +352,31 @@ export default function RestaurantClient() {
     }
   }, [searchParams]);
 
-  const isLegacyParityMode = editorParityMode === "legacy";
+  useEffect(() => {
+    const styleId = "clarivore-restaurant-legacy-css";
+    let styleLink = document.getElementById(styleId);
+
+    if (!isLegacyParityMode) {
+      if (styleLink?.parentNode) {
+        styleLink.parentNode.removeChild(styleLink);
+      }
+      return undefined;
+    }
+
+    if (!styleLink) {
+      styleLink = document.createElement("link");
+      styleLink.id = styleId;
+      styleLink.rel = "stylesheet";
+      styleLink.href = "/css/styles.css";
+      document.head.appendChild(styleLink);
+    }
+
+    return () => {
+      if (styleLink?.parentNode) {
+        styleLink.parentNode.removeChild(styleLink);
+      }
+    };
+  }, [isLegacyParityMode]);
 
   const bootQuery = useQuery({
     queryKey: queryKeys.restaurant.boot(slug, inviteToken, isQrVisit),
@@ -886,6 +908,8 @@ export default function RestaurantClient() {
   );
 
   const isViewerMode = !(activeView === "editor" && boot?.canEdit);
+  const isLegacyEditorMode =
+    isLegacyParityMode && activeView === "editor" && Boolean(boot?.canEdit);
 
   useEffect(() => {
     if (!boot?.restaurant || !isViewerMode || isLegacyParityMode) return undefined;
@@ -898,6 +922,18 @@ export default function RestaurantClient() {
       document.documentElement.style.overflow = previousHtmlOverflow;
     };
   }, [boot?.restaurant, isLegacyParityMode, isViewerMode]);
+
+  useEffect(() => {
+    if (!boot?.restaurant || !isLegacyEditorMode) return undefined;
+    const previousBodyOverflow = document.body.style.overflow;
+    const previousHtmlOverflow = document.documentElement.style.overflow;
+    document.body.style.overflow = "hidden";
+    document.documentElement.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousBodyOverflow;
+      document.documentElement.style.overflow = previousHtmlOverflow;
+    };
+  }, [boot?.restaurant, isLegacyEditorMode]);
 
   useEffect(() => {
     const body = document.body;
@@ -928,16 +964,10 @@ export default function RestaurantClient() {
 
     const body = document.body;
     const html = document.documentElement;
-    const shouldUnlock = activeView === "editor" && Boolean(boot?.canEdit);
 
     const clearLegacyLocks = () => {
       body.classList.remove("menuScrollLocked");
       html.classList.remove("menuScrollLocked");
-
-      if (!shouldUnlock) return;
-
-      body.style.overflow = "";
-      html.style.overflow = "";
       body.style.position = "";
       body.style.inset = "";
     };
@@ -950,7 +980,7 @@ export default function RestaurantClient() {
       window.cancelAnimationFrame(frameId);
       window.clearTimeout(timerId);
     };
-  }, [activeView, boot?.canEdit, boot?.restaurant, isLegacyParityMode]);
+  }, [boot?.restaurant, isLegacyParityMode]);
 
   useEffect(() => {
     if (!isLegacyParityMode) return undefined;
@@ -1027,106 +1057,27 @@ export default function RestaurantClient() {
   const isOwner = isOwnerUser(boot?.user);
   const isManager = isManagerUser(boot?.user);
   const currentRestaurantSlug = boot?.restaurant?.slug || slug;
-  const editorHref = `/restaurant?slug=${encodeURIComponent(
-    currentRestaurantSlug,
-  )}&edit=1`;
-  const topNavLinks = isEditorMode
-    ? [
-        { href: "/manager-dashboard", label: "Dashboard" },
-        { href: editorHref, label: "Webpage editor ▾" },
-        { href: "/server-tablet", label: "Tablet pages ▾" },
-        { href: "/help-contact", label: "Help" },
-        { href: "/account", label: "Account settings" },
-      ]
-    : [
-        { href: "/home", label: "Home" },
-        { href: "/restaurants", label: "By restaurant ▾" },
-        { href: "/dish-search", label: "By dish ▾" },
-        { href: "/help-contact", label: "Help" },
-        { href: "/account", label: "Account settings" },
-      ];
 
-  const topbar = isLegacyParityMode ? (
-    <LegacyRestaurantTopbar
-      user={boot?.user}
-      isOwner={isOwner}
-      isManager={isManager}
-      managerRestaurants={boot?.managerRestaurants || []}
+  const topbar = (
+    <AppTopbar
+      mode={isEditorMode ? "editor" : "customer"}
+      user={boot?.user || null}
+      managerRestaurants={isOwner || isManager ? boot?.managerRestaurants || [] : []}
       currentRestaurantSlug={currentRestaurantSlug}
-      canEdit={boot?.canEdit}
-      activeView={activeView}
-      onNavigate={onLegacyNavigate}
-      onToggleMode={setMode}
+      showModeToggle={Boolean(boot?.canEdit)}
+      onModeChange={(nextMode) => setMode(nextMode === "editor" ? "editor" : "viewer")}
       onSignOut={onSignOut}
+      onNavigate={isLegacyParityMode ? onLegacyNavigate : undefined}
     />
-  ) : (
-    <header className="simple-topbar restaurant-legacy-topbar">
-      <div className="restaurant-legacy-topbar-inner">
-        <div className="restaurant-legacy-mode-slot">
-          {boot?.canEdit ? (
-            <button
-              type="button"
-              className="restaurant-legacy-mode-toggle"
-              onClick={() => setMode(activeView === "editor" ? "viewer" : "editor")}
-              aria-label={
-                activeView === "editor"
-                  ? "Switch to customer mode"
-                  : "Switch to editor mode"
-              }
-            >
-              <span className="restaurant-legacy-mode-label">
-                {activeView === "editor" ? "Editor mode" : "Customer mode"}
-              </span>
-              <span
-                className={`mode-toggle ${activeView === "editor" ? "active" : ""}`}
-                role="switch"
-                aria-checked={activeView === "editor"}
-              />
-            </button>
-          ) : null}
-        </div>
-
-        <div className="restaurant-legacy-brand-nav">
-          <Link
-            className="simple-brand restaurant-legacy-brand"
-            href={isEditorMode ? "/manager-dashboard" : "/home"}
-          >
-            <img src={CLARIVORE_LOGO_SRC} alt="Clarivore logo" />
-            <span>Clarivore</span>
-          </Link>
-          <nav className="simple-nav restaurant-legacy-nav">
-            {topNavLinks.map((item) => (
-              <Link key={`${item.href}-${item.label}`} href={item.href}>
-                {item.label}
-              </Link>
-            ))}
-          </nav>
-        </div>
-
-        <div className="restaurant-legacy-auth-slot">
-          {boot?.user?.id ? (
-            <button
-              type="button"
-              className="btnLink restaurant-legacy-signout"
-              onClick={onSignOut}
-            >
-              Sign out
-            </button>
-          ) : (
-            <Link href="/account?mode=signin" className="btnLink restaurant-legacy-signout">
-              Sign in
-            </Link>
-          )}
-        </div>
-      </div>
-    </header>
   );
+
+  const useLegacyViewportShell = isViewerMode || isLegacyEditorMode;
 
   return (
     <PageShell
-      shellClassName={isViewerMode ? "page-shell restaurant-legacy-shell" : "page-shell"}
-      mainClassName={isViewerMode ? "page-main restaurant-legacy-main" : "page-main"}
-      contentClassName={isViewerMode ? "restaurant-legacy-content" : ""}
+      shellClassName={useLegacyViewportShell ? "page-shell restaurant-legacy-shell" : "page-shell"}
+      mainClassName={useLegacyViewportShell ? "page-main restaurant-legacy-main" : "page-main"}
+      contentClassName={useLegacyViewportShell ? "restaurant-legacy-content" : ""}
       topbar={topbar}
     >
       {inviteToken && !boot?.user?.id ? (

@@ -1,8 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import AppTopbar from "../../components/AppTopbar";
 import PageShell from "../../components/PageShell";
-import SimpleTopbar, { ManagerModeSwitch } from "../../components/SimpleTopbar";
 import ChatMessageText from "../../components/chat/ChatMessageText";
 import { notifyManagerChat } from "../../lib/chatNotifications";
 import { getActiveAllergenDietConfig } from "../../lib/allergenConfigRuntime";
@@ -804,12 +804,6 @@ export default function ManagerDashboardDom({
       managerRestaurants.find((restaurant) => restaurant.id === selectedRestaurantId) || null,
     [managerRestaurants, selectedRestaurantId],
   );
-
-  const webpageEditorHref = selectedRestaurant?.slug
-    ? `/restaurant?slug=${encodeURIComponent(selectedRestaurant.slug)}&edit=1`
-    : managerRestaurants[0]?.slug
-      ? `/restaurant?slug=${encodeURIComponent(managerRestaurants[0].slug)}&edit=1`
-      : "";
 
   const showRestaurantSelector = isOwner;
 
@@ -2177,27 +2171,13 @@ export default function ManagerDashboardDom({
     <PageShell
       contentClassName="dashboard-container"
       topbar={
-        <SimpleTopbar
-          brandHref="/manager-dashboard"
-          links={[
-            { href: "/manager-dashboard", label: "Dashboard" },
-            {
-              href: webpageEditorHref || "/manager-dashboard",
-              label: "Webpage editor",
-              visible: Boolean(webpageEditorHref),
-            },
-            { href: "/server-tablet", label: "Server monitor" },
-            { href: "/kitchen-tablet", label: "Kitchen monitor" },
-            { href: "/help-contact", label: "Help" },
-          ]}
-          showAuthAction
-          signedIn={Boolean(user)}
+        <AppTopbar
+          mode={managerMode === "editor" ? "editor" : "customer"}
+          user={user || null}
+          managerRestaurants={managerRestaurants}
+          currentRestaurantSlug={selectedRestaurant?.slug || ""}
           onSignOut={onSignOut}
-          rightContent={
-            isManagerOrOwner ? (
-              <ManagerModeSwitch mode={managerMode} onChange={onModeChange} />
-            ) : null
-          }
+          onModeChange={onModeChange}
         />
       }
     >

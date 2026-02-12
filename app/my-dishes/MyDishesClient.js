@@ -4,8 +4,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import AppTopbar from "../components/AppTopbar";
 import PageShell from "../components/PageShell";
-import SimpleTopbar from "../components/SimpleTopbar";
 import { supabaseClient as supabase } from "../lib/supabase";
 import {
   fetchManagerRestaurants,
@@ -13,7 +13,6 @@ import {
   isOwnerUser,
 } from "../lib/managerRestaurants";
 import { queryKeys } from "../lib/queryKeys";
-import { createDinerTopbarLinks } from "../lib/topbarLinks";
 
 function formatDate(dateValue) {
   if (!dateValue) return "";
@@ -326,9 +325,6 @@ export default function MyDishesClient() {
     setIsLoadingOrdered(false);
   }, [authQuery.error, dataQuery.error, managerAccessQuery.error]);
 
-  const isManagerOrOwner =
-    isOwnerUser(user) || isManagerUser(user);
-
   const onSignOut = useCallback(async () => {
     if (!supabase) return;
     try {
@@ -481,17 +477,7 @@ export default function MyDishesClient() {
   return (
     <PageShell
       topbar={
-        <SimpleTopbar
-          brandHref="/home"
-          links={createDinerTopbarLinks({
-            includeDashboard: true,
-            dashboardVisible: isManagerOrOwner,
-            includeAccount: false,
-          })}
-          showAuthAction
-          signedIn
-          onSignOut={onSignOut}
-        />
+        <AppTopbar mode="customer" user={user || null} onSignOut={onSignOut} />
       }
     >
       <h1 style={{ textAlign: "center", marginBottom: 8 }}>My Dishes</h1>

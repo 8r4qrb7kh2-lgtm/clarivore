@@ -3,10 +3,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import AppTopbar from "../components/AppTopbar";
 import PageShell from "../components/PageShell";
 import RestaurantCard from "../components/RestaurantCard";
 import RestaurantGridState from "../components/RestaurantGridState";
-import SimpleTopbar from "../components/SimpleTopbar";
 import { loadAllergenDietConfig } from "../lib/allergenConfig";
 import {
   isManagerUser,
@@ -16,7 +16,6 @@ import {
 import { queryKeys } from "../lib/queryKeys";
 import { filterRestaurantsByVisibility } from "../lib/restaurantVisibility";
 import { supabaseClient as supabase } from "../lib/supabase";
-import { createDinerTopbarLinks } from "../lib/topbarLinks";
 import { createCompatibilityEngine } from "../restaurant/features/shared/compatibility";
 
 function normalizeOverlays(value) {
@@ -365,16 +364,11 @@ export default function RestaurantsClient() {
   return (
     <PageShell
       topbar={
-        <SimpleTopbar
-          brandHref="/home"
-          links={createDinerTopbarLinks({
-            includeRestaurants: false,
-            includeDashboard: Boolean(managerAccess?.hasAccess),
-            dashboardVisible: Boolean(managerAccess?.hasAccess),
-          })}
+        <AppTopbar
+          mode="customer"
+          user={user || null}
           showAuthAction={!isQR}
-          signedIn={Boolean(user?.id)}
-          onSignOut={onSignOut}
+          onSignOut={!isQR ? onSignOut : undefined}
         />
       }
     >

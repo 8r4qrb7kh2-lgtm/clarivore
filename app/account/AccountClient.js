@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import AppTopbar from "../components/AppTopbar";
 import PageShell from "../components/PageShell";
-import SimpleTopbar from "../components/SimpleTopbar";
 import { buildAllergenDietConfig, loadAllergenDietConfig } from "../lib/allergenConfig";
 import {
   fetchManagerRestaurants,
@@ -30,7 +30,6 @@ import {
   saveDiets,
   toSortedKey,
 } from "./accountService";
-import { createDinerTopbarLinks } from "../lib/topbarLinks";
 
 const NATIVE_AUTH_SCHEME = "com.clarivore.app";
 const NATIVE_AUTH_CALLBACK = "auth-callback";
@@ -53,7 +52,6 @@ export default function AccountClient() {
   const searchParams = useSearchParams();
 
   const redirectParam = searchParams?.get("redirect") || "";
-  const returnSlug = searchParams?.get("returnSlug") || "";
   const inviteToken = searchParams?.get("invite") || "";
   const modeParam = searchParams?.get("mode") || "";
 
@@ -122,11 +120,6 @@ export default function AccountClient() {
 
   const allergiesChanged = toSortedKey(selectedAllergies) !== toSortedKey(savedAllergies);
   const dietsChanged = toSortedKey(selectedDiets) !== toSortedKey(savedDiets);
-
-  const backToMenuHref = useMemo(() => {
-    if (!returnSlug) return "";
-    return `/restaurant?slug=${encodeURIComponent(returnSlug)}&qr=1`;
-  }, [returnSlug]);
 
   const initConfig = useCallback(async () => {
     if (!supabase) return;
@@ -788,13 +781,10 @@ export default function AccountClient() {
   return (
     <PageShell
       topbar={
-        <SimpleTopbar
-          brandHref="/home"
-          links={createDinerTopbarLinks({
-            includeBackToMenu: true,
-            backToMenuHref: backToMenuHref || "/account",
-            backToMenuVisible: Boolean(backToMenuHref && !user),
-          })}
+        <AppTopbar
+          mode="customer"
+          user={user || null}
+          signedIn={Boolean(user)}
         />
       }
       afterMain={

@@ -16,7 +16,6 @@ import {
   notifyDinerNoticeUpdate,
   upsertTabletOrder,
 } from "../lib/tabletOrderPersistence";
-import { createTabletMonitorTopbarLinks } from "../lib/topbarLinks";
 import {
   KITCHEN_RELEVANT_STATUSES,
   KITCHEN_STATUS_DESCRIPTORS,
@@ -724,8 +723,7 @@ export default function KitchenTabletClient() {
       `}</style>
 
       <TabletMonitorPage
-        brandHref="/restaurants"
-        links={createTabletMonitorTopbarLinks("kitchen")}
+        user={authUser}
         signedIn={Boolean(authUser)}
         onSignOut={onSignOut}
       >

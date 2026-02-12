@@ -1,8 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import AppTopbar from "../../components/AppTopbar";
 import PageShell from "../../components/PageShell";
-import SimpleTopbar from "../../components/SimpleTopbar";
 import ChatMessageText from "../../components/chat/ChatMessageText";
 import { notifyManagerChat } from "../../lib/chatNotifications";
 import { formatChatTimestamp } from "../../lib/chatMessage";
@@ -1247,15 +1247,10 @@ export default function AdminDashboardDom({
       mainClassName="admin-container"
       wrapContent={false}
       topbar={
-        <SimpleTopbar
-          brandHref="/home"
-          links={[
-            { href: "/manager-dashboard", label: "Dashboard" },
-            { href: "/restaurants", label: "Restaurants" },
-            { href: "/help-contact", label: "Help" },
-          ]}
-          showAuthAction
-          signedIn={Boolean(currentUser)}
+        <AppTopbar
+          mode="editor"
+          user={currentUser || null}
+          showModeToggle={false}
           onSignOut={onSignOut}
         />
       }

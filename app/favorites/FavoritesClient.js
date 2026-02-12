@@ -3,10 +3,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import AppTopbar from "../components/AppTopbar";
 import PageShell from "../components/PageShell";
 import RestaurantCard from "../components/RestaurantCard";
 import RestaurantGridState from "../components/RestaurantGridState";
-import SimpleTopbar from "../components/SimpleTopbar";
 import {
   fetchManagerRestaurants,
   isManagerUser,
@@ -15,7 +15,6 @@ import {
 import { queryKeys } from "../lib/queryKeys";
 import { filterRestaurantsByVisibility } from "../lib/restaurantVisibility";
 import { supabaseClient as supabase } from "../lib/supabase";
-import { createDinerTopbarLinks } from "../lib/topbarLinks";
 
 export default function FavoritesClient() {
   const router = useRouter();
@@ -261,17 +260,7 @@ export default function FavoritesClient() {
     <PageShell
       contentClassName="favorite-container"
       topbar={
-        <SimpleTopbar
-          brandHref="/home"
-          links={createDinerTopbarLinks({
-            includeFavorites: false,
-            includeDashboard: Boolean(managerAccessQuery.data?.hasAccess),
-            dashboardVisible: Boolean(managerAccessQuery.data?.hasAccess),
-          })}
-          showAuthAction
-          signedIn={Boolean(user?.id)}
-          onSignOut={onSignOut}
-        />
+        <AppTopbar mode="customer" user={user || null} onSignOut={onSignOut} />
       }
     >
       <h1 style={{ textAlign: "center", marginBottom: 8 }}>My restaurants</h1>
