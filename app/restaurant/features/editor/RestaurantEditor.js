@@ -11,6 +11,18 @@ import {
   splitTallImageIntoSections,
   warpImageFromCorners,
 } from "./menuScanner";
+import {
+  buildAllergenRows as buildDishAllergenRows,
+  buildAllergenCrossRows as buildDishAllergenCrossRows,
+  buildDietRows as buildDishDietRows,
+  buildDietCrossRows as buildDishDietCrossRows,
+  mergeSectionRows as mergeDishSectionRows,
+} from "../shared/dishDetailRows";
+import {
+  buildMinimapViewport,
+  computeMinimapJumpTarget,
+  resolveMostVisiblePageIndex,
+} from "../shared/minimapGeometry";
 
 function clamp(value, min, max) {
   return Math.min(Math.max(value, min), max);
@@ -35,24 +47,6 @@ function parseOverlayNumber(value) {
     next /= 10;
   }
   return clamp(next, 0, 100);
-}
-
-function getVisibleSlice(imageNode, viewportNode) {
-  if (!imageNode || !viewportNode) return null;
-  const imageRect = imageNode.getBoundingClientRect();
-  const viewportRect = viewportNode.getBoundingClientRect();
-  if (imageRect.height <= 0 || viewportRect.height <= 0) return null;
-
-  const visibleTop = Math.max(imageRect.top, viewportRect.top);
-  const visibleBottom = Math.min(imageRect.bottom, viewportRect.bottom);
-  const visibleHeight = Math.max(0, visibleBottom - visibleTop);
-  const offsetTop = Math.max(0, visibleTop - imageRect.top);
-
-  return {
-    offsetTop,
-    visibleHeight,
-    imageHeight: imageRect.height,
-  };
 }
 
 async function fileToDataUrl(file) {
@@ -158,6 +152,141 @@ function hasCrossContamination(overlay, allergen) {
   return list.some((item) => normalizeToken(item) === token);
 }
 
+function dedupeTokenList(values) {
+  const output = [];
+  const seen = new Set();
+  (Array.isArray(values) ? values : []).forEach((value) => {
+    const text = asText(value);
+    if (!text) return;
+    const token = normalizeToken(text);
+    if (!token || seen.has(token)) return;
+    seen.add(token);
+    output.push(text);
+  });
+  return output;
+}
+
+function includesToken(values, target) {
+  const token = normalizeToken(target);
+  if (!token) return false;
+  return (Array.isArray(values) ? values : []).some(
+    (value) => normalizeToken(value) === token,
+  );
+}
+
+function normalizeIngredientEntry(ingredient, index) {
+  const base = ingredient && typeof ingredient === "object" ? ingredient : {};
+  const contains = base.contains !== false;
+  const crossRisk =
+    Boolean(base.crossRisk) ||
+    (Array.isArray(base.crossContamination) && base.crossContamination.length > 0) ||
+    (Array.isArray(base.crossContaminationDiets) &&
+      base.crossContaminationDiets.length > 0);
+  return {
+    ...base,
+    name: asText(base.name) || `Ingredient ${index + 1}`,
+    allergens: dedupeTokenList(base.allergens),
+    diets: dedupeTokenList(base.diets),
+    crossContamination: dedupeTokenList(base.crossContamination),
+    crossContaminationDiets: dedupeTokenList(base.crossContaminationDiets),
+    removable: Boolean(base.removable),
+    confirmed: base.confirmed !== false,
+    contains,
+    crossRisk,
+  };
+}
+
+function computeIngredientDietBlockers(ingredients, diets) {
+  const rows = Array.isArray(ingredients) ? ingredients : [];
+  const list = dedupeTokenList(diets);
+  const output = {};
+
+  list.forEach((diet) => {
+    const blockers = rows
+      .filter((ingredient) => !includesToken(ingredient?.diets, diet))
+      .map((ingredient) => ({
+        ingredient: asText(ingredient?.name) || "Ingredient",
+        removable: Boolean(ingredient?.removable),
+      }));
+    if (blockers.length) output[diet] = blockers;
+  });
+
+  return output;
+}
+
+function deriveDishStateFromIngredients({
+  ingredients,
+  existingDetails,
+  configuredDiets,
+}) {
+  const rows = (Array.isArray(ingredients) ? ingredients : []).map((ingredient, index) =>
+    normalizeIngredientEntry(ingredient, index),
+  );
+  const details =
+    existingDetails && typeof existingDetails === "object" ? existingDetails : {};
+  const nextDetails = { ...details };
+
+  const allergenMap = new Map();
+  const crossAllergenSet = new Set();
+  const crossDietSet = new Set();
+  const contributingRows = rows.filter((ingredient) => ingredient.contains !== false);
+
+  rows.forEach((ingredient) => {
+    const includeContains = ingredient.contains !== false;
+    const ingredientName = asText(ingredient?.name) || "Ingredient";
+    if (includeContains) {
+      dedupeTokenList(ingredient?.allergens).forEach((allergen) => {
+        const token = normalizeToken(allergen);
+        if (!token) return;
+        const current = allergenMap.get(token) || { label: allergen, items: [] };
+        current.items.push(ingredientName);
+        allergenMap.set(token, current);
+      });
+    }
+
+    if (ingredient.crossRisk) {
+      dedupeTokenList(ingredient?.crossContamination).forEach((allergen) => {
+        crossAllergenSet.add(allergen);
+      });
+      dedupeTokenList(ingredient?.crossContaminationDiets).forEach((diet) => {
+        crossDietSet.add(diet);
+      });
+    }
+  });
+
+  const allergens = Array.from(allergenMap.values()).map((entry) => entry.label);
+  allergenMap.forEach((entry) => {
+    nextDetails[entry.label] = `Contains ${dedupeTokenList(entry.items).join(", ")}`;
+  });
+
+  const candidateDiets = dedupeTokenList([
+    ...(Array.isArray(configuredDiets) ? configuredDiets : []),
+    ...contributingRows.flatMap((ingredient) => ingredient?.diets || []),
+  ]);
+
+  const diets = contributingRows.length
+    ? candidateDiets.filter((diet) =>
+        contributingRows.every(
+          (ingredient) =>
+            includesToken(ingredient?.diets, diet) || Boolean(ingredient?.removable),
+        ),
+      )
+    : [];
+
+  return {
+    ingredients: rows,
+    allergens,
+    diets,
+    details: nextDetails,
+    crossContamination: Array.from(crossAllergenSet),
+    crossContaminationDiets: Array.from(crossDietSet),
+    ingredientsBlockingDiets: computeIngredientDietBlockers(
+      contributingRows,
+      candidateDiets,
+    ),
+  };
+}
+
 function DishEditorModal({ editor }) {
   const overlay = editor.selectedOverlay;
   const [showDeleteWarning, setShowDeleteWarning] = useState(false);
@@ -168,13 +297,167 @@ function DishEditorModal({ editor }) {
   );
 
   const diets = useMemo(() => buildDietDisplay(editor, overlay), [editor, overlay]);
-  const ingredients = Array.isArray(overlay?.ingredients) ? overlay.ingredients : [];
+  const ingredients = useMemo(
+    () =>
+      (Array.isArray(overlay?.ingredients) ? overlay.ingredients : []).map((ingredient, index) =>
+        normalizeIngredientEntry(ingredient, index),
+      ),
+    [overlay?.ingredients],
+  );
+  const previewAllergenRows = useMemo(
+    () =>
+      mergeDishSectionRows(
+        buildDishAllergenRows(overlay, editor.config?.savedAllergens || []),
+        buildDishAllergenCrossRows(overlay, editor.config?.savedAllergens || []),
+      ),
+    [editor.config?.savedAllergens, overlay],
+  );
+  const previewDietRows = useMemo(
+    () =>
+      mergeDishSectionRows(
+        buildDishDietRows(overlay, editor.config?.savedDiets || []),
+        buildDishDietCrossRows(overlay, editor.config?.savedDiets || []),
+      ),
+    [editor.config?.savedDiets, overlay],
+  );
 
   useEffect(() => {
     if (!editor.dishEditorOpen) {
       setShowDeleteWarning(false);
     }
   }, [editor.dishEditorOpen]);
+
+  const applyIngredientChanges = useCallback(
+    (updater, options = {}) => {
+      const current = ingredients;
+      const nextRaw = typeof updater === "function" ? updater(current) : updater;
+      const nextList = Array.isArray(nextRaw) ? nextRaw : [];
+      const derived = deriveDishStateFromIngredients({
+        ingredients: nextList,
+        existingDetails: overlay?.details,
+        configuredDiets: editor.config?.diets,
+      });
+      editor.updateSelectedOverlay(
+        {
+          ingredients: derived.ingredients,
+          allergens: derived.allergens,
+          diets: derived.diets,
+          details: derived.details,
+          crossContamination: derived.crossContamination,
+          crossContaminationDiets: derived.crossContaminationDiets,
+          ingredientsBlockingDiets: derived.ingredientsBlockingDiets,
+        },
+        options,
+      );
+    },
+    [editor, ingredients, overlay?.details],
+  );
+
+  const updateIngredientName = useCallback(
+    (ingredientIndex, value) => {
+      applyIngredientChanges((current) =>
+        current.map((ingredient, index) =>
+          index === ingredientIndex ? { ...ingredient, name: value } : ingredient,
+        ),
+      );
+    },
+    [applyIngredientChanges],
+  );
+
+  const toggleIngredientToken = useCallback(
+    (ingredientIndex, field, token) => {
+      const value = asText(token);
+      if (!value) return;
+      applyIngredientChanges((current) =>
+        current.map((ingredient, index) => {
+          if (index !== ingredientIndex) return ingredient;
+          const existing = Array.isArray(ingredient?.[field]) ? ingredient[field] : [];
+          const next = includesToken(existing, value)
+            ? existing.filter((item) => normalizeToken(item) !== normalizeToken(value))
+            : [...existing, value];
+          return {
+            ...ingredient,
+            [field]: dedupeTokenList(next),
+            contains:
+              field === "allergens" || field === "diets"
+                ? true
+                : ingredient.contains !== false,
+            crossRisk:
+              field === "crossContamination" || field === "crossContaminationDiets"
+                ? true
+                : Boolean(ingredient.crossRisk),
+          };
+        }),
+      );
+    },
+    [applyIngredientChanges],
+  );
+
+  const toggleIngredientRemovable = useCallback(
+    (ingredientIndex, checked) => {
+      applyIngredientChanges((current) =>
+        current.map((ingredient, index) =>
+          index === ingredientIndex
+            ? { ...ingredient, removable: Boolean(checked) }
+            : ingredient,
+        ),
+      );
+    },
+    [applyIngredientChanges],
+  );
+
+  const toggleIngredientConfirmed = useCallback(
+    (ingredientIndex) => {
+      applyIngredientChanges((current) =>
+        current.map((ingredient, index) =>
+          index === ingredientIndex
+            ? { ...ingredient, confirmed: ingredient?.confirmed === false }
+            : ingredient,
+        ),
+      );
+    },
+    [applyIngredientChanges],
+  );
+
+  const addIngredientRow = useCallback(() => {
+    applyIngredientChanges(
+      (current) => [
+        ...current,
+        normalizeIngredientEntry(
+          {
+            name: `Ingredient ${current.length + 1}`,
+            allergens: [],
+            diets: [],
+            crossContamination: [],
+            crossContaminationDiets: [],
+            removable: false,
+            confirmed: true,
+            contains: true,
+            crossRisk: false,
+          },
+          current.length,
+        ),
+      ],
+      {
+        changeText: `${overlay?.id || "Dish"}: Added ingredient`,
+        recordHistory: true,
+      },
+    );
+  }, [applyIngredientChanges, overlay?.id]);
+
+  const removeIngredientRow = useCallback(
+    (ingredientIndex) => {
+      const removedName = asText(ingredients[ingredientIndex]?.name) || "Ingredient";
+      applyIngredientChanges(
+        (current) => current.filter((_, index) => index !== ingredientIndex),
+        {
+          changeText: `${overlay?.id || "Dish"}: Removed ingredient ${removedName}`,
+          recordHistory: true,
+        },
+      );
+    },
+    [applyIngredientChanges, ingredients, overlay?.id],
+  );
 
   const onProcessInput = async () => {
     const result = await editor.runAiDishAnalysis();
@@ -348,35 +631,277 @@ function DishEditorModal({ editor }) {
             <h3>Ingredients</h3>
             {ingredients.length ? (
               <div className="restaurant-legacy-editor-dish-ingredient-list">
-                {ingredients.slice(0, 12).map((ingredient, index) => (
+                {ingredients.map((ingredient, index) => {
+                  const containsAny = ingredient.contains !== false;
+                  const crossAny = Boolean(ingredient.crossRisk);
+                  return (
                   <div
                     key={`${ingredient?.name || "ingredient"}-${index}`}
-                    className="restaurant-legacy-editor-dish-ingredient-row"
+                    className="restaurant-legacy-editor-dish-ingredient-card"
                   >
-                    <Input
-                      readOnly
-                      value={asText(ingredient?.name) || `Ingredient ${index + 1}`}
-                    />
-                    <div className="restaurant-legacy-editor-dish-ingredient-meta">
-                      {Array.isArray(ingredient?.allergens) &&
-                      ingredient.allergens.length ? (
-                        <span>Contains {ingredient.allergens.join(", ")}</span>
-                      ) : (
-                        <span>No allergens flagged</span>
-                      )}
+                    <div className="restaurant-legacy-editor-dish-ingredient-main">
+                      <div className="restaurant-legacy-editor-dish-ingredient-name-col">
+                        <div className="restaurant-legacy-editor-dish-ingredient-name-row">
+                          <input
+                            className="restaurant-legacy-editor-dish-ingredient-name-input"
+                            value={ingredient.name}
+                            onChange={(event) =>
+                              updateIngredientName(index, event.target.value)
+                            }
+                          />
+                          <button
+                            type="button"
+                            className="btn btnSmall"
+                            onClick={() =>
+                              updateIngredientName(
+                                index,
+                                asText(ingredient.name) || `Ingredient ${index + 1}`,
+                              )
+                            }
+                          >
+                            Apply
+                          </button>
+                        </div>
+
+                        <div className="restaurant-legacy-editor-dish-ingredient-brand">
+                          <span>✓ Brand assignment optional</span>
+                          <div className="restaurant-legacy-editor-dish-ingredient-brand-actions">
+                            <button type="button" className="btn btnSmall" disabled>
+                              Search existing items
+                            </button>
+                            <button
+                              type="button"
+                              className="btn btnSuccess btnSmall"
+                              disabled
+                            >
+                              Add new item
+                            </button>
+                          </div>
+                        </div>
+
+                        <label className="restaurant-legacy-editor-dish-inline-check">
+                          <input
+                            type="checkbox"
+                            checked={Boolean(ingredient.removable)}
+                            onChange={(event) =>
+                              toggleIngredientRemovable(index, event.target.checked)
+                            }
+                          />
+                          Can be removed/replaced
+                        </label>
+                      </div>
+
+                      <div className="restaurant-legacy-editor-dish-ingredient-flags">
+                        <label className="restaurant-legacy-editor-dish-inline-check">
+                          <input
+                            type="checkbox"
+                            checked={containsAny}
+                            onChange={(event) =>
+                              applyIngredientChanges((current) =>
+                                current.map((item, itemIndex) =>
+                                  itemIndex === index
+                                    ? {
+                                        ...item,
+                                        contains: event.target.checked,
+                                      }
+                                    : item,
+                                ),
+                              )
+                            }
+                          />
+                          Contains
+                        </label>
+
+                        <label className="restaurant-legacy-editor-dish-inline-check">
+                          <input
+                            type="checkbox"
+                            checked={crossAny}
+                            onChange={(event) => {
+                              const checked = event.target.checked;
+                              applyIngredientChanges((current) =>
+                                current.map((item, itemIndex) => {
+                                  if (itemIndex !== index) return item;
+                                  if (!checked) {
+                                    return {
+                                      ...item,
+                                      crossRisk: false,
+                                      crossContamination: [],
+                                      crossContaminationDiets: [],
+                                    };
+                                  }
+                                  return {
+                                    ...item,
+                                    crossRisk: true,
+                                    crossContamination: dedupeTokenList(
+                                      item.crossContamination.length
+                                        ? item.crossContamination
+                                        : item.allergens,
+                                    ),
+                                    crossContaminationDiets: dedupeTokenList(
+                                      item.crossContaminationDiets.length
+                                        ? item.crossContaminationDiets
+                                        : item.diets,
+                                    ),
+                                  };
+                                }),
+                              );
+                            }}
+                          />
+                          Cross-contamination risk
+                        </label>
+
+                        <div className="restaurant-legacy-editor-dish-detection-note">
+                          <span>● Smart detection</span>
+                          <span>● Manual override</span>
+                        </div>
+                      </div>
+
+                      <div className="restaurant-legacy-editor-dish-ingredient-pills">
+                        <div className="restaurant-legacy-editor-dish-pill-column">
+                          {allergens.map((allergen) => {
+                            const active = includesToken(
+                              ingredient.allergens,
+                              allergen,
+                            );
+                            return (
+                              <button
+                                key={`${index}-allergen-${allergen}`}
+                                type="button"
+                                className={`restaurant-legacy-editor-dish-chip ${active ? "is-active" : ""}`}
+                                onClick={() =>
+                                  toggleIngredientToken(index, "allergens", allergen)
+                                }
+                              >
+                                {editor.config.formatAllergenLabel(allergen)}
+                              </button>
+                            );
+                          })}
+                        </div>
+                        <div className="restaurant-legacy-editor-dish-pill-column">
+                          {diets.map((diet) => {
+                            const active = includesToken(ingredient.diets, diet);
+                            return (
+                              <button
+                                key={`${index}-diet-${diet}`}
+                                type="button"
+                                className={`restaurant-legacy-editor-dish-chip ${active ? "is-active" : ""}`}
+                                onClick={() => toggleIngredientToken(index, "diets", diet)}
+                              >
+                                {editor.config.formatDietLabel(diet)}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      <div className="restaurant-legacy-editor-dish-ingredient-status-col">
+                        <button
+                          type="button"
+                          className={`btn btnSmall ${ingredient.confirmed ? "btnSuccess" : "btnGhost"}`}
+                          onClick={() => toggleIngredientConfirmed(index)}
+                        >
+                          {ingredient.confirmed ? "✓ Confirmed" : "Mark confirmed"}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="restaurant-legacy-editor-dish-ingredient-footer">
+                      <div className="restaurant-legacy-editor-dish-ingredient-meta">
+                        {ingredient.contains === false ? (
+                          <span>Excluded from dish summary</span>
+                        ) : ingredient.allergens.length ? (
+                          <span>Contains {ingredient.allergens.join(", ")}</span>
+                        ) : (
+                          <span>No allergens flagged</span>
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        className="btn btnDanger btnSmall"
+                        onClick={() => removeIngredientRow(index)}
+                      >
+                        Delete
+                      </button>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <p className="note m-0 text-sm">
                 Run <strong>Process Input</strong> to infer ingredient allergens and diets.
               </p>
             )}
+
+            <div className="restaurant-legacy-editor-dish-ingredient-actions">
+              <button type="button" className="btn btnSmall" onClick={addIngredientRow}>
+                Add ingredient
+              </button>
+              <button
+                type="button"
+                className="btn btnSmall"
+                onClick={async () => {
+                  await editor.runIngredientLabelScan();
+                }}
+              >
+                Scan ingredient label
+              </button>
+              <button
+                type="button"
+                className="btn btnPrimary btnSmall"
+                onClick={() => {
+                  editor.pushHistory();
+                  editor.closeDishEditor();
+                }}
+              >
+                ✓ Save to Dish
+              </button>
+            </div>
+          </div>
+
+          <div className="restaurant-legacy-editor-dish-preview">
+            <h3>Preview: What customers will see</h3>
+            <div className="restaurant-legacy-editor-dish-preview-panel">
+              <h4>Allergens:</h4>
+              <div className="restaurant-legacy-dish-popover-section">
+                {previewAllergenRows.length ? (
+                  previewAllergenRows.map((row) => (
+                    <div key={row.key} className={`dish-row ${row.tone}`}>
+                      <div className="dish-row-title">{row.title}</div>
+                      {row.reasonBullet ? (
+                        <ul className="dish-row-reasons">
+                          <li>{row.reasonBullet}</li>
+                        </ul>
+                      ) : null}
+                    </div>
+                  ))
+                ) : (
+                  <p className="dish-row-empty">No saved allergens.</p>
+                )}
+              </div>
+
+              <h4>Diets:</h4>
+              <div className="restaurant-legacy-dish-popover-section">
+                {previewDietRows.length ? (
+                  previewDietRows.map((row) => (
+                    <div key={row.key} className={`dish-row ${row.tone}`}>
+                      <div className="dish-row-title">{row.title}</div>
+                      {row.reasonBullet ? (
+                        <ul className="dish-row-reasons">
+                          <li>{row.reasonBullet}</li>
+                        </ul>
+                      ) : null}
+                    </div>
+                  ))
+                ) : (
+                  <p className="dish-row-empty">No saved diets.</p>
+                )}
+              </div>
+            </div>
           </div>
 
           <details className="restaurant-legacy-editor-dish-manual">
-            <summary>Manual allergen and diet controls</summary>
+            <summary>Advanced manual overrides</summary>
             <div className="space-y-3 pt-3">
               <label className="space-y-1 text-sm text-[#bdd0ff] block">
                 Description
@@ -538,26 +1063,6 @@ function DishEditorModal({ editor }) {
             </div>
           ) : null}
 
-          <div className="editorActionRow" style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap", justifyContent: "space-between" }}>
-            <button
-              className="btn"
-              onClick={async () => {
-                await editor.runIngredientLabelScan();
-              }}
-            >
-              Scan ingredient label
-            </button>
-            <button
-              className="btn btnPrimary"
-              aria-label="Done"
-              onClick={() => {
-                editor.pushHistory();
-                editor.closeDishEditor();
-              }}
-            >
-              ✓ Confirmed
-            </button>
-          </div>
         </div>
       )}
     </Modal>
@@ -1489,19 +1994,10 @@ export function RestaurantEditor({ editor, onNavigate }) {
       return next;
     });
 
-    let bestPage = editor.activePageIndex;
-    let bestVisible = 0;
-    editor.overlaysByPage.forEach((_, index) => {
-      const pageNode = pageRefs.current[index];
-      const visualNode = pageImageRefs.current[index] || pageNode;
-      if (!visualNode) return;
-      const slice = getVisibleSlice(visualNode, scrollNode);
-      const visible = slice?.visibleHeight || 0;
-      if (visible > bestVisible) {
-        bestVisible = visible;
-        bestPage = index;
-      }
-    });
+    const pageNodes = editor.overlaysByPage.map(
+      (_, index) => pageRefs.current[index] || pageImageRefs.current[index],
+    );
+    const bestPage = resolveMostVisiblePageIndex(scrollNode, pageNodes, editor.activePageIndex);
 
     if (bestPage !== editor.activePageIndex) {
       editor.jumpToPage(bestPage);
@@ -1570,72 +2066,22 @@ export function RestaurantEditor({ editor, onNavigate }) {
 
   const minimapViewport = useMemo(() => {
     const scrollNode = menuScrollRef.current;
-    const pageContainer = pageRefs.current[editor.activePageIndex];
-    const pageVisualNode = pageImageRefs.current[editor.activePageIndex] || pageContainer;
-    if (!scrollNode || !pageContainer || !pageVisualNode) {
-      return { topRatio: 0, heightRatio: 0.2 };
-    }
-
-    const slice = getVisibleSlice(pageVisualNode, scrollNode);
-    if (slice && slice.visibleHeight > 0) {
-      const imageHeight = Math.max(slice.imageHeight, 1);
-      const topRatio = clamp(slice.offsetTop / imageHeight, 0, 1);
-      const heightRatio = clamp(slice.visibleHeight / imageHeight, 0.03, 1);
-      return {
-        topRatio: clamp(topRatio, 0, Math.max(1 - heightRatio, 0)),
-        heightRatio,
-      };
-    }
-
-    const pageHeight = Math.max(pageContainer.offsetHeight, 1);
-    const pageTop = pageContainer.offsetTop;
-    const viewportTop = scrollSnapshot.scrollTop;
-    const viewportBottom = viewportTop + scrollSnapshot.clientHeight;
-    const visibleTop = clamp(viewportTop - pageTop, 0, pageHeight);
-    const visibleBottom = clamp(viewportBottom - pageTop, 0, pageHeight);
-    const visibleHeight = Math.max(visibleBottom - visibleTop, 0);
-
-    const topRatio = clamp(visibleTop / pageHeight, 0, 1);
-    const heightRatio = clamp(visibleHeight / pageHeight, 0.03, 1);
-
-    return {
-      topRatio: clamp(topRatio, 0, Math.max(1 - heightRatio, 0)),
-      heightRatio,
-    };
+    const pageNode = pageRefs.current[editor.activePageIndex] || pageImageRefs.current[editor.activePageIndex];
+    return buildMinimapViewport(scrollNode, pageNode);
   }, [editor.activePageIndex, scrollSnapshot.clientHeight, scrollSnapshot.scrollTop]);
-
-  const scrollToPage = useCallback(
-    (pageIndex, behavior = "smooth") => {
-      const index = clamp(
-        Number(pageIndex) || 0,
-        0,
-        Math.max(editor.overlaysByPage.length - 1, 0),
-      );
-      const node = pageRefs.current[index];
-      const scrollNode = menuScrollRef.current;
-      if (!node || !scrollNode) return;
-
-      editor.jumpToPage(index);
-      scrollNode.scrollTo({ top: node.offsetTop, behavior });
-    },
-    [editor],
-  );
 
   const jumpFromMinimap = useCallback(
     (event) => {
       const scrollNode = menuScrollRef.current;
-      const pageContainer = pageRefs.current[editor.activePageIndex];
-      const pageVisualNode = pageImageRefs.current[editor.activePageIndex] || pageContainer;
-      if (!scrollNode || !pageContainer || !pageVisualNode) return;
+      const pageNode = pageRefs.current[editor.activePageIndex] || pageImageRefs.current[editor.activePageIndex];
+      if (!scrollNode || !pageNode) return;
 
       const bounds = event.currentTarget.getBoundingClientRect();
+      if (!bounds.height) return;
       const ratio = clamp((event.clientY - bounds.top) / bounds.height, 0, 1);
-      const pageHeight = Math.max(pageVisualNode.offsetHeight, pageContainer.offsetHeight, 1);
-      const maxScroll = Math.max(scrollNode.scrollHeight - scrollNode.clientHeight, 0);
-      const targetWithinPage = ratio * pageHeight - scrollNode.clientHeight / 2;
-      const target = pageContainer.offsetTop + targetWithinPage;
+      const target = computeMinimapJumpTarget(scrollNode, pageNode, ratio);
 
-      scrollNode.scrollTo({ top: clamp(target, 0, maxScroll), behavior: "smooth" });
+      scrollNode.scrollTo({ top: target, behavior: "smooth" });
     },
     [editor.activePageIndex],
   );
@@ -2064,22 +2510,6 @@ export function RestaurantEditor({ editor, onNavigate }) {
                 <div className="restaurant-legacy-page-footer">
                   Page {editor.activePageIndex + 1} of {editor.draftMenuImages.length}
                 </div>
-                {editor.draftMenuImages.length > 1 ? (
-                  <div className="restaurant-legacy-page-controls">
-                    <button
-                      type="button"
-                      onClick={() => scrollToPage(editor.activePageIndex - 1)}
-                    >
-                      Prev
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => scrollToPage(editor.activePageIndex + 1)}
-                    >
-                      Next
-                    </button>
-                  </div>
-                ) : null}
               </div>
             </div>
 

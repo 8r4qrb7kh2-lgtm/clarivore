@@ -612,6 +612,10 @@ export default function RestaurantClient() {
       canEdit: boot?.canEdit,
     },
     config: boot?.config,
+    previewPreferences: {
+      allergies: boot?.allergies || [],
+      diets: boot?.diets || [],
+    },
     params: {
       openLog: shouldOpenLog,
       openConfirm: shouldOpenConfirm,

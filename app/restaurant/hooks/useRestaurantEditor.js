@@ -360,6 +360,7 @@ export function useRestaurantEditor({
   overlays,
   permissions,
   config,
+  previewPreferences,
   params,
   callbacks,
 }) {
@@ -1873,6 +1874,39 @@ export function useRestaurantEditor({
         typeof config?.formatDietLabel === "function"
           ? config.formatDietLabel
           : (value) => asText(value),
+      getAllergenEmoji:
+        typeof config?.getAllergenEmoji === "function"
+          ? config.getAllergenEmoji
+          : () => "",
+      getDietEmoji:
+        typeof config?.getDietEmoji === "function"
+          ? config.getDietEmoji
+          : () => "",
+      savedAllergens: (Array.isArray(previewPreferences?.allergies)
+        ? previewPreferences.allergies
+        : []
+      ).map((value) => ({
+        key: value,
+        label:
+          typeof config?.formatAllergenLabel === "function"
+            ? config.formatAllergenLabel(value)
+            : asText(value),
+        emoji:
+          typeof config?.getAllergenEmoji === "function"
+            ? config.getAllergenEmoji(value)
+            : "",
+      })),
+      savedDiets: (Array.isArray(previewPreferences?.diets) ? previewPreferences.diets : []).map(
+        (value) => ({
+          key: value,
+          label:
+            typeof config?.formatDietLabel === "function"
+              ? config.formatDietLabel(value)
+              : asText(value),
+          emoji:
+            typeof config?.getDietEmoji === "function" ? config.getDietEmoji(value) : "",
+        }),
+      ),
     },
   };
 }
