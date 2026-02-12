@@ -14,17 +14,7 @@ function buildFunctionUrl(functionName) {
   return `${supabaseUrl}/functions/v1/${name}`;
 }
 
-async function postFunction(functionName, payload) {
-  const url = buildFunctionUrl(functionName);
-  const response = await fetch(url, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${supabaseAnonKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(payload || {}),
-  });
-
+async function parseFunctionResponse(response, functionName) {
   const text = await response.text();
   let data = null;
   try {
@@ -44,11 +34,38 @@ async function postFunction(functionName, payload) {
   return data;
 }
 
+async function postFunctionDirect(functionName, payload) {
+  const url = buildFunctionUrl(functionName);
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${supabaseAnonKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload || {}),
+  });
+  return await parseFunctionResponse(response, functionName);
+}
+
+async function postFunctionViaProxy(functionName, payload) {
+  const response = await fetch("/api/ai-proxy", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      functionName,
+      payload: payload || {},
+    }),
+  });
+  return await parseFunctionResponse(response, functionName);
+}
+
 export async function detectMenuDishes({ imageData }) {
   const payload = {
     imageData: asText(imageData),
   };
-  const result = await postFunction("detect-menu-dishes", payload);
+  const result = await postFunctionDirect("detect-menu-dishes", payload);
   return {
     success: Boolean(result?.success),
     dishes: Array.isArray(result?.dishes) ? result.dishes : [],
@@ -63,7 +80,7 @@ export async function detectMenuCorners({ imageData, width, height }) {
     height: Number.isFinite(Number(height)) ? Number(height) : 1000,
   };
 
-  const result = await postFunction("detect-corners", payload);
+  const result = await postFunctionDirect("detect-corners", payload);
   return {
     success: Boolean(result?.success),
     corners: result?.corners || null,
@@ -79,7 +96,7 @@ export async function analyzeDishWithAi({ dishName, text, imageData }) {
     imageData: asText(imageData),
   };
 
-  const result = await postFunction("dish-editor", payload);
+  const result = await postFunctionViaProxy("dish-editor", payload);
   return result;
 }
 
@@ -99,7 +116,7 @@ export async function sendMenuUpdateNotification({
     keptItems: Number.isFinite(Number(keptItems)) ? Number(keptItems) : 0,
   };
 
-  return await postFunction("send-notification-email", payload);
+  return await postFunctionDirect("send-notification-email", payload);
 }
 
 export async function dataUrlFromImageSource(source) {

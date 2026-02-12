@@ -25,48 +25,6 @@
       margin-bottom: 24px;
     }
 
-    .btn {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      padding: 10px 14px;
-      border-radius: 10px;
-      border: 1px solid var(--border);
-      background: #1a2351;
-      cursor: pointer;
-      color: #fff;
-      font-size: 0.9rem;
-      font-weight: 500;
-      transition: all 0.2s;
-    }
-
-    .btn:hover {
-      background: #232d5f;
-      border-color: var(--hover);
-    }
-
-    .btnPrimary {
-      background: #3651ff;
-      border-color: #4e65ff;
-    }
-
-    .btnPrimary:hover {
-      background: #4e65ff;
-      border-color: #6b7fff;
-    }
-
-    .btnWarning {
-      background: #fbbf24;
-      border-color: #f59e0b;
-      color: #1f2937;
-    }
-
-    .btnWarning:hover {
-      background: #f59e0b;
-      border-color: #d97706;
-    }
-
     .section-header {
       display: flex;
       justify-content: space-between;
