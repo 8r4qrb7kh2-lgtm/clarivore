@@ -712,6 +712,52 @@ export default function RestaurantClient() {
       onAnalyzeIngredientScanRequirement: async ({ ingredientName, dishName }) => {
         return await analyzeIngredientScanRequirement({ ingredientName, dishName });
       },
+      onSubmitIngredientAppeal: async ({
+        restaurantId,
+        dishName,
+        ingredientName,
+        managerMessage,
+      }) => {
+        if (!supabase) throw new Error("Supabase is not configured.");
+
+        const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError) throw sessionError;
+
+        const accessToken = sessionData?.session?.access_token || "";
+        if (!accessToken) {
+          throw new Error("You must be signed in to submit an appeal.");
+        }
+
+        const response = await fetch("/api/ingredient-scan-appeals", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify({
+            restaurantId: restaurantId || boot?.restaurant?.id,
+            dishName,
+            ingredientName,
+            managerMessage,
+          }),
+        });
+
+        const bodyText = await response.text();
+        let payload = null;
+        try {
+          payload = bodyText ? JSON.parse(bodyText) : null;
+        } catch {
+          payload = null;
+        }
+
+        if (!response.ok || !payload?.success) {
+          throw new Error(
+            payload?.error || "Unable to submit appeal right now.",
+          );
+        }
+
+        return payload;
+      },
       onDetectMenuDishes: async ({ imageData }) => {
         return await detectMenuDishes({ imageData });
       },

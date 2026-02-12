@@ -313,6 +313,60 @@ function buildRowManualOverrideMessages({
   return dedupeTokenList(messages);
 }
 
+function buildRowConflictMessages({
+  ingredient,
+  allergens,
+  diets,
+  getDietAllergenConflicts,
+  formatAllergenLabel,
+  formatDietLabel,
+}) {
+  if (typeof getDietAllergenConflicts !== "function") return [];
+
+  const selectedAllergens = dedupeTokenList([
+    ...(Array.isArray(allergens) ? allergens : []),
+    ...(Array.isArray(ingredient?.allergens) ? ingredient.allergens : []),
+    ...(Array.isArray(ingredient?.crossContaminationAllergens)
+      ? ingredient.crossContaminationAllergens
+      : []),
+  ]).filter((token) => {
+    const state = readTokenState({
+      containsValues: ingredient?.allergens,
+      crossValues: ingredient?.crossContaminationAllergens,
+      token,
+    });
+    return state !== "none";
+  });
+
+  const selectedDiets = dedupeTokenList([
+    ...(Array.isArray(diets) ? diets : []),
+    ...(Array.isArray(ingredient?.diets) ? ingredient.diets : []),
+    ...(Array.isArray(ingredient?.crossContaminationDiets)
+      ? ingredient.crossContaminationDiets
+      : []),
+  ]).filter((token) => {
+    const state = readTokenState({
+      containsValues: ingredient?.diets,
+      crossValues: ingredient?.crossContaminationDiets,
+      token,
+    });
+    return state !== "none";
+  });
+
+  const messages = [];
+  selectedDiets.forEach((diet) => {
+    const conflicts = dedupeTokenList(getDietAllergenConflicts(diet));
+    conflicts.forEach((allergen) => {
+      if (!includesToken(selectedAllergens, allergen)) return;
+      messages.push(
+        `Conflict warning: ${formatDietLabel(diet)} conflicts with ${formatAllergenLabel(allergen)} while both are selected.`,
+      );
+    });
+  });
+
+  return dedupeTokenList(messages);
+}
+
 function normalizeBrandEntry(brand) {
   const base = brand && typeof brand === "object" ? brand : {};
   const name = asText(base.name || base.productName);
@@ -398,8 +452,13 @@ function deriveDishStateFromIngredients({
     dedupeTokenList(ingredient?.allergens).forEach((allergen) => {
       const token = normalizeToken(allergen);
       if (!token) return;
-      const current = allergenMap.get(token) || { label: allergen, items: [] };
+      const current = allergenMap.get(token) || {
+        label: allergen,
+        items: [],
+        removableFlags: [],
+      };
       current.items.push(ingredientName);
+      current.removableFlags.push(Boolean(ingredient?.removable));
       allergenMap.set(token, current);
     });
     dedupeTokenList(ingredient?.crossContaminationAllergens).forEach((allergen) => {
@@ -411,8 +470,18 @@ function deriveDishStateFromIngredients({
   });
 
   const allergens = Array.from(allergenMap.values()).map((entry) => entry.label);
+  const removable = [];
   allergenMap.forEach((entry) => {
-    nextDetails[entry.label] = `Contains ${dedupeTokenList(entry.items).join(", ")}`;
+    const uniqueItems = dedupeTokenList(entry.items);
+    nextDetails[entry.label] = `Contains ${uniqueItems.join(", ")}`;
+    const allContributingRowsRemovable =
+      entry.removableFlags.length > 0 && entry.removableFlags.every(Boolean);
+    if (allContributingRowsRemovable) {
+      removable.push({
+        allergen: entry.label,
+        component: uniqueItems.join(", "),
+      });
+    }
   });
 
   const candidateDiets = dedupeTokenList([
@@ -423,8 +492,7 @@ function deriveDishStateFromIngredients({
   const diets = contributingRows.length
     ? candidateDiets.filter((diet) =>
         contributingRows.every(
-          (ingredient) =>
-            includesToken(ingredient?.diets, diet) || Boolean(ingredient?.removable),
+          (ingredient) => includesToken(ingredient?.diets, diet),
         ),
       )
     : [];
@@ -434,6 +502,7 @@ function deriveDishStateFromIngredients({
     allergens,
     diets,
     details: nextDetails,
+    removable,
     crossContaminationAllergens: Array.from(crossAllergenSet),
     crossContaminationDiets: Array.from(crossDietSet),
     ingredientsBlockingDiets: computeIngredientDietBlockers(
@@ -450,6 +519,10 @@ function DishEditorModal({ editor }) {
   const [scanBusyByRow, setScanBusyByRow] = useState({});
   const [searchOpenRow, setSearchOpenRow] = useState(-1);
   const [searchQueryByRow, setSearchQueryByRow] = useState({});
+  const [appealOpenByRow, setAppealOpenByRow] = useState({});
+  const [appealMessageByRow, setAppealMessageByRow] = useState({});
+  const [appealBusyByRow, setAppealBusyByRow] = useState({});
+  const [appealFeedbackByRow, setAppealFeedbackByRow] = useState({});
   const [modalError, setModalError] = useState("");
 
   const allergens = useMemo(
@@ -506,6 +579,10 @@ function DishEditorModal({ editor }) {
       setScanBusyByRow({});
       setSearchOpenRow(-1);
       setSearchQueryByRow({});
+      setAppealOpenByRow({});
+      setAppealMessageByRow({});
+      setAppealBusyByRow({});
+      setAppealFeedbackByRow({});
       setModalError("");
     }
   }, [editor.dishEditorOpen]);
@@ -541,6 +618,7 @@ function DishEditorModal({ editor }) {
           allergens: derived.allergens,
           diets: derived.diets,
           details: derived.details,
+          removable: derived.removable,
           crossContaminationAllergens: derived.crossContaminationAllergens,
           crossContaminationDiets: derived.crossContaminationDiets,
           ingredientsBlockingDiets: derived.ingredientsBlockingDiets,
@@ -670,7 +748,7 @@ function DishEditorModal({ editor }) {
             brandRequired: false,
             brandRequirementReason: "",
             removable: false,
-            confirmed: true,
+            confirmed: false,
           },
           current.length,
         ),
@@ -894,7 +972,81 @@ function DishEditorModal({ editor }) {
     [applyIngredientChanges, editor, ingredients, normalizeAllergenList, normalizeDietList],
   );
 
+  const submitIngredientAppeal = useCallback(
+    async (ingredientIndex) => {
+      const ingredient = ingredients[ingredientIndex];
+      const ingredientName = asText(ingredient?.name);
+      const managerMessage = asText(appealMessageByRow[ingredientIndex]);
+      if (!ingredientName) {
+        setModalError("Ingredient name is required before submitting an appeal.");
+        return;
+      }
+      if (!managerMessage) {
+        setAppealFeedbackByRow((current) => ({
+          ...current,
+          [ingredientIndex]: {
+            tone: "error",
+            message: "Enter a short reason before submitting an appeal.",
+          },
+        }));
+        return;
+      }
+
+      setAppealBusyByRow((current) => ({ ...current, [ingredientIndex]: true }));
+      setAppealFeedbackByRow((current) => ({
+        ...current,
+        [ingredientIndex]: { tone: "", message: "" },
+      }));
+
+      const result = await editor.submitIngredientAppeal({
+        dishName: asText(overlay?.id || overlay?.name),
+        ingredientName,
+        managerMessage,
+      });
+
+      setAppealBusyByRow((current) => ({ ...current, [ingredientIndex]: false }));
+
+      if (!result?.success) {
+        setAppealFeedbackByRow((current) => ({
+          ...current,
+          [ingredientIndex]: {
+            tone: "error",
+            message:
+              result?.error?.message || "Failed to submit appeal. Please try again.",
+          },
+        }));
+        return;
+      }
+
+      setAppealMessageByRow((current) => ({ ...current, [ingredientIndex]: "" }));
+      setAppealOpenByRow((current) => ({ ...current, [ingredientIndex]: false }));
+      setAppealFeedbackByRow((current) => ({
+        ...current,
+        [ingredientIndex]: {
+          tone: "success",
+          message: "Appeal submitted for review.",
+        },
+      }));
+    },
+    [
+      appealMessageByRow,
+      editor,
+      ingredients,
+      overlay?.id,
+      overlay?.name,
+    ],
+  );
+
   const handleSaveToDish = useCallback(() => {
+    const confirmationIssues = editor.getIngredientConfirmationIssues(overlay);
+    if (confirmationIssues.length) {
+      setModalError(
+        confirmationIssues[0]?.message ||
+          "Every ingredient row must be confirmed before saving this dish.",
+      );
+      return;
+    }
+
     const issues = editor.getBrandRequirementIssues(overlay);
     if (issues.length) {
       setModalError(issues[0]?.message || "Brand assignment is required.");
@@ -1088,8 +1240,21 @@ function DishEditorModal({ editor }) {
                     formatDietLabel: editor.config.formatDietLabel,
                   });
                   const manualOverrideText = manualOverrideMessages.join("; ");
+                  const conflictMessages = buildRowConflictMessages({
+                    ingredient,
+                    allergens,
+                    diets,
+                    getDietAllergenConflicts: editor.config.getDietAllergenConflicts,
+                    formatAllergenLabel: editor.config.formatAllergenLabel,
+                    formatDietLabel: editor.config.formatDietLabel,
+                  });
+                  const conflictWarningText = conflictMessages.join("; ");
                   const searchOpen = searchOpenRow === index;
                   const searchTerm = asText(searchQueryByRow[index]).toLowerCase();
+                  const appealOpen = Boolean(appealOpenByRow[index]);
+                  const appealMessage = asText(appealMessageByRow[index]);
+                  const appealBusy = Boolean(appealBusyByRow[index]);
+                  const appealFeedback = appealFeedbackByRow[index];
                   const matchingBrands = existingBrandItems
                     .filter((brand) => {
                       if (
@@ -1166,6 +1331,20 @@ function DishEditorModal({ editor }) {
                             >
                               {scanBusyByRow[index] ? "Scanning..." : "Add new item"}
                             </button>
+                            {ingredient.brandRequired ? (
+                              <button
+                                type="button"
+                                className="btn btnDanger btnSmall"
+                                onClick={() =>
+                                  setAppealOpenByRow((current) => ({
+                                    ...current,
+                                    [index]: !current[index],
+                                  }))
+                                }
+                              >
+                                Submit appeal
+                              </button>
+                            ) : null}
                           </div>
                           {searchOpen ? (
                             <div className="restaurant-legacy-editor-dish-brand-search">
@@ -1201,6 +1380,51 @@ function DishEditorModal({ editor }) {
                                 )}
                               </div>
                             </div>
+                          ) : null}
+                          {ingredient.brandRequired && appealOpen ? (
+                            <div className="restaurant-legacy-editor-dish-appeal-wrap">
+                              <textarea
+                                className="restaurant-legacy-editor-dish-appeal-input"
+                                placeholder="Briefly explain why this ingredient should not require brand assignment."
+                                value={appealMessage}
+                                onChange={(event) =>
+                                  setAppealMessageByRow((current) => ({
+                                    ...current,
+                                    [index]: event.target.value,
+                                  }))
+                                }
+                              />
+                              <div className="restaurant-legacy-editor-dish-appeal-actions">
+                                <button
+                                  type="button"
+                                  className="btn btnSmall btnDanger"
+                                  disabled={appealBusy}
+                                  onClick={() => submitIngredientAppeal(index)}
+                                >
+                                  {appealBusy ? "Submitting..." : "Send appeal"}
+                                </button>
+                                <button
+                                  type="button"
+                                  className="btn btnSmall"
+                                  disabled={appealBusy}
+                                  onClick={() =>
+                                    setAppealOpenByRow((current) => ({
+                                      ...current,
+                                      [index]: false,
+                                    }))
+                                  }
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            </div>
+                          ) : null}
+                          {appealFeedback?.message ? (
+                            <span
+                              className={`restaurant-legacy-editor-dish-appeal-feedback ${appealFeedback.tone === "success" ? "is-success" : "is-error"}`}
+                            >
+                              {appealFeedback.message}
+                            </span>
                           ) : null}
                         </div>
 
@@ -1304,6 +1528,11 @@ function DishEditorModal({ editor }) {
                             {manualOverrideText}
                           </span>
                         ) : null}
+                        {conflictWarningText ? (
+                          <span className="restaurant-legacy-editor-dish-conflict-warning">
+                            {conflictWarningText}
+                          </span>
+                        ) : null}
                         {ingredient.brandRequired && !hasAssignedBrand ? (
                           <span className="restaurant-legacy-editor-dish-brand-warning">
                             Brand assignment required before saving this dish.
@@ -1337,15 +1566,6 @@ function DishEditorModal({ editor }) {
             <div className="restaurant-legacy-editor-dish-ingredient-actions">
               <button type="button" className="btn btnSmall" onClick={addIngredientRow}>
                 Add ingredient
-              </button>
-              <button
-                type="button"
-                className="btn btnSmall"
-                onClick={async () => {
-                  await editor.runIngredientLabelScan();
-                }}
-              >
-                Scan ingredient label
               </button>
               <button
                 type="button"
