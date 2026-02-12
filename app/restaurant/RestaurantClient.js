@@ -26,12 +26,6 @@ import {
   detectMenuDishes,
   sendMenuUpdateNotification,
 } from "./features/editor/editorServices";
-import {
-  DEFAULT_EDITOR_PARITY_MODE,
-  EDITOR_PARITY_QUERY_KEY,
-  EDITOR_PARITY_STORAGE_KEY,
-  resolveEditorParityMode,
-} from "./features/legacy-parity/parityMode";
 import { useOrderFlow } from "./hooks/useOrderFlow";
 import { useRestaurantEditor } from "./hooks/useRestaurantEditor";
 import { useRestaurantViewer } from "./hooks/useRestaurantViewer";
@@ -314,7 +308,6 @@ export default function RestaurantClient() {
     readManagerModeDefault({ editParam, isQrVisit }),
   );
   const [favoriteBusyDish, setFavoriteBusyDish] = useState("");
-  const [editorParityMode, setEditorParityMode] = useState(DEFAULT_EDITOR_PARITY_MODE);
   const [unsavedPromptOpen, setUnsavedPromptOpen] = useState(false);
   const [unsavedPromptCopy, setUnsavedPromptCopy] = useState(
     "Would you like to save before leaving editor mode?",
@@ -322,61 +315,6 @@ export default function RestaurantClient() {
   const [unsavedPromptError, setUnsavedPromptError] = useState("");
   const [unsavedPromptSaving, setUnsavedPromptSaving] = useState(false);
   const pendingNavigationRef = useRef(null);
-  const isLegacyParityMode = editorParityMode === "legacy";
-
-  useEffect(() => {
-    const queryMode = searchParams?.get(EDITOR_PARITY_QUERY_KEY);
-    let storageMode = "";
-    try {
-      storageMode = localStorage.getItem(EDITOR_PARITY_STORAGE_KEY) || "";
-    } catch {
-      storageMode = "";
-    }
-
-    const resolved = resolveEditorParityMode({
-      queryMode,
-      storageMode,
-      envMode: process.env.NEXT_PUBLIC_EDITOR_PARITY_DEFAULT,
-    });
-
-    setEditorParityMode(resolved);
-
-    const queryOverride =
-      queryMode === "legacy" || queryMode === "current" ? queryMode : "";
-    if (queryOverride) {
-      try {
-        localStorage.setItem(EDITOR_PARITY_STORAGE_KEY, queryOverride);
-      } catch {
-        // Ignore local storage failures.
-      }
-    }
-  }, [searchParams]);
-
-  useEffect(() => {
-    const styleId = "clarivore-restaurant-legacy-css";
-    let styleLink = document.getElementById(styleId);
-
-    if (!isLegacyParityMode) {
-      if (styleLink?.parentNode) {
-        styleLink.parentNode.removeChild(styleLink);
-      }
-      return undefined;
-    }
-
-    if (!styleLink) {
-      styleLink = document.createElement("link");
-      styleLink.id = styleId;
-      styleLink.rel = "stylesheet";
-      styleLink.href = "/css/styles.css";
-      document.head.appendChild(styleLink);
-    }
-
-    return () => {
-      if (styleLink?.parentNode) {
-        styleLink.parentNode.removeChild(styleLink);
-      }
-    };
-  }, [isLegacyParityMode]);
 
   const bootQuery = useQuery({
     queryKey: queryKeys.restaurant.boot(slug, inviteToken, isQrVisit),
@@ -855,13 +793,11 @@ export default function RestaurantClient() {
       const normalized = nextMode === "editor" ? "editor" : "viewer";
       if (normalized === activeView) return;
 
-      const modeHref = isLegacyParityMode
-        ? buildModeHref({
-            mode: normalized,
-            slug: boot?.restaurant?.slug || slug,
-            searchParams,
-          })
-        : "";
+      const modeHref = buildModeHref({
+        mode: normalized,
+        slug: boot?.restaurant?.slug || slug,
+        searchParams,
+      });
 
       queueNavigationWithUnsavedGuard(
         {
@@ -874,14 +810,13 @@ export default function RestaurantClient() {
     [
       activeView,
       boot?.restaurant?.slug,
-      isLegacyParityMode,
       queueNavigationWithUnsavedGuard,
       searchParams,
       slug,
     ],
   );
 
-  const onLegacyNavigate = useCallback(
+  const onRestaurantNavigate = useCallback(
     (href) => {
       if (!isGuardableInternalHref(href)) return;
       let targetHref = String(href || "").trim();
@@ -907,12 +842,8 @@ export default function RestaurantClient() {
     [queueNavigationWithUnsavedGuard],
   );
 
-  const isViewerMode = !(activeView === "editor" && boot?.canEdit);
-  const isLegacyEditorMode =
-    isLegacyParityMode && activeView === "editor" && Boolean(boot?.canEdit);
-
   useEffect(() => {
-    if (!boot?.restaurant || !isViewerMode || isLegacyParityMode) return undefined;
+    if (!boot?.restaurant) return undefined;
     const previousBodyOverflow = document.body.style.overflow;
     const previousHtmlOverflow = document.documentElement.style.overflow;
     document.body.style.overflow = "hidden";
@@ -921,70 +852,9 @@ export default function RestaurantClient() {
       document.body.style.overflow = previousBodyOverflow;
       document.documentElement.style.overflow = previousHtmlOverflow;
     };
-  }, [boot?.restaurant, isLegacyParityMode, isViewerMode]);
+  }, [boot?.restaurant]);
 
   useEffect(() => {
-    if (!boot?.restaurant || !isLegacyEditorMode) return undefined;
-    const previousBodyOverflow = document.body.style.overflow;
-    const previousHtmlOverflow = document.documentElement.style.overflow;
-    document.body.style.overflow = "hidden";
-    document.documentElement.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = previousBodyOverflow;
-      document.documentElement.style.overflow = previousHtmlOverflow;
-    };
-  }, [boot?.restaurant, isLegacyEditorMode]);
-
-  useEffect(() => {
-    const body = document.body;
-    const html = document.documentElement;
-
-    body.classList.toggle("restaurant-parity-legacy", isLegacyParityMode);
-    if (isLegacyParityMode) {
-      body.classList.remove("menuScrollLocked");
-      html.classList.remove("menuScrollLocked");
-      body.classList.toggle("editorView", activeView === "editor" && Boolean(boot?.canEdit));
-    } else {
-      body.classList.remove("menuScrollLocked");
-      html.classList.remove("menuScrollLocked");
-      body.classList.remove("editorView");
-    }
-
-    return () => {
-      body.classList.remove("restaurant-parity-legacy");
-      if (!isLegacyParityMode) return;
-      body.classList.remove("menuScrollLocked");
-      html.classList.remove("menuScrollLocked");
-      body.classList.remove("editorView");
-    };
-  }, [activeView, boot?.canEdit, boot?.restaurant, isLegacyParityMode]);
-
-  useEffect(() => {
-    if (!isLegacyParityMode || !boot?.restaurant) return undefined;
-
-    const body = document.body;
-    const html = document.documentElement;
-
-    const clearLegacyLocks = () => {
-      body.classList.remove("menuScrollLocked");
-      html.classList.remove("menuScrollLocked");
-      body.style.position = "";
-      body.style.inset = "";
-    };
-
-    clearLegacyLocks();
-    const frameId = window.requestAnimationFrame(clearLegacyLocks);
-    const timerId = window.setTimeout(clearLegacyLocks, 120);
-
-    return () => {
-      window.cancelAnimationFrame(frameId);
-      window.clearTimeout(timerId);
-    };
-  }, [boot?.restaurant, isLegacyParityMode]);
-
-  useEffect(() => {
-    if (!isLegacyParityMode) return undefined;
-
     const onDocumentClick = (event) => {
       if (event.defaultPrevented) return;
       if (event.button !== 0) return;
@@ -1017,7 +887,7 @@ export default function RestaurantClient() {
 
     document.addEventListener("click", onDocumentClick, true);
     return () => document.removeEventListener("click", onDocumentClick, true);
-  }, [isLegacyParityMode, queueNavigationWithUnsavedGuard]);
+  }, [queueNavigationWithUnsavedGuard]);
 
   if (!supabase) {
     return (
@@ -1067,17 +937,21 @@ export default function RestaurantClient() {
       showModeToggle={Boolean(boot?.canEdit)}
       onModeChange={(nextMode) => setMode(nextMode === "editor" ? "editor" : "viewer")}
       onSignOut={onSignOut}
-      onNavigate={isLegacyParityMode ? onLegacyNavigate : undefined}
+      onNavigate={onRestaurantNavigate}
     />
   );
 
-  const useLegacyViewportShell = isViewerMode || isLegacyEditorMode;
+  const useRestaurantViewportShell = Boolean(boot?.restaurant);
 
   return (
     <PageShell
-      shellClassName={useLegacyViewportShell ? "page-shell restaurant-legacy-shell" : "page-shell"}
-      mainClassName={useLegacyViewportShell ? "page-main restaurant-legacy-main" : "page-main"}
-      contentClassName={useLegacyViewportShell ? "restaurant-legacy-content" : ""}
+      shellClassName={
+        useRestaurantViewportShell ? "page-shell restaurant-legacy-shell" : "page-shell"
+      }
+      mainClassName={
+        useRestaurantViewportShell ? "page-main restaurant-legacy-main" : "page-main"
+      }
+      contentClassName={useRestaurantViewportShell ? "restaurant-legacy-content" : ""}
       topbar={topbar}
     >
       {inviteToken && !boot?.user?.id ? (
@@ -1097,8 +971,7 @@ export default function RestaurantClient() {
       {activeView === "editor" && boot.canEdit ? (
         <RestaurantEditor
           editor={editor}
-          parityMode={editorParityMode}
-          onNavigate={isLegacyParityMode ? onLegacyNavigate : undefined}
+          onNavigate={onRestaurantNavigate}
         />
       ) : (
         <RestaurantViewer

@@ -127,11 +127,6 @@ h2 {
   flex-direction: column;
 }
 
-body.restaurant-parity-legacy {
-  position: static !important;
-  touch-action: pan-x pan-y !important;
-}
-
 .page-main {
   flex: 1;
   padding: 40px 20px 80px;
@@ -397,7 +392,7 @@ body.restaurant-parity-legacy {
   padding: 10px 14px;
 }
 
-body:not(.restaurant-parity-legacy) .btnLink {
+.btnLink {
   background: transparent;
   border: none;
   color: #6b7cff;
@@ -408,11 +403,11 @@ body:not(.restaurant-parity-legacy) .btnLink {
   cursor: pointer;
 }
 
-body:not(.restaurant-parity-legacy) .btnLink:hover {
+.btnLink:hover {
   color: #8b9aff;
 }
 
-body:not(.restaurant-parity-legacy) .mode-toggle {
+.mode-toggle {
   position: relative;
   width: 56px;
   height: 30px;
@@ -423,12 +418,12 @@ body:not(.restaurant-parity-legacy) .mode-toggle {
   transition: all 0.2s ease;
 }
 
-body:not(.restaurant-parity-legacy) .mode-toggle.active {
+.mode-toggle.active {
   background: #3651ff;
   border-color: #4e65ff;
 }
 
-body:not(.restaurant-parity-legacy) .mode-toggle::after {
+.mode-toggle::after {
   content: "";
   position: absolute;
   top: 3px;
@@ -440,7 +435,7 @@ body:not(.restaurant-parity-legacy) .mode-toggle::after {
   transition: transform 0.2s ease;
 }
 
-body:not(.restaurant-parity-legacy) .mode-toggle.active::after {
+.mode-toggle.active::after {
   transform: translateX(26px);
 }
 

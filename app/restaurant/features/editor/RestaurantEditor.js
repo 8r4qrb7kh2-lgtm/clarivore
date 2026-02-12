@@ -964,8 +964,8 @@ function MenuScannerModal({
   );
 }
 
-function MenuPagesModal({ editor, parityMode = "current" }) {
-  const scannerEnabled = parityMode === "legacy";
+function MenuPagesModal({ editor }) {
+  const scannerEnabled = true;
   const replaceInputsRef = useRef({});
   const replaceScannerInputsRef = useRef({});
   const addInputRef = useRef(null);
@@ -1419,13 +1419,12 @@ function RestaurantSettingsModal({ editor }) {
   );
 }
 
-export function RestaurantEditor({ editor, parityMode = "current", onNavigate }) {
+export function RestaurantEditor({ editor, onNavigate }) {
   const menuScrollRef = useRef(null);
   const pageRefs = useRef([]);
   const pageImageRefs = useRef([]);
   const overlayInteractionRef = useRef(null);
   const mappingDragRef = useRef(null);
-  const isLegacyParity = parityMode === "legacy";
 
   const [scrollSnapshot, setScrollSnapshot] = useState({
     scrollTop: 0,
@@ -1433,39 +1432,8 @@ export function RestaurantEditor({ editor, parityMode = "current", onNavigate })
     scrollHeight: 1,
   });
   const [mappedRectPreview, setMappedRectPreview] = useState(null);
-  const [saveReviewOpen, setSaveReviewOpen] = useState(false);
-  const [saveReviewSaving, setSaveReviewSaving] = useState(false);
-  const [saveReviewError, setSaveReviewError] = useState("");
 
   const overlayCountLabel = `${editor.draftOverlays.length} overlay${editor.draftOverlays.length === 1 ? "" : "s"}`;
-  const reviewItems = useMemo(() => {
-    const pending = Array.isArray(editor.pendingChanges) ? editor.pendingChanges : [];
-    const values = pending
-      .map((value) => asText(value))
-      .filter(Boolean);
-    if (values.length) return values;
-    return ["Menu overlays updated"];
-  }, [editor.pendingChanges]);
-
-  const legacySaveButtonVisible = Boolean(
-    isLegacyParity &&
-      (editor.isDirty ||
-        editor.isSaving ||
-        editor.saveStatus === "saved" ||
-        editor.saveStatus === "error"),
-  );
-  const legacySaveButtonLabel = editor.isSaving
-    ? "Saving..."
-    : editor.saveStatus === "saved"
-      ? "Saved"
-      : editor.saveStatus === "error"
-        ? "Retry save"
-        : "Save to site";
-  const legacySaveButtonClass = editor.saveStatus === "error"
-    ? "btnDanger"
-    : editor.saveStatus === "saved"
-      ? "btnSuccess"
-      : "btnPrimary";
 
   const detectDishes = editor.detectWizardState.dishes || [];
   const mappedCount = detectDishes.filter((dish) => dish.mapped).length;
@@ -1479,13 +1447,8 @@ export function RestaurantEditor({ editor, parityMode = "current", onNavigate })
 
   const triggerSave = useCallback(async () => {
     if (editor.isSaving) return;
-    if (isLegacyParity && editor.isDirty) {
-      setSaveReviewError("");
-      setSaveReviewOpen(true);
-      return;
-    }
     await editor.save();
-  }, [editor, isLegacyParity]);
+  }, [editor]);
 
   const refreshScrollSnapshot = useCallback(() => {
     const scrollNode = menuScrollRef.current;
@@ -2036,19 +1999,6 @@ export function RestaurantEditor({ editor, parityMode = "current", onNavigate })
     [editor, mappingEnabled],
   );
 
-  const confirmSaveReview = useCallback(async () => {
-    if (saveReviewSaving) return;
-    setSaveReviewSaving(true);
-    setSaveReviewError("");
-    const result = await editor.save();
-    setSaveReviewSaving(false);
-    if (result?.success) {
-      setSaveReviewOpen(false);
-      return;
-    }
-    setSaveReviewError(editor.saveError || result?.error?.message || "Save failed.");
-  }, [editor, saveReviewSaving]);
-
   if (!editor.canEdit) {
     return (
       <section className="rounded-2xl border border-[rgba(124,156,255,0.2)] bg-[rgba(11,14,34,0.82)] p-4">
@@ -2063,23 +2013,19 @@ export function RestaurantEditor({ editor, parityMode = "current", onNavigate })
     <section className="restaurant-legacy-editor">
       <div className="editorLayout restaurant-legacy-editor-layout">
         <div className="editorHeaderStack restaurant-legacy-editor-header">
-          {isLegacyParity ? (
+          <div className="flex flex-wrap items-center gap-2">
             <h1 className="m-0 text-[2.6rem] leading-none text-[#eaf0ff]">Webpage editor</h1>
-          ) : (
-            <div className="flex flex-wrap items-center gap-2">
-              <h1 className="m-0 text-[2.6rem] leading-none text-[#eaf0ff]">Webpage editor</h1>
-              <span className="chip active preference-chip">{overlayCountLabel}</span>
-              {editor.isDirty ? (
-                <span className="chip active preference-chip" style={{ borderColor: "#facc15" }}>
-                  Unsaved changes
-                </span>
-              ) : (
-                <span className="chip active preference-chip" style={{ borderColor: "#22c55e" }}>
-                  Saved
-                </span>
-              )}
-            </div>
-          )}
+            <span className="chip active preference-chip">{overlayCountLabel}</span>
+            {editor.isDirty ? (
+              <span className="chip active preference-chip" style={{ borderColor: "#facc15" }}>
+                Unsaved changes
+              </span>
+            ) : (
+              <span className="chip active preference-chip" style={{ borderColor: "#22c55e" }}>
+                Saved
+              </span>
+            )}
+          </div>
 
           <div className="editorHeaderRow hasMiniMap">
             <div className="editorMiniMapSlot">
@@ -2154,15 +2100,6 @@ export function RestaurantEditor({ editor, parityMode = "current", onNavigate })
                       >
                         ↷ Redo
                       </button>
-                      {legacySaveButtonVisible ? (
-                        <button
-                          className={`btn ${legacySaveButtonClass}`}
-                          onClick={triggerSave}
-                          disabled={editor.isSaving}
-                        >
-                          {legacySaveButtonLabel}
-                        </button>
-                      ) : null}
                     </div>
                   </div>
 
@@ -2175,11 +2112,9 @@ export function RestaurantEditor({ editor, parityMode = "current", onNavigate })
                       <button className="btn" onClick={() => editor.setChangeLogOpen(true)}>
                         📋 View log of changes
                       </button>
-                      {!isLegacyParity ? (
-                        <button className="btn" onClick={editor.runDetectDishes}>
-                          🔍 Detect dishes
-                        </button>
-                      ) : null}
+                      <button className="btn" onClick={editor.runDetectDishes}>
+                        🔍 Detect dishes
+                      </button>
                     </div>
                   </div>
 
@@ -2198,15 +2133,13 @@ export function RestaurantEditor({ editor, parityMode = "current", onNavigate })
                       >
                         Confirm information is up-to-date
                       </button>
-                      {!isLegacyParity ? (
-                        <button
-                          className="btn btnPrimary"
-                          onClick={triggerSave}
-                          disabled={!editor.isDirty || editor.isSaving}
-                        >
-                          {editor.isSaving ? "Saving..." : "Save changes"}
-                        </button>
-                      ) : null}
+                      <button
+                        className="btn btnPrimary"
+                        onClick={triggerSave}
+                        disabled={!editor.isDirty || editor.isSaving}
+                      >
+                        {editor.isSaving ? "Saving..." : "Save changes"}
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -2216,25 +2149,23 @@ export function RestaurantEditor({ editor, parityMode = "current", onNavigate })
                 <div className="note" id="editorNote">
                   Drag to move. Drag any corner to resize. Click ✏️ to edit details.
                 </div>
-                {!isLegacyParity ? (
-                  <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                    <span className="note" style={{ fontSize: 12 }}>
-                      Zoom:
-                    </span>
-                    <button className="btn" onClick={editor.zoomOut}>
-                      −
-                    </button>
-                    <span id="zoomLevel" style={{ fontSize: 13, minWidth: 45, textAlign: "center", color: "#a8b2d6" }}>
-                      {Math.round(editor.zoomScale * 100)}%
-                    </span>
-                    <button className="btn" onClick={editor.zoomIn}>
-                      +
-                    </button>
-                    <button className="btn" onClick={editor.zoomReset}>
-                      Reset
-                    </button>
-                  </div>
-                ) : null}
+                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  <span className="note" style={{ fontSize: 12 }}>
+                    Zoom:
+                  </span>
+                  <button className="btn" onClick={editor.zoomOut}>
+                    −
+                  </button>
+                  <span id="zoomLevel" style={{ fontSize: 13, minWidth: 45, textAlign: "center", color: "#a8b2d6" }}>
+                    {Math.round(editor.zoomScale * 100)}%
+                  </span>
+                  <button className="btn" onClick={editor.zoomIn}>
+                    +
+                  </button>
+                  <button className="btn" onClick={editor.zoomReset}>
+                    Reset
+                  </button>
+                </div>
               </div>
 
               {editor.saveError ? (
@@ -2245,7 +2176,7 @@ export function RestaurantEditor({ editor, parityMode = "current", onNavigate })
             </div>
           </div>
 
-          {!isLegacyParity && editor.detectWizardOpen ? (
+          {editor.detectWizardOpen ? (
             <div id="detectedDishesPanel" style={{ display: "block", background: "#1a2351", border: "1px solid #2a3261", borderRadius: 12, padding: 20, marginBottom: 4, textAlign: "center" }}>
               <div style={{ fontSize: "1.3rem", fontWeight: 600, marginBottom: 8 }} id="currentDishName">
                 {editor.detectWizardState.loading
@@ -2306,7 +2237,7 @@ export function RestaurantEditor({ editor, parityMode = "current", onNavigate })
           <div
             className="restaurant-legacy-editor-canvas"
             style={{
-              zoom: isLegacyParity ? 1 : editor.zoomScale,
+              zoom: editor.zoomScale,
             }}
           >
             {editor.overlaysByPage.map((page) => (
@@ -2415,62 +2346,10 @@ export function RestaurantEditor({ editor, parityMode = "current", onNavigate })
         )}
       </footer>
 
-      <Modal
-        open={saveReviewOpen}
-        onOpenChange={(open) => {
-          if (saveReviewSaving) return;
-          setSaveReviewOpen(open);
-          if (!open) setSaveReviewError("");
-        }}
-        title="Review your changes"
-        className="max-w-[860px]"
-        closeOnEsc={!saveReviewSaving}
-        closeOnOverlay={!saveReviewSaving}
-      >
-        <div className="space-y-3">
-          <p className="note m-0 text-sm">
-            Confirm everything looks right before saving to the website.
-          </p>
-          <div className="max-h-[42vh] overflow-auto rounded-xl border border-[#2a3261] bg-[rgba(12,18,44,0.6)] p-3">
-            <ul className="m-0 list-disc pl-5 text-sm text-[#d6def8]">
-              {reviewItems.map((item, index) => (
-                <li key={`save-review-${index}`}>{item}</li>
-              ))}
-            </ul>
-          </div>
-          {saveReviewError ? (
-            <p className="m-0 rounded-lg border border-[#a12525] bg-[rgba(139,29,29,0.32)] px-3 py-2 text-sm text-[#ffd0d0]">
-              {saveReviewError}
-            </p>
-          ) : null}
-          <div className="flex flex-wrap justify-end gap-2">
-            <Button
-              size="compact"
-              variant="outline"
-              disabled={saveReviewSaving}
-              onClick={() => {
-                setSaveReviewOpen(false);
-                setSaveReviewError("");
-              }}
-            >
-              Cancel save
-            </Button>
-            <Button
-              size="compact"
-              tone="primary"
-              loading={saveReviewSaving}
-              onClick={confirmSaveReview}
-            >
-              {editor.saveStatus === "error" ? "Retry save" : "Confirm & Save"}
-            </Button>
-          </div>
-        </div>
-      </Modal>
-
       <DishEditorModal editor={editor} />
       <ChangeLogModal editor={editor} />
       <ConfirmInfoModal editor={editor} />
-      <MenuPagesModal editor={editor} parityMode={parityMode} />
+      <MenuPagesModal editor={editor} />
       <RestaurantSettingsModal editor={editor} />
     </section>
   );
