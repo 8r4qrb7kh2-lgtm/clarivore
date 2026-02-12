@@ -1,6 +1,12 @@
 # Parity Snapshots
 
-This folder is reserved for baseline and post-migration screenshots used in visual parity review.
+This folder stores locked parity artifacts for the legacy restaurant editor migration.
+
+Primary docs:
+
+- `legacy-baseline-2026-02-12.md`: frozen baseline behavior source and constraints.
+- `legacy-editor-contract.md`: exact behavior contract for legacy parity mode.
+- `screenshot-matrix.md`: required visual snapshot set for release signoff.
 
 Naming convention:
 
@@ -8,3 +14,5 @@ Naming convention:
 - `before-<route>-mobile.png`
 - `after-<route>-desktop.png`
 - `after-<route>-mobile.png`
+- `legacy-parity-<scenario>-desktop.png`
+- `legacy-parity-<scenario>-mobile.png`

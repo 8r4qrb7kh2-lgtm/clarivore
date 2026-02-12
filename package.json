@@ -15,7 +15,8 @@
     "cap:copy": "npm run build && npx cap copy",
     "cap:sync": "npm run build && npx cap sync",
     "cap:open:ios": "npx cap open ios",
-    "verify:next-transition": "node scripts/verify-next-transition.mjs"
+    "verify:next-transition": "node scripts/verify-next-transition.mjs",
+    "verify:legacy-editor-parity": "node scripts/verify-legacy-editor-parity.mjs"
   },
   "engines": {
     "node": "20.x"

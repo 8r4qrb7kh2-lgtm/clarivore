@@ -148,6 +148,47 @@ function normalizeOverlay(overlay, index, fallbackKey, context = {}) {
   };
 }
 
+function ensureOverlayVisibility(overlay, pageCount = 1) {
+  const maxPageIndex = Math.max(Number(pageCount) - 1, 0);
+  const next = { ...overlay };
+
+  const pageIndex = Number.isFinite(Number(next.pageIndex))
+    ? Number(next.pageIndex)
+    : 0;
+  next.pageIndex = clamp(Math.floor(pageIndex), 0, maxPageIndex);
+
+  let x = normalizeRectValue(next.x, 8);
+  let y = normalizeRectValue(next.y, 8);
+  let w = clamp(normalizeRectValue(next.w, 20), 0.5, 100);
+  let h = clamp(normalizeRectValue(next.h, 8), 0.5, 100);
+
+  if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(w) || !Number.isFinite(h)) {
+    x = 8;
+    y = 8;
+    w = 20;
+    h = 8;
+  }
+
+  if (x + w <= 0.5 || y + h <= 0.5 || x >= 99.5 || y >= 99.5) {
+    x = 8;
+    y = 8;
+    w = Math.max(w, 20);
+    h = Math.max(h, 8);
+  }
+
+  w = clamp(w, 0.5, 100);
+  h = clamp(h, 0.5, 100);
+  x = clamp(x, 0, 100 - w);
+  y = clamp(y, 0, 100 - h);
+
+  next.x = x;
+  next.y = y;
+  next.w = w;
+  next.h = h;
+
+  return next;
+}
+
 function buildMenuImages(restaurant) {
   const explicit = Array.isArray(restaurant?.menu_images)
     ? restaurant.menu_images.filter(Boolean)
@@ -333,6 +374,7 @@ export function useRestaurantEditor({
 
   const [saveError, setSaveError] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [saveStatus, setSaveStatus] = useState("idle");
 
   const [dishEditorOpen, setDishEditorOpen] = useState(false);
   const [dishAiAssistOpen, setDishAiAssistOpen] = useState(false);
@@ -374,6 +416,7 @@ export function useRestaurantEditor({
   const baselineRef = useRef("");
   const settingsBaselineRef = useRef("");
   const historyRef = useRef([]);
+  const saveStatusTimerRef = useRef(0);
   const [historyIndex, setHistoryIndex] = useState(0);
 
   const overlaysRef = useRef(draftOverlays);
@@ -391,6 +434,17 @@ export function useRestaurantEditor({
   useEffect(() => {
     pendingChangesRef.current = pendingChanges;
   }, [pendingChanges]);
+
+  const clearSaveStatusTimer = useCallback(() => {
+    if (saveStatusTimerRef.current) {
+      window.clearTimeout(saveStatusTimerRef.current);
+      saveStatusTimerRef.current = 0;
+    }
+  }, []);
+
+  useEffect(() => {
+    return () => clearSaveStatusTimer();
+  }, [clearSaveStatusTimer]);
 
   const appendPendingChange = useCallback((line) => {
     const text = asText(line);
@@ -433,11 +487,14 @@ export function useRestaurantEditor({
     const context = buildOverlayNormalizationContext(snapshot.overlays, images.length);
     const overlaysList = Array.isArray(snapshot.overlays)
       ? snapshot.overlays.map((overlay, index) =>
-          normalizeOverlay(
-            overlay,
-            index,
-            overlay?._editorKey || `ov-${Date.now()}-${index}`,
-            context,
+          ensureOverlayVisibility(
+            normalizeOverlay(
+              overlay,
+              index,
+              overlay?._editorKey || `ov-${Date.now()}-${index}`,
+              context,
+            ),
+            images.length,
           ),
         )
       : [];
@@ -487,11 +544,14 @@ export function useRestaurantEditor({
     const nextMenuImages = buildMenuImages(restaurant);
     const context = buildOverlayNormalizationContext(nextOverlaysRaw, nextMenuImages.length);
     const nextOverlays = nextOverlaysRaw.map((overlay, index) =>
-      normalizeOverlay(
-        overlay,
-        index,
-        overlay?._editorKey || `ov-${Date.now()}-${index}`,
-        context,
+      ensureOverlayVisibility(
+        normalizeOverlay(
+          overlay,
+          index,
+          overlay?._editorKey || `ov-${Date.now()}-${index}`,
+          context,
+        ),
+        nextMenuImages.length,
       ),
     );
 
@@ -508,6 +568,9 @@ export function useRestaurantEditor({
     setSelectedOverlayKey(nextOverlays[0]?._editorKey || "");
     setPendingChanges([]);
     setSaveError("");
+    setIsSaving(false);
+    clearSaveStatusTimer();
+    setSaveStatus("idle");
 
     setRestaurantSettingsDraft(settingsDraft);
     setSettingsSaveError("");
@@ -543,6 +606,7 @@ export function useRestaurantEditor({
       result: null,
     });
   }, [
+    clearSaveStatusTimer,
     overlays,
     restaurant?.id,
     restaurant?.overlays,
@@ -566,6 +630,15 @@ export function useRestaurantEditor({
   const isDirty = editorStateSerialized !== baselineRef.current;
   const settingsDirty =
     serializeSettingsDraft(restaurantSettingsDraft) !== settingsBaselineRef.current;
+
+  useEffect(() => {
+    if (!isDirty) return;
+    if (saveStatus === "saving") return;
+    if (saveStatus !== "idle") {
+      clearSaveStatusTimer();
+      setSaveStatus("idle");
+    }
+  }, [clearSaveStatusTimer, isDirty, saveStatus]);
 
   const selectedOverlay = useMemo(() => {
     if (!selectedOverlayKey) return draftOverlays[0] || null;
@@ -626,13 +699,16 @@ export function useRestaurantEditor({
     applyOverlayList((current) =>
       current.map((overlay, index) => {
         if (overlay._editorKey !== overlayKey) return overlay;
-        const next = normalizeOverlay(
-          {
-            ...overlay,
-            ...(typeof patch === "function" ? patch(overlay) : patch),
-          },
-          index,
-          overlay._editorKey,
+        const next = ensureOverlayVisibility(
+          normalizeOverlay(
+            {
+              ...overlay,
+              ...(typeof patch === "function" ? patch(overlay) : patch),
+            },
+            index,
+            overlay._editorKey,
+          ),
+          menuImagesRef.current.length,
         );
 
         // Keep within bounds after resize/drag edits.
@@ -661,27 +737,30 @@ export function useRestaurantEditor({
       const nextIndex = current.length;
       const next = [
         ...current,
-        normalizeOverlay(
-          {
-            _editorKey: nextKey,
-            id: `Dish ${nextIndex + 1}`,
-            name: `Dish ${nextIndex + 1}`,
-            description: "",
-            x: 10,
-            y: 10,
-            w: 22,
-            h: 8,
-            pageIndex: activePageIndex,
-            allergens: [],
-            diets: [],
-            removable: [],
-            crossContamination: [],
-            crossContaminationDiets: [],
-            details: {},
-            ingredients: [],
-          },
-          nextIndex,
-          nextKey,
+        ensureOverlayVisibility(
+          normalizeOverlay(
+            {
+              _editorKey: nextKey,
+              id: `Dish ${nextIndex + 1}`,
+              name: `Dish ${nextIndex + 1}`,
+              description: "",
+              x: 10,
+              y: 10,
+              w: 22,
+              h: 8,
+              pageIndex: activePageIndex,
+              allergens: [],
+              diets: [],
+              removable: [],
+              crossContamination: [],
+              crossContaminationDiets: [],
+              details: {},
+              ingredients: [],
+            },
+            nextIndex,
+            nextKey,
+          ),
+          menuImagesRef.current.length,
         ),
       ];
       return next;
@@ -837,33 +916,228 @@ export function useRestaurantEditor({
     });
   }, [selectedOverlay?._editorKey, updateOverlay]);
 
-  const addMenuPage = useCallback((imageDataUrl) => {
-    const value = asText(imageDataUrl);
-    if (!value) return;
+  const addMenuPages = useCallback((images, options = {}) => {
+    const values = (Array.isArray(images) ? images : [])
+      .map((value) => asText(value))
+      .filter(Boolean);
+    if (!values.length) {
+      return { added: 0, startIndex: menuImagesRef.current.length };
+    }
+
+    const currentLength = Math.max(menuImagesRef.current.length, 1);
+    const requestedIndex = Number(options?.atIndex);
+    const insertAt = Number.isFinite(requestedIndex)
+      ? clamp(Math.floor(requestedIndex), 0, currentLength)
+      : currentLength;
+
     setDraftMenuImages((current) => {
-      const next = [...current, value];
+      const next = [...current];
+      next.splice(insertAt, 0, ...values);
       menuImagesRef.current = next;
       return next;
     });
-    appendPendingChange("Menu pages: Added menu page");
+
+    if (insertAt < currentLength) {
+      applyOverlayList((current) =>
+        current.map((overlay) => {
+          const page = Number.isFinite(Number(overlay.pageIndex))
+            ? Number(overlay.pageIndex)
+            : 0;
+          if (page >= insertAt) {
+            return { ...overlay, pageIndex: page + values.length };
+          }
+          return overlay;
+        }),
+      );
+    }
+
+    setActivePageIndex((current) => {
+      if (Number.isFinite(Number(options?.focusIndex))) {
+        return clamp(
+          insertAt + Math.floor(Number(options.focusIndex)),
+          0,
+          Math.max(menuImagesRef.current.length - 1, 0),
+        );
+      }
+      return clamp(current, 0, Math.max(menuImagesRef.current.length - 1, 0));
+    });
+
+    appendPendingChange(
+      `Menu pages: Added ${values.length} page${values.length === 1 ? "" : "s"}`,
+    );
     queueMicrotask(() => pushHistory());
-  }, [appendPendingChange, pushHistory]);
+
+    return {
+      added: values.length,
+      startIndex: insertAt,
+    };
+  }, [appendPendingChange, applyOverlayList, pushHistory]);
+
+  const addMenuPage = useCallback((imageDataUrl) => {
+    const value = asText(imageDataUrl);
+    if (!value) return;
+    addMenuPages([value]);
+  }, [addMenuPages]);
+
+  const replaceMenuPageWithSections = useCallback((index, sections) => {
+    const entries = (Array.isArray(sections) ? sections : [])
+      .map((section) => {
+        if (typeof section === "string") {
+          return {
+            dataUrl: asText(section),
+            yStart: 0,
+            yEnd: 100,
+          };
+        }
+
+        const dataUrl = asText(section?.dataUrl || section?.image);
+        const rawStart = Number(section?.yStart ?? section?.bounds?.yStart ?? 0);
+        const rawEnd = Number(section?.yEnd ?? section?.bounds?.yEnd ?? 100);
+        return {
+          dataUrl,
+          yStart: clamp(Number.isFinite(rawStart) ? rawStart : 0, 0, 100),
+          yEnd: clamp(Number.isFinite(rawEnd) ? rawEnd : 100, 0, 100),
+        };
+      })
+      .filter((entry) => entry.dataUrl);
+
+    if (!entries.length) return { replaced: false, sectionCount: 0 };
+
+    const normalizedEntries = entries.map((entry, entryIndex) => {
+      const defaultStart = (entryIndex * 100) / entries.length;
+      const defaultEnd = ((entryIndex + 1) * 100) / entries.length;
+      const yStart = Number.isFinite(entry.yStart) ? entry.yStart : defaultStart;
+      const yEnd = Number.isFinite(entry.yEnd) ? entry.yEnd : defaultEnd;
+      const safeStart = clamp(Math.min(yStart, yEnd), 0, 100);
+      const safeEnd = clamp(Math.max(yStart, yEnd), 0, 100);
+      return {
+        dataUrl: entry.dataUrl,
+        yStart: safeStart,
+        yEnd: safeEnd <= safeStart ? Math.min(100, safeStart + 0.1) : safeEnd,
+      };
+    });
+
+    const targetIndex = clamp(
+      Number(index) || 0,
+      0,
+      Math.max(menuImagesRef.current.length - 1, 0),
+    );
+    const delta = normalizedEntries.length - 1;
+    const nextPageCount = Math.max(menuImagesRef.current.length + delta, 1);
+
+    setDraftMenuImages((current) => {
+      const next = [...current];
+      next.splice(
+        targetIndex,
+        1,
+        ...normalizedEntries.map((entry) => entry.dataUrl),
+      );
+      menuImagesRef.current = next.length ? next : [""];
+      return menuImagesRef.current;
+    });
+
+    applyOverlayList((current) =>
+      current.map((overlay) => {
+        const page = Number.isFinite(Number(overlay.pageIndex))
+          ? Number(overlay.pageIndex)
+          : 0;
+
+        if (page < targetIndex) {
+          return ensureOverlayVisibility(overlay, nextPageCount);
+        }
+
+        if (page > targetIndex) {
+          return ensureOverlayVisibility(
+            { ...overlay, pageIndex: page + delta },
+            nextPageCount,
+          );
+        }
+
+        if (normalizedEntries.length === 1) {
+          return ensureOverlayVisibility(
+            { ...overlay, pageIndex: targetIndex },
+            nextPageCount,
+          );
+        }
+
+        const top = clamp(Number(overlay.y) || 0, 0, 100);
+        const height = clamp(Number(overlay.h) || 1, 0.5, 100);
+        const bottom = clamp(top + height, 0, 100);
+        const centerY = top + height / 2;
+
+        let targetSectionIndex = 0;
+        let bestOverlap = -1;
+
+        normalizedEntries.forEach((entry, entryIndex) => {
+          const overlap = Math.max(
+            0,
+            Math.min(bottom, entry.yEnd) - Math.max(top, entry.yStart),
+          );
+          if (overlap > bestOverlap) {
+            bestOverlap = overlap;
+            targetSectionIndex = entryIndex;
+          }
+        });
+
+        if (bestOverlap <= 0) {
+          const fallbackIndex = normalizedEntries.findIndex(
+            (entry) => centerY >= entry.yStart && centerY <= entry.yEnd,
+          );
+          if (fallbackIndex >= 0) targetSectionIndex = fallbackIndex;
+        }
+
+        const section =
+          normalizedEntries[targetSectionIndex] || normalizedEntries[0] || null;
+        if (!section) {
+          return ensureOverlayVisibility(
+            { ...overlay, pageIndex: targetIndex },
+            nextPageCount,
+          );
+        }
+
+        const sectionSpan = Math.max(section.yEnd - section.yStart, 0.1);
+        const clippedTop = clamp(top, section.yStart, section.yEnd);
+        const clippedBottom = clamp(bottom, section.yStart, section.yEnd);
+        let sectionTop = ((clippedTop - section.yStart) / sectionSpan) * 100;
+        let sectionBottom = ((clippedBottom - section.yStart) / sectionSpan) * 100;
+
+        if (sectionBottom - sectionTop < 0.5) {
+          const center = ((centerY - section.yStart) / sectionSpan) * 100;
+          sectionTop = clamp(center - 1, 0, 99.5);
+          sectionBottom = clamp(center + 1, sectionTop + 0.5, 100);
+        }
+
+        return ensureOverlayVisibility(
+          {
+            ...overlay,
+            pageIndex: targetIndex + targetSectionIndex,
+            y: sectionTop,
+            h: Math.max(0.5, sectionBottom - sectionTop),
+          },
+          nextPageCount,
+        );
+      }),
+    );
+
+    setActivePageIndex((current) => {
+      if (current < targetIndex) return current;
+      if (current === targetIndex) return targetIndex;
+      return clamp(current + delta, 0, Math.max(nextPageCount - 1, 0));
+    });
+
+    appendPendingChange(
+      `Menu pages: Replaced page ${targetIndex + 1} with ${normalizedEntries.length} section${normalizedEntries.length === 1 ? "" : "s"}`,
+    );
+    queueMicrotask(() => pushHistory());
+
+    return { replaced: true, sectionCount: normalizedEntries.length };
+  }, [appendPendingChange, applyOverlayList, pushHistory]);
 
   const replaceMenuPage = useCallback((index, imageDataUrl) => {
     const value = asText(imageDataUrl);
     if (!value) return;
-    const targetIndex = clamp(Number(index) || 0, 0, Math.max(draftMenuImages.length - 1, 0));
-
-    setDraftMenuImages((current) => {
-      const next = [...current];
-      next[targetIndex] = value;
-      menuImagesRef.current = next;
-      return next;
-    });
-
-    appendPendingChange(`Menu pages: Replaced page ${targetIndex + 1}`);
-    queueMicrotask(() => pushHistory());
-  }, [appendPendingChange, draftMenuImages.length, pushHistory]);
+    replaceMenuPageWithSections(index, [value]);
+  }, [replaceMenuPageWithSections]);
 
   const removeMenuPage = useCallback((index) => {
     const targetIndex = clamp(Number(index) || 0, 0, Math.max(draftMenuImages.length - 1, 0));
@@ -970,15 +1244,19 @@ export function useRestaurantEditor({
   const save = useCallback(async () => {
     if (!canEdit || !restaurant?.id) {
       setSaveError("You do not have permission to edit this restaurant.");
+      setSaveStatus("error");
       return { success: false };
     }
 
     if (!callbacks?.onSaveDraft) {
       setSaveError("Save callback is not configured.");
+      setSaveStatus("error");
       return { success: false };
     }
 
+    clearSaveStatusTimer();
     setSaveError("");
+    setSaveStatus("saving");
     setIsSaving(true);
 
     try {
@@ -1019,15 +1297,42 @@ export function useRestaurantEditor({
       historyRef.current = [snapshotAfterSave];
       setHistoryIndex(0);
 
+      setSaveStatus("saved");
+      saveStatusTimerRef.current = window.setTimeout(() => {
+        saveStatusTimerRef.current = 0;
+        setSaveStatus("idle");
+      }, 900);
+
       return { success: true };
     } catch (error) {
       const message = error?.message || "Failed to save editor changes.";
       setSaveError(message);
+      setSaveStatus("error");
       return { success: false, error };
     } finally {
       setIsSaving(false);
     }
-  }, [callbacks, canEdit, restaurant?.id]);
+  }, [callbacks, canEdit, clearSaveStatusTimer, restaurant?.id]);
+
+  const discardUnsavedChanges = useCallback(() => {
+    clearSaveStatusTimer();
+
+    const baselineSnapshot = historyRef.current[0];
+    if (baselineSnapshot) {
+      restoreHistorySnapshot({
+        overlays: JSON.parse(JSON.stringify(baselineSnapshot.overlays || [])),
+        menuImages: JSON.parse(JSON.stringify(baselineSnapshot.menuImages || [])),
+        pendingChanges: [],
+      });
+    }
+
+    setPendingChanges([]);
+    setSaveError("");
+    setIsSaving(false);
+    setSaveStatus("idle");
+
+    return { success: true };
+  }, [clearSaveStatusTimer, restoreHistorySnapshot]);
 
   const confirmInfo = useCallback(async (photos) => {
     if (!callbacks?.onConfirmInfo || !restaurant?.id) {
@@ -1217,6 +1522,35 @@ export function useRestaurantEditor({
     }
   }, [applyAiResultToSelectedOverlay, callbacks, selectedOverlay]);
 
+  const detectMenuCorners = useCallback(async ({ imageData, width, height }) => {
+    if (!callbacks?.onDetectMenuCorners) {
+      return {
+        success: false,
+        error: "Corner detection callback is not configured.",
+      };
+    }
+
+    try {
+      const result = await callbacks.onDetectMenuCorners({
+        imageData,
+        width,
+        height,
+      });
+      return {
+        success: Boolean(result?.success),
+        corners: result?.corners || null,
+        description: asText(result?.description),
+        error: asText(result?.error),
+      };
+    } catch (error) {
+      return {
+        success: false,
+        corners: null,
+        error: error?.message || "Failed to detect menu corners.",
+      };
+    }
+  }, [callbacks]);
+
   const runDetectDishes = useCallback(async () => {
     if (!callbacks?.onDetectMenuDishes) return { success: false };
 
@@ -1282,26 +1616,29 @@ export function useRestaurantEditor({
     if (!target?.name) return null;
 
     const nextOverlayKey = `ov-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-    const nextOverlay = normalizeOverlay(
-      {
-        _editorKey: nextOverlayKey,
-        id: target.name,
-        name: target.name,
-        description: "",
-        x: clamp(Number(rect?.x) || 0, 0, 99),
-        y: clamp(Number(rect?.y) || 0, 0, 99),
-        w: clamp(Number(rect?.w) || 8, 1, 100),
-        h: clamp(Number(rect?.h) || 6, 1, 100),
-        pageIndex: activePageIndex,
-        allergens: [],
-        diets: [],
-        removable: [],
-        crossContamination: [],
-        crossContaminationDiets: [],
-        details: {},
-      },
-      draftOverlays.length,
-      nextOverlayKey,
+    const nextOverlay = ensureOverlayVisibility(
+      normalizeOverlay(
+        {
+          _editorKey: nextOverlayKey,
+          id: target.name,
+          name: target.name,
+          description: "",
+          x: clamp(Number(rect?.x) || 0, 0, 99),
+          y: clamp(Number(rect?.y) || 0, 0, 99),
+          w: clamp(Number(rect?.w) || 8, 1, 100),
+          h: clamp(Number(rect?.h) || 6, 1, 100),
+          pageIndex: activePageIndex,
+          allergens: [],
+          diets: [],
+          removable: [],
+          crossContamination: [],
+          crossContaminationDiets: [],
+          details: {},
+        },
+        draftOverlays.length,
+        nextOverlayKey,
+      ),
+      menuImagesRef.current.length,
     );
 
     applyOverlayList((current) => [...current, nextOverlay]);
@@ -1446,6 +1783,7 @@ export function useRestaurantEditor({
     isDirty,
     saveError,
     isSaving,
+    saveStatus,
 
     canUndo,
     canRedo,
@@ -1470,6 +1808,7 @@ export function useRestaurantEditor({
     runAiDishAnalysis,
     applyAiResultToSelectedOverlay,
     runIngredientLabelScan,
+    detectMenuCorners,
 
     toggleSelectedAllergen,
     setSelectedAllergenDetail,
@@ -1485,6 +1824,7 @@ export function useRestaurantEditor({
     setZoomScale,
 
     save,
+    discardUnsavedChanges,
     confirmInfo,
     confirmBusy,
     confirmError,
@@ -1499,8 +1839,10 @@ export function useRestaurantEditor({
 
     menuPagesOpen,
     setMenuPagesOpen,
+    addMenuPages,
     addMenuPage,
     replaceMenuPage,
+    replaceMenuPageWithSections,
     removeMenuPage,
 
     restaurantSettingsOpen,

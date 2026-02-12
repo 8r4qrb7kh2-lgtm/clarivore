@@ -127,7 +127,7 @@ h2 {
   flex-direction: column;
 }
 
-.simple-topbar {
+body:not(.restaurant-parity-legacy) .simple-topbar {
   position: sticky;
   top: 0;
   width: 100%;
@@ -137,7 +137,7 @@ h2 {
   z-index: 40;
 }
 
-.simple-topbar-inner {
+body:not(.restaurant-parity-legacy) .simple-topbar-inner {
   max-width: 1200px;
   margin: 0 auto;
   padding: 18px 20px;
@@ -147,14 +147,14 @@ h2 {
 }
 
 @media (min-width: 840px) {
-  .simple-topbar-inner {
+  body:not(.restaurant-parity-legacy) .simple-topbar-inner {
     flex-direction: row;
     align-items: center;
     justify-content: space-between;
   }
 }
 
-.simple-brand {
+body:not(.restaurant-parity-legacy) .simple-brand {
   display: flex;
   align-items: center;
   gap: 12px;
@@ -164,19 +164,19 @@ h2 {
   font-size: 1.4rem;
 }
 
-.simple-brand img {
+body:not(.restaurant-parity-legacy) .simple-brand img {
   width: 48px;
   height: 48px;
   border-radius: 12px;
 }
 
-.simple-nav {
+body:not(.restaurant-parity-legacy) .simple-nav {
   display: flex;
   gap: 10px;
   flex-wrap: wrap;
 }
 
-.simple-nav a {
+body:not(.restaurant-parity-legacy) .simple-nav a {
   text-decoration: none;
   color: var(--ink);
   padding: 8px 14px;
@@ -187,9 +187,26 @@ h2 {
   transition: border-color 0.2s ease, transform 0.2s ease;
 }
 
-.simple-nav a:hover {
+body:not(.restaurant-parity-legacy) .simple-nav a:hover {
   border-color: var(--hover);
   transform: translateY(-1px);
+}
+
+body.restaurant-parity-legacy .restaurant-parity-topbar {
+  position: relative !important;
+  top: auto !important;
+  left: auto !important;
+  right: auto !important;
+}
+
+body.restaurant-parity-legacy.menuScrollLocked .restaurant-parity-topbar {
+  position: relative !important;
+}
+
+body.restaurant-parity-legacy {
+  position: static !important;
+  overflow-y: auto !important;
+  touch-action: pan-x pan-y !important;
 }
 
 .page-main {
@@ -457,7 +474,7 @@ h2 {
   padding: 10px 14px;
 }
 
-.btnLink {
+body:not(.restaurant-parity-legacy) .btnLink {
   background: transparent;
   border: none;
   color: #6b7cff;
@@ -468,11 +485,11 @@ h2 {
   cursor: pointer;
 }
 
-.btnLink:hover {
+body:not(.restaurant-parity-legacy) .btnLink:hover {
   color: #8b9aff;
 }
 
-.mode-toggle {
+body:not(.restaurant-parity-legacy) .mode-toggle {
   position: relative;
   width: 56px;
   height: 30px;
@@ -483,12 +500,12 @@ h2 {
   transition: all 0.2s ease;
 }
 
-.mode-toggle.active {
+body:not(.restaurant-parity-legacy) .mode-toggle.active {
   background: #3651ff;
   border-color: #4e65ff;
 }
 
-.mode-toggle::after {
+body:not(.restaurant-parity-legacy) .mode-toggle::after {
   content: "";
   position: absolute;
   top: 3px;
@@ -500,7 +517,7 @@ h2 {
   transition: transform 0.2s ease;
 }
 
-.mode-toggle.active::after {
+body:not(.restaurant-parity-legacy) .mode-toggle.active::after {
   transform: translateX(26px);
 }
 

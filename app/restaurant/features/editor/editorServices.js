@@ -56,6 +56,22 @@ export async function detectMenuDishes({ imageData }) {
   };
 }
 
+export async function detectMenuCorners({ imageData, width, height }) {
+  const payload = {
+    image: asText(imageData),
+    width: Number.isFinite(Number(width)) ? Number(width) : 1000,
+    height: Number.isFinite(Number(height)) ? Number(height) : 1000,
+  };
+
+  const result = await postFunction("detect-corners", payload);
+  return {
+    success: Boolean(result?.success),
+    corners: result?.corners || null,
+    description: asText(result?.description),
+    error: asText(result?.error),
+  };
+}
+
 export async function analyzeDishWithAi({ dishName, text, imageData }) {
   const payload = {
     dishName: asText(dishName),
@@ -134,6 +150,7 @@ export function compareDishSets({ detectedDishes, existingDishNames }) {
 
 export default {
   detectMenuDishes,
+  detectMenuCorners,
   analyzeDishWithAi,
   sendMenuUpdateNotification,
   dataUrlFromImageSource,

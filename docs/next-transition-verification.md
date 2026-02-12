@@ -4,9 +4,13 @@ This repository includes a reusable full-stack sign-off harness for validating t
 
 - Entrypoint: `scripts/verify-next-transition.mjs`
 - NPM command: `npm run verify:next-transition`
+- Legacy parity script: `scripts/verify-legacy-editor-parity.mjs`
+- Legacy parity command: `npm run verify:legacy-editor-parity -- --slug=<restaurant-slug>`
 - Reports:
   - `docs/parity-snapshots/reports/next-transition-<RUN_ID>.json`
   - `docs/parity-snapshots/reports/next-transition-<RUN_ID>.md`
+  - `docs/parity-snapshots/reports/legacy-editor-parity-<RUN_ID>.json`
+  - `docs/parity-snapshots/reports/legacy-editor-parity-<RUN_ID>.md`
 
 ## Scope
 
@@ -31,6 +35,13 @@ The harness validates all of the following in a single run:
 - Create temporary restaurant and generate invite link.
 - Manager sign-in via invite flow, editor save, order submit, chat message.
 - Diner sign-in, viewer/order flow, favorite toggle roundtrip.
+- Legacy parity script run against created restaurant:
+  - topbar parity + dropdown behavior
+  - editor shell parity (legacy-only controls)
+  - overlay add/drag behavior
+  - save review modal and save states
+  - unsaved-change guard (stay/leave/save-then-leave)
+  - scanner modal + corner adjustment flow
 
 4. Deterministic cleanup
 - Removes test artifacts from staging data.

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
@@ -17,13 +17,21 @@ import { supabaseClient as supabase } from "../lib/supabase";
 import { buildTrainingRestaurantPayload, HOW_IT_WORKS_SLUG } from "./boot/trainingRestaurant";
 import RestaurantEditor from "./features/editor/RestaurantEditor";
 import RestaurantViewer from "./features/viewer/RestaurantViewer";
+import LegacyRestaurantTopbar from "./features/shared/LegacyRestaurantTopbar";
 import {
   analyzeDishWithAi,
   compareDishSets,
   dataUrlFromImageSource,
+  detectMenuCorners,
   detectMenuDishes,
   sendMenuUpdateNotification,
 } from "./features/editor/editorServices";
+import {
+  DEFAULT_EDITOR_PARITY_MODE,
+  EDITOR_PARITY_QUERY_KEY,
+  EDITOR_PARITY_STORAGE_KEY,
+  resolveEditorParityMode,
+} from "./parityMode";
 import { useOrderFlow } from "./hooks/useOrderFlow";
 import { useRestaurantEditor } from "./hooks/useRestaurantEditor";
 import { useRestaurantViewer } from "./hooks/useRestaurantViewer";
@@ -47,6 +55,33 @@ function readManagerModeDefault({ editParam, isQrVisit }) {
   } catch {
     return "viewer";
   }
+}
+
+function buildModeHref({ mode, slug, searchParams }) {
+  const params = new URLSearchParams(searchParams?.toString() || "");
+  const safeSlug = String(slug || "").trim();
+  if (safeSlug) {
+    params.set("slug", safeSlug);
+  }
+
+  if (mode === "editor") {
+    params.set("edit", "1");
+    params.delete("mode");
+  } else {
+    params.delete("edit");
+    params.delete("mode");
+  }
+
+  const query = params.toString();
+  return `/restaurant${query ? `?${query}` : ""}`;
+}
+
+function isGuardableInternalHref(href) {
+  const value = String(href || "").trim();
+  if (!value) return false;
+  if (value.startsWith("#")) return false;
+  if (/^(mailto:|tel:|javascript:)/i.test(value)) return false;
+  return true;
 }
 
 function trackRecentlyViewed(slug) {
@@ -278,11 +313,48 @@ export default function RestaurantClient() {
   const shouldOpenConfirm = isTruthyFlag(openConfirmParam);
   const shouldOpenAi = isTruthyFlag(openAiParam);
 
-  const [activeView, setActiveView] = useState("viewer");
+  const [activeView, setActiveView] = useState(() =>
+    readManagerModeDefault({ editParam, isQrVisit }),
+  );
   const [favoriteBusyDish, setFavoriteBusyDish] = useState("");
-  const [showModeSwitchPrompt, setShowModeSwitchPrompt] = useState(false);
-  const [pendingModeSwitch, setPendingModeSwitch] = useState("");
-  const [modeSwitchSaving, setModeSwitchSaving] = useState(false);
+  const [editorParityMode, setEditorParityMode] = useState(DEFAULT_EDITOR_PARITY_MODE);
+  const [unsavedPromptOpen, setUnsavedPromptOpen] = useState(false);
+  const [unsavedPromptCopy, setUnsavedPromptCopy] = useState(
+    "Would you like to save before leaving editor mode?",
+  );
+  const [unsavedPromptError, setUnsavedPromptError] = useState("");
+  const [unsavedPromptSaving, setUnsavedPromptSaving] = useState(false);
+  const pendingNavigationRef = useRef(null);
+
+  useEffect(() => {
+    const queryMode = searchParams?.get(EDITOR_PARITY_QUERY_KEY);
+    let storageMode = "";
+    try {
+      storageMode = localStorage.getItem(EDITOR_PARITY_STORAGE_KEY) || "";
+    } catch {
+      storageMode = "";
+    }
+
+    const resolved = resolveEditorParityMode({
+      queryMode,
+      storageMode,
+      envMode: process.env.NEXT_PUBLIC_EDITOR_PARITY_DEFAULT,
+    });
+
+    setEditorParityMode(resolved);
+
+    const queryOverride =
+      queryMode === "legacy" || queryMode === "current" ? queryMode : "";
+    if (queryOverride) {
+      try {
+        localStorage.setItem(EDITOR_PARITY_STORAGE_KEY, queryOverride);
+      } catch {
+        // Ignore local storage failures.
+      }
+    }
+  }, [searchParams]);
+
+  const isLegacyParityMode = editorParityMode === "legacy";
 
   const bootQuery = useQuery({
     queryKey: queryKeys.restaurant.boot(slug, inviteToken, isQrVisit),
@@ -670,6 +742,9 @@ export default function RestaurantClient() {
       onDetectMenuDishes: async ({ imageData }) => {
         return await detectMenuDishes({ imageData });
       },
+      onDetectMenuCorners: async ({ imageData, width, height }) => {
+        return await detectMenuCorners({ imageData, width, height });
+      },
       onOpenIngredientLabelScan: async ({ ingredientName }) => {
         const { showManagerIngredientPhotoUploadModal } = await import(
           "../lib/managerIngredientPhotoCapture"
@@ -706,34 +781,114 @@ export default function RestaurantClient() {
     }
   }, []);
 
+  const executePendingNavigation = useCallback(
+    (pending) => {
+      if (!pending || typeof pending !== "object") return;
+
+      const nextMode =
+        pending.nextMode === "editor"
+          ? "editor"
+          : pending.nextMode === "viewer"
+            ? "viewer"
+            : "";
+      if (nextMode) {
+        commitMode(nextMode);
+      }
+
+      const href = String(pending.href || "").trim();
+      if (!href) return;
+
+      if (typeof window !== "undefined") {
+        const current = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+        if (href === current) return;
+      }
+
+      if (pending.replace) {
+        router.replace(href);
+      } else {
+        router.push(href);
+      }
+    },
+    [commitMode, router],
+  );
+
+  const queueNavigationWithUnsavedGuard = useCallback(
+    (pending, promptCopy = "Would you like to save before leaving editor mode?") => {
+      const leavingDirtyEditor = activeView === "editor" && Boolean(editor?.isDirty);
+      if (leavingDirtyEditor) {
+        pendingNavigationRef.current = pending;
+        setUnsavedPromptCopy(promptCopy);
+        setUnsavedPromptError("");
+        setUnsavedPromptSaving(false);
+        setUnsavedPromptOpen(true);
+        return;
+      }
+      executePendingNavigation(pending);
+    },
+    [activeView, editor?.isDirty, executePendingNavigation],
+  );
+
   const setMode = useCallback(
     (nextMode) => {
       const normalized = nextMode === "editor" ? "editor" : "viewer";
       if (normalized === activeView) return;
-      if (
-        activeView === "editor" &&
-        normalized === "viewer" &&
-        editor?.isDirty
-      ) {
-        setPendingModeSwitch(normalized);
-        setShowModeSwitchPrompt(true);
-        return;
-      }
-      commitMode(normalized);
+
+      const modeHref = isLegacyParityMode
+        ? buildModeHref({
+            mode: normalized,
+            slug: boot?.restaurant?.slug || slug,
+            searchParams,
+          })
+        : "";
+
+      queueNavigationWithUnsavedGuard(
+        {
+          nextMode: normalized,
+          href: modeHref,
+        },
+        "Would you like to save before leaving editor mode?",
+      );
     },
-    [activeView, commitMode, editor?.isDirty],
+    [
+      activeView,
+      boot?.restaurant?.slug,
+      isLegacyParityMode,
+      queueNavigationWithUnsavedGuard,
+      searchParams,
+      slug,
+    ],
+  );
+
+  const onLegacyNavigate = useCallback(
+    (href) => {
+      if (!isGuardableInternalHref(href)) return;
+      let targetHref = String(href || "").trim();
+
+      if (typeof window !== "undefined") {
+        try {
+          const parsed = new URL(targetHref, window.location.href);
+          if (parsed.origin !== window.location.origin) {
+            window.location.href = targetHref;
+            return;
+          }
+          targetHref = `${parsed.pathname}${parsed.search}${parsed.hash}`;
+        } catch {
+          return;
+        }
+      }
+
+      queueNavigationWithUnsavedGuard(
+        { href: targetHref },
+        "You have unsaved changes. Save before leaving this page?",
+      );
+    },
+    [queueNavigationWithUnsavedGuard],
   );
 
   const isViewerMode = !(activeView === "editor" && boot?.canEdit);
 
   useEffect(() => {
-    if (activeView === "editor") return;
-    setShowModeSwitchPrompt(false);
-    setPendingModeSwitch("");
-  }, [activeView]);
-
-  useEffect(() => {
-    if (!boot?.restaurant || !isViewerMode) return undefined;
+    if (!boot?.restaurant || !isViewerMode || isLegacyParityMode) return undefined;
     const previousBodyOverflow = document.body.style.overflow;
     const previousHtmlOverflow = document.documentElement.style.overflow;
     document.body.style.overflow = "hidden";
@@ -742,7 +897,97 @@ export default function RestaurantClient() {
       document.body.style.overflow = previousBodyOverflow;
       document.documentElement.style.overflow = previousHtmlOverflow;
     };
-  }, [boot?.restaurant, isViewerMode]);
+  }, [boot?.restaurant, isLegacyParityMode, isViewerMode]);
+
+  useEffect(() => {
+    const body = document.body;
+    const html = document.documentElement;
+
+    body.classList.toggle("restaurant-parity-legacy", isLegacyParityMode);
+    if (isLegacyParityMode) {
+      body.classList.remove("menuScrollLocked");
+      html.classList.remove("menuScrollLocked");
+      body.classList.toggle("editorView", activeView === "editor" && Boolean(boot?.canEdit));
+    } else {
+      body.classList.remove("menuScrollLocked");
+      html.classList.remove("menuScrollLocked");
+      body.classList.remove("editorView");
+    }
+
+    return () => {
+      body.classList.remove("restaurant-parity-legacy");
+      if (!isLegacyParityMode) return;
+      body.classList.remove("menuScrollLocked");
+      html.classList.remove("menuScrollLocked");
+      body.classList.remove("editorView");
+    };
+  }, [activeView, boot?.canEdit, boot?.restaurant, isLegacyParityMode]);
+
+  useEffect(() => {
+    if (!isLegacyParityMode || !boot?.restaurant) return undefined;
+
+    const body = document.body;
+    const html = document.documentElement;
+    const shouldUnlock = activeView === "editor" && Boolean(boot?.canEdit);
+
+    const clearLegacyLocks = () => {
+      body.classList.remove("menuScrollLocked");
+      html.classList.remove("menuScrollLocked");
+
+      if (!shouldUnlock) return;
+
+      body.style.overflow = "";
+      html.style.overflow = "";
+      body.style.position = "";
+      body.style.inset = "";
+    };
+
+    clearLegacyLocks();
+    const frameId = window.requestAnimationFrame(clearLegacyLocks);
+    const timerId = window.setTimeout(clearLegacyLocks, 120);
+
+    return () => {
+      window.cancelAnimationFrame(frameId);
+      window.clearTimeout(timerId);
+    };
+  }, [activeView, boot?.canEdit, boot?.restaurant, isLegacyParityMode]);
+
+  useEffect(() => {
+    if (!isLegacyParityMode) return undefined;
+
+    const onDocumentClick = (event) => {
+      if (event.defaultPrevented) return;
+      if (event.button !== 0) return;
+      if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+
+      const link = event.target?.closest?.("a[href]");
+      if (!link) return;
+      if (link.hasAttribute("data-unsaved-nav")) return;
+      if (link.target === "_blank" || link.hasAttribute("download")) return;
+
+      const href = link.getAttribute("href");
+      if (!isGuardableInternalHref(href)) return;
+
+      try {
+        const targetUrl = new URL(href, window.location.href);
+        if (targetUrl.origin !== window.location.origin) return;
+        const targetHref = `${targetUrl.pathname}${targetUrl.search}${targetUrl.hash}`;
+        const currentHref = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+        if (targetHref === currentHref) return;
+
+        event.preventDefault();
+        queueNavigationWithUnsavedGuard(
+          { href: targetHref },
+          "You have unsaved changes. Save before leaving this page?",
+        );
+      } catch {
+        // Ignore malformed URLs.
+      }
+    };
+
+    document.addEventListener("click", onDocumentClick, true);
+    return () => document.removeEventListener("click", onDocumentClick, true);
+  }, [isLegacyParityMode, queueNavigationWithUnsavedGuard]);
 
   if (!supabase) {
     return (
@@ -779,8 +1024,11 @@ export default function RestaurantClient() {
   }
 
   const isEditorMode = activeView === "editor" && boot?.canEdit;
+  const isOwner = isOwnerUser(boot?.user);
+  const isManager = isManagerUser(boot?.user);
+  const currentRestaurantSlug = boot?.restaurant?.slug || slug;
   const editorHref = `/restaurant?slug=${encodeURIComponent(
-    boot?.restaurant?.slug || slug,
+    currentRestaurantSlug,
   )}&edit=1`;
   const topNavLinks = isEditorMode
     ? [
@@ -798,73 +1046,88 @@ export default function RestaurantClient() {
         { href: "/account", label: "Account settings" },
       ];
 
+  const topbar = isLegacyParityMode ? (
+    <LegacyRestaurantTopbar
+      user={boot?.user}
+      isOwner={isOwner}
+      isManager={isManager}
+      managerRestaurants={boot?.managerRestaurants || []}
+      currentRestaurantSlug={currentRestaurantSlug}
+      canEdit={boot?.canEdit}
+      activeView={activeView}
+      onNavigate={onLegacyNavigate}
+      onToggleMode={setMode}
+      onSignOut={onSignOut}
+    />
+  ) : (
+    <header className="simple-topbar restaurant-legacy-topbar">
+      <div className="restaurant-legacy-topbar-inner">
+        <div className="restaurant-legacy-mode-slot">
+          {boot?.canEdit ? (
+            <button
+              type="button"
+              className="restaurant-legacy-mode-toggle"
+              onClick={() => setMode(activeView === "editor" ? "viewer" : "editor")}
+              aria-label={
+                activeView === "editor"
+                  ? "Switch to customer mode"
+                  : "Switch to editor mode"
+              }
+            >
+              <span className="restaurant-legacy-mode-label">
+                {activeView === "editor" ? "Editor mode" : "Customer mode"}
+              </span>
+              <span
+                className={`mode-toggle ${activeView === "editor" ? "active" : ""}`}
+                role="switch"
+                aria-checked={activeView === "editor"}
+              />
+            </button>
+          ) : null}
+        </div>
+
+        <div className="restaurant-legacy-brand-nav">
+          <Link
+            className="simple-brand restaurant-legacy-brand"
+            href={isEditorMode ? "/manager-dashboard" : "/home"}
+          >
+            <img src={CLARIVORE_LOGO_SRC} alt="Clarivore logo" />
+            <span>Clarivore</span>
+          </Link>
+          <nav className="simple-nav restaurant-legacy-nav">
+            {topNavLinks.map((item) => (
+              <Link key={`${item.href}-${item.label}`} href={item.href}>
+                {item.label}
+              </Link>
+            ))}
+          </nav>
+        </div>
+
+        <div className="restaurant-legacy-auth-slot">
+          {boot?.user?.id ? (
+            <button
+              type="button"
+              className="btnLink restaurant-legacy-signout"
+              onClick={onSignOut}
+            >
+              Sign out
+            </button>
+          ) : (
+            <Link href="/account?mode=signin" className="btnLink restaurant-legacy-signout">
+              Sign in
+            </Link>
+          )}
+        </div>
+      </div>
+    </header>
+  );
+
   return (
     <PageShell
       shellClassName={isViewerMode ? "page-shell restaurant-legacy-shell" : "page-shell"}
       mainClassName={isViewerMode ? "page-main restaurant-legacy-main" : "page-main"}
       contentClassName={isViewerMode ? "restaurant-legacy-content" : ""}
-      topbar={
-        <header className="simple-topbar restaurant-legacy-topbar">
-          <div className="restaurant-legacy-topbar-inner">
-            <div className="restaurant-legacy-mode-slot">
-              {boot?.canEdit ? (
-                <button
-                  type="button"
-                  className="restaurant-legacy-mode-toggle"
-                  onClick={() => setMode(activeView === "editor" ? "viewer" : "editor")}
-                  aria-label={
-                    activeView === "editor"
-                      ? "Switch to customer mode"
-                      : "Switch to editor mode"
-                  }
-                >
-                  <span className="restaurant-legacy-mode-label">
-                    {activeView === "editor" ? "Editor mode" : "Customer mode"}
-                  </span>
-                  <span
-                    className={`mode-toggle ${activeView === "editor" ? "active" : ""}`}
-                    role="switch"
-                    aria-checked={activeView === "editor"}
-                  />
-                </button>
-              ) : null}
-            </div>
-
-            <div className="restaurant-legacy-brand-nav">
-              <Link
-                className="simple-brand restaurant-legacy-brand"
-                href={isEditorMode ? "/manager-dashboard" : "/home"}
-              >
-                <img src={CLARIVORE_LOGO_SRC} alt="Clarivore logo" />
-                <span>Clarivore</span>
-              </Link>
-              <nav className="simple-nav restaurant-legacy-nav">
-                {topNavLinks.map((item) => (
-                  <Link key={`${item.href}-${item.label}`} href={item.href}>
-                    {item.label}
-                  </Link>
-                ))}
-              </nav>
-            </div>
-
-            <div className="restaurant-legacy-auth-slot">
-              {boot?.user?.id ? (
-                <button
-                  type="button"
-                  className="btnLink restaurant-legacy-signout"
-                  onClick={onSignOut}
-                >
-                  Sign out
-                </button>
-              ) : (
-                <Link href="/account?mode=signin" className="btnLink restaurant-legacy-signout">
-                  Sign in
-                </Link>
-              )}
-            </div>
-          </div>
-        </header>
-      }
+      topbar={topbar}
     >
       {inviteToken && !boot?.user?.id ? (
         <div className="mb-4 rounded-xl border border-[rgba(76,90,212,0.5)] bg-[rgba(76,90,212,0.2)] p-3 text-[#dce5ff]">
@@ -881,7 +1144,11 @@ export default function RestaurantClient() {
       ) : null}
 
       {activeView === "editor" && boot.canEdit ? (
-        <RestaurantEditor editor={editor} />
+        <RestaurantEditor
+          editor={editor}
+          parityMode={editorParityMode}
+          onNavigate={isLegacyParityMode ? onLegacyNavigate : undefined}
+        />
       ) : (
         <RestaurantViewer
           restaurant={boot.restaurant}
@@ -893,59 +1160,92 @@ export default function RestaurantClient() {
       )}
 
       <Modal
-        open={showModeSwitchPrompt}
+        open={unsavedPromptOpen}
         onOpenChange={(open) => {
-          if (!open) {
-            setShowModeSwitchPrompt(false);
-            setPendingModeSwitch("");
-          }
+          if (!open && unsavedPromptSaving) return;
+          setUnsavedPromptOpen(open);
+          if (open) return;
+          pendingNavigationRef.current = null;
+          setUnsavedPromptError("");
+          setUnsavedPromptSaving(false);
         }}
         title="You have unsaved changes"
         className="max-w-[560px]"
+        closeOnEsc={!unsavedPromptSaving}
+        closeOnOverlay={!unsavedPromptSaving}
       >
         <div className="space-y-3">
           <p className="m-0 text-sm text-[#cfd8f6]">
-            Would you like to save before leaving editor mode?
+            {unsavedPromptCopy}
           </p>
+          {unsavedPromptError ? (
+            <p className="m-0 rounded-lg border border-[#a12525] bg-[rgba(139,29,29,0.32)] px-3 py-2 text-sm text-[#ffd0d0]">
+              {unsavedPromptError}
+            </p>
+          ) : null}
           <div className="flex flex-wrap gap-2 justify-end">
             <Button
               size="compact"
               tone="primary"
-              loading={modeSwitchSaving}
+              loading={unsavedPromptSaving}
               onClick={async () => {
-                setModeSwitchSaving(true);
-                const result = await editor.save();
-                setModeSwitchSaving(false);
-                if (result?.success) {
-                  setShowModeSwitchPrompt(false);
-                  commitMode(pendingModeSwitch || "viewer");
-                  setPendingModeSwitch("");
+                if (unsavedPromptSaving) return;
+                setUnsavedPromptSaving(true);
+                setUnsavedPromptError("");
+
+                try {
+                  const result = await editor.save();
+                  if (result?.success) {
+                    const pending = pendingNavigationRef.current;
+                    pendingNavigationRef.current = null;
+                    setUnsavedPromptOpen(false);
+                    executePendingNavigation(pending);
+                    return;
+                  }
+
+                  setUnsavedPromptError(
+                    editor.saveError ||
+                      result?.error?.message ||
+                      "Failed to save changes.",
+                  );
+                } catch (error) {
+                  setUnsavedPromptError(
+                    error?.message || "Failed to save changes.",
+                  );
+                } finally {
+                  setUnsavedPromptSaving(false);
                 }
               }}
             >
-              Save and switch
+              Save then leave
             </Button>
             <Button
               size="compact"
               tone="danger"
               variant="outline"
+              disabled={unsavedPromptSaving}
               onClick={() => {
-                setShowModeSwitchPrompt(false);
-                commitMode(pendingModeSwitch || "viewer");
-                setPendingModeSwitch("");
+                editor.discardUnsavedChanges();
+                const pending = pendingNavigationRef.current;
+                pendingNavigationRef.current = null;
+                setUnsavedPromptOpen(false);
+                setUnsavedPromptError("");
+                executePendingNavigation(pending);
               }}
             >
-              Exit without saving
+              Leave without saving
             </Button>
             <Button
               size="compact"
               variant="outline"
+              disabled={unsavedPromptSaving}
               onClick={() => {
-                setShowModeSwitchPrompt(false);
-                setPendingModeSwitch("");
+                pendingNavigationRef.current = null;
+                setUnsavedPromptOpen(false);
+                setUnsavedPromptError("");
               }}
             >
-              Cancel
+              Stay here
             </Button>
           </div>
         </div>

@@ -159,6 +159,7 @@ const state = {
     routeChecks: [],
     legacyChecks: [],
     apiChecks: [],
+    parityChecks: [],
   },
 };
 
@@ -209,6 +210,7 @@ async function main() {
       state.tempImagePath = await createTempImage();
       await runPlaywrightFlows();
       await validateOrderArtifacts();
+      await runLegacyEditorParityChecks();
     });
   } catch (error) {
     state.stageFailed = true;
@@ -795,7 +797,7 @@ async function runManagerFlow(browser) {
     await page.goto(
       `${state.baseUrl}/restaurant?slug=${encodeURIComponent(
         state.createdRestaurant.slug,
-      )}&edit=1`,
+      )}&edit=1&editorParity=current`,
       { waitUntil: "domcontentloaded" },
     );
 
@@ -900,6 +902,53 @@ async function validateOrderArtifacts() {
     throw new Error(
       `No tablet_orders row found for diner order note: ${testData.dinerOrderNote}`,
     );
+  }
+}
+
+async function runLegacyEditorParityChecks() {
+  if (!state.createdRestaurant?.slug) {
+    throw new Error("Parity checks require created restaurant slug.");
+  }
+
+  const reportJsonPath = path.join(
+    REPORTS_DIR,
+    `legacy-editor-parity-${state.runId}.json`,
+  );
+  const reportMdPath = path.join(
+    REPORTS_DIR,
+    `legacy-editor-parity-${state.runId}.md`,
+  );
+
+  const commandArgs = [
+    "scripts/verify-legacy-editor-parity.mjs",
+    "--base-url",
+    state.baseUrl,
+    "--slug",
+    state.createdRestaurant.slug,
+    "--run-id",
+    state.runId,
+  ];
+  if (process.env.VERIFY_CAPTURE_SNAPSHOTS === "1") {
+    commandArgs.push("--capture", "1");
+  }
+
+  try {
+    runCommand("node", commandArgs, { stdio: "pipe" });
+    state.checks.parityChecks.push({
+      status: "pass",
+      slug: state.createdRestaurant.slug,
+      reportJsonPath,
+      reportMdPath,
+    });
+  } catch (error) {
+    state.checks.parityChecks.push({
+      status: "fail",
+      slug: state.createdRestaurant.slug,
+      reportJsonPath,
+      reportMdPath,
+      error: error?.message || "Parity check failed.",
+    });
+    throw error;
   }
 }
 
@@ -1215,6 +1264,14 @@ async function writeReports() {
     lines.push(
       `- API ${check.path}: GET=${check.getStatus} POST=${check.postStatus}`,
     );
+  }
+  for (const check of state.checks.parityChecks || []) {
+    lines.push(
+      `- Legacy parity script (${check.slug}): ${check.status} (json=${check.reportJsonPath})`,
+    );
+    if (check.error) {
+      lines.push(`  - Error: ${check.error}`);
+    }
   }
   lines.push("");
 

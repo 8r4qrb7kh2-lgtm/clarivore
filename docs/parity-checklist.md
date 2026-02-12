@@ -34,3 +34,15 @@ This checklist tracks route-level parity for the full Next-native rewrite.
 - [x] No active `app/lib/restaurantRuntime/*` dependency chain.
 - [x] No deprecated runtime constants in `app/*`.
 - [x] Restaurant route uses React hooks/components as source of truth.
+
+## Legacy Editor Parity Gates
+
+- [x] Query override supports `editorParity=legacy|current`.
+- [x] Env default supports `NEXT_PUBLIC_EDITOR_PARITY_DEFAULT`.
+- [x] localStorage sticky mode supports `clarivoreEditorParityMode`.
+- [x] Legacy topbar parity path enabled behind parity switch.
+- [x] Legacy editor shell parity path enabled behind parity switch.
+- [x] Unsaved navigation guard covers mode toggle + nav + beforeunload.
+- [x] Scanner flow supports corner detect + manual adjust + split remap.
+- [x] `detect-corners` Supabase edge function added to repo.
+- [x] Dedicated parity verification script exists and is wired into transition harness.

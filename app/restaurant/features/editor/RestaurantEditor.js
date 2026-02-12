@@ -3,6 +3,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { Button, Input, Modal, Textarea } from "../../../components/ui";
+import {
+  buildDefaultScannerCorners,
+  fileToDataUrl as readScannerFileToDataUrl,
+  mapDetectedCornersToOriginal,
+  normalizeImageForCornerDetection,
+  splitTallImageIntoSections,
+  warpImageFromCorners,
+} from "./menuScanner";
 
 function clamp(value, min, max) {
   return Math.min(Math.max(value, min), max);
@@ -792,80 +800,469 @@ function ConfirmInfoModal({ editor }) {
   );
 }
 
-function MenuPagesModal({ editor }) {
-  const replaceInputsRef = useRef({});
-  const addInputRef = useRef(null);
+function MenuScannerModal({
+  open,
+  sourceImage,
+  corners,
+  processing,
+  detectionError,
+  onOpenChange,
+  onCornerChange,
+  onReset,
+  onApply,
+  onUseOriginal,
+}) {
+  const imageRef = useRef(null);
+  const dragCornerRef = useRef("");
+
+  const updateCornerFromPointer = useCallback(
+    (cornerKey, pointerEvent) => {
+      if (!cornerKey || !pointerEvent) return;
+      const imageNode = imageRef.current;
+      if (!imageNode) return;
+      const rect = imageNode.getBoundingClientRect();
+      if (!rect.width || !rect.height) return;
+
+      const x = clamp(((pointerEvent.clientX - rect.left) / rect.width) * 1000, 0, 1000);
+      const y = clamp(((pointerEvent.clientY - rect.top) / rect.height) * 1000, 0, 1000);
+      onCornerChange?.(cornerKey, { x, y });
+    },
+    [onCornerChange],
+  );
+
+  useEffect(() => {
+    if (!open) return undefined;
+
+    const handlePointerMove = (event) => {
+      if (!dragCornerRef.current) return;
+      event.preventDefault();
+      updateCornerFromPointer(dragCornerRef.current, event);
+    };
+
+    const handlePointerUp = () => {
+      dragCornerRef.current = "";
+    };
+
+    window.addEventListener("pointermove", handlePointerMove);
+    window.addEventListener("pointerup", handlePointerUp);
+    return () => {
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerup", handlePointerUp);
+      dragCornerRef.current = "";
+    };
+  }, [open, updateCornerFromPointer]);
+
+  const points = useMemo(() => {
+    const safe = corners && typeof corners === "object" ? corners : buildDefaultScannerCorners();
+    return {
+      topLeft: safe.topLeft || { x: 50, y: 50 },
+      topRight: safe.topRight || { x: 950, y: 50 },
+      bottomRight: safe.bottomRight || { x: 950, y: 950 },
+      bottomLeft: safe.bottomLeft || { x: 50, y: 950 },
+    };
+  }, [corners]);
+
+  const polygonPoints = `${(points.topLeft.x / 1000) * 100},${(points.topLeft.y / 1000) * 100} ${(points.topRight.x / 1000) * 100},${(points.topRight.y / 1000) * 100} ${(points.bottomRight.x / 1000) * 100},${(points.bottomRight.y / 1000) * 100} ${(points.bottomLeft.x / 1000) * 100},${(points.bottomLeft.y / 1000) * 100}`;
 
   return (
     <Modal
-      open={editor.menuPagesOpen}
-      onOpenChange={(open) => editor.setMenuPagesOpen(open)}
-      title="Edit menu images"
-      className="max-w-[960px]"
+      open={open}
+      onOpenChange={(next) => {
+        if (processing) return;
+        onOpenChange?.(next);
+      }}
+      title="Adjust menu corners"
+      className="max-w-[980px]"
+      closeOnOverlay={!processing}
+      closeOnEsc={!processing}
     >
       <div className="space-y-3">
-        <div className="flex flex-wrap gap-2">
-          <Button
-            size="compact"
-            tone="primary"
-            onClick={() => addInputRef.current?.click()}
-          >
-            Add page
-          </Button>
-          <input
-            ref={addInputRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={async (event) => {
-              const file = event.target.files?.[0];
-              if (!file) return;
-              const image = await fileToDataUrl(file);
-              editor.addMenuPage(image);
-              event.target.value = "";
-            }}
-          />
+        <p className="note m-0 text-sm">
+          Drag the green corners to match the page edges, then confirm crop.
+        </p>
+        {detectionError ? (
+          <p className="m-0 rounded-lg border border-[#8c6c1a] bg-[rgba(123,86,10,0.25)] px-3 py-2 text-sm text-[#ffe4a8]">
+            {detectionError}
+          </p>
+        ) : null}
+
+        <div className="relative rounded-xl border border-[#2a3261] bg-[#070b16] p-2">
+          {sourceImage ? (
+            <div className="relative">
+              <img
+                ref={imageRef}
+                src={sourceImage}
+                alt="Menu scan source"
+                className="max-h-[62vh] w-full rounded object-contain"
+                draggable={false}
+              />
+              <svg
+                viewBox="0 0 100 100"
+                preserveAspectRatio="none"
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  width: "100%",
+                  height: "100%",
+                  pointerEvents: "none",
+                }}
+              >
+                <polygon
+                  points={polygonPoints}
+                  fill="rgba(34,197,94,0.12)"
+                  stroke="rgba(74,222,128,0.95)"
+                  strokeWidth="0.4"
+                />
+              </svg>
+              {Object.entries(points).map(([cornerKey, point]) => (
+                <button
+                  key={cornerKey}
+                  type="button"
+                  aria-label={`Move ${cornerKey}`}
+                  onPointerDown={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    dragCornerRef.current = cornerKey;
+                    updateCornerFromPointer(cornerKey, event);
+                  }}
+                  style={{
+                    position: "absolute",
+                    left: `${(point.x / 1000) * 100}%`,
+                    top: `${(point.y / 1000) * 100}%`,
+                    width: 18,
+                    height: 18,
+                    borderRadius: "50%",
+                    border: "2px solid #d9ffe6",
+                    background: "#16a34a",
+                    transform: "translate(-50%, -50%)",
+                    boxShadow: "0 0 0 2px rgba(5,8,20,0.45)",
+                    cursor: "grab",
+                  }}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="flex h-[220px] items-center justify-center text-sm text-[#9ea9c8]">
+              No image selected.
+            </div>
+          )}
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {editor.draftMenuImages.map((image, index) => (
-            <div
-              key={`menu-page-${index}`}
-              className="rounded-xl border border-[#2a3261] bg-[rgba(17,22,48,0.8)] p-2"
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <Button size="compact" variant="outline" onClick={onUseOriginal} disabled={processing}>
+            Use original
+          </Button>
+          <Button size="compact" variant="outline" onClick={onReset} disabled={processing}>
+            Reset corners
+          </Button>
+          <Button size="compact" tone="success" loading={processing} onClick={onApply}>
+            Confirm &amp; crop
+          </Button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+function MenuPagesModal({ editor, parityMode = "current" }) {
+  const scannerEnabled = parityMode === "legacy";
+  const replaceInputsRef = useRef({});
+  const replaceScannerInputsRef = useRef({});
+  const addInputRef = useRef(null);
+  const scanAddInputRef = useRef(null);
+  const scanCameraInputRef = useRef(null);
+
+  const [scannerOpen, setScannerOpen] = useState(false);
+  const [scannerMode, setScannerMode] = useState("add");
+  const [scannerTargetIndex, setScannerTargetIndex] = useState(-1);
+  const [scannerSourceImage, setScannerSourceImage] = useState("");
+  const [scannerCorners, setScannerCorners] = useState(buildDefaultScannerCorners());
+  const [scannerBusy, setScannerBusy] = useState(false);
+  const [scannerApplying, setScannerApplying] = useState(false);
+  const [scannerDetectionError, setScannerDetectionError] = useState("");
+  const [scannerNotice, setScannerNotice] = useState("");
+
+  const resetScanner = useCallback(() => {
+    setScannerOpen(false);
+    setScannerMode("add");
+    setScannerTargetIndex(-1);
+    setScannerSourceImage("");
+    setScannerCorners(buildDefaultScannerCorners());
+    setScannerDetectionError("");
+    setScannerApplying(false);
+  }, []);
+
+  useEffect(() => {
+    if (!editor.menuPagesOpen) {
+      setScannerNotice("");
+      resetScanner();
+    }
+  }, [editor.menuPagesOpen, resetScanner]);
+
+  const launchScannerFromFile = useCallback(
+    async (file, options = {}) => {
+      if (!file || !scannerEnabled) return;
+
+      try {
+        setScannerBusy(true);
+        setScannerNotice("");
+        setScannerDetectionError("");
+
+        const sourceImage = await readScannerFileToDataUrl(file);
+        if (!sourceImage) {
+          throw new Error("Failed to read image.");
+        }
+
+        const normalized = await normalizeImageForCornerDetection(sourceImage);
+        const detection = await editor.detectMenuCorners({
+          imageData: normalized.dataUrl,
+          width: normalized.width,
+          height: normalized.height,
+        });
+
+        const mappedCorners = detection?.corners
+          ? mapDetectedCornersToOriginal(detection.corners, normalized.metrics)
+          : buildDefaultScannerCorners();
+
+        setScannerMode(options.mode === "replace" ? "replace" : "add");
+        setScannerTargetIndex(
+          Number.isFinite(Number(options.targetIndex))
+            ? Number(options.targetIndex)
+            : -1,
+        );
+        setScannerSourceImage(sourceImage);
+        setScannerCorners(mappedCorners);
+        setScannerDetectionError(
+          detection?.success
+            ? ""
+            : detection?.error || "Corner detection failed. You can adjust corners manually.",
+        );
+        setScannerOpen(true);
+      } catch (error) {
+        setScannerMode(options.mode === "replace" ? "replace" : "add");
+        setScannerTargetIndex(
+          Number.isFinite(Number(options.targetIndex))
+            ? Number(options.targetIndex)
+            : -1,
+        );
+        if (!scannerSourceImage) {
+          try {
+            const fallbackSource = await readScannerFileToDataUrl(file);
+            setScannerSourceImage(fallbackSource);
+          } catch {
+            setScannerSourceImage("");
+          }
+        }
+        setScannerCorners(buildDefaultScannerCorners());
+        setScannerDetectionError(
+          error?.message ||
+            "Automatic corner detection failed. Adjust corners manually.",
+        );
+        setScannerOpen(true);
+      } finally {
+        setScannerBusy(false);
+      }
+    },
+    [editor, scannerEnabled, scannerSourceImage],
+  );
+
+  const applyScanner = useCallback(
+    async (useOriginalImage = false) => {
+      if (!scannerSourceImage) return;
+      setScannerApplying(true);
+
+      try {
+        let processedImage = scannerSourceImage;
+        let usedFallback = false;
+
+        if (!useOriginalImage) {
+          const warp = await warpImageFromCorners(scannerSourceImage, scannerCorners);
+          if (warp?.dataUrl) {
+            processedImage = warp.dataUrl;
+            usedFallback = Boolean(warp.usedFallback);
+          }
+        }
+
+        const sections = await splitTallImageIntoSections(processedImage, {
+          maxAspectRatio: 1.75,
+          maxSections: 5,
+        });
+        const sectionPayload = sections.length
+          ? sections
+          : [{ dataUrl: processedImage, yStart: 0, yEnd: 100 }];
+
+        if (scannerMode === "replace" && scannerTargetIndex >= 0) {
+          editor.replaceMenuPageWithSections(scannerTargetIndex, sectionPayload);
+        } else {
+          editor.addMenuPages(sectionPayload.map((section) => section.dataUrl));
+        }
+
+        if (sectionPayload.length > 1) {
+          setScannerNotice(
+            `Page split into ${sectionPayload.length} sections for easier overlay editing.`,
+          );
+        } else if (usedFallback) {
+          setScannerNotice(
+            "Perspective warp fallback applied because OpenCV is unavailable in this runtime.",
+          );
+        } else {
+          setScannerNotice("Scanner applied successfully.");
+        }
+
+        resetScanner();
+      } catch (error) {
+        setScannerDetectionError(error?.message || "Failed to apply scanned image.");
+      } finally {
+        setScannerApplying(false);
+      }
+    },
+    [
+      editor,
+      resetScanner,
+      scannerCorners,
+      scannerMode,
+      scannerSourceImage,
+      scannerTargetIndex,
+    ],
+  );
+
+  return (
+    <>
+      <Modal
+        open={editor.menuPagesOpen}
+        onOpenChange={(open) => editor.setMenuPagesOpen(open)}
+        title="Edit menu images"
+        className="max-w-[980px]"
+      >
+        <div className="space-y-3">
+          <div className="flex flex-wrap gap-2">
+            <Button
+              size="compact"
+              tone="primary"
+              onClick={() => addInputRef.current?.click()}
             >
-              <div className="rounded-lg border border-[#2a3261] bg-[#070b16] p-1">
-                {image ? (
-                  <img
-                    src={image}
-                    alt={`Menu page ${index + 1}`}
-                    className="h-[180px] w-full rounded object-contain"
-                  />
-                ) : (
-                  <div className="flex h-[180px] items-center justify-center text-xs text-[#9ea9c8]">
-                    No image
-                  </div>
-                )}
-              </div>
-              <div className="mt-2 flex items-center justify-between">
-                <span className="text-xs text-[#c4cfec]">Page {index + 1}</span>
-                <div className="flex gap-2">
-                  <Button
-                    size="compact"
-                    variant="outline"
-                    onClick={() => replaceInputsRef.current[index]?.click()}
-                  >
-                    Replace
-                  </Button>
-                  {editor.draftMenuImages.length > 1 ? (
+              Add page
+            </Button>
+            <input
+              ref={addInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={async (event) => {
+                const file = event.target.files?.[0];
+                if (!file) return;
+                const image = await fileToDataUrl(file);
+                editor.addMenuPage(image);
+                event.target.value = "";
+              }}
+            />
+
+            {scannerEnabled ? (
+              <>
+                <Button
+                  size="compact"
+                  variant="outline"
+                  onClick={() => scanAddInputRef.current?.click()}
+                >
+                  Scan + add
+                </Button>
+                <Button
+                  size="compact"
+                  variant="outline"
+                  onClick={() => scanCameraInputRef.current?.click()}
+                >
+                  Scan camera
+                </Button>
+                <input
+                  ref={scanAddInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={async (event) => {
+                    const file = event.target.files?.[0];
+                    if (!file) return;
+                    await launchScannerFromFile(file, { mode: "add" });
+                    event.target.value = "";
+                  }}
+                />
+                <input
+                  ref={scanCameraInputRef}
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  className="hidden"
+                  onChange={async (event) => {
+                    const file = event.target.files?.[0];
+                    if (!file) return;
+                    await launchScannerFromFile(file, { mode: "add" });
+                    event.target.value = "";
+                  }}
+                />
+              </>
+            ) : null}
+          </div>
+
+          {scannerBusy ? (
+            <p className="m-0 rounded-lg border border-[#2a3261] bg-[rgba(12,18,44,0.62)] px-3 py-2 text-sm text-[#ced8f8]">
+              Detecting menu corners...
+            </p>
+          ) : null}
+
+          {scannerNotice ? (
+            <p className="m-0 rounded-lg border border-[#2a3261] bg-[rgba(12,18,44,0.62)] px-3 py-2 text-sm text-[#ced8f8]">
+              {scannerNotice}
+            </p>
+          ) : null}
+
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {editor.draftMenuImages.map((image, index) => (
+              <div
+                key={`menu-page-${index}`}
+                className="rounded-xl border border-[#2a3261] bg-[rgba(17,22,48,0.8)] p-2"
+              >
+                <div className="rounded-lg border border-[#2a3261] bg-[#070b16] p-1">
+                  {image ? (
+                    <img
+                      src={image}
+                      alt={`Menu page ${index + 1}`}
+                      className="h-[180px] w-full rounded object-contain"
+                    />
+                  ) : (
+                    <div className="flex h-[180px] items-center justify-center text-xs text-[#9ea9c8]">
+                      No image
+                    </div>
+                  )}
+                </div>
+                <div className="mt-2 space-y-2">
+                  <span className="block text-xs text-[#c4cfec]">Page {index + 1}</span>
+                  <div className="flex flex-wrap gap-2">
                     <Button
                       size="compact"
-                      tone="danger"
                       variant="outline"
-                      onClick={() => editor.removeMenuPage(index)}
+                      onClick={() => replaceInputsRef.current[index]?.click()}
                     >
-                      Remove
+                      Replace
                     </Button>
-                  ) : null}
+                    {scannerEnabled ? (
+                      <Button
+                        size="compact"
+                        variant="outline"
+                        onClick={() => replaceScannerInputsRef.current[index]?.click()}
+                      >
+                        Scan replace
+                      </Button>
+                    ) : null}
+                    {editor.draftMenuImages.length > 1 ? (
+                      <Button
+                        size="compact"
+                        tone="danger"
+                        variant="outline"
+                        onClick={() => editor.removeMenuPage(index)}
+                      >
+                        Remove
+                      </Button>
+                    ) : null}
+                  </div>
                 </div>
                 <input
                   ref={(node) => {
@@ -882,12 +1279,49 @@ function MenuPagesModal({ editor }) {
                     event.target.value = "";
                   }}
                 />
+                <input
+                  ref={(node) => {
+                    replaceScannerInputsRef.current[index] = node;
+                  }}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={async (event) => {
+                    const file = event.target.files?.[0];
+                    if (!file) return;
+                    await launchScannerFromFile(file, {
+                      mode: "replace",
+                      targetIndex: index,
+                    });
+                    event.target.value = "";
+                  }}
+                />
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
-      </div>
-    </Modal>
+      </Modal>
+
+      <MenuScannerModal
+        open={scannerOpen}
+        onOpenChange={(next) => {
+          if (!next) resetScanner();
+        }}
+        sourceImage={scannerSourceImage}
+        corners={scannerCorners}
+        processing={scannerApplying}
+        detectionError={scannerDetectionError}
+        onCornerChange={(cornerKey, point) =>
+          setScannerCorners((current) => ({
+            ...(current || buildDefaultScannerCorners()),
+            [cornerKey]: point,
+          }))
+        }
+        onReset={() => setScannerCorners(buildDefaultScannerCorners())}
+        onApply={() => applyScanner(false)}
+        onUseOriginal={() => applyScanner(true)}
+      />
+    </>
   );
 }
 
@@ -985,12 +1419,13 @@ function RestaurantSettingsModal({ editor }) {
   );
 }
 
-export function RestaurantEditor({ editor }) {
+export function RestaurantEditor({ editor, parityMode = "current", onNavigate }) {
   const menuScrollRef = useRef(null);
   const pageRefs = useRef([]);
   const pageImageRefs = useRef([]);
   const overlayInteractionRef = useRef(null);
   const mappingDragRef = useRef(null);
+  const isLegacyParity = parityMode === "legacy";
 
   const [scrollSnapshot, setScrollSnapshot] = useState({
     scrollTop: 0,
@@ -998,8 +1433,39 @@ export function RestaurantEditor({ editor }) {
     scrollHeight: 1,
   });
   const [mappedRectPreview, setMappedRectPreview] = useState(null);
+  const [saveReviewOpen, setSaveReviewOpen] = useState(false);
+  const [saveReviewSaving, setSaveReviewSaving] = useState(false);
+  const [saveReviewError, setSaveReviewError] = useState("");
 
   const overlayCountLabel = `${editor.draftOverlays.length} overlay${editor.draftOverlays.length === 1 ? "" : "s"}`;
+  const reviewItems = useMemo(() => {
+    const pending = Array.isArray(editor.pendingChanges) ? editor.pendingChanges : [];
+    const values = pending
+      .map((value) => asText(value))
+      .filter(Boolean);
+    if (values.length) return values;
+    return ["Menu overlays updated"];
+  }, [editor.pendingChanges]);
+
+  const legacySaveButtonVisible = Boolean(
+    isLegacyParity &&
+      (editor.isDirty ||
+        editor.isSaving ||
+        editor.saveStatus === "saved" ||
+        editor.saveStatus === "error"),
+  );
+  const legacySaveButtonLabel = editor.isSaving
+    ? "Saving..."
+    : editor.saveStatus === "saved"
+      ? "Saved"
+      : editor.saveStatus === "error"
+        ? "Retry save"
+        : "Save to site";
+  const legacySaveButtonClass = editor.saveStatus === "error"
+    ? "btnDanger"
+    : editor.saveStatus === "saved"
+      ? "btnSuccess"
+      : "btnPrimary";
 
   const detectDishes = editor.detectWizardState.dishes || [];
   const mappedCount = detectDishes.filter((dish) => dish.mapped).length;
@@ -1010,6 +1476,16 @@ export function RestaurantEditor({ editor }) {
     !editor.detectWizardState.loading &&
     Boolean(currentWizardDish) &&
     !allMapped;
+
+  const triggerSave = useCallback(async () => {
+    if (editor.isSaving) return;
+    if (isLegacyParity && editor.isDirty) {
+      setSaveReviewError("");
+      setSaveReviewOpen(true);
+      return;
+    }
+    await editor.save();
+  }, [editor, isLegacyParity]);
 
   const refreshScrollSnapshot = useCallback(() => {
     const scrollNode = menuScrollRef.current;
@@ -1220,6 +1696,19 @@ export function RestaurantEditor({ editor }) {
 
     window.removeEventListener("pointermove", interaction.onMove);
     window.removeEventListener("pointerup", interaction.onUp);
+
+    if (
+      interaction.captureTarget &&
+      typeof interaction.captureTarget.releasePointerCapture === "function" &&
+      Number.isFinite(Number(interaction.pointerId))
+    ) {
+      try {
+        interaction.captureTarget.releasePointerCapture(interaction.pointerId);
+      } catch {
+        // Ignore pointer release failures.
+      }
+    }
+
     overlayInteractionRef.current = null;
 
     if (interaction.overlayName) {
@@ -1244,6 +1733,22 @@ export function RestaurantEditor({ editor }) {
 
       event.preventDefault();
       editor.selectOverlay(overlay._editorKey);
+
+      const pointerId = Number.isFinite(Number(event.pointerId))
+        ? Number(event.pointerId)
+        : null;
+      const captureTarget = event.currentTarget;
+      if (
+        captureTarget &&
+        typeof captureTarget.setPointerCapture === "function" &&
+        pointerId !== null
+      ) {
+        try {
+          captureTarget.setPointerCapture(pointerId);
+        } catch {
+          // Ignore pointer capture failures.
+        }
+      }
 
       const pageNode = pageRefs.current[pageIndex];
       if (!pageNode) return;
@@ -1279,6 +1784,8 @@ export function RestaurantEditor({ editor }) {
       overlayInteractionRef.current = {
         overlayKey: overlay._editorKey,
         overlayName: overlay.id || "Dish",
+        pointerId,
+        captureTarget,
         onMove,
         onUp,
       };
@@ -1298,6 +1805,22 @@ export function RestaurantEditor({ editor }) {
       event.preventDefault();
       event.stopPropagation();
       editor.selectOverlay(overlay._editorKey);
+
+      const pointerId = Number.isFinite(Number(event.pointerId))
+        ? Number(event.pointerId)
+        : null;
+      const captureTarget = event.currentTarget;
+      if (
+        captureTarget &&
+        typeof captureTarget.setPointerCapture === "function" &&
+        pointerId !== null
+      ) {
+        try {
+          captureTarget.setPointerCapture(pointerId);
+        } catch {
+          // Ignore pointer capture failures.
+        }
+      }
 
       const pageNode = pageRefs.current[pageIndex];
       if (!pageNode) return;
@@ -1416,6 +1939,8 @@ export function RestaurantEditor({ editor }) {
       overlayInteractionRef.current = {
         overlayKey: overlay._editorKey,
         overlayName: overlay.id || "Dish",
+        pointerId,
+        captureTarget,
         onMove,
         onUp,
       };
@@ -1509,6 +2034,19 @@ export function RestaurantEditor({ editor }) {
     [editor, mappingEnabled],
   );
 
+  const confirmSaveReview = useCallback(async () => {
+    if (saveReviewSaving) return;
+    setSaveReviewSaving(true);
+    setSaveReviewError("");
+    const result = await editor.save();
+    setSaveReviewSaving(false);
+    if (result?.success) {
+      setSaveReviewOpen(false);
+      return;
+    }
+    setSaveReviewError(editor.saveError || result?.error?.message || "Save failed.");
+  }, [editor, saveReviewSaving]);
+
   if (!editor.canEdit) {
     return (
       <section className="rounded-2xl border border-[rgba(124,156,255,0.2)] bg-[rgba(11,14,34,0.82)] p-4">
@@ -1523,19 +2061,23 @@ export function RestaurantEditor({ editor }) {
     <section className="restaurant-legacy-editor">
       <div className="editorLayout restaurant-legacy-editor-layout">
         <div className="editorHeaderStack restaurant-legacy-editor-header">
-          <div className="flex flex-wrap items-center gap-2">
+          {isLegacyParity ? (
             <h1 className="m-0 text-[2.6rem] leading-none text-[#eaf0ff]">Webpage editor</h1>
-            <span className="chip active preference-chip">{overlayCountLabel}</span>
-            {editor.isDirty ? (
-              <span className="chip active preference-chip" style={{ borderColor: "#facc15" }}>
-                Unsaved changes
-              </span>
-            ) : (
-              <span className="chip active preference-chip" style={{ borderColor: "#22c55e" }}>
-                Saved
-              </span>
-            )}
-          </div>
+          ) : (
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="m-0 text-[2.6rem] leading-none text-[#eaf0ff]">Webpage editor</h1>
+              <span className="chip active preference-chip">{overlayCountLabel}</span>
+              {editor.isDirty ? (
+                <span className="chip active preference-chip" style={{ borderColor: "#facc15" }}>
+                  Unsaved changes
+                </span>
+              ) : (
+                <span className="chip active preference-chip" style={{ borderColor: "#22c55e" }}>
+                  Saved
+                </span>
+              )}
+            </div>
+          )}
 
           <div className="editorHeaderRow hasMiniMap">
             <div className="editorMiniMapSlot">
@@ -1609,6 +2151,15 @@ export function RestaurantEditor({ editor }) {
                       >
                         ↷ Redo
                       </button>
+                      {legacySaveButtonVisible ? (
+                        <button
+                          className={`btn ${legacySaveButtonClass}`}
+                          onClick={triggerSave}
+                          disabled={editor.isSaving}
+                        >
+                          {legacySaveButtonLabel}
+                        </button>
+                      ) : null}
                     </div>
                   </div>
 
@@ -1621,9 +2172,11 @@ export function RestaurantEditor({ editor }) {
                       <button className="btn" onClick={() => editor.setChangeLogOpen(true)}>
                         📋 View log of changes
                       </button>
-                      <button className="btn" onClick={editor.runDetectDishes}>
-                        🔍 Detect dishes
-                      </button>
+                      {!isLegacyParity ? (
+                        <button className="btn" onClick={editor.runDetectDishes}>
+                          🔍 Detect dishes
+                        </button>
+                      ) : null}
                     </div>
                   </div>
 
@@ -1642,13 +2195,15 @@ export function RestaurantEditor({ editor }) {
                       >
                         Confirm information is up-to-date
                       </button>
-                      <button
-                        className="btn btnPrimary"
-                        onClick={editor.save}
-                        disabled={!editor.isDirty || editor.isSaving}
-                      >
-                        {editor.isSaving ? "Saving..." : "Save changes"}
-                      </button>
+                      {!isLegacyParity ? (
+                        <button
+                          className="btn btnPrimary"
+                          onClick={triggerSave}
+                          disabled={!editor.isDirty || editor.isSaving}
+                        >
+                          {editor.isSaving ? "Saving..." : "Save changes"}
+                        </button>
+                      ) : null}
                     </div>
                   </div>
                 </div>
@@ -1658,23 +2213,25 @@ export function RestaurantEditor({ editor }) {
                 <div className="note" id="editorNote">
                   Drag to move. Drag any corner to resize. Click ✏️ to edit details.
                 </div>
-                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                  <span className="note" style={{ fontSize: 12 }}>
-                    Zoom:
-                  </span>
-                  <button className="btn" onClick={editor.zoomOut}>
-                    −
-                  </button>
-                  <span id="zoomLevel" style={{ fontSize: 13, minWidth: 45, textAlign: "center", color: "#a8b2d6" }}>
-                    {Math.round(editor.zoomScale * 100)}%
-                  </span>
-                  <button className="btn" onClick={editor.zoomIn}>
-                    +
-                  </button>
-                  <button className="btn" onClick={editor.zoomReset}>
-                    Reset
-                  </button>
-                </div>
+                {!isLegacyParity ? (
+                  <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                    <span className="note" style={{ fontSize: 12 }}>
+                      Zoom:
+                    </span>
+                    <button className="btn" onClick={editor.zoomOut}>
+                      −
+                    </button>
+                    <span id="zoomLevel" style={{ fontSize: 13, minWidth: 45, textAlign: "center", color: "#a8b2d6" }}>
+                      {Math.round(editor.zoomScale * 100)}%
+                    </span>
+                    <button className="btn" onClick={editor.zoomIn}>
+                      +
+                    </button>
+                    <button className="btn" onClick={editor.zoomReset}>
+                      Reset
+                    </button>
+                  </div>
+                ) : null}
               </div>
 
               {editor.saveError ? (
@@ -1685,7 +2242,7 @@ export function RestaurantEditor({ editor }) {
             </div>
           </div>
 
-          {editor.detectWizardOpen ? (
+          {!isLegacyParity && editor.detectWizardOpen ? (
             <div id="detectedDishesPanel" style={{ display: "block", background: "#1a2351", border: "1px solid #2a3261", borderRadius: 12, padding: 20, marginBottom: 4, textAlign: "center" }}>
               <div style={{ fontSize: "1.3rem", fontWeight: 600, marginBottom: 8 }} id="currentDishName">
                 {editor.detectWizardState.loading
@@ -1746,7 +2303,7 @@ export function RestaurantEditor({ editor }) {
           <div
             className="restaurant-legacy-editor-canvas"
             style={{
-              zoom: editor.zoomScale,
+              zoom: isLegacyParity ? 1 : editor.zoomScale,
             }}
           >
             {editor.overlaysByPage.map((page) => (
@@ -1840,13 +2397,77 @@ export function RestaurantEditor({ editor }) {
       </div>
 
       <footer className="restaurant-legacy-help-fab">
-        <Link href="/help-contact">Help</Link>
+        {typeof onNavigate === "function" ? (
+          <a
+            href="/help-contact"
+            onClick={(event) => {
+              event.preventDefault();
+              onNavigate("/help-contact");
+            }}
+          >
+            Help
+          </a>
+        ) : (
+          <Link href="/help-contact">Help</Link>
+        )}
       </footer>
+
+      <Modal
+        open={saveReviewOpen}
+        onOpenChange={(open) => {
+          if (saveReviewSaving) return;
+          setSaveReviewOpen(open);
+          if (!open) setSaveReviewError("");
+        }}
+        title="Review your changes"
+        className="max-w-[860px]"
+        closeOnEsc={!saveReviewSaving}
+        closeOnOverlay={!saveReviewSaving}
+      >
+        <div className="space-y-3">
+          <p className="note m-0 text-sm">
+            Confirm everything looks right before saving to the website.
+          </p>
+          <div className="max-h-[42vh] overflow-auto rounded-xl border border-[#2a3261] bg-[rgba(12,18,44,0.6)] p-3">
+            <ul className="m-0 list-disc pl-5 text-sm text-[#d6def8]">
+              {reviewItems.map((item, index) => (
+                <li key={`save-review-${index}`}>{item}</li>
+              ))}
+            </ul>
+          </div>
+          {saveReviewError ? (
+            <p className="m-0 rounded-lg border border-[#a12525] bg-[rgba(139,29,29,0.32)] px-3 py-2 text-sm text-[#ffd0d0]">
+              {saveReviewError}
+            </p>
+          ) : null}
+          <div className="flex flex-wrap justify-end gap-2">
+            <Button
+              size="compact"
+              variant="outline"
+              disabled={saveReviewSaving}
+              onClick={() => {
+                setSaveReviewOpen(false);
+                setSaveReviewError("");
+              }}
+            >
+              Cancel save
+            </Button>
+            <Button
+              size="compact"
+              tone="primary"
+              loading={saveReviewSaving}
+              onClick={confirmSaveReview}
+            >
+              {editor.saveStatus === "error" ? "Retry save" : "Confirm & Save"}
+            </Button>
+          </div>
+        </div>
+      </Modal>
 
       <DishEditorModal editor={editor} />
       <ChangeLogModal editor={editor} />
       <ConfirmInfoModal editor={editor} />
-      <MenuPagesModal editor={editor} />
+      <MenuPagesModal editor={editor} parityMode={parityMode} />
       <RestaurantSettingsModal editor={editor} />
     </section>
   );
