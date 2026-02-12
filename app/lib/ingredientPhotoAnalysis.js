@@ -246,136 +246,18 @@ export function initIngredientPhotoAnalysis(deps = {}) {
     });
   }
 
-  // Label Cropper - Browser-based Claude + Google Vision analysis
-  // API keys stored in localStorage for persistence
-  function getApiKey(keyName) {
-    return localStorage.getItem(`clarivore_${keyName}`) || "";
-  }
-  function setApiKey(keyName, value) {
-    localStorage.setItem(`clarivore_${keyName}`, value);
-  }
-
-  // One-time API key setup prompt (only shown if keys are missing)
-  async function ensureApiKeysConfigured() {
-    const anthropicKey = getApiKey("anthropic_api_key");
-    const googleKey = getApiKey("google_vision_api_key");
-
-    if (anthropicKey && googleKey) {
-      return true; // Already configured
-    }
-
-    return new Promise((resolve) => {
-      const setupModal = document.createElement("div");
-      setupModal.style.cssText = `
-        position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-        background: rgba(0,0,0,0.95); z-index: 10001;
-        display: flex; align-items: center; justify-content: center;
-        padding: 20px;
-      `;
-      setupModal.innerHTML = `
-        <div style="width:100%;max-width:500px;background:#1a1f35;border-radius:16px;padding:24px">
-          <h3 style="margin:0 0 16px 0;font-size:1.3rem;color:#fff">One-Time Setup</h3>
-          <p style="color:#a8b2d6;margin-bottom:20px;font-size:0.95rem">Enter your API keys to enable ingredient photo analysis. This only needs to be done once.</p>
-          <div style="display:flex;flex-direction:column;gap:16px">
-            <div>
-              <label style="display:block;font-size:0.9rem;color:#a8b2d6;margin-bottom:6px">Anthropic API Key</label>
-              <input type="password" id="setupAnthropicKey" value="${anthropicKey}" placeholder="sk-ant-..." style="width:100%;padding:12px;background:rgba(0,0,0,0.3);border:1px solid rgba(76,90,212,0.4);border-radius:8px;color:#fff;font-size:1rem">
-            </div>
-            <div>
-              <label style="display:block;font-size:0.9rem;color:#a8b2d6;margin-bottom:6px">Google Cloud Vision API Key</label>
-              <input type="password" id="setupGoogleKey" value="${googleKey}" placeholder="AIza..." style="width:100%;padding:12px;background:rgba(0,0,0,0.3);border:1px solid rgba(76,90,212,0.4);border-radius:8px;color:#fff;font-size:1rem">
-            </div>
-            <div style="display:flex;gap:12px;margin-top:8px">
-              <button type="button" id="setupSaveBtn" style="flex:1;padding:14px;background:#17663a;border:none;border-radius:8px;color:#fff;font-size:1rem;font-weight:600;cursor:pointer">Save & Continue</button>
-              <button type="button" id="setupCancelBtn" style="padding:14px 24px;background:rgba(239,68,68,0.2);border:1px solid rgba(239,68,68,0.4);border-radius:8px;color:#ef4444;font-size:1rem;cursor:pointer">Cancel</button>
-            </div>
-          </div>
-        </div>
-      `;
-      document.body.appendChild(setupModal);
-
-      setupModal.querySelector("#setupSaveBtn").onclick = () => {
-        const aKey = setupModal.querySelector("#setupAnthropicKey").value.trim();
-        const gKey = setupModal.querySelector("#setupGoogleKey").value.trim();
-        if (aKey && gKey) {
-          setApiKey("anthropic_api_key", aKey);
-          setApiKey("google_vision_api_key", gKey);
-          setupModal.remove();
-          resolve(true);
-        } else {
-          alert("Please enter both API keys.");
-        }
-      };
-
-      setupModal.querySelector("#setupCancelBtn").onclick = () => {
-        setupModal.remove();
-        resolve(false);
-      };
-    });
-  }
-
   // Claude API call helper
   async function callClaudeForAnalysis(
     messages,
     systemPrompt = "",
     options = {},
   ) {
-    const apiKey = getApiKey("anthropic_api_key");
-    if (!apiKey) {
-      throw new Error("Anthropic API key not configured.");
-    }
-
-    const { useExtendedThinking = false, model = "claude-sonnet-4-5-20250929" } =
-      options;
-
-    const requestBody = {
-      model: model,
-      max_tokens: useExtendedThinking ? 16000 : 4096,
-      messages: messages,
-    };
-
-    // Extended thinking requires no system prompt (include in user message instead)
-    if (!useExtendedThinking && systemPrompt) {
-      requestBody.system = systemPrompt;
-    }
-
-    // Add extended thinking configuration
-    if (useExtendedThinking) {
-      requestBody.thinking = {
-        type: "enabled",
-        budget_tokens: 10000,
-      };
-    }
-
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-        "anthropic-dangerous-direct-browser-access": "true",
-      },
-      body: JSON.stringify(requestBody),
-    });
-
-    if (!response.ok) {
-      const err = await response.json();
-      throw new Error(err.error?.message || "Claude API request failed");
-    }
-
-    const data = await response.json();
-
-    // With extended thinking, response has thinking blocks and text blocks
-    if (useExtendedThinking) {
-      for (const block of data.content) {
-        if (block.type === "text") {
-          return block.text;
-        }
-      }
-      return "";
-    }
-
-    return data.content[0].text;
+    void messages;
+    void systemPrompt;
+    void options;
+    throw new Error(
+      "Direct browser AI calls are disabled. Use /api/ingredient-photo-analysis.",
+    );
   }
 
   // Step 1: Get Claude's transcription of the image
@@ -550,84 +432,10 @@ Notes:
 
   // Step 2: Run Google Cloud Vision to get word bounding boxes
   async function getVisionWords(imageBase64) {
-    const googleApiKey = getApiKey("google_vision_api_key");
-    if (!googleApiKey) {
-      throw new Error("Google Cloud Vision API key not configured.");
-    }
-
-    const response = await fetch(
-      `https://vision.googleapis.com/v1/images:annotate?key=${googleApiKey}`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          requests: [
-            {
-              image: { content: imageBase64 },
-              features: [{ type: "DOCUMENT_TEXT_DETECTION" }],
-            },
-          ],
-        }),
-      },
+    void imageBase64;
+    throw new Error(
+      "Direct browser OCR calls are disabled. Use /api/ingredient-photo-analysis.",
     );
-
-    if (!response.ok) {
-      const err = await response.json();
-      throw new Error(
-        err.error?.message || "Google Cloud Vision API request failed",
-      );
-    }
-
-    const data = await response.json();
-    const annotation = data.responses[0]?.fullTextAnnotation;
-
-    if (!annotation) {
-      throw new Error("No text detected by Google Cloud Vision");
-    }
-
-    // Extract all words with their bounding boxes
-    const words = [];
-
-    annotation.pages?.forEach((page) => {
-      page.blocks?.forEach((block) => {
-        block.paragraphs?.forEach((paragraph) => {
-          paragraph.words?.forEach((word) => {
-            const text = word.symbols?.map((s) => s.text).join("") || "";
-            if (text.trim()) {
-              const vertices = word.boundingBox?.vertices || [];
-              if (vertices.length === 4) {
-                const x0 = Math.min(...vertices.map((v) => v.x || 0));
-                const y0 = Math.min(...vertices.map((v) => v.y || 0));
-                const x1 = Math.max(...vertices.map((v) => v.x || 0));
-                const y1 = Math.max(...vertices.map((v) => v.y || 0));
-                const symbolConfidences = (word.symbols || [])
-                  .map((s) => s.confidence)
-                  .filter((n) => typeof n === "number" && !Number.isNaN(n));
-                const confidence =
-                  typeof word.confidence === "number"
-                    ? word.confidence
-                    : symbolConfidences.length
-                      ? symbolConfidences.reduce((sum, n) => sum + n, 0) /
-                        symbolConfidences.length
-                      : null;
-
-                words.push({
-                  text: text.trim(),
-                  bbox: { x0, y0, x1, y1 },
-                  centerY: (y0 + y1) / 2,
-                  centerX: (x0 + x1) / 2,
-                  confidence,
-                });
-              }
-            }
-          });
-        });
-      });
-    });
-
-    return words;
   }
 
   // Step 3: Use Claude to match transcript lines to visual lines
@@ -821,188 +629,36 @@ Notes:
 
     return lines;
   }
-  // Main analysis function - browser-based Claude + Google Vision
-  // Output format matches the original label-cropper API
+  // Main analysis function via Next.js runtime endpoint.
   async function analyzeWithLabelCropper(imageDataUrl, onStatus) {
-    const base64Data = imageDataUrl.split(",")[1];
-    const mediaType = imageDataUrl.split(";")[0].split(":")[1] || "image/jpeg";
-
-    onStatus?.("Checking image quality...");
-    let quality = null;
-    try {
-      quality = await getClaudeQualityAssessment(
-        base64Data,
-        mediaType,
-        [],
-      );
-    } catch (err) {
-      quality = normalizeQualityAssessment({
-        accept: false,
-        reasons: ["quality check unavailable"],
-        message: "Unable to verify photo quality. Please retake the photo.",
-      });
-    }
-
-    if (quality && quality.accept === false) {
-      return {
-        success: false,
-        error:
-          quality.message ||
-          "Photo quality is too low to read the ingredients.",
-        quality,
-      };
-    }
-
-    onStatus?.("Reading text from image...");
-
-    // Step 1: Get Claude's transcription
-    let claudeLines = [];
-    try {
-      claudeLines = await getClaudeTranscription(base64Data, mediaType);
-    } catch (err) {
-      return {
-        success: false,
-        error:
-          "Could not read the ingredient text clearly. Please retake the photo.",
-        quality,
-      };
-    }
-    console.log("=== CLAUDE TRANSCRIPTION ===");
-    claudeLines.forEach((line, i) => console.log(`Transcript ${i}: "${line}"`));
-
-    onStatus?.("Detecting word positions...");
-
-    // Step 2: Get Google Cloud Vision word boxes and group into visual lines
-    const visionWords = await getVisionWords(base64Data);
-    console.log("\n=== GOOGLE CLOUD VISION WORDS ===");
-    visionWords.forEach((w, i) =>
-      console.log(`Word ${i}: "${w.text}" at y=${Math.round(w.centerY)}`),
-    );
-
-    const sortedWords = [...visionWords].sort(
-      (a, b) => a.centerY - b.centerY || a.bbox.x0 - b.bbox.x0,
-    );
-
-    // Group by Y position
-    const yGroups = [];
-    let currentYGroup = [];
-    let groupStartY = -100;
-
-    sortedWords.forEach((w) => {
-      if (currentYGroup.length === 0 || Math.abs(w.centerY - groupStartY) > 15) {
-        if (currentYGroup.length > 0) yGroups.push(currentYGroup);
-        currentYGroup = [w];
-        groupStartY = w.centerY;
-      } else {
-        currentYGroup.push(w);
-      }
-    });
-    if (currentYGroup.length > 0) yGroups.push(currentYGroup);
-
-    // Split Y-groups by large horizontal gaps
-    const visualLines = [];
-
-    yGroups.forEach((yGroup) => {
-      yGroup.sort((a, b) => a.bbox.x0 - b.bbox.x0);
-
-      const wordWidths = yGroup
-        .map((w) => w.bbox.x1 - w.bbox.x0)
-        .sort((a, b) => a - b);
-      const medianWidth = wordWidths[Math.floor(wordWidths.length / 2)] || 50;
-      const gapThreshold = medianWidth * 3;
-
-      let currentLine = [];
-      let lastX1 = -Infinity;
-
-      yGroup.forEach((w) => {
-        const gap = w.bbox.x0 - lastX1;
-
-        if (currentLine.length > 0 && gap > gapThreshold) {
-          const text = currentLine.map((w) => w.text).join(" ");
-          const x0 = Math.min(...currentLine.map((w) => w.bbox.x0));
-          const y0 = Math.min(...currentLine.map((w) => w.bbox.y0));
-          const x1 = Math.max(...currentLine.map((w) => w.bbox.x1));
-          const y1 = Math.max(...currentLine.map((w) => w.bbox.y1));
-          visualLines.push({
-            text,
-            bbox: { x0, y0, x1, y1 },
-            words: currentLine,
-          });
-          currentLine = [];
-        }
-
-        currentLine.push(w);
-        lastX1 = w.bbox.x1;
-      });
-
-      if (currentLine.length > 0) {
-        const text = currentLine.map((w) => w.text).join(" ");
-        const x0 = Math.min(...currentLine.map((w) => w.bbox.x0));
-        const y0 = Math.min(...currentLine.map((w) => w.bbox.y0));
-        const x1 = Math.max(...currentLine.map((w) => w.bbox.x1));
-        const y1 = Math.max(...currentLine.map((w) => w.bbox.y1));
-        visualLines.push({ text, bbox: { x0, y0, x1, y1 }, words: currentLine });
-      }
-    });
-
-    console.log("\n=== VISUAL LINES ===");
-    visualLines.forEach((line, i) => console.log(`Visual ${i}: "${line.text}"`));
-
-    onStatus?.("Matching text to visual lines...");
-
-    // Step 3: Match Claude transcript lines to visual lines
-    const lineMapping = await matchLinesToVisualLines(claudeLines, visualLines);
-    console.log("\n=== LINE MAPPING ===");
-    Object.entries(lineMapping).forEach(([transcriptIdx, visualIdx]) => {
-      console.log(
-        `Transcript ${transcriptIdx} ("${claudeLines[transcriptIdx]}") -> Visual ${visualIdx}`,
-      );
-    });
-
-    onStatus?.("Building word layout...");
-
-    // Step 4: Build final lines with bounding boxes
-    const lines = findMissingWordsAndBuildLines(
-      claudeLines,
-      visualLines,
-      lineMapping,
-      visionWords,
-    );
-
-    // Get image dimensions from the data URL
-    const img = new Image();
-    await new Promise((resolve, reject) => {
-      img.onload = resolve;
-      img.onerror = reject;
-      img.src = imageDataUrl;
-    });
-    const imgWidth = img.naturalWidth;
-    const imgHeight = img.naturalHeight;
-
-    // Convert to the expected output format
-    const data = lines.map((line, idx) => ({
-      line_number: idx + 1,
-      text: line.text,
-      words: line.words.map((w) => ({
-        text: w.text,
-        x_start: (w.bbox.x0 / imgWidth) * 100,
-        x_end: (w.bbox.x1 / imgWidth) * 100,
-        y_start: (w.bbox.y0 / imgHeight) * 100,
-        y_end: (w.bbox.y1 / imgHeight) * 100,
-      })),
-      crop_coordinates: {
-        x_start: (line.bbox.x0 / imgWidth) * 100,
-        y_start: (line.bbox.y0 / imgHeight) * 100,
-        x_end: (line.bbox.x1 / imgWidth) * 100,
-        y_end: (line.bbox.y1 / imgHeight) * 100,
+    onStatus?.("Analyzing ingredient image...");
+    const response = await fetch("/api/ingredient-photo-analysis", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
       },
-    }));
+      body: JSON.stringify({
+        imageData: imageDataUrl,
+        mode: "full-analysis",
+      }),
+    });
+    const payload = await response.json();
+    if (!response.ok) {
+      return {
+        success: false,
+        error: payload?.error || "Failed to analyze ingredient image.",
+        quality: payload?.quality || null,
+      };
+    }
 
     return {
-      success: true,
-      data: data,
-      claude_transcript: claudeLines,
-      quality,
+      success: Boolean(payload?.success),
+      data: Array.isArray(payload?.data) ? payload.data : [],
+      claude_transcript: Array.isArray(payload?.claude_transcript)
+        ? payload.claude_transcript
+        : [],
+      quality: payload?.quality || null,
+      error: payload?.error || "",
     };
   }
 
@@ -1013,12 +669,6 @@ Notes:
   // Returns: { lines: [...], allergenFlags: [...], correctedImage: dataUrl }
   async function analyzeIngredientPhoto(imageDataUrl, onStatus, options = {}) {
     const skipAllergenAnalysis = options && options.skipAllergenAnalysis === true;
-    // Ensure API keys are configured (one-time setup)
-    const keysConfigured = await ensureApiKeysConfigured();
-    if (!keysConfigured) {
-      throw new Error("API keys are required for photo analysis.");
-    }
-
     onStatus?.("Checking image orientation...");
 
     // Step 1: Detect and correct slant angle

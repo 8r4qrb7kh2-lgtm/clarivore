@@ -191,14 +191,126 @@ function nextTokenState(current) {
 }
 
 function getChipToneClass({ selectedState, smartState }) {
-  if (selectedState === "none") return "chip-none";
-  return selectedState === smartState ? "chip-smart" : "chip-manual";
+  if (selectedState === "none" && smartState === "none") return "chip-none";
+  if (selectedState !== "none" && selectedState === smartState) return "chip-smart";
+  return "chip-manual";
 }
 
 function getChipBorderClass(selectedState) {
   if (selectedState === "contains") return "chip-contains";
   if (selectedState === "cross") return "chip-cross";
   return "";
+}
+
+function formatTokenStateLabel(state) {
+  if (state === "contains") return "contains";
+  if (state === "cross") return "cross-contamination";
+  return "none";
+}
+
+function normalizeBrandForSignature(brand) {
+  const normalized = normalizeBrandEntry(brand);
+  if (!normalized) return null;
+  return {
+    name: normalized.name,
+    allergens: dedupeTokenList(normalized.allergens),
+    diets: dedupeTokenList(normalized.diets),
+    crossContaminationAllergens: dedupeTokenList(
+      normalized.crossContaminationAllergens,
+    ),
+    crossContaminationDiets: dedupeTokenList(normalized.crossContaminationDiets),
+    ingredientsList: Array.isArray(normalized.ingredientsList)
+      ? normalized.ingredientsList.map((line) => asText(line)).filter(Boolean)
+      : [],
+  };
+}
+
+function buildPersistedIngredientSignature(ingredient) {
+  const base = ingredient && typeof ingredient === "object" ? ingredient : {};
+  return JSON.stringify({
+    name: asText(base.name),
+    allergens: dedupeTokenList(base.allergens),
+    diets: dedupeTokenList(base.diets),
+    crossContaminationAllergens: dedupeTokenList(base.crossContaminationAllergens),
+    crossContaminationDiets: dedupeTokenList(base.crossContaminationDiets),
+    brands: (Array.isArray(base.brands) ? base.brands : [])
+      .map((brand) => normalizeBrandForSignature(brand))
+      .filter(Boolean),
+    brandRequired: Boolean(base.brandRequired),
+    brandRequirementReason: asText(base.brandRequirementReason),
+    removable: Boolean(base.removable),
+  });
+}
+
+function buildRowManualOverrideMessages({
+  ingredient,
+  allergens,
+  diets,
+  formatAllergenLabel,
+  formatDietLabel,
+}) {
+  const allergenTokens = dedupeTokenList([
+    ...(Array.isArray(allergens) ? allergens : []),
+    ...(Array.isArray(ingredient?.allergens) ? ingredient.allergens : []),
+    ...(Array.isArray(ingredient?.crossContaminationAllergens)
+      ? ingredient.crossContaminationAllergens
+      : []),
+    ...(Array.isArray(ingredient?.aiDetectedAllergens)
+      ? ingredient.aiDetectedAllergens
+      : []),
+    ...(Array.isArray(ingredient?.aiDetectedCrossContaminationAllergens)
+      ? ingredient.aiDetectedCrossContaminationAllergens
+      : []),
+  ]);
+  const dietTokens = dedupeTokenList([
+    ...(Array.isArray(diets) ? diets : []),
+    ...(Array.isArray(ingredient?.diets) ? ingredient.diets : []),
+    ...(Array.isArray(ingredient?.crossContaminationDiets)
+      ? ingredient.crossContaminationDiets
+      : []),
+    ...(Array.isArray(ingredient?.aiDetectedDiets) ? ingredient.aiDetectedDiets : []),
+    ...(Array.isArray(ingredient?.aiDetectedCrossContaminationDiets)
+      ? ingredient.aiDetectedCrossContaminationDiets
+      : []),
+  ]);
+
+  const messages = [];
+
+  allergenTokens.forEach((token) => {
+    const selectedState = readTokenState({
+      containsValues: ingredient?.allergens,
+      crossValues: ingredient?.crossContaminationAllergens,
+      token,
+    });
+    const smartState = readTokenState({
+      containsValues: ingredient?.aiDetectedAllergens,
+      crossValues: ingredient?.aiDetectedCrossContaminationAllergens,
+      token,
+    });
+    if (selectedState === smartState) return;
+    messages.push(
+      `Manual override: ${formatAllergenLabel(token)} is currently ${formatTokenStateLabel(selectedState)} (smart: ${formatTokenStateLabel(smartState)})`,
+    );
+  });
+
+  dietTokens.forEach((token) => {
+    const selectedState = readTokenState({
+      containsValues: ingredient?.diets,
+      crossValues: ingredient?.crossContaminationDiets,
+      token,
+    });
+    const smartState = readTokenState({
+      containsValues: ingredient?.aiDetectedDiets,
+      crossValues: ingredient?.aiDetectedCrossContaminationDiets,
+      token,
+    });
+    if (selectedState === smartState) return;
+    messages.push(
+      `Manual override: ${formatDietLabel(token)} is currently ${formatTokenStateLabel(selectedState)} (smart: ${formatTokenStateLabel(smartState)})`,
+    );
+  });
+
+  return dedupeTokenList(messages);
 }
 
 function normalizeBrandEntry(brand) {
@@ -242,7 +354,7 @@ function normalizeIngredientEntry(ingredient, index) {
     brandRequirementReason: asText(base.brandRequirementReason),
     removable: Boolean(base.removable),
     confirmed: base.confirmed !== false,
-    contains: base.contains !== false,
+    contains: true,
   };
 }
 
@@ -279,26 +391,23 @@ function deriveDishStateFromIngredients({
   const allergenMap = new Map();
   const crossAllergenSet = new Set();
   const crossDietSet = new Set();
-  const contributingRows = rows.filter((ingredient) => ingredient.contains !== false);
+  const contributingRows = rows;
 
   rows.forEach((ingredient) => {
-    const includeContains = ingredient.contains !== false;
     const ingredientName = asText(ingredient?.name) || "Ingredient";
-    if (includeContains) {
-      dedupeTokenList(ingredient?.allergens).forEach((allergen) => {
-        const token = normalizeToken(allergen);
-        if (!token) return;
-        const current = allergenMap.get(token) || { label: allergen, items: [] };
-        current.items.push(ingredientName);
-        allergenMap.set(token, current);
-      });
-      dedupeTokenList(ingredient?.crossContaminationAllergens).forEach((allergen) => {
-        crossAllergenSet.add(allergen);
-      });
-      dedupeTokenList(ingredient?.crossContaminationDiets).forEach((diet) => {
-        crossDietSet.add(diet);
-      });
-    }
+    dedupeTokenList(ingredient?.allergens).forEach((allergen) => {
+      const token = normalizeToken(allergen);
+      if (!token) return;
+      const current = allergenMap.get(token) || { label: allergen, items: [] };
+      current.items.push(ingredientName);
+      allergenMap.set(token, current);
+    });
+    dedupeTokenList(ingredient?.crossContaminationAllergens).forEach((allergen) => {
+      crossAllergenSet.add(allergen);
+    });
+    dedupeTokenList(ingredient?.crossContaminationDiets).forEach((diet) => {
+      crossDietSet.add(diet);
+    });
   });
 
   const allergens = Array.from(allergenMap.values()).map((entry) => entry.label);
@@ -405,9 +514,24 @@ function DishEditorModal({ editor }) {
     (updater, options = {}) => {
       const current = ingredients;
       const nextRaw = typeof updater === "function" ? updater(current) : updater;
-      const nextList = Array.isArray(nextRaw) ? nextRaw : [];
+      const nextList = Array.isArray(nextRaw)
+        ? nextRaw.map((item, index) => normalizeIngredientEntry(item, index))
+        : [];
+      const nextListWithConfirmation = nextList.map((row, index) => {
+        const previousRow = current[index];
+        if (!previousRow) return row;
+        const previousSig = buildPersistedIngredientSignature(previousRow);
+        const nextSig = buildPersistedIngredientSignature(row);
+        if (previousSig !== nextSig) {
+          return {
+            ...row,
+            confirmed: false,
+          };
+        }
+        return row;
+      });
       const derived = deriveDishStateFromIngredients({
-        ingredients: nextList,
+        ingredients: nextListWithConfirmation,
         existingDetails: overlay?.details,
         configuredDiets: editor.config?.diets,
       });
@@ -494,7 +618,6 @@ function DishEditorModal({ editor }) {
             ...ingredient,
             [containsField]: dedupeTokenList(nextContains),
             [crossField]: dedupeTokenList(nextCross),
-            contains: true,
           };
         }),
       );
@@ -548,7 +671,6 @@ function DishEditorModal({ editor }) {
             brandRequirementReason: "",
             removable: false,
             confirmed: true,
-            contains: true,
           },
           current.length,
         ),
@@ -653,7 +775,6 @@ function DishEditorModal({ editor }) {
             brandRequired: needsScan,
             brandRequirementReason: requirementReason,
             confirmed: false,
-            contains: true,
             brands: hasBrand ? existingBrands : [],
           };
         }),
@@ -696,7 +817,6 @@ function DishEditorModal({ editor }) {
             aiDetectedCrossContaminationAllergens: crossAllergens,
             aiDetectedCrossContaminationDiets: crossDiets,
             brands: [normalizedBrand],
-            contains: true,
             confirmed: true,
           };
         }),
@@ -766,7 +886,6 @@ function DishEditorModal({ editor }) {
               brandItem.crossContaminationAllergens,
             aiDetectedCrossContaminationDiets: brandItem.crossContaminationDiets,
             brands: [brandItem, ...existing],
-            contains: true,
             confirmed: true,
           };
         }),
@@ -789,7 +908,7 @@ function DishEditorModal({ editor }) {
   const onProcessInput = async () => {
     const result = await editor.runAiDishAnalysis();
     if (result?.success && result?.result) {
-      editor.applyAiResultToSelectedOverlay(result.result);
+      await editor.applyAiResultToSelectedOverlay(result.result);
     }
   };
 
@@ -959,9 +1078,16 @@ function DishEditorModal({ editor }) {
             {ingredients.length ? (
               <div className="restaurant-legacy-editor-dish-ingredient-list">
                 {ingredients.map((ingredient, index) => {
-                  const containsAny = ingredient.contains !== false;
                   const selectedBrandName = asText(ingredient?.brands?.[0]?.name);
                   const hasAssignedBrand = Boolean(selectedBrandName);
+                  const manualOverrideMessages = buildRowManualOverrideMessages({
+                    ingredient,
+                    allergens,
+                    diets,
+                    formatAllergenLabel: editor.config.formatAllergenLabel,
+                    formatDietLabel: editor.config.formatDietLabel,
+                  });
+                  const manualOverrideText = manualOverrideMessages.join("; ");
                   const searchOpen = searchOpenRow === index;
                   const searchTerm = asText(searchQueryByRow[index]).toLowerCase();
                   const matchingBrands = existingBrandItems
@@ -1091,26 +1217,6 @@ function DishEditorModal({ editor }) {
                       </div>
 
                       <div className="restaurant-legacy-editor-dish-ingredient-flags">
-                        <label className="restaurant-legacy-editor-dish-inline-check">
-                          <input
-                            type="checkbox"
-                            checked={containsAny}
-                            onChange={(event) =>
-                              applyIngredientChanges((current) =>
-                                current.map((item, itemIndex) =>
-                                  itemIndex === index
-                                    ? {
-                                        ...item,
-                                        contains: event.target.checked,
-                                      }
-                                    : item,
-                                ),
-                              )
-                            }
-                          />
-                          Contains
-                        </label>
-
                         <div className="restaurant-legacy-editor-dish-detection-note">
                           <span>Blue = smart detection</span>
                           <span>Red = manual override</span>
@@ -1193,13 +1299,11 @@ function DishEditorModal({ editor }) {
 
                     <div className="restaurant-legacy-editor-dish-ingredient-footer">
                       <div className="restaurant-legacy-editor-dish-ingredient-meta">
-                        {ingredient.contains === false ? (
-                          <span>Excluded from dish summary</span>
-                        ) : ingredient.allergens.length ? (
-                          <span>Contains {ingredient.allergens.join(", ")}</span>
-                        ) : (
-                          <span>No allergens flagged</span>
-                        )}
+                        {manualOverrideText ? (
+                          <span className="restaurant-legacy-editor-dish-manual-warning">
+                            {manualOverrideText}
+                          </span>
+                        ) : null}
                         {ingredient.brandRequired && !hasAssignedBrand ? (
                           <span className="restaurant-legacy-editor-dish-brand-warning">
                             Brand assignment required before saving this dish.

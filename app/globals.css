@@ -1428,6 +1428,11 @@ h2 {
   font-size: 0.74rem;
 }
 
+.restaurant-legacy-editor-dish-manual-warning {
+  color: #ff8f8f;
+  font-size: 0.74rem;
+}
+
 .restaurant-legacy-editor-dish-ingredient-actions {
   margin-top: 10px;
   display: flex;

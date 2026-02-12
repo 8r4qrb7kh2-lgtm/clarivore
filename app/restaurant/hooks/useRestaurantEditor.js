@@ -1560,10 +1560,12 @@ export function useRestaurantEditor({
     }
   }, [callbacks, restaurant?.id, restaurantSettingsDraft]);
 
-  const applyAiResultToSelectedOverlay = useCallback((result) => {
-    if (!selectedOverlay?._editorKey || !result) return;
+  const applyAiResultToSelectedOverlay = useCallback(async (result) => {
+    if (!selectedOverlay?._editorKey || !result) {
+      return { success: false };
+    }
 
-    const ingredients = (Array.isArray(result.ingredients) ? result.ingredients : []).map(
+    const baseIngredients = (Array.isArray(result.ingredients) ? result.ingredients : []).map(
       (ingredient, index) => {
         const rowName = asText(ingredient?.name) || `Ingredient ${index + 1}`;
         const containsAllergens = normalizeAllergenList(ingredient?.allergens);
@@ -1594,9 +1596,66 @@ export function useRestaurantEditor({
           brands: Array.isArray(ingredient?.brands) ? ingredient.brands : [],
           brandRequired: Boolean(ingredient?.brandRequired),
           brandRequirementReason: asText(ingredient?.brandRequirementReason),
+          confirmed: false,
         };
       },
     );
+
+    const scanRequirementFallbackReason =
+      "Automatic scan-requirement analysis failed; assign a brand item.";
+    const dishName = asText(selectedOverlay.id || selectedOverlay.name);
+    const uniqueByToken = new Map();
+    baseIngredients.forEach((ingredient) => {
+      const name = asText(ingredient?.name);
+      const token = normalizeToken(name);
+      if (!token || uniqueByToken.has(token)) return;
+      uniqueByToken.set(token, name);
+    });
+
+    const requirementByToken = new Map();
+    await Promise.all(
+      Array.from(uniqueByToken.entries()).map(async ([token, ingredientName]) => {
+        try {
+          if (!callbacks?.onAnalyzeIngredientScanRequirement) {
+            throw new Error("Ingredient scan requirement callback is not configured.");
+          }
+          const scanResult = await callbacks.onAnalyzeIngredientScanRequirement({
+            ingredientName,
+            dishName,
+          });
+          if (typeof scanResult?.needsScan !== "boolean") {
+            throw new Error("Invalid scan requirement result.");
+          }
+          const needsScan = Boolean(scanResult.needsScan);
+          requirementByToken.set(token, {
+            brandRequired: needsScan,
+            brandRequirementReason: needsScan ? asText(scanResult.reasoning) : "",
+          });
+        } catch (_error) {
+          requirementByToken.set(token, {
+            brandRequired: true,
+            brandRequirementReason: scanRequirementFallbackReason,
+          });
+        }
+      }),
+    );
+
+    const ingredients = baseIngredients.map((ingredient) => {
+      const token = normalizeToken(ingredient?.name);
+      const requirement = token ? requirementByToken.get(token) : null;
+      if (!requirement) {
+        return {
+          ...ingredient,
+          brandRequired: true,
+          brandRequirementReason: scanRequirementFallbackReason,
+        };
+      }
+      return {
+        ...ingredient,
+        brandRequired: Boolean(requirement.brandRequired),
+        brandRequirementReason: asText(requirement.brandRequirementReason),
+      };
+    });
 
     const allergens = Array.from(
       new Set(
@@ -1672,8 +1731,10 @@ export function useRestaurantEditor({
 
     appendPendingChange(`${selectedOverlay.id || "Dish"}: Applied AI ingredient analysis`);
     queueMicrotask(() => pushHistory());
+    return { success: true };
   }, [
     appendPendingChange,
+    callbacks?.onAnalyzeIngredientScanRequirement,
     normalizeAllergenList,
     normalizeDietList,
     pushHistory,
@@ -1935,7 +1996,7 @@ export function useRestaurantEditor({
           },
         ];
 
-        applyAiResultToSelectedOverlay({
+        await applyAiResultToSelectedOverlay({
           ingredients,
           dietaryOptions: Array.isArray(result.diets) ? result.diets : [],
         });
