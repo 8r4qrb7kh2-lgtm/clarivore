@@ -5,6 +5,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import AppTopbar from "../components/AppTopbar";
+import AppLoadingScreen from "../components/AppLoadingScreen";
 import PageShell from "../components/PageShell";
 import { Button, Textarea } from "../components/ui";
 import { supabaseClient as supabase } from "../lib/supabase";
@@ -358,18 +359,16 @@ export default function OrderFeedbackClient() {
     [currentPage, overlays],
   );
 
+  if (isLoading) {
+    return <AppLoadingScreen label="feedback form" />;
+  }
+
   return (
     <PageShell
       topbar={
         <AppTopbar mode="customer" user={topbarUser || null} onSignOut={onSignOut} />
       }
     >
-          {isLoading ? (
-            <div id="loading-state" className="loading-state">
-              <p>Loading your feedback form...</p>
-            </div>
-          ) : null}
-
           {!isLoading && isInvalidToken ? (
             <div id="invalid-token" className="invalid-token">
               <h1>Invalid or Expired Link</h1>

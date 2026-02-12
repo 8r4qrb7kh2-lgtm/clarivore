@@ -1,0 +1,354 @@
+.restaurant-legacy-content .btn {
+  background: rgba(76, 90, 212, 0.2);
+  border: 1px solid rgba(124, 156, 255, 0.4);
+  color: #e9ecff;
+  padding: 8px 14px;
+  border-radius: 999px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  line-height: 1.2;
+}
+
+.restaurant-legacy-content .btn:hover {
+  background: rgba(76, 90, 212, 0.35);
+}
+
+.restaurant-legacy-content .btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.restaurant-legacy-content .btnPrimary {
+  background: #4c5ad4;
+  border-color: #4c5ad4;
+  color: #fff;
+}
+
+.restaurant-legacy-content .btnPrimary:hover {
+  background: #5a69e6;
+}
+
+.restaurant-legacy-content .btnDanger {
+  background: #8b1d1d;
+  border-color: #a12525;
+  color: #fff;
+}
+
+.restaurant-legacy-content .btnSuccess {
+  background: #17663a;
+  border-color: #1a7b46;
+  color: #fff;
+}
+
+.restaurant-legacy-content .btnGhost {
+  background: transparent;
+  border-color: rgba(124, 156, 255, 0.35);
+  color: #c9d5ff;
+}
+
+.restaurant-legacy-content .btnGhost:hover {
+  background: rgba(124, 156, 255, 0.15);
+}
+
+.restaurant-legacy-content .btnSecondary {
+  background: #4c5ad4;
+  border-color: #5c6ce8;
+  color: #fff;
+}
+
+.restaurant-legacy-content .btnSmall {
+  padding: 4px 8px !important;
+  font-size: 0.85rem !important;
+}
+
+.restaurant-legacy-content .note {
+  color: var(--muted);
+}
+
+.restaurant-legacy-content .algBtn {
+  padding: 8px 12px;
+  border-radius: 999px;
+  border: 1px solid #2a3261;
+  background: #12183a;
+  color: var(--ink);
+  cursor: pointer;
+  text-align: center;
+}
+
+.restaurant-legacy-content .algBtn.active {
+  background: #1a2351;
+  box-shadow: 0 0 0 3px #7c9cff33 inset;
+  border-color: #4c5ad4;
+}
+
+.restaurant-legacy-content .algInput {
+  background: #0c1230;
+  color: var(--ink);
+  border: 1px solid #31407f;
+  border-radius: 8px;
+  padding: 8px 10px;
+  width: 100%;
+}
+
+.restaurant-legacy-content .algChk {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+  justify-self: end;
+}
+
+.restaurant-legacy-content .editorLayout {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  gap: 12px;
+}
+
+.restaurant-legacy-content .editorHeaderStack {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 0 0 auto;
+  min-height: 0;
+  position: relative;
+  z-index: 2;
+  background: var(--bg);
+  padding-bottom: 10px;
+  margin-bottom: 0;
+}
+
+.restaurant-legacy-content .editorHeaderRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 6px;
+  align-items: flex-start;
+  margin-bottom: 6px;
+}
+
+.restaurant-legacy-content .editorHeaderRow.hasMiniMap {
+  grid-template-columns: minmax(80px, 100px) minmax(0, 1fr);
+  column-gap: 4px;
+}
+
+.restaurant-legacy-content .editorHeaderRow.hasMiniMap .editorMiniMapSlot {
+  display: flex;
+  align-self: flex-start;
+  grid-row: 1;
+}
+
+.restaurant-legacy-content .editorHeaderRow.hasMiniMap .editorControlColumn {
+  grid-column: 2 / -1;
+  grid-row: 1;
+  align-self: start;
+}
+
+.restaurant-legacy-content .editorMiniMapSlot {
+  display: none;
+  flex-shrink: 0;
+  align-items: flex-start;
+  min-width: 80px;
+}
+
+.restaurant-legacy-content .editorControlColumn {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.restaurant-legacy-content .editorToolbarScale {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+}
+
+.restaurant-legacy-content .editorToolbar {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  transform-origin: top left;
+  align-items: stretch;
+}
+
+.restaurant-legacy-content .editorGroup {
+  background: rgba(12, 18, 56, 0.6);
+  border: 1px solid #24306a;
+  border-radius: 8px;
+  padding: 4px 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.restaurant-legacy-content .editorGroupLabel {
+  font-size: 0.55rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #a8b2d6;
+}
+
+.restaurant-legacy-content .editorGroupButtons {
+  display: grid;
+  gap: 6px;
+  align-items: stretch;
+  padding-right: 4px;
+}
+
+.restaurant-legacy-content .editorToolbar .btn {
+  padding: 3px 8px;
+  font-size: 0.68rem;
+  border-radius: 10px;
+  line-height: 1.1;
+  width: 100%;
+  text-align: center;
+}
+
+.restaurant-legacy-content .editorNoteRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.restaurant-legacy-content .editorNoteRow .note {
+  font-size: 0.75rem;
+}
+
+.restaurant-legacy-content .editBox {
+  position: absolute;
+  border: 2px solid var(--warn);
+  border-radius: 6px;
+  background: transparent;
+  cursor: move;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.restaurant-legacy-content .editBox:hover {
+  background: rgba(255, 193, 7, 0.08);
+  border-color: #ffc107;
+}
+
+.restaurant-legacy-content .editBox.active {
+  background: rgba(76, 175, 80, 0.12);
+  border-color: #4caf50;
+}
+
+.restaurant-legacy-content .editBadge {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 18px;
+  height: 18px;
+  background: #3651ff;
+  border: 1.5px solid #dbe2ff;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  cursor: pointer;
+  z-index: 10;
+  line-height: 1;
+}
+
+.restaurant-legacy-content .editBadge:hover {
+  background: #4e65ff;
+}
+
+.restaurant-legacy-content .handle {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  background: #3651ff;
+  border: 2px solid #dbe2ff;
+  border-radius: 4px;
+}
+
+.restaurant-legacy-content .handle.se {
+  right: -7px;
+  bottom: -7px;
+  cursor: nwse-resize;
+}
+
+.restaurant-legacy-content .handle.ne {
+  right: -7px;
+  top: -7px;
+  cursor: nesw-resize;
+}
+
+.restaurant-legacy-content .handle.nw {
+  left: -7px;
+  top: -7px;
+  cursor: nwse-resize;
+}
+
+.restaurant-legacy-content .handle.sw {
+  left: -7px;
+  bottom: -7px;
+  cursor: nesw-resize;
+}
+
+@media (max-width: 768px) {
+  .restaurant-legacy-content .editorHeaderStack {
+    max-height: 40vh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .restaurant-legacy-content .editorHeaderRow {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 6px;
+    align-items: flex-start;
+  }
+
+  .restaurant-legacy-content .editorHeaderRow.hasMiniMap .editorMiniMapSlot {
+    display: flex;
+    width: 100%;
+  }
+
+  .restaurant-legacy-content .editorHeaderRow.hasMiniMap .editorControlColumn {
+    grid-column: 2 / -1;
+  }
+
+  .restaurant-legacy-content .editorHeaderRow.hasMiniMap {
+    grid-template-columns: minmax(80px, 100px) minmax(0, 1fr);
+    column-gap: 4px;
+  }
+
+  .restaurant-legacy-content .editorMiniMapSlot {
+    align-items: stretch;
+    min-width: 0;
+    width: 100%;
+  }
+
+  .restaurant-legacy-content .editorControlColumn {
+    min-width: 0;
+    width: 100%;
+    max-height: none;
+    min-height: 0;
+    overflow: visible;
+    flex: 0 0 auto;
+  }
+
+  .restaurant-legacy-content .editorToolbar {
+    width: 100%;
+  }
+
+  .restaurant-legacy-content .editorNoteRow {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

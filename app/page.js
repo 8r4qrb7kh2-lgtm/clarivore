@@ -3,10 +3,11 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabaseClient as supabase } from "./lib/supabase";
+import AppLoadingScreen from "./components/AppLoadingScreen";
 
 export default function Home() {
   const router = useRouter();
-  const [status, setStatus] = useState("Checking your session...");
+  const [status, setStatus] = useState("");
 
   useEffect(() => {
     let isMounted = true;
@@ -37,11 +38,15 @@ export default function Home() {
   }, [router]);
 
   return (
-    <main className="page-shell" style={{ padding: "48px 20px" }}>
-      <div className="page-content" style={{ textAlign: "center" }}>
-        <h1 style={{ marginBottom: 12 }}>Clarivore</h1>
-        <p className="muted">{status}</p>
-      </div>
-    </main>
+    status
+      ? (
+        <main className="page-shell" style={{ padding: "48px 20px" }}>
+          <div className="page-content" style={{ textAlign: "center" }}>
+            <h1 style={{ marginBottom: 12 }}>Clarivore</h1>
+            <p className="muted">{status}</p>
+          </div>
+        </main>
+      )
+      : <AppLoadingScreen label="Clarivore" />
   );
 }

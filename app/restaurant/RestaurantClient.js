@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import AppTopbar from "../components/AppTopbar";
+import AppLoadingScreen from "../components/AppLoadingScreen";
 import PageShell from "../components/PageShell";
 import { Button, Modal, useToast } from "../components/ui";
 import { loadAllergenDietConfig } from "../lib/allergenConfig";
@@ -906,11 +907,7 @@ export default function RestaurantClient() {
   }
 
   if (bootQuery.isLoading) {
-    return (
-      <PageShell>
-        <p className="status-text">Loading restaurant...</p>
-      </PageShell>
-    );
+    return <AppLoadingScreen label="restaurant" />;
   }
 
   if (bootQuery.isError || !boot?.restaurant) {

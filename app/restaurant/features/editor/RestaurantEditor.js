@@ -1433,7 +1433,25 @@ export function RestaurantEditor({ editor, onNavigate }) {
   });
   const [mappedRectPreview, setMappedRectPreview] = useState(null);
 
-  const overlayCountLabel = `${editor.draftOverlays.length} overlay${editor.draftOverlays.length === 1 ? "" : "s"}`;
+  const legacySaveButtonVisible = Boolean(
+    editor.isDirty ||
+      editor.isSaving ||
+      editor.saveStatus === "saved" ||
+      editor.saveStatus === "error",
+  );
+  const legacySaveButtonLabel = editor.isSaving
+    ? "Saving..."
+    : editor.saveStatus === "saved"
+      ? "Saved"
+      : editor.saveStatus === "error"
+        ? "Retry save"
+        : "Save to site";
+  const legacySaveButtonClass =
+    editor.saveStatus === "error"
+      ? "btnDanger"
+      : editor.saveStatus === "saved"
+        ? "btnSuccess"
+        : "btnPrimary";
 
   const detectDishes = editor.detectWizardState.dishes || [];
   const mappedCount = detectDishes.filter((dish) => dish.mapped).length;
@@ -2015,16 +2033,6 @@ export function RestaurantEditor({ editor, onNavigate }) {
         <div className="editorHeaderStack restaurant-legacy-editor-header">
           <div className="flex flex-wrap items-center gap-2">
             <h1 className="m-0 text-[2.6rem] leading-none text-[#eaf0ff]">Webpage editor</h1>
-            <span className="chip active preference-chip">{overlayCountLabel}</span>
-            {editor.isDirty ? (
-              <span className="chip active preference-chip" style={{ borderColor: "#facc15" }}>
-                Unsaved changes
-              </span>
-            ) : (
-              <span className="chip active preference-chip" style={{ borderColor: "#22c55e" }}>
-                Saved
-              </span>
-            )}
           </div>
 
           <div className="editorHeaderRow hasMiniMap">
@@ -2100,6 +2108,15 @@ export function RestaurantEditor({ editor, onNavigate }) {
                       >
                         ↷ Redo
                       </button>
+                      {legacySaveButtonVisible ? (
+                        <button
+                          className={`btn ${legacySaveButtonClass}`}
+                          onClick={triggerSave}
+                          disabled={editor.isSaving}
+                        >
+                          {legacySaveButtonLabel}
+                        </button>
+                      ) : null}
                     </div>
                   </div>
 
@@ -2111,9 +2128,6 @@ export function RestaurantEditor({ editor, onNavigate }) {
                       </button>
                       <button className="btn" onClick={() => editor.setChangeLogOpen(true)}>
                         📋 View log of changes
-                      </button>
-                      <button className="btn" onClick={editor.runDetectDishes}>
-                        🔍 Detect dishes
                       </button>
                     </div>
                   </div>
@@ -2133,13 +2147,6 @@ export function RestaurantEditor({ editor, onNavigate }) {
                       >
                         Confirm information is up-to-date
                       </button>
-                      <button
-                        className="btn btnPrimary"
-                        onClick={triggerSave}
-                        disabled={!editor.isDirty || editor.isSaving}
-                      >
-                        {editor.isSaving ? "Saving..." : "Save changes"}
-                      </button>
                     </div>
                   </div>
                 </div>
@@ -2148,23 +2155,6 @@ export function RestaurantEditor({ editor, onNavigate }) {
               <div className="editorNoteRow">
                 <div className="note" id="editorNote">
                   Drag to move. Drag any corner to resize. Click ✏️ to edit details.
-                </div>
-                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                  <span className="note" style={{ fontSize: 12 }}>
-                    Zoom:
-                  </span>
-                  <button className="btn" onClick={editor.zoomOut}>
-                    −
-                  </button>
-                  <span id="zoomLevel" style={{ fontSize: 13, minWidth: 45, textAlign: "center", color: "#a8b2d6" }}>
-                    {Math.round(editor.zoomScale * 100)}%
-                  </span>
-                  <button className="btn" onClick={editor.zoomIn}>
-                    +
-                  </button>
-                  <button className="btn" onClick={editor.zoomReset}>
-                    Reset
-                  </button>
                 </div>
               </div>
 

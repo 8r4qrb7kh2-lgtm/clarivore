@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import AppTopbar from "../components/AppTopbar";
+import AppLoadingScreen from "../components/AppLoadingScreen";
 import PageShell from "../components/PageShell";
 import RestaurantCard from "../components/RestaurantCard";
 import RestaurantGridState from "../components/RestaurantGridState";
@@ -255,6 +256,10 @@ export default function FavoritesClient() {
     await supabase.auth.signOut();
     router.replace("/account?mode=signin");
   }, [router]);
+
+  if (loading) {
+    return <AppLoadingScreen label="favorites" />;
+  }
 
   return (
     <PageShell

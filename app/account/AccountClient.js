@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import AppTopbar from "../components/AppTopbar";
+import AppLoadingScreen from "../components/AppLoadingScreen";
 import PageShell from "../components/PageShell";
 import { buildAllergenDietConfig, loadAllergenDietConfig } from "../lib/allergenConfig";
 import {
@@ -769,13 +770,7 @@ export default function AccountClient() {
   );
 
   if (loading) {
-    return (
-      <PageShell>
-        <div style={{ textAlign: "center" }}>
-          <p className="status-text">Loading account…</p>
-        </div>
-      </PageShell>
-    );
+    return <AppLoadingScreen label="account" />;
   }
 
   return (

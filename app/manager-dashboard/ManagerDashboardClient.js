@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import AppLoadingScreen from "../components/AppLoadingScreen";
 import ManagerDashboardDom from "./components/ManagerDashboardDom";
 import { prepareManagerDashboardBootPayload } from "./services/managerDashboardBoot";
 import { supabaseClient as supabase } from "../lib/supabase";
@@ -10,6 +11,7 @@ import { initManagerNotifications } from "../lib/managerNotifications";
 export default function ManagerDashboardClient() {
   const router = useRouter();
   const [error, setError] = useState("");
+  const [isBooting, setIsBooting] = useState(true);
   const [authUser, setAuthUser] = useState(null);
   const [managerRestaurants, setManagerRestaurants] = useState([]);
   const [isOwner, setIsOwner] = useState(false);
@@ -87,6 +89,10 @@ export default function ManagerDashboardClient() {
             runtimeError?.message || "Failed to load manager dashboard runtime.",
           );
         }
+      } finally {
+        if (!cancelled) {
+          setIsBooting(false);
+        }
       }
     }
 
@@ -96,6 +102,10 @@ export default function ManagerDashboardClient() {
       cancelled = true;
     };
   }, [router]);
+
+  if (isBooting) {
+    return <AppLoadingScreen label="manager dashboard" />;
+  }
 
   return (
     <>

@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import AppTopbar from "../components/AppTopbar";
+import AppLoadingScreen from "../components/AppLoadingScreen";
 import PageShell from "../components/PageShell";
 import {
   buildAllergenDietConfig,
@@ -619,6 +620,10 @@ export default function DishSearchClient() {
       )}`,
     );
   };
+
+  if (loading) {
+    return <AppLoadingScreen label="dish search" />;
+  }
 
   return (
     <PageShell

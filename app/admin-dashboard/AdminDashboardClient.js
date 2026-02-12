@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import AppLoadingScreen from "../components/AppLoadingScreen";
 import AdminDashboardDom from "./components/AdminDashboardDom";
 import { supabaseClient as supabase } from "../lib/supabase";
 import { loadScript } from "../runtime/scriptLoader";
@@ -64,6 +65,10 @@ export default function AdminDashboardClient() {
       cancelled = true;
     };
   }, []);
+
+  if (isBooting) {
+    return <AppLoadingScreen label="admin dashboard" />;
+  }
 
   return (
     <>

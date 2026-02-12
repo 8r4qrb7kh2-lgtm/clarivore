@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import AppTopbar from "../components/AppTopbar";
+import AppLoadingScreen from "../components/AppLoadingScreen";
 import PageShell from "../components/PageShell";
 import RestaurantCard from "../components/RestaurantCard";
 import RestaurantGridState from "../components/RestaurantGridState";
@@ -71,6 +72,10 @@ export default function HomeClient() {
     : restaurantsQuery.isError
       ? "Error loading restaurants."
       : "";
+
+  if (loading) {
+    return <AppLoadingScreen label="home" />;
+  }
 
   return (
     <PageShell
