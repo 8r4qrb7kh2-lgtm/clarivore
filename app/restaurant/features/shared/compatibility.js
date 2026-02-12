@@ -116,7 +116,7 @@ export function createCompatibilityEngine(config = {}) {
     const userAllergens = normalizeList(selectedAllergens, normalizeAllergen);
     const userDiets = normalizeList(selectedDiets, normalizeDietLabel);
 
-    const crossAllergens = normalizeList(item?.crossContamination, normalizeAllergen);
+    const crossAllergens = normalizeList(item?.crossContaminationAllergens, normalizeAllergen);
     const crossDiets = normalizeList(
       item?.crossContaminationDiets,
       normalizeDietLabel,

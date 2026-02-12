@@ -70,8 +70,8 @@ export function normalizeRestaurantRow(row, deps = {}) {
 
     normalized.allergens = normalizeAllergenList(overlay.allergens);
     normalized.diets = normalizeDietList(overlay.diets);
-    normalized.crossContamination = normalizeAllergenList(
-      overlay.crossContamination,
+    normalized.crossContaminationAllergens = normalizeAllergenList(
+      overlay.crossContaminationAllergens,
     );
     normalized.crossContaminationDiets = normalizeDietList(
       overlay.crossContaminationDiets,
@@ -90,7 +90,7 @@ export function normalizeRestaurantRow(row, deps = {}) {
         ...ingredient,
         allergens: normalizeAllergenList(ingredient.allergens),
         diets: normalizeDietList(ingredient.diets),
-        crossContamination: normalizeAllergenList(ingredient.crossContamination),
+        crossContaminationAllergens: normalizeAllergenList(ingredient.crossContaminationAllergens),
         crossContaminationDiets: normalizeDietList(
           ingredient.crossContaminationDiets,
         ),

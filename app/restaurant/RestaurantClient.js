@@ -21,6 +21,8 @@ import RestaurantEditor from "./features/editor/RestaurantEditor";
 import RestaurantViewer from "./features/viewer/RestaurantViewer";
 import {
   analyzeDishWithAi,
+  analyzeIngredientNameWithAi,
+  analyzeIngredientScanRequirement,
   compareDishSets,
   dataUrlFromImageSource,
   detectMenuCorners,
@@ -703,6 +705,12 @@ export default function RestaurantClient() {
       },
       onAnalyzeDish: async ({ dishName, text, imageData }) => {
         return await analyzeDishWithAi({ dishName, text, imageData });
+      },
+      onAnalyzeIngredientName: async ({ ingredientName, dishName }) => {
+        return await analyzeIngredientNameWithAi({ ingredientName, dishName });
+      },
+      onAnalyzeIngredientScanRequirement: async ({ ingredientName, dishName }) => {
+        return await analyzeIngredientScanRequirement({ ingredientName, dishName });
       },
       onDetectMenuDishes: async ({ imageData }) => {
         return await detectMenuDishes({ imageData });

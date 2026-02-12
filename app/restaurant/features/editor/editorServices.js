@@ -77,6 +77,38 @@ export async function analyzeDishWithAi({ dishName, text, imageData }) {
   return result;
 }
 
+export async function analyzeIngredientNameWithAi({ ingredientName, dishName }) {
+  const payload = {
+    ingredientText: asText(ingredientName),
+    productName: asText(ingredientName),
+    dishName: asText(dishName),
+    analysisMode: "name",
+  };
+
+  const result = await postFunctionViaProxy("analyze-brand-allergens", payload);
+  return {
+    allergens: Array.isArray(result?.allergens) ? result.allergens : [],
+    diets: Array.isArray(result?.diets) ? result.diets : [],
+    reasoning: asText(result?.reasoning),
+    error: asText(result?.error),
+  };
+}
+
+export async function analyzeIngredientScanRequirement({ ingredientName, dishName }) {
+  const payload = {
+    ingredientName: asText(ingredientName),
+    dishName: asText(dishName),
+  };
+
+  const result = await postFunctionViaProxy("analyze-ingredient-scan", payload);
+  return {
+    needsScan:
+      typeof result?.needsScan === "boolean" ? result.needsScan : null,
+    reasoning: asText(result?.reasoning),
+    error: asText(result?.error),
+  };
+}
+
 export async function sendMenuUpdateNotification({
   restaurantName,
   restaurantSlug,
@@ -146,6 +178,8 @@ export default {
   detectMenuDishes,
   detectMenuCorners,
   analyzeDishWithAi,
+  analyzeIngredientNameWithAi,
+  analyzeIngredientScanRequirement,
   sendMenuUpdateNotification,
   dataUrlFromImageSource,
   compareDishSets,

@@ -155,8 +155,8 @@ export async function POST(request) {
 
       const isRemovable = row?.removable === true;
       const allergensList = Array.isArray(row?.allergens) ? row.allergens : [];
-      const crossContamination = Array.isArray(row?.crossContamination)
-        ? row.crossContamination
+      const crossContaminationAllergens = Array.isArray(row?.crossContaminationAllergens)
+        ? row.crossContaminationAllergens
         : [];
       const allergenStatus = new Map();
 
@@ -167,7 +167,7 @@ export async function POST(request) {
           is_cross_contamination: false,
         });
       });
-      crossContamination.forEach((key) => {
+      crossContaminationAllergens.forEach((key) => {
         if (!key) return;
         const existing = allergenStatus.get(key) || {
           is_violation: false,

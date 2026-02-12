@@ -151,7 +151,7 @@ export function buildDietRows(dish, savedDiets) {
 }
 
 export function buildAllergenCrossRows(dish, savedAllergens) {
-  const crossAllergens = Array.isArray(dish?.crossContamination) ? dish.crossContamination : [];
+  const crossAllergens = Array.isArray(dish?.crossContaminationAllergens) ? dish.crossContaminationAllergens : [];
 
   return savedAllergens
     .filter((item) => {
@@ -173,8 +173,8 @@ export function buildAllergenCrossRows(dish, savedAllergens) {
       const detailReasons = parseDetailReasons(detail);
       const ingredientReasons = readIngredientNames(dish, (ingredient) => {
         return (
-          includesPreference(ingredient?.crossContamination, item.key) ||
-          includesPreference(ingredient?.crossContamination, item.label)
+          includesPreference(ingredient?.crossContaminationAllergens, item.key) ||
+          includesPreference(ingredient?.crossContaminationAllergens, item.label)
         );
       });
 

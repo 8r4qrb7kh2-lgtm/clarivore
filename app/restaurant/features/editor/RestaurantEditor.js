@@ -145,8 +145,8 @@ function hasRemovable(overlay, allergen) {
 }
 
 function hasCrossContamination(overlay, allergen) {
-  const list = Array.isArray(overlay?.crossContamination)
-    ? overlay.crossContamination
+  const list = Array.isArray(overlay?.crossContaminationAllergens)
+    ? overlay.crossContaminationAllergens
     : [];
   const token = normalizeToken(allergen);
   return list.some((item) => normalizeToken(item) === token);
@@ -179,7 +179,7 @@ function normalizeIngredientEntry(ingredient, index) {
   const contains = base.contains !== false;
   const crossRisk =
     Boolean(base.crossRisk) ||
-    (Array.isArray(base.crossContamination) && base.crossContamination.length > 0) ||
+    (Array.isArray(base.crossContaminationAllergens) && base.crossContaminationAllergens.length > 0) ||
     (Array.isArray(base.crossContaminationDiets) &&
       base.crossContaminationDiets.length > 0);
   return {
@@ -187,7 +187,7 @@ function normalizeIngredientEntry(ingredient, index) {
     name: asText(base.name) || `Ingredient ${index + 1}`,
     allergens: dedupeTokenList(base.allergens),
     diets: dedupeTokenList(base.diets),
-    crossContamination: dedupeTokenList(base.crossContamination),
+    crossContaminationAllergens: dedupeTokenList(base.crossContaminationAllergens),
     crossContaminationDiets: dedupeTokenList(base.crossContaminationDiets),
     removable: Boolean(base.removable),
     confirmed: base.confirmed !== false,
@@ -245,7 +245,7 @@ function deriveDishStateFromIngredients({
     }
 
     if (ingredient.crossRisk) {
-      dedupeTokenList(ingredient?.crossContamination).forEach((allergen) => {
+      dedupeTokenList(ingredient?.crossContaminationAllergens).forEach((allergen) => {
         crossAllergenSet.add(allergen);
       });
       dedupeTokenList(ingredient?.crossContaminationDiets).forEach((diet) => {
@@ -278,7 +278,7 @@ function deriveDishStateFromIngredients({
     allergens,
     diets,
     details: nextDetails,
-    crossContamination: Array.from(crossAllergenSet),
+    crossContaminationAllergens: Array.from(crossAllergenSet),
     crossContaminationDiets: Array.from(crossDietSet),
     ingredientsBlockingDiets: computeIngredientDietBlockers(
       contributingRows,
@@ -343,7 +343,7 @@ function DishEditorModal({ editor }) {
           allergens: derived.allergens,
           diets: derived.diets,
           details: derived.details,
-          crossContamination: derived.crossContamination,
+          crossContaminationAllergens: derived.crossContaminationAllergens,
           crossContaminationDiets: derived.crossContaminationDiets,
           ingredientsBlockingDiets: derived.ingredientsBlockingDiets,
         },
@@ -383,7 +383,7 @@ function DishEditorModal({ editor }) {
                 ? true
                 : ingredient.contains !== false,
             crossRisk:
-              field === "crossContamination" || field === "crossContaminationDiets"
+              field === "crossContaminationAllergens" || field === "crossContaminationDiets"
                 ? true
                 : Boolean(ingredient.crossRisk),
           };
@@ -428,7 +428,7 @@ function DishEditorModal({ editor }) {
             name: `Ingredient ${current.length + 1}`,
             allergens: [],
             diets: [],
-            crossContamination: [],
+            crossContaminationAllergens: [],
             crossContaminationDiets: [],
             removable: false,
             confirmed: true,
@@ -725,16 +725,16 @@ function DishEditorModal({ editor }) {
                                     return {
                                       ...item,
                                       crossRisk: false,
-                                      crossContamination: [],
+                                      crossContaminationAllergens: [],
                                       crossContaminationDiets: [],
                                     };
                                   }
                                   return {
                                     ...item,
                                     crossRisk: true,
-                                    crossContamination: dedupeTokenList(
-                                      item.crossContamination.length
-                                        ? item.crossContamination
+                                    crossContaminationAllergens: dedupeTokenList(
+                                      item.crossContaminationAllergens.length
+                                        ? item.crossContaminationAllergens
                                         : item.allergens,
                                     ),
                                     crossContaminationDiets: dedupeTokenList(

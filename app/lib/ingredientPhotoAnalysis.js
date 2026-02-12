@@ -2223,7 +2223,7 @@ Notes:
       // Get the allergen/diet data from the analysis
       const flags = analysisResult.allergenFlags;
       const containedAllergens = new Set();
-      const crossContamination = new Set();
+      const crossContaminationAllergens = new Set();
       const violatedDiets = new Set();
       const crossContaminationDiets = new Set();
       const confirmedLines = Array.isArray(analysisResult.lines)
@@ -2276,7 +2276,7 @@ Notes:
           // Cross-contamination
           resolvedAllergens.forEach((a) => {
             if (a !== undefined && a !== null && a !== "") {
-              crossContamination.add(a);
+              crossContaminationAllergens.add(a);
             }
           });
           addCrossContaminationDiets(flagDiets);
@@ -2301,7 +2301,7 @@ Notes:
             ingredientName,
             ingredientText,
             allergens: Array.from(containedAllergens),
-            crossContamination: Array.from(crossContamination),
+            crossContaminationAllergens: Array.from(crossContaminationAllergens),
             diets: compliantDiets,
             crossContaminationDiets: Array.from(crossContaminationDiets),
             brandImage: compressedImage,
@@ -2317,7 +2317,7 @@ Notes:
       const data = collectAiTableData();
       if (data[rowIdx]) {
         data[rowIdx].allergens = Array.from(containedAllergens);
-        data[rowIdx].crossContamination = Array.from(crossContamination);
+        data[rowIdx].crossContaminationAllergens = Array.from(crossContaminationAllergens);
 
         // Set compliant diets (those NOT violated by contained allergens)
         data[rowIdx].diets = compliantDiets;
@@ -2328,7 +2328,7 @@ Notes:
         data[rowIdx].confirmed = false;
         data[rowIdx].aiDetectedAllergens = Array.from(containedAllergens);
         data[rowIdx].aiDetectedCrossContamination =
-          Array.from(crossContamination);
+          Array.from(crossContaminationAllergens);
         data[rowIdx].aiDetectedDiets = data[rowIdx].diets;
         data[rowIdx].aiDetectedCrossContaminationDiets = Array.from(crossContaminationDiets);
 
@@ -2348,7 +2348,7 @@ Notes:
               ingredientsImage: labelImage,
               ingredientsList: ingredientLines,
               allergens: Array.from(containedAllergens),
-              crossContamination: Array.from(crossContamination),
+              crossContaminationAllergens: Array.from(crossContaminationAllergens),
               diets: data[rowIdx].diets,
               crossContaminationDiets: Array.from(crossContaminationDiets),
             };

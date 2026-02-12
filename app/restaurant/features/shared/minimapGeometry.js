@@ -48,8 +48,30 @@ export function resolveMostVisiblePageIndex(scrollNode, pageNodes, fallbackIndex
   const nodes = Array.isArray(pageNodes) ? pageNodes : [];
   if (!scrollNode || !nodes.length) return Math.max(Number(fallbackIndex) || 0, 0);
 
+  const topScroll = Math.max(Number(scrollNode.scrollTop) || 0, 0);
+  if (topScroll <= 2 && nodes[0]) {
+    return 0;
+  }
+
   let bestIndex = clamp(Number(fallbackIndex) || 0, 0, Math.max(nodes.length - 1, 0));
   let bestVisibleHeight = -1;
+
+  if (typeof scrollNode.getBoundingClientRect === "function") {
+    const viewportHeight = Math.max(Number(scrollNode.clientHeight) || 0, 0);
+    const scrollRect = scrollNode.getBoundingClientRect();
+    const viewportMidpoint = scrollRect.top + viewportHeight / 2;
+
+    for (let index = 0; index < nodes.length; index += 1) {
+      const node = nodes[index];
+      if (!node || typeof node.getBoundingClientRect !== "function") continue;
+      const rect = node.getBoundingClientRect();
+      const rectHeight = Math.max(Number(rect.height) || 0, 0);
+      if (rectHeight <= 0) continue;
+      if (viewportMidpoint >= rect.top && viewportMidpoint < rect.bottom) {
+        return index;
+      }
+    }
+  }
 
   nodes.forEach((node, index) => {
     if (!node) return;

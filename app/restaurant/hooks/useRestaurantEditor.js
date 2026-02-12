@@ -132,8 +132,8 @@ function normalizeOverlay(overlay, index, fallbackKey, context = {}) {
     allergens: Array.isArray(overlay?.allergens) ? overlay.allergens.filter(Boolean) : [],
     diets: Array.isArray(overlay?.diets) ? overlay.diets.filter(Boolean) : [],
     removable: Array.isArray(overlay?.removable) ? overlay.removable.filter(Boolean) : [],
-    crossContamination: Array.isArray(overlay?.crossContamination)
-      ? overlay.crossContamination.filter(Boolean)
+    crossContaminationAllergens: Array.isArray(overlay?.crossContaminationAllergens)
+      ? overlay.crossContaminationAllergens.filter(Boolean)
       : [],
     crossContaminationDiets: Array.isArray(overlay?.crossContaminationDiets)
       ? overlay.crossContaminationDiets.filter(Boolean)
@@ -753,7 +753,7 @@ export function useRestaurantEditor({
               allergens: [],
               diets: [],
               removable: [],
-              crossContamination: [],
+              crossContaminationAllergens: [],
               crossContaminationDiets: [],
               details: {},
               ingredients: [],
@@ -842,7 +842,7 @@ export function useRestaurantEditor({
         (item) => asText(item?.allergen) !== key,
       );
 
-      const nextCross = (overlay.crossContamination || []).filter(
+      const nextCross = (overlay.crossContaminationAllergens || []).filter(
         (item) => asText(item) !== key,
       );
 
@@ -850,8 +850,8 @@ export function useRestaurantEditor({
         allergens: Array.from(nextSet),
         details: nextDetails,
         removable: nextRemovable,
-        crossContamination: nextSet.has(key)
-          ? overlay.crossContamination || []
+        crossContaminationAllergens: nextSet.has(key)
+          ? overlay.crossContaminationAllergens || []
           : nextCross,
       };
     });
@@ -893,14 +893,14 @@ export function useRestaurantEditor({
     if (!key || !selectedOverlay?._editorKey) return;
 
     updateOverlay(selectedOverlay._editorKey, (overlay) => {
-      const set = new Set(Array.isArray(overlay.crossContamination) ? overlay.crossContamination : []);
+      const set = new Set(Array.isArray(overlay.crossContaminationAllergens) ? overlay.crossContaminationAllergens : []);
       if (checked) {
         set.add(key);
       } else {
         set.delete(key);
       }
       return {
-        crossContamination: Array.from(set),
+        crossContaminationAllergens: Array.from(set),
       };
     });
   }, [selectedOverlay?._editorKey, updateOverlay]);
@@ -1442,7 +1442,7 @@ export function useRestaurantEditor({
       details,
       ingredients,
       removable: [],
-      crossContamination: [],
+      crossContaminationAllergens: [],
       crossContaminationDiets: [],
       ingredientsBlockingDiets,
     });
@@ -1499,8 +1499,8 @@ export function useRestaurantEditor({
             name: result.productName || ingredientName,
             allergens: Array.isArray(result.allergens) ? result.allergens : [],
             diets: Array.isArray(result.diets) ? result.diets : [],
-            crossContamination: Array.isArray(result.crossContamination)
-              ? result.crossContamination
+            crossContaminationAllergens: Array.isArray(result.crossContaminationAllergens)
+              ? result.crossContaminationAllergens
               : [],
             crossContaminationDiets: Array.isArray(result.crossContaminationDiets)
               ? result.crossContaminationDiets
@@ -1632,7 +1632,7 @@ export function useRestaurantEditor({
           allergens: [],
           diets: [],
           removable: [],
-          crossContamination: [],
+          crossContaminationAllergens: [],
           crossContaminationDiets: [],
           details: {},
         },

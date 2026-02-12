@@ -245,7 +245,7 @@ export default function DishSearchClient() {
   const hasCrossContamination = (item) => {
     if (!userAllergies.length) return false;
     if (item.noCrossContamination) return false;
-    const cross = item.crossContamination || [];
+    const cross = item.crossContaminationAllergens || [];
     return cross.some((allergen) => {
       const normalized = normalizeAllergen(allergen);
       return normalized && userAllergies.includes(normalized);

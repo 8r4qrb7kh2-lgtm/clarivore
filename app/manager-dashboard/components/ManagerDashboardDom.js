@@ -242,8 +242,8 @@ function collectBrandItemsFromOverlays(overlays) {
 function applyBrandDetections(ingredient, newBrand, normalizeAllergen, normalizeDietLabel) {
   const allergens = normalizeTagList(newBrand?.allergens, normalizeAllergen);
   const diets = normalizeTagList(newBrand?.diets, normalizeDietLabel);
-  const crossContamination = normalizeTagList(
-    newBrand?.crossContamination,
+  const crossContaminationAllergens = normalizeTagList(
+    newBrand?.crossContaminationAllergens,
     normalizeAllergen,
   );
   const crossContaminationDiets = normalizeTagList(
@@ -253,11 +253,11 @@ function applyBrandDetections(ingredient, newBrand, normalizeAllergen, normalize
 
   ingredient.allergens = allergens.slice();
   ingredient.diets = diets.slice();
-  ingredient.crossContamination = crossContamination.slice();
+  ingredient.crossContaminationAllergens = crossContaminationAllergens.slice();
   ingredient.crossContaminationDiets = crossContaminationDiets.slice();
   ingredient.aiDetectedAllergens = allergens.slice();
   ingredient.aiDetectedDiets = diets.slice();
-  ingredient.aiDetectedCrossContamination = crossContamination.slice();
+  ingredient.aiDetectedCrossContamination = crossContaminationAllergens.slice();
   ingredient.aiDetectedCrossContaminationDiets = crossContaminationDiets.slice();
 }
 
@@ -1491,8 +1491,8 @@ export default function ManagerDashboardDom({
         ingredientsList: ingredientText ? [ingredientText] : [],
         ingredientList: ingredientText,
         allergens: Array.isArray(result?.allergens) ? result.allergens : [],
-        crossContamination: Array.isArray(result?.crossContamination)
-          ? result.crossContamination
+        crossContaminationAllergens: Array.isArray(result?.crossContaminationAllergens)
+          ? result.crossContaminationAllergens
           : [],
         diets: Array.isArray(result?.diets) ? result.diets : [],
         crossContaminationDiets: Array.isArray(result?.crossContaminationDiets)

@@ -54,7 +54,7 @@ Return ONLY a JSON object with this structure:
   "relativeH": number (percentage height of THIS cropped region),
   "allergens": ${JSON.stringify(allergenKeys)},
   "removable": [],
-  "crossContamination": [],
+  "crossContaminationAllergens": [],
   "diets": ${JSON.stringify(dietLabels)},
   "details": {}
 }
@@ -143,7 +143,7 @@ IMPORTANT:
       h: absoluteH,
       allergens: analysis.allergens || [],
       removable: analysis.removable || [],
-      crossContamination: analysis.crossContamination || [],
+      crossContaminationAllergens: analysis.crossContaminationAllergens || [],
       diets: analysis.diets || [],
       details: analysis.details || {}
     }), {

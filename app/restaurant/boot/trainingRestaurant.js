@@ -19,7 +19,7 @@ const HOW_IT_WORKS_OVERLAYS = [
       },
     ],
     diets: ["Vegan", "Vegetarian", "Gluten-free"],
-    crossContamination: ["peanut"],
+    crossContaminationAllergens: ["peanut"],
     price: "$18",
     details: {
       description:
@@ -47,7 +47,7 @@ const HOW_IT_WORKS_OVERLAYS = [
       { allergen: "milk", instructions: "Request no parmesan topping" },
     ],
     diets: ["Pescatarian"],
-    crossContamination: ["egg"],
+    crossContaminationAllergens: ["egg"],
     price: "$22",
     details: {
       description:
