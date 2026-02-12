@@ -32,11 +32,11 @@ export function createIngredientNormalizer(options = {}) {
 
   const normalizeTextArray = (list) => (Array.isArray(list) ? list : []);
 
-  const pruneCrossContamination = (contains, crossContamination) => {
-    if (!Array.isArray(crossContamination)) return [];
+  const pruneCrossSelections = (contains, crossRiskValues) => {
+    if (!Array.isArray(crossRiskValues)) return [];
     // Allow overlap so a single allergen/diet can carry both "contains" and
     // "cross-contamination" flags when needed.
-    return crossContamination;
+    return crossRiskValues;
   };
 
   const sanitizeBrandEntry = (brand = {}) =>

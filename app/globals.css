@@ -1256,6 +1256,21 @@ h2 {
   color: #c8d6ff;
 }
 
+.restaurant-legacy-editor-dish-ingredient-brand.is-required {
+  border-color: rgba(225, 72, 72, 0.72);
+  background: rgba(92, 21, 21, 0.35);
+}
+
+.restaurant-legacy-editor-dish-ingredient-brand-reason {
+  color: #f6caca;
+  font-size: 0.68rem;
+}
+
+.restaurant-legacy-editor-dish-ingredient-brand-selected {
+  color: #d3e6ff;
+  font-size: 0.69rem;
+}
+
 .restaurant-legacy-editor-dish-ingredient-brand-actions {
   display: flex;
   gap: 6px;
@@ -1264,6 +1279,54 @@ h2 {
 
 .restaurant-legacy-editor-dish-ingredient-brand-actions .btn {
   font-size: 0.68rem;
+}
+
+.restaurant-legacy-editor-dish-brand-search {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.restaurant-legacy-editor-dish-brand-search-input {
+  width: 100%;
+  min-width: 0;
+  background: #0c1230;
+  color: var(--ink);
+  border: 1px solid #31407f;
+  border-radius: 8px;
+  padding: 6px 8px;
+  font-size: 0.72rem;
+}
+
+.restaurant-legacy-editor-dish-brand-search-results {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 120px;
+  overflow-y: auto;
+}
+
+.restaurant-legacy-editor-dish-brand-search-result {
+  width: 100%;
+  text-align: left;
+  border: 1px solid rgba(76, 90, 212, 0.45);
+  border-radius: 8px;
+  background: rgba(20, 29, 64, 0.68);
+  color: #dbe6ff;
+  padding: 5px 8px;
+  font-size: 0.72rem;
+  cursor: pointer;
+}
+
+.restaurant-legacy-editor-dish-brand-search-result:hover {
+  border-color: rgba(119, 144, 245, 0.75);
+  background: rgba(39, 55, 112, 0.72);
+}
+
+.restaurant-legacy-editor-dish-brand-search-empty {
+  margin: 0;
+  color: #9eabd3;
+  font-size: 0.7rem;
 }
 
 .restaurant-legacy-editor-dish-inline-check {
@@ -1302,8 +1365,8 @@ h2 {
 }
 
 .restaurant-legacy-editor-dish-chip {
-  border: 1px dashed rgba(59, 130, 246, 0.85);
-  background: rgba(26, 40, 92, 0.48);
+  border: 1px solid rgba(114, 126, 168, 0.6);
+  background: rgba(49, 59, 89, 0.42);
   color: #d9e3ff;
   border-radius: 999px;
   padding: 4px 8px;
@@ -1312,10 +1375,29 @@ h2 {
   cursor: pointer;
 }
 
-.restaurant-legacy-editor-dish-chip.is-active {
-  border-style: solid;
+.restaurant-legacy-editor-dish-chip.chip-none {
+  border-color: rgba(140, 154, 189, 0.55);
+  background: rgba(90, 102, 131, 0.36);
+  color: #d0d7ea;
+}
+
+.restaurant-legacy-editor-dish-chip.chip-smart {
   border-color: #3b82f6;
   background: rgba(59, 130, 246, 0.24);
+}
+
+.restaurant-legacy-editor-dish-chip.chip-manual {
+  border-color: #ef4444;
+  background: rgba(239, 68, 68, 0.24);
+  color: #ffd6d6;
+}
+
+.restaurant-legacy-editor-dish-chip.chip-contains {
+  border-style: solid;
+}
+
+.restaurant-legacy-editor-dish-chip.chip-cross {
+  border-style: dashed;
 }
 
 .restaurant-legacy-editor-dish-ingredient-status-col {
@@ -1336,6 +1418,14 @@ h2 {
 .restaurant-legacy-editor-dish-ingredient-meta {
   color: #a7b2d1;
   font-size: 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.restaurant-legacy-editor-dish-brand-warning {
+  color: #ffb9b9;
+  font-size: 0.74rem;
 }
 
 .restaurant-legacy-editor-dish-ingredient-actions {

@@ -12,6 +12,125 @@ function asText(value) {
   return String(value || "").trim();
 }
 
+function normalizeToken(value) {
+  return asText(value).toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+function dedupeTokenList(values) {
+  const output = [];
+  const seen = new Set();
+  (Array.isArray(values) ? values : []).forEach((value) => {
+    const text = asText(value);
+    if (!text) return;
+    const token = normalizeToken(text);
+    if (!token || seen.has(token)) return;
+    seen.add(token);
+    output.push(text);
+  });
+  return output;
+}
+
+function buildCanonicalTokenLookup(values) {
+  const map = new Map();
+  (Array.isArray(values) ? values : []).forEach((value) => {
+    const text = asText(value);
+    if (!text) return;
+    const token = normalizeToken(text);
+    if (!token || map.has(token)) return;
+    map.set(token, text);
+  });
+  return map;
+}
+
+function findDietAlias(token, lookup) {
+  if (!token || !(lookup instanceof Map) || !lookup.size) return "";
+  const entries = Array.from(lookup.entries());
+  if (
+    token === "gf" ||
+    token.includes("glutenfree") ||
+    token.includes("nogluten")
+  ) {
+    const matched = entries.find(([dietToken]) => dietToken.includes("glutenfree"));
+    return matched?.[1] || "";
+  }
+  if (token === "pescetarian") {
+    const matched = entries.find(([dietToken]) => dietToken.includes("pescatarian"));
+    return matched?.[1] || "";
+  }
+  return "";
+}
+
+function resolveCanonicalValue(value, options = {}) {
+  const text = asText(value);
+  if (!text) return "";
+  const {
+    strictNormalizer,
+    tokenLookup,
+    aliasResolver,
+  } = options;
+
+  if (typeof strictNormalizer === "function") {
+    const strictValue = asText(strictNormalizer(text));
+    if (strictValue) return strictValue;
+  }
+
+  const token = normalizeToken(text);
+  if (!token) return "";
+
+  if (tokenLookup instanceof Map && tokenLookup.has(token)) {
+    return tokenLookup.get(token) || "";
+  }
+
+  if (typeof aliasResolver === "function") {
+    const alias = asText(aliasResolver(token));
+    if (alias) return alias;
+  }
+
+  return "";
+}
+
+function normalizeCanonicalList(values, resolveValue) {
+  const list = (Array.isArray(values) ? values : [])
+    .map((value) => resolveValue(value))
+    .filter(Boolean);
+  return dedupeTokenList(list);
+}
+
+function hasAssignedBrand(ingredient) {
+  return (Array.isArray(ingredient?.brands) ? ingredient.brands : []).some(
+    (brand) => asText(brand?.name),
+  );
+}
+
+function buildOverlayBrandRequirementIssues(overlay) {
+  const issues = [];
+  const overlayName = asText(overlay?.id || overlay?.name) || "Dish";
+  const rows = Array.isArray(overlay?.ingredients) ? overlay.ingredients : [];
+
+  rows.forEach((ingredient, index) => {
+    if (!ingredient?.brandRequired) return;
+    if (hasAssignedBrand(ingredient)) return;
+    const ingredientName = asText(ingredient?.name) || `Ingredient ${index + 1}`;
+    const reason = asText(ingredient?.brandRequirementReason);
+    issues.push({
+      overlayName,
+      ingredientName,
+      reason,
+      message: reason
+        ? `${overlayName}: ${ingredientName} requires brand assignment (${reason})`
+        : `${overlayName}: ${ingredientName} requires brand assignment`,
+    });
+  });
+
+  return issues;
+}
+
+function buildBrandRequirementIssues(overlays) {
+  return (Array.isArray(overlays) ? overlays : []).flatMap((overlay) =>
+    buildOverlayBrandRequirementIssues(overlay),
+  );
+}
+
 function normalizeNumber(value, fallback = 0) {
   const parsed = Number(value);
   if (!Number.isFinite(parsed)) return fallback;
@@ -650,6 +769,44 @@ export function useRestaurantEditor({
     );
   }, [draftOverlays, selectedOverlayKey]);
 
+  const allergenTokenLookup = useMemo(
+    () => buildCanonicalTokenLookup(config?.ALLERGENS),
+    [config?.ALLERGENS],
+  );
+  const dietTokenLookup = useMemo(
+    () => buildCanonicalTokenLookup(config?.DIETS),
+    [config?.DIETS],
+  );
+
+  const normalizeAllergenValue = useCallback(
+    (value) =>
+      resolveCanonicalValue(value, {
+        strictNormalizer: config?.normalizeAllergen,
+        tokenLookup: allergenTokenLookup,
+      }),
+    [allergenTokenLookup, config?.normalizeAllergen],
+  );
+
+  const normalizeDietValue = useCallback(
+    (value) =>
+      resolveCanonicalValue(value, {
+        strictNormalizer: config?.normalizeDietLabel,
+        tokenLookup: dietTokenLookup,
+        aliasResolver: (token) => findDietAlias(token, dietTokenLookup),
+      }),
+    [config?.normalizeDietLabel, dietTokenLookup],
+  );
+
+  const normalizeAllergenList = useCallback(
+    (values) => normalizeCanonicalList(values, normalizeAllergenValue),
+    [normalizeAllergenValue],
+  );
+
+  const normalizeDietList = useCallback(
+    (values) => normalizeCanonicalList(values, normalizeDietValue),
+    [normalizeDietValue],
+  );
+
   const selectedOverlayIndex = useMemo(() => {
     if (!selectedOverlay?._editorKey) return -1;
     return draftOverlays.findIndex(
@@ -1261,6 +1418,17 @@ export function useRestaurantEditor({
     setIsSaving(true);
 
     try {
+      const brandRequirementIssues = buildBrandRequirementIssues(overlaysRef.current);
+      if (brandRequirementIssues.length) {
+        const firstIssue = brandRequirementIssues[0];
+        setSaveError(
+          firstIssue?.message ||
+            "Brand assignment is required for one or more ingredient rows.",
+        );
+        setSaveStatus("error");
+        return { success: false };
+      }
+
       const cleanedOverlays = (overlaysRef.current || []).map(stripEditorOverlay);
       const cleanedMenuImages = (menuImagesRef.current || []).filter(Boolean);
       const menuImage = cleanedMenuImages[0] || "";
@@ -1395,7 +1563,40 @@ export function useRestaurantEditor({
   const applyAiResultToSelectedOverlay = useCallback((result) => {
     if (!selectedOverlay?._editorKey || !result) return;
 
-    const ingredients = Array.isArray(result.ingredients) ? result.ingredients : [];
+    const ingredients = (Array.isArray(result.ingredients) ? result.ingredients : []).map(
+      (ingredient, index) => {
+        const rowName = asText(ingredient?.name) || `Ingredient ${index + 1}`;
+        const containsAllergens = normalizeAllergenList(ingredient?.allergens);
+        const containsDiets = normalizeDietList(ingredient?.diets);
+        const crossAllergens = normalizeAllergenList(
+          ingredient?.crossContaminationAllergens,
+        );
+        const crossDiets = normalizeDietList(ingredient?.crossContaminationDiets);
+        return {
+          ...ingredient,
+          name: rowName,
+          allergens: containsAllergens,
+          diets: containsDiets,
+          crossContaminationAllergens: crossAllergens,
+          crossContaminationDiets: crossDiets,
+          aiDetectedAllergens: normalizeAllergenList(
+            ingredient?.aiDetectedAllergens || containsAllergens,
+          ),
+          aiDetectedDiets: normalizeDietList(
+            ingredient?.aiDetectedDiets || containsDiets,
+          ),
+          aiDetectedCrossContaminationAllergens: normalizeAllergenList(
+            ingredient?.aiDetectedCrossContaminationAllergens || crossAllergens,
+          ),
+          aiDetectedCrossContaminationDiets: normalizeDietList(
+            ingredient?.aiDetectedCrossContaminationDiets || crossDiets,
+          ),
+          brands: Array.isArray(ingredient?.brands) ? ingredient.brands : [],
+          brandRequired: Boolean(ingredient?.brandRequired),
+          brandRequirementReason: asText(ingredient?.brandRequirementReason),
+        };
+      },
+    );
 
     const allergens = Array.from(
       new Set(
@@ -1408,7 +1609,7 @@ export function useRestaurantEditor({
     );
 
     const diets = Array.isArray(result.dietaryOptions)
-      ? result.dietaryOptions.filter(Boolean)
+      ? normalizeDietList(result.dietaryOptions)
       : Array.from(
           new Set(
             ingredients
@@ -1435,6 +1636,28 @@ export function useRestaurantEditor({
     });
 
     const ingredientsBlockingDiets = computeDietBlockers(ingredients, diets);
+    const crossContaminationAllergens = Array.from(
+      new Set(
+        ingredients
+          .flatMap((ingredient) =>
+            Array.isArray(ingredient?.crossContaminationAllergens)
+              ? ingredient.crossContaminationAllergens
+              : [],
+          )
+          .filter(Boolean),
+      ),
+    );
+    const crossContaminationDiets = Array.from(
+      new Set(
+        ingredients
+          .flatMap((ingredient) =>
+            Array.isArray(ingredient?.crossContaminationDiets)
+              ? ingredient.crossContaminationDiets
+              : [],
+          )
+          .filter(Boolean),
+      ),
+    );
 
     updateOverlay(selectedOverlay._editorKey, {
       allergens,
@@ -1442,14 +1665,21 @@ export function useRestaurantEditor({
       details,
       ingredients,
       removable: [],
-      crossContaminationAllergens: [],
-      crossContaminationDiets: [],
+      crossContaminationAllergens,
+      crossContaminationDiets,
       ingredientsBlockingDiets,
     });
 
     appendPendingChange(`${selectedOverlay.id || "Dish"}: Applied AI ingredient analysis`);
     queueMicrotask(() => pushHistory());
-  }, [appendPendingChange, pushHistory, selectedOverlay, updateOverlay]);
+  }, [
+    appendPendingChange,
+    normalizeAllergenList,
+    normalizeDietList,
+    pushHistory,
+    selectedOverlay,
+    updateOverlay,
+  ]);
 
   const runAiDishAnalysis = useCallback(async () => {
     if (!selectedOverlay || !callbacks?.onAnalyzeDish) return { success: false };
@@ -1485,29 +1715,222 @@ export function useRestaurantEditor({
     }
   }, [aiAssistDraft.imageData, aiAssistDraft.text, callbacks, selectedOverlay]);
 
+  const analyzeIngredientName = useCallback(async ({
+    ingredientName,
+    dishName,
+  }) => {
+    if (!callbacks?.onAnalyzeIngredientName) {
+      return {
+        success: false,
+        error: new Error("Ingredient name analysis callback is not configured."),
+      };
+    }
+
+    const safeIngredientName = asText(ingredientName);
+    if (!safeIngredientName) {
+      return {
+        success: false,
+        error: new Error("Ingredient name is required."),
+      };
+    }
+
+    try {
+      const result = await callbacks.onAnalyzeIngredientName({
+        ingredientName: safeIngredientName,
+        dishName:
+          asText(dishName) ||
+          asText(selectedOverlay?.id || selectedOverlay?.name),
+      });
+
+      const allergens = normalizeAllergenList(result?.allergens);
+      const diets = normalizeDietList(result?.diets);
+
+      return {
+        success: true,
+        result: {
+          allergens,
+          diets,
+          crossContaminationAllergens: normalizeAllergenList(
+            result?.crossContaminationAllergens,
+          ),
+          crossContaminationDiets: normalizeDietList(
+            result?.crossContaminationDiets,
+          ),
+          aiDetectedAllergens: normalizeAllergenList(
+            result?.aiDetectedAllergens || allergens,
+          ),
+          aiDetectedDiets: normalizeDietList(result?.aiDetectedDiets || diets),
+          aiDetectedCrossContaminationAllergens: normalizeAllergenList(
+            result?.aiDetectedCrossContaminationAllergens ||
+              result?.crossContaminationAllergens,
+          ),
+          aiDetectedCrossContaminationDiets: normalizeDietList(
+            result?.aiDetectedCrossContaminationDiets ||
+              result?.crossContaminationDiets,
+          ),
+          reasoning: asText(result?.reasoning),
+        },
+      };
+    } catch (error) {
+      return { success: false, error };
+    }
+  }, [
+    callbacks,
+    normalizeAllergenList,
+    normalizeDietList,
+    selectedOverlay?.id,
+    selectedOverlay?.name,
+  ]);
+
+  const analyzeIngredientScanRequirement = useCallback(async ({
+    ingredientName,
+    dishName,
+  }) => {
+    if (!callbacks?.onAnalyzeIngredientScanRequirement) {
+      return {
+        success: false,
+        error: new Error("Ingredient scan requirement callback is not configured."),
+      };
+    }
+
+    const safeIngredientName = asText(ingredientName);
+    if (!safeIngredientName) {
+      return {
+        success: false,
+        error: new Error("Ingredient name is required."),
+      };
+    }
+
+    try {
+      const result = await callbacks.onAnalyzeIngredientScanRequirement({
+        ingredientName: safeIngredientName,
+        dishName:
+          asText(dishName) ||
+          asText(selectedOverlay?.id || selectedOverlay?.name),
+      });
+      return {
+        success: true,
+        result: {
+          needsScan: Boolean(result?.needsScan),
+          reasoning: asText(result?.reasoning),
+        },
+      };
+    } catch (error) {
+      return { success: false, error };
+    }
+  }, [callbacks, selectedOverlay?.id, selectedOverlay?.name]);
+
+  const openIngredientLabelScan = useCallback(async ({ ingredientName }) => {
+    if (!callbacks?.onOpenIngredientLabelScan) {
+      return {
+        success: false,
+        error: new Error("Ingredient label scan callback is not configured."),
+      };
+    }
+
+    try {
+      const result = await callbacks.onOpenIngredientLabelScan({
+        ingredientName: asText(ingredientName),
+      });
+      if (!result) return { success: true, result: null };
+
+      const allergens = normalizeAllergenList(result?.allergens);
+      const diets = normalizeDietList(result?.diets);
+      const crossContaminationAllergens = normalizeAllergenList(
+        result?.crossContaminationAllergens,
+      );
+      const crossContaminationDiets = normalizeDietList(
+        result?.crossContaminationDiets,
+      );
+
+      const productName = asText(result?.productName) || asText(ingredientName);
+      const normalizedResult = {
+        ...result,
+        productName,
+        allergens,
+        diets,
+        crossContaminationAllergens,
+        crossContaminationDiets,
+        aiDetectedAllergens: normalizeAllergenList(
+          result?.aiDetectedAllergens || allergens,
+        ),
+        aiDetectedDiets: normalizeDietList(result?.aiDetectedDiets || diets),
+        aiDetectedCrossContaminationAllergens: normalizeAllergenList(
+          result?.aiDetectedCrossContaminationAllergens ||
+            crossContaminationAllergens,
+        ),
+        aiDetectedCrossContaminationDiets: normalizeDietList(
+          result?.aiDetectedCrossContaminationDiets || crossContaminationDiets,
+        ),
+      };
+
+      return { success: true, result: normalizedResult };
+    } catch (error) {
+      return { success: false, error };
+    }
+  }, [callbacks, normalizeAllergenList, normalizeDietList]);
+
   const runIngredientLabelScan = useCallback(async () => {
-    if (!selectedOverlay || !callbacks?.onOpenIngredientLabelScan) {
+    if (!selectedOverlay) {
       return { success: false };
     }
 
     try {
       const ingredientName = selectedOverlay.name || selectedOverlay.id || "Ingredient";
-      const result = await callbacks.onOpenIngredientLabelScan({ ingredientName });
+      const scanResult = await openIngredientLabelScan({ ingredientName });
+      if (!scanResult?.success) {
+        return scanResult;
+      }
+      const result = scanResult?.result;
       if (result?.productName || result?.ingredientsList || result?.allergens) {
         const ingredients = [
           {
             name: result.productName || ingredientName,
-            allergens: Array.isArray(result.allergens) ? result.allergens : [],
-            diets: Array.isArray(result.diets) ? result.diets : [],
-            crossContaminationAllergens: Array.isArray(result.crossContaminationAllergens)
-              ? result.crossContaminationAllergens
-              : [],
-            crossContaminationDiets: Array.isArray(result.crossContaminationDiets)
-              ? result.crossContaminationDiets
-              : [],
+            allergens: normalizeAllergenList(result.allergens),
+            diets: normalizeDietList(result.diets),
+            crossContaminationAllergens: normalizeAllergenList(
+              result.crossContaminationAllergens,
+            ),
+            crossContaminationDiets: normalizeDietList(
+              result.crossContaminationDiets,
+            ),
+            aiDetectedAllergens: normalizeAllergenList(
+              result.aiDetectedAllergens || result.allergens,
+            ),
+            aiDetectedDiets: normalizeDietList(
+              result.aiDetectedDiets || result.diets,
+            ),
+            aiDetectedCrossContaminationAllergens: normalizeAllergenList(
+              result.aiDetectedCrossContaminationAllergens ||
+                result.crossContaminationAllergens,
+            ),
+            aiDetectedCrossContaminationDiets: normalizeDietList(
+              result.aiDetectedCrossContaminationDiets ||
+                result.crossContaminationDiets,
+            ),
             removable: false,
             ingredientsList: Array.isArray(result.ingredientsList)
               ? result.ingredientsList
+              : [],
+            brands: result.productName
+              ? [
+                  {
+                    name: result.productName,
+                    allergens: normalizeAllergenList(result.allergens),
+                    diets: normalizeDietList(result.diets),
+                    crossContaminationAllergens: normalizeAllergenList(
+                      result.crossContaminationAllergens,
+                    ),
+                    crossContaminationDiets: normalizeDietList(
+                      result.crossContaminationDiets,
+                    ),
+                    ingredientsList: Array.isArray(result.ingredientsList)
+                      ? result.ingredientsList
+                      : [],
+                    ingredientsImage: asText(result.ingredientsImage),
+                    brandImage: asText(result.brandImage),
+                  },
+                ]
               : [],
           },
         ];
@@ -1521,7 +1944,13 @@ export function useRestaurantEditor({
     } catch (error) {
       return { success: false, error };
     }
-  }, [applyAiResultToSelectedOverlay, callbacks, selectedOverlay]);
+  }, [
+    applyAiResultToSelectedOverlay,
+    normalizeAllergenList,
+    normalizeDietList,
+    openIngredientLabelScan,
+    selectedOverlay,
+  ]);
 
   const detectMenuCorners = useCallback(async ({ imageData, width, height }) => {
     if (!callbacks?.onDetectMenuCorners) {
@@ -1767,6 +2196,13 @@ export function useRestaurantEditor({
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, [isDirty]);
 
+  const getBrandRequirementIssues = useCallback((overlay) => {
+    if (overlay) {
+      return buildOverlayBrandRequirementIssues(overlay);
+    }
+    return buildBrandRequirementIssues(overlaysRef.current);
+  }, []);
+
   return {
     canEdit,
     overlays: draftOverlays,
@@ -1808,6 +2244,9 @@ export function useRestaurantEditor({
     setAiAssistDraft,
     runAiDishAnalysis,
     applyAiResultToSelectedOverlay,
+    analyzeIngredientName,
+    analyzeIngredientScanRequirement,
+    openIngredientLabelScan,
     runIngredientLabelScan,
     detectMenuCorners,
 
@@ -1862,10 +2301,15 @@ export function useRestaurantEditor({
     mapDetectedDish,
     setDetectWizardIndex,
     closeDetectWizard,
+    getBrandRequirementIssues,
 
     config: {
       allergens: Array.isArray(config?.ALLERGENS) ? config.ALLERGENS : [],
       diets: Array.isArray(config?.DIETS) ? config.DIETS : [],
+      normalizeAllergen: normalizeAllergenValue,
+      normalizeDietLabel: normalizeDietValue,
+      normalizeAllergenList,
+      normalizeDietList,
       formatAllergenLabel:
         typeof config?.formatAllergenLabel === "function"
           ? config.formatAllergenLabel

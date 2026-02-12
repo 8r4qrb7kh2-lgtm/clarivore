@@ -2327,7 +2327,7 @@ Notes:
 
         data[rowIdx].confirmed = false;
         data[rowIdx].aiDetectedAllergens = Array.from(containedAllergens);
-        data[rowIdx].aiDetectedCrossContamination =
+        data[rowIdx].aiDetectedCrossContaminationAllergens =
           Array.from(crossContaminationAllergens);
         data[rowIdx].aiDetectedDiets = data[rowIdx].diets;
         data[rowIdx].aiDetectedCrossContaminationDiets = Array.from(crossContaminationDiets);

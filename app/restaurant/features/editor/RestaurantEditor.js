@@ -174,14 +174,52 @@ function includesToken(values, target) {
   );
 }
 
+function readTokenState({
+  containsValues,
+  crossValues,
+  token,
+}) {
+  if (includesToken(containsValues, token)) return "contains";
+  if (includesToken(crossValues, token)) return "cross";
+  return "none";
+}
+
+function nextTokenState(current) {
+  if (current === "none") return "contains";
+  if (current === "contains") return "cross";
+  return "none";
+}
+
+function getChipToneClass({ selectedState, smartState }) {
+  if (selectedState === "none") return "chip-none";
+  return selectedState === smartState ? "chip-smart" : "chip-manual";
+}
+
+function getChipBorderClass(selectedState) {
+  if (selectedState === "contains") return "chip-contains";
+  if (selectedState === "cross") return "chip-cross";
+  return "";
+}
+
+function normalizeBrandEntry(brand) {
+  const base = brand && typeof brand === "object" ? brand : {};
+  const name = asText(base.name || base.productName);
+  if (!name) return null;
+  return {
+    ...base,
+    name,
+    allergens: dedupeTokenList(base.allergens),
+    diets: dedupeTokenList(base.diets),
+    crossContaminationAllergens: dedupeTokenList(base.crossContaminationAllergens),
+    crossContaminationDiets: dedupeTokenList(base.crossContaminationDiets),
+    ingredientsList: Array.isArray(base.ingredientsList)
+      ? base.ingredientsList.map((line) => asText(line)).filter(Boolean)
+      : [],
+  };
+}
+
 function normalizeIngredientEntry(ingredient, index) {
   const base = ingredient && typeof ingredient === "object" ? ingredient : {};
-  const contains = base.contains !== false;
-  const crossRisk =
-    Boolean(base.crossRisk) ||
-    (Array.isArray(base.crossContaminationAllergens) && base.crossContaminationAllergens.length > 0) ||
-    (Array.isArray(base.crossContaminationDiets) &&
-      base.crossContaminationDiets.length > 0);
   return {
     ...base,
     name: asText(base.name) || `Ingredient ${index + 1}`,
@@ -189,10 +227,22 @@ function normalizeIngredientEntry(ingredient, index) {
     diets: dedupeTokenList(base.diets),
     crossContaminationAllergens: dedupeTokenList(base.crossContaminationAllergens),
     crossContaminationDiets: dedupeTokenList(base.crossContaminationDiets),
+    aiDetectedAllergens: dedupeTokenList(base.aiDetectedAllergens),
+    aiDetectedDiets: dedupeTokenList(base.aiDetectedDiets),
+    aiDetectedCrossContaminationAllergens: dedupeTokenList(
+      base.aiDetectedCrossContaminationAllergens,
+    ),
+    aiDetectedCrossContaminationDiets: dedupeTokenList(
+      base.aiDetectedCrossContaminationDiets,
+    ),
+    brands: (Array.isArray(base.brands) ? base.brands : [])
+      .map((brand) => normalizeBrandEntry(brand))
+      .filter(Boolean),
+    brandRequired: Boolean(base.brandRequired),
+    brandRequirementReason: asText(base.brandRequirementReason),
     removable: Boolean(base.removable),
     confirmed: base.confirmed !== false,
-    contains,
-    crossRisk,
+    contains: base.contains !== false,
   };
 }
 
@@ -242,9 +292,6 @@ function deriveDishStateFromIngredients({
         current.items.push(ingredientName);
         allergenMap.set(token, current);
       });
-    }
-
-    if (ingredient.crossRisk) {
       dedupeTokenList(ingredient?.crossContaminationAllergens).forEach((allergen) => {
         crossAllergenSet.add(allergen);
       });
@@ -290,6 +337,11 @@ function deriveDishStateFromIngredients({
 function DishEditorModal({ editor }) {
   const overlay = editor.selectedOverlay;
   const [showDeleteWarning, setShowDeleteWarning] = useState(false);
+  const [applyBusyByRow, setApplyBusyByRow] = useState({});
+  const [scanBusyByRow, setScanBusyByRow] = useState({});
+  const [searchOpenRow, setSearchOpenRow] = useState(-1);
+  const [searchQueryByRow, setSearchQueryByRow] = useState({});
+  const [modalError, setModalError] = useState("");
 
   const allergens = useMemo(
     () => buildAllergenDisplay(editor, overlay),
@@ -304,6 +356,23 @@ function DishEditorModal({ editor }) {
       ),
     [overlay?.ingredients],
   );
+  const existingBrandItems = useMemo(() => {
+    const map = new Map();
+    (Array.isArray(editor.overlays) ? editor.overlays : []).forEach((dish) => {
+      (Array.isArray(dish?.ingredients) ? dish.ingredients : []).forEach((ingredient) => {
+        (Array.isArray(ingredient?.brands) ? ingredient.brands : []).forEach((brand) => {
+          const normalized = normalizeBrandEntry(brand);
+          if (!normalized) return;
+          const key = normalizeToken(normalized.name);
+          if (!key || map.has(key)) return;
+          map.set(key, normalized);
+        });
+      });
+    });
+    return Array.from(map.values()).sort((a, b) =>
+      a.name.localeCompare(b.name, undefined, { sensitivity: "base" }),
+    );
+  }, [editor.overlays]);
   const previewAllergenRows = useMemo(
     () =>
       mergeDishSectionRows(
@@ -324,6 +393,11 @@ function DishEditorModal({ editor }) {
   useEffect(() => {
     if (!editor.dishEditorOpen) {
       setShowDeleteWarning(false);
+      setApplyBusyByRow({});
+      setScanBusyByRow({});
+      setSearchOpenRow(-1);
+      setSearchQueryByRow({});
+      setModalError("");
     }
   }, [editor.dishEditorOpen]);
 
@@ -353,6 +427,22 @@ function DishEditorModal({ editor }) {
     [editor, ingredients, overlay?.details],
   );
 
+  const normalizeAllergenList = useCallback(
+    (values) =>
+      typeof editor.config?.normalizeAllergenList === "function"
+        ? editor.config.normalizeAllergenList(values)
+        : dedupeTokenList(values),
+    [editor.config],
+  );
+
+  const normalizeDietList = useCallback(
+    (values) =>
+      typeof editor.config?.normalizeDietList === "function"
+        ? editor.config.normalizeDietList(values)
+        : dedupeTokenList(values),
+    [editor.config],
+  );
+
   const updateIngredientName = useCallback(
     (ingredientIndex, value) => {
       applyIngredientChanges((current) =>
@@ -364,28 +454,47 @@ function DishEditorModal({ editor }) {
     [applyIngredientChanges],
   );
 
-  const toggleIngredientToken = useCallback(
-    (ingredientIndex, field, token) => {
+  const cycleIngredientTokenState = useCallback(
+    (ingredientIndex, type, token) => {
       const value = asText(token);
       if (!value) return;
+      const containsField = type === "diet" ? "diets" : "allergens";
+      const crossField =
+        type === "diet"
+          ? "crossContaminationDiets"
+          : "crossContaminationAllergens";
+
       applyIngredientChanges((current) =>
         current.map((ingredient, index) => {
           if (index !== ingredientIndex) return ingredient;
-          const existing = Array.isArray(ingredient?.[field]) ? ingredient[field] : [];
-          const next = includesToken(existing, value)
-            ? existing.filter((item) => normalizeToken(item) !== normalizeToken(value))
-            : [...existing, value];
+          const containsValues = dedupeTokenList(ingredient?.[containsField]);
+          const crossValues = dedupeTokenList(ingredient?.[crossField]);
+          const currentState = readTokenState({
+            containsValues,
+            crossValues,
+            token: value,
+          });
+          const nextState = nextTokenState(currentState);
+          const tokenKey = normalizeToken(value);
+
+          const nextContains = containsValues.filter(
+            (entry) => normalizeToken(entry) !== tokenKey,
+          );
+          const nextCross = crossValues.filter(
+            (entry) => normalizeToken(entry) !== tokenKey,
+          );
+
+          if (nextState === "contains") {
+            nextContains.push(value);
+          } else if (nextState === "cross") {
+            nextCross.push(value);
+          }
+
           return {
             ...ingredient,
-            [field]: dedupeTokenList(next),
-            contains:
-              field === "allergens" || field === "diets"
-                ? true
-                : ingredient.contains !== false,
-            crossRisk:
-              field === "crossContaminationAllergens" || field === "crossContaminationDiets"
-                ? true
-                : Boolean(ingredient.crossRisk),
+            [containsField]: dedupeTokenList(nextContains),
+            [crossField]: dedupeTokenList(nextCross),
+            contains: true,
           };
         }),
       );
@@ -430,10 +539,16 @@ function DishEditorModal({ editor }) {
             diets: [],
             crossContaminationAllergens: [],
             crossContaminationDiets: [],
+            aiDetectedAllergens: [],
+            aiDetectedDiets: [],
+            aiDetectedCrossContaminationAllergens: [],
+            aiDetectedCrossContaminationDiets: [],
+            brands: [],
+            brandRequired: false,
+            brandRequirementReason: "",
             removable: false,
             confirmed: true,
             contains: true,
-            crossRisk: false,
           },
           current.length,
         ),
@@ -458,6 +573,218 @@ function DishEditorModal({ editor }) {
     },
     [applyIngredientChanges, ingredients, overlay?.id],
   );
+
+  const applyIngredientSmartDetection = useCallback(
+    async (ingredientIndex) => {
+      const ingredient = ingredients[ingredientIndex];
+      const ingredientName = asText(ingredient?.name);
+      if (!ingredientName) {
+        setModalError("Ingredient name is required before applying smart detection.");
+        return;
+      }
+
+      setApplyBusyByRow((current) => ({ ...current, [ingredientIndex]: true }));
+      setModalError("");
+
+      const dishName = asText(overlay?.id || overlay?.name);
+      const [nameAnalysis, scanRequirement] = await Promise.all([
+        editor.analyzeIngredientName({
+          ingredientName,
+          dishName,
+        }),
+        editor.analyzeIngredientScanRequirement({
+          ingredientName,
+          dishName,
+        }),
+      ]);
+
+      setApplyBusyByRow((current) => ({ ...current, [ingredientIndex]: false }));
+
+      if (!nameAnalysis?.success) {
+        setModalError(
+          nameAnalysis?.error?.message || "Failed to analyze ingredient name.",
+        );
+        return;
+      }
+
+      const analysis = nameAnalysis.result || {};
+      const scanData = scanRequirement?.success ? scanRequirement.result : null;
+      const nextAllergens = normalizeAllergenList(analysis.allergens);
+      const nextDiets = normalizeDietList(analysis.diets);
+      const nextCrossAllergens = normalizeAllergenList(
+        analysis.crossContaminationAllergens,
+      );
+      const nextCrossDiets = normalizeDietList(analysis.crossContaminationDiets);
+
+      applyIngredientChanges((current) =>
+        current.map((item, itemIndex) => {
+          if (itemIndex !== ingredientIndex) return item;
+          const existingBrands = Array.isArray(item.brands) ? item.brands : [];
+          const hasBrand = existingBrands.some((brand) => asText(brand?.name));
+          const hasScanDecision =
+            scanRequirement?.success &&
+            typeof scanData?.needsScan === "boolean";
+          const needsScan = hasScanDecision
+            ? Boolean(scanData?.needsScan)
+            : Boolean(item.brandRequired);
+          const requirementReason = hasScanDecision
+            ? needsScan
+              ? asText(scanData?.reasoning)
+              : ""
+            : asText(item.brandRequirementReason);
+          return {
+            ...item,
+            allergens: nextAllergens,
+            diets: nextDiets,
+            crossContaminationAllergens: nextCrossAllergens,
+            crossContaminationDiets: nextCrossDiets,
+            aiDetectedAllergens: normalizeAllergenList(
+              analysis.aiDetectedAllergens || nextAllergens,
+            ),
+            aiDetectedDiets: normalizeDietList(
+              analysis.aiDetectedDiets || nextDiets,
+            ),
+            aiDetectedCrossContaminationAllergens: normalizeAllergenList(
+              analysis.aiDetectedCrossContaminationAllergens || nextCrossAllergens,
+            ),
+            aiDetectedCrossContaminationDiets: normalizeDietList(
+              analysis.aiDetectedCrossContaminationDiets || nextCrossDiets,
+            ),
+            brandRequired: needsScan,
+            brandRequirementReason: requirementReason,
+            confirmed: false,
+            contains: true,
+            brands: hasBrand ? existingBrands : [],
+          };
+        }),
+      );
+    },
+    [
+      applyIngredientChanges,
+      editor,
+      ingredients,
+      normalizeAllergenList,
+      normalizeDietList,
+      overlay?.id,
+      overlay?.name,
+    ],
+  );
+
+  const applyExistingBrandItem = useCallback(
+    (ingredientIndex, brandItem) => {
+      const normalizedBrand = normalizeBrandEntry(brandItem);
+      if (!normalizedBrand) return;
+      applyIngredientChanges((current) =>
+        current.map((ingredient, index) => {
+          if (index !== ingredientIndex) return ingredient;
+          const allergensList = normalizeAllergenList(normalizedBrand.allergens);
+          const dietsList = normalizeDietList(normalizedBrand.diets);
+          const crossAllergens = normalizeAllergenList(
+            normalizedBrand.crossContaminationAllergens,
+          );
+          const crossDiets = normalizeDietList(
+            normalizedBrand.crossContaminationDiets,
+          );
+          return {
+            ...ingredient,
+            allergens: allergensList,
+            diets: dietsList,
+            crossContaminationAllergens: crossAllergens,
+            crossContaminationDiets: crossDiets,
+            aiDetectedAllergens: allergensList,
+            aiDetectedDiets: dietsList,
+            aiDetectedCrossContaminationAllergens: crossAllergens,
+            aiDetectedCrossContaminationDiets: crossDiets,
+            brands: [normalizedBrand],
+            contains: true,
+            confirmed: true,
+          };
+        }),
+      );
+      setSearchOpenRow(-1);
+      setSearchQueryByRow((current) => ({ ...current, [ingredientIndex]: "" }));
+      setModalError("");
+    },
+    [applyIngredientChanges, normalizeAllergenList, normalizeDietList],
+  );
+
+  const scanIngredientBrandItem = useCallback(
+    async (ingredientIndex) => {
+      const ingredient = ingredients[ingredientIndex];
+      const ingredientName = asText(ingredient?.name);
+      if (!ingredientName) {
+        setModalError("Ingredient name is required before scanning a brand item.");
+        return;
+      }
+
+      setScanBusyByRow((current) => ({ ...current, [ingredientIndex]: true }));
+      setModalError("");
+      const result = await editor.openIngredientLabelScan({ ingredientName });
+      setScanBusyByRow((current) => ({ ...current, [ingredientIndex]: false }));
+
+      if (!result?.success) {
+        setModalError(result?.error?.message || "Ingredient label scan failed.");
+        return;
+      }
+
+      const payload = result?.result;
+      if (!payload) return;
+
+      const brandName = asText(payload.productName) || ingredientName;
+      const brandItem = normalizeBrandEntry({
+        name: brandName,
+        allergens: normalizeAllergenList(payload.allergens),
+        diets: normalizeDietList(payload.diets),
+        crossContaminationAllergens: normalizeAllergenList(
+          payload.crossContaminationAllergens,
+        ),
+        crossContaminationDiets: normalizeDietList(payload.crossContaminationDiets),
+        ingredientsList: Array.isArray(payload.ingredientsList)
+          ? payload.ingredientsList
+          : [],
+        brandImage: asText(payload.brandImage),
+        ingredientsImage: asText(payload.ingredientsImage),
+      });
+      if (!brandItem) return;
+
+      applyIngredientChanges((current) =>
+        current.map((item, itemIndex) => {
+          if (itemIndex !== ingredientIndex) return item;
+          const existing = (Array.isArray(item.brands) ? item.brands : [])
+            .map((brand) => normalizeBrandEntry(brand))
+            .filter(Boolean)
+            .filter((brand) => normalizeToken(brand.name) !== normalizeToken(brandItem.name));
+          return {
+            ...item,
+            allergens: brandItem.allergens,
+            diets: brandItem.diets,
+            crossContaminationAllergens: brandItem.crossContaminationAllergens,
+            crossContaminationDiets: brandItem.crossContaminationDiets,
+            aiDetectedAllergens: brandItem.allergens,
+            aiDetectedDiets: brandItem.diets,
+            aiDetectedCrossContaminationAllergens:
+              brandItem.crossContaminationAllergens,
+            aiDetectedCrossContaminationDiets: brandItem.crossContaminationDiets,
+            brands: [brandItem, ...existing],
+            contains: true,
+            confirmed: true,
+          };
+        }),
+      );
+    },
+    [applyIngredientChanges, editor, ingredients, normalizeAllergenList, normalizeDietList],
+  );
+
+  const handleSaveToDish = useCallback(() => {
+    const issues = editor.getBrandRequirementIssues(overlay);
+    if (issues.length) {
+      setModalError(issues[0]?.message || "Brand assignment is required.");
+      return;
+    }
+    setModalError("");
+    editor.pushHistory();
+    editor.closeDishEditor();
+  }, [editor, overlay]);
 
   const onProcessInput = async () => {
     const result = await editor.runAiDishAnalysis();
@@ -633,7 +960,21 @@ function DishEditorModal({ editor }) {
               <div className="restaurant-legacy-editor-dish-ingredient-list">
                 {ingredients.map((ingredient, index) => {
                   const containsAny = ingredient.contains !== false;
-                  const crossAny = Boolean(ingredient.crossRisk);
+                  const selectedBrandName = asText(ingredient?.brands?.[0]?.name);
+                  const hasAssignedBrand = Boolean(selectedBrandName);
+                  const searchOpen = searchOpenRow === index;
+                  const searchTerm = asText(searchQueryByRow[index]).toLowerCase();
+                  const matchingBrands = existingBrandItems
+                    .filter((brand) => {
+                      if (
+                        normalizeToken(brand.name) === normalizeToken(selectedBrandName)
+                      ) {
+                        return false;
+                      }
+                      if (!searchTerm) return true;
+                      return brand.name.toLowerCase().includes(searchTerm);
+                    })
+                    .slice(0, 8);
                   return (
                   <div
                     key={`${ingredient?.name || "ingredient"}-${index}`}
@@ -652,31 +993,89 @@ function DishEditorModal({ editor }) {
                           <button
                             type="button"
                             className="btn btnSmall"
-                            onClick={() =>
-                              updateIngredientName(
-                                index,
-                                asText(ingredient.name) || `Ingredient ${index + 1}`,
-                              )
-                            }
+                            disabled={Boolean(applyBusyByRow[index])}
+                            onClick={() => applyIngredientSmartDetection(index)}
                           >
-                            Apply
+                            {applyBusyByRow[index] ? "Applying..." : "Apply"}
                           </button>
                         </div>
 
-                        <div className="restaurant-legacy-editor-dish-ingredient-brand">
-                          <span>✓ Brand assignment optional</span>
+                        <div
+                          className={`restaurant-legacy-editor-dish-ingredient-brand ${ingredient.brandRequired && !hasAssignedBrand ? "is-required" : ""}`}
+                        >
+                          <span>
+                            {ingredient.brandRequired
+                              ? hasAssignedBrand
+                                ? "✓ Brand assigned (required)"
+                                : "⚠ Brand assignment required"
+                              : "✓ Brand assignment optional"}
+                          </span>
+                          {ingredient.brandRequirementReason ? (
+                            <span className="restaurant-legacy-editor-dish-ingredient-brand-reason">
+                              {ingredient.brandRequirementReason}
+                            </span>
+                          ) : null}
+                          {hasAssignedBrand ? (
+                            <span className="restaurant-legacy-editor-dish-ingredient-brand-selected">
+                              Selected: {selectedBrandName}
+                            </span>
+                          ) : null}
                           <div className="restaurant-legacy-editor-dish-ingredient-brand-actions">
-                            <button type="button" className="btn btnSmall" disabled>
+                            <button
+                              type="button"
+                              className="btn btnSmall"
+                              onClick={() =>
+                                setSearchOpenRow((current) =>
+                                  current === index ? -1 : index,
+                                )
+                              }
+                            >
                               Search existing items
                             </button>
                             <button
                               type="button"
                               className="btn btnSuccess btnSmall"
-                              disabled
+                              disabled={Boolean(scanBusyByRow[index])}
+                              onClick={() => scanIngredientBrandItem(index)}
                             >
-                              Add new item
+                              {scanBusyByRow[index] ? "Scanning..." : "Add new item"}
                             </button>
                           </div>
+                          {searchOpen ? (
+                            <div className="restaurant-legacy-editor-dish-brand-search">
+                              <input
+                                className="restaurant-legacy-editor-dish-brand-search-input"
+                                value={searchQueryByRow[index] || ""}
+                                placeholder="Search brand item names"
+                                onChange={(event) =>
+                                  setSearchQueryByRow((current) => ({
+                                    ...current,
+                                    [index]: event.target.value,
+                                  }))
+                                }
+                              />
+                              <div className="restaurant-legacy-editor-dish-brand-search-results">
+                                {matchingBrands.length ? (
+                                  matchingBrands.map((brand) => (
+                                    <button
+                                      key={`${index}-${brand.name}`}
+                                      type="button"
+                                      className="restaurant-legacy-editor-dish-brand-search-result"
+                                      onClick={() =>
+                                        applyExistingBrandItem(index, brand)
+                                      }
+                                    >
+                                      {brand.name}
+                                    </button>
+                                  ))
+                                ) : (
+                                  <p className="restaurant-legacy-editor-dish-brand-search-empty">
+                                    No matching brand items in this menu.
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          ) : null}
                         </div>
 
                         <label className="restaurant-legacy-editor-dish-inline-check">
@@ -712,65 +1111,38 @@ function DishEditorModal({ editor }) {
                           Contains
                         </label>
 
-                        <label className="restaurant-legacy-editor-dish-inline-check">
-                          <input
-                            type="checkbox"
-                            checked={crossAny}
-                            onChange={(event) => {
-                              const checked = event.target.checked;
-                              applyIngredientChanges((current) =>
-                                current.map((item, itemIndex) => {
-                                  if (itemIndex !== index) return item;
-                                  if (!checked) {
-                                    return {
-                                      ...item,
-                                      crossRisk: false,
-                                      crossContaminationAllergens: [],
-                                      crossContaminationDiets: [],
-                                    };
-                                  }
-                                  return {
-                                    ...item,
-                                    crossRisk: true,
-                                    crossContaminationAllergens: dedupeTokenList(
-                                      item.crossContaminationAllergens.length
-                                        ? item.crossContaminationAllergens
-                                        : item.allergens,
-                                    ),
-                                    crossContaminationDiets: dedupeTokenList(
-                                      item.crossContaminationDiets.length
-                                        ? item.crossContaminationDiets
-                                        : item.diets,
-                                    ),
-                                  };
-                                }),
-                              );
-                            }}
-                          />
-                          Cross-contamination risk
-                        </label>
-
                         <div className="restaurant-legacy-editor-dish-detection-note">
-                          <span>● Smart detection</span>
-                          <span>● Manual override</span>
+                          <span>Blue = smart detection</span>
+                          <span>Red = manual override</span>
+                          <span>Grey = no selection</span>
                         </div>
                       </div>
 
                       <div className="restaurant-legacy-editor-dish-ingredient-pills">
                         <div className="restaurant-legacy-editor-dish-pill-column">
                           {allergens.map((allergen) => {
-                            const active = includesToken(
-                              ingredient.allergens,
-                              allergen,
-                            );
+                            const selectedState = readTokenState({
+                              containsValues: ingredient.allergens,
+                              crossValues: ingredient.crossContaminationAllergens,
+                              token: allergen,
+                            });
+                            const smartState = readTokenState({
+                              containsValues: ingredient.aiDetectedAllergens,
+                              crossValues:
+                                ingredient.aiDetectedCrossContaminationAllergens,
+                              token: allergen,
+                            });
+                            const toneClass = getChipToneClass({
+                              selectedState,
+                              smartState,
+                            });
+                            const borderClass = getChipBorderClass(selectedState);
                             return (
                               <button
                                 key={`${index}-allergen-${allergen}`}
                                 type="button"
-                                className={`restaurant-legacy-editor-dish-chip ${active ? "is-active" : ""}`}
-                                onClick={() =>
-                                  toggleIngredientToken(index, "allergens", allergen)
-                                }
+                                className={`restaurant-legacy-editor-dish-chip ${toneClass} ${borderClass}`}
+                                onClick={() => cycleIngredientTokenState(index, "allergen", allergen)}
                               >
                                 {editor.config.formatAllergenLabel(allergen)}
                               </button>
@@ -779,13 +1151,27 @@ function DishEditorModal({ editor }) {
                         </div>
                         <div className="restaurant-legacy-editor-dish-pill-column">
                           {diets.map((diet) => {
-                            const active = includesToken(ingredient.diets, diet);
+                            const selectedState = readTokenState({
+                              containsValues: ingredient.diets,
+                              crossValues: ingredient.crossContaminationDiets,
+                              token: diet,
+                            });
+                            const smartState = readTokenState({
+                              containsValues: ingredient.aiDetectedDiets,
+                              crossValues: ingredient.aiDetectedCrossContaminationDiets,
+                              token: diet,
+                            });
+                            const toneClass = getChipToneClass({
+                              selectedState,
+                              smartState,
+                            });
+                            const borderClass = getChipBorderClass(selectedState);
                             return (
                               <button
                                 key={`${index}-diet-${diet}`}
                                 type="button"
-                                className={`restaurant-legacy-editor-dish-chip ${active ? "is-active" : ""}`}
-                                onClick={() => toggleIngredientToken(index, "diets", diet)}
+                                className={`restaurant-legacy-editor-dish-chip ${toneClass} ${borderClass}`}
+                                onClick={() => cycleIngredientTokenState(index, "diet", diet)}
                               >
                                 {editor.config.formatDietLabel(diet)}
                               </button>
@@ -814,6 +1200,11 @@ function DishEditorModal({ editor }) {
                         ) : (
                           <span>No allergens flagged</span>
                         )}
+                        {ingredient.brandRequired && !hasAssignedBrand ? (
+                          <span className="restaurant-legacy-editor-dish-brand-warning">
+                            Brand assignment required before saving this dish.
+                          </span>
+                        ) : null}
                       </div>
                       <button
                         type="button"
@@ -833,6 +1224,12 @@ function DishEditorModal({ editor }) {
               </p>
             )}
 
+            {modalError ? (
+              <p className="m-0 rounded-lg border border-[#a12525] bg-[rgba(139,29,29,0.32)] px-3 py-2 text-sm text-[#ffd0d0]">
+                {modalError}
+              </p>
+            ) : null}
+
             <div className="restaurant-legacy-editor-dish-ingredient-actions">
               <button type="button" className="btn btnSmall" onClick={addIngredientRow}>
                 Add ingredient
@@ -849,10 +1246,7 @@ function DishEditorModal({ editor }) {
               <button
                 type="button"
                 className="btn btnPrimary btnSmall"
-                onClick={() => {
-                  editor.pushHistory();
-                  editor.closeDishEditor();
-                }}
+                onClick={handleSaveToDish}
               >
                 ✓ Save to Dish
               </button>

@@ -257,7 +257,7 @@ function applyBrandDetections(ingredient, newBrand, normalizeAllergen, normalize
   ingredient.crossContaminationDiets = crossContaminationDiets.slice();
   ingredient.aiDetectedAllergens = allergens.slice();
   ingredient.aiDetectedDiets = diets.slice();
-  ingredient.aiDetectedCrossContamination = crossContaminationAllergens.slice();
+  ingredient.aiDetectedCrossContaminationAllergens = crossContaminationAllergens.slice();
   ingredient.aiDetectedCrossContaminationDiets = crossContaminationDiets.slice();
 }
 
