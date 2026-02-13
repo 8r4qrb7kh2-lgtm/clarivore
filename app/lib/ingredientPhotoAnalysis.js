@@ -4,6 +4,7 @@ import { createIngredientNormalizer } from "./ingredientNormalizer.js";
 export function initIngredientPhotoAnalysis(deps = {}) {
   const esc =
     typeof deps.esc === "function" ? deps.esc : (value) => String(value ?? "");
+  const asText = (value) => String(value ?? "").trim();
   const state = deps.state || {};
   const aiAssistState = deps.aiAssistState || {};
   const activePhotoAnalyses = deps.activePhotoAnalyses || new Map();
@@ -101,6 +102,56 @@ export function initIngredientPhotoAnalysis(deps = {}) {
       };
       img.onerror = reject;
       img.src = imgSrc;
+    });
+  }
+
+  async function prepareIngredientAnalysisImage(
+    imageDataUrl,
+    maxEdge = 1200,
+    quality = 0.92,
+  ) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.onload = () => {
+        const sourceWidth = Math.max(
+          1,
+          Math.round(img.naturalWidth || img.width || 0),
+        );
+        const sourceHeight = Math.max(
+          1,
+          Math.round(img.naturalHeight || img.height || 0),
+        );
+        const edgeLimit =
+          Number.isFinite(Number(maxEdge)) && Number(maxEdge) > 0
+            ? Number(maxEdge)
+            : 1200;
+        const scale = Math.min(1, edgeLimit / Math.max(sourceWidth, sourceHeight));
+        const targetWidth = Math.max(1, Math.round(sourceWidth * scale));
+        const targetHeight = Math.max(1, Math.round(sourceHeight * scale));
+
+        if (targetWidth === sourceWidth && targetHeight === sourceHeight) {
+          resolve({
+            imageData: imageDataUrl,
+            imageWidth: sourceWidth,
+            imageHeight: sourceHeight,
+          });
+          return;
+        }
+
+        const canvas = document.createElement("canvas");
+        canvas.width = targetWidth;
+        canvas.height = targetHeight;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, targetWidth, targetHeight);
+        resolve({
+          imageData: canvas.toDataURL("image/jpeg", quality),
+          imageWidth: targetWidth,
+          imageHeight: targetHeight,
+        });
+      };
+      img.onerror = reject;
+      img.src = imageDataUrl;
     });
   }
 
@@ -623,41 +674,50 @@ Notes:
     return lines;
   }
   // Main analysis function via Next.js runtime endpoint.
-  async function analyzeWithLabelCropper(imageDataUrl, onStatus) {
+  async function analyzeWithLabelCropper(imageDataUrl, onStatus, imageMeta = {}) {
     onStatus?.("Analyzing ingredient image...");
+    const payload = {
+      imageData: imageDataUrl,
+      mode: "full-analysis",
+    };
+    const imageWidth = Number(imageMeta?.imageWidth);
+    const imageHeight = Number(imageMeta?.imageHeight);
+    if (Number.isFinite(imageWidth) && imageWidth > 0) {
+      payload.imageWidth = imageWidth;
+    }
+    if (Number.isFinite(imageHeight) && imageHeight > 0) {
+      payload.imageHeight = imageHeight;
+    }
     const response = await fetch("/api/ingredient-photo-analysis", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        imageData: imageDataUrl,
-        mode: "full-analysis",
-      }),
+      body: JSON.stringify(payload),
     });
-    const payload = await response.json();
+    const responsePayload = await response.json();
     if (!response.ok) {
       return {
         success: false,
-        error: payload?.error || "Failed to analyze ingredient image.",
-        quality: payload?.quality || null,
+        error: responsePayload?.error || "Failed to analyze ingredient image.",
+        quality: responsePayload?.quality || null,
       };
     }
 
     return {
-      success: Boolean(payload?.success),
-      data: Array.isArray(payload?.data) ? payload.data : [],
-      claude_transcript: Array.isArray(payload?.claude_transcript)
-        ? payload.claude_transcript
+      success: Boolean(responsePayload?.success),
+      data: Array.isArray(responsePayload?.data) ? responsePayload.data : [],
+      claude_transcript: Array.isArray(responsePayload?.claude_transcript)
+        ? responsePayload.claude_transcript
         : [],
-      quality: payload?.quality || null,
-      error: payload?.error || "",
+      quality: responsePayload?.quality || null,
+      error: responsePayload?.error || "",
     };
   }
 
   // Full ingredient photo analysis pipeline:
   // 1. Apply slant correction (rotateImage)
-  // 2. Analyze with Claude + Google Vision (extract lines + bounding boxes)
+  // 2. Resize to bounded dimensions and analyze extracted lines/bounding boxes
   // 3. Analyze allergens
   // Returns: { lines: [...], allergenFlags: [...], correctedImage: dataUrl }
   async function analyzeIngredientPhoto(imageDataUrl, onStatus, options = {}) {
@@ -672,10 +732,23 @@ Notes:
       correctedImage = await rotateImage(imageDataUrl, slantAngle);
     }
 
-    // Step 2: Analyze with Claude + Google Vision (passes status updates)
-    const analysisResult = await analyzeWithLabelCropper(
+    // Step 2: Use a bounded-size image for analysis/display so crop coordinates
+    // and rendered image always share the same pixel space.
+    const preparedImage = await prepareIngredientAnalysisImage(
       correctedImage,
+      1200,
+      0.92,
+    );
+    const analysisImageData = preparedImage.imageData;
+
+    // Analyze lines (passes status updates)
+    const analysisResult = await analyzeWithLabelCropper(
+      analysisImageData,
       onStatus,
+      {
+        imageWidth: preparedImage.imageWidth,
+        imageHeight: preparedImage.imageHeight,
+      },
     );
 
     if (!analysisResult.success) {
@@ -707,7 +780,7 @@ Notes:
     return {
       lines: lines,
       allergenFlags: allergenFlags,
-      correctedImage: correctedImage,
+      correctedImage: analysisImageData,
       transcript: transcript,
       allergenAnalysisPending: skipAllergenAnalysis,
       quality: analysisResult.quality,
@@ -1807,37 +1880,107 @@ Notes:
 
     // Display allergen results
     function displayAllergenResults(flags) {
-      if (flags.length === 0) {
+      const safeFlags = Array.isArray(flags) ? flags : [];
+      if (safeFlags.length === 0) {
         allergenResultsContainer.innerHTML =
           '<div style="color:#4ade80;padding:12px;">✓ No allergens or diet violations detected</div>';
       } else {
-        let html = "";
-        flags.forEach((flag) => {
-          const isContained = flag.risk_type === "contained";
-          const bgColor = isContained
-            ? "rgba(239,68,68,0.15)"
-            : "rgba(251,191,36,0.15)";
-          const borderColor = isContained
-            ? "rgba(239,68,68,0.4)"
-            : "rgba(251,191,36,0.4)";
-          const riskLabel = isContained ? "CONTAINS" : "CROSS-CONTAMINATION";
-          const types = [
-            ...(flag.allergens || []).map((a) => formatAllergenLabel(a)),
-            ...(flag.diets || []),
-          ]
-            .filter(Boolean)
-            .join(", ");
+        const allergenGroups = new Map();
+        const dietGroups = new Map();
+        const ensureGroup = (map, key) => {
+          if (!map.has(key)) {
+            map.set(key, {
+              contained: new Set(),
+              cross: new Set(),
+            });
+          }
+          return map.get(key);
+        };
 
-          html += `
-            <div style="background:${bgColor};border:1px solid ${borderColor};border-radius:8px;padding:12px;margin-bottom:8px;">
-              <div style="font-weight:600;color:#fff;margin-bottom:4px;">${flag.ingredient}</div>
-              <div style="font-size:0.85rem;color:#a8b2d6;">
-                <span style="color:${isContained ? "#ef4444" : "#fbbf24"}">${riskLabel}</span> • ${types}
-              </div>
+        safeFlags.forEach((flag) => {
+          const ingredient = asText(flag?.ingredient) || "Unknown ingredient";
+          const isContained = flag?.risk_type === "contained";
+          (Array.isArray(flag?.allergens) ? flag.allergens : []).forEach((allergen) => {
+            const name = asText(formatAllergenLabel(allergen) || allergen);
+            if (!name) return;
+            const group = ensureGroup(allergenGroups, name);
+            if (isContained) {
+              group.contained.add(ingredient);
+            } else {
+              group.cross.add(ingredient);
+            }
+          });
+          (Array.isArray(flag?.diets) ? flag.diets : []).forEach((diet) => {
+            const name = asText(diet);
+            if (!name) return;
+            const group = ensureGroup(dietGroups, name);
+            if (isContained) {
+              group.contained.add(ingredient);
+            } else {
+              group.cross.add(ingredient);
+            }
+          });
+        });
+
+        const renderRiskList = (label, ingredients, accentColor) => {
+          if (!ingredients.length) return "";
+          const bullets = ingredients
+            .map((ingredient) => `<li>${esc(ingredient)}</li>`)
+            .join("");
+          return `
+            <div style="margin-top:8px;">
+              <div style="font-size:0.78rem;font-weight:700;color:${accentColor};text-transform:uppercase;letter-spacing:0.03em;">${label}</div>
+              <ul style="margin:4px 0 0 18px;padding:0;color:#e2e8f0;font-size:0.84rem;">${bullets}</ul>
             </div>
           `;
-        });
-        allergenResultsContainer.innerHTML = html;
+        };
+
+        const renderGroupedSection = (title, groups, containedLabel) => {
+          if (!groups.size) return "";
+          const cards = Array.from(groups.entries())
+            .sort((a, b) => a[0].localeCompare(b[0]))
+            .map(([name, group]) => {
+              const contained = Array.from(group.contained).sort((a, b) =>
+                a.localeCompare(b),
+              );
+              const cross = Array.from(group.cross).sort((a, b) =>
+                a.localeCompare(b),
+              );
+              return `
+                <div style="background:rgba(15,23,42,0.45);border:1px solid rgba(148,163,184,0.25);border-radius:8px;padding:10px 12px;margin-bottom:8px;">
+                  <div style="font-weight:600;color:#fff;">${esc(name)}</div>
+                  ${renderRiskList(containedLabel, contained, "#ef4444")}
+                  ${renderRiskList("Cross-contamination", cross, "#fbbf24")}
+                </div>
+              `;
+            })
+            .join("");
+
+          return `
+            <div style="margin-bottom:14px;">
+              <div style="font-weight:700;color:#fff;margin-bottom:8px;">${title}</div>
+              ${cards}
+            </div>
+          `;
+        };
+
+        const allergenSection = renderGroupedSection(
+          "Allergens",
+          allergenGroups,
+          "Contains",
+        );
+        const dietSection = renderGroupedSection(
+          "Diets",
+          dietGroups,
+          "Violation",
+        );
+
+        if (!allergenSection && !dietSection) {
+          allergenResultsContainer.innerHTML =
+            '<div style="color:#4ade80;padding:12px;">✓ No allergens or diet violations detected</div>';
+        } else {
+          allergenResultsContainer.innerHTML = `${allergenSection}${dietSection}`;
+        }
       }
       allergenResultsSection.style.display = "block";
     }

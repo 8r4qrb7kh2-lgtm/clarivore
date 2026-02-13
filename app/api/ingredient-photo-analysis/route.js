@@ -159,26 +159,45 @@ function buildWordBoxesFromLineText(text, lineBox) {
   });
 }
 
-function normalizeLineExtractorData(rawLines) {
+function normalizeDetectIngredientLinesData(rawLines, imageWidth, imageHeight) {
   const lines = Array.isArray(rawLines) ? rawLines : [];
+  const safeWidth = Number(imageWidth) > 0 ? Number(imageWidth) : 1000;
+  const safeHeight = Number(imageHeight) > 0 ? Number(imageHeight) : 1000;
+
   return lines
     .map((line, index) => {
       const text = asText(line?.text);
       if (!text) return null;
-      const xStart = clamp(Number(line?.x), 0, 100);
-      const yStart = clamp(Number(line?.y), 0, 100);
-      const width = Math.max(0, Number(line?.w));
-      const height = Math.max(0.5, Number(line?.h));
-      const xEnd = clamp(xStart + width, xStart + 0.5, 100);
-      const yEnd = clamp(yStart + height, yStart + 0.5, 100);
+
+      const xRaw = Number(line?.x);
+      const yRaw = Number(line?.y);
+      const wRaw = Number(line?.w);
+      const hRaw = Number(line?.h);
+      if (!Number.isFinite(xRaw) || !Number.isFinite(yRaw)) return null;
+      if (!Number.isFinite(wRaw) || !Number.isFinite(hRaw)) return null;
+      if (wRaw <= 0 || hRaw <= 0) return null;
+
+      const xStartPx = clamp(xRaw, 0, safeWidth);
+      const yStartPx = clamp(yRaw, 0, safeHeight);
+      const xEndPx = clamp(xRaw + wRaw, 0, safeWidth);
+      const yEndPx = clamp(yRaw + hRaw, 0, safeHeight);
+      if (xEndPx <= xStartPx || yEndPx <= yStartPx) return null;
+
       const crop_coordinates = {
-        x_start: xStart,
-        y_start: yStart,
-        x_end: xEnd,
-        y_end: yEnd,
+        x_start: clamp((xStartPx / safeWidth) * 100, 0, 100),
+        y_start: clamp((yStartPx / safeHeight) * 100, 0, 100),
+        x_end: clamp((xEndPx / safeWidth) * 100, 0, 100),
+        y_end: clamp((yEndPx / safeHeight) * 100, 0, 100),
       };
+
+      const lineNumberRaw = Number(line?.lineNumber);
+      const line_number =
+        Number.isFinite(lineNumberRaw) && lineNumberRaw > 0
+          ? Math.trunc(lineNumberRaw)
+          : index + 1;
+
       return {
-        line_number: index + 1,
+        line_number,
         text,
         words: buildWordBoxesFromLineText(text, crop_coordinates),
         crop_coordinates,
@@ -827,6 +846,14 @@ export async function POST(request) {
 
   const imageData = asText(body?.imageData);
   const mode = asText(body?.mode);
+  const imageWidthRaw = Number(body?.imageWidth);
+  const imageHeightRaw = Number(body?.imageHeight);
+  const imageWidth = Number.isFinite(imageWidthRaw) && imageWidthRaw > 0
+    ? imageWidthRaw
+    : null;
+  const imageHeight = Number.isFinite(imageHeightRaw) && imageHeightRaw > 0
+    ? imageHeightRaw
+    : null;
   if (!imageData || (mode !== "full-analysis" && mode !== "front-analysis")) {
     return corsJson(
       {
@@ -872,22 +899,29 @@ export async function POST(request) {
   }
 
   try {
-    const lineExtractorResult = await callSupabaseFunction("line-extractor", {
-      imageData,
+    const detectLinesResult = await callSupabaseFunction("detect-ingredient-lines", {
+      image: imageData,
     });
-    if (!lineExtractorResult?.success) {
+    const detectedLines = Array.isArray(detectLinesResult?.lines)
+      ? detectLinesResult.lines
+      : [];
+    if (!detectedLines.length) {
       return corsJson(
         {
           success: false,
           error:
-            asText(lineExtractorResult?.error) ||
+            asText(detectLinesResult?.error) ||
             "Unable to detect ingredient lines from this image.",
         },
         { status: 500 },
       );
     }
 
-    const data = normalizeLineExtractorData(lineExtractorResult?.lines);
+    const data = normalizeDetectIngredientLinesData(
+      detectedLines,
+      imageWidth,
+      imageHeight,
+    );
     const claudeTranscript = data.map((line) => asText(line?.text)).filter(Boolean);
     if (!data.length) {
       return corsJson(
