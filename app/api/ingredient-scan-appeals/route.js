@@ -8,7 +8,7 @@ export function OPTIONS() {
 }
 
 const OWNER_EMAIL = "matt.29.ds@gmail.com";
-const APPEAL_PHOTO_BUCKET = "ingredient-scan-appeals";
+const DEFAULT_APPEAL_PHOTO_BUCKET = "ingredient-scan-appeals";
 
 function asText(value) {
   return String(value ?? "").trim();
@@ -33,6 +33,70 @@ function extensionForMediaType(mediaType) {
   if (normalized.includes("webp")) return "webp";
   if (normalized.includes("gif")) return "gif";
   return "jpg";
+}
+
+async function ensureAppealBucketExists({
+  supabase,
+  bucketName,
+}) {
+  const { data: existingBucket, error: getBucketError } = await supabase.storage.getBucket(
+    bucketName,
+  );
+
+  if (!getBucketError) {
+    if (existingBucket?.public !== true) {
+      const { error: updateError } = await supabase.storage.updateBucket(bucketName, {
+        public: true,
+      });
+      if (updateError) {
+        return {
+          success: false,
+          error:
+            asText(updateError?.message) ||
+            "Bucket exists but could not be updated to public access.",
+        };
+      }
+    }
+    return { success: true };
+  }
+
+  const getMessage = asText(getBucketError?.message);
+  const getStatus = Number(getBucketError?.statusCode || getBucketError?.status || 0);
+  const isNotFound = getStatus === 404 || /not found/i.test(getMessage);
+  if (!isNotFound) {
+    return {
+      success: false,
+      error: getMessage || "Failed to check appeal photo storage bucket.",
+    };
+  }
+
+  const { error: createError } = await supabase.storage.createBucket(bucketName, {
+    public: true,
+  });
+  if (createError) {
+    const createMessage = asText(createError?.message);
+    const alreadyExists = /already exists/i.test(createMessage) || /duplicate/i.test(createMessage);
+    if (!alreadyExists) {
+      return {
+        success: false,
+        error: createMessage || "Failed to create appeal photo storage bucket.",
+      };
+    }
+
+    const { error: updateError } = await supabase.storage.updateBucket(bucketName, {
+      public: true,
+    });
+    if (updateError) {
+      return {
+        success: false,
+        error:
+          asText(updateError?.message) ||
+          "Appeal photo bucket exists but could not be updated to public access.",
+      };
+    }
+  }
+
+  return { success: true };
 }
 
 async function invokeSupabaseFunction({
@@ -84,6 +148,8 @@ export async function POST(request) {
   const supabaseAnonKey =
     process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const bucketName =
+    asText(process.env.INGREDIENT_SCAN_APPEALS_BUCKET) || DEFAULT_APPEAL_PHOTO_BUCKET;
   if (!supabaseUrl || !supabaseAnonKey) {
     return errorResponse("Supabase configuration missing.", 500);
   }
@@ -154,27 +220,41 @@ export async function POST(request) {
     .eq("id", restaurantId)
     .maybeSingle();
 
+  const bucketReady = await ensureAppealBucketExists({
+    supabase: privilegedSupabase,
+    bucketName,
+  });
+  if (!bucketReady.success) {
+    return errorResponse(
+      `Appeal photo storage setup failed: ${bucketReady.error || "Unknown storage error."}`,
+      500,
+    );
+  }
+
   const extension = extensionForMediaType(parsedPhoto.mediaType);
   const photoPath = `${restaurantId}/${user.id}/${Date.now()}-${Math.random().toString(36).slice(2, 10)}.${extension}`;
   const photoBuffer = Buffer.from(parsedPhoto.base64Data, "base64");
 
   const { error: uploadError } = await privilegedSupabase.storage
-    .from(APPEAL_PHOTO_BUCKET)
+    .from(bucketName)
     .upload(photoPath, photoBuffer, {
       contentType: parsedPhoto.mediaType,
       upsert: false,
       cacheControl: "3600",
     });
   if (uploadError) {
-    return errorResponse(uploadError.message || "Failed to upload appeal photo.", 500);
+    return errorResponse(
+      `Appeal photo storage error: ${uploadError.message || "Failed to upload appeal photo."}`,
+      500,
+    );
   }
 
   const { data: photoUrlData } = privilegedSupabase.storage
-    .from(APPEAL_PHOTO_BUCKET)
+    .from(bucketName)
     .getPublicUrl(photoPath);
   const photoUrl = asText(photoUrlData?.publicUrl);
   if (!photoUrl) {
-    await privilegedSupabase.storage.from(APPEAL_PHOTO_BUCKET).remove([photoPath]);
+    await privilegedSupabase.storage.from(bucketName).remove([photoPath]);
     return errorResponse("Failed to resolve appeal photo URL.", 500);
   }
 
@@ -195,7 +275,7 @@ export async function POST(request) {
     .single();
 
   if (error) {
-    await privilegedSupabase.storage.from(APPEAL_PHOTO_BUCKET).remove([photoPath]);
+    await privilegedSupabase.storage.from(bucketName).remove([photoPath]);
     return errorResponse(error.message || "Failed to create appeal.", 500);
   }
 
@@ -220,7 +300,7 @@ export async function POST(request) {
     }
   } catch (emailError) {
     await privilegedSupabase.from("ingredient_scan_appeals").delete().eq("id", data?.id);
-    await privilegedSupabase.storage.from(APPEAL_PHOTO_BUCKET).remove([photoPath]);
+    await privilegedSupabase.storage.from(bucketName).remove([photoPath]);
     return errorResponse(
       asText(emailError?.message) || "Appeal email notification failed.",
       500,

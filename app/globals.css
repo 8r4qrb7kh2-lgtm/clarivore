@@ -1614,18 +1614,6 @@ h2 {
   color: #f7d16d;
 }
 
-.restaurant-legacy-editor-dish-manual {
-  border: 1px dashed rgba(76, 90, 212, 0.5);
-  border-radius: 12px;
-  padding: 8px 10px;
-}
-
-.restaurant-legacy-editor-dish-manual summary {
-  cursor: pointer;
-  color: #d7e0fd;
-  font-weight: 600;
-}
-
 .restaurant-legacy-header {
   flex-shrink: 0;
 }
