@@ -498,6 +498,7 @@ function DishEditorModal({ editor }) {
   const [appealBusyByRow, setAppealBusyByRow] = useState({});
   const [appealFeedbackByRow, setAppealFeedbackByRow] = useState({});
   const [modalError, setModalError] = useState("");
+  const recipeTextareaRef = useRef(null);
 
   const allergens = useMemo(
     () => buildAllergenDisplay(editor, overlay),
@@ -1111,7 +1112,10 @@ function DishEditorModal({ editor }) {
   }, [editor, overlay]);
 
   const onProcessInput = async () => {
-    const result = await editor.runAiDishAnalysis();
+    const liveText = asText(
+      recipeTextareaRef.current?.value || editor.aiAssistDraft.text,
+    );
+    const result = await editor.runAiDishAnalysis({ overrideText: liveText });
     if (result?.success && result?.result) {
       await editor.applyAiResultToSelectedOverlay(result.result);
     }
@@ -1223,6 +1227,7 @@ function DishEditorModal({ editor }) {
 
           <div className="restaurant-legacy-editor-dish-text-wrap">
             <Textarea
+              ref={recipeTextareaRef}
               rows={5}
               value={editor.aiAssistDraft.text}
               className="restaurant-legacy-editor-dish-textarea"

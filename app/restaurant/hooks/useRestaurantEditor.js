@@ -552,7 +552,7 @@ export function useRestaurantEditor({
   });
   const [initialDishResolved, setInitialDishResolved] = useState(false);
 
-  const [aiAssistDraft, setAiAssistDraft] = useState({
+  const [aiAssistDraft, setAiAssistDraftState] = useState({
     text: "",
     imageData: "",
     loading: false,
@@ -569,6 +569,7 @@ export function useRestaurantEditor({
   const overlaysRef = useRef(draftOverlays);
   const menuImagesRef = useRef(draftMenuImages);
   const pendingChangesRef = useRef(pendingChanges);
+  const aiAssistDraftRef = useRef(aiAssistDraft);
 
   useEffect(() => {
     overlaysRef.current = draftOverlays;
@@ -581,6 +582,18 @@ export function useRestaurantEditor({
   useEffect(() => {
     pendingChangesRef.current = pendingChanges;
   }, [pendingChanges]);
+
+  useEffect(() => {
+    aiAssistDraftRef.current = aiAssistDraft;
+  }, [aiAssistDraft]);
+
+  const setAiAssistDraft = useCallback((nextValue) => {
+    const current = aiAssistDraftRef.current;
+    const nextDraft =
+      typeof nextValue === "function" ? nextValue(current) : nextValue;
+    aiAssistDraftRef.current = nextDraft;
+    setAiAssistDraftState(nextDraft);
+  }, []);
 
   const clearSaveStatusTimer = useCallback(() => {
     if (saveStatusTimerRef.current) {
@@ -767,6 +780,7 @@ export function useRestaurantEditor({
     restaurant?.menu_url,
     params?.openConfirm,
     params?.openLog,
+    setAiAssistDraft,
   ]);
 
   const editorStateSerialized = useMemo(
@@ -997,7 +1011,7 @@ export function useRestaurantEditor({
       error: "",
       result: null,
     });
-  }, []);
+  }, [setAiAssistDraft]);
 
   const updateSelectedOverlay = useCallback(
     (patch, options = {}) => {
@@ -1783,11 +1797,14 @@ export function useRestaurantEditor({
     updateOverlay,
   ]);
 
-  const runAiDishAnalysis = useCallback(async () => {
+  const runAiDishAnalysis = useCallback(async ({ overrideText } = {}) => {
     if (!selectedOverlay || !callbacks?.onAnalyzeDish) return { success: false };
 
-    const draftText = asText(aiAssistDraft.text);
-    const draftImageData = asText(aiAssistDraft.imageData);
+    const draftSnapshot = aiAssistDraftRef.current || {};
+    const draftText = asText(
+      overrideText !== undefined ? overrideText : draftSnapshot.text,
+    );
+    const draftImageData = asText(draftSnapshot.imageData);
     if (!draftText && !draftImageData) {
       setAiAssistDraft((current) => ({
         ...current,
@@ -1830,7 +1847,7 @@ export function useRestaurantEditor({
       }));
       return { success: false, error };
     }
-  }, [aiAssistDraft.imageData, aiAssistDraft.text, callbacks, selectedOverlay]);
+  }, [callbacks, selectedOverlay, setAiAssistDraft]);
 
   const analyzeIngredientName = useCallback(async ({
     ingredientName,
@@ -2230,6 +2247,7 @@ export function useRestaurantEditor({
     params?.dishName,
     params?.ingredientName,
     params?.openAI,
+    setAiAssistDraft,
   ]);
 
   useEffect(() => {
