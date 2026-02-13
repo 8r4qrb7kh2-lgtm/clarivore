@@ -1190,6 +1190,7 @@ function DishEditorModal({ editor }) {
                 const imageData = await fileToDataUrl(file);
                 editor.setAiAssistDraft((current) => ({
                   ...current,
+                  text: "",
                   imageData,
                 }));
                 event.target.value = "";
@@ -1210,6 +1211,7 @@ function DishEditorModal({ editor }) {
                 const imageData = await fileToDataUrl(file);
                 editor.setAiAssistDraft((current) => ({
                   ...current,
+                  text: "",
                   imageData,
                 }));
                 event.target.value = "";
@@ -1227,6 +1229,7 @@ function DishEditorModal({ editor }) {
               onChange={(event) =>
                 editor.setAiAssistDraft((current) => ({
                   ...current,
+                  imageData: "",
                   text: event.target.value,
                 }))
               }

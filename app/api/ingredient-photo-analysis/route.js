@@ -10,6 +10,17 @@ function asText(value) {
   return String(value ?? "").trim();
 }
 
+function readFirstEnv(names) {
+  const keys = Array.isArray(names) ? names : [];
+  for (const name of keys) {
+    const key = asText(name);
+    if (!key) continue;
+    const value = asText(process.env[key]);
+    if (value) return value;
+  }
+  return "";
+}
+
 function clamp(value, min, max) {
   return Math.min(Math.max(value, min), max);
 }
@@ -81,6 +92,99 @@ function parseJsonArray(text) {
       return [];
     }
   }
+}
+
+async function callSupabaseFunction(functionName, payload) {
+  const supabaseUrl = readFirstEnv(["SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_URL"]);
+  const supabaseAnonKey = readFirstEnv([
+    "SUPABASE_ANON_KEY",
+    "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+  ]);
+  if (!supabaseUrl || !supabaseAnonKey) {
+    throw new Error("Supabase function proxy is not configured.");
+  }
+
+  const response = await fetch(`${supabaseUrl}/functions/v1/${functionName}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${supabaseAnonKey}`,
+      apikey: supabaseAnonKey,
+    },
+    body: JSON.stringify(payload || {}),
+  });
+
+  const rawText = await response.text();
+  let data = {};
+  if (rawText) {
+    try {
+      data = JSON.parse(rawText);
+    } catch {
+      data = { raw: rawText };
+    }
+  }
+  if (!response.ok) {
+    throw new Error(
+      asText(data?.error) ||
+        asText(data?.message) ||
+        `Supabase function ${functionName} failed (${response.status}).`,
+    );
+  }
+  return data;
+}
+
+function buildWordBoxesFromLineText(text, lineBox) {
+  const words = asText(text).split(/\s+/).filter(Boolean);
+  if (!words.length) return [];
+  const xStart = clamp(Number(lineBox?.x_start), 0, 100);
+  const xEnd = clamp(Number(lineBox?.x_end), xStart, 100);
+  const yStart = clamp(Number(lineBox?.y_start), 0, 100);
+  const yEnd = clamp(Number(lineBox?.y_end), yStart, 100);
+  const span = xEnd - xStart;
+  const step = span > 0 ? span / words.length : 0;
+
+  return words.map((word, index) => {
+    const start = clamp(xStart + step * index, xStart, xEnd);
+    const end =
+      index === words.length - 1
+        ? xEnd
+        : clamp(start + Math.max(step - 0.2, 0.2), start, xEnd);
+    return {
+      text: word,
+      x_start: start,
+      x_end: end,
+      y_start: yStart,
+      y_end: yEnd,
+    };
+  });
+}
+
+function normalizeLineExtractorData(rawLines) {
+  const lines = Array.isArray(rawLines) ? rawLines : [];
+  return lines
+    .map((line, index) => {
+      const text = asText(line?.text);
+      if (!text) return null;
+      const xStart = clamp(Number(line?.x), 0, 100);
+      const yStart = clamp(Number(line?.y), 0, 100);
+      const width = Math.max(0, Number(line?.w));
+      const height = Math.max(0.5, Number(line?.h));
+      const xEnd = clamp(xStart + width, xStart + 0.5, 100);
+      const yEnd = clamp(yStart + height, yStart + 0.5, 100);
+      const crop_coordinates = {
+        x_start: xStart,
+        y_start: yStart,
+        x_end: xEnd,
+        y_end: yEnd,
+      };
+      return {
+        line_number: index + 1,
+        text,
+        words: buildWordBoxesFromLineText(text, crop_coordinates),
+        crop_coordinates,
+      };
+    })
+    .filter(Boolean);
 }
 
 function normalizeQualityAssessment(raw) {
@@ -734,51 +838,26 @@ export async function POST(request) {
     );
   }
 
-  const parsed = parseImageData(imageData);
-  if (!parsed) {
+  if (!parseImageData(imageData)) {
     return corsJson(
       { success: false, error: "Invalid imageData format." },
       { status: 400 },
     );
   }
 
-  const anthropicApiKey = asText(process.env.ANTHROPIC_API_KEY);
-
   if (mode === "front-analysis") {
-    if (!anthropicApiKey) {
-      return corsJson(
-        { success: false, error: "Front image analysis is not configured." },
-        { status: 500 },
-      );
-    }
-
     try {
-      const frontPrompt = `You identify product names from package-front photos.
-Return ONLY valid JSON:
-{
-  "productName": "best guess product name",
-  "confidence": "low|medium|high"
-}
-If uncertain, still return your best short productName and set confidence to "low".`;
-
-      const frontText = await callAnthropicImage({
-        apiKey: anthropicApiKey,
-        mediaType: parsed.mediaType,
-        base64Data: parsed.base64Data,
-        systemPrompt: frontPrompt,
-        userPrompt: "Extract the product name from this package-front image.",
-        maxTokens: 600,
+      const frontResult = await callSupabaseFunction("analyze-product-front", {
+        imageData,
       });
-
-      const frontObject = parseJsonObject(frontText) || {};
-      const confidenceRaw = asText(frontObject?.confidence).toLowerCase();
+      const confidenceRaw = asText(frontResult?.confidence).toLowerCase();
       const confidence = ["low", "medium", "high"].includes(confidenceRaw)
         ? confidenceRaw
         : "low";
 
       return corsJson({
         success: true,
-        productName: asText(frontObject?.productName),
+        productName: asText(frontResult?.productName),
         confidence,
       });
     } catch (error) {
@@ -792,106 +871,46 @@ If uncertain, still return your best short productName and set confidence to "lo
     }
   }
 
-  const googleVisionApiKey = asText(process.env.GOOGLE_CLOUD_VISION_API_KEY);
-  if (!anthropicApiKey || !googleVisionApiKey) {
-    return corsJson(
-      {
-        success: false,
-        error:
-          "Ingredient photo analysis requires Claude and Google Vision configuration.",
-      },
-      { status: 500 },
-    );
-  }
-
   try {
-    const quality = await getClaudeQualityAssessment({
-      apiKey: anthropicApiKey,
-      mediaType: parsed.mediaType,
-      base64Data: parsed.base64Data,
-      transcriptLines: [],
+    const lineExtractorResult = await callSupabaseFunction("line-extractor", {
+      imageData,
     });
-
-    if (quality.accept === false) {
+    if (!lineExtractorResult?.success) {
       return corsJson(
         {
           success: false,
           error:
-            quality.message || "Photo quality is too low to read the ingredients.",
-          quality,
+            asText(lineExtractorResult?.error) ||
+            "Unable to detect ingredient lines from this image.",
         },
-        { status: 200 },
+        { status: 500 },
       );
     }
 
-    const claudeTranscript = await getClaudeTranscription({
-      apiKey: anthropicApiKey,
-      mediaType: parsed.mediaType,
-      base64Data: parsed.base64Data,
-    });
-
-    if (!claudeTranscript.length) {
+    const data = normalizeLineExtractorData(lineExtractorResult?.lines);
+    const claudeTranscript = data.map((line) => asText(line?.text)).filter(Boolean);
+    if (!data.length) {
       return corsJson(
         {
           success: false,
           error: "Could not read the ingredient text clearly. Please retake the photo.",
-          quality,
         },
         { status: 200 },
       );
     }
-
-    const { words, pageWidth, pageHeight } = await getVisionWords({
-      googleVisionApiKey,
-      base64Data: parsed.base64Data,
-    });
-
-    if (!words.length) {
-      return corsJson(
-        {
-          success: false,
-          error:
-            "Could not detect text line positions. Please retake the photo with the ingredient label filling the frame.",
-          quality,
-        },
-        { status: 200 },
-      );
-    }
-
-    const visualLines = groupVisualLines(words);
-    if (!visualLines.length) {
-      return corsJson(
-        {
-          success: false,
-          error:
-            "Could not map ingredient lines from the image. Please retake the photo.",
-          quality,
-        },
-        { status: 200 },
-      );
-    }
-
-    const lineMapping = await matchLinesToVisualLines({
-      apiKey: anthropicApiKey,
-      transcriptLines: claudeTranscript,
-      visualLines,
-    });
-
-    const data = buildLinesFromTranscriptMapping({
-      transcriptLines: claudeTranscript,
-      visualLines,
-      lineMapping,
-      visionWords: words,
-      pageWidth,
-      pageHeight,
-    });
 
     return corsJson(
       {
         success: true,
         data,
         claude_transcript: claudeTranscript,
-        quality,
+        quality: {
+          accept: true,
+          confidence: "high",
+          reasons: [],
+          warnings: [],
+          message: "",
+        },
       },
       { status: 200 },
     );

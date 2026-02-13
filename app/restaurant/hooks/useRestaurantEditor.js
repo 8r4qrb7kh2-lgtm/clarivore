@@ -990,11 +990,13 @@ export function useRestaurantEditor({
   const closeDishEditor = useCallback(() => {
     setDishEditorOpen(false);
     setDishAiAssistOpen(false);
-    setAiAssistDraft((current) => ({
-      ...current,
+    setAiAssistDraft({
+      text: "",
+      imageData: "",
       loading: false,
       error: "",
-    }));
+      result: null,
+    });
   }, []);
 
   const updateSelectedOverlay = useCallback(
@@ -1784,6 +1786,24 @@ export function useRestaurantEditor({
   const runAiDishAnalysis = useCallback(async () => {
     if (!selectedOverlay || !callbacks?.onAnalyzeDish) return { success: false };
 
+    const draftText = asText(aiAssistDraft.text);
+    const draftImageData = asText(aiAssistDraft.imageData);
+    if (!draftText && !draftImageData) {
+      setAiAssistDraft((current) => ({
+        ...current,
+        loading: false,
+        error: "Add recipe text or upload an ingredient photo before processing.",
+      }));
+      return { success: false };
+    }
+
+    const payload = {
+      dishName: selectedOverlay.id || selectedOverlay.name,
+      text: draftText,
+      // The UI presents text OR image input. If text exists, force text mode.
+      imageData: draftText ? "" : draftImageData,
+    };
+
     setAiAssistDraft((current) => ({
       ...current,
       loading: true,
@@ -1792,14 +1812,11 @@ export function useRestaurantEditor({
     }));
 
     try {
-      const result = await callbacks.onAnalyzeDish({
-        dishName: selectedOverlay.id || selectedOverlay.name,
-        text: aiAssistDraft.text,
-        imageData: aiAssistDraft.imageData,
-      });
+      const result = await callbacks.onAnalyzeDish(payload);
 
       setAiAssistDraft((current) => ({
         ...current,
+        imageData: payload.imageData,
         loading: false,
         result,
       }));
