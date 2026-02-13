@@ -363,6 +363,60 @@ function buildSyntheticLineData(lines) {
   });
 }
 
+async function callSupabaseFunction(functionName, payload) {
+  const supabaseUrl =
+    asText(process.env.SUPABASE_URL) || asText(process.env.NEXT_PUBLIC_SUPABASE_URL);
+  const supabaseAnonKey =
+    asText(process.env.SUPABASE_ANON_KEY) ||
+    asText(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+
+  if (!supabaseUrl || !supabaseAnonKey) {
+    throw new Error("Supabase function proxy is not configured.");
+  }
+
+  const response = await fetch(`${supabaseUrl}/functions/v1/${functionName}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${supabaseAnonKey}`,
+      apikey: supabaseAnonKey,
+    },
+    body: JSON.stringify(payload || {}),
+  });
+
+  const payloadText = await response.text();
+  let data = null;
+  try {
+    data = payloadText ? JSON.parse(payloadText) : null;
+  } catch {
+    data = null;
+  }
+
+  if (!response.ok) {
+    throw new Error(
+      asText(data?.error) || asText(data?.message) || "Supabase function request failed.",
+    );
+  }
+
+  return data || {};
+}
+
+function extractFallbackTranscriptFromDishEditor(result) {
+  const rows = Array.isArray(result?.ingredients) ? result.ingredients : [];
+  const lines = rows
+    .map((ingredient) => {
+      const name = asText(ingredient?.name);
+      if (name) return name;
+      const list = Array.isArray(ingredient?.ingredientsList)
+        ? ingredient.ingredientsList.map((entry) => asText(entry)).filter(Boolean)
+        : [];
+      if (list.length) return list.join(", ");
+      return "";
+    })
+    .filter(Boolean);
+  return lines;
+}
+
 function mapTranscriptToLineData({ transcriptLines, visualLines, pageWidth, pageHeight }) {
   const used = new Set();
   const mapped = transcriptLines.map((lineText, index) => {
@@ -428,10 +482,50 @@ export async function POST(request) {
 
   const anthropicApiKey = asText(process.env.ANTHROPIC_API_KEY);
   if (!anthropicApiKey) {
-    return NextResponse.json(
-      { success: false, error: "Ingredient photo analysis is not configured." },
-      { status: 500 },
-    );
+    try {
+      const fallback = await callSupabaseFunction("dish-editor", {
+        dishName: "Ingredient Label",
+        text: "",
+        imageData,
+      });
+      const transcript = extractFallbackTranscriptFromDishEditor(fallback);
+      if (!transcript.length) {
+        return NextResponse.json(
+          { success: false, error: "Ingredient photo analysis is not configured." },
+          { status: 500 },
+        );
+      }
+
+      return NextResponse.json(
+        {
+          success: true,
+          data: buildSyntheticLineData(transcript),
+          claude_transcript: transcript,
+          quality: {
+            accept: true,
+            confidence: "medium",
+            reasons: [],
+            warnings: [
+              "Using fallback ingredient extraction without dedicated photo-analysis key.",
+            ],
+            message: "",
+            warningMessage:
+              "Using fallback ingredient extraction. Results may be less precise.",
+          },
+        },
+        { status: 200 },
+      );
+    } catch (fallbackError) {
+      return NextResponse.json(
+        {
+          success: false,
+          error:
+            asText(fallbackError?.message) ||
+            "Ingredient photo analysis is not configured.",
+        },
+        { status: 500 },
+      );
+    }
   }
   const googleVisionApiKey = asText(process.env.GOOGLE_CLOUD_VISION_API_KEY);
 

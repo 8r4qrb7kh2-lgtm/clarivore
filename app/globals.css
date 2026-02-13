@@ -1386,10 +1386,52 @@ h2 {
 
 .restaurant-legacy-editor-dish-detection-note {
   display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
+  flex-direction: column;
+  gap: 8px;
   font-size: 0.68rem;
-  color: #8ca0d4;
+  color: #9fb0dc;
+  border: 1px solid rgba(76, 90, 212, 0.28);
+  border-radius: 10px;
+  background: rgba(18, 26, 56, 0.62);
+  padding: 8px 10px;
+}
+
+.restaurant-legacy-editor-dish-detection-key-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.restaurant-legacy-editor-dish-key-box {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  border-width: 2px;
+  border-color: rgba(190, 203, 236, 0.88);
+}
+
+.restaurant-legacy-editor-dish-key-box-solid {
+  border-style: solid;
+}
+
+.restaurant-legacy-editor-dish-key-box-dashed {
+  border-style: dashed;
+}
+
+.restaurant-legacy-editor-dish-key-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  display: inline-block;
+}
+
+.restaurant-legacy-editor-dish-key-dot-smart {
+  background: #3b82f6;
+}
+
+.restaurant-legacy-editor-dish-key-dot-manual {
+  background: #ef4444;
 }
 
 .restaurant-legacy-editor-dish-ingredient-pills {

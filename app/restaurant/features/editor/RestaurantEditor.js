@@ -407,7 +407,7 @@ function normalizeIngredientEntry(ingredient, index) {
     brandRequired: Boolean(base.brandRequired),
     brandRequirementReason: asText(base.brandRequirementReason),
     removable: Boolean(base.removable),
-    confirmed: base.confirmed !== false,
+    confirmed: base.confirmed === true,
     contains: true,
   };
 }
@@ -1442,9 +1442,18 @@ function DishEditorModal({ editor }) {
 
                       <div className="restaurant-legacy-editor-dish-ingredient-flags">
                         <div className="restaurant-legacy-editor-dish-detection-note">
-                          <span>Blue = smart detection</span>
-                          <span>Red = manual override</span>
-                          <span>Grey = no selection</span>
+                          <div className="restaurant-legacy-editor-dish-detection-key-row">
+                            <span className="restaurant-legacy-editor-dish-key-box restaurant-legacy-editor-dish-key-box-solid" />
+                            <span>Contains</span>
+                            <span className="restaurant-legacy-editor-dish-key-box restaurant-legacy-editor-dish-key-box-dashed" />
+                            <span>Cross-contamination risk</span>
+                          </div>
+                          <div className="restaurant-legacy-editor-dish-detection-key-row">
+                            <span className="restaurant-legacy-editor-dish-key-dot restaurant-legacy-editor-dish-key-dot-smart" />
+                            <span>Smart detection</span>
+                            <span className="restaurant-legacy-editor-dish-key-dot restaurant-legacy-editor-dish-key-dot-manual" />
+                            <span>Manual override</span>
+                          </div>
                         </div>
                       </div>
 

@@ -140,7 +140,7 @@ function buildOverlayIngredientConfirmationIssues(overlay) {
   const rows = Array.isArray(overlay?.ingredients) ? overlay.ingredients : [];
 
   rows.forEach((ingredient, index) => {
-    if (ingredient?.confirmed !== false) return;
+    if (ingredient?.confirmed === true) return;
     const ingredientName = asText(ingredient?.name) || `Ingredient ${index + 1}`;
     issues.push({
       overlayName,
@@ -156,25 +156,6 @@ function buildIngredientConfirmationIssues(overlays) {
   return (Array.isArray(overlays) ? overlays : []).flatMap((overlay) =>
     buildOverlayIngredientConfirmationIssues(overlay),
   );
-}
-
-function hasGlutenGrainSignal(ingredientName) {
-  const tokenizedName = normalizeToken(ingredientName);
-  if (!tokenizedName) return false;
-  const glutenSignals = [
-    "wheat",
-    "barley",
-    "rye",
-    "triticale",
-    "semolina",
-    "durum",
-    "farina",
-    "spelt",
-    "malt",
-    "bulgur",
-    "couscous",
-  ];
-  return glutenSignals.some((signal) => tokenizedName.includes(signal));
 }
 
 function normalizeNumber(value, fallback = 0) {
@@ -851,35 +832,6 @@ export function useRestaurantEditor({
   const normalizeDietList = useCallback(
     (values) => normalizeCanonicalList(values, normalizeDietValue),
     [normalizeDietValue],
-  );
-
-  const glutenFreeDietLabel = useMemo(() => {
-    const entries = Array.from(dietTokenLookup.entries());
-    const matched = entries.find(([token]) => token.includes("glutenfree"));
-    return matched?.[1] || "";
-  }, [dietTokenLookup]);
-
-  const applyGlutenFreeDietPostProcessing = useCallback(
-    ({ ingredientName, allergens, diets }) => {
-      const normalizedDiets = normalizeDietList(diets);
-      if (!glutenFreeDietLabel) return normalizedDiets;
-
-      const wheatDetected = (Array.isArray(allergens) ? allergens : []).some(
-        (allergen) => normalizeToken(allergen) === "wheat",
-      );
-      const explicitGlutenSignal = hasGlutenGrainSignal(ingredientName);
-      const canBeGlutenFree = !wheatDetected && !explicitGlutenSignal;
-      const withoutGlutenFree = normalizedDiets.filter(
-        (diet) => normalizeToken(diet) !== normalizeToken(glutenFreeDietLabel),
-      );
-
-      if (!canBeGlutenFree) {
-        return withoutGlutenFree;
-      }
-
-      return dedupeTokenList([...withoutGlutenFree, glutenFreeDietLabel]);
-    },
-    [glutenFreeDietLabel, normalizeDietList],
   );
 
   const selectedOverlayIndex = useMemo(() => {
@@ -1657,20 +1609,11 @@ export function useRestaurantEditor({
       (ingredient, index) => {
         const rowName = asText(ingredient?.name) || `Ingredient ${index + 1}`;
         const containsAllergens = normalizeAllergenList(ingredient?.allergens);
-        const containsDiets = applyGlutenFreeDietPostProcessing({
-          ingredientName: rowName,
-          allergens: containsAllergens,
-          diets: ingredient?.diets,
-        });
+        const containsDiets = normalizeDietList(ingredient?.diets);
         const crossAllergens = normalizeAllergenList(
           ingredient?.crossContaminationAllergens,
         );
         const crossDiets = normalizeDietList(ingredient?.crossContaminationDiets);
-        const aiDetectedDiets = applyGlutenFreeDietPostProcessing({
-          ingredientName: rowName,
-          allergens: containsAllergens,
-          diets: ingredient?.aiDetectedDiets || containsDiets,
-        });
         return {
           ...ingredient,
           name: rowName,
@@ -1681,7 +1624,9 @@ export function useRestaurantEditor({
           aiDetectedAllergens: normalizeAllergenList(
             ingredient?.aiDetectedAllergens || containsAllergens,
           ),
-          aiDetectedDiets,
+          aiDetectedDiets: normalizeDietList(
+            ingredient?.aiDetectedDiets || containsDiets,
+          ),
           aiDetectedCrossContaminationAllergens: normalizeAllergenList(
             ingredient?.aiDetectedCrossContaminationAllergens || crossAllergens,
           ),
@@ -1837,7 +1782,6 @@ export function useRestaurantEditor({
     queueMicrotask(() => pushHistory());
     return { success: true };
   }, [
-    applyGlutenFreeDietPostProcessing,
     appendPendingChange,
     callbacks?.onAnalyzeIngredientScanRequirement,
     config?.DIETS,
@@ -1910,16 +1854,7 @@ export function useRestaurantEditor({
       });
 
       const allergens = normalizeAllergenList(result?.allergens);
-      const diets = applyGlutenFreeDietPostProcessing({
-        ingredientName: safeIngredientName,
-        allergens,
-        diets: result?.diets,
-      });
-      const aiDetectedDiets = applyGlutenFreeDietPostProcessing({
-        ingredientName: safeIngredientName,
-        allergens,
-        diets: result?.aiDetectedDiets || diets,
-      });
+      const diets = normalizeDietList(result?.diets);
 
       return {
         success: true,
@@ -1935,7 +1870,7 @@ export function useRestaurantEditor({
           aiDetectedAllergens: normalizeAllergenList(
             result?.aiDetectedAllergens || allergens,
           ),
-          aiDetectedDiets,
+          aiDetectedDiets: normalizeDietList(result?.aiDetectedDiets || diets),
           aiDetectedCrossContaminationAllergens: normalizeAllergenList(
             result?.aiDetectedCrossContaminationAllergens ||
               result?.crossContaminationAllergens,
@@ -1951,7 +1886,6 @@ export function useRestaurantEditor({
       return { success: false, error };
     }
   }, [
-    applyGlutenFreeDietPostProcessing,
     callbacks,
     normalizeAllergenList,
     normalizeDietList,
