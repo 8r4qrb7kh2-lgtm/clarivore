@@ -521,6 +521,8 @@ function DishEditorModal({ editor }) {
   const [searchQueryByRow, setSearchQueryByRow] = useState({});
   const [appealOpenByRow, setAppealOpenByRow] = useState({});
   const [appealMessageByRow, setAppealMessageByRow] = useState({});
+  const [appealPhotoByRow, setAppealPhotoByRow] = useState({});
+  const [appealPhotoErrorByRow, setAppealPhotoErrorByRow] = useState({});
   const [appealBusyByRow, setAppealBusyByRow] = useState({});
   const [appealFeedbackByRow, setAppealFeedbackByRow] = useState({});
   const [modalError, setModalError] = useState("");
@@ -581,11 +583,57 @@ function DishEditorModal({ editor }) {
       setSearchQueryByRow({});
       setAppealOpenByRow({});
       setAppealMessageByRow({});
+      setAppealPhotoByRow({});
+      setAppealPhotoErrorByRow({});
       setAppealBusyByRow({});
       setAppealFeedbackByRow({});
       setModalError("");
     }
   }, [editor.dishEditorOpen]);
+
+  const handleAppealPhotoChange = useCallback(async (ingredientIndex, file) => {
+    if (!file) return;
+    if (!String(file.type || "").startsWith("image/")) {
+      setAppealPhotoErrorByRow((current) => ({
+        ...current,
+        [ingredientIndex]: "Upload a valid image file.",
+      }));
+      return;
+    }
+    try {
+      const dataUrl = await fileToDataUrl(file);
+      if (!asText(dataUrl)) {
+        throw new Error("Failed to read image.");
+      }
+      setAppealPhotoByRow((current) => ({
+        ...current,
+        [ingredientIndex]: {
+          dataUrl,
+          fileName: asText(file.name),
+        },
+      }));
+      setAppealPhotoErrorByRow((current) => ({
+        ...current,
+        [ingredientIndex]: "",
+      }));
+    } catch (_error) {
+      setAppealPhotoErrorByRow((current) => ({
+        ...current,
+        [ingredientIndex]: "Failed to read image. Try another photo.",
+      }));
+    }
+  }, []);
+
+  const clearAppealPhoto = useCallback((ingredientIndex) => {
+    setAppealPhotoByRow((current) => ({
+      ...current,
+      [ingredientIndex]: null,
+    }));
+    setAppealPhotoErrorByRow((current) => ({
+      ...current,
+      [ingredientIndex]: "",
+    }));
+  }, []);
 
   const applyIngredientChanges = useCallback(
     (updater, options = {}) => {
@@ -994,7 +1042,10 @@ function DishEditorModal({ editor }) {
     async (ingredientIndex) => {
       const ingredient = ingredients[ingredientIndex];
       const ingredientName = asText(ingredient?.name);
-      const managerMessage = asText(appealMessageByRow[ingredientIndex]);
+      const managerMessageRaw = String(appealMessageByRow[ingredientIndex] ?? "");
+      const managerMessage = managerMessageRaw.trim();
+      const photoEntry = appealPhotoByRow[ingredientIndex];
+      const photoDataUrl = asText(photoEntry?.dataUrl || photoEntry);
       if (!ingredientName) {
         setModalError("Ingredient name is required before submitting an appeal.");
         return;
@@ -1005,6 +1056,20 @@ function DishEditorModal({ editor }) {
           [ingredientIndex]: {
             tone: "error",
             message: "Enter a short reason before submitting an appeal.",
+          },
+        }));
+        return;
+      }
+      if (!photoDataUrl) {
+        setAppealPhotoErrorByRow((current) => ({
+          ...current,
+          [ingredientIndex]: "Take or upload a photo before submitting an appeal.",
+        }));
+        setAppealFeedbackByRow((current) => ({
+          ...current,
+          [ingredientIndex]: {
+            tone: "error",
+            message: "Appeal photo is required.",
           },
         }));
         return;
@@ -1020,6 +1085,7 @@ function DishEditorModal({ editor }) {
         dishName: asText(overlay?.id || overlay?.name),
         ingredientName,
         managerMessage,
+        photoDataUrl,
       });
 
       setAppealBusyByRow((current) => ({ ...current, [ingredientIndex]: false }));
@@ -1037,6 +1103,8 @@ function DishEditorModal({ editor }) {
       }
 
       setAppealMessageByRow((current) => ({ ...current, [ingredientIndex]: "" }));
+      setAppealPhotoByRow((current) => ({ ...current, [ingredientIndex]: null }));
+      setAppealPhotoErrorByRow((current) => ({ ...current, [ingredientIndex]: "" }));
       setAppealOpenByRow((current) => ({ ...current, [ingredientIndex]: false }));
       setAppealFeedbackByRow((current) => ({
         ...current,
@@ -1048,6 +1116,7 @@ function DishEditorModal({ editor }) {
     },
     [
       appealMessageByRow,
+      appealPhotoByRow,
       editor,
       ingredients,
       overlay?.id,
@@ -1268,9 +1337,19 @@ function DishEditorModal({ editor }) {
                   const searchOpen = searchOpenRow === index;
                   const searchTerm = asText(searchQueryByRow[index]).toLowerCase();
                   const appealOpen = Boolean(appealOpenByRow[index]);
-                  const appealMessage = asText(appealMessageByRow[index]);
+                  const appealMessage = String(appealMessageByRow[index] ?? "");
+                  const appealPhoto = appealPhotoByRow[index] || null;
+                  const appealPhotoDataUrl = asText(
+                    appealPhoto?.dataUrl || appealPhoto,
+                  );
+                  const appealPhotoFileName = asText(appealPhoto?.fileName);
+                  const appealPhotoError = asText(appealPhotoErrorByRow[index]);
                   const appealBusy = Boolean(appealBusyByRow[index]);
                   const appealFeedback = appealFeedbackByRow[index];
+                  const canSubmitAppeal =
+                    !appealBusy &&
+                    appealMessage.trim().length > 0 &&
+                    Boolean(appealPhotoDataUrl);
                   const matchingBrands = existingBrandItems
                     .filter((brand) => {
                       if (
@@ -1410,11 +1489,53 @@ function DishEditorModal({ editor }) {
                                   }))
                                 }
                               />
+                              <div className="restaurant-legacy-editor-dish-appeal-photo-row">
+                                <label className="btn btnSmall" htmlFor={`appeal-photo-${index}`}>
+                                  {appealPhotoDataUrl ? "Replace photo" : "Take/upload photo"}
+                                </label>
+                                <input
+                                  id={`appeal-photo-${index}`}
+                                  type="file"
+                                  accept="image/*"
+                                  capture="environment"
+                                  className="restaurant-legacy-editor-dish-appeal-photo-input"
+                                  onChange={(event) =>
+                                    handleAppealPhotoChange(index, event.target.files?.[0] || null)
+                                  }
+                                />
+                                {appealPhotoDataUrl ? (
+                                  <button
+                                    type="button"
+                                    className="btn btnSmall"
+                                    disabled={appealBusy}
+                                    onClick={() => clearAppealPhoto(index)}
+                                  >
+                                    Remove photo
+                                  </button>
+                                ) : null}
+                              </div>
+                              {appealPhotoDataUrl ? (
+                                <div className="restaurant-legacy-editor-dish-appeal-photo-preview-wrap">
+                                  <img
+                                    src={appealPhotoDataUrl}
+                                    alt="Appeal evidence"
+                                    className="restaurant-legacy-editor-dish-appeal-photo-preview"
+                                  />
+                                  <span className="restaurant-legacy-editor-dish-appeal-photo-name">
+                                    {appealPhotoFileName || "Selected photo"}
+                                  </span>
+                                </div>
+                              ) : null}
+                              {appealPhotoError ? (
+                                <span className="restaurant-legacy-editor-dish-appeal-feedback is-error">
+                                  {appealPhotoError}
+                                </span>
+                              ) : null}
                               <div className="restaurant-legacy-editor-dish-appeal-actions">
                                 <button
                                   type="button"
                                   className="btn btnSmall btnDanger"
-                                  disabled={appealBusy}
+                                  disabled={!canSubmitAppeal}
                                   onClick={() => submitIngredientAppeal(index)}
                                 >
                                   {appealBusy ? "Submitting..." : "Send appeal"}

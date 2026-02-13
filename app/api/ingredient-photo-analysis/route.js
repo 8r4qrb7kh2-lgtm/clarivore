@@ -66,6 +66,76 @@ function parseJsonArray(text) {
   }
 }
 
+function normalizeTranscriptEntries(raw) {
+  return (Array.isArray(raw) ? raw : [])
+    .map((item) => {
+      if (typeof item === "string") {
+        return { text: asText(item), type: "ingredient" };
+      }
+      if (!item || typeof item !== "object") return null;
+      return {
+        text: asText(item.text),
+        type: asText(item.type).toLowerCase(),
+      };
+    })
+    .filter((item) => item?.text);
+}
+
+function isLikelyNoiseLine(text) {
+  const value = asText(text).toLowerCase();
+  if (!value) return true;
+  const noiseSignals = [
+    "nutrition facts",
+    "calories",
+    "serving size",
+    "daily value",
+    "manufactured for",
+    "visit ",
+    "www.",
+    "warning:",
+    "do not use",
+    "certified",
+    "barcode",
+    "phone",
+    "packet",
+    "protein cookie dough",
+    "mix with water",
+    "made with only",
+  ];
+  return noiseSignals.some((signal) => value.includes(signal));
+}
+
+function filterTranscriptEntries(entries) {
+  const explicitAllowedTypes = new Set([
+    "ingredient",
+    "allergen_statement",
+    "contains",
+    "may_contain",
+  ]);
+
+  return entries.filter((entry) => {
+    if (explicitAllowedTypes.has(entry.type)) return true;
+    if (entry.type === "ignore") return false;
+
+    const text = asText(entry.text);
+    if (!text || isLikelyNoiseLine(text)) return false;
+    if (!/[a-z]/i.test(text)) return false;
+
+    const lower = text.toLowerCase();
+    if (
+      lower.includes("ingredient") ||
+      lower.includes("contains") ||
+      lower.includes("may contain")
+    ) {
+      return true;
+    }
+
+    // Keep short ingredient-like lines, drop long prose.
+    const wordCount = text.split(/\s+/).filter(Boolean).length;
+    return wordCount > 0 && wordCount <= 14;
+  });
+}
+
 function normalizeQualityAssessment(raw) {
   const acceptRaw = raw?.accept;
   const needsRetake = raw?.needs_retake === true;
@@ -469,9 +539,13 @@ export async function POST(request) {
 
   const imageData = asText(body?.imageData);
   const mode = asText(body?.mode);
-  if (!imageData || mode !== "full-analysis") {
+  if (!imageData || (mode !== "full-analysis" && mode !== "front-analysis")) {
     return corsJson(
-      { success: false, error: "Expected { imageData, mode: \"full-analysis\" }." },
+      {
+        success: false,
+        error:
+          "Expected { imageData, mode: \"full-analysis\" } or { imageData, mode: \"front-analysis\" }.",
+      },
       { status: 400 },
     );
   }
@@ -485,6 +559,50 @@ export async function POST(request) {
   }
 
   const anthropicApiKey = asText(process.env.ANTHROPIC_API_KEY);
+  if (mode === "front-analysis") {
+    if (!anthropicApiKey) {
+      return corsJson(
+        { success: false, error: "Front image analysis is not configured." },
+        { status: 500 },
+      );
+    }
+    try {
+      const frontPrompt = `You identify product names from package-front photos.
+Return ONLY valid JSON:
+{
+  "productName": "best guess product name",
+  "confidence": "low|medium|high"
+}
+If uncertain, still return your best short productName and set confidence to "low".`;
+      const frontText = await callAnthropic({
+        apiKey: anthropicApiKey,
+        mediaType: parsed.mediaType,
+        base64Data: parsed.base64Data,
+        systemPrompt: frontPrompt,
+        userPrompt: "Extract the product name from this package-front image.",
+        maxTokens: 600,
+      });
+      const frontObject = parseJsonObject(frontText) || {};
+      const confidenceRaw = asText(frontObject?.confidence).toLowerCase();
+      const confidence = ["low", "medium", "high"].includes(confidenceRaw)
+        ? confidenceRaw
+        : "low";
+      return corsJson({
+        success: true,
+        productName: asText(frontObject?.productName),
+        confidence,
+      });
+    } catch (error) {
+      return corsJson(
+        {
+          success: false,
+          error: asText(error?.message) || "Failed front image analysis.",
+        },
+        { status: 500 },
+      );
+    }
+  }
+
   if (!anthropicApiKey) {
     try {
       const fallback = await callSupabaseFunction("dish-editor", {
@@ -492,7 +610,9 @@ export async function POST(request) {
         text: "",
         imageData,
       });
-      const transcript = extractFallbackTranscriptFromDishEditor(fallback);
+      const transcript = filterTranscriptEntries(
+        normalizeTranscriptEntries(extractFallbackTranscriptFromDishEditor(fallback)),
+      ).map((entry) => entry.text);
       if (!transcript.length) {
         return corsJson(
           { success: false, error: "Ingredient photo analysis is not configured." },
@@ -566,23 +686,33 @@ Set accept=false if image is blurry, cut off, or not fully readable.`;
       );
     }
 
-    const transcriptPrompt = `You are an OCR assistant for ingredient labels.
-Output ONLY a JSON array where each item is one visual line of ingredient/allergen text.
-Exclude unrelated text like addresses, nutrition facts tables, logos, and marketing text.`;
-    const transcriptText = await callAnthropic({
-      apiKey: anthropicApiKey,
-      mediaType: parsed.mediaType,
-      base64Data: parsed.base64Data,
-      systemPrompt: transcriptPrompt,
-      userPrompt:
-        "Transcribe ingredient and allergen lines. Return a JSON array, one entry per visual line.",
-      maxTokens: 4096,
-    });
-    const claudeTranscript = parseJsonArray(transcriptText)
-      .map((line) => asText(line))
-      .filter(Boolean);
-    if (!claudeTranscript.length) {
-      return corsJson(
+      const transcriptPrompt = `You are an OCR assistant for ingredient labels.
+Return ONLY a JSON array. Each item must be:
+{
+  "text": "one visual line",
+  "type": "ingredient" | "allergen_statement" | "ignore"
+}
+Rules:
+- Keep only ingredient/allergen lines in "ingredient" or "allergen_statement".
+- Mark nutrition facts, marketing copy, addresses, warnings, logos, and unrelated text as "ignore".
+- Preserve exact visible wording for kept lines.`;
+      const transcriptText = await callAnthropic({
+        apiKey: anthropicApiKey,
+        mediaType: parsed.mediaType,
+        base64Data: parsed.base64Data,
+        systemPrompt: transcriptPrompt,
+        userPrompt:
+          "Transcribe ingredient/allergen lines from this image and classify each line.",
+        maxTokens: 4096,
+      });
+      const transcriptEntries = filterTranscriptEntries(
+        normalizeTranscriptEntries(parseJsonArray(transcriptText)),
+      );
+      const claudeTranscript = transcriptEntries
+        .map((entry) => asText(entry.text))
+        .filter(Boolean);
+      if (!claudeTranscript.length) {
+        return corsJson(
         {
           success: false,
           error: "Could not read the ingredient text clearly. Please retake the photo.",

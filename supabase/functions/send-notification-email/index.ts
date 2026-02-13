@@ -23,6 +23,8 @@ serve(async (req) => {
 
     const ingredientName = body?.ingredientName || 'Unknown ingredient'
     const photoUrl = body?.photoUrl || ''
+    const dishName = body?.dishName || ''
+    const managerMessage = body?.managerMessage || ''
     const feedbackText = body?.feedbackText || ''
 
     const hasChanges = addedItems.length + removedItems.length > 0
@@ -42,7 +44,9 @@ serve(async (req) => {
       htmlContent += `
         <h2 style="color: #333;">Ingredient Scan Appeal</h2>
         <p><strong>Restaurant:</strong> ${restaurantName}</p>
+        ${dishName ? `<p><strong>Dish:</strong> ${dishName}</p>` : ''}
         <p><strong>Ingredient:</strong> ${ingredientName}</p>
+        ${managerMessage ? `<p><strong>Manager message:</strong><br>${managerMessage}</p>` : ''}
         ${photoUrl ? `<p><strong>Photo:</strong> <a href="${photoUrl}">View label image</a></p>` : ''}
         <p><a href="https://clarivore.org/restaurant?slug=${restaurantSlug}" style="background: #4c5ad4; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">View Menu</a></p>
       `

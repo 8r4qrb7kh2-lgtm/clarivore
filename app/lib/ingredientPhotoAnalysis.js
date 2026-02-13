@@ -2116,12 +2116,12 @@ Notes:
         frontActionBtns.style.display = "none";
 
         try {
-          const response = await fetch("/api/ai-proxy", {
+          const response = await fetch("/api/ingredient-photo-analysis", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              functionName: "analyze-product-front",
-              payload: { image: imageDataUrl },
+              imageData: imageDataUrl,
+              mode: "front-analysis",
             }),
           });
           const resultText = await response.text();
@@ -2136,11 +2136,11 @@ Notes:
             throw new Error(
               result?.error ||
                 result?.message ||
-                "Front-of-package analysis is unavailable.",
+                "Front image analysis is unavailable.",
             );
           }
 
-          detectedProductName = result.productName || "";
+          detectedProductName = result?.productName || "";
           const confidence = result.confidence || "low";
 
           frontAnalyzingArea.style.display = "none";

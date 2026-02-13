@@ -1356,6 +1356,41 @@ h2 {
   flex-wrap: wrap;
 }
 
+.restaurant-legacy-editor-dish-appeal-photo-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.restaurant-legacy-editor-dish-appeal-photo-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.restaurant-legacy-editor-dish-appeal-photo-preview-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.restaurant-legacy-editor-dish-appeal-photo-preview {
+  width: 100%;
+  max-height: 150px;
+  object-fit: contain;
+  border-radius: 8px;
+  border: 1px solid rgba(76, 90, 212, 0.45);
+  background: rgba(8, 12, 28, 0.7);
+}
+
+.restaurant-legacy-editor-dish-appeal-photo-name {
+  font-size: 0.68rem;
+  color: #9fb0dc;
+}
+
 .restaurant-legacy-editor-dish-appeal-feedback {
   font-size: 0.7rem;
   line-height: 1.3;

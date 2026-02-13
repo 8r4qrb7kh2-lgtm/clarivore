@@ -1924,6 +1924,7 @@ export function useRestaurantEditor({
     dishName,
     ingredientName,
     managerMessage,
+    photoDataUrl,
   }) => {
     if (!callbacks?.onSubmitIngredientAppeal) {
       return {
@@ -1936,11 +1937,12 @@ export function useRestaurantEditor({
       asText(dishName) || asText(selectedOverlay?.id || selectedOverlay?.name);
     const safeIngredientName = asText(ingredientName);
     const safeManagerMessage = asText(managerMessage);
+    const safePhotoDataUrl = asText(photoDataUrl);
 
-    if (!safeDishName || !safeIngredientName || !safeManagerMessage) {
+    if (!safeDishName || !safeIngredientName || !safeManagerMessage || !safePhotoDataUrl) {
       return {
         success: false,
-        error: new Error("Dish, ingredient, and appeal message are required."),
+        error: new Error("Dish, ingredient, appeal message, and appeal photo are required."),
       };
     }
 
@@ -1950,6 +1952,7 @@ export function useRestaurantEditor({
         dishName: safeDishName,
         ingredientName: safeIngredientName,
         managerMessage: safeManagerMessage,
+        photoDataUrl: safePhotoDataUrl,
       });
       return { success: true, result };
     } catch (error) {

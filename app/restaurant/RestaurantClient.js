@@ -717,6 +717,7 @@ export default function RestaurantClient() {
         dishName,
         ingredientName,
         managerMessage,
+        photoDataUrl,
       }) => {
         if (!supabase) throw new Error("Supabase is not configured.");
 
@@ -739,6 +740,7 @@ export default function RestaurantClient() {
             dishName,
             ingredientName,
             managerMessage,
+            photoDataUrl,
           }),
         });
 
