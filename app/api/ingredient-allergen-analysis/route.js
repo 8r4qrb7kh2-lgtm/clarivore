@@ -3,9 +3,6 @@ import { corsJson, corsOptions } from "../_shared/cors";
 export const runtime = "nodejs";
 
 const DEFAULT_ANTHROPIC_MODEL = "claude-sonnet-4-20250514";
-const DEFAULT_SUPABASE_URL = "https://fgoiyycctnwnghrvsilt.supabase.co";
-const DEFAULT_SUPABASE_ANON_KEY =
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZnb2l5eWNjdG53bmdocnZzaWx0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA0MzY1MjYsImV4cCI6MjA3NjAxMjUyNn0.xlSSXr0Gl7j-vsckrj-2anpPmp4BG2SUIdN-_dquSA8";
 
 const CONFIG_TTL_MS = 5 * 60 * 1000;
 let cachedConfig = null;
@@ -125,40 +122,13 @@ function parseClaudeJson(responseText) {
 function readSupabaseRuntime() {
   const url =
     asText(process.env.SUPABASE_URL) ||
-    asText(process.env.NEXT_PUBLIC_SUPABASE_URL) ||
-    DEFAULT_SUPABASE_URL;
+    asText(process.env.NEXT_PUBLIC_SUPABASE_URL);
 
   const key =
     asText(process.env.SUPABASE_ANON_KEY) ||
-    asText(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) ||
-    DEFAULT_SUPABASE_ANON_KEY;
+    asText(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
 
   return { url, key };
-}
-
-function fallbackConfig() {
-  return {
-    allergens: [
-      { key: "milk" },
-      { key: "egg" },
-      { key: "fish" },
-      { key: "shellfish" },
-      { key: "tree nut" },
-      { key: "peanut" },
-      { key: "wheat" },
-      { key: "soy" },
-      { key: "sesame" },
-    ],
-    diets: [
-      { label: "Vegan", is_supported: true, is_ai_enabled: true },
-      { label: "Vegetarian", is_supported: true, is_ai_enabled: true },
-      { label: "Pescatarian", is_supported: true, is_ai_enabled: true },
-      { label: "Gluten-free", is_supported: true, is_ai_enabled: true },
-    ],
-    dietAllergenConflicts: {},
-    supportedDiets: ["Vegan", "Vegetarian", "Pescatarian", "Gluten-free"],
-    aiDiets: ["Vegan", "Vegetarian", "Pescatarian", "Gluten-free"],
-  };
 }
 
 async function fetchJson(url, headers) {
@@ -180,74 +150,68 @@ async function fetchAllergenDietConfig() {
     return cachedConfig;
   }
 
-  try {
-    const { url, key } = readSupabaseRuntime();
-    if (!url || !key) {
-      cachedConfig = fallbackConfig();
-      cachedConfigAt = now;
-      return cachedConfig;
-    }
-
-    const headers = {
-      apikey: key,
-      Authorization: `Bearer ${key}`,
-      Accept: "application/json",
-    };
-
-    const [allergens, diets, conflicts] = await Promise.all([
-      fetchJson(
-        `${url}/rest/v1/allergens?select=key,label,sort_order,is_active&is_active=eq.true&order=sort_order.asc`,
-        headers,
-      ),
-      fetchJson(
-        `${url}/rest/v1/diets?select=key,label,sort_order,is_active,is_supported,is_ai_enabled&is_active=eq.true&order=sort_order.asc`,
-        headers,
-      ),
-      fetchJson(
-        `${url}/rest/v1/diet_allergen_conflicts?select=diet:diet_id(label),allergen:allergen_id(key)`,
-        headers,
-      ),
-    ]);
-
-    const supportedDiets = dedupeStrings(
-      diets
-        .filter((diet) => diet?.is_supported !== false)
-        .map((diet) => diet?.label),
+  const { url, key } = readSupabaseRuntime();
+  if (!url || !key) {
+    throw new Error(
+      "Supabase runtime config missing: SUPABASE_URL/NEXT_PUBLIC_SUPABASE_URL and SUPABASE_ANON_KEY/NEXT_PUBLIC_SUPABASE_ANON_KEY are required.",
     );
-
-    const aiDiets = dedupeStrings(
-      diets
-        .filter((diet) => diet?.is_ai_enabled !== false)
-        .map((diet) => diet?.label),
-    );
-
-    const dietAllergenConflicts = {};
-    (Array.isArray(conflicts) ? conflicts : []).forEach((row) => {
-      const dietLabel = asText(row?.diet?.label);
-      const allergenKey = asText(row?.allergen?.key);
-      if (!dietLabel || !allergenKey) return;
-      if (!dietAllergenConflicts[dietLabel]) {
-        dietAllergenConflicts[dietLabel] = [];
-      }
-      if (!dietAllergenConflicts[dietLabel].includes(allergenKey)) {
-        dietAllergenConflicts[dietLabel].push(allergenKey);
-      }
-    });
-
-    cachedConfig = {
-      allergens: Array.isArray(allergens) ? allergens : [],
-      diets: Array.isArray(diets) ? diets : [],
-      dietAllergenConflicts,
-      supportedDiets,
-      aiDiets,
-    };
-    cachedConfigAt = now;
-    return cachedConfig;
-  } catch {
-    cachedConfig = fallbackConfig();
-    cachedConfigAt = now;
-    return cachedConfig;
   }
+
+  const headers = {
+    apikey: key,
+    Authorization: `Bearer ${key}`,
+    Accept: "application/json",
+  };
+
+  const [allergens, diets, conflicts] = await Promise.all([
+    fetchJson(
+      `${url}/rest/v1/allergens?select=key,label,sort_order,is_active&is_active=eq.true&order=sort_order.asc`,
+      headers,
+    ),
+    fetchJson(
+      `${url}/rest/v1/diets?select=key,label,sort_order,is_active,is_supported,is_ai_enabled&is_active=eq.true&order=sort_order.asc`,
+      headers,
+    ),
+    fetchJson(
+      `${url}/rest/v1/diet_allergen_conflicts?select=diet:diet_id(label),allergen:allergen_id(key)`,
+      headers,
+    ),
+  ]);
+
+  const supportedDiets = dedupeStrings(
+    diets
+      .filter((diet) => diet?.is_supported !== false)
+      .map((diet) => diet?.label),
+  );
+
+  const aiDiets = dedupeStrings(
+    diets
+      .filter((diet) => diet?.is_ai_enabled !== false)
+      .map((diet) => diet?.label),
+  );
+
+  const dietAllergenConflicts = {};
+  (Array.isArray(conflicts) ? conflicts : []).forEach((row) => {
+    const dietLabel = asText(row?.diet?.label);
+    const allergenKey = asText(row?.allergen?.key);
+    if (!dietLabel || !allergenKey) return;
+    if (!dietAllergenConflicts[dietLabel]) {
+      dietAllergenConflicts[dietLabel] = [];
+    }
+    if (!dietAllergenConflicts[dietLabel].includes(allergenKey)) {
+      dietAllergenConflicts[dietLabel].push(allergenKey);
+    }
+  });
+
+  cachedConfig = {
+    allergens: Array.isArray(allergens) ? allergens : [],
+    diets: Array.isArray(diets) ? diets : [],
+    dietAllergenConflicts,
+    supportedDiets,
+    aiDiets,
+  };
+  cachedConfigAt = now;
+  return cachedConfig;
 }
 
 async function callAnthropicText({

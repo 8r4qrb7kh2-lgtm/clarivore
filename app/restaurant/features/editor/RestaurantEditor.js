@@ -484,7 +484,7 @@ function deriveDishStateFromIngredients({
   };
 }
 
-function DishEditorModal({ editor }) {
+function DishEditorModal({ editor, runtimeConfigHealth }) {
   const overlay = editor.selectedOverlay;
   const [showDeleteWarning, setShowDeleteWarning] = useState(false);
   const [applyBusyByRow, setApplyBusyByRow] = useState({});
@@ -499,6 +499,13 @@ function DishEditorModal({ editor }) {
   const [appealFeedbackByRow, setAppealFeedbackByRow] = useState({});
   const [modalError, setModalError] = useState("");
   const recipeTextareaRef = useRef(null);
+  const runtimeMissingKeys = Array.isArray(runtimeConfigHealth?.missing)
+    ? runtimeConfigHealth.missing
+    : [];
+  const aiActionsBlocked = Boolean(runtimeConfigHealth?.blocked);
+  const runtimeBlockedTitle = runtimeMissingKeys.length
+    ? `Runtime configuration missing: ${runtimeMissingKeys.join(", ")}`
+    : "Runtime configuration missing.";
 
   const allergens = useMemo(
     () => buildAllergenDisplay(editor, overlay),
@@ -947,6 +954,10 @@ function DishEditorModal({ editor }) {
 
   const scanIngredientBrandItem = useCallback(
     async (ingredientIndex) => {
+      if (aiActionsBlocked) {
+        setModalError(`${runtimeBlockedTitle} Add the missing env vars and redeploy.`);
+        return;
+      }
       const ingredient = ingredients[ingredientIndex];
       const ingredientName = asText(ingredient?.name);
       if (!ingredientName) {
@@ -1008,7 +1019,15 @@ function DishEditorModal({ editor }) {
         }),
       );
     },
-    [applyIngredientChanges, editor, ingredients, normalizeAllergenList, normalizeDietList],
+    [
+      aiActionsBlocked,
+      applyIngredientChanges,
+      editor,
+      ingredients,
+      normalizeAllergenList,
+      normalizeDietList,
+      runtimeBlockedTitle,
+    ],
   );
 
   const submitIngredientAppeal = useCallback(
@@ -1112,13 +1131,32 @@ function DishEditorModal({ editor }) {
   }, [editor, overlay]);
 
   const onProcessInput = async () => {
+    if (aiActionsBlocked) {
+      editor.setAiAssistDraft((current) => ({
+        ...current,
+        loading: false,
+        error: `${runtimeBlockedTitle} Add the missing env vars and redeploy.`,
+      }));
+      return;
+    }
+
     const liveText = asText(
       recipeTextareaRef.current?.value || editor.aiAssistDraft.text,
     );
     const result = await editor.runAiDishAnalysis({ overrideText: liveText });
     if (result?.success && result?.result) {
       await editor.applyAiResultToSelectedOverlay(result.result);
+      return;
     }
+
+    const failureReason = asText(result?.error?.message || editor.aiAssistDraft.error);
+    editor.setAiAssistDraft((current) => ({
+      ...current,
+      loading: false,
+      error: failureReason
+        ? `AI processing failed; existing ingredient rows were not changed. ${failureReason}`
+        : "AI processing failed; existing ingredient rows were not changed.",
+    }));
   };
 
   return (
@@ -1280,6 +1318,8 @@ function DishEditorModal({ editor }) {
           <Button
             tone="success"
             loading={editor.aiAssistDraft.loading}
+            disabled={aiActionsBlocked}
+            title={aiActionsBlocked ? runtimeBlockedTitle : ""}
             onClick={onProcessInput}
             className="restaurant-legacy-editor-dish-process-btn"
           >
@@ -1413,7 +1453,8 @@ function DishEditorModal({ editor }) {
                             <button
                               type="button"
                               className="btn btnSuccess btnSmall"
-                              disabled={Boolean(scanBusyByRow[index])}
+                              disabled={Boolean(scanBusyByRow[index]) || aiActionsBlocked}
+                              title={aiActionsBlocked ? runtimeBlockedTitle : ""}
                               onClick={() => scanIngredientBrandItem(index)}
                             >
                               {scanBusyByRow[index] ? "Scanning..." : "Add new item"}
@@ -2655,7 +2696,7 @@ function RestaurantSettingsModal({ editor }) {
   );
 }
 
-export function RestaurantEditor({ editor, onNavigate }) {
+export function RestaurantEditor({ editor, onNavigate, runtimeConfigHealth }) {
   const menuScrollRef = useRef(null);
   const pageRefs = useRef([]);
   const pageImageRefs = useRef([]);
@@ -3497,7 +3538,7 @@ export function RestaurantEditor({ editor, onNavigate }) {
         )}
       </footer>
 
-      <DishEditorModal editor={editor} />
+      <DishEditorModal editor={editor} runtimeConfigHealth={runtimeConfigHealth} />
       <ChangeLogModal editor={editor} />
       <ConfirmInfoModal editor={editor} />
       <MenuPagesModal editor={editor} />

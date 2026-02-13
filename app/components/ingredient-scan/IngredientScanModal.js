@@ -40,6 +40,42 @@ function splitWords(text) {
   return asText(text).split(/\s+/).filter(Boolean);
 }
 
+function clampPercentage(value) {
+  if (!Number.isFinite(value)) return 0;
+  if (value < 0) return 0;
+  if (value > 100) return 100;
+  return value;
+}
+
+function resolveInsertionIndexFromClick(tokenLayout, clickPct) {
+  const safeTokens = Array.isArray(tokenLayout) ? tokenLayout : [];
+  if (!safeTokens.length) return 0;
+
+  const centers = safeTokens.map((token, tokenIndex) => {
+    const fallback = ((tokenIndex + 0.5) / safeTokens.length) * 100;
+    const center = Number(token?.centerPct);
+    return clampPercentage(Number.isFinite(center) ? center : fallback);
+  });
+
+  const gapAnchors = [0];
+  for (let index = 1; index < centers.length; index += 1) {
+    gapAnchors.push((centers[index - 1] + centers[index]) / 2);
+  }
+  gapAnchors.push(100);
+
+  const target = clampPercentage(clickPct);
+  let bestIndex = 0;
+  let bestDistance = Number.POSITIVE_INFINITY;
+  gapAnchors.forEach((anchor, gapIndex) => {
+    const distance = Math.abs(anchor - target);
+    if (distance < bestDistance) {
+      bestDistance = distance;
+      bestIndex = gapIndex;
+    }
+  });
+  return bestIndex;
+}
+
 async function buildAnnotatedImage(sourceImageData, lines) {
   if (!sourceImageData || !Array.isArray(lines) || !lines.length) {
     return sourceImageData;
@@ -95,9 +131,14 @@ function CroppedLineCard({
   wordOffset,
   wordRiskMap,
   onToggleConfirm,
-  onUpdateText,
+  onCommitTokens,
+  editLocked,
 }) {
   const [cropImageData, setCropImageData] = useState("");
+  const [editorState, setEditorState] = useState(null);
+  const [savingEdit, setSavingEdit] = useState(false);
+  const stripRef = useRef(null);
+  const editInputRef = useRef(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -150,6 +191,84 @@ function CroppedLineCard({
   }, [sourceImage, line]);
 
   const tokenLayout = useMemo(() => buildWordLayout(line), [line]);
+  const displayTokens = useMemo(
+    () => tokenLayout.map((token) => asText(token?.text)).filter(Boolean),
+    [tokenLayout],
+  );
+
+  useEffect(() => {
+    setEditorState(null);
+  }, [line?.text, lineIndex]);
+
+  useEffect(() => {
+    if (!editorState || !editInputRef.current) return;
+    editInputRef.current.focus();
+    editInputRef.current.select();
+  }, [editorState]);
+
+  function openWordEditor(tokenIndex) {
+    if (editLocked || savingEdit) return;
+    const nextValue = displayTokens[tokenIndex] || "";
+    setEditorState({
+      mode: "replace",
+      index: tokenIndex,
+      value: nextValue,
+    });
+  }
+
+  function openInsertEditor(event) {
+    if (editLocked || savingEdit) return;
+    const stripRect = stripRef.current?.getBoundingClientRect();
+    const clickPct = stripRect?.width
+      ? ((event.clientX - stripRect.left) / stripRect.width) * 100
+      : 0;
+    const insertIndex = resolveInsertionIndexFromClick(tokenLayout, clickPct);
+    setEditorState({
+      mode: "insert",
+      index: insertIndex,
+      value: "",
+    });
+  }
+
+  async function saveEditorChanges() {
+    if (!editorState || typeof onCommitTokens !== "function") {
+      setEditorState(null);
+      return;
+    }
+
+    const currentTokens = displayTokens;
+    const inputTokens = splitWords(editorState.value);
+    const nextTokens = [...currentTokens];
+
+    if (editorState.mode === "replace") {
+      const replaceAt = Math.min(
+        Math.max(0, Number(editorState.index) || 0),
+        Math.max(nextTokens.length - 1, 0),
+      );
+      nextTokens.splice(replaceAt, 1, ...inputTokens);
+    } else {
+      if (!inputTokens.length) return;
+      const insertAt = Math.min(
+        Math.max(0, Number(editorState.index) || 0),
+        nextTokens.length,
+      );
+      nextTokens.splice(insertAt, 0, ...inputTokens);
+    }
+
+    const normalizedNext = nextTokens.map((token) => asText(token)).filter(Boolean);
+    if (normalizedNext.join(" ") === currentTokens.join(" ")) {
+      setEditorState(null);
+      return;
+    }
+
+    setSavingEdit(true);
+    try {
+      await onCommitTokens(lineIndex, normalizedNext);
+      setEditorState(null);
+    } finally {
+      setSavingEdit(false);
+    }
+  }
 
   return (
     <div
@@ -188,6 +307,7 @@ function CroppedLineCard({
             fontSize: "0.84rem",
             minWidth: 100,
           }}
+          disabled={editLocked || savingEdit}
           onClick={() => onToggleConfirm(lineIndex)}
         >
           {line?.confirmed ? "Confirmed" : "Confirm"}
@@ -195,35 +315,62 @@ function CroppedLineCard({
       </div>
 
       {cropImageData ? (
-        <img
-          src={cropImageData}
-          alt={`Extracted line ${lineIndex + 1}`}
+        <div
           style={{
-            width: "100%",
-            borderRadius: 4,
             marginTop: 8,
-            display: "block",
+            borderRadius: 4,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
             background: "#000",
+            minHeight: 88,
+            padding: "8px 10px",
           }}
-        />
+        >
+          <img
+            src={cropImageData}
+            alt={`Extracted line ${lineIndex + 1}`}
+            style={{
+              height: 72,
+              width: "auto",
+              maxWidth: "100%",
+              objectFit: "contain",
+              borderRadius: 4,
+              display: "block",
+              background: "#000",
+            }}
+          />
+        </div>
       ) : null}
 
       <div
+        ref={stripRef}
+        onClick={openInsertEditor}
         style={{
           marginTop: 8,
           position: "relative",
           width: "100%",
-          minHeight: 24,
+          minHeight: 28,
+          cursor: editLocked || savingEdit ? "default" : "text",
         }}
       >
         {tokenLayout.map((token, tokenIndex) => {
           const globalIndex = wordOffset + tokenIndex;
           const risk = wordRiskMap.get(globalIndex) || "";
           const underlineColor = risk === "contained" ? "#ef4444" : risk === "cross-contamination" ? "#fbbf24" : "transparent";
+          const isSelected =
+            editorState?.mode === "replace" &&
+            Number(editorState?.index) === tokenIndex;
 
           return (
-            <span
+            <button
               key={`${globalIndex}-${token.text}`}
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                openWordEditor(tokenIndex);
+              }}
+              disabled={editLocked || savingEdit}
               style={{
                 position: "absolute",
                 left: `${token.centerPct}%`,
@@ -236,30 +383,103 @@ function CroppedLineCard({
                 textDecoration: risk ? "underline" : "none",
                 textDecorationColor: underlineColor,
                 textDecorationThickness: "2px",
+                background: isSelected ? "rgba(124,156,255,0.22)" : "transparent",
+                border: isSelected
+                  ? "1px solid rgba(124,156,255,0.75)"
+                  : "1px solid transparent",
+                borderRadius: 4,
+                padding: "0 2px",
               }}
             >
               {token.text}
-            </span>
+            </button>
           );
         })}
       </div>
 
-      <textarea
-        value={line?.text || ""}
-        onChange={(event) => onUpdateText(lineIndex, event.target.value)}
+      {editorState ? (
+        <div
+          style={{
+            marginTop: 10,
+            display: "flex",
+            flexWrap: "wrap",
+            gap: 8,
+            alignItems: "center",
+          }}
+        >
+          <input
+            ref={editInputRef}
+            type="text"
+            value={editorState.value}
+            onChange={(event) => {
+              const nextValue = event.target.value;
+              setEditorState((current) =>
+                current
+                  ? {
+                      ...current,
+                      value: nextValue,
+                    }
+                  : current,
+              );
+            }}
+            placeholder={editorState.mode === "insert" ? "Enter word" : "Edit word"}
+            disabled={editLocked || savingEdit}
+            style={{
+              flex: "1 1 220px",
+              minWidth: 180,
+              borderRadius: 8,
+              border: "1px solid rgba(148,163,184,0.28)",
+              background: "rgba(10,14,34,0.58)",
+              color: "#e8ecfa",
+              fontSize: "0.84rem",
+              padding: "8px 10px",
+            }}
+            onClick={(event) => event.stopPropagation()}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                event.preventDefault();
+                saveEditorChanges();
+              }
+              if (event.key === "Escape") {
+                event.preventDefault();
+                setEditorState(null);
+              }
+            }}
+          />
+          <button
+            type="button"
+            className="btn"
+            style={{ background: "#17663a", padding: "7px 12px", fontSize: "0.82rem" }}
+            disabled={
+              editLocked ||
+              savingEdit ||
+              (editorState.mode === "insert" && !splitWords(editorState.value).length)
+            }
+            onClick={saveEditorChanges}
+          >
+            {savingEdit ? "Saving..." : "Save"}
+          </button>
+          <button
+            type="button"
+            className="btn"
+            style={{ background: "#6b7280", padding: "7px 12px", fontSize: "0.82rem" }}
+            disabled={savingEdit}
+            onClick={() => setEditorState(null)}
+          >
+            Cancel
+          </button>
+        </div>
+      ) : null}
+
+      <div
         style={{
-          marginTop: 10,
-          width: "100%",
-          minHeight: 54,
-          resize: "vertical",
-          borderRadius: 8,
-          border: "1px solid rgba(148,163,184,0.28)",
-          background: "rgba(10,14,34,0.58)",
-          color: "#e8ecfa",
-          fontSize: "0.84rem",
-          padding: "8px 10px",
+          marginTop: 6,
+          color: "#94a3b8",
+          fontSize: "0.74rem",
         }}
-      />
+      >
+        Click a word to edit it, or click empty space to insert a new word.
+      </div>
     </div>
   );
 }
@@ -372,7 +592,6 @@ export default function IngredientScanModal({
   const fileInputRef = useRef(null);
   const videoRef = useRef(null);
   const streamRef = useRef(null);
-  const reanalysisTimerRef = useRef(null);
 
   useEffect(() => {
     if (!open) {
@@ -388,11 +607,6 @@ export default function IngredientScanModal({
       setAnnotatedImage("");
       setFrontModalOpen(false);
       setApplying(false);
-
-      if (reanalysisTimerRef.current) {
-        clearTimeout(reanalysisTimerRef.current);
-        reanalysisTimerRef.current = null;
-      }
       if (streamRef.current) {
         streamRef.current.getTracks().forEach((track) => track.stop());
         streamRef.current = null;
@@ -405,9 +619,6 @@ export default function IngredientScanModal({
       if (streamRef.current) {
         streamRef.current.getTracks().forEach((track) => track.stop());
         streamRef.current = null;
-      }
-      if (reanalysisTimerRef.current) {
-        clearTimeout(reanalysisTimerRef.current);
       }
     };
   }, []);
@@ -566,11 +777,15 @@ export default function IngredientScanModal({
     }
   }
 
-  function updateLineText(lineIndex, value) {
+  async function commitLineTokens(lineIndex, tokens) {
+    const nextTokens = (Array.isArray(tokens) ? tokens : [])
+      .map((token) => asText(token))
+      .filter(Boolean);
+
+    let nextLines = [];
     setLines((current) => {
-      const next = current.map((line, idx) => {
-        if (idx !== lineIndex) return line;
-        const nextText = asText(value);
+      nextLines = current.map((line, idx) => {
+        const nextText = idx === lineIndex ? nextTokens.join(" ") : asText(line?.text);
         return {
           ...line,
           text: nextText,
@@ -578,16 +793,12 @@ export default function IngredientScanModal({
           confirmed: false,
         };
       });
-
-      if (reanalysisTimerRef.current) {
-        clearTimeout(reanalysisTimerRef.current);
-      }
-      reanalysisTimerRef.current = setTimeout(() => {
-        runAllergenAnalysis(next, "Updating analysis...");
-      }, 350);
-
-      return next;
+      return nextLines;
     });
+
+    if (!nextLines.length) return;
+    setAllergenFlags([]);
+    await runAllergenAnalysis(nextLines, "Updating analysis...");
   }
 
   function toggleLineConfirmed(lineIndex) {
@@ -676,7 +887,7 @@ export default function IngredientScanModal({
           if (!nextOpen) onCancel?.();
         }}
         title="Capture Ingredient List"
-        className="max-w-[860px]"
+        className="max-w-[860px] max-h-[90vh] overflow-y-auto"
         closeOnEsc={!analysisBusy && !analysisPending && !applying}
         closeOnOverlay={!analysisBusy && !analysisPending && !applying}
       >
@@ -853,7 +1064,8 @@ export default function IngredientScanModal({
                   wordOffset={wordOffsets[index] || 0}
                   wordRiskMap={wordRiskMap}
                   onToggleConfirm={toggleLineConfirmed}
-                  onUpdateText={updateLineText}
+                  onCommitTokens={commitLineTokens}
+                  editLocked={analysisBusy || analysisPending || applying}
                 />
               ))}
             </div>

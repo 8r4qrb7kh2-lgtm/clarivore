@@ -320,6 +320,66 @@ export default function RestaurantClient() {
   const [unsavedPromptError, setUnsavedPromptError] = useState("");
   const [unsavedPromptSaving, setUnsavedPromptSaving] = useState(false);
   const pendingNavigationRef = useRef(null);
+  const [runtimeConfigHealth, setRuntimeConfigHealth] = useState({
+    ok: true,
+    missing: [],
+    required: [],
+  });
+  const [runtimeConfigChecked, setRuntimeConfigChecked] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+
+    const loadRuntimeConfigHealth = async () => {
+      try {
+        const response = await fetch("/api/runtime-config-health", {
+          method: "GET",
+          headers: { Accept: "application/json" },
+          cache: "no-store",
+        });
+
+        const bodyText = await response.text();
+        let payload = null;
+        try {
+          payload = bodyText ? JSON.parse(bodyText) : null;
+        } catch {
+          payload = null;
+        }
+
+        if (!active) return;
+
+        if (!response.ok || !payload || typeof payload !== "object") {
+          throw new Error("Runtime config health check failed.");
+        }
+
+        const missing = (Array.isArray(payload.missing) ? payload.missing : [])
+          .map((key) => String(key || "").trim())
+          .filter(Boolean);
+        const required = (Array.isArray(payload.required) ? payload.required : [])
+          .map((key) => String(key || "").trim())
+          .filter(Boolean);
+        const ok = payload.ok === true && missing.length === 0;
+
+        setRuntimeConfigHealth({ ok, missing, required });
+      } catch {
+        if (!active) return;
+        setRuntimeConfigHealth({
+          ok: false,
+          missing: ["RUNTIME_CONFIG_HEALTH_CHECK_FAILED"],
+          required: [],
+        });
+      } finally {
+        if (active) {
+          setRuntimeConfigChecked(true);
+        }
+      }
+    };
+
+    loadRuntimeConfigHealth();
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const bootQuery = useQuery({
     queryKey: queryKeys.restaurant.boot(slug, inviteToken, isQrVisit),
@@ -334,6 +394,15 @@ export default function RestaurantClient() {
   });
 
   const boot = bootQuery.data;
+  const runtimeMissingKeys =
+    runtimeConfigChecked && runtimeConfigHealth.ok === false
+      ? runtimeConfigHealth.missing
+      : [];
+  const runtimeConfigBlocked =
+    runtimeConfigChecked && runtimeConfigHealth.ok === false;
+  const runtimeConfigErrorMessage = runtimeMissingKeys.length
+    ? `Runtime configuration is missing: ${runtimeMissingKeys.join(", ")}.`
+    : "Runtime configuration is missing.";
 
   useEffect(() => {
     if (!boot?.redirect) return;
@@ -706,6 +775,9 @@ export default function RestaurantClient() {
         return await saveRestaurantSettingsMutation.mutateAsync(payload);
       },
       onAnalyzeDish: async ({ dishName, text, imageData }) => {
+        if (runtimeConfigBlocked) {
+          throw new Error(runtimeConfigErrorMessage);
+        }
         return await analyzeDishWithAi({ dishName, text, imageData });
       },
       onAnalyzeIngredientName: async ({ ingredientName, dishName }) => {
@@ -769,6 +841,9 @@ export default function RestaurantClient() {
         return await detectMenuCorners({ imageData, width, height });
       },
       onOpenIngredientLabelScan: async ({ ingredientName }) => {
+        if (runtimeConfigBlocked) {
+          throw new Error(runtimeConfigErrorMessage);
+        }
         return await ingredientScan.openScan({
           ingredientName,
           supportedDiets: boot?.config?.DIETS || [],
@@ -1020,10 +1095,23 @@ export default function RestaurantClient() {
       ) : null}
 
       {activeView === "editor" && boot.canEdit ? (
-        <RestaurantEditor
-          editor={editor}
-          onNavigate={onRestaurantNavigate}
-        />
+        <>
+          {runtimeConfigBlocked ? (
+            <div className="mb-4 rounded-xl border border-[#a12525] bg-[rgba(139,29,29,0.32)] px-3 py-2 text-sm text-[#ffd0d0]">
+              <strong>Runtime configuration missing.</strong> AI actions are disabled
+              until these env vars are set: {runtimeMissingKeys.join(", ")}.
+            </div>
+          ) : null}
+          <RestaurantEditor
+            editor={editor}
+            onNavigate={onRestaurantNavigate}
+            runtimeConfigHealth={{
+              checked: runtimeConfigChecked,
+              blocked: runtimeConfigBlocked,
+              missing: runtimeMissingKeys,
+            }}
+          />
+        </>
       ) : (
         <RestaurantViewer
           restaurant={boot.restaurant}
