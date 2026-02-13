@@ -47,6 +47,49 @@ function clampPercentage(value) {
   return value;
 }
 
+function hasPhraseBoundary(token) {
+  return /[,;]/.test(asText(token));
+}
+
+function findPhraseBounds(tokens, index) {
+  const safeTokens = Array.isArray(tokens) ? tokens : [];
+  if (!safeTokens.length) return { start: 0, end: 0 };
+  const safeIndex = Math.min(
+    Math.max(0, Number(index) || 0),
+    Math.max(safeTokens.length - 1, 0),
+  );
+
+  let start = safeIndex;
+  while (start > 0 && !hasPhraseBoundary(safeTokens[start - 1])) {
+    start -= 1;
+  }
+
+  let end = safeIndex;
+  while (end < safeTokens.length - 1 && !hasPhraseBoundary(safeTokens[end])) {
+    end += 1;
+  }
+
+  return { start, end };
+}
+
+function resolveLineTokenIndex(globalIndex, wordOffsets, tokenCounts) {
+  const target = Number(globalIndex);
+  if (!Number.isFinite(target) || target < 0) return null;
+  for (let lineIndex = 0; lineIndex < wordOffsets.length; lineIndex += 1) {
+    const start = Number(wordOffsets[lineIndex]) || 0;
+    const count = Number(tokenCounts[lineIndex]) || 0;
+    const end = start + Math.max(count - 1, 0);
+    if (!count) continue;
+    if (target >= start && target <= end) {
+      return {
+        lineIndex,
+        tokenIndex: target - start,
+      };
+    }
+  }
+  return null;
+}
+
 function resolveInsertionIndexFromClick(tokenLayout, clickPct) {
   const safeTokens = Array.isArray(tokenLayout) ? tokenLayout : [];
   if (!safeTokens.length) return 0;
@@ -204,7 +247,7 @@ function CroppedLineCard({
     if (!editorState || !editInputRef.current) return;
     editInputRef.current.focus();
     editInputRef.current.select();
-  }, [editorState]);
+  }, [editorState?.mode, editorState?.index, lineIndex]);
 
   function openWordEditor(tokenIndex) {
     if (editLocked || savingEdit) return;
@@ -484,8 +527,13 @@ function CroppedLineCard({
   );
 }
 
-function buildWordRiskMap(flags) {
+function buildWordRiskMap(flags, lines, wordOffsets) {
   const map = new Map();
+  const lineTokens = (Array.isArray(lines) ? lines : []).map((line) =>
+    splitWords(line?.text),
+  );
+  const tokenCounts = lineTokens.map((tokens) => tokens.length);
+
   (Array.isArray(flags) ? flags : []).forEach((flag) => {
     const risk = asText(flag?.risk_type).toLowerCase().includes("cross")
       ? "cross-contamination"
@@ -496,12 +544,23 @@ function buildWordRiskMap(flags) {
     indices.forEach((value) => {
       const idx = Number(value);
       if (!Number.isFinite(idx) || idx < 0) return;
-      const current = map.get(idx);
-      if (current === "contained") return;
-      if (risk === "contained") {
-        map.set(idx, "contained");
-      } else if (!current) {
-        map.set(idx, "cross-contamination");
+
+      const resolved = resolveLineTokenIndex(idx, wordOffsets, tokenCounts);
+      if (!resolved) return;
+
+      const tokens = lineTokens[resolved.lineIndex] || [];
+      const bounds = findPhraseBounds(tokens, resolved.tokenIndex);
+      const offset = Number(wordOffsets[resolved.lineIndex]) || 0;
+
+      for (let tokenIndex = bounds.start; tokenIndex <= bounds.end; tokenIndex += 1) {
+        const globalIndex = offset + tokenIndex;
+        const current = map.get(globalIndex);
+        if (current === "contained") continue;
+        if (risk === "contained") {
+          map.set(globalIndex, "contained");
+        } else if (!current) {
+          map.set(globalIndex, "cross-contamination");
+        }
       }
     });
   });
@@ -573,7 +632,10 @@ export default function IngredientScanModal({
   open,
   ingredientName,
   supportedDiets,
+  backgroundMode = false,
   onCancel,
+  onRequestHide,
+  onPhaseChange,
   onApply,
 }) {
   const [capturedPhoto, setCapturedPhoto] = useState("");
@@ -594,27 +656,6 @@ export default function IngredientScanModal({
   const streamRef = useRef(null);
 
   useEffect(() => {
-    if (!open) {
-      setCapturedPhoto("");
-      setCameraActive(false);
-      setAnalysisBusy(false);
-      setStatusText("");
-      setErrorText("");
-      setAnalysisResult(null);
-      setLines([]);
-      setAllergenFlags([]);
-      setAnalysisPending(false);
-      setAnnotatedImage("");
-      setFrontModalOpen(false);
-      setApplying(false);
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach((track) => track.stop());
-        streamRef.current = null;
-      }
-    }
-  }, [open]);
-
-  useEffect(() => {
     return () => {
       if (streamRef.current) {
         streamRef.current.getTracks().forEach((track) => track.stop());
@@ -622,6 +663,15 @@ export default function IngredientScanModal({
       }
     };
   }, []);
+
+  useEffect(() => {
+    if (open) return;
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+    }
+    setCameraActive(false);
+  }, [open]);
 
   useEffect(() => {
     if (!analysisResult?.correctedImage || !lines.length) {
@@ -652,7 +702,10 @@ export default function IngredientScanModal({
     });
   }, [lines]);
 
-  const wordRiskMap = useMemo(() => buildWordRiskMap(allergenFlags), [allergenFlags]);
+  const wordRiskMap = useMemo(
+    () => buildWordRiskMap(allergenFlags, lines, wordOffsets),
+    [allergenFlags, lines, wordOffsets],
+  );
 
   const groupedResults = useMemo(
     () => buildGroupedResults(allergenFlags),
@@ -752,6 +805,13 @@ export default function IngredientScanModal({
     if (!capturedPhoto || analysisBusy) return;
     setAnalysisBusy(true);
     setErrorText("");
+    if (backgroundMode) {
+      onPhaseChange?.({
+        phase: "processing",
+        message: "Analyzing ingredient label in background...",
+      });
+      onRequestHide?.();
+    }
 
     try {
       const result = await analyzeIngredientLabelImage(capturedPhoto, {
@@ -770,8 +830,22 @@ export default function IngredientScanModal({
       setStatusText("Text extracted. Running allergen analysis...");
 
       await runAllergenAnalysis(nextLines);
+      if (backgroundMode) {
+        onPhaseChange?.({
+          phase: "ready_for_review",
+          message: "Scan is ready for review.",
+        });
+      }
     } catch (error) {
-      setErrorText(error?.message || "Unable to analyze the photo.");
+      const message = error?.message || "Unable to analyze the photo.";
+      setErrorText(message);
+      if (backgroundMode) {
+        onPhaseChange?.({
+          phase: "failed",
+          message,
+          error: message,
+        });
+      }
     } finally {
       setAnalysisBusy(false);
     }
@@ -884,7 +958,18 @@ export default function IngredientScanModal({
       <Modal
         open={open}
         onOpenChange={(nextOpen) => {
-          if (!nextOpen) onCancel?.();
+          if (nextOpen) return;
+          const hasReviewState =
+            Boolean(analysisResult) ||
+            lines.length > 0 ||
+            analysisBusy ||
+            analysisPending ||
+            applying;
+          if (backgroundMode && hasReviewState) {
+            onRequestHide?.();
+            return;
+          }
+          onCancel?.();
         }}
         title="Capture Ingredient List"
         className="max-w-[860px] max-h-[90vh] overflow-y-auto"
@@ -1187,7 +1272,19 @@ export default function IngredientScanModal({
               className="btn"
               style={{ background: "#ef4444" }}
               disabled={analysisBusy || analysisPending || applying}
-              onClick={() => onCancel?.()}
+              onClick={() => {
+                const hasReviewState =
+                  Boolean(analysisResult) ||
+                  lines.length > 0 ||
+                  analysisBusy ||
+                  analysisPending ||
+                  applying;
+                if (backgroundMode && hasReviewState) {
+                  onRequestHide?.();
+                  return;
+                }
+                onCancel?.();
+              }}
             >
               Cancel
             </button>

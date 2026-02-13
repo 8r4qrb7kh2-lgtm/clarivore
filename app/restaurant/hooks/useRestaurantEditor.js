@@ -1994,7 +1994,10 @@ export function useRestaurantEditor({
     }
   }, [callbacks, restaurant?.id, selectedOverlay?.id, selectedOverlay?.name]);
 
-  const openIngredientLabelScan = useCallback(async ({ ingredientName }) => {
+  const openIngredientLabelScan = useCallback(async ({
+    ingredientName,
+    onPhaseChange,
+  }) => {
     if (!callbacks?.onOpenIngredientLabelScan) {
       return {
         success: false,
@@ -2005,6 +2008,7 @@ export function useRestaurantEditor({
     try {
       const result = await callbacks.onOpenIngredientLabelScan({
         ingredientName: asText(ingredientName),
+        onPhaseChange: typeof onPhaseChange === "function" ? onPhaseChange : undefined,
       });
       if (!result) return { success: true, result: null };
 
@@ -2043,6 +2047,35 @@ export function useRestaurantEditor({
       return { success: false, error };
     }
   }, [callbacks, normalizeAllergenList, normalizeDietList]);
+
+  const resumeIngredientLabelScan = useCallback(async ({ sessionId }) => {
+    if (!callbacks?.onResumeIngredientLabelScan) {
+      return {
+        success: false,
+        error: new Error("Resume ingredient label scan callback is not configured."),
+      };
+    }
+
+    const safeSessionId = asText(sessionId);
+    if (!safeSessionId) {
+      return {
+        success: false,
+        error: new Error("Ingredient label scan session id is required."),
+      };
+    }
+
+    try {
+      const result = await callbacks.onResumeIngredientLabelScan({
+        sessionId: safeSessionId,
+      });
+      return {
+        success: result?.success !== false,
+        result: result || null,
+      };
+    } catch (error) {
+      return { success: false, error };
+    }
+  }, [callbacks]);
 
 
   const detectMenuCorners = useCallback(async ({ imageData, width, height }) => {
@@ -2349,6 +2382,7 @@ export function useRestaurantEditor({
     analyzeIngredientScanRequirement,
     submitIngredientAppeal,
     openIngredientLabelScan,
+    resumeIngredientLabelScan,
     detectMenuCorners,
 
     toggleSelectedAllergen,

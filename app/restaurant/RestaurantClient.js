@@ -840,14 +840,18 @@ export default function RestaurantClient() {
       onDetectMenuCorners: async ({ imageData, width, height }) => {
         return await detectMenuCorners({ imageData, width, height });
       },
-      onOpenIngredientLabelScan: async ({ ingredientName }) => {
+      onOpenIngredientLabelScan: async ({ ingredientName, onPhaseChange }) => {
         if (runtimeConfigBlocked) {
           throw new Error(runtimeConfigErrorMessage);
         }
         return await ingredientScan.openScan({
           ingredientName,
           supportedDiets: boot?.config?.DIETS || [],
+          onPhaseChange,
         });
+      },
+      onResumeIngredientLabelScan: async ({ sessionId }) => {
+        return await ingredientScan.resumeScan({ sessionId });
       },
     },
   });

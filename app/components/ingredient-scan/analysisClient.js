@@ -287,7 +287,9 @@ export async function analyzeFrontProductName(imageDataUrl) {
 export async function analyzeTranscriptFlags(transcriptLines) {
   const result = await analyzeAllergensWithLabelCropper(transcriptLines);
   if (!result?.success) {
-    return [];
+    const message =
+      asText(result?.error) || "Ingredient allergen analysis failed.";
+    throw new Error(message);
   }
   return Array.isArray(result?.data?.flags) ? result.data.flags : [];
 }

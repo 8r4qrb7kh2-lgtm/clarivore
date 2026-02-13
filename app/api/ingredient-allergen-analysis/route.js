@@ -2,7 +2,9 @@ import { corsJson, corsOptions } from "../_shared/cors";
 
 export const runtime = "nodejs";
 
-const DEFAULT_ANTHROPIC_MODEL = "claude-sonnet-4-20250514";
+const PINNED_ANTHROPIC_MODEL = "claude-sonnet-4-5";
+// Anthropic enforces a minimum thinking budget of 1024 tokens.
+const ANTHROPIC_THINKING_BUDGET_TOKENS = 1024;
 
 const CONFIG_TTL_MS = 5 * 60 * 1000;
 let cachedConfig = null;
@@ -229,8 +231,12 @@ async function callAnthropicText({
       "content-type": "application/json",
     },
     body: JSON.stringify({
-      model: asText(model) || DEFAULT_ANTHROPIC_MODEL,
+      model: asText(model) || PINNED_ANTHROPIC_MODEL,
       max_tokens: maxTokens,
+      thinking: {
+        type: "enabled",
+        budget_tokens: ANTHROPIC_THINKING_BUDGET_TOKENS,
+      },
       system: systemPrompt,
       messages: [
         {
@@ -295,23 +301,6 @@ function buildDietAliasResolver({ glutenFreeLabel, pescatarianLabel }) {
   };
 }
 
-function expandDietHierarchy({
-  diets,
-  veganLabel,
-  vegetarianLabel,
-  pescatarianLabel,
-}) {
-  const out = new Set((Array.isArray(diets) ? diets : []).filter((d) => typeof d === "string"));
-  if (veganLabel && out.has(veganLabel)) {
-    if (vegetarianLabel) out.add(vegetarianLabel);
-    if (pescatarianLabel) out.add(pescatarianLabel);
-  }
-  if (vegetarianLabel && out.has(vegetarianLabel)) {
-    if (pescatarianLabel) out.add(pescatarianLabel);
-  }
-  return Array.from(out);
-}
-
 export async function POST(request) {
   let body;
   try {
@@ -332,8 +321,7 @@ export async function POST(request) {
   }
 
   const anthropicApiKey = asText(process.env.ANTHROPIC_API_KEY);
-  const anthropicModel =
-    asText(process.env.ANTHROPIC_MODEL) || DEFAULT_ANTHROPIC_MODEL;
+  const anthropicModel = PINNED_ANTHROPIC_MODEL;
 
   if (!anthropicApiKey) {
     return corsJson(
@@ -382,8 +370,6 @@ export async function POST(request) {
       return "";
     };
 
-    const veganLabel = findDietLabel("Vegan");
-    const vegetarianLabel = findDietLabel("Vegetarian");
     const pescatarianLabel = findDietLabel("Pescatarian");
     const glutenFreeLabel = findDietLabel("Gluten-free", "Gluten Free");
 
@@ -428,12 +414,27 @@ RISK TYPES:
 - "contained" for direct ingredients or explicit contains statements.
 - "cross-contamination" for may contain/shared facility style risk.
 
+PHRASE + WORD INDEX RULES:
+- "ingredient" must be the full ingredient phrase from the label segment (typically comma/semicolon delimited), not a single partial token.
+- "word_indices" must include ALL words from that same phrase.
+- Always use 0-based word indices from the provided numbered transcript list.
+
+DIET PRECISION RULES:
+- Add diet codes only when directly justified by ingredient evidence in that phrase.
+- Do NOT infer broader diet failures from stricter diets.
+- If one phrase indicates a Vegan violation, do not auto-add Vegetarian/Pescatarian unless separately justified.
+- For wheat/gluten evidence, prefer Gluten-free only (unless additional direct evidence supports other diet violations).
+
+EXAMPLES:
+- Positive: "Wheat flour" -> include allergen wheat, include Gluten-free diet violation.
+- Negative: "Wheat flour" -> do NOT include Vegan, Vegetarian, or Pescatarian diet violations from that phrase alone.
+
 Return ONLY JSON:
 {
   "flags": [
     {
-      "ingredient": "WHEAT",
-      "word_indices": [45],
+      "ingredient": "Wheat flour",
+      "word_indices": [45, 46],
       "allergen_codes": [1],
       "diet_codes": [2],
       "risk_type": "contained"
@@ -484,12 +485,7 @@ Use the numbered list above for word_indices. Do not compute your own indices ou
           ingredient: asText(flag?.ingredient),
           word_indices,
           allergens: mapAllergens(flag),
-          diets: expandDietHierarchy({
-            diets: mapDiets(flag),
-            veganLabel,
-            vegetarianLabel,
-            pescatarianLabel,
-          }),
+          diets: mapDiets(flag),
           risk_type,
         };
       })

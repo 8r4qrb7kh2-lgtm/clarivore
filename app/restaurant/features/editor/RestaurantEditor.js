@@ -488,7 +488,7 @@ function DishEditorModal({ editor, runtimeConfigHealth }) {
   const overlay = editor.selectedOverlay;
   const [showDeleteWarning, setShowDeleteWarning] = useState(false);
   const [applyBusyByRow, setApplyBusyByRow] = useState({});
-  const [scanBusyByRow, setScanBusyByRow] = useState({});
+  const [scanStateByRow, setScanStateByRow] = useState({});
   const [searchOpenRow, setSearchOpenRow] = useState(-1);
   const [searchQueryByRow, setSearchQueryByRow] = useState({});
   const [appealOpenByRow, setAppealOpenByRow] = useState({});
@@ -558,7 +558,7 @@ function DishEditorModal({ editor, runtimeConfigHealth }) {
     if (!editor.dishEditorOpen) {
       setShowDeleteWarning(false);
       setApplyBusyByRow({});
-      setScanBusyByRow({});
+      setScanStateByRow({});
       setSearchOpenRow(-1);
       setSearchQueryByRow({});
       setAppealOpenByRow({});
@@ -613,6 +613,17 @@ function DishEditorModal({ editor, runtimeConfigHealth }) {
       ...current,
       [ingredientIndex]: "",
     }));
+  }, []);
+
+  const clearIngredientScanState = useCallback((ingredientIndex) => {
+    setScanStateByRow((current) => {
+      if (!current || !Object.prototype.hasOwnProperty.call(current, ingredientIndex)) {
+        return current;
+      }
+      const next = { ...current };
+      delete next[ingredientIndex];
+      return next;
+    });
   }, []);
 
   const applyIngredientChanges = useCallback(
@@ -975,6 +986,7 @@ function DishEditorModal({ editor, runtimeConfigHealth }) {
       setModalError("");
       setSearchOpenRow((current) => (current === ingredientIndex ? -1 : current));
       setSearchQueryByRow((current) => ({ ...current, [ingredientIndex]: "" }));
+      clearIngredientScanState(ingredientIndex);
       setAppealOpenByRow((current) => ({ ...current, [ingredientIndex]: false }));
       setAppealMessageByRow((current) => ({ ...current, [ingredientIndex]: "" }));
       setAppealPhotoByRow((current) => ({ ...current, [ingredientIndex]: null }));
@@ -1026,6 +1038,7 @@ function DishEditorModal({ editor, runtimeConfigHealth }) {
       analyzeIngredientForSmartDetection,
       applyIngredientChanges,
       applyIngredientDetectionResult,
+      clearIngredientScanState,
       ingredients,
     ],
   );
@@ -1062,17 +1075,24 @@ function DishEditorModal({ editor, runtimeConfigHealth }) {
       );
       setSearchOpenRow(-1);
       setSearchQueryByRow((current) => ({ ...current, [ingredientIndex]: "" }));
+      clearIngredientScanState(ingredientIndex);
       setModalError("");
     },
-    [applyIngredientChanges, normalizeAllergenList, normalizeDietList],
+    [
+      applyIngredientChanges,
+      clearIngredientScanState,
+      normalizeAllergenList,
+      normalizeDietList,
+    ],
   );
 
   const scanIngredientBrandItem = useCallback(
-    async (ingredientIndex) => {
+    (ingredientIndex) => {
       if (aiActionsBlocked) {
         setModalError(`${runtimeBlockedTitle} Add the missing env vars and redeploy.`);
         return;
       }
+
       const ingredient = ingredients[ingredientIndex];
       const ingredientName = asText(ingredient?.name);
       if (!ingredientName) {
@@ -1080,69 +1100,171 @@ function DishEditorModal({ editor, runtimeConfigHealth }) {
         return;
       }
 
-      setScanBusyByRow((current) => ({ ...current, [ingredientIndex]: true }));
       setModalError("");
-      const result = await editor.openIngredientLabelScan({ ingredientName });
-      setScanBusyByRow((current) => ({ ...current, [ingredientIndex]: false }));
+      setScanStateByRow((current) => ({
+        ...current,
+        [ingredientIndex]: {
+          sessionId: "",
+          phase: "capture_open",
+          message: "Capture ingredient label photo.",
+          error: "",
+        },
+      }));
 
-      if (!result?.success) {
-        setModalError(result?.error?.message || "Ingredient label scan failed.");
-        return;
-      }
+      editor
+        .openIngredientLabelScan({
+          ingredientName,
+          onPhaseChange: (event) => {
+            const phase = asText(event?.phase);
+            const sessionId = asText(event?.sessionId);
+            const message = asText(event?.message);
+            const error = asText(event?.error);
 
-      const payload = result?.result;
-      if (!payload) return;
+            setScanStateByRow((current) => {
+              const previous = current[ingredientIndex] || {};
+              if (phase === "cancelled") {
+                const next = { ...current };
+                delete next[ingredientIndex];
+                return next;
+              }
 
-      const brandName = asText(payload.productName) || ingredientName;
-      const brandItem = normalizeBrandEntry({
-        name: brandName,
-        allergens: normalizeAllergenList(payload.allergens),
-        diets: normalizeDietList(payload.diets),
-        crossContaminationAllergens: normalizeAllergenList(
-          payload.crossContaminationAllergens,
-        ),
-        crossContaminationDiets: normalizeDietList(payload.crossContaminationDiets),
-        ingredientsList: Array.isArray(payload.ingredientsList)
-          ? payload.ingredientsList
-          : [],
-        brandImage: asText(payload.brandImage),
-        ingredientsImage: asText(payload.ingredientsImage),
-      });
-      if (!brandItem) return;
+              return {
+                ...current,
+                [ingredientIndex]: {
+                  ...previous,
+                  sessionId: sessionId || previous.sessionId || "",
+                  phase: phase || previous.phase || "",
+                  message:
+                    message ||
+                    (phase === "processing"
+                      ? "Analyzing ingredient label in background..."
+                      : previous.message || ""),
+                  error:
+                    phase === "failed"
+                      ? error || message || "Ingredient label scan failed."
+                      : "",
+                },
+              };
+            });
+          },
+        })
+        .then((result) => {
+          if (!result?.success) {
+            const errorMessage =
+              result?.error?.message || "Ingredient label scan failed.";
+            setModalError(errorMessage);
+            setScanStateByRow((current) => ({
+              ...current,
+              [ingredientIndex]: {
+                ...(current[ingredientIndex] || {}),
+                phase: "failed",
+                message: errorMessage,
+                error: errorMessage,
+              },
+            }));
+            return;
+          }
 
-      applyIngredientChanges((current) =>
-        current.map((item, itemIndex) => {
-          if (itemIndex !== ingredientIndex) return item;
-          const existing = (Array.isArray(item.brands) ? item.brands : [])
-            .map((brand) => normalizeBrandEntry(brand))
-            .filter(Boolean)
-            .filter((brand) => normalizeToken(brand.name) !== normalizeToken(brandItem.name));
-          return {
-            ...item,
-            allergens: brandItem.allergens,
-            diets: brandItem.diets,
-            crossContaminationAllergens: brandItem.crossContaminationAllergens,
-            crossContaminationDiets: brandItem.crossContaminationDiets,
-            aiDetectedAllergens: brandItem.allergens,
-            aiDetectedDiets: brandItem.diets,
-            aiDetectedCrossContaminationAllergens:
-              brandItem.crossContaminationAllergens,
-            aiDetectedCrossContaminationDiets: brandItem.crossContaminationDiets,
-            brands: [brandItem, ...existing],
-            confirmed: true,
-          };
-        }),
-      );
+          const payload = result?.result;
+          if (!payload) {
+            clearIngredientScanState(ingredientIndex);
+            return;
+          }
+
+          const brandName = asText(payload.productName) || ingredientName;
+          const brandItem = normalizeBrandEntry({
+            name: brandName,
+            allergens: normalizeAllergenList(payload.allergens),
+            diets: normalizeDietList(payload.diets),
+            crossContaminationAllergens: normalizeAllergenList(
+              payload.crossContaminationAllergens,
+            ),
+            crossContaminationDiets: normalizeDietList(payload.crossContaminationDiets),
+            ingredientsList: Array.isArray(payload.ingredientsList)
+              ? payload.ingredientsList
+              : [],
+            brandImage: asText(payload.brandImage),
+            ingredientsImage: asText(payload.ingredientsImage),
+          });
+          if (!brandItem) {
+            clearIngredientScanState(ingredientIndex);
+            return;
+          }
+
+          let applied = false;
+          applyIngredientChanges((current) =>
+            current.map((item, itemIndex) => {
+              if (itemIndex !== ingredientIndex) return item;
+              if (normalizeToken(item?.name) !== normalizeToken(ingredientName)) {
+                return item;
+              }
+              applied = true;
+              const existing = (Array.isArray(item.brands) ? item.brands : [])
+                .map((brand) => normalizeBrandEntry(brand))
+                .filter(Boolean)
+                .filter((brand) => normalizeToken(brand.name) !== normalizeToken(brandItem.name));
+              return {
+                ...item,
+                allergens: brandItem.allergens,
+                diets: brandItem.diets,
+                crossContaminationAllergens: brandItem.crossContaminationAllergens,
+                crossContaminationDiets: brandItem.crossContaminationDiets,
+                aiDetectedAllergens: brandItem.allergens,
+                aiDetectedDiets: brandItem.diets,
+                aiDetectedCrossContaminationAllergens:
+                  brandItem.crossContaminationAllergens,
+                aiDetectedCrossContaminationDiets: brandItem.crossContaminationDiets,
+                brands: [brandItem, ...existing],
+                confirmed: true,
+              };
+            }),
+          );
+          if (!applied) {
+            setModalError(
+              "Ingredient row changed before scan completed. Please run the scan again.",
+            );
+          }
+          clearIngredientScanState(ingredientIndex);
+        });
     },
     [
       aiActionsBlocked,
       applyIngredientChanges,
+      clearIngredientScanState,
       editor,
       ingredients,
       normalizeAllergenList,
       normalizeDietList,
       runtimeBlockedTitle,
     ],
+  );
+
+  const reviewIngredientScanResult = useCallback(
+    async (ingredientIndex) => {
+      const state = scanStateByRow[ingredientIndex];
+      const sessionId = asText(state?.sessionId);
+      if (!sessionId) {
+        setModalError("No scan session found for this ingredient row.");
+        return;
+      }
+
+      const result = await editor.resumeIngredientLabelScan({ sessionId });
+      if (!result?.success) {
+        const errorMessage =
+          result?.error?.message || "Unable to reopen scan results.";
+        setModalError(errorMessage);
+        setScanStateByRow((current) => ({
+          ...current,
+          [ingredientIndex]: {
+            ...(current[ingredientIndex] || {}),
+            phase: "failed",
+            message: errorMessage,
+            error: errorMessage,
+          },
+        }));
+      }
+    },
+    [editor, scanStateByRow],
   );
 
   const submitIngredientAppeal = useCallback(
@@ -1490,6 +1612,23 @@ function DishEditorModal({ editor, runtimeConfigHealth }) {
                     !appealBusy &&
                     appealMessage.trim().length > 0 &&
                     Boolean(appealPhotoDataUrl);
+                  const scanState = scanStateByRow[index] || {};
+                  const scanPhase = asText(scanState?.phase);
+                  const scanMessage = asText(scanState?.message);
+                  const scanError = asText(scanState?.error);
+                  const hasReviewReady =
+                    scanPhase === "ready_for_review" || scanPhase === "review_open";
+                  const isScanProcessing = scanPhase === "processing";
+                  const isScanCapture = scanPhase === "capture_open";
+                  const scanButtonText = hasReviewReady
+                    ? "Review scan results"
+                    : isScanProcessing
+                      ? "Analyzing..."
+                      : isScanCapture
+                        ? "Capture open..."
+                        : "Add new item";
+                  const scanButtonDisabled =
+                    aiActionsBlocked || isScanProcessing || isScanCapture;
                   const matchingBrands = existingBrandItems
                     .filter((brand) => {
                       if (
@@ -1579,11 +1718,17 @@ function DishEditorModal({ editor, runtimeConfigHealth }) {
                                 <button
                                   type="button"
                                   className="btn btnSuccess btnSmall"
-                                  disabled={Boolean(scanBusyByRow[index]) || aiActionsBlocked}
+                                  disabled={scanButtonDisabled}
                                   title={aiActionsBlocked ? runtimeBlockedTitle : ""}
-                                  onClick={() => scanIngredientBrandItem(index)}
+                                  onClick={() => {
+                                    if (hasReviewReady) {
+                                      reviewIngredientScanResult(index);
+                                      return;
+                                    }
+                                    scanIngredientBrandItem(index);
+                                  }}
                                 >
-                                  {scanBusyByRow[index] ? "Scanning..." : "Add new item"}
+                                  {scanButtonText}
                                 </button>
                                 {ingredient.brandRequired ? (
                                   <button
@@ -1600,6 +1745,30 @@ function DishEditorModal({ editor, runtimeConfigHealth }) {
                                   </button>
                                 ) : null}
                               </div>
+                              {scanMessage ? (
+                                <span
+                                  style={{
+                                    display: "block",
+                                    marginTop: 6,
+                                    color: scanError ? "#fecaca" : "#93c5fd",
+                                    fontSize: "0.78rem",
+                                  }}
+                                >
+                                  {scanMessage}
+                                </span>
+                              ) : null}
+                              {scanError ? (
+                                <span
+                                  style={{
+                                    display: "block",
+                                    marginTop: 4,
+                                    color: "#fca5a5",
+                                    fontSize: "0.78rem",
+                                  }}
+                                >
+                                  {scanError}
+                                </span>
+                              ) : null}
                               {searchOpen ? (
                                 <div className="restaurant-legacy-editor-dish-brand-search">
                                   <input

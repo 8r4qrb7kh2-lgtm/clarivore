@@ -43,10 +43,25 @@ export async function analyzeAllergensWithLabelCropper(transcriptLines) {
       );
     }
 
+    if (payload?.success === false) {
+      return {
+        success: false,
+        error:
+          asText(payload?.error) ||
+          asText(payload?.message) ||
+          "Ingredient allergen analysis request failed.",
+        data: { flags: [] },
+      };
+    }
+
     const flags = Array.isArray(payload?.flags) ? payload.flags : [];
     return { success: true, data: { flags } };
   } catch (error) {
     console.error("Allergen label analysis failed:", error);
-    return { success: true, data: { flags: [] } };
+    return {
+      success: false,
+      error: asText(error?.message) || "Ingredient allergen analysis request failed.",
+      data: { flags: [] },
+    };
   }
 }
