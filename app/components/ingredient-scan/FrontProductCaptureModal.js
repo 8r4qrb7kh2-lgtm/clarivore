@@ -8,6 +8,11 @@ function asText(value) {
   return String(value ?? "").trim();
 }
 
+const FRONT_PRIMARY_MAX_EDGE = 1200;
+const FRONT_PRIMARY_QUALITY = 0.86;
+const FRONT_RETRY_MAX_EDGE = 900;
+const FRONT_RETRY_QUALITY = 0.72;
+
 async function readFileAsDataUrl(file) {
   return await new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -34,6 +39,15 @@ export default function FrontProductCaptureModal({
   const fileInputRef = useRef(null);
   const videoRef = useRef(null);
   const streamRef = useRef(null);
+
+  async function normalizeFrontPhoto(
+    imageDataUrl,
+    maxEdge = FRONT_PRIMARY_MAX_EDGE,
+    quality = FRONT_PRIMARY_QUALITY,
+  ) {
+    const prepared = await prepareAnalysisImage(imageDataUrl, maxEdge, quality);
+    return asText(prepared?.imageData) || asText(imageDataUrl);
+  }
 
   useEffect(() => {
     if (!open) {
@@ -74,9 +88,9 @@ export default function FrontProductCaptureModal({
 
     setAnalyzing(true);
     setError("");
+    let activeImage = imageDataUrl;
 
-    try {
-      const result = await analyzeFrontProductName(imageDataUrl);
+    const applyDetectedName = (result) => {
       const detected = asText(result?.productName);
       const confidence = asText(result?.confidence).toLowerCase() || "low";
 
@@ -94,10 +108,36 @@ export default function FrontProductCaptureModal({
         setHint("Could not identify product - please enter name manually");
         setHintTone("error");
       }
+    };
+
+    try {
+      try {
+        const result = await analyzeFrontProductName(activeImage);
+        applyDetectedName(result);
+      } catch (analysisError) {
+        if (Number(analysisError?.status) === 413) {
+          activeImage = await normalizeFrontPhoto(
+            activeImage,
+            FRONT_RETRY_MAX_EDGE,
+            FRONT_RETRY_QUALITY,
+          );
+          setPhotoDataUrl(activeImage);
+          const retryResult = await analyzeFrontProductName(activeImage);
+          applyDetectedName(retryResult);
+        } else {
+          throw analysisError;
+        }
+      }
     } catch (analysisError) {
       setHint("Could not analyze front image - enter name manually");
       setHintTone("error");
-      setError(analysisError?.message || "Failed to analyze front image.");
+      if (Number(analysisError?.status) === 413) {
+        setError(
+          "Image is too large for automatic name detection. Enter the product name manually.",
+        );
+      } else {
+        setError(analysisError?.message || "Failed to analyze front image.");
+      }
     } finally {
       setAnalyzing(false);
     }
@@ -109,8 +149,9 @@ export default function FrontProductCaptureModal({
 
     try {
       const dataUrl = await readFileAsDataUrl(file);
-      setPhotoDataUrl(dataUrl);
-      await runFrontAnalysis(dataUrl);
+      const normalized = await normalizeFrontPhoto(dataUrl);
+      setPhotoDataUrl(normalized);
+      await runFrontAnalysis(normalized);
     } catch (uploadError) {
       setError(uploadError?.message || "Failed to load image.");
     }
@@ -156,9 +197,10 @@ export default function FrontProductCaptureModal({
       streamRef.current = null;
     }
 
+    const normalized = await normalizeFrontPhoto(dataUrl);
     setCameraActive(false);
-    setPhotoDataUrl(dataUrl);
-    await runFrontAnalysis(dataUrl);
+    setPhotoDataUrl(normalized);
+    await runFrontAnalysis(normalized);
   }
 
   async function applyAndClose() {

@@ -269,11 +269,13 @@ export async function analyzeFrontProductName(imageDataUrl) {
   }
 
   if (!response.ok || parsed?.success === false) {
-    throw new Error(
+    const error = new Error(
       asText(parsed?.error) ||
         asText(parsed?.message) ||
         "Front image analysis is unavailable.",
     );
+    error.status = response.status;
+    throw error;
   }
 
   return {

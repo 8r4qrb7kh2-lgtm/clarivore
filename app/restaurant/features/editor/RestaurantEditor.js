@@ -820,47 +820,71 @@ function DishEditorModal({ editor, runtimeConfigHealth }) {
     [applyIngredientChanges, ingredients, overlay?.id],
   );
 
-  const applyIngredientSmartDetection = useCallback(
+  const analyzeIngredientForSmartDetection = useCallback(
     async (ingredientIndex) => {
       const ingredient = ingredients[ingredientIndex];
       const ingredientName = asText(ingredient?.name);
       if (!ingredientName) {
-        setModalError("Ingredient name is required before applying smart detection.");
-        return;
+        return {
+          success: false,
+          errorMessage: "Ingredient name is required before applying smart detection.",
+        };
       }
 
-      setApplyBusyByRow((current) => ({ ...current, [ingredientIndex]: true }));
-      setModalError("");
+      try {
+        const dishName = asText(overlay?.id || overlay?.name);
+        const [nameAnalysis, scanRequirement] = await Promise.all([
+          editor.analyzeIngredientName({
+            ingredientName,
+            dishName,
+          }),
+          editor.analyzeIngredientScanRequirement({
+            ingredientName,
+            dishName,
+          }),
+        ]);
 
-      const dishName = asText(overlay?.id || overlay?.name);
-      const [nameAnalysis, scanRequirement] = await Promise.all([
-        editor.analyzeIngredientName({
-          ingredientName,
-          dishName,
-        }),
-        editor.analyzeIngredientScanRequirement({
-          ingredientName,
-          dishName,
-        }),
-      ]);
+        if (!nameAnalysis?.success) {
+          return {
+            success: false,
+            errorMessage:
+              nameAnalysis?.error?.message || "Failed to analyze ingredient name.",
+          };
+        }
 
-      setApplyBusyByRow((current) => ({ ...current, [ingredientIndex]: false }));
-
-      if (!nameAnalysis?.success) {
-        setModalError(
-          nameAnalysis?.error?.message || "Failed to analyze ingredient name.",
-        );
-        return;
+        return {
+          success: true,
+          analysis: nameAnalysis.result || {},
+          scanRequirement,
+        };
+      } catch (error) {
+        return {
+          success: false,
+          errorMessage: asText(error?.message) || "Failed to analyze ingredient name.",
+        };
       }
+    },
+    [editor, ingredients, overlay?.id, overlay?.name],
+  );
 
-      const analysis = nameAnalysis.result || {};
+  const applyIngredientDetectionResult = useCallback(
+    ({
+      ingredientIndex,
+      analysis,
+      scanRequirement,
+      preserveExistingBrand = true,
+    }) => {
+      const safeAnalysis =
+        analysis && typeof analysis === "object" ? analysis : {};
       const scanData = scanRequirement?.success ? scanRequirement.result : null;
-      const nextAllergens = normalizeAllergenList(analysis.allergens);
-      const nextDiets = normalizeDietList(analysis.diets);
+      const nextAllergens = normalizeAllergenList(safeAnalysis.allergens);
+      const nextDiets = normalizeDietList(safeAnalysis.diets);
       const nextCrossAllergens = normalizeAllergenList(
-        analysis.crossContaminationAllergens,
+        safeAnalysis.crossContaminationAllergens,
       );
-      const nextCrossDiets = normalizeDietList(analysis.crossContaminationDiets);
+      const nextCrossDiets = normalizeDietList(
+        safeAnalysis.crossContaminationDiets,
+      );
 
       applyIngredientChanges((current) =>
         current.map((item, itemIndex) => {
@@ -878,6 +902,7 @@ function DishEditorModal({ editor, runtimeConfigHealth }) {
               ? asText(scanData?.reasoning)
               : ""
             : asText(item.brandRequirementReason);
+
           return {
             ...item,
             allergens: nextAllergens,
@@ -885,33 +910,123 @@ function DishEditorModal({ editor, runtimeConfigHealth }) {
             crossContaminationAllergens: nextCrossAllergens,
             crossContaminationDiets: nextCrossDiets,
             aiDetectedAllergens: normalizeAllergenList(
-              analysis.aiDetectedAllergens || nextAllergens,
+              safeAnalysis.aiDetectedAllergens || nextAllergens,
             ),
             aiDetectedDiets: normalizeDietList(
-              analysis.aiDetectedDiets || nextDiets,
+              safeAnalysis.aiDetectedDiets || nextDiets,
             ),
             aiDetectedCrossContaminationAllergens: normalizeAllergenList(
-              analysis.aiDetectedCrossContaminationAllergens || nextCrossAllergens,
+              safeAnalysis.aiDetectedCrossContaminationAllergens || nextCrossAllergens,
             ),
             aiDetectedCrossContaminationDiets: normalizeDietList(
-              analysis.aiDetectedCrossContaminationDiets || nextCrossDiets,
+              safeAnalysis.aiDetectedCrossContaminationDiets || nextCrossDiets,
             ),
             brandRequired: needsScan,
             brandRequirementReason: requirementReason,
             confirmed: false,
-            brands: hasBrand ? existingBrands : [],
+            brands:
+              preserveExistingBrand && hasBrand ? existingBrands : [],
           };
         }),
       );
     },
     [
       applyIngredientChanges,
-      editor,
-      ingredients,
       normalizeAllergenList,
       normalizeDietList,
-      overlay?.id,
-      overlay?.name,
+    ],
+  );
+
+  const applyIngredientSmartDetection = useCallback(
+    async (ingredientIndex) => {
+      setApplyBusyByRow((current) => ({ ...current, [ingredientIndex]: true }));
+      setModalError("");
+      const detection = await analyzeIngredientForSmartDetection(ingredientIndex);
+      setApplyBusyByRow((current) => ({ ...current, [ingredientIndex]: false }));
+
+      if (!detection?.success) {
+        setModalError(
+          detection?.errorMessage || "Failed to analyze ingredient name.",
+        );
+        return;
+      }
+
+      applyIngredientDetectionResult({
+        ingredientIndex,
+        analysis: detection.analysis,
+        scanRequirement: detection.scanRequirement,
+        preserveExistingBrand: true,
+      });
+    },
+    [
+      analyzeIngredientForSmartDetection,
+      applyIngredientDetectionResult,
+    ],
+  );
+
+  const removeIngredientBrandItem = useCallback(
+    async (ingredientIndex) => {
+      const ingredientName = asText(ingredients[ingredientIndex]?.name);
+      if (!ingredientName) {
+        setModalError("Ingredient name is required before removing a brand item.");
+        return;
+      }
+
+      setModalError("");
+      setSearchOpenRow((current) => (current === ingredientIndex ? -1 : current));
+      setSearchQueryByRow((current) => ({ ...current, [ingredientIndex]: "" }));
+      setAppealOpenByRow((current) => ({ ...current, [ingredientIndex]: false }));
+      setAppealMessageByRow((current) => ({ ...current, [ingredientIndex]: "" }));
+      setAppealPhotoByRow((current) => ({ ...current, [ingredientIndex]: null }));
+      setAppealPhotoErrorByRow((current) => ({ ...current, [ingredientIndex]: "" }));
+      setAppealFeedbackByRow((current) => ({
+        ...current,
+        [ingredientIndex]: { tone: "", message: "" },
+      }));
+      setApplyBusyByRow((current) => ({ ...current, [ingredientIndex]: true }));
+
+      applyIngredientChanges((current) =>
+        current.map((item, itemIndex) =>
+          itemIndex === ingredientIndex
+            ? {
+                ...item,
+                brands: [],
+                allergens: [],
+                diets: [],
+                crossContaminationAllergens: [],
+                crossContaminationDiets: [],
+                aiDetectedAllergens: [],
+                aiDetectedDiets: [],
+                aiDetectedCrossContaminationAllergens: [],
+                aiDetectedCrossContaminationDiets: [],
+                confirmed: false,
+              }
+            : item,
+        ),
+      );
+
+      const detection = await analyzeIngredientForSmartDetection(ingredientIndex);
+      if (!detection?.success) {
+        setModalError(
+          detection?.errorMessage || "Failed to analyze ingredient name.",
+        );
+        setApplyBusyByRow((current) => ({ ...current, [ingredientIndex]: false }));
+        return;
+      }
+
+      applyIngredientDetectionResult({
+        ingredientIndex,
+        analysis: detection.analysis,
+        scanRequirement: detection.scanRequirement,
+        preserveExistingBrand: false,
+      });
+      setApplyBusyByRow((current) => ({ ...current, [ingredientIndex]: false }));
+    },
+    [
+      analyzeIngredientForSmartDetection,
+      applyIngredientChanges,
+      applyIngredientDetectionResult,
+      ingredients,
     ],
   );
 
@@ -1414,18 +1529,6 @@ function DishEditorModal({ editor, runtimeConfigHealth }) {
                         <div
                           className={`restaurant-legacy-editor-dish-ingredient-brand ${ingredient.brandRequired && !hasAssignedBrand ? "is-required" : ""}`}
                         >
-                          <span>
-                            {ingredient.brandRequired
-                              ? hasAssignedBrand
-                                ? "✓ Brand assigned (required)"
-                                : "⚠ Brand assignment required"
-                              : "✓ Brand assignment optional"}
-                          </span>
-                          {ingredient.brandRequirementReason ? (
-                            <span className="restaurant-legacy-editor-dish-ingredient-brand-reason">
-                              {ingredient.brandRequirementReason}
-                            </span>
-                          ) : null}
                           {hasAssignedBrand ? (
                             <span className="restaurant-legacy-editor-dish-ingredient-brand-selected">
                               Selected: {selectedBrandName}
@@ -1438,164 +1541,189 @@ function DishEditorModal({ editor, runtimeConfigHealth }) {
                               className="restaurant-legacy-editor-dish-ingredient-brand-thumb"
                             />
                           ) : null}
-                          <div className="restaurant-legacy-editor-dish-ingredient-brand-actions">
-                            <button
-                              type="button"
-                              className="btn btnSmall"
-                              onClick={() =>
-                                setSearchOpenRow((current) =>
-                                  current === index ? -1 : index,
-                                )
-                              }
-                            >
-                              Search existing items
-                            </button>
-                            <button
-                              type="button"
-                              className="btn btnSuccess btnSmall"
-                              disabled={Boolean(scanBusyByRow[index]) || aiActionsBlocked}
-                              title={aiActionsBlocked ? runtimeBlockedTitle : ""}
-                              onClick={() => scanIngredientBrandItem(index)}
-                            >
-                              {scanBusyByRow[index] ? "Scanning..." : "Add new item"}
-                            </button>
-                            {ingredient.brandRequired ? (
+                          {hasAssignedBrand ? (
+                            <div className="restaurant-legacy-editor-dish-ingredient-brand-actions">
                               <button
                                 type="button"
                                 className="btn btnDanger btnSmall"
-                                onClick={() =>
-                                  setAppealOpenByRow((current) => ({
-                                    ...current,
-                                    [index]: !current[index],
-                                  }))
-                                }
+                                disabled={Boolean(applyBusyByRow[index])}
+                                onClick={() => removeIngredientBrandItem(index)}
                               >
-                                Submit appeal
+                                {applyBusyByRow[index] ? "Removing..." : "Remove item"}
                               </button>
-                            ) : null}
-                          </div>
-                          {searchOpen ? (
-                            <div className="restaurant-legacy-editor-dish-brand-search">
-                              <input
-                                className="restaurant-legacy-editor-dish-brand-search-input"
-                                value={searchQueryByRow[index] || ""}
-                                placeholder="Search brand item names"
-                                onChange={(event) =>
-                                  setSearchQueryByRow((current) => ({
-                                    ...current,
-                                    [index]: event.target.value,
-                                  }))
-                                }
-                              />
-                              <div className="restaurant-legacy-editor-dish-brand-search-results">
-                                {matchingBrands.length ? (
-                                  matchingBrands.map((brand) => (
-                                    <button
-                                      key={`${index}-${brand.name}`}
-                                      type="button"
-                                      className="restaurant-legacy-editor-dish-brand-search-result"
-                                      onClick={() =>
-                                        applyExistingBrandItem(index, brand)
-                                      }
-                                    >
-                                      {brand.name}
-                                    </button>
-                                  ))
-                                ) : (
-                                  <p className="restaurant-legacy-editor-dish-brand-search-empty">
-                                    No matching brand items in this menu.
-                                  </p>
-                                )}
-                              </div>
                             </div>
-                          ) : null}
-                          {ingredient.brandRequired && appealOpen ? (
-                            <div className="restaurant-legacy-editor-dish-appeal-wrap">
-                              <textarea
-                                className="restaurant-legacy-editor-dish-appeal-input"
-                                placeholder="Briefly explain why this ingredient should not require brand assignment."
-                                value={appealMessage}
-                                onChange={(event) =>
-                                  setAppealMessageByRow((current) => ({
-                                    ...current,
-                                    [index]: event.target.value,
-                                  }))
-                                }
-                              />
-                              <div className="restaurant-legacy-editor-dish-appeal-photo-row">
-                                <label className="btn btnSmall" htmlFor={`appeal-photo-${index}`}>
-                                  {appealPhotoDataUrl ? "Replace photo" : "Take/upload photo"}
-                                </label>
-                                <input
-                                  id={`appeal-photo-${index}`}
-                                  type="file"
-                                  accept="image/*"
-                                  capture="environment"
-                                  className="restaurant-legacy-editor-dish-appeal-photo-input"
-                                  onChange={(event) =>
-                                    handleAppealPhotoChange(index, event.target.files?.[0] || null)
-                                  }
-                                />
-                                {appealPhotoDataUrl ? (
-                                  <button
-                                    type="button"
-                                    className="btn btnSmall"
-                                    disabled={appealBusy}
-                                    onClick={() => clearAppealPhoto(index)}
-                                  >
-                                    Remove photo
-                                  </button>
-                                ) : null}
-                              </div>
-                              {appealPhotoDataUrl ? (
-                                <div className="restaurant-legacy-editor-dish-appeal-photo-preview-wrap">
-                                  <img
-                                    src={appealPhotoDataUrl}
-                                    alt="Appeal evidence"
-                                    className="restaurant-legacy-editor-dish-appeal-photo-preview"
-                                  />
-                                  <span className="restaurant-legacy-editor-dish-appeal-photo-name">
-                                    {appealPhotoFileName || "Selected photo"}
-                                  </span>
-                                </div>
-                              ) : null}
-                              {appealPhotoError ? (
-                                <span className="restaurant-legacy-editor-dish-appeal-feedback is-error">
-                                  {appealPhotoError}
+                          ) : (
+                            <>
+                              <span>
+                                {ingredient.brandRequired
+                                  ? "⚠ Brand assignment required"
+                                  : "✓ Brand assignment optional"}
+                              </span>
+                              {ingredient.brandRequirementReason ? (
+                                <span className="restaurant-legacy-editor-dish-ingredient-brand-reason">
+                                  {ingredient.brandRequirementReason}
                                 </span>
                               ) : null}
-                              <div className="restaurant-legacy-editor-dish-appeal-actions">
-                                <button
-                                  type="button"
-                                  className="btn btnSmall btnDanger"
-                                  disabled={!canSubmitAppeal}
-                                  onClick={() => submitIngredientAppeal(index)}
-                                >
-                                  {appealBusy ? "Submitting..." : "Send appeal"}
-                                </button>
+                              <div className="restaurant-legacy-editor-dish-ingredient-brand-actions">
                                 <button
                                   type="button"
                                   className="btn btnSmall"
-                                  disabled={appealBusy}
                                   onClick={() =>
-                                    setAppealOpenByRow((current) => ({
-                                      ...current,
-                                      [index]: false,
-                                    }))
+                                    setSearchOpenRow((current) =>
+                                      current === index ? -1 : index,
+                                    )
                                   }
                                 >
-                                  Cancel
+                                  Search existing items
                                 </button>
+                                <button
+                                  type="button"
+                                  className="btn btnSuccess btnSmall"
+                                  disabled={Boolean(scanBusyByRow[index]) || aiActionsBlocked}
+                                  title={aiActionsBlocked ? runtimeBlockedTitle : ""}
+                                  onClick={() => scanIngredientBrandItem(index)}
+                                >
+                                  {scanBusyByRow[index] ? "Scanning..." : "Add new item"}
+                                </button>
+                                {ingredient.brandRequired ? (
+                                  <button
+                                    type="button"
+                                    className="btn btnDanger btnSmall"
+                                    onClick={() =>
+                                      setAppealOpenByRow((current) => ({
+                                        ...current,
+                                        [index]: !current[index],
+                                      }))
+                                    }
+                                  >
+                                    Submit appeal
+                                  </button>
+                                ) : null}
                               </div>
-                            </div>
-                          ) : null}
-                          {appealFeedback?.message ? (
-                            <span
-                              className={`restaurant-legacy-editor-dish-appeal-feedback ${appealFeedback.tone === "success" ? "is-success" : "is-error"}`}
-                            >
-                              {appealFeedback.message}
-                            </span>
-                          ) : null}
+                              {searchOpen ? (
+                                <div className="restaurant-legacy-editor-dish-brand-search">
+                                  <input
+                                    className="restaurant-legacy-editor-dish-brand-search-input"
+                                    value={searchQueryByRow[index] || ""}
+                                    placeholder="Search brand item names"
+                                    onChange={(event) =>
+                                      setSearchQueryByRow((current) => ({
+                                        ...current,
+                                        [index]: event.target.value,
+                                      }))
+                                    }
+                                  />
+                                  <div className="restaurant-legacy-editor-dish-brand-search-results">
+                                    {matchingBrands.length ? (
+                                      matchingBrands.map((brand) => (
+                                        <button
+                                          key={`${index}-${brand.name}`}
+                                          type="button"
+                                          className="restaurant-legacy-editor-dish-brand-search-result"
+                                          onClick={() =>
+                                            applyExistingBrandItem(index, brand)
+                                          }
+                                        >
+                                          {brand.name}
+                                        </button>
+                                      ))
+                                    ) : (
+                                      <p className="restaurant-legacy-editor-dish-brand-search-empty">
+                                        No matching brand items in this menu.
+                                      </p>
+                                    )}
+                                  </div>
+                                </div>
+                              ) : null}
+                              {ingredient.brandRequired && appealOpen ? (
+                                <div className="restaurant-legacy-editor-dish-appeal-wrap">
+                                  <textarea
+                                    className="restaurant-legacy-editor-dish-appeal-input"
+                                    placeholder="Briefly explain why this ingredient should not require brand assignment."
+                                    value={appealMessage}
+                                    onChange={(event) =>
+                                      setAppealMessageByRow((current) => ({
+                                        ...current,
+                                        [index]: event.target.value,
+                                      }))
+                                    }
+                                  />
+                                  <div className="restaurant-legacy-editor-dish-appeal-photo-row">
+                                    <label className="btn btnSmall" htmlFor={`appeal-photo-${index}`}>
+                                      {appealPhotoDataUrl ? "Replace photo" : "Take/upload photo"}
+                                    </label>
+                                    <input
+                                      id={`appeal-photo-${index}`}
+                                      type="file"
+                                      accept="image/*"
+                                      capture="environment"
+                                      className="restaurant-legacy-editor-dish-appeal-photo-input"
+                                      onChange={(event) =>
+                                        handleAppealPhotoChange(index, event.target.files?.[0] || null)
+                                      }
+                                    />
+                                    {appealPhotoDataUrl ? (
+                                      <button
+                                        type="button"
+                                        className="btn btnSmall"
+                                        disabled={appealBusy}
+                                        onClick={() => clearAppealPhoto(index)}
+                                      >
+                                        Remove photo
+                                      </button>
+                                    ) : null}
+                                  </div>
+                                  {appealPhotoDataUrl ? (
+                                    <div className="restaurant-legacy-editor-dish-appeal-photo-preview-wrap">
+                                      <img
+                                        src={appealPhotoDataUrl}
+                                        alt="Appeal evidence"
+                                        className="restaurant-legacy-editor-dish-appeal-photo-preview"
+                                      />
+                                      <span className="restaurant-legacy-editor-dish-appeal-photo-name">
+                                        {appealPhotoFileName || "Selected photo"}
+                                      </span>
+                                    </div>
+                                  ) : null}
+                                  {appealPhotoError ? (
+                                    <span className="restaurant-legacy-editor-dish-appeal-feedback is-error">
+                                      {appealPhotoError}
+                                    </span>
+                                  ) : null}
+                                  <div className="restaurant-legacy-editor-dish-appeal-actions">
+                                    <button
+                                      type="button"
+                                      className="btn btnSmall btnDanger"
+                                      disabled={!canSubmitAppeal}
+                                      onClick={() => submitIngredientAppeal(index)}
+                                    >
+                                      {appealBusy ? "Submitting..." : "Send appeal"}
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="btn btnSmall"
+                                      disabled={appealBusy}
+                                      onClick={() =>
+                                        setAppealOpenByRow((current) => ({
+                                          ...current,
+                                          [index]: false,
+                                        }))
+                                      }
+                                    >
+                                      Cancel
+                                    </button>
+                                  </div>
+                                </div>
+                              ) : null}
+                              {appealFeedback?.message ? (
+                                <span
+                                  className={`restaurant-legacy-editor-dish-appeal-feedback ${appealFeedback.tone === "success" ? "is-success" : "is-error"}`}
+                                >
+                                  {appealFeedback.message}
+                                </span>
+                              ) : null}
+                            </>
+                          )}
                         </div>
 
                         <label className="restaurant-legacy-editor-dish-inline-check">
