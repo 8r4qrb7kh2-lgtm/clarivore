@@ -39,10 +39,18 @@ export function useIngredientScanController() {
     const safePhase = asText(phase);
     if (!safeId || !safePhase) return;
 
+    const previousMeta = sessionMetaRef.current.get(safeId) || {};
+    sessionMetaRef.current.set(safeId, {
+      ...previousMeta,
+      phase: safePhase,
+      message: asText(payload?.message),
+      error: asText(payload?.error),
+    });
+
     const handler = eventHandlerRef.current.get(safeId);
     if (typeof handler !== "function") return;
 
-    const meta = sessionMetaRef.current.get(safeId) || {};
+    const meta = sessionMetaRef.current.get(safeId) || previousMeta;
     handler({
       sessionId: safeId,
       ingredientName: asText(meta.ingredientName),
@@ -96,6 +104,9 @@ export function useIngredientScanController() {
       }
       sessionMetaRef.current.set(sessionId, {
         ingredientName: label,
+        phase: "capture_open",
+        message: "Capture ingredient label photo.",
+        error: "",
       });
 
       setSessions((current) => [
@@ -121,6 +132,11 @@ export function useIngredientScanController() {
     const session = sessionMetaRef.current.get(safeId);
     if (!session) {
       throw new Error("Ingredient scan session was not found.");
+    }
+
+    const phase = asText(session.phase);
+    if (phase !== "ready_for_review" && phase !== "review_open") {
+      throw new Error("Ingredient scan session is not ready for review yet.");
     }
 
     setActiveSessionId(safeId);

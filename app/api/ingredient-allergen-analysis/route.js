@@ -5,6 +5,8 @@ export const runtime = "nodejs";
 const PINNED_ANTHROPIC_MODEL = "claude-sonnet-4-5";
 // Anthropic enforces a minimum thinking budget of 1024 tokens.
 const ANTHROPIC_THINKING_BUDGET_TOKENS = 1024;
+// Keep enough response tokens available after thinking to avoid truncated JSON.
+const ANTHROPIC_MIN_OUTPUT_TOKENS = 2200;
 
 const CONFIG_TTL_MS = 5 * 60 * 1000;
 let cachedConfig = null;
@@ -223,6 +225,11 @@ async function callAnthropicText({
   userPrompt,
   maxTokens = 1200,
 }) {
+  const safeMaxTokens = Math.max(
+    Number(maxTokens) || 0,
+    ANTHROPIC_THINKING_BUDGET_TOKENS + ANTHROPIC_MIN_OUTPUT_TOKENS,
+  );
+
   const response = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
@@ -232,7 +239,7 @@ async function callAnthropicText({
     },
     body: JSON.stringify({
       model: asText(model) || PINNED_ANTHROPIC_MODEL,
-      max_tokens: maxTokens,
+      max_tokens: safeMaxTokens,
       thinking: {
         type: "enabled",
         budget_tokens: ANTHROPIC_THINKING_BUDGET_TOKENS,
@@ -455,7 +462,10 @@ Use the numbered list above for word_indices. Do not compute your own indices ou
       maxTokens: 1400,
     });
 
-    const parsed = parseClaudeJson(responseText) || {};
+    const parsed = parseClaudeJson(responseText);
+    if (!parsed || typeof parsed !== "object" || !Array.isArray(parsed.flags)) {
+      throw new Error("Ingredient allergen analyzer returned malformed JSON output.");
+    }
 
     const mapAllergens = (raw) =>
       dedupeStrings([
@@ -469,7 +479,7 @@ Use the numbered list above for word_indices. Do not compute your own indices ou
         ...parseLegacyList(raw?.diets, dietCodebook.tokenToValue, resolveDietAlias),
       ]);
 
-    const flags = (Array.isArray(parsed?.flags) ? parsed.flags : [])
+    const flags = parsed.flags
       .map((flag) => {
         const riskRaw = asText(flag?.risk_type).toLowerCase();
         const risk_type = riskRaw.includes("cross")

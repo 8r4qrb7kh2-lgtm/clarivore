@@ -789,13 +789,18 @@ export default function IngredientScanModal({
     }
 
     setAnalysisPending(true);
+    setErrorText("");
     setStatusText(statusMessage);
     try {
       const flags = await analyzeTranscriptFlags(transcript);
       setAllergenFlags(Array.isArray(flags) ? flags : []);
       setStatusText("Allergen and diet analysis complete.");
-    } catch {
-      setStatusText("Allergen analysis failed. Using previous results.");
+    } catch (error) {
+      const message = error?.message || "Allergen analysis failed.";
+      setAllergenFlags([]);
+      setStatusText(message);
+      setErrorText(message);
+      throw error;
     } finally {
       setAnalysisPending(false);
     }
@@ -872,7 +877,11 @@ export default function IngredientScanModal({
 
     if (!nextLines.length) return;
     setAllergenFlags([]);
-    await runAllergenAnalysis(nextLines, "Updating analysis...");
+    try {
+      await runAllergenAnalysis(nextLines, "Updating analysis...");
+    } catch {
+      // Error state is handled by runAllergenAnalysis.
+    }
   }
 
   function toggleLineConfirmed(lineIndex) {
@@ -1170,7 +1179,7 @@ export default function IngredientScanModal({
             >
               <div style={{ fontWeight: 600, color: "#fff" }}>Allergen and Diet Analysis</div>
 
-              {!allergenFlags.length ? (
+              {!allergenFlags.length && !analysisPending && !errorText ? (
                 <div style={{ color: "#4ade80", fontSize: "0.86rem" }}>
                   No allergens or diet violations detected.
                 </div>
