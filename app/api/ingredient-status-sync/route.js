@@ -1,8 +1,12 @@
-import { NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
 import { createClient } from "@supabase/supabase-js";
+import { corsJson, corsOptions } from "../_shared/cors";
 
 export const runtime = "nodejs";
+
+export function OPTIONS() {
+  return corsOptions();
+}
 
 const globalForPrisma = globalThis;
 const prisma = globalForPrisma.__clarivorePrisma || new PrismaClient();
@@ -45,7 +49,7 @@ export async function POST(request) {
     ? authHeader.slice("Bearer ".length)
     : null;
   if (!token) {
-    return NextResponse.json(
+    return corsJson(
       { error: "Missing authorization token" },
       { status: 401 },
     );
@@ -55,7 +59,7 @@ export async function POST(request) {
     process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!supabaseUrl || !serviceRoleKey) {
-    return NextResponse.json(
+    return corsJson(
       { error: "Supabase server credentials missing" },
       { status: 500 },
     );
@@ -65,12 +69,12 @@ export async function POST(request) {
   try {
     body = await request.json();
   } catch (_) {
-    return NextResponse.json({ error: "Invalid JSON payload" }, { status: 400 });
+    return corsJson({ error: "Invalid JSON payload" }, { status: 400 });
   }
 
   const { restaurantId, overlays } = body || {};
   if (!restaurantId || !Array.isArray(overlays)) {
-    return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
+    return corsJson({ error: "Invalid payload" }, { status: 400 });
   }
 
   const supabase = createClient(supabaseUrl, serviceRoleKey, {
@@ -79,7 +83,7 @@ export async function POST(request) {
 
   const { data: userData, error: userError } = await supabase.auth.getUser(token);
   if (userError || !userData?.user) {
-    return NextResponse.json({ error: "Invalid user session" }, { status: 401 });
+    return corsJson({ error: "Invalid user session" }, { status: 401 });
   }
 
   const userId = userData.user.id;
@@ -91,7 +95,7 @@ export async function POST(request) {
     },
   });
   if (!manager) {
-    return NextResponse.json({ error: "Not authorized" }, { status: 403 });
+    return corsJson({ error: "Not authorized" }, { status: 403 });
   }
 
   const allergens = await prisma.allergens.findMany({
@@ -234,7 +238,7 @@ export async function POST(request) {
     dietCount += dietEntries.length;
   }
 
-  return NextResponse.json(
+  return corsJson(
     {
       ok: true,
       rows: rowCount,

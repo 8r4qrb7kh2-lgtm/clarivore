@@ -1,21 +1,42 @@
-import { supabaseClient as defaultSupabaseClient } from "./supabase";
-
-function resolveSupabaseClient(options = {}) {
-  if (options.supabaseClient) return options.supabaseClient;
-  if (defaultSupabaseClient) return defaultSupabaseClient;
-  if (typeof window !== "undefined" && window.supabaseClient) {
-    return window.supabaseClient;
-  }
-  return null;
+function asText(value) {
+  return String(value ?? "").trim();
 }
 
-// Label transcript -> allergen/diet flags via Supabase Edge Function.
+async function invokeViaAiProxy(functionName, payload) {
+  const response = await fetch("/api/ai-proxy", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      functionName,
+      payload: payload || {},
+    }),
+  });
+
+  const bodyText = await response.text();
+  let parsed = null;
+  try {
+    parsed = bodyText ? JSON.parse(bodyText) : null;
+  } catch {
+    parsed = null;
+  }
+
+  if (!response.ok) {
+    throw new Error(
+      asText(parsed?.error) ||
+        asText(parsed?.message) ||
+        "AI proxy request failed.",
+    );
+  }
+
+  return parsed || {};
+}
+
+// Label transcript -> allergen/diet flags via Next.js proxy to Supabase Edge Function.
 // Input: array of transcript lines.
 // Output: { success, data: { flags: [...] } }.
-export async function analyzeAllergensWithLabelCropper(
-  transcriptLines,
-  options = {},
-) {
+export async function analyzeAllergensWithLabelCropper(transcriptLines) {
   const lines = Array.isArray(transcriptLines)
     ? transcriptLines.filter(
         (line) => typeof line === "string" && line.trim().length > 0,
@@ -26,23 +47,11 @@ export async function analyzeAllergensWithLabelCropper(
     return { success: true, data: { flags: [] } };
   }
 
-  const client = resolveSupabaseClient(options);
-  if (!client || !client.functions || typeof client.functions.invoke !== "function") {
-    console.error("Supabase client not available for label analysis.");
-    return { success: true, data: { flags: [] } };
-  }
-
   try {
-    const { data, error } = await client.functions.invoke(
-      "analyze-brand-allergens",
-      {
-        body: {
-          analysisMode: "list",
-          transcriptLines: lines,
-        },
-      },
-    );
-    if (error) throw error;
+    const data = await invokeViaAiProxy("analyze-brand-allergens", {
+      analysisMode: "list",
+      transcriptLines: lines,
+    });
     const flags = Array.isArray(data?.flags) ? data.flags : [];
     return { success: true, data: { flags } };
   } catch (error) {
@@ -50,3 +59,4 @@ export async function analyzeAllergensWithLabelCropper(
     return { success: true, data: { flags: [] } };
   }
 }
+

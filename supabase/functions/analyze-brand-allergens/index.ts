@@ -38,9 +38,18 @@ serve(async (req) => {
 
     const config = await fetchAllergenDietConfig()
     const allergenKeys = (config.allergens || []).map((allergen) => allergen.key)
-    const dietLabels = (config.aiDiets && config.aiDiets.length > 0)
-      ? config.aiDiets
-      : (config.supportedDiets || [])
+    const supportedDietLabels = Array.isArray(config.supportedDiets)
+      ? config.supportedDiets
+      : []
+    const aiDietLabels = Array.isArray(config.aiDiets) ? config.aiDiets : []
+    const configuredDietLabels = Array.isArray(config.diets)
+      ? config.diets
+          .map((diet) => (typeof diet?.label === 'string' ? diet.label : ''))
+          .filter(Boolean)
+      : []
+    const dietLabels = Array.from(
+      new Set([...supportedDietLabels, ...aiDietLabels, ...configuredDietLabels]),
+    )
     const allergenListText = allergenKeys.join(', ')
     const dietListText = dietLabels.join(', ')
     const dietLabelMap: Record<string, string> = {}
@@ -77,13 +86,16 @@ serve(async (req) => {
       'Gluten Free',
     ])
     const allDietExample = JSON.stringify(
-      [veganLabel, vegetarianLabel, pescatarianLabel].filter(Boolean),
+      [veganLabel, vegetarianLabel, pescatarianLabel, glutenFreeLabel].filter(Boolean),
     )
     const vegetarianDietExample = JSON.stringify(
       [vegetarianLabel, pescatarianLabel].filter(Boolean),
     )
-    const pescatarianDietExample = JSON.stringify(
-      pescatarianLabel ? [pescatarianLabel] : [],
+    const vegetarianGlutenFreeDietExample = JSON.stringify(
+      [vegetarianLabel, pescatarianLabel, glutenFreeLabel].filter(Boolean),
+    )
+    const pescatarianGlutenFreeDietExample = JSON.stringify(
+      [pescatarianLabel, glutenFreeLabel].filter(Boolean),
     )
     const glutenFreeExample = glutenFreeLabel
       ? JSON.stringify([glutenFreeLabel])
@@ -117,17 +129,19 @@ DIETARY PREFERENCE RULES:
 - Vegan: NO animal products at all (no meat, fish, milk, eggs, honey, gelatin, or animal-derived additives)
 - Vegetarian: No meat or fish, but MAY contain milk and/or eggs
 - Pescatarian: May contain fish/seafood, milk, and eggs, but NO other meat (chicken, beef, pork, etc.)
+- Gluten-free: include this when ingredients and allergen statements show no gluten-containing grains or derivatives (wheat, barley, rye, malt, brewer's yeast, triticale)
 
 IMPORTANT:
 - A vegetarian product (with milk/eggs) is ALSO pescatarian-compatible
 - If product is vegan, it's also vegetarian AND pescatarian
 - If product is vegetarian (no meat/fish), it's also pescatarian
+- Evaluate gluten-free independently from vegan/vegetarian/pescatarian and include it whenever supported by the ingredients
 
 EXAMPLES:
 1. "almond milk (water, almonds), oats, dates" → allergens: ["tree nut"], diets: ${allDietExample}
-2. "yogurt (milk), oats, honey" → allergens: ["milk"], diets: ${vegetarianDietExample}
+2. "yogurt (milk), oats, honey" → allergens: ["milk"], diets: ${vegetarianGlutenFreeDietExample}
 3. "chicken, salt, pepper" → allergens: [], diets: []
-4. "tuna, water, salt" → allergens: ["fish"], diets: ${pescatarianDietExample}
+4. "tuna, water, salt" → allergens: ["fish"], diets: ${pescatarianGlutenFreeDietExample}
 5. "egg, milk, flour" → allergens: ["egg", "milk", "wheat"], diets: ${vegetarianDietExample}
 ${outputMode === 'flags' ? `
 IMPORTANT: Look for TWO types of allergen declarations:
@@ -186,6 +200,7 @@ CRITICAL RULES:
 - Do NOT flag "gluten" as a separate allergen - wheat covers gluten-containing grains
 - Oats by themselves are NOT wheat and should NOT be flagged (unless explicitly wheat)
 - Treat coconut as a tree nut for allergen purposes
+- Evaluate gluten-free independently and include it when no gluten-containing grains/derivatives are indicated by the ingredient name
 
 Return a JSON object with this exact structure:
 {

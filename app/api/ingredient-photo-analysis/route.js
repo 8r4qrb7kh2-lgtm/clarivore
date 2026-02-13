@@ -1,6 +1,10 @@
-import { NextResponse } from "next/server";
+import { corsJson, corsOptions } from "../_shared/cors";
 
 export const runtime = "nodejs";
+
+export function OPTIONS() {
+  return corsOptions();
+}
 
 function asText(value) {
   return String(value ?? "").trim();
@@ -457,7 +461,7 @@ export async function POST(request) {
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json(
+    return corsJson(
       { success: false, error: "Invalid JSON payload." },
       { status: 400 },
     );
@@ -466,7 +470,7 @@ export async function POST(request) {
   const imageData = asText(body?.imageData);
   const mode = asText(body?.mode);
   if (!imageData || mode !== "full-analysis") {
-    return NextResponse.json(
+    return corsJson(
       { success: false, error: "Expected { imageData, mode: \"full-analysis\" }." },
       { status: 400 },
     );
@@ -474,7 +478,7 @@ export async function POST(request) {
 
   const parsed = parseImageData(imageData);
   if (!parsed) {
-    return NextResponse.json(
+    return corsJson(
       { success: false, error: "Invalid imageData format." },
       { status: 400 },
     );
@@ -490,13 +494,13 @@ export async function POST(request) {
       });
       const transcript = extractFallbackTranscriptFromDishEditor(fallback);
       if (!transcript.length) {
-        return NextResponse.json(
+        return corsJson(
           { success: false, error: "Ingredient photo analysis is not configured." },
           { status: 500 },
         );
       }
 
-      return NextResponse.json(
+      return corsJson(
         {
           success: true,
           data: buildSyntheticLineData(transcript),
@@ -516,7 +520,7 @@ export async function POST(request) {
         { status: 200 },
       );
     } catch (fallbackError) {
-      return NextResponse.json(
+      return corsJson(
         {
           success: false,
           error:
@@ -550,7 +554,7 @@ Set accept=false if image is blurry, cut off, or not fully readable.`;
     });
     const quality = normalizeQualityAssessment(parseJsonObject(qualityText) || {});
     if (quality.accept === false) {
-      return NextResponse.json(
+      return corsJson(
         {
           success: false,
           error:
@@ -578,7 +582,7 @@ Exclude unrelated text like addresses, nutrition facts tables, logos, and market
       .map((line) => asText(line))
       .filter(Boolean);
     if (!claudeTranscript.length) {
-      return NextResponse.json(
+      return corsJson(
         {
           success: false,
           error: "Could not read the ingredient text clearly. Please retake the photo.",
@@ -602,7 +606,7 @@ Exclude unrelated text like addresses, nutrition facts tables, logos, and market
         })
       : buildSyntheticLineData(claudeTranscript);
 
-    return NextResponse.json(
+    return corsJson(
       {
         success: true,
         data,
@@ -612,7 +616,7 @@ Exclude unrelated text like addresses, nutrition facts tables, logos, and market
       { status: 200 },
     );
   } catch (error) {
-    return NextResponse.json(
+    return corsJson(
       {
         success: false,
         error: asText(error?.message) || "Failed to analyze ingredient image.",

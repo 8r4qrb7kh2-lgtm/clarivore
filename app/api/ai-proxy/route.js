@@ -1,19 +1,23 @@
-import { NextResponse } from "next/server";
+import { corsJson, corsOptions } from "../_shared/cors";
 
 export const runtime = "nodejs";
+
+export function OPTIONS() {
+  return corsOptions();
+}
 
 export async function POST(request) {
   let body;
   try {
     body = await request.json();
   } catch (_) {
-    return NextResponse.json({ error: "Invalid JSON payload" }, { status: 400 });
+    return corsJson({ error: "Invalid JSON payload" }, { status: 400 });
   }
 
   const { functionName, payload } = body || {};
 
   if (!functionName) {
-    return NextResponse.json({ error: "functionName is required" }, { status: 400 });
+    return corsJson({ error: "functionName is required" }, { status: 400 });
   }
 
   const supabaseUrl =
@@ -22,7 +26,7 @@ export async function POST(request) {
     process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
   if (!supabaseUrl || !supabaseAnonKey) {
-    return NextResponse.json(
+    return corsJson(
       { error: "Supabase env vars are missing" },
       { status: 500 },
     );
@@ -50,13 +54,13 @@ export async function POST(request) {
     }
 
     if (!response.ok) {
-      return NextResponse.json(data, { status: response.status });
+      return corsJson(data, { status: response.status });
     }
 
-    return NextResponse.json(data, { status: 200 });
+    return corsJson(data, { status: 200 });
   } catch (error) {
     console.error("Proxy error:", error);
-    return NextResponse.json(
+    return corsJson(
       {
         error: "Failed to proxy request",
         message: error?.message || "Unknown proxy error",

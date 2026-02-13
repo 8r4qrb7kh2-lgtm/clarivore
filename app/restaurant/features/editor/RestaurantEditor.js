@@ -718,15 +718,33 @@ function DishEditorModal({ editor }) {
 
   const toggleIngredientConfirmed = useCallback(
     (ingredientIndex) => {
+      const ingredient = ingredients[ingredientIndex];
+      if (!ingredient) return;
+
+      const hasAssignedBrand = (Array.isArray(ingredient?.brands)
+        ? ingredient.brands
+        : []
+      ).some((brand) => asText(brand?.name));
+      const requiresBrandBeforeConfirm =
+        Boolean(ingredient?.brandRequired) &&
+        !hasAssignedBrand &&
+        ingredient?.confirmed !== true;
+
+      if (requiresBrandBeforeConfirm) {
+        setModalError("Assign a brand item before confirming this ingredient.");
+        return;
+      }
+
+      setModalError("");
       applyIngredientChanges((current) =>
-        current.map((ingredient, index) =>
+        current.map((item, index) =>
           index === ingredientIndex
-            ? { ...ingredient, confirmed: ingredient?.confirmed === false }
-            : ingredient,
+            ? { ...item, confirmed: item?.confirmed === false }
+            : item,
         ),
       );
     },
-    [applyIngredientChanges],
+    [applyIngredientChanges, ingredients],
   );
 
   const addIngredientRow = useCallback(() => {
@@ -1046,12 +1064,6 @@ function DishEditorModal({ editor }) {
       );
       return;
     }
-
-    const issues = editor.getBrandRequirementIssues(overlay);
-    if (issues.length) {
-      setModalError(issues[0]?.message || "Brand assignment is required.");
-      return;
-    }
     setModalError("");
     editor.pushHistory();
     editor.closeDishEditor();
@@ -1232,6 +1244,10 @@ function DishEditorModal({ editor }) {
                 {ingredients.map((ingredient, index) => {
                   const selectedBrandName = asText(ingredient?.brands?.[0]?.name);
                   const hasAssignedBrand = Boolean(selectedBrandName);
+                  const requiresBrandBeforeConfirm =
+                    Boolean(ingredient?.brandRequired) &&
+                    !hasAssignedBrand &&
+                    ingredient?.confirmed !== true;
                   const manualOverrideMessages = buildRowManualOverrideMessages({
                     ingredient,
                     allergens,
@@ -1523,6 +1539,7 @@ function DishEditorModal({ editor }) {
                         <button
                           type="button"
                           className={`btn btnSmall ${ingredient.confirmed ? "btnSuccess" : "btnGhost"}`}
+                          disabled={requiresBrandBeforeConfirm}
                           onClick={() => toggleIngredientConfirmed(index)}
                         >
                           {ingredient.confirmed ? "✓ Confirmed" : "Mark confirmed"}
@@ -1544,7 +1561,7 @@ function DishEditorModal({ editor }) {
                         ) : null}
                         {ingredient.brandRequired && !hasAssignedBrand ? (
                           <span className="restaurant-legacy-editor-dish-brand-warning">
-                            Brand assignment required before saving this dish.
+                            Assign a brand item before marking this ingredient confirmed.
                           </span>
                         ) : null}
                       </div>

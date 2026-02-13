@@ -72,13 +72,6 @@ export function initIngredientPhotoAnalysis(deps = {}) {
     ALLERGENS,
     DIETS,
   });
-  const SUPABASE_KEY =
-    typeof deps.getSupabaseKey === "function"
-      ? deps.getSupabaseKey()
-      : deps.SUPABASE_KEY ||
-        deps.supabaseKey ||
-        (typeof window !== "undefined" ? window.SUPABASE_KEY : "");
-
   // Rotate an image by the given angle (in degrees) - from slant-corrector
   // Kept as standalone utility for future use
   function rotateImage(imgSrc, angleDegrees) {
@@ -2123,20 +2116,30 @@ Notes:
         frontActionBtns.style.display = "none";
 
         try {
-          const response = await fetch(
-            "https://fgoiyycctnwnghrvsilt.supabase.co/functions/v1/analyze-product-front",
-            {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ image: imageDataUrl }),
-            },
-          );
-
-          if (!response.ok) {
-            throw new Error("Failed to analyze image");
+          const response = await fetch("/api/ai-proxy", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              functionName: "analyze-product-front",
+              payload: { image: imageDataUrl },
+            }),
+          });
+          const resultText = await response.text();
+          let result = null;
+          try {
+            result = resultText ? JSON.parse(resultText) : null;
+          } catch {
+            result = null;
           }
 
-          const result = await response.json();
+          if (!response.ok) {
+            throw new Error(
+              result?.error ||
+                result?.message ||
+                "Front-of-package analysis is unavailable.",
+            );
+          }
+
           detectedProductName = result.productName || "";
           const confidence = result.confidence || "low";
 
@@ -2336,16 +2339,14 @@ Notes:
 
         try {
           const reportMeta = getIssueReportMeta();
-          await fetch(
-            "https://fgoiyycctnwnghrvsilt.supabase.co/functions/v1/report-issue",
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${SUPABASE_KEY}`,
-                apikey: SUPABASE_KEY,
-              },
-              body: JSON.stringify({
+          const response = await fetch("/api/ai-proxy", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              functionName: "report-issue",
+              payload: {
                 message: msg,
                 productName: ingredientName,
                 context: "photo_analysis",
@@ -2356,9 +2357,22 @@ Notes:
                 accountId: reportMeta.accountId,
                 pageUrl: reportMeta.pageUrl,
                 restaurantName: state.restaurant?.name || null,
-              }),
-            },
-          );
+              },
+            }),
+          });
+
+          if (!response.ok) {
+            const responseText = await response.text();
+            let payload = null;
+            try {
+              payload = responseText ? JSON.parse(responseText) : null;
+            } catch {
+              payload = null;
+            }
+            throw new Error(
+              payload?.error || payload?.message || "Issue report request failed.",
+            );
+          }
 
           // Mark this ingredient as having a reported issue
           const data = collectAiTableData();

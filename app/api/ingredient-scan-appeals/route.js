@@ -1,7 +1,11 @@
-import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { corsJson, corsOptions } from "../_shared/cors";
 
 export const runtime = "nodejs";
+
+export function OPTIONS() {
+  return corsOptions();
+}
 
 const OWNER_EMAIL = "matt.29.ds@gmail.com";
 
@@ -10,7 +14,7 @@ function asText(value) {
 }
 
 function errorResponse(message, status) {
-  return NextResponse.json({ success: false, error: message }, { status });
+  return corsJson({ success: false, error: message }, { status });
 }
 
 export async function POST(request) {
@@ -91,7 +95,7 @@ export async function POST(request) {
     return errorResponse(error.message || "Failed to create appeal.", 500);
   }
 
-  return NextResponse.json({
+  return corsJson({
     success: true,
     id: data?.id || "",
   });

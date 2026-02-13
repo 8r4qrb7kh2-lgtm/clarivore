@@ -30,9 +30,18 @@ serve(async (req) => {
 
     const config = await fetchAllergenDietConfig()
     const allergenKeys = (config.allergens || []).map((allergen) => allergen.key)
-    const dietLabels = (config.aiDiets && config.aiDiets.length > 0)
-      ? config.aiDiets
-      : (config.supportedDiets || [])
+    const supportedDietLabels = Array.isArray(config.supportedDiets)
+      ? config.supportedDiets
+      : []
+    const aiDietLabels = Array.isArray(config.aiDiets) ? config.aiDiets : []
+    const configuredDietLabels = Array.isArray(config.diets)
+      ? config.diets
+          .map((diet) => (typeof diet?.label === 'string' ? diet.label : ''))
+          .filter(Boolean)
+      : []
+    const dietLabels = Array.from(
+      new Set([...supportedDietLabels, ...aiDietLabels, ...configuredDietLabels]),
+    )
     const allergenListText = allergenKeys.join(', ')
     const dietListText = dietLabels.join(', ')
     const dietLabelMap: Record<string, string> = {}
@@ -41,17 +50,41 @@ serve(async (req) => {
         dietLabelMap[diet.key] = diet.label
       }
     })
-    const veganLabel = dietLabelMap.vegan || 'Vegan'
-    const vegetarianLabel = dietLabelMap.vegetarian || 'Vegetarian'
-    const pescatarianLabel = dietLabelMap.pescatarian || 'Pescatarian'
+    const pickDietLabel = (candidates: Array<string | null | undefined>) => {
+      const labelMap = new Map(
+        dietLabels.map((label) => [label.toLowerCase(), label]),
+      )
+      for (const candidate of candidates) {
+        if (!candidate) continue
+        if (dietLabels.includes(candidate)) return candidate
+        const lower = labelMap.get(candidate.toLowerCase())
+        if (lower) return lower
+      }
+      return null
+    }
+    const veganLabel = pickDietLabel([dietLabelMap.vegan, 'Vegan'])
+    const vegetarianLabel = pickDietLabel([
+      dietLabelMap.vegetarian,
+      'Vegetarian',
+    ])
+    const pescatarianLabel = pickDietLabel([
+      dietLabelMap.pescatarian,
+      'Pescatarian',
+    ])
+    const glutenFreeLabel = pickDietLabel([
+      dietLabelMap['gluten_free'],
+      dietLabelMap['gluten-free'],
+      'Gluten-free',
+      'Gluten Free',
+    ])
     const allDietExample = JSON.stringify(
-      [veganLabel, vegetarianLabel, pescatarianLabel].filter(Boolean),
+      [veganLabel, vegetarianLabel, pescatarianLabel, glutenFreeLabel].filter(Boolean),
     )
     const vegetarianDietExample = JSON.stringify(
       [vegetarianLabel, pescatarianLabel].filter(Boolean),
     )
-    const vegetarianOnlyExample = JSON.stringify(
-      vegetarianLabel ? [vegetarianLabel] : [],
+    const vegetarianGlutenFreeExample = JSON.stringify(
+      [vegetarianLabel, pescatarianLabel, glutenFreeLabel].filter(Boolean),
     )
 
     // Build the prompt based on whether we have an image
@@ -95,6 +128,7 @@ DIETARY OPTIONS RULES (IMPORTANT - Be proactive in assigning these):
 - Vegan: Include if ALL ingredients are plant-based (no meat, milk, eggs, honey, gelatin, or animal-derived additives)
 - Vegetarian: Include if no meat or fish, even if milk/eggs are present
 - Pescatarian: Include if contains fish/seafood but no other meat, may contain milk/eggs
+- Gluten-free: Include when ingredients and allergen statements do not indicate gluten-containing grains/derivatives (wheat, barley, rye, malt, brewer's yeast, triticale)
 IMPORTANT: Do NOT return "gluten" as a separate allergen; use "wheat" when applicable.
 
 IMPORTANT: Include the "diets" field for EACH ingredient to show which dietary preferences that ingredient satisfies.
@@ -104,7 +138,7 @@ EXAMPLE 1: If you see "30 oz spinach, 15 oz cottage cheese, 1 egg, parsley":
 - {"name": "cottage cheese", "allergens": ["milk"], "diets": ${vegetarianDietExample}, ...}
 - {"name": "egg", "allergens": ["egg"], "diets": ${vegetarianDietExample}, ...}
 - {"name": "parsley", "allergens": [], "diets": ${allDietExample}, ...}
-dietaryOptions: ${vegetarianOnlyExample} (not vegan due to milk/egg)
+dietaryOptions: ${vegetarianGlutenFreeExample} (not vegan due to milk/egg)
 
 EXAMPLE 2: If you see "radish, water, vinegar, salt":
 - All plant-based ingredients with "diets": ${allDietExample}
@@ -113,7 +147,7 @@ dietaryOptions: ${allDietExample} (all apply since no animal products)
 EXAMPLE 3: If you see "rapeseed oil, water, egg yolk, vinegar, salt":
 - "egg yolk" has "diets": ${vegetarianDietExample}
 - Other ingredients have "diets": ${allDietExample}
-dietaryOptions: ${vegetarianOnlyExample} (contains egg, so not vegan)
+dietaryOptions: ${vegetarianGlutenFreeExample} (contains egg, so not vegan)
 
 Be VERY conservative with allergens but PROACTIVE with dietary options - if ingredients clearly meet the criteria, include them.`
       : `You are an ingredient analysis assistant for a restaurant allergen awareness system.
@@ -153,6 +187,7 @@ DIETARY OPTIONS RULES (IMPORTANT - Be proactive in assigning these):
 - Vegan: Include if ALL ingredients are plant-based (no meat, milk, eggs, honey, gelatin, or animal-derived additives)
 - Vegetarian: Include if no meat or fish, even if milk/eggs are present
 - Pescatarian: Include if contains fish/seafood but no other meat, may contain milk/eggs
+- Gluten-free: Include when ingredients and allergen statements do not indicate gluten-containing grains/derivatives (wheat, barley, rye, malt, brewer's yeast, triticale)
 IMPORTANT: Do NOT return "gluten" as a separate allergen; use "wheat" when applicable.
 
 IMPORTANT: Include the "diets" field for EACH ingredient to show which dietary preferences that ingredient satisfies.

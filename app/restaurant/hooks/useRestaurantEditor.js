@@ -1458,17 +1458,6 @@ export function useRestaurantEditor({
         return { success: false };
       }
 
-      const brandRequirementIssues = buildBrandRequirementIssues(overlaysRef.current);
-      if (brandRequirementIssues.length) {
-        const firstIssue = brandRequirementIssues[0];
-        setSaveError(
-          firstIssue?.message ||
-            "Brand assignment is required for one or more ingredient rows.",
-        );
-        setSaveStatus("error");
-        return { success: false };
-      }
-
       const cleanedOverlays = (overlaysRef.current || []).map(stripEditorOverlay);
       const cleanedMenuImages = (menuImagesRef.current || []).filter(Boolean);
       const menuImage = cleanedMenuImages[0] || "";
