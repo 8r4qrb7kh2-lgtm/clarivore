@@ -1271,6 +1271,15 @@ h2 {
   font-size: 0.69rem;
 }
 
+.restaurant-legacy-editor-dish-ingredient-brand-thumb {
+  width: 100%;
+  max-width: 140px;
+  border-radius: 8px;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  background: rgba(15, 23, 42, 0.6);
+  display: block;
+}
+
 .restaurant-legacy-editor-dish-ingredient-brand-actions {
   display: flex;
   gap: 6px;

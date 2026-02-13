@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import AppTopbar from "../../components/AppTopbar";
 import PageShell from "../../components/PageShell";
 import ChatMessageText from "../../components/chat/ChatMessageText";
+import { useIngredientScanController } from "../../components/ingredient-scan/useIngredientScanController";
 import { notifyManagerChat } from "../../lib/chatNotifications";
 import { getActiveAllergenDietConfig } from "../../lib/allergenConfigRuntime";
 import { formatChatTimestamp, resolveChatLink } from "../../lib/chatMessage";
@@ -723,6 +724,7 @@ export default function ManagerDashboardDom({
   onSignOut,
 }) {
   const runtimeConfig = getActiveAllergenDietConfig();
+  const ingredientScan = useIngredientScanController();
 
   const ALLERGENS = Array.isArray(runtimeConfig.ALLERGENS)
     ? runtimeConfig.ALLERGENS
@@ -1479,6 +1481,13 @@ export default function ManagerDashboardDom({
       if (!supabase || !selectedRestaurantId || !brandItem) return;
 
       const ingredientText = String(result?.ingredientText || "").trim();
+      const ingredientLines = Array.isArray(result?.ingredientsList)
+        ? result.ingredientsList
+            .map((line) => String(line || "").trim())
+            .filter(Boolean)
+        : ingredientText
+          ? [ingredientText]
+          : [];
       const newBrandName =
         String(result?.productName || "").trim() || brandItem.brandName || "New brand item";
 
@@ -1488,8 +1497,8 @@ export default function ManagerDashboardDom({
         brandImage: result?.brandImage || "",
         image: "",
         ingredientsImage: result?.ingredientsImage || "",
-        ingredientsList: ingredientText ? [ingredientText] : [],
-        ingredientList: ingredientText,
+        ingredientsList: ingredientLines,
+        ingredientList: ingredientText || ingredientLines.join(" "),
         allergens: Array.isArray(result?.allergens) ? result.allergens : [],
         crossContaminationAllergens: Array.isArray(result?.crossContaminationAllergens)
           ? result.crossContaminationAllergens
@@ -1546,20 +1555,18 @@ export default function ManagerDashboardDom({
         "Brand item";
 
       try {
-        const { showManagerIngredientPhotoUploadModal } = await import(
-          "../../lib/managerIngredientPhotoCapture"
-        );
-        await showManagerIngredientPhotoUploadModal(ingredientLabel, {
-          inlineResults: true,
-          skipRowUpdates: true,
-          onApplyResults: (result) => onApplyBrandReplacement(result, brandItem),
+        const result = await ingredientScan.openScan({
+          ingredientName: ingredientLabel,
+          supportedDiets: DIETS,
         });
+        if (!result) return;
+        await onApplyBrandReplacement(result, brandItem);
       } catch (error) {
         console.error("[manager-dashboard-next] ingredient capture unavailable", error);
         setStatus("Failed to load ingredient capture. Please try again.", "error");
       }
     },
-    [onApplyBrandReplacement, setStatus],
+    [DIETS, ingredientScan, onApplyBrandReplacement, setStatus],
   );
 
   const allOverlays = useMemo(
@@ -3467,6 +3474,8 @@ export default function ManagerDashboardDom({
             </div>
           </div>
         ) : null}
+
+        {ingredientScan.modalNode}
       </div>
     </PageShell>
   );

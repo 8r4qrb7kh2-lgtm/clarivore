@@ -2,6 +2,8 @@ import { corsJson, corsOptions } from "../_shared/cors";
 
 export const runtime = "nodejs";
 
+const DEFAULT_ANTHROPIC_MODEL = "claude-sonnet-4-20250514";
+
 export function OPTIONS() {
   return corsOptions();
 }
@@ -39,7 +41,9 @@ function parseImageData(imageData) {
 
 function pickTextBlock(content) {
   const blocks = Array.isArray(content) ? content : [];
-  const textBlock = blocks.find((block) => block?.type === "text");
+  const textBlock = blocks.find(
+    (block) => block?.type === "text" || block?.type === "output_text",
+  );
   return asText(textBlock?.text);
 }
 
@@ -94,116 +98,10 @@ function parseJsonArray(text) {
   }
 }
 
-async function callSupabaseFunction(functionName, payload) {
-  const supabaseUrl = readFirstEnv(["SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_URL"]);
-  const supabaseAnonKey = readFirstEnv([
-    "SUPABASE_ANON_KEY",
-    "NEXT_PUBLIC_SUPABASE_ANON_KEY",
-  ]);
-  if (!supabaseUrl || !supabaseAnonKey) {
-    throw new Error("Supabase function proxy is not configured.");
-  }
-
-  const response = await fetch(`${supabaseUrl}/functions/v1/${functionName}`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${supabaseAnonKey}`,
-      apikey: supabaseAnonKey,
-    },
-    body: JSON.stringify(payload || {}),
-  });
-
-  const rawText = await response.text();
-  let data = {};
-  if (rawText) {
-    try {
-      data = JSON.parse(rawText);
-    } catch {
-      data = { raw: rawText };
-    }
-  }
-  if (!response.ok) {
-    throw new Error(
-      asText(data?.error) ||
-        asText(data?.message) ||
-        `Supabase function ${functionName} failed (${response.status}).`,
-    );
-  }
-  return data;
-}
-
-function buildWordBoxesFromLineText(text, lineBox) {
-  const words = asText(text).split(/\s+/).filter(Boolean);
-  if (!words.length) return [];
-  const xStart = clamp(Number(lineBox?.x_start), 0, 100);
-  const xEnd = clamp(Number(lineBox?.x_end), xStart, 100);
-  const yStart = clamp(Number(lineBox?.y_start), 0, 100);
-  const yEnd = clamp(Number(lineBox?.y_end), yStart, 100);
-  const span = xEnd - xStart;
-  const step = span > 0 ? span / words.length : 0;
-
-  return words.map((word, index) => {
-    const start = clamp(xStart + step * index, xStart, xEnd);
-    const end =
-      index === words.length - 1
-        ? xEnd
-        : clamp(start + Math.max(step - 0.2, 0.2), start, xEnd);
-    return {
-      text: word,
-      x_start: start,
-      x_end: end,
-      y_start: yStart,
-      y_end: yEnd,
-    };
-  });
-}
-
-function normalizeDetectIngredientLinesData(rawLines, imageWidth, imageHeight) {
-  const lines = Array.isArray(rawLines) ? rawLines : [];
-  const safeWidth = Number(imageWidth) > 0 ? Number(imageWidth) : 1000;
-  const safeHeight = Number(imageHeight) > 0 ? Number(imageHeight) : 1000;
-
-  return lines
-    .map((line, index) => {
-      const text = asText(line?.text);
-      if (!text) return null;
-
-      const xRaw = Number(line?.x);
-      const yRaw = Number(line?.y);
-      const wRaw = Number(line?.w);
-      const hRaw = Number(line?.h);
-      if (!Number.isFinite(xRaw) || !Number.isFinite(yRaw)) return null;
-      if (!Number.isFinite(wRaw) || !Number.isFinite(hRaw)) return null;
-      if (wRaw <= 0 || hRaw <= 0) return null;
-
-      const xStartPx = clamp(xRaw, 0, safeWidth);
-      const yStartPx = clamp(yRaw, 0, safeHeight);
-      const xEndPx = clamp(xRaw + wRaw, 0, safeWidth);
-      const yEndPx = clamp(yRaw + hRaw, 0, safeHeight);
-      if (xEndPx <= xStartPx || yEndPx <= yStartPx) return null;
-
-      const crop_coordinates = {
-        x_start: clamp((xStartPx / safeWidth) * 100, 0, 100),
-        y_start: clamp((yStartPx / safeHeight) * 100, 0, 100),
-        x_end: clamp((xEndPx / safeWidth) * 100, 0, 100),
-        y_end: clamp((yEndPx / safeHeight) * 100, 0, 100),
-      };
-
-      const lineNumberRaw = Number(line?.lineNumber);
-      const line_number =
-        Number.isFinite(lineNumberRaw) && lineNumberRaw > 0
-          ? Math.trunc(lineNumberRaw)
-          : index + 1;
-
-      return {
-        line_number,
-        text,
-        words: buildWordBoxesFromLineText(text, crop_coordinates),
-        crop_coordinates,
-      };
-    })
-    .filter(Boolean);
+function normalizeConfidence(value) {
+  const raw = asText(value).toLowerCase();
+  if (["low", "medium", "high"].includes(raw)) return raw;
+  return "low";
 }
 
 function normalizeQualityAssessment(raw) {
@@ -261,6 +159,7 @@ function normalizeQualityAssessment(raw) {
 
 async function callAnthropicImage({
   apiKey,
+  model,
   mediaType,
   base64Data,
   systemPrompt,
@@ -275,7 +174,7 @@ async function callAnthropicImage({
       "anthropic-version": "2023-06-01",
     },
     body: JSON.stringify({
-      model: "claude-sonnet-4-5-20250929",
+      model: asText(model) || DEFAULT_ANTHROPIC_MODEL,
       max_tokens: maxTokens,
       system: systemPrompt,
       messages: [
@@ -322,6 +221,7 @@ async function callAnthropicImage({
 
 async function callAnthropicText({
   apiKey,
+  model,
   systemPrompt,
   userPrompt,
   maxTokens = 1600,
@@ -334,7 +234,7 @@ async function callAnthropicText({
       "anthropic-version": "2023-06-01",
     },
     body: JSON.stringify({
-      model: "claude-sonnet-4-5-20250929",
+      model: asText(model) || DEFAULT_ANTHROPIC_MODEL,
       max_tokens: maxTokens,
       system: systemPrompt,
       messages: [
@@ -416,7 +316,10 @@ async function getVisionWords({ googleVisionApiKey, base64Data }) {
     (page?.blocks || []).forEach((block) => {
       (block?.paragraphs || []).forEach((paragraph) => {
         (paragraph?.words || []).forEach((word) => {
-          const text = (word?.symbols || []).map((symbol) => symbol?.text || "").join("").trim();
+          const text = (word?.symbols || [])
+            .map((symbol) => symbol?.text || "")
+            .join("")
+            .trim();
           const vertices = Array.isArray(word?.boundingBox?.vertices)
             ? word.boundingBox.vertices
             : [];
@@ -432,6 +335,7 @@ async function getVisionWords({ googleVisionApiKey, base64Data }) {
             text,
             bbox: { x0, x1, y0, y1 },
             centerY: (y0 + y1) / 2,
+            height: Math.max(y1 - y0, 1),
           });
         });
       });
@@ -439,6 +343,40 @@ async function getVisionWords({ googleVisionApiKey, base64Data }) {
   });
 
   return { words, pageWidth, pageHeight };
+}
+
+function splitWords(value) {
+  return asText(value)
+    .split(/\s+/)
+    .map((token) => asText(token))
+    .filter(Boolean);
+}
+
+function cleanToken(value) {
+  return asText(value).toLowerCase().replace(/[.,;:!?()[\]{}'"`]/g, "");
+}
+
+function scoreWordSimilarity(sourceWord, targetToken) {
+  const source = cleanToken(sourceWord);
+  const target = cleanToken(targetToken);
+  if (!source || !target) return 0;
+  if (source === target) return 1;
+  if (source.includes(target) || target.includes(source)) {
+    const minLen = Math.min(source.length, target.length);
+    const maxLen = Math.max(source.length, target.length);
+    if (minLen / maxLen >= 0.65) return 0.8;
+  }
+  return 0;
+}
+
+function dedupeWordsByPosition(words) {
+  const seen = new Set();
+  return (Array.isArray(words) ? words : []).filter((word) => {
+    const key = `${Math.round(Number(word?.bbox?.x0) || 0)}:${Math.round(Number(word?.bbox?.y0) || 0)}:${cleanToken(word?.text)}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 function groupVisualLines(words) {
@@ -484,61 +422,267 @@ function groupVisualLines(words) {
   return lines.sort((a, b) => a.bbox.y0 - b.bbox.y0);
 }
 
-function toPercentLineData({ line, lineNumber, pageWidth, pageHeight }) {
-  const safeWidth = Number(pageWidth) > 0 ? Number(pageWidth) : 1000;
-  const safeHeight = Number(pageHeight) > 0 ? Number(pageHeight) : 1000;
+function toPercentLineData({
+  line,
+  lineNumber,
+  pageWidth,
+  pageHeight,
+  normalizeWidth,
+  normalizeHeight,
+}) {
+  const safePageWidth = Number(pageWidth) > 0 ? Number(pageWidth) : 1000;
+  const safePageHeight = Number(pageHeight) > 0 ? Number(pageHeight) : 1000;
+  const safeNormalizeWidth = Number(normalizeWidth) > 0 ? Number(normalizeWidth) : safePageWidth;
+  const safeNormalizeHeight = Number(normalizeHeight) > 0 ? Number(normalizeHeight) : safePageHeight;
+  const scaleX = safeNormalizeWidth / safePageWidth;
+  const scaleY = safeNormalizeHeight / safePageHeight;
+
+  const words = (Array.isArray(line?.words) ? line.words : [])
+    .map((word) => {
+      const x0 = Number(word?.bbox?.x0) * scaleX;
+      const x1 = Number(word?.bbox?.x1) * scaleX;
+      const y0 = Number(word?.bbox?.y0) * scaleY;
+      const y1 = Number(word?.bbox?.y1) * scaleY;
+      if (!Number.isFinite(x0) || !Number.isFinite(x1) || !Number.isFinite(y0) || !Number.isFinite(y1)) {
+        return null;
+      }
+      return {
+        text: asText(word?.text),
+        x_start: clamp((x0 / safeNormalizeWidth) * 100, 0, 100),
+        x_end: clamp((x1 / safeNormalizeWidth) * 100, 0, 100),
+        y_start: clamp((y0 / safeNormalizeHeight) * 100, 0, 100),
+        y_end: clamp((y1 / safeNormalizeHeight) * 100, 0, 100),
+      };
+    })
+    .filter((word) => word && word.text);
+
+  const lineX0 = Number(line?.bbox?.x0) * scaleX;
+  const lineX1 = Number(line?.bbox?.x1) * scaleX;
+  const lineY0 = Number(line?.bbox?.y0) * scaleY;
+  const lineY1 = Number(line?.bbox?.y1) * scaleY;
 
   return {
     line_number: lineNumber,
     text: asText(line?.text),
-    words: (Array.isArray(line?.words) ? line.words : []).map((word) => ({
-      text: asText(word?.text),
-      x_start: clamp((Number(word?.bbox?.x0) / safeWidth) * 100, 0, 100),
-      x_end: clamp((Number(word?.bbox?.x1) / safeWidth) * 100, 0, 100),
-      y_start: clamp((Number(word?.bbox?.y0) / safeHeight) * 100, 0, 100),
-      y_end: clamp((Number(word?.bbox?.y1) / safeHeight) * 100, 0, 100),
-    })),
+    words,
     crop_coordinates: {
-      x_start: clamp((Number(line?.bbox?.x0) / safeWidth) * 100, 0, 100),
-      y_start: clamp((Number(line?.bbox?.y0) / safeHeight) * 100, 0, 100),
-      x_end: clamp((Number(line?.bbox?.x1) / safeWidth) * 100, 0, 100),
-      y_end: clamp((Number(line?.bbox?.y1) / safeHeight) * 100, 0, 100),
+      x_start: clamp((lineX0 / safeNormalizeWidth) * 100, 0, 100),
+      y_start: clamp((lineY0 / safeNormalizeHeight) * 100, 0, 100),
+      x_end: clamp((lineX1 / safeNormalizeWidth) * 100, 0, 100),
+      y_end: clamp((lineY1 / safeNormalizeHeight) * 100, 0, 100),
     },
   };
 }
 
-function buildSyntheticLineData(lines) {
-  const safeLines = Array.isArray(lines) ? lines : [];
-  const total = Math.max(safeLines.length, 1);
+function findBestVisualLineIndex(transcriptText, visualLines, usedVisualIndices) {
+  const transcriptTokens = splitWords(transcriptText).map((token) => cleanToken(token));
+  if (!transcriptTokens.length) return -1;
 
-  return safeLines.map((text, index) => {
-    const words = asText(text).split(/\s+/).filter(Boolean);
-    const lineTop = clamp((index / total) * 100 + 2, 0, 99);
-    const lineBottom = clamp(lineTop + Math.max(5, 88 / total), lineTop + 1, 100);
-    const wordWidth = words.length ? 96 / words.length : 96;
+  let bestIndex = -1;
+  let bestScore = 0;
 
-    return {
-      line_number: index + 1,
-      text: asText(text),
-      words: words.map((word, wordIndex) => {
-        const xStart = clamp(2 + wordIndex * wordWidth, 0, 100);
-        const xEnd = clamp(xStart + wordWidth - 0.5, xStart, 100);
-        return {
-          text: word,
-          x_start: xStart,
-          x_end: xEnd,
-          y_start: lineTop,
-          y_end: lineBottom,
-        };
-      }),
-      crop_coordinates: {
-        x_start: 2,
-        x_end: 98,
-        y_start: lineTop,
-        y_end: lineBottom,
-      },
-    };
+  visualLines.forEach((line, lineIndex) => {
+    if (usedVisualIndices.has(lineIndex)) return;
+    const visualTokens = splitWords(line?.text).map((token) => cleanToken(token));
+    if (!visualTokens.length) return;
+
+    let matches = 0;
+    transcriptTokens.forEach((token) => {
+      if (!token) return;
+      if (visualTokens.some((visual) => visual === token || visual.includes(token) || token.includes(visual))) {
+        matches += 1;
+      }
+    });
+
+    const score = matches / transcriptTokens.length;
+    if (score > bestScore) {
+      bestScore = score;
+      bestIndex = lineIndex;
+    }
   });
+
+  return bestScore >= 0.2 ? bestIndex : -1;
+}
+
+function matchTranscriptToOrderedWords({
+  transcriptText,
+  visualLine,
+  visionWords,
+}) {
+  const transcriptTokens = splitWords(transcriptText);
+  const visualWords = Array.isArray(visualLine?.words)
+    ? [...visualLine.words].sort((a, b) => a.bbox.x0 - b.bbox.x0)
+    : [];
+  if (!visualWords.length || !transcriptTokens.length) {
+    return {
+      words: visualWords,
+      bbox: visualLine?.bbox || null,
+    };
+  }
+
+  const lineYMin = Math.min(...visualWords.map((word) => word.bbox.y0));
+  const lineYMax = Math.max(...visualWords.map((word) => word.bbox.y1));
+  const lineHeight = Math.max(lineYMax - lineYMin, 1);
+  const yTolerance = lineHeight * 0.7;
+
+  const contextualWords = dedupeWordsByPosition([
+    ...visualWords,
+    ...(Array.isArray(visionWords)
+      ? visionWords.filter((word) =>
+          word.centerY >= lineYMin - yTolerance &&
+          word.centerY <= lineYMax + yTolerance,
+        )
+      : []),
+  ]).sort((a, b) => a.bbox.x0 - b.bbox.x0);
+
+  const usedIndices = new Set();
+  const matched = [];
+  let lastX = Number.NEGATIVE_INFINITY;
+
+  transcriptTokens.forEach((token) => {
+    let bestIndex = -1;
+    let bestScore = -Infinity;
+
+    contextualWords.forEach((candidate, candidateIndex) => {
+      if (usedIndices.has(candidateIndex)) return;
+
+      const tokenScore = scoreWordSimilarity(candidate?.text, token);
+      if (tokenScore <= 0) return;
+
+      const x0 = Number(candidate?.bbox?.x0);
+      const x1 = Number(candidate?.bbox?.x1);
+      if (!Number.isFinite(x0) || !Number.isFinite(x1)) return;
+
+      // Keep sequence monotonic across transcript tokens.
+      if (x0 < lastX - 2) return;
+
+      const gapPenalty = Number.isFinite(lastX)
+        ? Math.max(0, x0 - lastX) * 0.02
+        : 0;
+      const sourceBoost = visualWords.includes(candidate) ? 5 : 0;
+      const score = tokenScore * 100 + sourceBoost - gapPenalty;
+
+      if (score > bestScore) {
+        bestScore = score;
+        bestIndex = candidateIndex;
+      }
+    });
+
+    if (bestIndex >= 0) {
+      usedIndices.add(bestIndex);
+      const chosen = contextualWords[bestIndex];
+      matched.push(chosen);
+      lastX = Number(chosen?.bbox?.x1);
+    }
+  });
+
+  const words = matched.length
+    ? matched.sort((a, b) => a.bbox.x0 - b.bbox.x0)
+    : visualWords;
+
+  if (!words.length) {
+    return {
+      words: [],
+      bbox: null,
+    };
+  }
+
+  const leftWord = words[0];
+  const rightWord = words[words.length - 1];
+  const y0 = Math.min(...words.map((word) => word.bbox.y0));
+  const y1 = Math.max(...words.map((word) => word.bbox.y1));
+  const lineSpan = Math.max(rightWord.bbox.x1 - leftWord.bbox.x0, 1);
+  const horizontalPad = Math.max(2, lineSpan * 0.03);
+
+  const bbox = {
+    x0: leftWord.bbox.x0 - horizontalPad,
+    x1: rightWord.bbox.x1 + horizontalPad,
+    y0: y0 - Math.max(1, (y1 - y0) * 0.08),
+    y1: y1 + Math.max(1, (y1 - y0) * 0.08),
+  };
+
+  return {
+    words,
+    bbox,
+  };
+}
+
+function buildLinesFromTranscriptMapping({
+  transcriptLines,
+  visualLines,
+  lineMapping,
+  visionWords,
+  pageWidth,
+  pageHeight,
+  normalizeWidth,
+  normalizeHeight,
+}) {
+  const built = [];
+  const usedVisualIndices = new Set();
+
+  transcriptLines.forEach((transcriptText, index) => {
+    let visualIndex = Number(lineMapping[String(index)]);
+    if (!Number.isFinite(visualIndex) || visualIndex < 0 || visualIndex >= visualLines.length) {
+      visualIndex = findBestVisualLineIndex(transcriptText, visualLines, usedVisualIndices);
+    }
+    if (!Number.isFinite(visualIndex) || visualIndex < 0 || visualIndex >= visualLines.length) {
+      return;
+    }
+
+    usedVisualIndices.add(visualIndex);
+    const visualLine = visualLines[visualIndex];
+    const matched = matchTranscriptToOrderedWords({
+      transcriptText,
+      visualLine,
+      visionWords,
+    });
+
+    if (!matched?.bbox || !Array.isArray(matched.words) || !matched.words.length) {
+      return;
+    }
+
+    const x0 = clamp(Number(matched.bbox.x0), 0, pageWidth);
+    const x1 = clamp(Number(matched.bbox.x1), 0, pageWidth);
+    const y0 = clamp(Number(matched.bbox.y0), 0, pageHeight);
+    const y1 = clamp(Number(matched.bbox.y1), 0, pageHeight);
+
+    if (!Number.isFinite(x0) || !Number.isFinite(x1) || !Number.isFinite(y0) || !Number.isFinite(y1)) {
+      return;
+    }
+    if (x1 <= x0 || y1 <= y0) {
+      return;
+    }
+
+    const lineData = toPercentLineData({
+      line: {
+        text: transcriptText,
+        words: matched.words,
+        bbox: { x0, x1, y0, y1 },
+      },
+      lineNumber: index + 1,
+      pageWidth,
+      pageHeight,
+      normalizeWidth,
+      normalizeHeight,
+    });
+
+    built.push(lineData);
+  });
+
+  return built;
+}
+
+function isValidLineData(line) {
+  const coords = line?.crop_coordinates || {};
+  const xStart = Number(coords?.x_start);
+  const xEnd = Number(coords?.x_end);
+  const yStart = Number(coords?.y_start);
+  const yEnd = Number(coords?.y_end);
+  if (!Number.isFinite(xStart) || !Number.isFinite(xEnd) || !Number.isFinite(yStart) || !Number.isFinite(yEnd)) {
+    return false;
+  }
+  if (xEnd <= xStart || yEnd <= yStart) return false;
+  return Array.isArray(line?.words) && line.words.length > 0 && asText(line?.text).length > 0;
 }
 
 function sanitizeTranscriptLines(rawLines) {
@@ -549,6 +693,7 @@ function sanitizeTranscriptLines(rawLines) {
 
 async function getClaudeTranscription({
   apiKey,
+  model,
   mediaType,
   base64Data,
 }) {
@@ -571,6 +716,7 @@ Rules:
 
   const text = await callAnthropicImage({
     apiKey,
+    model,
     mediaType,
     base64Data,
     systemPrompt,
@@ -584,6 +730,7 @@ Rules:
 
 async function getClaudeQualityAssessment({
   apiKey,
+  model,
   mediaType,
   base64Data,
   transcriptLines,
@@ -622,6 +769,7 @@ Notes:
 
   const text = await callAnthropicImage({
     apiKey,
+    model,
     mediaType,
     base64Data,
     systemPrompt,
@@ -634,6 +782,7 @@ Notes:
 
 async function matchLinesToVisualLines({
   apiKey,
+  model,
   transcriptLines,
   visualLines,
 }) {
@@ -667,6 +816,7 @@ Output ONLY the JSON object, nothing else.`;
 
   const text = await callAnthropicText({
     apiKey,
+    model,
     systemPrompt,
     userPrompt:
       `Match each transcript line to its corresponding visual line.\n\nTRANSCRIPT LINES:\n${transcriptDesc}\n\nVISUAL LINES:\n${visualDesc}\n\nReturn a JSON object mapping transcript indices to visual line indices.`,
@@ -687,150 +837,138 @@ Output ONLY the JSON object, nothing else.`;
   return mapping;
 }
 
-function cleanToken(value) {
-  return asText(value).toLowerCase().replace(/[.,;:!?()[\]{}'"`]/g, "");
-}
+function deriveFrontNameFromVisionWords({ words, pageHeight }) {
+  const filtered = (Array.isArray(words) ? words : [])
+    .filter((word) => asText(word?.text))
+    .sort((a, b) => a.bbox.y0 - b.bbox.y0 || a.bbox.x0 - b.bbox.x0);
+  if (!filtered.length) return "";
 
-function wordMatchesTranscript(wordText, transcriptText) {
-  const cleanWord = cleanToken(wordText);
-  if (!cleanWord) return false;
+  const groups = [];
+  let current = [];
+  let anchorY = Number.NEGATIVE_INFINITY;
 
-  const transcriptWords = asText(transcriptText)
-    .toLowerCase()
-    .split(/[\s,.:;()\[\]]+/)
-    .filter((token) => token.length > 0);
-
-  return transcriptWords.some(
-    (token) =>
-      token === cleanWord ||
-      (cleanWord.length > 2 &&
-        token.includes(cleanWord) &&
-        cleanWord.length >= token.length * 0.7) ||
-      (token.length > 2 &&
-        cleanWord.includes(token) &&
-        token.length >= cleanWord.length * 0.7),
-  );
-}
-
-function buildLinesFromTranscriptMapping({
-  transcriptLines,
-  visualLines,
-  lineMapping,
-  visionWords,
-  pageWidth,
-  pageHeight,
-}) {
-  const mapped = Array.from({ length: transcriptLines.length }, () => null);
-
-  for (let index = 0; index < transcriptLines.length; index += 1) {
-    const transcriptText = transcriptLines[index];
-    const visualIndex = Number(lineMapping[String(index)]);
-    if (!Number.isFinite(visualIndex)) continue;
-    if (visualIndex < 0 || visualIndex >= visualLines.length) continue;
-
-    const visualLine = visualLines[visualIndex];
-    const visualWords = Array.isArray(visualLine?.words) ? visualLine.words : [];
-    if (!visualWords.length) continue;
-
-    let matchingWords = visualWords.filter((word) =>
-      wordMatchesTranscript(word.text, transcriptText),
-    );
-
-    const transcriptWords = asText(transcriptText)
-      .toLowerCase()
-      .split(/[\s,.:;()\[\]]+/)
-      .filter((token) => token.length > 1);
-
-    const transcriptWordCounts = {};
-    transcriptWords.forEach((token) => {
-      transcriptWordCounts[token] = (transcriptWordCounts[token] || 0) + 1;
-    });
-
-    const matchedWordCounts = {};
-    matchingWords.forEach((word) => {
-      const clean = cleanToken(word.text);
-      if (!clean) return;
-      matchedWordCounts[clean] = (matchedWordCounts[clean] || 0) + 1;
-    });
-
-    const missingWords = [];
-    Object.entries(transcriptWordCounts).forEach(([token, neededCount]) => {
-      const matchedCount = matchedWordCounts[token] || 0;
-      const missingCount = neededCount - matchedCount;
-      for (let i = 0; i < missingCount; i += 1) {
-        missingWords.push(token);
-      }
-    });
-
-    const usedBoxes = new Set(
-      matchingWords.map((word) => `${word.bbox.x0},${word.bbox.y0}`),
-    );
-
-    const vlYMin = Math.min(...visualWords.map((word) => word.bbox.y0));
-    const vlYMax = Math.max(...visualWords.map((word) => word.bbox.y1));
-    const vlHeight = Math.max(vlYMax - vlYMin, 1);
-    const yTolerance = vlHeight * 0.5;
-
-    for (const missingWord of missingWords) {
-      const candidates = visionWords.filter((word) => {
-        const cleanVisionWord = cleanToken(word.text);
-        const boxKey = `${word.bbox.x0},${word.bbox.y0}`;
-        const exactMatch = cleanVisionWord === missingWord;
-        const closeMatch =
-          cleanVisionWord.length > 2 &&
-          missingWord.length > 2 &&
-          ((cleanVisionWord.includes(missingWord) &&
-            missingWord.length >= cleanVisionWord.length * 0.7) ||
-            (missingWord.includes(cleanVisionWord) &&
-              cleanVisionWord.length >= missingWord.length * 0.7));
-        const notUsed = !usedBoxes.has(boxKey);
-        const withinYRange =
-          word.centerY >= vlYMin - yTolerance &&
-          word.centerY <= vlYMax + yTolerance;
-        return (exactMatch || closeMatch) && notUsed && withinYRange;
-      });
-
-      if (!candidates.length) continue;
-
-      const avgY =
-        matchingWords.length > 0
-          ? matchingWords.reduce((sum, word) => sum + word.centerY, 0) /
-            matchingWords.length
-          : (vlYMin + vlYMax) / 2;
-
-      candidates.sort(
-        (a, b) => Math.abs(a.centerY - avgY) - Math.abs(b.centerY - avgY),
-      );
-
-      const bestMatch = candidates[0];
-      if (Math.abs(bestMatch.centerY - avgY) < vlHeight * 1.5) {
-        matchingWords.push(bestMatch);
-        usedBoxes.add(`${bestMatch.bbox.x0},${bestMatch.bbox.y0}`);
-      }
+  filtered.forEach((word) => {
+    if (!current.length) {
+      current.push(word);
+      anchorY = word.centerY;
+      return;
     }
+    if (Math.abs(word.centerY - anchorY) <= Math.max(14, word.height * 0.8)) {
+      current.push(word);
+      return;
+    }
+    groups.push(current);
+    current = [word];
+    anchorY = word.centerY;
+  });
+  if (current.length) groups.push(current);
 
-    const wordsForCrop = matchingWords.length > 0 ? matchingWords : visualWords;
-    if (!wordsForCrop.length) continue;
+  const blocked = /(nutrition|ingredients|contains|allergen|serving|calories|barcode|warning|may\s+contain)/i;
 
-    const x0 = Math.min(...wordsForCrop.map((word) => word.bbox.x0));
-    const y0 = Math.min(...wordsForCrop.map((word) => word.bbox.y0));
-    const x1 = Math.max(...wordsForCrop.map((word) => word.bbox.x1));
-    const y1 = Math.max(...wordsForCrop.map((word) => word.bbox.y1));
+  const lines = groups
+    .map((group) => {
+      const ordered = [...group].sort((a, b) => a.bbox.x0 - b.bbox.x0);
+      const text = ordered.map((word) => asText(word.text)).join(" ").replace(/\s+/g, " ").trim();
+      if (!text) return null;
+      const y0 = Math.min(...ordered.map((word) => word.bbox.y0));
+      const avgHeight =
+        ordered.reduce((sum, word) => sum + Math.max(word.bbox.y1 - word.bbox.y0, 1), 0) /
+        ordered.length;
+      const uppercaseCount = text.replace(/[^A-Z]/g, "").length;
+      const alphaCount = text.replace(/[^A-Za-z]/g, "").length || 1;
+      const uppercaseRatio = uppercaseCount / alphaCount;
+      return {
+        text,
+        y0,
+        avgHeight,
+        wordCount: ordered.length,
+        uppercaseRatio,
+      };
+    })
+    .filter(Boolean)
+    .filter((line) => !blocked.test(line.text))
+    .filter((line) => line.y0 <= Number(pageHeight || 1000) * 0.45);
 
-    mapped[index] = toPercentLineData({
-      line: {
-        text: transcriptText,
-        words: matchingWords,
-        bbox: { x0, y0, x1, y1 },
-      },
-      lineNumber: index + 1,
-      pageWidth,
-      pageHeight,
+  if (!lines.length) return "";
+
+  lines.sort((a, b) => {
+    const scoreA = a.avgHeight * 3 + a.uppercaseRatio * 30 - a.y0 * 0.01 + a.wordCount;
+    const scoreB = b.avgHeight * 3 + b.uppercaseRatio * 30 - b.y0 * 0.01 + b.wordCount;
+    return scoreB - scoreA;
+  });
+
+  const primary = lines[0];
+  if (!primary) return "";
+
+  const siblings = lines
+    .filter((line) => line !== primary)
+    .sort((a, b) => a.y0 - b.y0)
+    .filter(
+      (line) =>
+        line.y0 > primary.y0 &&
+        line.y0 - primary.y0 <= Math.max(26, primary.avgHeight * 2.2) &&
+        line.wordCount <= 4,
+    );
+
+  const combined = [primary.text, ...siblings.slice(0, 1).map((line) => line.text)]
+    .join(" ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return combined;
+}
+
+async function analyzeFrontProductName({
+  anthropicApiKey,
+  anthropicModel,
+  googleVisionApiKey,
+  mediaType,
+  base64Data,
+}) {
+  let productName = "";
+  let confidence = "low";
+
+  const systemPrompt = `You are extracting the retail product name from a package front photo.
+Return ONLY valid JSON with this exact schema:
+{
+  "productName": "string",
+  "confidence": "low"|"medium"|"high"
+}
+Rules:
+- Prefer the main marketed product name visible on the package front.
+- Do NOT return nutrition labels, ingredient paragraphs, warnings, or slogans.
+- If uncertain, return low confidence.`;
+
+  const text = await callAnthropicImage({
+    apiKey: anthropicApiKey,
+    model: anthropicModel,
+    mediaType,
+    base64Data,
+    systemPrompt,
+    userPrompt:
+      "Identify the product name shown on the front of this package.",
+    maxTokens: 500,
+  });
+
+  const parsed = parseJsonObject(text) || {};
+  productName = asText(parsed?.productName);
+  confidence = normalizeConfidence(parsed?.confidence);
+
+  if ((!productName || confidence === "low") && googleVisionApiKey) {
+    const { words, pageHeight } = await getVisionWords({
+      googleVisionApiKey,
+      base64Data,
     });
+    const fallbackName = deriveFrontNameFromVisionWords({ words, pageHeight });
+    if (!productName && fallbackName) {
+      productName = fallbackName;
+      confidence = "medium";
+    }
   }
 
-  const synthetic = buildSyntheticLineData(transcriptLines);
-  return mapped.map((line, index) => line || synthetic[index]);
+  return {
+    productName,
+    confidence,
+  };
 }
 
 export async function POST(request) {
@@ -854,6 +992,7 @@ export async function POST(request) {
   const imageHeight = Number.isFinite(imageHeightRaw) && imageHeightRaw > 0
     ? imageHeightRaw
     : null;
+
   if (!imageData || (mode !== "full-analysis" && mode !== "front-analysis")) {
     return corsJson(
       {
@@ -865,28 +1004,47 @@ export async function POST(request) {
     );
   }
 
-  if (!parseImageData(imageData)) {
+  const parsedImage = parseImageData(imageData);
+  if (!parsedImage) {
     return corsJson(
       { success: false, error: "Invalid imageData format." },
       { status: 400 },
     );
   }
 
+  const anthropicApiKey = readFirstEnv(["ANTHROPIC_API_KEY"]);
+  const googleVisionApiKey = readFirstEnv(["GOOGLE_VISION_API_KEY"]);
+  const anthropicModel =
+    readFirstEnv(["ANTHROPIC_MODEL"]) || DEFAULT_ANTHROPIC_MODEL;
+
+  if (!anthropicApiKey) {
+    return corsJson(
+      {
+        success: false,
+        error: "ANTHROPIC_API_KEY is not configured.",
+      },
+      { status: 500 },
+    );
+  }
+
   if (mode === "front-analysis") {
     try {
-      const frontResult = await callSupabaseFunction("analyze-product-front", {
-        imageData,
+      const front = await analyzeFrontProductName({
+        anthropicApiKey,
+        anthropicModel,
+        googleVisionApiKey,
+        mediaType: parsedImage.mediaType,
+        base64Data: parsedImage.base64Data,
       });
-      const confidenceRaw = asText(frontResult?.confidence).toLowerCase();
-      const confidence = ["low", "medium", "high"].includes(confidenceRaw)
-        ? confidenceRaw
-        : "low";
 
-      return corsJson({
-        success: true,
-        productName: asText(frontResult?.productName),
-        confidence,
-      });
+      return corsJson(
+        {
+          success: true,
+          productName: asText(front?.productName),
+          confidence: normalizeConfidence(front?.confidence),
+        },
+        { status: 200 },
+      );
     } catch (error) {
       return corsJson(
         {
@@ -898,36 +1056,97 @@ export async function POST(request) {
     }
   }
 
+  if (!googleVisionApiKey) {
+    return corsJson(
+      {
+        success: false,
+        error: "GOOGLE_VISION_API_KEY is not configured.",
+      },
+      { status: 500 },
+    );
+  }
+
   try {
-    const detectLinesResult = await callSupabaseFunction("detect-ingredient-lines", {
-      image: imageData,
+    const transcriptLines = await getClaudeTranscription({
+      apiKey: anthropicApiKey,
+      model: anthropicModel,
+      mediaType: parsedImage.mediaType,
+      base64Data: parsedImage.base64Data,
     });
-    const detectedLines = Array.isArray(detectLinesResult?.lines)
-      ? detectLinesResult.lines
-      : [];
-    if (!detectedLines.length) {
+
+    const quality = await getClaudeQualityAssessment({
+      apiKey: anthropicApiKey,
+      model: anthropicModel,
+      mediaType: parsedImage.mediaType,
+      base64Data: parsedImage.base64Data,
+      transcriptLines,
+    });
+
+    if (!quality.accept) {
       return corsJson(
         {
           success: false,
           error:
-            asText(detectLinesResult?.error) ||
-            "Unable to detect ingredient lines from this image.",
+            quality.message ||
+            "Could not read the ingredient text clearly. Please retake the photo.",
+          quality,
         },
-        { status: 500 },
+        { status: 200 },
       );
     }
 
-    const data = normalizeDetectIngredientLinesData(
-      detectedLines,
-      imageWidth,
-      imageHeight,
-    );
-    const claudeTranscript = data.map((line) => asText(line?.text)).filter(Boolean);
-    if (!data.length) {
+    if (!transcriptLines.length) {
       return corsJson(
         {
           success: false,
-          error: "Could not read the ingredient text clearly. Please retake the photo.",
+          error: "No ingredient lines were transcribed. Please retake the photo.",
+          quality,
+        },
+        { status: 200 },
+      );
+    }
+
+    const vision = await getVisionWords({
+      googleVisionApiKey,
+      base64Data: parsedImage.base64Data,
+    });
+
+    if (!vision.words.length) {
+      return corsJson(
+        {
+          success: false,
+          error: "No text detected in this image. Please retake the photo.",
+          quality,
+        },
+        { status: 200 },
+      );
+    }
+
+    const visualLines = groupVisualLines(vision.words);
+    const lineMapping = await matchLinesToVisualLines({
+      apiKey: anthropicApiKey,
+      model: anthropicModel,
+      transcriptLines,
+      visualLines,
+    });
+
+    const lines = buildLinesFromTranscriptMapping({
+      transcriptLines,
+      visualLines,
+      lineMapping,
+      visionWords: vision.words,
+      pageWidth: vision.pageWidth,
+      pageHeight: vision.pageHeight,
+      normalizeWidth: imageWidth || vision.pageWidth,
+      normalizeHeight: imageHeight || vision.pageHeight,
+    }).filter(isValidLineData);
+
+    if (!lines.length) {
+      return corsJson(
+        {
+          success: false,
+          error: "Could not map ingredient text to line regions. Please retake the photo.",
+          quality,
         },
         { status: 200 },
       );
@@ -936,15 +1155,9 @@ export async function POST(request) {
     return corsJson(
       {
         success: true,
-        data,
-        claude_transcript: claudeTranscript,
-        quality: {
-          accept: true,
-          confidence: "high",
-          reasons: [],
-          warnings: [],
-          message: "",
-        },
+        data: lines,
+        claude_transcript: lines.map((line) => asText(line?.text)).filter(Boolean),
+        quality,
       },
       { status: 200 },
     );

@@ -1292,6 +1292,11 @@ function DishEditorModal({ editor }) {
               <div className="restaurant-legacy-editor-dish-ingredient-list">
                 {ingredients.map((ingredient, index) => {
                   const selectedBrandName = asText(ingredient?.brands?.[0]?.name);
+                  const selectedBrandImage = asText(
+                    ingredient?.brands?.[0]?.brandImage ||
+                      ingredient?.brands?.[0]?.image ||
+                      ingredient?.brandImage,
+                  );
                   const hasAssignedBrand = Boolean(selectedBrandName);
                   const requiresBrandBeforeConfirm =
                     Boolean(ingredient?.brandRequired) &&
@@ -1385,6 +1390,13 @@ function DishEditorModal({ editor }) {
                             <span className="restaurant-legacy-editor-dish-ingredient-brand-selected">
                               Selected: {selectedBrandName}
                             </span>
+                          ) : null}
+                          {hasAssignedBrand && selectedBrandImage ? (
+                            <img
+                              src={selectedBrandImage}
+                              alt={`${selectedBrandName} thumbnail`}
+                              className="restaurant-legacy-editor-dish-ingredient-brand-thumb"
+                            />
                           ) : null}
                           <div className="restaurant-legacy-editor-dish-ingredient-brand-actions">
                             <button

@@ -8,6 +8,7 @@ import AppTopbar from "../components/AppTopbar";
 import AppLoadingScreen from "../components/AppLoadingScreen";
 import PageShell from "../components/PageShell";
 import { Button, Modal, useToast } from "../components/ui";
+import { useIngredientScanController } from "../components/ingredient-scan/useIngredientScanController";
 import { loadAllergenDietConfig } from "../lib/allergenConfig";
 import {
   fetchManagerRestaurants,
@@ -292,6 +293,7 @@ export default function RestaurantClient() {
   const queryClient = useQueryClient();
   const { push: pushToast } = useToast();
   const searchParams = useSearchParams();
+  const ingredientScan = useIngredientScanController();
 
   const slug = searchParams?.get("slug") || "";
   const qrParam = searchParams?.get("qr");
@@ -767,18 +769,10 @@ export default function RestaurantClient() {
         return await detectMenuCorners({ imageData, width, height });
       },
       onOpenIngredientLabelScan: async ({ ingredientName }) => {
-        const { showManagerIngredientPhotoUploadModal } = await import(
-          "../lib/managerIngredientPhotoCapture"
-        );
-        let result = null;
-        await showManagerIngredientPhotoUploadModal(ingredientName, {
-          inlineResults: true,
-          skipRowUpdates: true,
-          onApplyResults: async (payload) => {
-            result = payload;
-          },
+        return await ingredientScan.openScan({
+          ingredientName,
+          supportedDiets: boot?.config?.DIETS || [],
         });
-        return result;
       },
     },
   });
@@ -1131,6 +1125,8 @@ export default function RestaurantClient() {
           </div>
         </div>
       </Modal>
+
+      {ingredientScan.modalNode}
     </PageShell>
   );
 }
