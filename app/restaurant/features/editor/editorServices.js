@@ -84,14 +84,22 @@ export async function analyzeDishWithAi({ dishName, text, imageData }) {
 }
 
 export async function analyzeIngredientNameWithAi({ ingredientName, dishName }) {
-  const payload = {
-    ingredientText: asText(ingredientName),
-    productName: asText(ingredientName),
-    dishName: asText(dishName),
-    analysisMode: "name",
-  };
+  const response = await fetch("/api/ingredient-name-analysis", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      ingredientName: asText(ingredientName),
+      dishName: asText(dishName),
+    }),
+  });
 
-  const result = await postFunctionViaProxy("analyze-brand-allergens", payload);
+  const result = await parseFunctionResponse(response, "ingredient-name-analysis");
+  if (result?.success === false) {
+    throw new Error(asText(result?.error) || "Ingredient name analysis failed.");
+  }
+
   return {
     allergens: Array.isArray(result?.allergens) ? result.allergens : [],
     diets: Array.isArray(result?.diets) ? result.diets : [],

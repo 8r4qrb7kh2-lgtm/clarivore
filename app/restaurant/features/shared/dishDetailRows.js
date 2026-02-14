@@ -87,6 +87,29 @@ function readIngredientNames(dish, matcher) {
   );
 }
 
+function readDietBlockers(dish, keys) {
+  const map =
+    dish?.ingredientsBlockingDiets &&
+    typeof dish.ingredientsBlockingDiets === "object"
+      ? dish.ingredientsBlockingDiets
+      : null;
+  if (!map) return [];
+
+  const targetTokens = (Array.isArray(keys) ? keys : [])
+    .map((value) => normalizeToken(value))
+    .filter(Boolean);
+  if (!targetTokens.length) return [];
+
+  for (const [dietKey, blockers] of Object.entries(map)) {
+    const token = normalizeToken(dietKey);
+    if (!token || !targetTokens.includes(token)) continue;
+    if (Array.isArray(blockers)) return blockers;
+    return [];
+  }
+
+  return [];
+}
+
 export function buildAllergenRows(dish, savedAllergens) {
   if (!savedAllergens.length) return [];
 
@@ -129,22 +152,24 @@ export function buildDietRows(dish, savedDiets) {
     const detail = !compatible ? lookupDetailByKeys(dish, [item.key, item.label]) : "";
     const detailReasons = parseDetailReasons(detail);
 
-    const blockers = Array.isArray(dish?.ingredientsBlockingDiets?.[item.label])
-      ? dish.ingredientsBlockingDiets[item.label]
-      : Array.isArray(dish?.ingredientsBlockingDiets?.[item.key])
-        ? dish.ingredientsBlockingDiets[item.key]
-        : [];
+    const blockers = readDietBlockers(dish, [item.label, item.key]);
 
     const blockerReasons = blockers.map((entry) => entry?.ingredient || entry?.name || "");
+    const allBlockersRemovable =
+      blockers.length > 0 && blockers.every((entry) => Boolean(entry?.removable));
+    const accommodatable = !compatible && allBlockersRemovable;
+    const reasonValues = blockerReasons.length ? blockerReasons : detailReasons;
 
     return {
       key: item.key,
-      tone: compatible ? "good" : "bad",
+      tone: compatible ? "good" : accommodatable ? "warn" : "bad",
       title: compatible
         ? `${item.emoji || "✓"} This dish is ${item.label}`
-        : `${item.emoji || "⚠"} This dish is not ${item.label}`,
+        : accommodatable
+          ? `${item.emoji || "⚠"} This dish can be adjusted to be ${item.label}`
+          : `${item.emoji || "⚠"} This dish is not ${item.label}`,
       reasonBullet: !compatible
-        ? buildDueBullet(detailReasons.length ? detailReasons : blockerReasons)
+        ? buildDueBullet(reasonValues)
         : "",
     };
   });

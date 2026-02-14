@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { Button, Input, Modal, Textarea } from "../../../components/ui";
+import ConfirmToggleButton from "../../../components/ingredient-scan/ConfirmToggleButton";
 import {
   buildDefaultScannerCorners,
   fileToDataUrl as readScannerFileToDataUrl,
@@ -2043,14 +2044,13 @@ function DishEditorModal({ editor, runtimeConfigHealth }) {
                       </div>
 
                       <div className="restaurant-legacy-editor-dish-ingredient-status-col">
-                        <button
-                          type="button"
-                          className={`btn btnSmall ${ingredient.confirmed ? "btnSuccess" : "btnGhost"}`}
+                        <ConfirmToggleButton
+                          confirmed={ingredient.confirmed === true}
+                          pendingLabel="Mark confirmed"
+                          confirmedLabel="Confirmed"
                           disabled={requiresBrandBeforeConfirm}
                           onClick={() => toggleIngredientConfirmed(index)}
-                        >
-                          {ingredient.confirmed ? "✓ Confirmed" : "Mark confirmed"}
-                        </button>
+                        />
                       </div>
                     </div>
 

@@ -83,6 +83,29 @@ export default function FrontProductCaptureModal({
     return "#94a3b8";
   }, [hintTone]);
 
+  const captureActionState = useMemo(() => {
+    if (cameraActive) return "camera_live";
+    if (photoDataUrl) return "photo_ready";
+    return "initial";
+  }, [cameraActive, photoDataUrl]);
+
+  function stopActiveCamera() {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+    }
+    setCameraActive(false);
+  }
+
+  function resetCaptureState() {
+    setPhotoDataUrl("");
+    setProductName("");
+    setHint("");
+    setHintTone("neutral");
+    setError("");
+    stopActiveCamera();
+  }
+
   async function runFrontAnalysis(imageDataUrl) {
     if (!imageDataUrl) return;
 
@@ -149,6 +172,7 @@ export default function FrontProductCaptureModal({
 
     try {
       const dataUrl = await readFileAsDataUrl(file);
+      stopActiveCamera();
       const normalized = await normalizeFrontPhoto(dataUrl);
       setPhotoDataUrl(normalized);
       await runFrontAnalysis(normalized);
@@ -192,13 +216,8 @@ export default function FrontProductCaptureModal({
     canvas.getContext("2d").drawImage(video, 0, 0);
     const dataUrl = canvas.toDataURL("image/jpeg", 0.9);
 
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach((track) => track.stop());
-      streamRef.current = null;
-    }
-
+    stopActiveCamera();
     const normalized = await normalizeFrontPhoto(dataUrl);
-    setCameraActive(false);
     setPhotoDataUrl(normalized);
     await runFrontAnalysis(normalized);
   }
@@ -269,7 +288,7 @@ export default function FrontProductCaptureModal({
         </div>
 
         <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
-          {!cameraActive ? (
+          {captureActionState === "initial" ? (
             <>
               <button
                 type="button"
@@ -290,37 +309,42 @@ export default function FrontProductCaptureModal({
                 Upload Photo
               </button>
             </>
-          ) : (
+          ) : null}
+
+          {captureActionState === "camera_live" ? (
+            <>
+              <button
+                type="button"
+                className="btn"
+                style={{ background: "#17663a" }}
+                disabled={analyzing || saving}
+                onClick={captureCameraFrame}
+              >
+                Capture
+              </button>
+              <button
+                type="button"
+                className="btn"
+                style={{ background: "#6b7280" }}
+                disabled={analyzing || saving}
+                onClick={stopActiveCamera}
+              >
+                Cancel Camera
+              </button>
+            </>
+          ) : null}
+
+          {captureActionState === "photo_ready" ? (
             <button
               type="button"
               className="btn"
-              style={{ background: "#17663a" }}
+              style={{ background: "#6b7280" }}
               disabled={analyzing || saving}
-              onClick={captureCameraFrame}
+              onClick={resetCaptureState}
             >
-              Capture
+              Retake
             </button>
-          )}
-          <button
-            type="button"
-            className="btn"
-            style={{ background: "#6b7280" }}
-            disabled={analyzing || saving}
-            onClick={() => {
-              setPhotoDataUrl("");
-              setProductName("");
-              setHint("");
-              setHintTone("neutral");
-              setError("");
-              if (streamRef.current) {
-                streamRef.current.getTracks().forEach((track) => track.stop());
-                streamRef.current = null;
-              }
-              setCameraActive(false);
-            }}
-          >
-            Retake
-          </button>
+          ) : null}
           <input
             ref={fileInputRef}
             type="file"

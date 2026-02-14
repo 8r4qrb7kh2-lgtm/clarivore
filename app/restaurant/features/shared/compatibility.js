@@ -2,6 +2,10 @@ function asText(value) {
   return String(value ?? "").trim();
 }
 
+function normalizeToken(value) {
+  return asText(value).toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
 function normalizeList(list, normalizer) {
   if (!Array.isArray(list)) return [];
   const seen = new Set();
@@ -13,6 +17,32 @@ function normalizeList(list, normalizer) {
     values.push(normalized);
   });
   return values;
+}
+
+function resolveDietLookupToken(value, normalizeDietLabel) {
+  const normalized = asText(
+    typeof normalizeDietLabel === "function" ? normalizeDietLabel(value) : "",
+  );
+  return normalizeToken(normalized || value);
+}
+
+function readDietBlockers(item, diet, normalizeDietLabel) {
+  const map =
+    item?.ingredientsBlockingDiets && typeof item.ingredientsBlockingDiets === "object"
+      ? item.ingredientsBlockingDiets
+      : null;
+  if (!map) return [];
+
+  const target = resolveDietLookupToken(diet, normalizeDietLabel);
+  if (!target) return [];
+
+  for (const [key, value] of Object.entries(map)) {
+    if (resolveDietLookupToken(key, normalizeDietLabel) !== target) continue;
+    if (Array.isArray(value)) return value;
+    return [];
+  }
+
+  return [];
 }
 
 export function createCompatibilityEngine(config = {}) {
@@ -77,9 +107,7 @@ export function createCompatibilityEngine(config = {}) {
           itemConflicts.length > 0 &&
           itemConflicts.every((allergen) => removableAllergens.has(allergen));
 
-        const dietBlocks = Array.isArray(item?.ingredientsBlockingDiets?.[diet])
-          ? item.ingredientsBlockingDiets[diet]
-          : [];
+        const dietBlocks = readDietBlockers(item, diet, normalizeDietLabel);
 
         const allDietBlocksRemovable =
           dietBlocks.length > 0 &&

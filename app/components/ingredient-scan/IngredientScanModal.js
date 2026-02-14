@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Modal } from "../ui";
 import FrontProductCaptureModal from "./FrontProductCaptureModal";
+import ConfirmToggleButton from "./ConfirmToggleButton";
 import {
   analyzeIngredientLabelImage,
   analyzeTranscriptFlags,
@@ -313,23 +314,13 @@ function CroppedLineCard({
           />
           Line {lineIndex + 1}
         </div>
-        <button
-          type="button"
-          className="btn"
-          style={{
-            background: line?.confirmed ? "#17663a" : "#f59e0b",
-            border: line?.confirmed
-              ? "2px solid #22c55e"
-              : "2px solid #d97706",
-            padding: "7px 14px",
-            fontSize: "0.84rem",
-            minWidth: 100,
-          }}
+        <ConfirmToggleButton
+          confirmed={line?.confirmed === true}
+          pendingLabel="Confirm"
+          confirmedLabel="Confirmed"
           disabled={editLocked || savingEdit}
           onClick={() => onToggleConfirm(lineIndex)}
-        >
-          {line?.confirmed ? "Confirmed" : "Confirm"}
-        </button>
+        />
       </div>
 
       {cropImageData ? (
@@ -684,6 +675,35 @@ export default function IngredientScanModal({
   const totalLines = lines.length;
   const confirmedLines = lines.filter((line) => line?.confirmed).length;
   const allConfirmed = totalLines > 0 && confirmedLines === totalLines;
+  const captureActionState = useMemo(() => {
+    if (cameraActive) return "camera_live";
+    if (analysisResult || lines.length > 0) return "review_ready";
+    if (capturedPhoto) return "photo_ready";
+    return "initial";
+  }, [analysisResult, cameraActive, capturedPhoto, lines.length]);
+
+  function stopActiveCamera() {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+    }
+    setCameraActive(false);
+  }
+
+  function resetCaptureState() {
+    setCapturedPhoto("");
+    setAnalysisResult(null);
+    setLines([]);
+    setAllergenFlags([]);
+    setStatusText("");
+    setErrorText("");
+    stopActiveCamera();
+  }
+
+  function cancelLiveCamera() {
+    stopActiveCamera();
+    setErrorText("");
+  }
 
   async function startCamera() {
     setErrorText("");
@@ -720,12 +740,7 @@ export default function IngredientScanModal({
     canvas.getContext("2d").drawImage(video, 0, 0);
     const dataUrl = canvas.toDataURL("image/jpeg", 0.92);
 
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach((track) => track.stop());
-      streamRef.current = null;
-    }
-
-    setCameraActive(false);
+    stopActiveCamera();
     setCapturedPhoto(dataUrl);
     setStatusText("Photo captured. Click Analyze.");
     setErrorText("");
@@ -737,8 +752,8 @@ export default function IngredientScanModal({
 
     try {
       const dataUrl = await readFileAsDataUrl(file);
+      stopActiveCamera();
       setCapturedPhoto(dataUrl);
-      setCameraActive(false);
       setStatusText("Photo loaded. Click Analyze.");
       setErrorText("");
     } catch (error) {
@@ -776,7 +791,7 @@ export default function IngredientScanModal({
   }
 
   async function analyzePhoto() {
-    if (!capturedPhoto || analysisBusy) return;
+    if (!capturedPhoto || analysisBusy || analysisPending || applying) return;
     setAnalysisBusy(true);
     setErrorText("");
     if (backgroundMode) {
@@ -1000,13 +1015,13 @@ export default function IngredientScanModal({
           </div>
 
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-            {!cameraActive ? (
+            {captureActionState === "initial" ? (
               <>
                 <button
                   type="button"
                   className="btn"
                   style={{ background: "#4c5ad4" }}
-                  disabled={analysisBusy || applying}
+                  disabled={analysisBusy || analysisPending || applying}
                   onClick={startCamera}
                 >
                   Use Camera
@@ -1015,55 +1030,71 @@ export default function IngredientScanModal({
                   type="button"
                   className="btn"
                   style={{ background: "#4c5ad4" }}
-                  disabled={analysisBusy || applying}
+                  disabled={analysisBusy || analysisPending || applying}
                   onClick={() => fileInputRef.current?.click()}
                 >
                   Upload Photo
                 </button>
               </>
-            ) : (
+            ) : null}
+
+            {captureActionState === "camera_live" ? (
+              <>
+                <button
+                  type="button"
+                  className="btn"
+                  style={{ background: "#17663a" }}
+                  disabled={analysisBusy || analysisPending || applying}
+                  onClick={captureFrame}
+                >
+                  Capture
+                </button>
+                <button
+                  type="button"
+                  className="btn"
+                  style={{ background: "#6b7280" }}
+                  disabled={analysisBusy || analysisPending || applying}
+                  onClick={cancelLiveCamera}
+                >
+                  Cancel Camera
+                </button>
+              </>
+            ) : null}
+
+            {captureActionState === "photo_ready" ? (
+              <>
+                <button
+                  type="button"
+                  className="btn"
+                  style={{ background: "#17663a" }}
+                  disabled={!capturedPhoto || analysisBusy || analysisPending || applying}
+                  onClick={analyzePhoto}
+                >
+                  {analysisBusy ? "Analyzing..." : "Analyze"}
+                </button>
+                <button
+                  type="button"
+                  className="btn"
+                  style={{ background: "#6b7280" }}
+                  disabled={analysisBusy || analysisPending || applying}
+                  onClick={resetCaptureState}
+                >
+                  Retake
+                </button>
+              </>
+            ) : null}
+
+            {captureActionState === "review_ready" ? (
               <button
                 type="button"
                 className="btn"
-                style={{ background: "#17663a" }}
-                disabled={analysisBusy || applying}
-                onClick={captureFrame}
+                style={{ background: "#6b7280" }}
+                disabled={analysisBusy || analysisPending || applying}
+                onClick={resetCaptureState}
               >
-                Capture
+                Retake
               </button>
-            )}
-
-            <button
-              type="button"
-              className="btn"
-              style={{ background: "#17663a" }}
-              disabled={!capturedPhoto || analysisBusy || applying}
-              onClick={analyzePhoto}
-            >
-              {analysisBusy ? "Analyzing..." : "Analyze"}
-            </button>
-
-            <button
-              type="button"
-              className="btn"
-              style={{ background: "#6b7280" }}
-              disabled={analysisBusy || applying}
-              onClick={() => {
-                setCapturedPhoto("");
-                setAnalysisResult(null);
-                setLines([]);
-                setAllergenFlags([]);
-                setStatusText("");
-                setErrorText("");
-                if (streamRef.current) {
-                  streamRef.current.getTracks().forEach((track) => track.stop());
-                  streamRef.current = null;
-                }
-                setCameraActive(false);
-              }}
-            >
-              Retake
-            </button>
+            ) : null}
 
             <input
               ref={fileInputRef}

@@ -3,13 +3,11 @@ import { corsJson, corsOptions } from "../_shared/cors";
 export const runtime = "nodejs";
 
 const PINNED_ANTHROPIC_MODEL = "claude-sonnet-4-5";
-// Anthropic enforces a minimum thinking budget of 1024 tokens.
 const ANTHROPIC_THINKING_BUDGET_TOKENS = 1024;
-// Keep enough response tokens available after thinking to avoid truncated JSON.
-const ANTHROPIC_MIN_OUTPUT_TOKENS = 3000;
+const ANTHROPIC_MIN_OUTPUT_TOKENS = 1800;
 const MAX_ANALYSIS_ATTEMPTS = 3;
-
 const CONFIG_TTL_MS = 5 * 60 * 1000;
+
 let cachedConfig = null;
 let cachedConfigAt = 0;
 
@@ -60,6 +58,12 @@ function buildCodebook(values) {
   };
 }
 
+function buildPromptCodebookLines(entries) {
+  return (Array.isArray(entries) ? entries : [])
+    .map((entry) => `${entry.code} = ${entry.value}`)
+    .join("\n");
+}
+
 function parseCodeList(input, codeToValue) {
   const out = [];
   (Array.isArray(input) ? input : []).forEach((value) => {
@@ -87,12 +91,6 @@ function parseLegacyList(input, tokenToValue, aliasResolver) {
     }
   });
   return out;
-}
-
-function buildPromptCodebookLines(entries) {
-  return (Array.isArray(entries) ? entries : [])
-    .map((entry) => `${entry.code} = ${entry.value}`)
-    .join("\n");
 }
 
 function extractBalancedJsonObjects(value) {
@@ -177,11 +175,9 @@ function readSupabaseRuntime() {
   const url =
     asText(process.env.SUPABASE_URL) ||
     asText(process.env.NEXT_PUBLIC_SUPABASE_URL);
-
   const key =
     asText(process.env.SUPABASE_ANON_KEY) ||
     asText(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
-
   return { url, key };
 }
 
@@ -274,33 +270,11 @@ async function callAnthropicText({
   systemPrompt,
   userPrompt,
   maxTokens = 1200,
-  enableThinking = true,
 }) {
-  const minTarget = enableThinking
-    ? ANTHROPIC_THINKING_BUDGET_TOKENS + ANTHROPIC_MIN_OUTPUT_TOKENS
-    : 600;
   const safeMaxTokens = Math.max(
     Number(maxTokens) || 0,
-    minTarget,
+    ANTHROPIC_THINKING_BUDGET_TOKENS + ANTHROPIC_MIN_OUTPUT_TOKENS,
   );
-
-  const requestPayload = {
-    model: asText(model) || PINNED_ANTHROPIC_MODEL,
-    max_tokens: safeMaxTokens,
-    system: systemPrompt,
-    messages: [
-      {
-        role: "user",
-        content: userPrompt,
-      },
-    ],
-  };
-  if (enableThinking) {
-    requestPayload.thinking = {
-      type: "enabled",
-      budget_tokens: ANTHROPIC_THINKING_BUDGET_TOKENS,
-    };
-  }
 
   const response = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
@@ -309,7 +283,21 @@ async function callAnthropicText({
       "anthropic-version": "2023-06-01",
       "content-type": "application/json",
     },
-    body: JSON.stringify(requestPayload),
+    body: JSON.stringify({
+      model: asText(model) || PINNED_ANTHROPIC_MODEL,
+      max_tokens: safeMaxTokens,
+      thinking: {
+        type: "enabled",
+        budget_tokens: ANTHROPIC_THINKING_BUDGET_TOKENS,
+      },
+      system: systemPrompt,
+      messages: [
+        {
+          role: "user",
+          content: userPrompt,
+        },
+      ],
+    }),
   });
 
   const payloadText = await response.text();
@@ -345,6 +333,27 @@ async function callAnthropicText({
   return text || asText(payload?.content);
 }
 
+function buildDietAliasResolver({ glutenFreeLabel, pescatarianLabel }) {
+  return (token) => {
+    const safe = canonicalToken(token);
+    if (!safe) return "";
+    if (
+      safe === "gf" ||
+      safe.includes("glutenfree") ||
+      safe.includes("nogluten") ||
+      safe.includes("glutenless") ||
+      safe.includes("withoutgluten") ||
+      safe.includes("freefromgluten")
+    ) {
+      return glutenFreeLabel || "";
+    }
+    if (safe === "pescetarian") {
+      return pescatarianLabel || "";
+    }
+    return "";
+  };
+}
+
 function isTransientFailure(error) {
   const message = asText(error?.message).toLowerCase();
   return (
@@ -368,38 +377,29 @@ async function repairJsonResponse({ apiKey, model, rawOutput }) {
   const repairSystemPrompt = `You repair malformed JSON.
 Return ONLY valid JSON with this exact shape:
 {
-  "flags": [
-    {
-      "ingredient": "name",
-      "word_indices": [0],
-      "allergen_codes": [1],
-      "diet_codes": [1],
-      "risk_type": "contained"
-    }
-  ]
+  "allergen_codes": [1, 2],
+  "diet_codes": [1, 2],
+  "reasoning": "brief explanation"
 }`;
-  const repairUserPrompt = `Repair this output into valid JSON only. Do not add markdown.
+  const repairUserPrompt = `Repair this model output into valid JSON only. Do not add markdown.
 
 ${rawOutput}`;
-
   return await callAnthropicText({
     apiKey,
     model,
     systemPrompt: repairSystemPrompt,
     userPrompt: repairUserPrompt,
-    maxTokens: 1200,
-    enableThinking: false,
+    maxTokens: 800,
   });
 }
 
-async function runFlagAnalysis({
+async function runNameAnalysis({
   apiKey,
   model,
   systemPrompt,
   userPrompt,
 }) {
   let lastError = null;
-
   for (let attempt = 1; attempt <= MAX_ANALYSIS_ATTEMPTS; attempt += 1) {
     try {
       const responseText = await callAnthropicText({
@@ -407,14 +407,10 @@ async function runFlagAnalysis({
         model,
         systemPrompt,
         userPrompt,
-        maxTokens: 1800,
-        enableThinking: true,
+        maxTokens: 1400,
       });
-
       const parsed = parseClaudeJson(responseText);
-      if (parsed && typeof parsed === "object" && Array.isArray(parsed.flags)) {
-        return parsed;
-      }
+      if (parsed && typeof parsed === "object") return parsed;
 
       const repairedText = await repairJsonResponse({
         apiKey,
@@ -422,11 +418,9 @@ async function runFlagAnalysis({
         rawOutput: responseText.slice(0, 8000),
       });
       const repaired = parseClaudeJson(repairedText);
-      if (repaired && typeof repaired === "object" && Array.isArray(repaired.flags)) {
-        return repaired;
-      }
+      if (repaired && typeof repaired === "object") return repaired;
 
-      lastError = new Error("Ingredient allergen analyzer returned malformed JSON output.");
+      lastError = new Error("Ingredient name analyzer returned malformed JSON output.");
     } catch (error) {
       lastError = error;
       if (!isTransientFailure(error) || attempt >= MAX_ANALYSIS_ATTEMPTS) {
@@ -436,28 +430,7 @@ async function runFlagAnalysis({
     }
   }
 
-  throw lastError || new Error("Failed to analyze ingredient transcript.");
-}
-
-function buildDietAliasResolver({ glutenFreeLabel, pescatarianLabel }) {
-  return (token) => {
-    const safe = canonicalToken(token);
-    if (!safe) return "";
-    if (
-      safe === "gf" ||
-      safe.includes("glutenfree") ||
-      safe.includes("nogluten") ||
-      safe.includes("glutenless") ||
-      safe.includes("withoutgluten") ||
-      safe.includes("freefromgluten")
-    ) {
-      return glutenFreeLabel || "";
-    }
-    if (safe === "pescetarian") {
-      return pescatarianLabel || "";
-    }
-    return "";
-  };
+  throw lastError || new Error("Ingredient name analysis failed.");
 }
 
 export async function POST(request) {
@@ -466,28 +439,41 @@ export async function POST(request) {
     body = await request.json();
   } catch {
     return corsJson(
-      { success: false, error: "Invalid JSON payload.", flags: [] },
+      {
+        success: false,
+        allergens: [],
+        diets: [],
+        reasoning: "",
+        error: "Invalid JSON payload.",
+      },
       { status: 400 },
     );
   }
 
-  const transcriptLines = (Array.isArray(body?.transcriptLines) ? body.transcriptLines : [])
-    .map((line) => asText(line))
-    .filter(Boolean);
-
-  if (!transcriptLines.length) {
-    return corsJson({ success: true, flags: [] }, { status: 200 });
+  const ingredientName = asText(body?.ingredientName);
+  const dishName = asText(body?.dishName);
+  if (!ingredientName) {
+    return corsJson(
+      {
+        success: false,
+        allergens: [],
+        diets: [],
+        reasoning: "",
+        error: "ingredientName is required.",
+      },
+      { status: 400 },
+    );
   }
 
   const anthropicApiKey = asText(process.env.ANTHROPIC_API_KEY);
-  const anthropicModel = PINNED_ANTHROPIC_MODEL;
-
   if (!anthropicApiKey) {
     return corsJson(
       {
         success: false,
+        allergens: [],
+        diets: [],
+        reasoning: "",
         error: "ANTHROPIC_API_KEY is not configured.",
-        flags: [],
       },
       { status: 500 },
     );
@@ -529,33 +515,33 @@ export async function POST(request) {
       return "";
     };
 
+    const veganLabel = findDietLabel("Vegan");
+    const vegetarianLabel = findDietLabel("Vegetarian");
     const pescatarianLabel = findDietLabel("Pescatarian");
     const glutenFreeLabel = findDietLabel("Gluten-free", "Gluten Free");
-
     const resolveDietAlias = buildDietAliasResolver({
       glutenFreeLabel,
       pescatarianLabel,
     });
 
+    const expandDietHierarchy = (diets) => {
+      const out = new Set(dedupeStrings(diets));
+      if (veganLabel && out.has(veganLabel)) {
+        if (vegetarianLabel) out.add(vegetarianLabel);
+        if (pescatarianLabel) out.add(pescatarianLabel);
+      }
+      if (vegetarianLabel && out.has(vegetarianLabel)) {
+        if (pescatarianLabel) out.add(pescatarianLabel);
+      }
+      return Array.from(out);
+    };
+
     const allergenCodebookText = buildPromptCodebookLines(allergenCodebook.entries);
     const dietCodebookText = buildPromptCodebookLines(dietCodebook.entries);
-
-    const wordList = [];
-    transcriptLines.forEach((line) => {
-      line.split(/\s+/).forEach((word) => {
-        const safe = asText(word);
-        if (safe) wordList.push(safe);
-      });
-    });
-
-    const indexedWordList = wordList
-      .map((word, index) => `${index}: "${word}"`)
-      .join("\n");
-
     const systemPrompt = `You are an allergen and dietary preference analyzer for a restaurant allergen awareness system.
-Think carefully and step-by-step before answering, but only output valid JSON.
+Think carefully and step-by-step before answering, but output ONLY valid JSON.
 
-Analyze transcripted ingredient-label lines and return allergen/diet flags tied to word indices.
+Analyze a SINGLE ingredient or product name.
 Use ONLY numeric codes from these codebooks.
 
 Allergen codebook:
@@ -564,107 +550,47 @@ ${allergenCodebookText}
 Diet codebook:
 ${dietCodebookText}
 
-CRITICAL ALLERGEN RULES:
-- ONLY flag allergens from the codebook list.
+CRITICAL RULES:
+- ONLY use allergens from the codebook.
 - Do NOT flag "gluten" as a separate allergen.
-- Oats by themselves are NOT wheat unless wheat is explicitly present.
+- Oats alone are NOT wheat unless explicitly wheat.
+- Treat coconut as tree nut for allergen purposes.
+- You MUST evaluate gluten-free explicitly.
 
-RISK TYPES:
-- "contained" for direct ingredients or explicit contains statements.
-- "cross-contamination" for may contain/shared facility style risk.
-
-PHRASE + WORD INDEX RULES:
-- Define each flagged ingredient phrase strictly by delimiter boundaries.
-- Start at the first word immediately after the nearest previous comma (or semicolon), or line start if none.
-- End at the last word immediately before the next comma (or semicolon), or line end if none.
-- "ingredient" must be exactly that bounded phrase and must not be a parent/group phrase.
-- "word_indices" must include ALL and ONLY words from that exact bounded phrase.
-- "word_indices" must be unique and sorted ascending.
-- For a single-word ingredient phrase, return exactly one index.
-- Do NOT include section-heading/context tokens (e.g. "INGREDIENTS:", "CONTAINS") unless they are part of that exact bounded ingredient phrase.
-- If an allergen is in a sub-ingredient phrase, do NOT return the broader parent phrase name.
-- Always use 0-based word indices from the provided numbered transcript list.
-
-DIET PRECISION RULES:
-- Add diet codes only when directly justified by ingredient evidence in that phrase.
-- Do NOT infer broader diet failures from stricter diets.
-- If one phrase indicates a Vegan violation, do not auto-add Vegetarian/Pescatarian unless separately justified.
-- For wheat/gluten evidence, prefer Gluten-free only (unless additional direct evidence supports other diet violations).
-
-EXAMPLES:
-- Positive: "Wheat flour" -> include allergen wheat, include Gluten-free diet violation.
-- Negative: "Wheat flour" -> do NOT include Vegan, Vegetarian, or Pescatarian diet violations from that phrase alone.
-- Delimiter-boundary positive: "Confectionery Coating (Allulose, Sustainable Palm Kernel And Palm Oil, Whole Milk Powder, Tapioca Fiber, Cocoa Processed With Alkali, Sunflower Lecithin)" with milk evidence -> ingredient must be exactly "Whole Milk Powder".
-- Delimiter-boundary negative: For the same line, do NOT return "Confectionery Coating (Allulose, Sustainable Palm Kernel And Palm Oil, Whole Milk Powder, Tapioca Fiber, Cocoa Processed With Alkali, Sunflower Lecithin)" as the milk ingredient phrase.
-
-Return ONLY JSON:
+Return ONLY:
 {
-  "flags": [
-    {
-      "ingredient": "Wheat flour",
-      "word_indices": [45, 46],
-      "allergen_codes": [1],
-      "diet_codes": [2],
-      "risk_type": "contained"
-    }
-  ]
+  "allergen_codes": [1, 2],
+  "diet_codes": [1, 2],
+  "reasoning": "brief explanation"
 }`;
+    const userPrompt = `Ingredient name: ${ingredientName}
+Dish context: ${dishName || "Unknown dish"}
 
-    const userPrompt = `Here is the transcript with each word numbered (0-based):
-${indexedWordList}
+Infer allergen and diet compatibility from typical formulation.`;
 
-Use the numbered list above for word_indices. Do not compute your own indices outside this list.`;
-
-    const parsed = await runFlagAnalysis({
+    const parsed = await runNameAnalysis({
       apiKey: anthropicApiKey,
-      model: anthropicModel,
+      model: PINNED_ANTHROPIC_MODEL,
       systemPrompt,
       userPrompt,
     });
 
-    const mapAllergens = (raw) =>
-      dedupeStrings([
-        ...parseCodeList(raw?.allergen_codes, allergenCodebook.codeToValue),
-        ...parseLegacyList(raw?.allergens, allergenCodebook.tokenToValue),
-      ]);
+    const allergens = dedupeStrings([
+      ...parseCodeList(parsed?.allergen_codes, allergenCodebook.codeToValue),
+      ...parseLegacyList(parsed?.allergens, allergenCodebook.tokenToValue),
+    ]);
 
-    const mapDiets = (raw) =>
-      dedupeStrings([
-        ...parseCodeList(raw?.diet_codes, dietCodebook.codeToValue),
-        ...parseLegacyList(raw?.diets, dietCodebook.tokenToValue, resolveDietAlias),
-      ]);
-
-    const flags = parsed.flags
-      .map((flag) => {
-        const riskRaw = asText(flag?.risk_type).toLowerCase();
-        const risk_type = riskRaw.includes("cross")
-          ? "cross-contamination"
-          : "contained";
-
-        const word_indices = (Array.isArray(flag?.word_indices) ? flag.word_indices : [])
-          .map((value) => Number(value))
-          .filter((value) => Number.isFinite(value) && value >= 0)
-          .map((value) => Math.trunc(value));
-
-        return {
-          ingredient: asText(flag?.ingredient),
-          word_indices,
-          allergens: mapAllergens(flag),
-          diets: mapDiets(flag),
-          risk_type,
-        };
-      })
-      .filter((flag) =>
-        flag.ingredient ||
-        flag.word_indices.length ||
-        flag.allergens.length ||
-        flag.diets.length,
-      );
+    const diets = expandDietHierarchy([
+      ...parseCodeList(parsed?.diet_codes, dietCodebook.codeToValue),
+      ...parseLegacyList(parsed?.diets, dietCodebook.tokenToValue, resolveDietAlias),
+    ]);
 
     return corsJson(
       {
         success: true,
-        flags,
+        allergens,
+        diets,
+        reasoning: asText(parsed?.reasoning),
       },
       { status: 200 },
     );
@@ -672,8 +598,10 @@ Use the numbered list above for word_indices. Do not compute your own indices ou
     return corsJson(
       {
         success: false,
-        error: asText(error?.message) || "Failed to analyze ingredient transcript.",
-        flags: [],
+        allergens: [],
+        diets: [],
+        reasoning: "",
+        error: asText(error?.message) || "Ingredient name analysis failed.",
       },
       { status: 200 },
     );

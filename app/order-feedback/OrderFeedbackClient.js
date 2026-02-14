@@ -22,6 +22,36 @@ function getDefaultConfig() {
   };
 }
 
+function normalizeToken(value) {
+  return String(value ?? "").trim().toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+function resolveDietLookupToken(value, normalizeDietLabel) {
+  const strict = String(
+    typeof normalizeDietLabel === "function" ? normalizeDietLabel(value) : "",
+  ).trim();
+  return normalizeToken(strict || value);
+}
+
+function readDietBlockers(item, diet, normalizeDietLabel) {
+  const map =
+    item?.ingredientsBlockingDiets && typeof item.ingredientsBlockingDiets === "object"
+      ? item.ingredientsBlockingDiets
+      : null;
+  if (!map) return [];
+
+  const target = resolveDietLookupToken(diet, normalizeDietLabel);
+  if (!target) return [];
+
+  for (const [key, value] of Object.entries(map)) {
+    if (resolveDietLookupToken(key, normalizeDietLabel) !== target) continue;
+    if (Array.isArray(value)) return value;
+    return [];
+  }
+
+  return [];
+}
+
 export default function OrderFeedbackClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -182,8 +212,11 @@ export default function OrderFeedbackClient() {
                 removableAllergenSet.has(allergen),
               );
 
-            const blockingIngredients =
-              item?.ingredientsBlockingDiets?.[userDiet] || [];
+            const blockingIngredients = readDietBlockers(
+              item,
+              userDiet,
+              config.normalizeDietLabel,
+            );
             const allBlockingIngredientsRemovable =
               blockingIngredients.length > 0 &&
               blockingIngredients.every((ingredient) => ingredient?.removable);
