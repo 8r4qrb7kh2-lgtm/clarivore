@@ -787,8 +787,8 @@ export default function RestaurantClient() {
       onAnalyzeIngredientScanRequirement: async ({ ingredientName, dishName }) => {
         return await analyzeIngredientScanRequirement({ ingredientName, dishName });
       },
-      onAnalyzeMenuImage: async ({ imageData }) => {
-        return await analyzeMenuImageWithAi({ imageData });
+      onAnalyzeMenuImage: async (payload) => {
+        return await analyzeMenuImageWithAi(payload || {});
       },
       onSubmitIngredientAppeal: async ({
         restaurantId,

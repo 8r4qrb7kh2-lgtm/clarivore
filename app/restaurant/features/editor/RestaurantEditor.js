@@ -2521,6 +2521,7 @@ function MenuPagesModal({ editor }) {
   const replaceInputsRef = useRef({});
   const addInputRef = useRef(null);
   const [sessionSnapshot, setSessionSnapshot] = useState(null);
+  const [pageSourceIndexMap, setPageSourceIndexMap] = useState([]);
   const [imageChangedPageIndices, setImageChangedPageIndices] = useState([]);
   const [removeUnmatchedPageIndices, setRemoveUnmatchedPageIndices] = useState([]);
   const [sessionDirty, setSessionDirty] = useState(false);
@@ -2546,11 +2547,16 @@ function MenuPagesModal({ editor }) {
 
   useEffect(() => {
     if (editor.menuPagesOpen && !wasOpenRef.current) {
-      setSessionSnapshot(
+      const snapshot =
         typeof editor.createDraftSnapshot === "function"
           ? editor.createDraftSnapshot()
-          : null,
-      );
+          : null;
+      setSessionSnapshot(snapshot);
+      const snapshotImages = Array.isArray(snapshot?.menuImages)
+        ? snapshot.menuImages
+        : [];
+      const sourceMap = snapshotImages.map((_, index) => index);
+      setPageSourceIndexMap(sourceMap);
       setImageChangedPageIndices([]);
       setRemoveUnmatchedPageIndices([]);
       setSessionDirty(false);
@@ -2559,6 +2565,7 @@ function MenuPagesModal({ editor }) {
       setSaveNotice("");
     } else if (!editor.menuPagesOpen && wasOpenRef.current) {
       setSessionSnapshot(null);
+      setPageSourceIndexMap([]);
       setImageChangedPageIndices([]);
       setRemoveUnmatchedPageIndices([]);
       setSessionDirty(false);
@@ -2598,6 +2605,16 @@ function MenuPagesModal({ editor }) {
       removeUnmatchedPageIndices,
       pageCount,
     );
+    const sourceMap =
+      Array.isArray(pageSourceIndexMap) && pageSourceIndexMap.length
+        ? pageSourceIndexMap
+        : Array.from({ length: pageCount }, (_, index) => index);
+    const baselineMenuImages = Array.isArray(sessionSnapshot?.menuImages)
+      ? sessionSnapshot.menuImages
+      : [];
+    const baselineOverlays = Array.isArray(sessionSnapshot?.overlays)
+      ? sessionSnapshot.overlays
+      : [];
 
     if (!pagesToAnalyze.length) {
       closeMenuModal();
@@ -2610,6 +2627,9 @@ function MenuPagesModal({ editor }) {
         pageIndices: pagesToAnalyze,
         removeUnmatchedPageIndices: pagesToRemoveUnmatched,
         requireDetectionsForPageIndices: pagesToAnalyze,
+        pageSourceIndexMap: sourceMap,
+        baselineMenuImages,
+        baselineOverlays,
       });
 
       if (!result?.success) {
@@ -2635,8 +2655,11 @@ function MenuPagesModal({ editor }) {
     editor.analyzeMenuPagesAndMergeOverlays,
     editor.draftMenuImages.length,
     imageChangedPageIndices,
+    pageSourceIndexMap,
     removeUnmatchedPageIndices,
     saveBusy,
+    sessionSnapshot?.menuImages,
+    sessionSnapshot?.overlays,
     sessionDirty,
   ]);
 
@@ -2695,6 +2718,7 @@ function MenuPagesModal({ editor }) {
               if (!file) return;
               const image = await fileToDataUrl(file);
               editor.addMenuPage(image);
+              setPageSourceIndexMap((current) => [...current, null]);
               markImagePageChanged(editor.draftMenuImages.length);
               event.target.value = "";
             }}
@@ -2730,6 +2754,13 @@ function MenuPagesModal({ editor }) {
                     onClick={() => {
                       const pageCount = Math.max(editor.draftMenuImages.length, 1);
                       editor.moveMenuPage(index, index - 1);
+                      setPageSourceIndexMap((current) => {
+                        const next = [...current];
+                        if (index <= 0 || index >= next.length) return current;
+                        const [moved] = next.splice(index, 1);
+                        next.splice(index - 1, 0, moved);
+                        return next;
+                      });
                       setImageChangedPageIndices((current) =>
                         remapPageIndexListForMove(current, index, index - 1, pageCount),
                       );
@@ -2751,6 +2782,13 @@ function MenuPagesModal({ editor }) {
                     onClick={() => {
                       const pageCount = Math.max(editor.draftMenuImages.length, 1);
                       editor.moveMenuPage(index, index + 1);
+                      setPageSourceIndexMap((current) => {
+                        const next = [...current];
+                        if (index < 0 || index >= next.length - 1) return current;
+                        const [moved] = next.splice(index, 1);
+                        next.splice(index + 1, 0, moved);
+                        return next;
+                      });
                       setImageChangedPageIndices((current) =>
                         remapPageIndexListForMove(current, index, index + 1, pageCount),
                       );
@@ -2799,6 +2837,9 @@ function MenuPagesModal({ editor }) {
                     onClick={() => {
                       const pageCount = Math.max(editor.draftMenuImages.length, 1);
                       editor.removeMenuPage(index);
+                      setPageSourceIndexMap((current) =>
+                        current.filter((_, sourceIndex) => sourceIndex !== index),
+                      );
                       setImageChangedPageIndices((current) =>
                         remapPageIndexListForRemove(current, index, pageCount),
                       );

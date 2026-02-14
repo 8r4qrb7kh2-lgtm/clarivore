@@ -66,21 +66,46 @@ export async function detectMenuCorners({ imageData, width, height }) {
   };
 }
 
-export async function analyzeMenuImageWithAi({ imageData }) {
+export async function analyzeMenuImageWithAi(payload = {}) {
+  const requestBody = {
+    mode: asText(payload?.mode),
+    imageData: asText(payload?.imageData),
+    oldImageData: asText(payload?.oldImageData),
+    newImageData: asText(payload?.newImageData),
+    overlays: Array.isArray(payload?.overlays) ? payload.overlays : undefined,
+    imageWidth: Number.isFinite(Number(payload?.imageWidth))
+      ? Number(payload.imageWidth)
+      : undefined,
+    imageHeight: Number.isFinite(Number(payload?.imageHeight))
+      ? Number(payload.imageHeight)
+      : undefined,
+    pageIndex: Number.isFinite(Number(payload?.pageIndex))
+      ? Number(payload.pageIndex)
+      : undefined,
+  };
+
+  if (!requestBody.mode) delete requestBody.mode;
+  if (!requestBody.imageData) delete requestBody.imageData;
+  if (!requestBody.oldImageData) delete requestBody.oldImageData;
+  if (!requestBody.newImageData) delete requestBody.newImageData;
+  if (!Array.isArray(requestBody.overlays)) delete requestBody.overlays;
+
   const response = await fetch("/api/menu-image-analysis", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({
-      imageData: asText(imageData),
-    }),
+    body: JSON.stringify(requestBody),
   });
 
   const result = await parseFunctionResponse(response, "menu-image-analysis");
   return {
     success: Boolean(result?.success),
     dishes: Array.isArray(result?.dishes) ? result.dishes : [],
+    updatedOverlays: Array.isArray(result?.updatedOverlays)
+      ? result.updatedOverlays
+      : [],
+    newOverlays: Array.isArray(result?.newOverlays) ? result.newOverlays : [],
     rawDishCount: Number.isFinite(Number(result?.rawDishCount))
       ? Number(result.rawDishCount)
       : Array.isArray(result?.dishes)

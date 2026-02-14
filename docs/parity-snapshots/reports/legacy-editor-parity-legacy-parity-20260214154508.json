@@ -1,0 +1,17 @@
+{
+  "title": "Legacy Editor Parity Verification",
+  "runId": "legacy-parity-20260214154508",
+  "baseUrl": "http://127.0.0.1:8081",
+  "slug": "",
+  "startedAt": "2026-02-14T15:45:08.819Z",
+  "finishedAt": "2026-02-14T15:45:08.819Z",
+  "checks": [
+    {
+      "name": "Unhandled failure",
+      "status": "failed",
+      "error": "Missing restaurant slug. Pass --slug or VERIFY_RESTAURANT_SLUG."
+    }
+  ],
+  "screenshots": [],
+  "verdict": "FAIL"
+}

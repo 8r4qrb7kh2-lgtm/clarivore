@@ -16,6 +16,16 @@ function normalizeToken(value) {
   return asText(value).toLowerCase().replace(/[^a-z0-9]/g, "");
 }
 
+function normalizeCoordSpace(value) {
+  const token = normalizeToken(value);
+  if (!token) return "";
+  if (token === "ratio" || token.includes("normalizedratio")) return "ratio";
+  if (token === "percent" || token === "percentage" || token.includes("pct")) return "percent";
+  if (token === "pixel" || token === "pixels" || token === "px") return "pixels";
+  if (token === "thousand" || token.includes("thousand")) return "thousand";
+  return "";
+}
+
 function dedupeTokenList(values) {
   const output = [];
   const seen = new Set();
@@ -484,6 +494,79 @@ async function toDataUrlFromImage(source) {
   } catch {
     return "";
   }
+}
+
+async function readImageDimensions(dataUrl) {
+  const source = asText(dataUrl);
+  if (!source) return null;
+
+  return await new Promise((resolve) => {
+    const image = new Image();
+    image.onload = () => {
+      const width = Number(image.naturalWidth || image.width || 0);
+      const height = Number(image.naturalHeight || image.height || 0);
+      if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) {
+        resolve(null);
+        return;
+      }
+      resolve({ width, height });
+    };
+    image.onerror = () => resolve(null);
+    image.src = source;
+  });
+}
+
+async function normalizeImageToLetterboxedSquare(source, targetSize = 1000) {
+  const dataUrl = await toDataUrlFromImage(source);
+  if (!dataUrl) return null;
+
+  return await new Promise((resolve) => {
+    const image = new Image();
+    image.onload = () => {
+      const naturalWidth = Number(image.naturalWidth || image.width || 0);
+      const naturalHeight = Number(image.naturalHeight || image.height || 0);
+      if (!Number.isFinite(naturalWidth) || !Number.isFinite(naturalHeight) || naturalWidth <= 0 || naturalHeight <= 0) {
+        resolve(null);
+        return;
+      }
+
+      const canvas = document.createElement("canvas");
+      canvas.width = targetSize;
+      canvas.height = targetSize;
+      const context = canvas.getContext("2d");
+      if (!context) {
+        resolve(null);
+        return;
+      }
+
+      context.fillStyle = "#000000";
+      context.fillRect(0, 0, targetSize, targetSize);
+      context.imageSmoothingEnabled = true;
+      context.imageSmoothingQuality = "high";
+
+      const scale = Math.min(targetSize / naturalWidth, targetSize / naturalHeight);
+      const width = naturalWidth * scale;
+      const height = naturalHeight * scale;
+      const x = (targetSize - width) / 2;
+      const y = (targetSize - height) / 2;
+
+      try {
+        context.drawImage(image, x, y, width, height);
+      } catch {
+        resolve(null);
+        return;
+      }
+
+      resolve({
+        dataUrl: canvas.toDataURL("image/jpeg", 0.92),
+        metrics: { x, y, w: width, h: height, scale },
+        imageWidth: naturalWidth,
+        imageHeight: naturalHeight,
+      });
+    };
+    image.onerror = () => resolve(null);
+    image.src = dataUrl;
+  });
 }
 
 function cloneSnapshotList(value) {
@@ -1535,6 +1618,9 @@ export function useRestaurantEditor({
     pageIndices,
     removeUnmatchedPageIndices,
     requireDetectionsForPageIndices,
+    pageSourceIndexMap,
+    baselineMenuImages,
+    baselineOverlays,
   } = {}) => {
     if (!callbacks?.onAnalyzeMenuImage) {
       return {
@@ -1585,11 +1671,16 @@ export function useRestaurantEditor({
         .map((index) => clamp(Math.floor(index), 0, pageCount - 1)),
     );
 
+    const sourceIndexMap = Array.isArray(pageSourceIndexMap) ? pageSourceIndexMap : [];
+    const baselineImageList = Array.isArray(baselineMenuImages) ? baselineMenuImages : [];
+    const baselineOverlayList = Array.isArray(baselineOverlays) ? baselineOverlays : [];
+    const useRemapMode = baselineImageList.length > 0 && sourceIndexMap.length > 0;
+
     const pageDetections = [];
     const pageResults = [];
     const errors = [];
 
-    const normalizeDetectedRect = (dish) => {
+    const normalizeDetectedRect = (dish, imageDimensions) => {
       const name = asText(dish?.name || dish?.dishName);
       if (!name) return null;
 
@@ -1601,15 +1692,101 @@ export function useRestaurantEditor({
         !Number.isFinite(xValue) ||
         !Number.isFinite(yValue) ||
         !Number.isFinite(wValue) ||
-        !Number.isFinite(hValue)
+        !Number.isFinite(hValue) ||
+        wValue <= 0 ||
+        hValue <= 0
       ) {
         return null;
       }
 
-      let x = clamp(xValue, 0, 100);
-      let y = clamp(yValue, 0, 100);
-      let w = clamp(wValue, 0.5, 100);
-      let h = clamp(hValue, 0.5, 100);
+      const explicitCoordSpace = normalizeCoordSpace(
+        dish?.coordSpace ||
+          dish?.coord_space ||
+          dish?.space ||
+          dish?.units ||
+          dish?.unit,
+      );
+      const values = [xValue, yValue, wValue, hValue];
+      const minValue = Math.min(...values);
+      const maxAbsValue = Math.max(...values.map((value) => Math.abs(value)));
+      const nonNegative = minValue >= 0;
+
+      const looksRatio = nonNegative && maxAbsValue <= 1.2;
+      const fitsPercent =
+        nonNegative &&
+        xValue <= 100.5 &&
+        yValue <= 100.5 &&
+        wValue <= 100.5 &&
+        hValue <= 100.5 &&
+        xValue + wValue <= 100.5 &&
+        yValue + hValue <= 100.5;
+      const looksThousand =
+        nonNegative &&
+        maxAbsValue > 100 &&
+        maxAbsValue <= 1200 &&
+        xValue + wValue <= 1200 &&
+        yValue + hValue <= 1200;
+
+      const imageWidth = Number(imageDimensions?.width);
+      const imageHeight = Number(imageDimensions?.height);
+      const hasImageDimensions =
+        Number.isFinite(imageWidth) &&
+        Number.isFinite(imageHeight) &&
+        imageWidth > 0 &&
+        imageHeight > 0;
+      const matchesPixelScale =
+        hasImageDimensions &&
+        nonNegative &&
+        (maxAbsValue > 100 || xValue + wValue > 100.5 || yValue + hValue > 100.5) &&
+        xValue <= imageWidth * 1.1 &&
+        wValue <= imageWidth * 1.1 &&
+        yValue <= imageHeight * 1.1 &&
+        hValue <= imageHeight * 1.1 &&
+        xValue + wValue <= imageWidth * 1.1 &&
+        yValue + hValue <= imageHeight * 1.1;
+
+      let mode = explicitCoordSpace;
+      if (!mode) {
+        if (looksRatio) {
+          mode = "ratio";
+        } else if (fitsPercent) {
+          mode = "percent";
+        } else if (matchesPixelScale) {
+          mode = "pixels";
+        } else if (looksThousand) {
+          mode = "thousand";
+        }
+      }
+
+      let x = xValue;
+      let y = yValue;
+      let w = wValue;
+      let h = hValue;
+
+      if (mode === "ratio") {
+        x *= 100;
+        y *= 100;
+        w *= 100;
+        h *= 100;
+      } else if (mode === "pixels") {
+        if (!hasImageDimensions) return null;
+        x = (xValue / imageWidth) * 100;
+        y = (yValue / imageHeight) * 100;
+        w = (wValue / imageWidth) * 100;
+        h = (hValue / imageHeight) * 100;
+      } else if (mode === "thousand") {
+        x = xValue / 10;
+        y = yValue / 10;
+        w = wValue / 10;
+        h = hValue / 10;
+      } else if (mode !== "percent") {
+        return null;
+      }
+
+      x = clamp(x, 0, 100);
+      y = clamp(y, 0, 100);
+      w = clamp(w, 0.5, 100);
+      h = clamp(h, 0.5, 100);
 
       if (x > 99.5) x = 99.5;
       if (y > 99.5) y = 99.5;
@@ -1623,6 +1800,215 @@ export function useRestaurantEditor({
         y,
         w,
         h,
+        _mode: mode || "unknown",
+      };
+    };
+
+    const resolveRemapRectToThousand = (dish, imageDimensions) => {
+      const name = asText(dish?.name || dish?.dishName);
+      if (!name) return null;
+
+      const xValue = Number(dish?.x);
+      const yValue = Number(dish?.y);
+      const wValue = Number(dish?.w);
+      const hValue = Number(dish?.h);
+      if (
+        !Number.isFinite(xValue) ||
+        !Number.isFinite(yValue) ||
+        !Number.isFinite(wValue) ||
+        !Number.isFinite(hValue) ||
+        wValue <= 0 ||
+        hValue <= 0
+      ) {
+        return null;
+      }
+
+      const explicitCoordSpace = normalizeCoordSpace(
+        dish?.coordSpace ||
+          dish?.coord_space ||
+          dish?.space ||
+          dish?.units ||
+          dish?.unit,
+      );
+      const values = [xValue, yValue, wValue, hValue];
+      const minValue = Math.min(...values);
+      const maxAbsValue = Math.max(...values.map((value) => Math.abs(value)));
+      const nonNegative = minValue >= 0;
+      const looksRatio = nonNegative && maxAbsValue <= 1.2;
+      const fitsPercent =
+        nonNegative &&
+        xValue <= 100.5 &&
+        yValue <= 100.5 &&
+        wValue <= 100.5 &&
+        hValue <= 100.5 &&
+        xValue + wValue <= 100.5 &&
+        yValue + hValue <= 100.5;
+      const looksThousand =
+        nonNegative &&
+        maxAbsValue <= 1200 &&
+        xValue + wValue <= 1200 &&
+        yValue + hValue <= 1200;
+
+      const imageWidth = Number(imageDimensions?.width);
+      const imageHeight = Number(imageDimensions?.height);
+      const hasImageDimensions =
+        Number.isFinite(imageWidth) &&
+        Number.isFinite(imageHeight) &&
+        imageWidth > 0 &&
+        imageHeight > 0;
+      const matchesPixelScale =
+        hasImageDimensions &&
+        nonNegative &&
+        xValue <= imageWidth * 1.1 &&
+        wValue <= imageWidth * 1.1 &&
+        yValue <= imageHeight * 1.1 &&
+        hValue <= imageHeight * 1.1 &&
+        xValue + wValue <= imageWidth * 1.1 &&
+        yValue + hValue <= imageHeight * 1.1;
+
+      let mode = explicitCoordSpace;
+      if (!mode) {
+        if (looksRatio) {
+          mode = "ratio";
+        } else if (fitsPercent) {
+          mode = "percent";
+        } else if (matchesPixelScale) {
+          mode = "pixels";
+        } else if (looksThousand) {
+          mode = "thousand";
+        }
+      }
+
+      let x = xValue;
+      let y = yValue;
+      let w = wValue;
+      let h = hValue;
+
+      if (mode === "ratio") {
+        x *= 1000;
+        y *= 1000;
+        w *= 1000;
+        h *= 1000;
+      } else if (mode === "percent") {
+        x *= 10;
+        y *= 10;
+        w *= 10;
+        h *= 10;
+      } else if (mode === "pixels") {
+        if (!hasImageDimensions) return null;
+        x = (x / imageWidth) * 1000;
+        y = (y / imageHeight) * 1000;
+        w = (w / imageWidth) * 1000;
+        h = (h / imageHeight) * 1000;
+      } else if (mode !== "thousand") {
+        return null;
+      }
+
+      x = clamp(x, 0, 1000);
+      y = clamp(y, 0, 1000);
+      if (x > 999) x = 999;
+      if (y > 999) y = 999;
+      w = clamp(w, 1, 1000 - x);
+      h = clamp(h, 1, 1000 - y);
+
+      return {
+        name,
+        x,
+        y,
+        w,
+        h,
+        _mode: mode || "unknown",
+      };
+    };
+
+    const normalizeRemappedRect = (dish, metrics, imageDimensions) => {
+      const normalized = resolveRemapRectToThousand(dish, imageDimensions);
+      if (!normalized) return null;
+
+      const xOffset = Number(metrics?.x);
+      const yOffset = Number(metrics?.y);
+      const width = Number(metrics?.w);
+      const height = Number(metrics?.h);
+      if (
+        !Number.isFinite(xOffset) ||
+        !Number.isFinite(yOffset) ||
+        !Number.isFinite(width) ||
+        !Number.isFinite(height) ||
+        width <= 0 ||
+        height <= 0
+      ) {
+        return null;
+      }
+
+      let x = ((normalized.x - xOffset) / width) * 100;
+      let y = ((normalized.y - yOffset) / height) * 100;
+      let w = (normalized.w / width) * 100;
+      let h = (normalized.h / height) * 100;
+
+      x = clamp(x, 0, 100);
+      y = clamp(y, 0, 100);
+      w = clamp(w, 0.5, 100);
+      h = clamp(h, 0.5, 100);
+      if (x > 99.5) x = 99.5;
+      if (y > 99.5) y = 99.5;
+      w = clamp(w, 0.5, 100 - x);
+      h = clamp(h, 0.5, 100 - y);
+
+      return {
+        name: normalized.name,
+        x,
+        y,
+        w,
+        h,
+        _mode: normalized._mode || "unknown",
+      };
+    };
+
+    const toLegacyOverlayHint = (overlay, metrics) => {
+      const name = asText(overlay?.id || overlay?.name);
+      if (!name) return null;
+
+      const xValue = Number(overlay?.x);
+      const yValue = Number(overlay?.y);
+      const wValue = Number(overlay?.w);
+      const hValue = Number(overlay?.h);
+      if (
+        !Number.isFinite(xValue) ||
+        !Number.isFinite(yValue) ||
+        !Number.isFinite(wValue) ||
+        !Number.isFinite(hValue) ||
+        wValue <= 0 ||
+        hValue <= 0
+      ) {
+        return null;
+      }
+
+      const x = clamp(xValue, 0, 100);
+      const y = clamp(yValue, 0, 100);
+      const w = clamp(wValue, 0.1, 100);
+      const h = clamp(hValue, 0.1, 100);
+      const metricsX = Number(metrics?.x);
+      const metricsY = Number(metrics?.y);
+      const metricsW = Number(metrics?.w);
+      const metricsH = Number(metrics?.h);
+      if (
+        !Number.isFinite(metricsX) ||
+        !Number.isFinite(metricsY) ||
+        !Number.isFinite(metricsW) ||
+        !Number.isFinite(metricsH) ||
+        metricsW <= 0 ||
+        metricsH <= 0
+      ) {
+        return null;
+      }
+
+      return {
+        name,
+        x: (x / 100) * metricsW + metricsX,
+        y: (y / 100) * metricsH + metricsY,
+        w: (w / 100) * metricsW,
+        h: (h / 100) * metricsH,
+        coordSpace: "thousand",
       };
     };
 
@@ -1643,6 +2029,225 @@ export function useRestaurantEditor({
         continue;
       }
 
+      if (useRemapMode) {
+        // eslint-disable-next-line no-await-in-loop
+        const newNormalized = await normalizeImageToLetterboxedSquare(imageSource, 1000);
+        if (!newNormalized?.dataUrl || !newNormalized?.metrics) {
+          const message = "Failed to prepare new menu image for remap analysis.";
+          errors.push(`Page ${pageIndex + 1}: ${message}`);
+          pageResults.push({
+            pageIndex,
+            success: false,
+            rawDishCount: 0,
+            validDishCount: 0,
+            removedUnmatched: removeUnmatchedPages.has(pageIndex),
+            requiredDetections: requiredDetectionPages.has(pageIndex),
+            error: message,
+          });
+          continue;
+        }
+
+        const sourceIndexRaw = Number(sourceIndexMap[pageIndex]);
+        const sourceIndex = Number.isFinite(sourceIndexRaw) &&
+          sourceIndexRaw >= 0 &&
+          sourceIndexRaw < baselineImageList.length
+          ? Math.floor(sourceIndexRaw)
+          : null;
+
+        let oldNormalized = null;
+        if (sourceIndex !== null) {
+          const oldImageSource = asText(baselineImageList[sourceIndex]);
+          if (oldImageSource) {
+            // eslint-disable-next-line no-await-in-loop
+            oldNormalized = await normalizeImageToLetterboxedSquare(oldImageSource, 1000);
+            if (!oldNormalized?.dataUrl || !oldNormalized?.metrics) {
+              const message = "Failed to prepare previous menu image for remap analysis.";
+              errors.push(`Page ${pageIndex + 1}: ${message}`);
+              pageResults.push({
+                pageIndex,
+                success: false,
+                rawDishCount: 0,
+                validDishCount: 0,
+                removedUnmatched: removeUnmatchedPages.has(pageIndex),
+                requiredDetections: requiredDetectionPages.has(pageIndex),
+                error: message,
+              });
+              continue;
+            }
+          }
+        }
+
+        const sourcePageOverlays = sourceIndex === null
+          ? []
+          : baselineOverlayList.filter((overlay) => {
+              const page = firstFiniteNumber(
+                overlay?.pageIndex,
+                overlay?.page,
+                overlay?.pageNumber,
+                overlay?.page_number,
+              );
+              return (Number.isFinite(page) ? Math.floor(page) : 0) === sourceIndex;
+            });
+        const transformedOverlays = oldNormalized?.metrics
+          ? sourcePageOverlays
+              .map((overlay) => toLegacyOverlayHint(overlay, oldNormalized.metrics))
+              .filter(Boolean)
+          : [];
+
+        try {
+          // eslint-disable-next-line no-await-in-loop
+          const result = await callbacks.onAnalyzeMenuImage({
+            mode: "remap",
+            oldImageData: oldNormalized?.dataUrl || "",
+            newImageData: newNormalized.dataUrl,
+            overlays: transformedOverlays,
+            imageWidth: 1000,
+            imageHeight: 1000,
+            pageIndex,
+          });
+
+          if (!result?.success) {
+            const rawDishCount = Number.isFinite(Number(result?.rawDishCount))
+              ? Number(result.rawDishCount)
+              : Array.isArray(result?.updatedOverlays) || Array.isArray(result?.newOverlays)
+                ? (Array.isArray(result?.updatedOverlays) ? result.updatedOverlays.length : 0) +
+                  (Array.isArray(result?.newOverlays) ? result.newOverlays.length : 0)
+                : 0;
+            const message = asText(result?.error) || "Menu remap analysis failed.";
+            errors.push(`Page ${pageIndex + 1}: ${message}`);
+            pageResults.push({
+              pageIndex,
+              success: false,
+              rawDishCount,
+              validDishCount: 0,
+              removedUnmatched: removeUnmatchedPages.has(pageIndex),
+              requiredDetections: requiredDetectionPages.has(pageIndex),
+              error: message,
+            });
+            continue;
+          }
+
+          const rawUpdated = Array.isArray(result?.updatedOverlays)
+            ? result.updatedOverlays
+            : [];
+          let rawNew = Array.isArray(result?.newOverlays)
+            ? result.newOverlays
+            : [];
+          if (!rawUpdated.length && !rawNew.length && Array.isArray(result?.dishes)) {
+            rawNew = result.dishes;
+          }
+
+          const seenUpdated = new Set();
+          const updatedDishes = rawUpdated
+            .map((dish) =>
+              normalizeRemappedRect(
+                dish,
+                newNormalized.metrics,
+                { width: newNormalized.imageWidth, height: newNormalized.imageHeight },
+              ),
+            )
+            .filter(Boolean)
+            .filter((dish) => {
+              const token = normalizeToken(dish?.name);
+              if (!token || seenUpdated.has(token)) return false;
+              seenUpdated.add(token);
+              return true;
+            });
+
+          const seenNew = new Set();
+          const updatedTokens = new Set(updatedDishes.map((dish) => normalizeToken(dish?.name)));
+          const newDishes = rawNew
+            .map((dish) =>
+              normalizeRemappedRect(
+                dish,
+                newNormalized.metrics,
+                { width: newNormalized.imageWidth, height: newNormalized.imageHeight },
+              ),
+            )
+            .filter(Boolean)
+            .filter((dish) => {
+              const token = normalizeToken(dish?.name);
+              if (!token || updatedTokens.has(token) || seenNew.has(token)) return false;
+              seenNew.add(token);
+              return true;
+            });
+
+          const rawDishCount = Number.isFinite(Number(result?.rawDishCount))
+            ? Number(result.rawDishCount)
+            : rawUpdated.length + rawNew.length;
+          const validDishCount = updatedDishes.length + newDishes.length;
+
+          if (process.env.NODE_ENV !== "production") {
+            const modeCounts = [...updatedDishes, ...newDishes].reduce((accumulator, dish) => {
+              const key = asText(dish?._mode) || "unknown";
+              accumulator[key] = (accumulator[key] || 0) + 1;
+              return accumulator;
+            }, {});
+            console.debug("[restaurant-editor] menu remap normalization", {
+              pageIndex: pageIndex + 1,
+              sourceIndex,
+              rawDishCount,
+              validDishCount,
+              updatedCount: updatedDishes.length,
+              newCount: newDishes.length,
+              modeCounts,
+            });
+          }
+
+          if (requiredDetectionPages.has(pageIndex) && validDishCount === 0) {
+            const pageError =
+              `Page ${pageIndex + 1}: No valid dish overlays detected. Try a clearer image or retry analysis.`;
+            errors.push(pageError);
+            pageResults.push({
+              pageIndex,
+              success: false,
+              rawDishCount,
+              validDishCount,
+              removedUnmatched: removeUnmatchedPages.has(pageIndex),
+              requiredDetections: true,
+              error: pageError,
+            });
+            continue;
+          }
+
+          const detectedTokens = new Set(
+            [...updatedDishes, ...newDishes]
+              .map((dish) => normalizeToken(dish?.name))
+              .filter(Boolean),
+          );
+          pageDetections.push({
+            pageIndex,
+            mode: "remap",
+            updatedDishes,
+            newDishes,
+            detectedTokens,
+          });
+          pageResults.push({
+            pageIndex,
+            success: true,
+            rawDishCount,
+            validDishCount,
+            removedUnmatched: removeUnmatchedPages.has(pageIndex),
+            requiredDetections: requiredDetectionPages.has(pageIndex),
+            error: "",
+          });
+          continue;
+        } catch (error) {
+          const message = asText(error?.message) || "Menu remap analysis failed.";
+          errors.push(`Page ${pageIndex + 1}: ${message}`);
+          pageResults.push({
+            pageIndex,
+            success: false,
+            rawDishCount: 0,
+            validDishCount: 0,
+            removedUnmatched: removeUnmatchedPages.has(pageIndex),
+            requiredDetections: requiredDetectionPages.has(pageIndex),
+            error: message,
+          });
+          continue;
+        }
+      }
+
       // eslint-disable-next-line no-await-in-loop
       const imageData = await toDataUrlFromImage(imageSource);
       if (!imageData) {
@@ -1659,6 +2264,8 @@ export function useRestaurantEditor({
         });
         continue;
       }
+      // eslint-disable-next-line no-await-in-loop
+      const imageDimensions = await readImageDimensions(imageData);
 
       try {
         // eslint-disable-next-line no-await-in-loop
@@ -1694,7 +2301,7 @@ export function useRestaurantEditor({
             : 0;
         const seenDishTokens = new Set();
         const dishes = (Array.isArray(result?.dishes) ? result.dishes : [])
-          .map((dish) => normalizeDetectedRect(dish))
+          .map((dish) => normalizeDetectedRect(dish, imageDimensions))
           .filter(Boolean)
           .filter((dish) => {
             const token = normalizeToken(dish.name);
@@ -1703,6 +2310,20 @@ export function useRestaurantEditor({
             return true;
           });
         const validDishCount = dishes.length;
+
+        if (process.env.NODE_ENV !== "production") {
+          const modeCounts = dishes.reduce((accumulator, dish) => {
+            const key = asText(dish?._mode) || "unknown";
+            accumulator[key] = (accumulator[key] || 0) + 1;
+            return accumulator;
+          }, {});
+          console.debug("[restaurant-editor] menu analysis normalization", {
+            pageIndex: pageIndex + 1,
+            rawDishCount,
+            validDishCount,
+            modeCounts,
+          });
+        }
 
         if (requiredDetectionPages.has(pageIndex) && validDishCount === 0) {
           const pageError =
@@ -1722,6 +2343,7 @@ export function useRestaurantEditor({
 
         pageDetections.push({
           pageIndex,
+          mode: "detect",
           dishes,
           detectedTokens: new Set(dishes.map((dish) => normalizeToken(dish?.name))),
         });
@@ -1767,7 +2389,101 @@ export function useRestaurantEditor({
     applyOverlayList((current) => {
       const next = [...current];
 
-      pageDetections.forEach(({ pageIndex, dishes, detectedTokens }) => {
+      pageDetections.forEach((detection) => {
+        const pageIndex = Number(detection?.pageIndex) || 0;
+
+        if (detection?.mode === "remap") {
+          const usedMatchIndexes = new Set();
+          const mergeDish = (dish) => {
+            const token = normalizeToken(dish?.name);
+            if (!token) return;
+
+            const matchedIndex = next.findIndex((overlay, index) => {
+              if (usedMatchIndexes.has(index)) return false;
+              const page = Number.isFinite(Number(overlay?.pageIndex))
+                ? Number(overlay.pageIndex)
+                : 0;
+              if (page !== pageIndex) return false;
+              const overlayToken = normalizeToken(overlay?.id || overlay?.name);
+              return overlayToken === token;
+            });
+
+            if (matchedIndex >= 0) {
+              usedMatchIndexes.add(matchedIndex);
+              const existing = next[matchedIndex];
+              next[matchedIndex] = ensureOverlayVisibility(
+                {
+                  ...existing,
+                  id: asText(existing?.id) || dish.name,
+                  name: asText(existing?.name) || dish.name,
+                  x: dish.x,
+                  y: dish.y,
+                  w: dish.w,
+                  h: dish.h,
+                  pageIndex,
+                },
+                pageCount,
+              );
+              updatedCount += 1;
+              return;
+            }
+
+            const nextOverlayKey = `ov-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+            const nextOverlay = ensureOverlayVisibility(
+              normalizeOverlay(
+                {
+                  _editorKey: nextOverlayKey,
+                  id: dish.name,
+                  name: dish.name,
+                  description: "",
+                  x: dish.x,
+                  y: dish.y,
+                  w: dish.w,
+                  h: dish.h,
+                  pageIndex,
+                  allergens: [],
+                  diets: [],
+                  removable: [],
+                  crossContaminationAllergens: [],
+                  crossContaminationDiets: [],
+                  details: {},
+                  ingredients: [],
+                },
+                next.length,
+                nextOverlayKey,
+              ),
+              pageCount,
+            );
+            next.push(nextOverlay);
+            addedCount += 1;
+          };
+
+          (Array.isArray(detection.updatedDishes) ? detection.updatedDishes : []).forEach(mergeDish);
+          (Array.isArray(detection.newDishes) ? detection.newDishes : []).forEach(mergeDish);
+
+          if (removeUnmatchedPages.has(pageIndex)) {
+            for (let index = next.length - 1; index >= 0; index -= 1) {
+              const overlay = next[index];
+              const page = Number.isFinite(Number(overlay?.pageIndex))
+                ? Number(overlay.pageIndex)
+                : 0;
+              if (page !== pageIndex) continue;
+              const token = normalizeToken(overlay?.id || overlay?.name);
+              if (!token || !detection.detectedTokens?.has(token)) {
+                next.splice(index, 1);
+                removedCount += 1;
+              }
+            }
+          }
+
+          return;
+        }
+
+        const dishes = Array.isArray(detection?.dishes) ? detection.dishes : [];
+        const detectedTokens = detection?.detectedTokens instanceof Set
+          ? detection.detectedTokens
+          : new Set();
+
         if (removeUnmatchedPages.has(pageIndex)) {
           for (let index = next.length - 1; index >= 0; index -= 1) {
             const overlay = next[index];
