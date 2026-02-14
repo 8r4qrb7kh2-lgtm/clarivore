@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import AppTopbar from "../components/AppTopbar";
 import PageShell from "../components/PageShell";
+import PageHeading from "../components/surfaces/PageHeading";
 import { Button, Input, Textarea } from "../components/ui";
 import { queryKeys } from "../lib/queryKeys";
 import { supabaseClient as supabase } from "../lib/supabase";
@@ -149,6 +150,7 @@ export default function ReportIssueClient() {
 
   return (
     <PageShell
+      shellClassName="page-shell route-report-issue"
       mainClassName=""
       wrapContent={false}
       topbar={
@@ -271,10 +273,11 @@ export default function ReportIssueClient() {
         </>
       }
     >
-      <div>
-        <h1>Report an issue</h1>
-        <p>The report form opens in a popup. Tap the button below to continue.</p>
-      </div>
+      <PageHeading
+        centered
+        title="Report an issue"
+        subtitle="The report form opens in a popup. Tap the button below to continue."
+      />
     </PageShell>
   );
 }

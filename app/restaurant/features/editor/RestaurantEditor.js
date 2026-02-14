@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { Button, Input, Modal, Textarea } from "../../../components/ui";
+import { CLARIVORE_LOGO_SRC } from "../../../components/clarivoreBrand";
 import ConfirmToggleButton from "../../../components/ingredient-scan/ConfirmToggleButton";
 import {
   buildDefaultScannerCorners,
@@ -538,6 +539,7 @@ function DishEditorModal({ editor, runtimeConfigHealth }) {
   const [appealPhotoErrorByRow, setAppealPhotoErrorByRow] = useState({});
   const [appealBusyByRow, setAppealBusyByRow] = useState({});
   const [appealFeedbackByRow, setAppealFeedbackByRow] = useState({});
+  const [processInputBusy, setProcessInputBusy] = useState(false);
   const [modalError, setModalError] = useState("");
   const recipeTextareaRef = useRef(null);
   const runtimeMissingKeys = Array.isArray(runtimeConfigHealth?.missing)
@@ -624,6 +626,7 @@ function DishEditorModal({ editor, runtimeConfigHealth }) {
       setAppealPhotoErrorByRow({});
       setAppealBusyByRow({});
       setAppealFeedbackByRow({});
+      setProcessInputBusy(false);
       setModalError("");
     }
   }, [editor.dishEditorOpen]);
@@ -1425,33 +1428,43 @@ function DishEditorModal({ editor, runtimeConfigHealth }) {
   }, [editor, overlay]);
 
   const onProcessInput = async () => {
+    if (processInputBusy) return;
+    setProcessInputBusy(true);
     if (aiActionsBlocked) {
       editor.setAiAssistDraft((current) => ({
         ...current,
         loading: false,
         error: `${runtimeBlockedTitle} Add the missing env vars and redeploy.`,
       }));
+      setProcessInputBusy(false);
       return;
     }
 
     const liveText = asText(
       recipeTextareaRef.current?.value || editor.aiAssistDraft.text,
     );
-    const result = await editor.runAiDishAnalysis({ overrideText: liveText });
-    if (result?.success && result?.result) {
-      await editor.applyAiResultToSelectedOverlay(result.result);
-      return;
-    }
+    try {
+      const result = await editor.runAiDishAnalysis({ overrideText: liveText });
+      if (result?.success && result?.result) {
+        await editor.applyAiResultToSelectedOverlay(result.result);
+        return;
+      }
 
-    const failureReason = asText(result?.error?.message || editor.aiAssistDraft.error);
-    editor.setAiAssistDraft((current) => ({
-      ...current,
-      loading: false,
-      error: failureReason
-        ? `AI processing failed; existing ingredient rows were not changed. ${failureReason}`
-        : "AI processing failed; existing ingredient rows were not changed.",
-    }));
+      const failureReason = asText(result?.error?.message || editor.aiAssistDraft.error);
+      editor.setAiAssistDraft((current) => ({
+        ...current,
+        loading: false,
+        error: failureReason
+          ? `AI processing failed; existing ingredient rows were not changed. ${failureReason}`
+          : "AI processing failed; existing ingredient rows were not changed.",
+      }));
+    } finally {
+      setProcessInputBusy(false);
+    }
   };
+
+  const isIngredientGenerationBusy =
+    processInputBusy || editor.aiAssistDraft.loading;
 
   return (
     <Modal
@@ -1609,22 +1622,25 @@ function DishEditorModal({ editor, runtimeConfigHealth }) {
             </p>
           ) : null}
 
-          <Button
-            tone="success"
-            loading={editor.aiAssistDraft.loading}
-            disabled={aiActionsBlocked}
-            title={aiActionsBlocked ? runtimeBlockedTitle : ""}
-            onClick={onProcessInput}
-            className="restaurant-legacy-editor-dish-process-btn"
+          <div
+            className={`restaurant-legacy-editor-dish-generation-wrap ${isIngredientGenerationBusy ? "is-processing" : ""}`}
           >
-            ✓ Process Input
-          </Button>
+            <Button
+              tone="success"
+              loading={isIngredientGenerationBusy}
+              disabled={aiActionsBlocked || isIngredientGenerationBusy}
+              title={aiActionsBlocked ? runtimeBlockedTitle : ""}
+              onClick={onProcessInput}
+              className="restaurant-legacy-editor-dish-process-btn"
+            >
+              ✓ Process Input
+            </Button>
 
-          <div className="restaurant-legacy-editor-dish-ingredients">
-            <h3>Ingredients</h3>
-            {ingredients.length ? (
-              <div className="restaurant-legacy-editor-dish-ingredient-list">
-                {ingredients.map((ingredient, index) => {
+            <div className="restaurant-legacy-editor-dish-ingredients">
+              <h3>Ingredients</h3>
+              {ingredients.length ? (
+                <div className="restaurant-legacy-editor-dish-ingredient-list">
+                  {ingredients.map((ingredient, index) => {
                   const selectedBrandName = asText(ingredient?.brands?.[0]?.name);
                   const selectedBrandImage = asText(
                     ingredient?.brands?.[0]?.brandImage ||
@@ -1697,30 +1713,30 @@ function DishEditorModal({ editor, runtimeConfigHealth }) {
                       return brand.name.toLowerCase().includes(searchTerm);
                     })
                     .slice(0, 8);
-                  return (
-                  <div
-                    key={`${ingredient?.name || "ingredient"}-${index}`}
-                    className="restaurant-legacy-editor-dish-ingredient-card"
-                  >
-                    <div className="restaurant-legacy-editor-dish-ingredient-main">
-                      <div className="restaurant-legacy-editor-dish-ingredient-name-col">
-                        <div className="restaurant-legacy-editor-dish-ingredient-name-row">
-                          <input
-                            className="restaurant-legacy-editor-dish-ingredient-name-input"
-                            value={ingredient.name}
-                            onChange={(event) =>
-                              updateIngredientName(index, event.target.value)
-                            }
-                          />
-                          <button
-                            type="button"
-                            className="btn btnSmall"
-                            disabled={Boolean(applyBusyByRow[index])}
-                            onClick={() => applyIngredientSmartDetection(index)}
-                          >
-                            {applyBusyByRow[index] ? "Applying..." : "Apply"}
-                          </button>
-                        </div>
+                    return (
+                    <div
+                      key={`${ingredient?.name || "ingredient"}-${index}`}
+                      className="restaurant-legacy-editor-dish-ingredient-card"
+                    >
+                      <div className="restaurant-legacy-editor-dish-ingredient-main">
+                        <div className="restaurant-legacy-editor-dish-ingredient-name-col">
+                          <div className="restaurant-legacy-editor-dish-ingredient-name-row">
+                            <input
+                              className="restaurant-legacy-editor-dish-ingredient-name-input"
+                              value={ingredient.name}
+                              onChange={(event) =>
+                                updateIngredientName(index, event.target.value)
+                              }
+                            />
+                            <button
+                              type="button"
+                              className="btn btnSmall"
+                              disabled={Boolean(applyBusyByRow[index])}
+                              onClick={() => applyIngredientSmartDetection(index)}
+                            >
+                              {applyBusyByRow[index] ? "Applying..." : "Apply"}
+                            </button>
+                          </div>
 
                         <div
                           className={`restaurant-legacy-editor-dish-ingredient-brand ${ingredient.brandRequired && !hasAssignedBrand ? "is-required" : ""}`}
@@ -2080,34 +2096,58 @@ function DishEditorModal({ editor, runtimeConfigHealth }) {
                         Delete
                       </button>
                     </div>
-                  </div>
-                  );
-                })}
+                    </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="note m-0 text-sm">
+                  Run <strong>Process Input</strong> to infer ingredient allergens and diets.
+                </p>
+              )}
+
+              {modalError ? (
+                <p className="m-0 rounded-lg border border-[#a12525] bg-[rgba(139,29,29,0.32)] px-3 py-2 text-sm text-[#ffd0d0]">
+                  {modalError}
+                </p>
+              ) : null}
+
+              <div className="restaurant-legacy-editor-dish-ingredient-actions">
+                <button type="button" className="btn btnSmall" onClick={addIngredientRow}>
+                  Add ingredient
+                </button>
+                <button
+                  type="button"
+                  className="btn btnPrimary btnSmall"
+                  onClick={handleSaveToDish}
+                >
+                  ✓ Save to Dish
+                </button>
               </div>
-            ) : (
-              <p className="note m-0 text-sm">
-                Run <strong>Process Input</strong> to infer ingredient allergens and diets.
-              </p>
-            )}
-
-            {modalError ? (
-              <p className="m-0 rounded-lg border border-[#a12525] bg-[rgba(139,29,29,0.32)] px-3 py-2 text-sm text-[#ffd0d0]">
-                {modalError}
-              </p>
-            ) : null}
-
-            <div className="restaurant-legacy-editor-dish-ingredient-actions">
-              <button type="button" className="btn btnSmall" onClick={addIngredientRow}>
-                Add ingredient
-              </button>
-              <button
-                type="button"
-                className="btn btnPrimary btnSmall"
-                onClick={handleSaveToDish}
-              >
-                ✓ Save to Dish
-              </button>
             </div>
+
+            {isIngredientGenerationBusy ? (
+              <div
+                className="restaurant-legacy-editor-dish-generation-overlay"
+                role="status"
+                aria-live="polite"
+              >
+                <div className="restaurant-legacy-editor-dish-generation-overlay-stack">
+                  <img
+                    src={CLARIVORE_LOGO_SRC}
+                    alt="Clarivore logo"
+                    className="restaurant-legacy-editor-dish-generation-overlay-logo"
+                  />
+                  <span
+                    className="restaurant-legacy-editor-dish-generation-overlay-spinner"
+                    aria-hidden="true"
+                  />
+                  <span className="restaurant-legacy-editor-dish-generation-overlay-text">
+                    Processing input and building ingredient rows...
+                  </span>
+                </div>
+              </div>
+            ) : null}
           </div>
 
           <div className="restaurant-legacy-editor-dish-preview">

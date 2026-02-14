@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import AppTopbar from "../../components/AppTopbar";
 import PageShell from "../../components/PageShell";
 import ChatMessageText from "../../components/chat/ChatMessageText";
+import PageHeading from "../../components/surfaces/PageHeading";
 import { notifyManagerChat } from "../../lib/chatNotifications";
 import { formatChatTimestamp } from "../../lib/chatMessage";
 import { loadScript } from "../../runtime/scriptLoader";
@@ -1244,6 +1245,7 @@ export default function AdminDashboardDom({
 
   return (
     <PageShell
+      shellClassName="page-shell route-admin-dashboard"
       mainClassName="admin-container"
       wrapContent={false}
       topbar={
@@ -1296,10 +1298,11 @@ export default function AdminDashboardDom({
 
         {isAdmin ? (
           <>
-            <div className="admin-header">
-              <h1>🛡️ Admin Dashboard</h1>
-              <p>Manage restaurants and review appeals</p>
-            </div>
+            <PageHeading
+              className="admin-header"
+              title="🛡️ Admin Dashboard"
+              subtitle="Manage restaurants and review appeals"
+            />
 
             <div className="tab-buttons">
               {TAB_ROUTES.map((tab) => (

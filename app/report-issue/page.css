@@ -1,0 +1,276 @@
+    .route-report-issue{
+      --bg:#0b1020; --ink:#e9ecff; --muted:#a8b2d6;
+      --border:#2a3261; --hover:#4c5ad4;
+    }
+    .route-report-issue *{box-sizing:border-box;}
+    .route-report-issue{
+      margin:0;
+      min-height:100vh;
+      font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Arial;
+      background:var(--bg);
+      color:var(--ink);
+      display:flex;
+      flex-direction:column;
+    }
+    .route-report-issue .topbar{
+      position:sticky;
+      top:0;
+      z-index:20;
+      background:linear-gradient(180deg,#101637,#090f27);
+      border-bottom:1px solid #1c2448;
+      box-shadow:0 12px 28px rgba(0,0,0,.4);
+      padding-top: env(safe-area-inset-top, 0px);
+    }
+    .route-report-issue .topin{
+      max-width:1100px;
+      margin:0 auto;
+      padding:12px 22px 10px;
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+      align-items:center;
+      justify-content:center;
+    }
+    .route-report-issue .brand{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      text-decoration:none;
+      color:inherit;
+      font-weight:800;
+      font-size:1.1rem;
+    }
+    .route-report-issue .brand img{
+      width:30px;
+      height:30px;
+      border-radius:6px;
+    }
+    .route-report-issue .topNav{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      flex-wrap:wrap;
+      justify-content:center;
+    }
+    .route-report-issue .topNav a{
+      padding:8px 14px;
+      border:1px solid var(--border);
+      border-radius:999px;
+      background:#12183a;
+      color:inherit;
+      text-decoration:none;
+      font-size:0.95rem;
+    }
+    .route-report-issue .topNav a:hover{
+      border-color:var(--hover);
+      box-shadow:0 0 0 3px #7c9cff33 inset,0 2px 10px #0b1b60aa;
+    }
+    .route-report-issue main{
+      flex:1;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:40px 20px 120px;
+      text-align:center;
+    }
+    .route-report-issue main h1{margin-bottom:12px;}
+    .route-report-issue main p{margin:0;color:var(--muted);}
+    @media (max-width:640px){
+      .route-report-issue .topin{padding:12px 14px;}
+      .route-report-issue .brand{font-size:1rem;}
+      .route-report-issue .brand img{width:26px;height:26px;}
+      .route-report-issue .topNav a{font-size:0.9rem;}
+    }
+
+    /* Mode toggle styles */
+    .route-report-issue .mode-toggle-container {
+      display: none;
+      align-items: center;
+      gap: 10px;
+      margin-right: auto;
+      padding-right: 16px;
+    }
+
+    .route-report-issue .mode-toggle-label {
+      font-size: 0.85rem;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+
+    .route-report-issue .mode-toggle {
+      width: 44px;
+      height: 24px;
+      background: var(--border);
+      border-radius: 12px;
+      position: relative;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .route-report-issue .mode-toggle::after {
+      content: '';
+      position: absolute;
+      width: 18px;
+      height: 18px;
+      background: white;
+      border-radius: 50%;
+      top: 3px;
+      left: 3px;
+      transition: transform 0.2s;
+    }
+
+    .route-report-issue .mode-toggle.active {
+      background: var(--hover);
+    }
+
+    .route-report-issue .mode-toggle.active::after {
+      transform: translateX(20px);
+    }
+
+    .route-report-issue .reportFooter {
+      margin-top: 20px;
+      padding: 20px 20px 32px;
+      display: flex;
+      justify-content: center;
+      width: 100%;
+    }
+
+    .route-report-issue .reportFab {
+      background: #3651ff;
+      border: 1px solid #4e65ff;
+      color: #fff;
+      padding: 12px 26px;
+      border-radius: 999px;
+      font-weight: 600;
+      font-size: 15px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 12px 30px rgba(54, 81, 255, 0.25);
+    }
+
+    .route-report-issue .reportFab:hover {
+      box-shadow: 0 12px 30px rgba(54, 81, 255, 0.4);
+    }
+
+    .route-report-issue .reportOverlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(9, 12, 28, 0.82);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 2600;
+      padding: 20px;
+    }
+
+    .route-report-issue .reportOverlay.show {
+      display: flex;
+    }
+
+    .route-report-issue .reportModal {
+      width: min(480px, calc(100% - 40px));
+      background: linear-gradient(180deg, #121a3f, #0d132a);
+      border: 1px solid #2a3466;
+      border-radius: 20px;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45);
+      padding: 28px 28px 26px;
+      color: #e9ecff;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    .route-report-issue .reportModal h2 {
+      margin: 0;
+      font-size: clamp(1.2rem, 1.05rem + 1vw, 1.8rem);
+      text-align: center;
+    }
+
+    .route-report-issue .reportClose {
+      position: absolute;
+      top: 18px;
+      right: 18px;
+      width: 30px;
+      height: 30px;
+      border-radius: 8px;
+      border: 1px solid #2a3466;
+      background: #16205a;
+      color: #fff;
+      font-size: 18px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .route-report-issue .reportClose:hover {
+      border-color: #4c5ad4;
+      box-shadow: 0 0 8px #3651ff;
+    }
+
+    .route-report-issue .reportModal form {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .route-report-issue .reportModal input,
+    .route-report-issue .reportModal textarea {
+      width: 100%;
+      border-radius: 12px;
+      border: 1px solid #2a3466;
+      background: #101739;
+      color: #e9ecff;
+      padding: 12px 14px;
+      font-size: 15px;
+    }
+
+    .route-report-issue .reportModal textarea {
+      min-height: 140px;
+      resize: vertical;
+    }
+
+    .route-report-issue .reportModal button[type="submit"] {
+      align-self: flex-start;
+      background: #3651ff;
+      border: 1px solid #4e65ff;
+      color: #fff;
+      padding: 10px 20px;
+      border-radius: 10px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .route-report-issue .reportModal button[type="submit"]:disabled {
+      opacity: 0.6;
+      cursor: wait;
+    }
+
+    .route-report-issue .reportStatus {
+      font-size: 14px;
+      color: #a8b2d6;
+      min-height: 18px;
+    }
+
+    .route-report-issue .reportStatus.error {
+      color: #ef4444;
+    }
+
+    .route-report-issue .reportStatus.success {
+      color: #22c55e;
+    }
+
+    @media (max-width: 640px) {
+      .route-report-issue .reportFooter {
+        margin-top: 16px;
+        padding: 16px 16px 24px;
+      }
+
+      .route-report-issue .reportFab {
+        padding: 10px 20px;
+        font-size: 14px;
+      }
+    }

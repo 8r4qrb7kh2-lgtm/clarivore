@@ -1,0 +1,23 @@
+.wrap {
+  margin-bottom: 24px;
+}
+
+.centered {
+  text-align: center;
+}
+
+.title {
+  margin: 0;
+  color: var(--ink);
+  font-size: clamp(2rem, 2.9vw, 4rem);
+  line-height: 1.08;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.subtitle {
+  margin: 12px 0 0;
+  color: var(--muted);
+  font-size: clamp(0.98rem, 1.5vw, 1.35rem);
+  line-height: 1.35;
+}

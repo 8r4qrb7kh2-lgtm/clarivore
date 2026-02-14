@@ -299,15 +299,20 @@ export async function analyzeIngredientLabelImage(
   {
     onStatus,
     skipAllergenAnalysis = false,
+    skipSlantCorrection = false,
   } = {},
 ) {
-  onStatus?.("Checking image orientation...");
+  onStatus?.(
+    skipSlantCorrection ? "Preparing image..." : "Checking image orientation...",
+  );
 
   let correctedImage = imageDataUrl;
-  const slantAngle = await detectSlantAngle(imageDataUrl);
-  if (Math.abs(slantAngle) > 1) {
-    onStatus?.("Straightening image...");
-    correctedImage = await rotateImage(imageDataUrl, slantAngle);
+  if (!skipSlantCorrection) {
+    const slantAngle = await detectSlantAngle(imageDataUrl);
+    if (Math.abs(slantAngle) > 1) {
+      onStatus?.("Straightening image...");
+      correctedImage = await rotateImage(imageDataUrl, slantAngle);
+    }
   }
 
   onStatus?.("Preparing image...");

@@ -6,14 +6,16 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import AppTopbar from "../components/AppTopbar";
 import PageShell from "../components/PageShell";
-import ChatMessageText from "../components/chat/ChatMessageText";
+import ChatPreviewPanel from "../components/chat/ChatPreviewPanel";
+import SplitColumns from "../components/layout/SplitColumns";
+import SurfaceCard from "../components/surfaces/SurfaceCard";
+import PageHeading from "../components/surfaces/PageHeading";
 import { supabaseClient as supabase } from "../lib/supabase";
 import {
   fetchManagerRestaurants,
   isManagerOrOwnerUser,
 } from "../lib/managerRestaurants";
 import { initManagerNotifications } from "../lib/managerNotifications";
-import { formatChatTimestamp } from "../lib/chatMessage";
 import { queryKeys } from "../lib/queryKeys";
 import { resolveAccountName, resolveManagerDisplayName } from "../lib/userIdentity";
 
@@ -584,8 +586,13 @@ export default function HelpContactClient() {
     [sendChatMessage],
   );
 
+  const editorChatEmptyText = selectedRestaurantId
+    ? "No messages yet."
+    : "No restaurant linked yet.";
+
   return (
     <PageShell
+      shellClassName="page-shell route-help-contact"
       mainClassName="help-main"
       contentClassName="help-container"
       topbar={
@@ -609,12 +616,13 @@ export default function HelpContactClient() {
         ) : null
       }
     >
-          <div className="help-header">
-            <h1>Help</h1>
-            <p>Ask how to use Clarivore, or send feedback and issues to the team.</p>
-          </div>
+          <PageHeading
+            className="help-header"
+            title="Help"
+            subtitle="Ask how to use Clarivore, or send feedback and issues to the team."
+          />
 
-          <section className="help-panel" id="helpSearchPanel">
+          <SurfaceCard className="help-panel" id="helpSearchPanel">
             <div className="help-search-row">
               <textarea
                 id="helpQuery"
@@ -635,107 +643,38 @@ export default function HelpContactClient() {
             </div>
             <div className="help-status" id="helpSearchStatus" ref={helpStatusRef} />
             <div className="help-conversation" id="helpConversation" ref={helpConversationRef} />
-          </section>
+          </SurfaceCard>
 
-          <section className="help-grid" id="helpGrid">
+          <SplitColumns className="help-grid" id="helpGrid">
             {isEditorMode ? (
               <>
-                <div className="help-card">
-                  <div className="chat-header-row">
-                    <div className="chat-title-wrap">
-                      <h3 style={{ margin: 0 }}>Direct chat with Clarivore administrator</h3>
-                      {chatUnreadCount > 0 ? (
-                        <span className="chat-badge" id="chat-unread-badge">
-                          {chatUnreadCount}
-                        </span>
-                      ) : null}
-                    </div>
-                    {chatUnreadCount > 0 ? (
-                      <button
-                        className="btn btnWarning"
-                        id="chat-ack-btn"
-                        onClick={acknowledgeChat}
-                        type="button"
-                      >
-                        Acknowledge message(s)
-                      </button>
-                    ) : null}
-                  </div>
+                <ChatPreviewPanel
+                  title="Direct chat with Clarivore administrator"
+                  unreadCount={chatUnreadCount}
+                  messages={selectedRestaurantId ? chatRenderData.messages : []}
+                  ackByIndex={chatRenderData.ackByIndex}
+                  inputValue={chatInput}
+                  onInputChange={setChatInput}
+                  onInputKeyDown={onChatInputKeyDown}
+                  onSend={sendChatMessage}
+                  onAcknowledge={acknowledgeChat}
+                  sending={chatSending}
+                  emptyText={editorChatEmptyText}
+                  cardClassName="help-card"
+                  senderLabelResolver={(message) => {
+                    const rawSenderName = String(message.sender_name || "").trim();
+                    const isOutgoing = message.sender_role === "restaurant";
+                    if (isOutgoing) {
+                      return rawSenderName && rawSenderName.toLowerCase() !== "you"
+                        ? rawSenderName
+                        : managerDisplayName;
+                    }
+                    return rawSenderName || ADMIN_DISPLAY_NAME;
+                  }}
+                  isOutgoingResolver={(message) => message.sender_role === "restaurant"}
+                />
 
-                  <div id="chat-preview-list" className="chat-preview-list">
-                    {!selectedRestaurantId ? (
-                      <div className="chat-preview-empty">No restaurant linked yet.</div>
-                    ) : chatRenderData.messages.length === 0 ? (
-                      <div className="chat-preview-empty">No messages yet.</div>
-                    ) : (
-                      chatRenderData.messages.map((message, index) => {
-                        const isOutgoing = message.sender_role === "restaurant";
-                        const rawSenderName = String(message.sender_name || "").trim();
-                        const senderLabel = isOutgoing
-                          ? rawSenderName && rawSenderName.toLowerCase() !== "you"
-                            ? rawSenderName
-                            : managerDisplayName
-                          : rawSenderName || ADMIN_DISPLAY_NAME;
-                        const timestamp = formatChatTimestamp(message.created_at);
-                        const acknowledgements =
-                          chatRenderData.ackByIndex.get(index) || [];
-
-                        return (
-                          <div key={message.id || `${message.created_at}-${index}`}>
-                            <div
-                              className={`chat-preview-item ${
-                                isOutgoing ? "outgoing" : "incoming"
-                              }`}
-                            >
-                              <div>
-                                <ChatMessageText text={message.message} />
-                              </div>
-                              <div className="chat-preview-meta">
-                                {senderLabel}
-                                {timestamp ? ` · ${timestamp}` : ""}
-                              </div>
-                            </div>
-                            {acknowledgements.map((entry, ackIndex) => {
-                              const ackTimestamp = formatChatTimestamp(entry.acknowledgedAt);
-                              if (!ackTimestamp) return null;
-                              return (
-                                <div className="chat-ack" key={`${index}-${ackIndex}`}>
-                                  {entry.name} acknowledged · {ackTimestamp}
-                                </div>
-                              );
-                            })}
-                          </div>
-                        );
-                      })
-                    )}
-                  </div>
-
-                  <div className="chat-preview-compose">
-                    <input
-                      id="chat-message-input"
-                      className="chat-preview-input"
-                      type="text"
-                      placeholder="Message Clarivore"
-                      value={chatInput}
-                      onChange={(event) => setChatInput(event.target.value)}
-                      onKeyDown={onChatInputKeyDown}
-                      disabled={chatSending}
-                    />
-                    <button
-                      className="btn"
-                      id="chat-send-btn"
-                      type="button"
-                      onClick={sendChatMessage}
-                      disabled={chatSending}
-                    >
-                      {chatSending ? "Sending..." : "Send"}
-                    </button>
-                  </div>
-                </div>
-
-                <div className="help-card">
-                  <h3>Report an issue</h3>
-                  <p>Share any problems you find while managing your restaurant.</p>
+                <SurfaceCard className="help-card" title="Report an issue" subtitle="Share any problems you find while managing your restaurant.">
                   <textarea
                     id="helpIssueText"
                     placeholder="Describe the issue..."
@@ -765,13 +704,11 @@ export default function HelpContactClient() {
                   >
                     {issueSending ? "Sending..." : "Send report"}
                   </button>
-                </div>
+                </SurfaceCard>
               </>
             ) : (
               <>
-                <div className="help-card">
-                  <h3>Anonymous feedback</h3>
-                  <p>Share your experience privately. This feedback is anonymous.</p>
+                <SurfaceCard className="help-card" title="Anonymous feedback" subtitle="Share your experience privately. This feedback is anonymous.">
                   <textarea
                     id="helpFeedbackText"
                     placeholder="What should we know?"
@@ -801,11 +738,9 @@ export default function HelpContactClient() {
                   >
                     {feedbackSending ? "Sending..." : "Send feedback"}
                   </button>
-                </div>
+                </SurfaceCard>
 
-                <div className="help-card">
-                  <h3>Report an issue</h3>
-                  <p>Let us know about errors or problems you found.</p>
+                <SurfaceCard className="help-card" title="Report an issue" subtitle="Let us know about errors or problems you found.">
                   <textarea
                     id="helpIssueText"
                     placeholder="Describe the issue..."
@@ -835,10 +770,10 @@ export default function HelpContactClient() {
                   >
                     {issueSending ? "Sending..." : "Send report"}
                   </button>
-                </div>
+                </SurfaceCard>
               </>
             )}
-          </section>
+          </SplitColumns>
     </PageShell>
   );
 }

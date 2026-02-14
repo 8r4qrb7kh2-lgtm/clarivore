@@ -1190,11 +1190,71 @@ h2 {
   font-weight: 700;
 }
 
+.restaurant-legacy-editor-dish-generation-wrap {
+  position: relative;
+  display: grid;
+  gap: 10px;
+}
+
 .restaurant-legacy-editor-dish-ingredients {
   border: 1px solid rgba(76, 90, 212, 0.35);
   border-radius: 14px;
   background: rgba(13, 19, 42, 0.75);
   padding: 12px;
+}
+
+.restaurant-legacy-editor-dish-generation-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(6, 10, 24, 0.82);
+  backdrop-filter: blur(2px);
+}
+
+.restaurant-legacy-editor-dish-generation-overlay-stack {
+  width: min(320px, calc(100% - 30px));
+  border-radius: 14px;
+  border: 1px solid rgba(126, 145, 255, 0.38);
+  background: rgba(10, 16, 40, 0.95);
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  text-align: center;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
+}
+
+.restaurant-legacy-editor-dish-generation-overlay-logo {
+  width: 58px;
+  height: 58px;
+  border-radius: 12px;
+  object-fit: cover;
+}
+
+.restaurant-legacy-editor-dish-generation-overlay-spinner {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 4px solid rgba(183, 194, 235, 0.35);
+  border-top-color: #7e91ff;
+  animation: restaurantDishGenerationSpin 0.95s linear infinite;
+}
+
+.restaurant-legacy-editor-dish-generation-overlay-text {
+  color: #d9e3ff;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+@keyframes restaurantDishGenerationSpin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .restaurant-legacy-editor-dish-ingredients h3 {

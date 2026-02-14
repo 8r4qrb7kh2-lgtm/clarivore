@@ -156,6 +156,8 @@ function CroppedLineCard({
   const [cropImageData, setCropImageData] = useState("");
   const [editorState, setEditorState] = useState(null);
   const [savingEdit, setSavingEdit] = useState(false);
+  const [tokenStripWidthPx, setTokenStripWidthPx] = useState(0);
+  const cropImageRef = useRef(null);
   const stripRef = useRef(null);
   const editInputRef = useRef(null);
 
@@ -224,6 +226,62 @@ function CroppedLineCard({
     editInputRef.current.focus();
     editInputRef.current.select();
   }, [editorState?.mode, editorState?.index, lineIndex]);
+
+  function syncTokenStripWidth() {
+    const image = cropImageRef.current;
+    if (!image) return;
+    const width = Math.round(image.getBoundingClientRect().width);
+    setTokenStripWidthPx((current) => (current === width ? current : width));
+  }
+
+  useEffect(() => {
+    if (!cropImageData) {
+      setTokenStripWidthPx(0);
+      return;
+    }
+
+    if (!cropImageRef.current) {
+      setTokenStripWidthPx(0);
+      return;
+    }
+
+    let frameId = null;
+    const scheduleMeasure = () => {
+      if (typeof window !== "undefined" && typeof window.requestAnimationFrame === "function") {
+        if (frameId) window.cancelAnimationFrame(frameId);
+        frameId = window.requestAnimationFrame(() => {
+          syncTokenStripWidth();
+        });
+        return;
+      }
+      syncTokenStripWidth();
+    };
+
+    syncTokenStripWidth();
+
+    let observer = null;
+    if (typeof ResizeObserver !== "undefined" && cropImageRef.current) {
+      observer = new ResizeObserver(() => {
+        scheduleMeasure();
+      });
+      observer.observe(cropImageRef.current);
+    }
+
+    const handleWindowResize = () => {
+      scheduleMeasure();
+    };
+    if (typeof window !== "undefined") {
+      window.addEventListener("resize", handleWindowResize);
+    }
+
+    return () => {
+      if (observer) observer.disconnect();
+      if (typeof window !== "undefined") {
+        window.removeEventListener("resize", handleWindowResize);
+        if (frameId) window.cancelAnimationFrame(frameId);
+      }
+    };
+  }, [cropImageData, lineIndex]);
 
   function openWordEditor(tokenIndex) {
     if (editLocked || savingEdit) return;
@@ -337,8 +395,10 @@ function CroppedLineCard({
           }}
         >
           <img
+            ref={cropImageRef}
             src={cropImageData}
             alt={`Extracted line ${lineIndex + 1}`}
+            onLoad={syncTokenStripWidth}
             style={{
               height: 72,
               width: "auto",
@@ -358,7 +418,9 @@ function CroppedLineCard({
         style={{
           marginTop: 8,
           position: "relative",
-          width: "100%",
+          width: tokenStripWidthPx > 0 ? `${tokenStripWidthPx}px` : "100%",
+          marginLeft: "auto",
+          marginRight: "auto",
           minHeight: 28,
           cursor: editLocked || savingEdit ? "default" : "text",
         }}
@@ -614,6 +676,7 @@ export default function IngredientScanModal({
   const fileInputRef = useRef(null);
   const videoRef = useRef(null);
   const streamRef = useRef(null);
+  const analysisRunIdRef = useRef(0);
 
   useEffect(() => {
     return () => {
@@ -626,11 +689,13 @@ export default function IngredientScanModal({
 
   useEffect(() => {
     if (open) return;
+    analysisRunIdRef.current += 1;
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((track) => track.stop());
       streamRef.current = null;
     }
     setCameraActive(false);
+    setAnalysisPending(false);
   }, [open]);
 
   useEffect(() => {
@@ -691,13 +756,18 @@ export default function IngredientScanModal({
   }
 
   function resetCaptureState() {
+    analysisRunIdRef.current += 1;
     setCapturedPhoto("");
     setAnalysisResult(null);
     setLines([]);
     setAllergenFlags([]);
+    setAnalysisPending(false);
     setStatusText("");
     setErrorText("");
     stopActiveCamera();
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
   }
 
   function cancelLiveCamera() {
@@ -758,35 +828,48 @@ export default function IngredientScanModal({
       setErrorText("");
     } catch (error) {
       setErrorText(error?.message || "Failed to load image.");
+    } finally {
+      if (event?.target) {
+        event.target.value = "";
+      }
     }
   }
 
   async function runAllergenAnalysis(lineRows, statusMessage = "Analyzing ingredients...") {
+    const runId = analysisRunIdRef.current + 1;
+    analysisRunIdRef.current = runId;
+    const isCurrentRun = () => analysisRunIdRef.current === runId;
+    const setIfCurrent = (setter, value) => {
+      if (isCurrentRun()) setter(value);
+    };
+
     const transcript = (Array.isArray(lineRows) ? lineRows : [])
       .map((line) => asText(line?.text))
       .filter(Boolean);
 
     if (!transcript.length) {
-      setAllergenFlags([]);
-      setAnalysisPending(false);
+      setIfCurrent(setAllergenFlags, []);
+      setIfCurrent(setAnalysisPending, false);
       return;
     }
 
-    setAnalysisPending(true);
-    setErrorText("");
-    setStatusText(statusMessage);
+    setIfCurrent(setAnalysisPending, true);
+    setIfCurrent(setErrorText, "");
+    setIfCurrent(setStatusText, statusMessage);
     try {
       const flags = await analyzeTranscriptFlags(transcript);
+      if (!isCurrentRun()) return;
       setAllergenFlags(Array.isArray(flags) ? flags : []);
       setStatusText("Allergen and diet analysis complete.");
     } catch (error) {
+      if (!isCurrentRun()) return;
       const message = error?.message || "Allergen analysis failed.";
       setAllergenFlags([]);
       setStatusText(message);
       setErrorText(message);
       throw error;
     } finally {
-      setAnalysisPending(false);
+      setIfCurrent(setAnalysisPending, false);
     }
   }
 
@@ -806,6 +889,7 @@ export default function IngredientScanModal({
       const result = await analyzeIngredientLabelImage(capturedPhoto, {
         onStatus: (message) => setStatusText(message),
         skipAllergenAnalysis: true,
+        skipSlantCorrection: backgroundMode,
       });
 
       const nextLines = (Array.isArray(result?.lines) ? result.lines : []).map((line) => ({

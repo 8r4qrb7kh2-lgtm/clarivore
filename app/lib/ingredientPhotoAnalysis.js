@@ -722,14 +722,19 @@ Notes:
   // Returns: { lines: [...], allergenFlags: [...], correctedImage: dataUrl }
   async function analyzeIngredientPhoto(imageDataUrl, onStatus, options = {}) {
     const skipAllergenAnalysis = options && options.skipAllergenAnalysis === true;
-    onStatus?.("Checking image orientation...");
+    const skipSlantCorrection = options && options.skipSlantCorrection === true;
+    onStatus?.(
+      skipSlantCorrection ? "Preparing image..." : "Checking image orientation...",
+    );
 
     // Step 1: Detect and correct slant angle
     let correctedImage = imageDataUrl;
-    const slantAngle = await detectSlantAngle(imageDataUrl);
-    if (Math.abs(slantAngle) > 1) {
-      onStatus?.("Straightening image...");
-      correctedImage = await rotateImage(imageDataUrl, slantAngle);
+    if (!skipSlantCorrection) {
+      const slantAngle = await detectSlantAngle(imageDataUrl);
+      if (Math.abs(slantAngle) > 1) {
+        onStatus?.("Straightening image...");
+        correctedImage = await rotateImage(imageDataUrl, slantAngle);
+      }
     }
 
     // Step 2: Use a bounded-size image for analysis/display so crop coordinates
@@ -1092,6 +1097,7 @@ Notes:
           video.style.display = "none";
           showButtons(analyzeBtn);
           statusDiv.textContent = "Photo loaded. Click Analyze to process.";
+          fileInput.value = "";
         };
         tempImg.src = evt.target.result;
       };
@@ -1173,7 +1179,7 @@ Notes:
           (status) => {
             updatePhotoAnalysisLoadingStatus(rowIdx, status);
           },
-          { skipAllergenAnalysis: true },
+          { skipAllergenAnalysis: true, skipSlantCorrection: true },
         );
 
         // Show "View Results" button instead of auto-applying
@@ -1997,6 +2003,7 @@ Notes:
       buttonsContainer.style.display = "flex";
       showButtons(cameraBtn, uploadBtn);
       statusDiv.textContent = "";
+      fileInput.value = "";
     });
 
     // Helper function to apply the analysis results
@@ -2390,6 +2397,7 @@ Notes:
 
           // Analyze the uploaded image
           await analyzeFrontImage(frontCapturedPhoto);
+          frontFileInput.value = "";
         };
         reader.readAsDataURL(file);
       });

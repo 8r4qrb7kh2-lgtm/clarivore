@@ -1,0 +1,1108 @@
+    .route-admin-dashboard .admin-container {
+      max-width: 1400px;
+      margin: 40px auto;
+      padding: 0 20px;
+    }
+
+    .route-admin-dashboard .admin-header {
+      background: white;
+      border-radius: 16px;
+      padding: 32px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      margin-bottom: 24px;
+    }
+
+    .route-admin-dashboard .admin-header h1 {
+      margin: 0 0 8px 0;
+      color: #1e3a5f;
+      font-size: 2rem;
+    }
+
+    .route-admin-dashboard .admin-header p {
+      margin: 0;
+      color: #718096;
+    }
+
+    .route-admin-dashboard .admin-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+      gap: 24px;
+      margin-bottom: 24px;
+    }
+
+    .route-admin-dashboard .admin-card {
+      background: white;
+      border-radius: 16px;
+      padding: 32px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+
+    .route-admin-dashboard .admin-card h2 {
+      margin-top: 0;
+      color: #1e3a5f;
+      font-size: 1.5rem;
+    }
+
+    .route-admin-dashboard .admin-card-full {
+      grid-column: 1 / -1;
+    }
+
+    .route-admin-dashboard .form-group {
+      margin-bottom: 20px;
+    }
+
+    .route-admin-dashboard .form-group label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 600;
+      color: #1e3a5f;
+    }
+
+    .route-admin-dashboard .form-group input[type="text"],
+    .route-admin-dashboard .form-group input[type="url"],
+    .route-admin-dashboard .form-group textarea,
+    .route-admin-dashboard .form-group input[type="file"] {
+      width: 100%;
+      padding: 12px;
+      border: 2px solid #e2e8f0;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-family: inherit;
+      box-sizing: border-box;
+    }
+
+    .route-admin-dashboard .form-group textarea {
+      min-height: 100px;
+      resize: vertical;
+    }
+
+    .route-admin-dashboard .form-group input:focus,
+    .route-admin-dashboard .form-group textarea:focus {
+      outline: none;
+      border-color: #4c5ad4;
+    }
+
+    .route-admin-dashboard .image-preview {
+      margin-top: 12px;
+      max-width: 100%;
+      border-radius: 8px;
+      display: none;
+    }
+
+    .route-admin-dashboard .image-preview.show {
+      display: block;
+    }
+
+    .route-admin-dashboard .btn-primary {
+      background: linear-gradient(135deg, #4c5ad4 0%, #6366f1 100%);
+      color: white;
+      padding: 14px 28px;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .route-admin-dashboard .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(76,90,212,0.3);
+    }
+
+    .route-admin-dashboard .btn-primary:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .route-admin-dashboard .btn-secondary {
+      background: #e2e8f0;
+      color: #1e3a5f;
+      padding: 8px 16px;
+      border: none;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .route-admin-dashboard .btn-secondary:hover {
+      background: #cbd5e0;
+    }
+
+    .route-admin-dashboard .btn-danger {
+      background: #fee2e2;
+      color: #991b1b;
+      padding: 8px 16px;
+      border: none;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .route-admin-dashboard .btn-danger:hover {
+      background: #fecaca;
+    }
+
+    .route-admin-dashboard .btn-warning {
+      background: #fef3c7;
+      color: #92400e;
+      padding: 8px 14px;
+      border: 1px solid #fcd34d;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .route-admin-dashboard .btn-warning:hover {
+      background: #fde68a;
+    }
+
+    .route-admin-dashboard .status-message {
+      padding: 12px 16px;
+      border-radius: 8px;
+      margin-top: 16px;
+      display: none;
+    }
+
+    .route-admin-dashboard .status-message.show {
+      display: block;
+    }
+
+    .route-admin-dashboard .status-message.success {
+      background: #d1fae5;
+      color: #065f46;
+      border: 1px solid #6ee7b7;
+    }
+
+    .route-admin-dashboard .status-message.error {
+      background: #fee2e2;
+      color: #991b1b;
+      border: 1px solid #fca5a5;
+    }
+
+    .route-admin-dashboard .restaurants-list {
+      margin-top: 24px;
+    }
+
+    .route-admin-dashboard .restaurant-item {
+      background: #f7fafc;
+      padding: 16px;
+      border-radius: 8px;
+      margin-bottom: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .route-admin-dashboard .restaurant-item-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .route-admin-dashboard .restaurant-title-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .route-admin-dashboard .restaurant-title-left {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .route-admin-dashboard .restaurant-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .route-admin-dashboard .restaurant-item h3 {
+      margin: 0;
+      color: #1e3a5f;
+      font-size: 1.1rem;
+    }
+
+    .route-admin-dashboard .chat-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 18px;
+      height: 18px;
+      padding: 0 4px;
+      border-radius: 999px;
+      background: #dc2626;
+      color: #fff;
+      font-size: 0.65rem;
+      font-weight: 700;
+      line-height: 1;
+      transform: translateY(-6px);
+    }
+
+    .route-admin-dashboard .acknowledge-btn {
+      margin-left: 4px;
+    }
+
+    .route-admin-dashboard .restaurant-item p {
+      margin: 4px 0 0 0;
+      color: #718096;
+      font-size: 0.9rem;
+    }
+
+    .route-admin-dashboard .restaurant-chat-preview {
+      border: 1px solid #e2e8f0;
+      background: #ffffff;
+      border-radius: 8px;
+      padding: 0;
+      overflow: hidden;
+    }
+
+    .route-admin-dashboard .restaurant-chat-preview summary {
+      cursor: pointer;
+      padding: 12px 14px;
+      font-weight: 600;
+      color: #1e3a5f;
+      list-style: none;
+    }
+
+    .route-admin-dashboard .restaurant-chat-preview summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .route-admin-dashboard .restaurant-chat-body {
+      padding: 12px 14px;
+      border-top: 1px solid #e2e8f0;
+      color: #4a5568;
+      font-size: 0.9rem;
+      line-height: 1.5;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .route-admin-dashboard .restaurant-chat-messages {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-height: 220px;
+      overflow-y: auto;
+      padding-right: 4px;
+    }
+
+    .route-admin-dashboard .restaurant-chat-message {
+      display: flex;
+      width: 100%;
+    }
+
+    .route-admin-dashboard .restaurant-chat-message.chat-outgoing {
+      justify-content: flex-end;
+    }
+
+    .route-admin-dashboard .restaurant-chat-bubble {
+      background: #edf2f7;
+      border-radius: 10px;
+      padding: 8px 10px;
+      max-width: 85%;
+      color: #1e3a5f;
+    }
+
+    .route-admin-dashboard .restaurant-chat-message.chat-outgoing .restaurant-chat-bubble {
+      background: #dbeafe;
+    }
+
+    .route-admin-dashboard .restaurant-chat-meta {
+      font-size: 0.72rem;
+      color: #718096;
+      margin-top: 4px;
+    }
+
+    .route-admin-dashboard .chat-ack {
+      font-size: 0.75rem;
+      color: #6b7280;
+      text-align: left;
+      padding-top: 6px;
+      border-top: 1px dashed #e2e8f0;
+    }
+
+    .route-admin-dashboard .restaurant-chat-empty {
+      color: #718096;
+      font-size: 0.85rem;
+      text-align: center;
+      padding: 12px 0;
+    }
+
+    .route-admin-dashboard .restaurant-chat-compose {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .route-admin-dashboard .restaurant-chat-input {
+      flex: 1;
+      padding: 8px 10px;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      font-family: inherit;
+    }
+
+    .route-admin-dashboard .restaurant-chat-input:focus {
+      outline: none;
+      border-color: #4c5ad4;
+      box-shadow: 0 0 0 2px rgba(76, 90, 212, 0.2);
+    }
+
+    .route-admin-dashboard .feedback-list {
+      display: grid;
+      gap: 16px;
+      margin-top: 16px;
+    }
+
+    .route-admin-dashboard .feedback-card {
+      background: #f7fafc;
+      border-radius: 10px;
+      border: 1px solid #e2e8f0;
+      padding: 16px;
+    }
+
+    .route-admin-dashboard .feedback-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      color: #718096;
+      font-size: 0.85rem;
+      margin-bottom: 10px;
+    }
+
+    .route-admin-dashboard .feedback-text {
+      color: #1e3a5f;
+      line-height: 1.5;
+      white-space: pre-wrap;
+    }
+
+    .route-admin-dashboard .tab-buttons {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 24px;
+      border-bottom: 2px solid #e2e8f0;
+    }
+
+    .route-admin-dashboard .tab-btn {
+      padding: 12px 24px;
+      border: none;
+      background: transparent;
+      color: #718096;
+      font-weight: 600;
+      cursor: pointer;
+      border-bottom: 3px solid transparent;
+      margin-bottom: -2px;
+      transition: all 0.2s;
+    }
+
+    .route-admin-dashboard .tab-btn:hover {
+      color: #4c5ad4;
+    }
+
+    .route-admin-dashboard .tab-btn.active {
+      color: #4c5ad4;
+      border-bottom-color: #4c5ad4;
+    }
+
+    .route-admin-dashboard .tab-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-end;
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .route-admin-dashboard .restaurant-selector {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      min-width: 260px;
+    }
+
+    .route-admin-dashboard .restaurant-selector label {
+      font-weight: 600;
+      color: #1e3a5f;
+      font-size: 0.95rem;
+    }
+
+    .route-admin-dashboard .restaurant-selector select {
+      padding: 12px 14px;
+      border: 2px solid #e2e8f0;
+      border-radius: 10px;
+      font-size: 1rem;
+      background: white;
+      color: #1e3a5f;
+    }
+
+    .route-admin-dashboard .restaurant-selector select:focus {
+      outline: none;
+      border-color: #4c5ad4;
+      box-shadow: 0 0 0 2px rgba(76, 90, 212, 0.15);
+    }
+
+    .route-admin-dashboard .tab-content {
+      display: none;
+    }
+
+    .route-admin-dashboard .tab-content.active {
+      display: block;
+    }
+
+    .route-admin-dashboard .access-denied {
+      text-align: center;
+      padding: 60px 20px;
+      background: white;
+      border-radius: 16px;
+      margin: 40px auto;
+      max-width: 600px;
+    }
+
+    .route-admin-dashboard .access-denied h1 {
+      font-size: 2rem;
+      color: #e85d5d;
+      margin-bottom: 16px;
+    }
+
+    /* Appeals section styles */
+    .route-admin-dashboard .appeals-filters {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+    }
+
+    .route-admin-dashboard .filter-btn {
+      padding: 8px 16px;
+      border: 2px solid #e2e8f0;
+      background: white;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.2s;
+    }
+
+    .route-admin-dashboard .filter-btn:hover {
+      border-color: #4c5ad4;
+    }
+
+    .route-admin-dashboard .filter-btn.active {
+      background: #4c5ad4;
+      color: white;
+      border-color: #4c5ad4;
+    }
+
+    .route-admin-dashboard .appeals-list {
+      display: grid;
+      gap: 24px;
+    }
+
+    .route-admin-dashboard .appeal-card {
+      background: #f7fafc;
+      border-radius: 12px;
+      padding: 20px;
+      border-left: 4px solid #f59e0b;
+    }
+
+    .route-admin-dashboard .appeal-card.approved {
+      border-left-color: #4caf50;
+    }
+
+    .route-admin-dashboard .appeal-card.rejected {
+      border-left-color: #ef4444;
+    }
+
+    .route-admin-dashboard .appeal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 16px;
+    }
+
+    .route-admin-dashboard .appeal-info h3 {
+      margin: 0 0 8px 0;
+      color: #1e3a5f;
+      font-size: 1.2rem;
+    }
+
+    .route-admin-dashboard .appeal-meta {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      color: #718096;
+      font-size: 0.9rem;
+    }
+
+    .route-admin-dashboard .appeal-status {
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 0.85rem;
+      text-transform: uppercase;
+    }
+
+    .route-admin-dashboard .appeal-status.pending {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    .route-admin-dashboard .appeal-status.approved {
+      background: #d1fae5;
+      color: #065f46;
+    }
+
+    .route-admin-dashboard .appeal-status.rejected {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .route-admin-dashboard .appeal-status.resolved {
+      background: #d1fae5;
+      color: #065f46;
+    }
+
+    .route-admin-dashboard .appeal-status.dismissed {
+      background: #e5e7eb;
+      color: #374151;
+    }
+
+    .route-admin-dashboard .appeal-photo {
+      max-width: 200px;
+      max-height: 200px;
+      border-radius: 8px;
+      margin: 16px 0;
+      cursor: pointer;
+      border: 2px solid #e2e8f0;
+    }
+
+    .route-admin-dashboard .appeal-message {
+      background: #fff3cd;
+      border: 1px solid #ffc107;
+      border-radius: 8px;
+      padding: 12px;
+      margin: 16px 0;
+      color: #856404;
+    }
+
+    .route-admin-dashboard .appeal-actions {
+      display: flex;
+      gap: 12px;
+      margin-top: 16px;
+      flex-wrap: wrap;
+    }
+
+    .route-admin-dashboard .btn-approve {
+      background: #4caf50;
+      color: white;
+      padding: 8px 16px;
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 0.9rem;
+      transition: background 0.2s;
+    }
+
+    .route-admin-dashboard .btn-approve:hover {
+      background: #45a049;
+    }
+
+    .route-admin-dashboard .btn-deny {
+      background: #ef4444;
+      color: white;
+      padding: 8px 16px;
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 0.9rem;
+      transition: background 0.2s;
+    }
+
+    .route-admin-dashboard .btn-deny:hover {
+      background: #dc2626;
+    }
+
+    .route-admin-dashboard .btn-view-restaurant {
+      background: #4c5ad4;
+      color: white;
+      padding: 8px 16px;
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-block;
+      font-size: 0.9rem;
+      transition: background 0.2s;
+    }
+
+    .route-admin-dashboard .btn-view-restaurant:hover {
+      background: #6366f1;
+    }
+
+    .route-admin-dashboard .review-notes {
+      margin-top: 16px;
+    }
+
+    .route-admin-dashboard .review-notes textarea {
+      width: 100%;
+      padding: 12px;
+      border: 2px solid #e2e8f0;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      font-family: inherit;
+      min-height: 80px;
+      resize: vertical;
+      box-sizing: border-box;
+    }
+
+    .route-admin-dashboard .review-notes textarea:focus {
+      outline: none;
+      border-color: #4c5ad4;
+    }
+
+    .route-admin-dashboard .photo-modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.9);
+      z-index: 10000;
+      justify-content: center;
+      align-items: center;
+      cursor: pointer;
+    }
+
+    .route-admin-dashboard .photo-modal.show {
+      display: flex;
+    }
+
+    .route-admin-dashboard .photo-modal img {
+      max-width: 90%;
+      max-height: 90%;
+      border-radius: 8px;
+    }
+
+    .route-admin-dashboard .loading {
+      text-align: center;
+      padding: 40px 20px;
+      color: #718096;
+    }
+
+    .route-admin-dashboard .no-appeals {
+      text-align: center;
+      padding: 40px 20px;
+      color: #718096;
+    }
+
+    /* Manager Invites styles */
+    .route-admin-dashboard .invite-form {
+      display: grid;
+      gap: 24px;
+    }
+
+    .route-admin-dashboard .restaurant-checkboxes {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+      gap: 12px;
+      max-height: 300px;
+      overflow-y: auto;
+      padding: 16px;
+      background: #f7fafc;
+      border-radius: 8px;
+      border: 2px solid #e2e8f0;
+    }
+
+    .route-admin-dashboard .restaurant-checkbox {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      background: white;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.2s, border-color 0.2s;
+      border: 2px solid transparent;
+    }
+
+    .route-admin-dashboard .restaurant-checkbox:hover {
+      background: #edf2f7;
+    }
+
+    .route-admin-dashboard .restaurant-checkbox.selected {
+      background: #ebf4ff;
+      border-color: #4c5ad4;
+    }
+
+    .route-admin-dashboard .restaurant-checkbox input {
+      width: 18px;
+      height: 18px;
+      accent-color: #4c5ad4;
+    }
+
+    .route-admin-dashboard .restaurant-checkbox label {
+      cursor: pointer;
+      font-weight: 500;
+      color: #1e3a5f;
+    }
+
+    .route-admin-dashboard .entry-page-options {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .route-admin-dashboard .entry-page-option {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 16px;
+      background: #f7fafc;
+      border-radius: 8px;
+      cursor: pointer;
+      border: 2px solid transparent;
+      transition: all 0.2s;
+    }
+
+    .route-admin-dashboard .entry-page-option:hover {
+      background: #edf2f7;
+    }
+
+    .route-admin-dashboard .entry-page-option.selected {
+      background: #ebf4ff;
+      border-color: #4c5ad4;
+    }
+
+    .route-admin-dashboard .entry-page-option input {
+      width: 18px;
+      height: 18px;
+      accent-color: #4c5ad4;
+    }
+
+    .route-admin-dashboard .entry-page-option .option-info {
+      flex: 1;
+    }
+
+    .route-admin-dashboard .entry-page-option .option-title {
+      font-weight: 600;
+      color: #1e3a5f;
+    }
+
+    .route-admin-dashboard .entry-page-option .option-desc {
+      font-size: 0.9rem;
+      color: #718096;
+      margin-top: 2px;
+    }
+
+    .route-admin-dashboard .restaurant-select-for-qr {
+      margin-left: 30px;
+      margin-top: 12px;
+    }
+
+    .route-admin-dashboard .restaurant-select-for-qr select {
+      padding: 10px 14px;
+      border: 2px solid #e2e8f0;
+      border-radius: 8px;
+      font-size: 1rem;
+      min-width: 250px;
+      background: white;
+    }
+
+    .route-admin-dashboard .restaurant-select-for-qr select:focus {
+      outline: none;
+      border-color: #4c5ad4;
+    }
+
+    .route-admin-dashboard .generated-link-container {
+      display: none;
+      margin-top: 24px;
+      padding: 20px;
+      background: #d1fae5;
+      border-radius: 12px;
+      border: 2px solid #6ee7b7;
+    }
+
+    .route-admin-dashboard .generated-link-container.show {
+      display: block;
+    }
+
+    .route-admin-dashboard .generated-link-container h3 {
+      margin: 0 0 12px 0;
+      color: #065f46;
+    }
+
+    .route-admin-dashboard .generated-link {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .route-admin-dashboard .generated-link input {
+      flex: 1;
+      padding: 12px 16px;
+      border: 2px solid #6ee7b7;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      background: white;
+      font-family: monospace;
+    }
+
+    .route-admin-dashboard .btn-copy {
+      background: #065f46;
+      color: white;
+      padding: 12px 20px;
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .route-admin-dashboard .btn-copy:hover {
+      background: #047857;
+    }
+
+    .route-admin-dashboard .invites-list {
+      margin-top: 32px;
+    }
+
+    .route-admin-dashboard .invite-item {
+      background: #f7fafc;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 16px;
+      border-left: 4px solid #4c5ad4;
+    }
+
+    .route-admin-dashboard .invite-item.used {
+      border-left-color: #9ca3af;
+      opacity: 0.7;
+    }
+
+    .route-admin-dashboard .invite-item.expired {
+      border-left-color: #ef4444;
+      opacity: 0.7;
+    }
+
+    .route-admin-dashboard .invite-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 12px;
+    }
+
+    .route-admin-dashboard .invite-restaurants {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .route-admin-dashboard .invite-restaurant-tag {
+      background: #e2e8f0;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      color: #1e3a5f;
+    }
+
+    .route-admin-dashboard .invite-meta {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      font-size: 0.9rem;
+      color: #718096;
+      margin-top: 12px;
+    }
+
+    .route-admin-dashboard .invite-status-badge {
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .route-admin-dashboard .invite-status-badge.active {
+      background: #d1fae5;
+      color: #065f46;
+    }
+
+    .route-admin-dashboard .invite-status-badge.used {
+      background: #e5e7eb;
+      color: #374151;
+    }
+
+    .route-admin-dashboard .invite-status-badge.expired {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .route-admin-dashboard .invite-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    /* Manager Access styles */
+    .route-admin-dashboard .manager-access-list {
+      display: grid;
+      gap: 16px;
+    }
+
+    .route-admin-dashboard .manager-access-card {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 16px;
+    }
+
+    .route-admin-dashboard .manager-access-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .route-admin-dashboard .manager-access-header h3 {
+      margin: 0;
+      font-size: 1.1rem;
+      color: #1e3a5f;
+    }
+
+    .route-admin-dashboard .manager-table {
+      width: 100%;
+      border-collapse: collapse;
+      background: white;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      overflow: hidden;
+      font-size: 0.9rem;
+    }
+
+    .route-admin-dashboard .manager-table th,
+    .route-admin-dashboard .manager-table td {
+      padding: 10px 12px;
+      border-bottom: 1px solid #e2e8f0;
+      text-align: left;
+      color: #1e3a5f;
+    }
+
+    .route-admin-dashboard .manager-table th {
+      background: #eef2ff;
+      font-weight: 600;
+      color: #1e3a5f;
+    }
+
+    .route-admin-dashboard .manager-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    .route-admin-dashboard .manager-empty {
+      padding: 14px;
+      color: #64748b;
+      background: white;
+      border-radius: 10px;
+      border: 1px dashed #cbd5f5;
+      text-align: center;
+    }
+
+    .route-admin-dashboard .manager-invite-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    .route-admin-dashboard .manager-invite-note {
+      font-size: 0.85rem;
+      color: #64748b;
+    }
+
+    .route-admin-dashboard .manager-invite-output {
+      display: none;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .route-admin-dashboard .manager-invite-output.show {
+      display: flex;
+    }
+
+    .route-admin-dashboard .manager-invite-output input {
+      flex: 1;
+      min-width: 240px;
+      padding: 10px 12px;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      color: #1e3a5f;
+      background: #fff;
+    }
+
+    .route-admin-dashboard .btn-copy-small {
+      background: #4c5ad4;
+      color: white;
+      padding: 6px 12px;
+      border: none;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      cursor: pointer;
+    }
+
+    .route-admin-dashboard .btn-copy-small:hover {
+      background: #6366f1;
+    }
+
+    .route-admin-dashboard .btn-revoke {
+      background: #ef4444;
+      color: white;
+      padding: 6px 12px;
+      border: none;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      cursor: pointer;
+    }
+
+    .route-admin-dashboard .btn-revoke:hover {
+      background: #dc2626;
+    }
+
+    .route-admin-dashboard .expiration-options {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .route-admin-dashboard .expiration-options select {
+      padding: 10px 14px;
+      border: 2px solid #e2e8f0;
+      border-radius: 8px;
+      font-size: 1rem;
+      background: white;
+    }
+
+    .route-admin-dashboard .expiration-options select:focus {
+      outline: none;
+      border-color: #4c5ad4;
+    }

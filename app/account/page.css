@@ -1,0 +1,163 @@
+.route-account .page-main {
+  padding: 28px 20px 110px;
+}
+
+.route-account .account-layout {
+  display: grid;
+  gap: 24px;
+  max-width: 740px;
+  margin: 0 auto;
+}
+
+.route-account .auth-card {
+  border-radius: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.route-account .auth-card h2 {
+  margin: 0;
+  font-size: 2rem;
+  line-height: 1.06;
+  font-weight: 800;
+}
+
+.route-account .form-row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.route-account .form-row > * {
+  flex: 1 1 200px;
+}
+
+.route-account .auth-card input,
+.route-account .auth-card textarea {
+  width: 100%;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: #101739;
+  color: var(--ink);
+  padding: 12px 14px;
+  font-size: 15px;
+  min-height: 44px;
+}
+
+.route-account .auth-card input:focus,
+.route-account .auth-card textarea:focus {
+  outline: none;
+  border-color: var(--hover);
+  box-shadow: 0 0 0 3px rgba(124, 156, 255, 0.2);
+}
+
+.route-account .auth-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.route-account .primary-btn {
+  background: #3651ff;
+  border: 1px solid #4e65ff;
+  color: #fff;
+  padding: 10px 22px;
+  border-radius: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: box-shadow 0.2s;
+}
+
+.route-account .secondary-btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--ink);
+  padding: 10px 22px;
+  border-radius: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.route-account .primary-btn:hover,
+.route-account .secondary-btn:hover {
+  box-shadow: 0 6px 20px rgba(54, 81, 255, 0.25);
+}
+
+.route-account .link-btn {
+  background: none;
+  border: none;
+  color: var(--brand);
+  font-size: 0.95rem;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 0;
+  align-self: flex-start;
+}
+
+.route-account .link-btn:hover {
+  color: #9eb3ff;
+}
+
+.route-account .allergen-select {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.route-account .allergen-select .chip {
+  border-radius: 16px;
+  color: var(--ink);
+}
+
+.route-account .allergen-select .chip.active {
+  color: var(--ink);
+}
+
+.route-account .muted-text {
+  color: var(--muted);
+}
+
+.route-account .status-text {
+  font-size: 0.95rem;
+  min-height: 18px;
+}
+
+.route-account .status-text.error {
+  color: var(--bad);
+}
+
+.route-account .status-text.success {
+  color: var(--ok);
+}
+
+.route-account .account-report-cta {
+  display: flex;
+  justify-content: center;
+  margin-top: 8px;
+}
+
+.route-account .account-report-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 28px;
+  border-radius: 999px;
+  text-decoration: none;
+  background: #3651ff;
+  border: 1px solid #4e65ff;
+  color: #fff;
+  font-weight: 700;
+  box-shadow: 0 12px 30px rgba(54, 81, 255, 0.25);
+}
+
+.route-account .account-report-link:hover {
+  box-shadow: 0 12px 30px rgba(54, 81, 255, 0.4);
+}
+
+@media (max-width: 640px) {
+  .route-account .auth-card h2 {
+    font-size: 2rem;
+  }
+}

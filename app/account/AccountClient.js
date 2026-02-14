@@ -1,10 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import AppTopbar from "../components/AppTopbar";
 import AppLoadingScreen from "../components/AppLoadingScreen";
 import PageShell from "../components/PageShell";
+import FormSectionCard from "../components/forms/FormSectionCard";
+import ActionRow from "../components/forms/ActionRow";
 import { buildAllergenDietConfig, loadAllergenDietConfig } from "../lib/allergenConfig";
 import {
   fetchManagerRestaurants,
@@ -775,6 +778,7 @@ export default function AccountClient() {
 
   return (
     <PageShell
+      shellClassName="page-shell route-account"
       topbar={
         <AppTopbar
           mode="customer"
@@ -847,7 +851,7 @@ export default function AccountClient() {
             ) : null}
 
             {mode === "signin" ? (
-              <section className="auth-card">
+              <FormSectionCard className="auth-card">
                 <h2>Manage your allergy profile</h2>
                 <p className="muted-text">
                   Sign in to manage saved allergens and diets.
@@ -901,11 +905,11 @@ export default function AccountClient() {
                   Forgot your password?
                 </button>
                 <p className={statusClass(authStatus.kind)}>{authStatus.message}</p>
-              </section>
+              </FormSectionCard>
             ) : null}
 
             {mode === "signup" ? (
-              <section className="auth-card">
+              <FormSectionCard className="auth-card">
                 <div className="auth-actions" style={{ justifyContent: "space-between" }}>
                   <h2 style={{ margin: 0 }}>Create your account</h2>
                   <button className="secondary-btn" type="button" onClick={() => setMode("signin")}>
@@ -945,11 +949,11 @@ export default function AccountClient() {
                   </button>
                 </div>
                 <p className={statusClass(signupStatus.kind)}>{signupStatus.message}</p>
-              </section>
+              </FormSectionCard>
             ) : null}
 
             {mode === "recovery" ? (
-              <section className="auth-card">
+              <FormSectionCard className="auth-card">
                 <h2 style={{ margin: "0 0 12px" }}>Set a new password</h2>
                 <p className="muted-text" style={{ marginBottom: 12 }}>
                   Enter a new password for your Clarivore account.
@@ -975,11 +979,11 @@ export default function AccountClient() {
                   </button>
                 </div>
                 <p className={statusClass(recoveryStatus.kind)}>{recoveryStatus.message}</p>
-              </section>
+              </FormSectionCard>
             ) : null}
 
             {mode === "onboarding" ? (
-              <section className="auth-card">
+              <FormSectionCard className="auth-card">
                 <h2 style={{ margin: "0 0 12px" }}>Welcome to Clarivore</h2>
                 <p className="muted-text" style={{ marginBottom: 16 }}>
                   {inviteToken
@@ -1031,12 +1035,12 @@ export default function AccountClient() {
                   </button>
                 </div>
                 <p className={statusClass(onboardingStatus.kind)}>{onboardingStatus.message}</p>
-              </section>
+              </FormSectionCard>
             ) : null}
 
             {mode === "account" ? (
               <>
-                <section className="auth-card">
+                <FormSectionCard className="auth-card">
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
                     <h2 style={{ margin: 0 }}>Your information</h2>
                     {detailsChanged ? (
@@ -1067,10 +1071,10 @@ export default function AccountClient() {
                   />
                   <p className="muted-text">Updating your email sends a confirmation message.</p>
                   <p className={statusClass(detailsStatus.kind)}>{detailsStatus.message}</p>
-                </section>
+                </FormSectionCard>
 
                 {showPreferences ? (
-                  <section className="auth-card">
+                  <FormSectionCard className="auth-card">
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
                       <h2 style={{ margin: 0 }}>My Allergens</h2>
                       {allergiesChanged ? (
@@ -1087,11 +1091,11 @@ export default function AccountClient() {
                       getAllergenEmoji,
                     )}
                     <p className={statusClass(allergyStatus.kind)}>{allergyStatus.message}</p>
-                  </section>
+                  </FormSectionCard>
                 ) : null}
 
                 {showPreferences ? (
-                  <section className="auth-card">
+                  <FormSectionCard className="auth-card">
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
                       <h2 style={{ margin: 0 }}>My Diets</h2>
                       {dietsChanged ? (
@@ -1102,11 +1106,11 @@ export default function AccountClient() {
                     </div>
                     {renderChips(DIETS, selectedDiets, setSelectedDiets, (diet) => diet, getDietEmoji)}
                     <p className={statusClass(dietStatus.kind)}>{dietStatus.message}</p>
-                  </section>
+                  </FormSectionCard>
                 ) : null}
 
-                <section className="auth-card">
-                  <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
+                <FormSectionCard className="auth-card">
+                  <ActionRow align="center">
                     <button className="secondary-btn" type="button" onClick={handleSignOut}>
                       Sign out
                     </button>
@@ -1118,7 +1122,7 @@ export default function AccountClient() {
                     >
                       Delete account
                     </button>
-                  </div>
+                  </ActionRow>
 
                   {showDeleteWarning ? (
                     <div
@@ -1136,7 +1140,7 @@ export default function AccountClient() {
                       <p style={{ margin: "0 0 16px", color: "#8891b0", fontSize: "0.9rem" }}>
                         This permanently deletes your account and data.
                       </p>
-                      <div style={{ display: "flex", gap: 12, justifyContent: "center" }}>
+                      <ActionRow align="center">
                         <button className="secondary-btn" type="button" onClick={() => setShowDeleteWarning(false)}>
                           Cancel
                         </button>
@@ -1148,10 +1152,16 @@ export default function AccountClient() {
                         >
                           Yes, delete my account
                         </button>
-                      </div>
+                      </ActionRow>
                     </div>
                   ) : null}
-                </section>
+                </FormSectionCard>
+
+                <div className="account-report-cta">
+                  <Link href="/report-issue" className="account-report-link">
+                    Report an issue
+                  </Link>
+                </div>
               </>
             ) : null}
           </div>

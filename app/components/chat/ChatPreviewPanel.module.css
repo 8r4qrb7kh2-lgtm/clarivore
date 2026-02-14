@@ -1,0 +1,104 @@
+.heading {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.title {
+  margin: 0;
+  font-size: 1.18rem;
+  line-height: 1.2;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: #dc2626;
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: 700;
+  line-height: 1;
+  transform: translateY(-4px);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+  max-height: 220px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.message {
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--ink);
+  max-width: 90%;
+}
+
+.outgoing {
+  align-self: flex-end;
+  background: rgba(79, 110, 255, 0.2);
+  border-color: rgba(79, 110, 255, 0.4);
+}
+
+.incoming {
+  align-self: flex-start;
+}
+
+.meta {
+  font-size: 0.72rem;
+  color: var(--muted);
+  margin-top: 6px;
+}
+
+.ack {
+  font-size: 0.75rem;
+  color: var(--muted);
+  text-align: left;
+  padding-top: 6px;
+  border-top: 1px dashed rgba(255, 255, 255, 0.1);
+}
+
+.empty {
+  color: var(--muted);
+  font-size: 0.88rem;
+  text-align: center;
+  padding: 16px 0;
+}
+
+.compose {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.input {
+  flex: 1;
+  padding: 8px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: #0b1020;
+  color: var(--ink);
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--hover);
+  box-shadow: 0 0 0 3px rgba(124, 156, 255, 0.2);
+}
+
+.actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}

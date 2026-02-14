@@ -7,6 +7,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import AppTopbar from "../components/AppTopbar";
 import AppLoadingScreen from "../components/AppLoadingScreen";
 import PageShell from "../components/PageShell";
+import PageHeading from "../components/surfaces/PageHeading";
 import { Button, Textarea } from "../components/ui";
 import { supabaseClient as supabase } from "../lib/supabase";
 import { loadAllergenDietConfig } from "../lib/allergenConfig";
@@ -398,6 +399,7 @@ export default function OrderFeedbackClient() {
 
   return (
     <PageShell
+      shellClassName="page-shell route-order-feedback"
       topbar={
         <AppTopbar mode="customer" user={topbarUser || null} onSignOut={onSignOut} />
       }
@@ -434,12 +436,15 @@ export default function OrderFeedbackClient() {
 
           {!isLoading && !isInvalidToken && !isSubmitted ? (
             <div id="feedback-form" className="feedback-container">
-              <h1 style={{ textAlign: "center", marginBottom: 8 }}>
-                How was your experience?
-              </h1>
-              <p style={{ textAlign: "center", color: "var(--muted)", marginBottom: 32 }}>
-                at <strong id="restaurant-name">{restaurantData?.name || ""}</strong>
-              </p>
+              <PageHeading
+                centered
+                title="How was your experience?"
+                subtitle={(
+                  <>
+                    at <strong id="restaurant-name">{restaurantData?.name || ""}</strong>
+                  </>
+                )}
+              />
 
               {submitError ? (
                 <div id="error-container">

@@ -3,11 +3,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import AppTopbar from "../../components/AppTopbar";
 import PageShell from "../../components/PageShell";
-import ChatMessageText from "../../components/chat/ChatMessageText";
+import ChatPreviewPanel from "../../components/chat/ChatPreviewPanel";
+import SurfaceCard from "../../components/surfaces/SurfaceCard";
+import PageHeading from "../../components/surfaces/PageHeading";
 import { useIngredientScanController } from "../../components/ingredient-scan/useIngredientScanController";
 import { notifyManagerChat } from "../../lib/chatNotifications";
 import { getActiveAllergenDietConfig } from "../../lib/allergenConfigRuntime";
-import { formatChatTimestamp, resolveChatLink } from "../../lib/chatMessage";
+import { resolveChatLink } from "../../lib/chatMessage";
 import { supabaseClient as supabase } from "../../lib/supabase";
 import { resolveManagerDisplayName } from "../../lib/userIdentity";
 
@@ -2173,9 +2175,71 @@ export default function ManagerDashboardDom({
 
   const recentChangesLoading = isLoadingDashboard && !recentChangeLogs.length && !dashboardError;
   const dashboardVisible = hasManagerAccess && !isLoadingDashboard;
+  const managerChatAckByIndex = useMemo(() => {
+    const ackByIndex = new Map();
+
+    const pushAck = (index, entry) => {
+      if (index < 0) return;
+      const existing = ackByIndex.get(index) || [];
+      existing.push(entry);
+      ackByIndex.set(index, existing);
+    };
+
+    chatMessages.forEach((message, index) => {
+      const messageTime = new Date(message.created_at).getTime();
+      if (Number.isNaN(messageTime)) return;
+
+      if (
+        chatReadState.admin?.acknowledged_at &&
+        message.sender_role === "restaurant"
+      ) {
+        const adminAckTime = new Date(chatReadState.admin.acknowledged_at).getTime();
+        if (!Number.isNaN(adminAckTime) && messageTime <= adminAckTime) {
+          const next = chatMessages[index + 1];
+          const nextTime = next?.created_at ? new Date(next.created_at).getTime() : NaN;
+          if (
+            !next ||
+            Number.isNaN(nextTime) ||
+            next.sender_role !== "restaurant" ||
+            nextTime > adminAckTime
+          ) {
+            pushAck(index, {
+              name: ADMIN_DISPLAY_NAME,
+              acknowledgedAt: chatReadState.admin.acknowledged_at,
+            });
+          }
+        }
+      }
+
+      if (
+        chatReadState.restaurant?.acknowledged_at &&
+        message.sender_role === "admin"
+      ) {
+        const managerAckTime = new Date(chatReadState.restaurant.acknowledged_at).getTime();
+        if (!Number.isNaN(managerAckTime) && messageTime <= managerAckTime) {
+          const next = chatMessages[index + 1];
+          const nextTime = next?.created_at ? new Date(next.created_at).getTime() : NaN;
+          if (
+            !next ||
+            Number.isNaN(nextTime) ||
+            next.sender_role !== "admin" ||
+            nextTime > managerAckTime
+          ) {
+            pushAck(index, {
+              name: managerDisplayName,
+              acknowledgedAt: chatReadState.restaurant.acknowledged_at,
+            });
+          }
+        }
+      }
+    });
+
+    return ackByIndex;
+  }, [chatMessages, chatReadState, managerDisplayName]);
 
   return (
     <PageShell
+      shellClassName="page-shell route-manager-dashboard"
       contentClassName="dashboard-container"
       topbar={
         <AppTopbar
@@ -2188,10 +2252,11 @@ export default function ManagerDashboardDom({
         />
       }
     >
-          <div className="dashboard-header">
-            <h1>Restaurant Manager Dashboard</h1>
-            <p>View customer dietary analytics and accommodation requests</p>
-          </div>
+          <PageHeading
+            className="dashboard-header"
+            title="Restaurant Manager Dashboard"
+            subtitle="View customer dietary analytics and accommodation requests"
+          />
 
           {showRestaurantSelector ? (
             <div className="restaurant-selector" id="restaurant-selector-container">
@@ -2272,158 +2337,39 @@ export default function ManagerDashboardDom({
 
           {dashboardVisible ? (
             <div id="dashboard-content">
-              <div className="section quick-actions-section">
+              <SurfaceCard className="section quick-actions-section">
                 <div className="quick-actions-grid">
-                  <div className="quick-actions-panel">
-                    <div className="chat-header-row">
-                      <div className="chat-title-wrap">
-                        <h3 className="quick-actions-title" style={{ margin: 0 }}>
-                          Direct Messages
-                        </h3>
-                        <span
-                          className="chat-badge"
-                          id="chat-unread-badge"
-                          style={{ display: chatUnreadCount > 0 ? "inline-flex" : "none" }}
-                        >
-                          {chatUnreadCount}
-                        </span>
-                      </div>
-                      <button
-                        className="btn btnWarning"
-                        id="chat-ack-btn"
-                        style={{ display: chatUnreadCount > 0 ? "inline-flex" : "none" }}
-                        onClick={onAcknowledgeChat}
-                      >
-                        Acknowledge message(s)
-                      </button>
-                    </div>
-
-                    <div id="chat-preview-list" className="chat-preview-list" ref={chatListRef}>
-                      {chatMessages.length === 0 ? (
-                        <div className="chat-preview-empty">No messages yet</div>
-                      ) : (
-                        chatMessages.map((message, index) => {
-                          const isOutgoing = message.sender_role === "restaurant";
-                          const senderName = String(message.sender_name || "").trim();
-                          const senderLabel = isOutgoing
-                            ? senderName && senderName.toLowerCase() !== "you"
-                              ? senderName
-                              : managerDisplayName
-                            : senderName || ADMIN_DISPLAY_NAME;
-                          const timestamp = formatChatTimestamp(message.created_at);
-
-                          const acknowledgements = [];
-                          if (chatReadState.admin?.acknowledged_at) {
-                            const adminAckTime = new Date(
-                              chatReadState.admin.acknowledged_at,
-                            ).getTime();
-                            const messageTime = new Date(message.created_at).getTime();
-                            if (
-                              !Number.isNaN(adminAckTime) &&
-                              !Number.isNaN(messageTime) &&
-                              message.sender_role === "restaurant" &&
-                              messageTime <= adminAckTime
-                            ) {
-                              const next = chatMessages[index + 1];
-                              const nextTime = next?.created_at
-                                ? new Date(next.created_at).getTime()
-                                : NaN;
-                              if (
-                                !next ||
-                                Number.isNaN(nextTime) ||
-                                next.sender_role !== "restaurant" ||
-                                nextTime > adminAckTime
-                              ) {
-                                acknowledgements.push({
-                                  name: ADMIN_DISPLAY_NAME,
-                                  at: chatReadState.admin.acknowledged_at,
-                                });
-                              }
-                            }
-                          }
-
-                          if (chatReadState.restaurant?.acknowledged_at) {
-                            const managerAckTime = new Date(
-                              chatReadState.restaurant.acknowledged_at,
-                            ).getTime();
-                            const messageTime = new Date(message.created_at).getTime();
-                            if (
-                              !Number.isNaN(managerAckTime) &&
-                              !Number.isNaN(messageTime) &&
-                              message.sender_role === "admin" &&
-                              messageTime <= managerAckTime
-                            ) {
-                              const next = chatMessages[index + 1];
-                              const nextTime = next?.created_at
-                                ? new Date(next.created_at).getTime()
-                                : NaN;
-                              if (
-                                !next ||
-                                Number.isNaN(nextTime) ||
-                                next.sender_role !== "admin" ||
-                                nextTime > managerAckTime
-                              ) {
-                                acknowledgements.push({
-                                  name: managerDisplayName,
-                                  at: chatReadState.restaurant.acknowledged_at,
-                                });
-                              }
-                            }
-                          }
-
-                          return (
-                            <div key={message.id || `${message.created_at}-${index}`}>
-                              <div
-                                className={`chat-preview-item${
-                                  isOutgoing ? " outgoing" : " incoming"
-                                }`}
-                              >
-                                <div>
-                                  <ChatMessageText
-                                    text={message.message}
-                                    resolveLink={resolveManagerChatLink}
-                                  />
-                                </div>
-                                <div className="chat-preview-meta">
-                                  {senderLabel}
-                                  {timestamp ? ` · ${timestamp}` : ""}
-                                </div>
-                              </div>
-                              {acknowledgements.map((entry) => (
-                                <div
-                                  className="chat-ack"
-                                  key={`${entry.name}-${entry.at}-${message.id}`}
-                                >
-                                  {entry.name} acknowledged · {formatChatTimestamp(entry.at)}
-                                </div>
-                              ))}
-                            </div>
-                          );
-                        })
-                      )}
-                    </div>
-
-                    <div className="chat-preview-compose">
-                      <input
-                        id="chat-message-input"
-                        className="chat-preview-input"
-                        type="text"
-                        placeholder="Message Clarivore"
-                        value={chatInput}
-                        disabled={chatSending}
-                        onChange={(event) => setChatInput(event.target.value)}
-                        onKeyDown={(event) => {
-                          if (event.key === "Enter" && !event.shiftKey) {
-                            event.preventDefault();
-                            onSendChatMessage();
-                          }
-                        }}
-                      />
-                      <button className="btn" id="chat-send-btn" onClick={onSendChatMessage} disabled={chatSending}>
-                        {chatSending ? "Sending..." : "Send"}
-                      </button>
-                    </div>
-                  </div>
+                  <ChatPreviewPanel
+                    title="Direct Messages"
+                    unreadCount={chatUnreadCount}
+                    messages={chatMessages}
+                    ackByIndex={managerChatAckByIndex}
+                    inputValue={chatInput}
+                    onInputChange={setChatInput}
+                    onInputKeyDown={(event) => {
+                      if (event.key === "Enter" && !event.shiftKey) {
+                        event.preventDefault();
+                        onSendChatMessage();
+                      }
+                    }}
+                    onSend={onSendChatMessage}
+                    onAcknowledge={onAcknowledgeChat}
+                    sending={chatSending}
+                    emptyText="No messages yet"
+                    resolveLink={resolveManagerChatLink}
+                    listRef={chatListRef}
+                    cardClassName="quick-actions-panel"
+                    senderLabelResolver={(message) => {
+                      const senderName = String(message.sender_name || "").trim();
+                      const isOutgoing = message.sender_role === "restaurant";
+                      return isOutgoing
+                        ? senderName && senderName.toLowerCase() !== "you"
+                          ? senderName
+                          : managerDisplayName
+                        : senderName || ADMIN_DISPLAY_NAME;
+                    }}
+                    isOutgoingResolver={(message) => message.sender_role === "restaurant"}
+                  />
 
                   <div className="quick-actions-panel">
                     <h3 className="quick-actions-title">Menu Confirmation</h3>
@@ -2441,7 +2387,7 @@ export default function ManagerDashboardDom({
                     </div>
                   </div>
                 </div>
-              </div>
+              </SurfaceCard>
 
               <div className="section">
                 <div className="dashboard-split">

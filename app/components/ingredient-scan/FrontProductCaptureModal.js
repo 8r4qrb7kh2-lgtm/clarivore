@@ -104,6 +104,9 @@ export default function FrontProductCaptureModal({
     setHintTone("neutral");
     setError("");
     stopActiveCamera();
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
   }
 
   async function runFrontAnalysis(imageDataUrl) {
@@ -178,6 +181,10 @@ export default function FrontProductCaptureModal({
       await runFrontAnalysis(normalized);
     } catch (uploadError) {
       setError(uploadError?.message || "Failed to load image.");
+    } finally {
+      if (event?.target) {
+        event.target.value = "";
+      }
     }
   }
 

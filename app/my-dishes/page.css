@@ -1,0 +1,280 @@
+    .route-my-dishes .two-column-container {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 32px;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+
+    .route-my-dishes .column {
+      min-width: 0;
+    }
+
+    .route-my-dishes .column-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+
+    .route-my-dishes .column-header h2 {
+      margin: 0;
+      font-size: 1.4rem;
+      color: var(--text);
+    }
+
+    .route-my-dishes .column-description {
+      color: var(--muted);
+      font-size: 0.9rem;
+      margin-bottom: 24px;
+    }
+
+    .route-my-dishes .restaurant-section {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 20px;
+      margin-bottom: 16px;
+    }
+
+    .route-my-dishes .restaurant-section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .route-my-dishes .restaurant-section-name {
+      margin: 0;
+      font-size: 1.1rem;
+      font-weight: 600;
+    }
+
+    .route-my-dishes .restaurant-section-title {
+      margin: 0;
+      font-size: 1.1rem;
+      line-height: 1.2;
+    }
+
+    .route-my-dishes .restaurant-section-name a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+
+    .route-my-dishes .restaurant-section-name a:hover {
+      text-decoration: underline;
+    }
+
+    .route-my-dishes .restaurant-dish-count {
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+
+    .route-my-dishes .dish-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 12px;
+      background: var(--soft);
+      border-radius: 8px;
+      margin-bottom: 8px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .route-my-dishes .dish-item:hover {
+      background: var(--hover);
+    }
+
+    .route-my-dishes .dish-item:last-child {
+      margin-bottom: 0;
+    }
+
+    .route-my-dishes .dish-name {
+      font-size: 0.95rem;
+      color: var(--text);
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .route-my-dishes .dish-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-left: 12px;
+    }
+
+    .route-my-dishes .dish-date {
+      font-size: 0.75rem;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+
+    .route-my-dishes .dish-launch-link {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 4px;
+      border-radius: 4px;
+      color: var(--muted);
+      transition: color 0.2s, background 0.2s;
+    }
+
+    .route-my-dishes .dish-launch-link:hover {
+      color: var(--accent);
+      background: rgba(76, 90, 212, 0.15);
+    }
+
+    .route-my-dishes .empty-state {
+      color: var(--muted);
+      padding: 40px 20px;
+      border: 1px dashed var(--border);
+      border-radius: 16px;
+      text-align: center;
+    }
+
+    .route-my-dishes .loading {
+      text-align: center;
+      color: var(--muted);
+      padding: 40px 20px;
+    }
+
+    .route-my-dishes .status-text {
+      text-align: center;
+      font-size: 0.95rem;
+      margin-bottom: 20px;
+    }
+
+    .route-my-dishes .status-text.success {
+      color: var(--ok);
+    }
+
+    .route-my-dishes .status-text.error {
+      color: var(--bad);
+    }
+
+    .route-my-dishes .unlove-btn {
+      background: transparent;
+      border: none;
+      padding: 4px 8px;
+      cursor: pointer;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 0.75rem;
+      color: var(--muted);
+      transition: background 0.2s, color 0.2s;
+    }
+
+    .route-my-dishes .unlove-btn:hover {
+      background: rgba(239, 68, 68, 0.15);
+      color: #ef4444;
+    }
+
+    .route-my-dishes .unlove-btn svg {
+      width: 14px;
+      height: 14px;
+    }
+
+    @media (max-width: 700px) {
+      .route-my-dishes .two-column-container {
+        grid-template-columns: 1fr;
+        gap: 20px;
+      }
+
+      .route-my-dishes .page-content h1 {
+        font-size: 1.7rem;
+      }
+
+      .route-my-dishes .column-header h2 {
+        font-size: 1.2rem;
+      }
+
+      .route-my-dishes .column-description {
+        margin-bottom: 16px;
+      }
+
+      .route-my-dishes .restaurant-section {
+        padding: 16px;
+      }
+
+      .route-my-dishes .restaurant-section-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 6px;
+      }
+
+      .route-my-dishes .dish-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+      }
+
+      .route-my-dishes .dish-actions {
+        width: 100%;
+        margin-left: 0;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        row-gap: 6px;
+      }
+
+      .route-my-dishes .dish-date {
+        font-size: 0.7rem;
+      }
+
+      .route-my-dishes .unlove-btn {
+        font-size: 0.7rem;
+        padding: 4px 6px;
+      }
+    }
+
+    /* Mode toggle styles */
+    .route-my-dishes .mode-toggle-container {
+      display: none;
+      align-items: center;
+      gap: 10px;
+      margin-right: auto;
+      padding-right: 16px;
+    }
+
+    .route-my-dishes .mode-toggle-label {
+      font-size: 0.85rem;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+
+    .route-my-dishes .mode-toggle {
+      width: 44px;
+      height: 24px;
+      background: var(--border);
+      border-radius: 12px;
+      position: relative;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .route-my-dishes .mode-toggle::after {
+      content: '';
+      position: absolute;
+      width: 18px;
+      height: 18px;
+      background: white;
+      border-radius: 50%;
+      top: 3px;
+      left: 3px;
+      transition: transform 0.2s;
+    }
+
+    .route-my-dishes .mode-toggle.active {
+      background: var(--accent);
+    }
+
+    .route-my-dishes .mode-toggle.active::after {
+      transform: translateX(20px);
+    }

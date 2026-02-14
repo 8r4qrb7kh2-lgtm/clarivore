@@ -8,6 +8,7 @@ const ANTHROPIC_THINKING_BUDGET_TOKENS = 1024;
 // Keep enough response tokens available after thinking to avoid truncated JSON.
 const ANTHROPIC_MIN_OUTPUT_TOKENS = 3000;
 const MAX_ANALYSIS_ATTEMPTS = 3;
+const MAX_EMPTY_FLAG_RETRIES = 1;
 
 const CONFIG_TTL_MS = 5 * 60 * 1000;
 let cachedConfig = null;
@@ -399,8 +400,14 @@ async function runFlagAnalysis({
   userPrompt,
 }) {
   let lastError = null;
+  let emptyFlagRetries = 0;
 
-  for (let attempt = 1; attempt <= MAX_ANALYSIS_ATTEMPTS; attempt += 1) {
+  for (
+    let attempt = 1;
+    attempt <= MAX_ANALYSIS_ATTEMPTS + MAX_EMPTY_FLAG_RETRIES;
+    attempt += 1
+  ) {
+    const maxAttemptsThisRun = MAX_ANALYSIS_ATTEMPTS + emptyFlagRetries;
     try {
       const responseText = await callAnthropicText({
         apiKey,
@@ -413,6 +420,11 @@ async function runFlagAnalysis({
 
       const parsed = parseClaudeJson(responseText);
       if (parsed && typeof parsed === "object" && Array.isArray(parsed.flags)) {
+        if (!parsed.flags.length && emptyFlagRetries < MAX_EMPTY_FLAG_RETRIES) {
+          emptyFlagRetries += 1;
+          await sleep(220);
+          continue;
+        }
         return parsed;
       }
 
@@ -423,13 +435,21 @@ async function runFlagAnalysis({
       });
       const repaired = parseClaudeJson(repairedText);
       if (repaired && typeof repaired === "object" && Array.isArray(repaired.flags)) {
+        if (!repaired.flags.length && emptyFlagRetries < MAX_EMPTY_FLAG_RETRIES) {
+          emptyFlagRetries += 1;
+          await sleep(220);
+          continue;
+        }
         return repaired;
       }
 
       lastError = new Error("Ingredient allergen analyzer returned malformed JSON output.");
+      if (attempt >= maxAttemptsThisRun) {
+        break;
+      }
     } catch (error) {
       lastError = error;
-      if (!isTransientFailure(error) || attempt >= MAX_ANALYSIS_ATTEMPTS) {
+      if (!isTransientFailure(error) || attempt >= maxAttemptsThisRun) {
         break;
       }
       await sleep(attempt * 250);
@@ -590,6 +610,11 @@ DIET PRECISION RULES:
 - Do NOT infer broader diet failures from stricter diets.
 - If one phrase indicates a Vegan violation, do not auto-add Vegetarian/Pescatarian unless separately justified.
 - For wheat/gluten evidence, prefer Gluten-free only (unless additional direct evidence supports other diet violations).
+
+EXPLICIT STATEMENT PRIORITY:
+- Treat "contains" statements as direct/contained risk for listed allergens.
+- Treat "may contain" and shared-facility statements as cross-contamination risk.
+- When explicit statements appear, prioritize those signals over weaker contextual inference.
 
 EXAMPLES:
 - Positive: "Wheat flour" -> include allergen wheat, include Gluten-free diet violation.

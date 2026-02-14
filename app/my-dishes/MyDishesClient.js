@@ -6,6 +6,9 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import AppTopbar from "../components/AppTopbar";
 import PageShell from "../components/PageShell";
+import SplitColumns from "../components/layout/SplitColumns";
+import SurfaceCard from "../components/surfaces/SurfaceCard";
+import PageHeading from "../components/surfaces/PageHeading";
 import { supabaseClient as supabase } from "../lib/supabase";
 import {
   fetchManagerRestaurants,
@@ -476,21 +479,23 @@ export default function MyDishesClient() {
 
   return (
     <PageShell
+      shellClassName="page-shell route-my-dishes"
       topbar={
         <AppTopbar mode="customer" user={user || null} onSignOut={onSignOut} />
       }
     >
-      <h1 style={{ textAlign: "center", marginBottom: 8 }}>My Dishes</h1>
-      <p style={{ textAlign: "center", color: "var(--muted)", marginBottom: 32 }}>
-        Your favorite and previously ordered dishes
-      </p>
+      <PageHeading
+        centered
+        title="My Dishes"
+        subtitle="Your favorite and previously ordered dishes"
+      />
 
       {status.text ? (
         <p className={`status-text ${status.tone || ""}`}>{status.text}</p>
       ) : null}
       {bootError ? <p className="status-text error">{bootError}</p> : null}
 
-      <div className="two-column-container">
+      <SplitColumns className="two-column-container">
         <div className="column">
           <div className="column-header">
             <h2>Loved Dishes</h2>
@@ -500,9 +505,12 @@ export default function MyDishesClient() {
             {isLoadingLoved ? <div className="loading">Loading your favorite dishes...</div> : null}
             {!isLoadingLoved
               ? lovedSections.map((section) => (
-                  <div className="restaurant-section" key={`loved-${section.restaurantId}`}>
-                    <div className="restaurant-section-header">
-                      <h3 className="restaurant-section-name">
+                  <SurfaceCard
+                    className="restaurant-section"
+                    key={`loved-${section.restaurantId}`}
+                    titleClassName="restaurant-section-title"
+                    title={
+                      <span className="restaurant-section-name">
                         {section.restaurantSlug ? (
                           <Link href={`/restaurant?slug=${encodeURIComponent(section.restaurantSlug)}`}>
                             {section.restaurantName}
@@ -510,16 +518,19 @@ export default function MyDishesClient() {
                         ) : (
                           section.restaurantName
                         )}
-                      </h3>
+                      </span>
+                    }
+                    headerRight={
                       <span className="restaurant-dish-count">
                         {section.dishes.length} dish
                         {section.dishes.length !== 1 ? "es" : ""}
                       </span>
-                    </div>
+                    }
+                  >
                     {section.dishes.map((dish) =>
                       renderDish(dish, section.restaurantSlug, true),
                     )}
-                  </div>
+                  </SurfaceCard>
                 ))
               : null}
             {lovedEmpty}
@@ -535,9 +546,12 @@ export default function MyDishesClient() {
             {isLoadingOrdered ? <div className="loading">Loading your order history...</div> : null}
             {!isLoadingOrdered
               ? orderedSections.map((section) => (
-                  <div className="restaurant-section" key={`ordered-${section.restaurantId}`}>
-                    <div className="restaurant-section-header">
-                      <h3 className="restaurant-section-name">
+                  <SurfaceCard
+                    className="restaurant-section"
+                    key={`ordered-${section.restaurantId}`}
+                    titleClassName="restaurant-section-title"
+                    title={
+                      <span className="restaurant-section-name">
                         {section.restaurantSlug ? (
                           <Link href={`/restaurant?slug=${encodeURIComponent(section.restaurantSlug)}`}>
                             {section.restaurantName}
@@ -545,22 +559,25 @@ export default function MyDishesClient() {
                         ) : (
                           section.restaurantName
                         )}
-                      </h3>
+                      </span>
+                    }
+                    headerRight={
                       <span className="restaurant-dish-count">
                         {section.dishes.length} dish
                         {section.dishes.length !== 1 ? "es" : ""}
                       </span>
-                    </div>
+                    }
+                  >
                     {section.dishes.map((dish) =>
                       renderDish(dish, section.restaurantSlug, false),
                     )}
-                  </div>
+                  </SurfaceCard>
                 ))
               : null}
             {orderedEmpty}
           </div>
         </div>
-      </div>
+      </SplitColumns>
     </PageShell>
   );
 }
