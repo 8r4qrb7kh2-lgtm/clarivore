@@ -2016,6 +2016,65 @@ export function useRestaurantEditor({
       };
     };
 
+    const normalizeDetectedDishes = (rawDishes, imageDimensions) => {
+      const seenDishTokens = new Set();
+      return (Array.isArray(rawDishes) ? rawDishes : [])
+        .map((dish) => normalizeDetectedRect(dish, imageDimensions))
+        .filter(Boolean)
+        .filter((dish) => {
+          const token = normalizeToken(dish.name);
+          if (!token || seenDishTokens.has(token)) return false;
+          seenDishTokens.add(token);
+          return true;
+        });
+    };
+
+    const scoreRemapDishQuality = (dishes) => {
+      const normalized = Array.isArray(dishes) ? dishes.filter(Boolean) : [];
+      const dishCount = normalized.length;
+      if (!dishCount) {
+        return {
+          dishCount: 0,
+          suspiciousCount: 0,
+          suspiciousRatio: 0,
+          isLowQuality: false,
+        };
+      }
+
+      let suspiciousCount = 0;
+      normalized.forEach((dish) => {
+        const x = Number(dish?.x);
+        const y = Number(dish?.y);
+        const w = Number(dish?.w);
+        const h = Number(dish?.h);
+        if (
+          !Number.isFinite(x) ||
+          !Number.isFinite(y) ||
+          !Number.isFinite(w) ||
+          !Number.isFinite(h)
+        ) {
+          suspiciousCount += 1;
+          return;
+        }
+
+        const edgeClamped = x <= 0.5 || y <= 0.5 || x + w >= 99.5 || y + h >= 99.5;
+        const area = w * h;
+        const degenerate = w <= 1.2 || h <= 1.2 || area <= 1.5;
+        const oversized = area >= 65;
+        if (edgeClamped || degenerate || oversized) {
+          suspiciousCount += 1;
+        }
+      });
+
+      const suspiciousRatio = suspiciousCount / dishCount;
+      return {
+        dishCount,
+        suspiciousCount,
+        suspiciousRatio,
+        isLowQuality: dishCount >= 4 && suspiciousRatio >= 0.45,
+      };
+    };
+
     for (const pageIndex of targetPages) {
       const imageSource = asText(menuImagesRef.current[pageIndex]);
       if (!imageSource) {
@@ -2065,18 +2124,15 @@ export function useRestaurantEditor({
             // eslint-disable-next-line no-await-in-loop
             oldNormalized = await normalizeImageToLetterboxedSquare(oldImageSource, 1000);
             if (!oldNormalized?.dataUrl || !oldNormalized?.metrics) {
-              const message = "Failed to prepare previous menu image for remap analysis.";
-              errors.push(`Page ${pageIndex + 1}: ${message}`);
-              pageResults.push({
-                pageIndex,
-                success: false,
-                rawDishCount: 0,
-                validDishCount: 0,
-                removedUnmatched: removeUnmatchedPages.has(pageIndex),
-                requiredDetections: requiredDetectionPages.has(pageIndex),
-                error: message,
-              });
-              continue;
+              // Legacy reposition flow can run from the new image alone.
+              // If old-image normalization fails (for example due to CORS), keep going.
+              oldNormalized = null;
+              if (process.env.NODE_ENV !== "production") {
+                console.warn("[restaurant-editor] remap old-image normalization failed; continuing without old-image hints", {
+                  pageIndex: pageIndex + 1,
+                  sourceIndex,
+                });
+              }
             }
           }
         }
@@ -2180,6 +2236,10 @@ export function useRestaurantEditor({
             ? Number(result.rawDishCount)
             : rawUpdated.length + rawNew.length;
           const validDishCount = updatedDishes.length + newDishes.length;
+          const remapQuality = scoreRemapDishQuality([...updatedDishes, ...newDishes]);
+          const diagnostics = result?.diagnostics && typeof result.diagnostics === "object"
+            ? result.diagnostics
+            : null;
 
           if (process.env.NODE_ENV !== "production") {
             const modeCounts = [...updatedDishes, ...newDishes].reduce((accumulator, dish) => {
@@ -2187,9 +2247,6 @@ export function useRestaurantEditor({
               accumulator[key] = (accumulator[key] || 0) + 1;
               return accumulator;
             }, {});
-            const diagnostics = result?.diagnostics && typeof result.diagnostics === "object"
-              ? result.diagnostics
-              : null;
             console.debug("[restaurant-editor] menu remap normalization", {
               pageIndex: pageIndex + 1,
               sourceIndex,
@@ -2203,7 +2260,88 @@ export function useRestaurantEditor({
               corridorClamps: Number(diagnostics?.corridorClamps || 0),
               conservativeFallbackCount: Number(diagnostics?.conservativeFallbackCount || 0),
               rowWidePreventionApplied: Number(diagnostics?.rowWidePreventionApplied || 0),
+              remapQuality,
             });
+          }
+
+          if (remapQuality.isLowQuality) {
+            // Low-confidence remap boxes are replaced by a fresh detect pass on the new page.
+            // eslint-disable-next-line no-await-in-loop
+            const fallbackResult = await callbacks.onAnalyzeMenuImage({
+              mode: "detect",
+              imageData: newNormalized.dataUrl,
+              pageIndex,
+            });
+
+            if (!fallbackResult?.success) {
+              const message =
+                asText(fallbackResult?.error) ||
+                "Low-quality remap fallback detection failed.";
+              errors.push(`Page ${pageIndex + 1}: ${message}`);
+              pageResults.push({
+                pageIndex,
+                success: false,
+                rawDishCount,
+                validDishCount,
+                removedUnmatched: removeUnmatchedPages.has(pageIndex),
+                requiredDetections: requiredDetectionPages.has(pageIndex),
+                analysisMode: "detect-fallback",
+                fallbackUsed: true,
+                error: message,
+              });
+              continue;
+            }
+
+            const fallbackRawDishCount = Number.isFinite(Number(fallbackResult?.rawDishCount))
+              ? Number(fallbackResult.rawDishCount)
+              : Array.isArray(fallbackResult?.dishes)
+                ? fallbackResult.dishes.length
+                : 0;
+            const fallbackDishes = normalizeDetectedDishes(
+              fallbackResult?.dishes,
+              { width: 1000, height: 1000 },
+            );
+            const fallbackValidDishCount = fallbackDishes.length;
+
+            if (requiredDetectionPages.has(pageIndex) && fallbackValidDishCount === 0) {
+              const pageError =
+                `Page ${pageIndex + 1}: Low-quality remap fallback detected no valid dish overlays. Try a clearer image or retry analysis.`;
+              errors.push(pageError);
+              pageResults.push({
+                pageIndex,
+                success: false,
+                rawDishCount: fallbackRawDishCount,
+                validDishCount: fallbackValidDishCount,
+                removedUnmatched: removeUnmatchedPages.has(pageIndex),
+                requiredDetections: true,
+                analysisMode: "detect-fallback",
+                fallbackUsed: true,
+                error: pageError,
+              });
+              continue;
+            }
+
+            const fallbackDetectedTokens = new Set(
+              fallbackDishes.map((dish) => normalizeToken(dish?.name)).filter(Boolean),
+            );
+            pageDetections.push({
+              pageIndex,
+              mode: "detect",
+              dishes: fallbackDishes,
+              detectedTokens: fallbackDetectedTokens,
+            });
+            pageResults.push({
+              pageIndex,
+              success: true,
+              rawDishCount: fallbackRawDishCount,
+              validDishCount: fallbackValidDishCount,
+              removedUnmatched: removeUnmatchedPages.has(pageIndex),
+              requiredDetections: requiredDetectionPages.has(pageIndex),
+              analysisMode: "detect-fallback",
+              fallbackUsed: true,
+              error: "",
+            });
+            continue;
           }
 
           if (requiredDetectionPages.has(pageIndex) && validDishCount === 0) {
@@ -2217,6 +2355,8 @@ export function useRestaurantEditor({
               validDishCount,
               removedUnmatched: removeUnmatchedPages.has(pageIndex),
               requiredDetections: true,
+              analysisMode: "remap",
+              fallbackUsed: false,
               error: pageError,
             });
             continue;
@@ -2242,6 +2382,8 @@ export function useRestaurantEditor({
             validDishCount,
             removedUnmatched: removeUnmatchedPages.has(pageIndex),
             requiredDetections: requiredDetectionPages.has(pageIndex),
+            analysisMode: "remap",
+            fallbackUsed: false,
             error: "",
           });
           continue;
@@ -2312,16 +2454,7 @@ export function useRestaurantEditor({
           : Array.isArray(result?.dishes)
             ? result.dishes.length
             : 0;
-        const seenDishTokens = new Set();
-        const dishes = (Array.isArray(result?.dishes) ? result.dishes : [])
-          .map((dish) => normalizeDetectedRect(dish, imageDimensions))
-          .filter(Boolean)
-          .filter((dish) => {
-            const token = normalizeToken(dish.name);
-            if (!token || seenDishTokens.has(token)) return false;
-            seenDishTokens.add(token);
-            return true;
-          });
+        const dishes = normalizeDetectedDishes(result?.dishes, imageDimensions);
         const validDishCount = dishes.length;
 
         if (process.env.NODE_ENV !== "production") {
@@ -2349,6 +2482,8 @@ export function useRestaurantEditor({
             validDishCount,
             removedUnmatched: removeUnmatchedPages.has(pageIndex),
             requiredDetections: true,
+            analysisMode: "detect",
+            fallbackUsed: false,
             error: pageError,
           });
           continue;
@@ -2367,6 +2502,8 @@ export function useRestaurantEditor({
           validDishCount,
           removedUnmatched: removeUnmatchedPages.has(pageIndex),
           requiredDetections: requiredDetectionPages.has(pageIndex),
+          analysisMode: "detect",
+          fallbackUsed: false,
           error: "",
         });
       } catch (error) {
@@ -2406,6 +2543,10 @@ export function useRestaurantEditor({
         const pageIndex = Number(detection?.pageIndex) || 0;
 
         if (detection?.mode === "remap") {
+          const detectedTokens = detection?.detectedTokens instanceof Set
+            ? detection.detectedTokens
+            : new Set();
+
           if (detection?.replacePageOverlays) {
             for (let index = next.length - 1; index >= 0; index -= 1) {
               const overlay = next[index];
@@ -2490,6 +2631,21 @@ export function useRestaurantEditor({
 
           (Array.isArray(detection.updatedDishes) ? detection.updatedDishes : []).forEach(mergeDish);
           (Array.isArray(detection.newDishes) ? detection.newDishes : []).forEach(mergeDish);
+
+          if (removeUnmatchedPages.has(pageIndex)) {
+            for (let index = next.length - 1; index >= 0; index -= 1) {
+              const overlay = next[index];
+              const page = Number.isFinite(Number(overlay?.pageIndex))
+                ? Number(overlay.pageIndex)
+                : 0;
+              if (page !== pageIndex) continue;
+              const token = normalizeToken(overlay?.id || overlay?.name);
+              if (!token || !detectedTokens.has(token)) {
+                next.splice(index, 1);
+                removedCount += 1;
+              }
+            }
+          }
 
           return;
         }

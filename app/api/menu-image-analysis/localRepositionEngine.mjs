@@ -3,8 +3,12 @@ import fsp from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-const DEFAULT_ANTHROPIC_MODEL = "claude-sonnet-4-20250514";
+const DEFAULT_ANTHROPIC_MODEL = "claude-sonnet-4-5-20250929";
+const GOOGLE_VISION_ENDPOINT = "https://vision.googleapis.com/v1/images:annotate";
 const REMAP_CANVAS_SIZE = 1000;
+const DEFAULT_PADDING = 8;
+const MAX_FULL_TEXT_CHARS = 12000;
+const EXISTING_NAME_LIMIT = 250;
 const FIXTURE_CACHE_TTL_MS = 30 * 1000;
 
 const MODULE_DIR = path.dirname(fileURLToPath(import.meta.url));
@@ -46,6 +50,24 @@ function roundCoord(value, digits = 3) {
   return Math.round(numeric * factor) / factor;
 }
 
+function parseFiniteNumber(value) {
+  if (Number.isFinite(Number(value))) return Number(value);
+  const text = asText(value);
+  if (!text) return null;
+  const normalized = text.replace(/%/g, "").replace(/,/g, "");
+  const parsed = Number.parseFloat(normalized);
+  if (!Number.isFinite(parsed)) return null;
+  return parsed;
+}
+
+function pickFinite(...values) {
+  for (const value of values) {
+    const parsed = parseFiniteNumber(value);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return null;
+}
+
 function readFirstEnv(env, keys) {
   for (const key of keys) {
     const value = asText(env?.[key]);
@@ -56,6 +78,350 @@ function readFirstEnv(env, keys) {
 
 function sha256(value) {
   return crypto.createHash("sha256").update(asText(value)).digest("hex");
+}
+
+function normalizeCoordSpace(value) {
+  const token = normalizeToken(value);
+  if (!token) return "";
+  if (token === "ratio" || token.includes("normalizedratio")) return "ratio";
+  if (token === "percent" || token === "percentage" || token.includes("pct")) return "percent";
+  if (token === "pixels" || token === "pixel" || token === "px") return "pixels";
+  if (token === "thousand" || token.includes("thousand")) return "thousand";
+  return "";
+}
+
+function parseImageDataSync(imageData) {
+  const raw = asText(imageData);
+  if (!raw) return null;
+
+  if (raw.startsWith("data:")) {
+    const match = raw.match(/^data:(.*?);base64,([\s\S]+)$/i);
+    if (!match) return null;
+
+    const mediaType = asText(match[1]) || "image/jpeg";
+    const base64Data = asText(match[2]).replace(/\s/g, "");
+    if (!base64Data) return null;
+
+    return {
+      mediaType,
+      base64Data,
+      originalData: raw,
+    };
+  }
+
+  const cleaned = raw.replace(/\s/g, "");
+  if (!cleaned || !/^[A-Za-z0-9+/=]+$/.test(cleaned)) return null;
+
+  return {
+    mediaType: "image/jpeg",
+    base64Data: cleaned,
+    originalData: `data:image/jpeg;base64,${cleaned}`,
+  };
+}
+
+async function parseImageData(imageData) {
+  const raw = asText(imageData);
+  if (!raw) return null;
+
+  if (/^https?:\/\//i.test(raw)) {
+    const response = await fetch(raw);
+    if (!response.ok) {
+      throw new ApiError(`Failed to load image URL (${response.status}).`, 400);
+    }
+
+    const contentType = asText(response.headers.get("content-type")).split(";")[0];
+    const mediaType = contentType || "image/jpeg";
+    const arrayBuffer = await response.arrayBuffer();
+    const base64Data = Buffer.from(arrayBuffer).toString("base64");
+    if (!base64Data) {
+      throw new ApiError("Failed to read image URL payload.", 400);
+    }
+
+    return {
+      mediaType,
+      base64Data,
+      originalData: `data:${mediaType};base64,${base64Data}`,
+    };
+  }
+
+  return parseImageDataSync(raw);
+}
+
+function isObjectLike(value) {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function parsePoint(value) {
+  if (Array.isArray(value)) {
+    const [xRaw, yRaw] = value;
+    const x = parseFiniteNumber(xRaw);
+    const y = parseFiniteNumber(yRaw);
+    if (Number.isFinite(x) && Number.isFinite(y)) return { x, y };
+    return null;
+  }
+
+  if (!isObjectLike(value)) return null;
+  const x = pickFinite(value.x, value.left, value.cx, value.centerX, value.center_x);
+  const y = pickFinite(value.y, value.top, value.cy, value.centerY, value.center_y);
+  if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
+  return { x, y };
+}
+
+function rectFromPointList(points) {
+  const list = (Array.isArray(points) ? points : []).map((point) => parsePoint(point)).filter(Boolean);
+  if (list.length < 2) return null;
+
+  const xs = list.map((point) => point.x);
+  const ys = list.map((point) => point.y);
+  const minX = Math.min(...xs);
+  const maxX = Math.max(...xs);
+  const minY = Math.min(...ys);
+  const maxY = Math.max(...ys);
+  const w = maxX - minX;
+  const h = maxY - minY;
+
+  if (!Number.isFinite(w) || !Number.isFinite(h) || w <= 0 || h <= 0) return null;
+  return {
+    x: minX,
+    y: minY,
+    w,
+    h,
+  };
+}
+
+function rectFromEdges(source) {
+  if (!isObjectLike(source)) return null;
+  const left = pickFinite(source.left, source.x, source.x0, source.minX, source.min_x, source.l);
+  const top = pickFinite(source.top, source.y, source.y0, source.minY, source.min_y, source.t);
+  const right = pickFinite(source.right, source.x1, source.maxX, source.max_x, source.r);
+  const bottom = pickFinite(source.bottom, source.y1, source.maxY, source.max_y, source.b);
+
+  if (
+    !Number.isFinite(left) ||
+    !Number.isFinite(top) ||
+    !Number.isFinite(right) ||
+    !Number.isFinite(bottom)
+  ) {
+    return null;
+  }
+
+  const w = right - left;
+  const h = bottom - top;
+  if (w <= 0 || h <= 0) return null;
+
+  return {
+    x: left,
+    y: top,
+    w,
+    h,
+  };
+}
+
+function rectFromCenter(source) {
+  if (!isObjectLike(source)) return null;
+  const centerX = pickFinite(source.centerX, source.center_x, source.cx, source.midX, source.mid_x);
+  const centerY = pickFinite(source.centerY, source.center_y, source.cy, source.midY, source.mid_y);
+  const w = pickFinite(source.w, source.width, source.relativeW, source.relative_w);
+  const h = pickFinite(source.h, source.height, source.relativeH, source.relative_h);
+
+  if (
+    !Number.isFinite(centerX) ||
+    !Number.isFinite(centerY) ||
+    !Number.isFinite(w) ||
+    !Number.isFinite(h) ||
+    w <= 0 ||
+    h <= 0
+  ) {
+    return null;
+  }
+
+  return {
+    x: centerX - w / 2,
+    y: centerY - h / 2,
+    w,
+    h,
+  };
+}
+
+function extractRectFromObject(source) {
+  if (!isObjectLike(source)) return null;
+
+  const x = pickFinite(source.x, source.left, source.relativeX, source.relative_x);
+  const y = pickFinite(source.y, source.top, source.relativeY, source.relative_y);
+  const w = pickFinite(source.w, source.width, source.relativeW, source.relative_w);
+  const h = pickFinite(source.h, source.height, source.relativeH, source.relative_h);
+  if (
+    Number.isFinite(x) &&
+    Number.isFinite(y) &&
+    Number.isFinite(w) &&
+    Number.isFinite(h) &&
+    w > 0 &&
+    h > 0
+  ) {
+    return { x, y, w, h };
+  }
+
+  const fromEdges = rectFromEdges(source);
+  if (fromEdges) return fromEdges;
+
+  const fromCenter = rectFromCenter(source);
+  if (fromCenter) return fromCenter;
+
+  const pointListKeys = ["vertices", "points", "polygon", "coords", "coordinates"];
+  for (const key of pointListKeys) {
+    const fromPointList = rectFromPointList(source[key]);
+    if (fromPointList) return fromPointList;
+  }
+
+  if (isObjectLike(source.corners)) {
+    const corners = source.corners;
+    const fromCorners = rectFromPointList([
+      corners.topLeft || corners.top_left,
+      corners.topRight || corners.top_right,
+      corners.bottomRight || corners.bottom_right,
+      corners.bottomLeft || corners.bottom_left,
+    ]);
+    if (fromCorners) return fromCorners;
+  }
+
+  const fromCornerPoints = rectFromPointList([
+    source.topLeft || source.top_left,
+    source.topRight || source.top_right,
+    source.bottomRight || source.bottom_right,
+    source.bottomLeft || source.bottom_left,
+  ]);
+  if (fromCornerPoints) return fromCornerPoints;
+
+  return null;
+}
+
+function inferCoordSpace(rect) {
+  const x = Number(rect?.x);
+  const y = Number(rect?.y);
+  const w = Number(rect?.w);
+  const h = Number(rect?.h);
+  const values = [x, y, w, h].filter((value) => Number.isFinite(value));
+  if (!values.length) return "";
+
+  const maxCoord = Math.max(...values.map((value) => Math.abs(value)));
+  const minCoord = Math.min(...values);
+  const nonNegative = minCoord >= 0;
+
+  if (nonNegative && maxCoord <= 1.2) return "ratio";
+  if (nonNegative && maxCoord <= 100.5) return "percent";
+  if (nonNegative && maxCoord <= 1200) return "thousand";
+  return "";
+}
+
+function convertRectToThousand({ x, y, w, h, coordSpace, imageWidth, imageHeight }) {
+  const values = [x, y, w, h].map((value) => Number(value));
+  if (values.some((value) => !Number.isFinite(value))) return null;
+
+  let [nextX, nextY, nextW, nextH] = values;
+  if (nextW <= 0 || nextH <= 0) return null;
+
+  const widthValue = Number(imageWidth);
+  const heightValue = Number(imageHeight);
+  const hasDimensions =
+    Number.isFinite(widthValue) &&
+    Number.isFinite(heightValue) &&
+    widthValue > 0 &&
+    heightValue > 0;
+
+  let mode = normalizeCoordSpace(coordSpace);
+  if (!mode) {
+    mode = inferCoordSpace({ x: nextX, y: nextY, w: nextW, h: nextH });
+  }
+
+  if (mode === "ratio") {
+    nextX *= 1000;
+    nextY *= 1000;
+    nextW *= 1000;
+    nextH *= 1000;
+  } else if (mode === "percent") {
+    nextX *= 10;
+    nextY *= 10;
+    nextW *= 10;
+    nextH *= 10;
+  } else if (mode === "pixels") {
+    if (!hasDimensions) return null;
+    nextX = (nextX / widthValue) * 1000;
+    nextY = (nextY / heightValue) * 1000;
+    nextW = (nextW / widthValue) * 1000;
+    nextH = (nextH / heightValue) * 1000;
+  } else if (mode === "thousand") {
+    // already target scale
+  } else {
+    return null;
+  }
+
+  nextX = clamp(nextX, 0, REMAP_CANVAS_SIZE);
+  nextY = clamp(nextY, 0, REMAP_CANVAS_SIZE);
+  if (nextX > REMAP_CANVAS_SIZE - 1) nextX = REMAP_CANVAS_SIZE - 1;
+  if (nextY > REMAP_CANVAS_SIZE - 1) nextY = REMAP_CANVAS_SIZE - 1;
+
+  nextW = clamp(nextW, 1, REMAP_CANVAS_SIZE - nextX);
+  nextH = clamp(nextH, 1, REMAP_CANVAS_SIZE - nextY);
+
+  return {
+    x: roundCoord(nextX),
+    y: roundCoord(nextY),
+    w: roundCoord(nextW),
+    h: roundCoord(nextH),
+    mode,
+  };
+}
+
+function sanitizeRemapOverlay(entry, options = {}) {
+  const name = asText(
+    entry?.id || entry?.name || entry?.dishName || entry?.item || entry?.label || entry?.title,
+  );
+  if (!name) return null;
+
+  const rawRect = extractRectFromObject(entry) ||
+    extractRectFromObject(entry?.bounds) ||
+    extractRectFromObject(entry?.bbox) ||
+    extractRectFromObject(entry?.box) ||
+    extractRectFromObject(entry?.rect);
+  if (!rawRect) return null;
+
+  const explicitCoordSpace = normalizeCoordSpace(
+    entry?.coordSpace || entry?.coord_space || entry?.space || entry?.units || entry?.unit,
+  );
+
+  const normalized = convertRectToThousand({
+    x: rawRect.x,
+    y: rawRect.y,
+    w: rawRect.w,
+    h: rawRect.h,
+    coordSpace: explicitCoordSpace,
+    imageWidth: options.imageWidth,
+    imageHeight: options.imageHeight,
+  });
+  if (!normalized) return null;
+
+  return {
+    id: name,
+    name,
+    x: normalized.x,
+    y: normalized.y,
+    w: normalized.w,
+    h: normalized.h,
+    coordSpace: "thousand",
+    _mode: normalized.mode || "unknown",
+  };
+}
+
+function dedupeByName(items) {
+  const out = [];
+  const seen = new Set();
+  (Array.isArray(items) ? items : []).forEach((item) => {
+    const token = normalizeToken(item?.name || item?.id);
+    if (!token || seen.has(token)) return;
+    seen.add(token);
+    out.push(item);
+  });
+  return out;
 }
 
 function normalizeOverlayForOutput(entry) {
@@ -133,7 +499,7 @@ function mapFixtureResponse(fixture, mode) {
     rawDishCount: cleanUpdated.length + cleanNew.length,
     validDishCount: dishes.length,
     diagnostics: {
-      engine: "next-local-reposition",
+      engine: "next-legacy-reposition",
       fixtureReplay: true,
       fixtureId: asText(fixture?.id),
       mode,
@@ -188,61 +554,170 @@ async function resolveFixtureReplay(body, mode) {
   return mapFixtureResponse(matched, "detect");
 }
 
-function parseImageDataSync(imageData) {
-  const raw = asText(imageData);
-  if (!raw) return null;
+function buildWordText(word) {
+  const symbols = Array.isArray(word?.symbols) ? word.symbols : [];
+  return symbols.map((symbol) => asText(symbol?.text)).join("");
+}
 
-  if (raw.startsWith("data:")) {
-    const match = raw.match(/^data:(.*?);base64,([\s\S]+)$/i);
-    if (!match) return null;
-
-    const mediaType = asText(match[1]) || "image/jpeg";
-    const base64Data = asText(match[2]).replace(/\s/g, "");
-    if (!base64Data) return null;
-
-    return {
-      mediaType,
-      base64Data,
-      originalData: raw,
-    };
-  }
-
-  const cleaned = raw.replace(/\s/g, "");
-  if (!cleaned || !/^[A-Za-z0-9+/=]+$/.test(cleaned)) return null;
+function normalizeVertices(vertices) {
+  const points = Array.isArray(vertices) ? vertices : [];
+  const xs = points.map((vertex) => (typeof vertex?.x === "number" ? vertex.x : 0));
+  const ys = points.map((vertex) => (typeof vertex?.y === "number" ? vertex.y : 0));
+  if (!xs.length || !ys.length) return null;
 
   return {
-    mediaType: "image/jpeg",
-    base64Data: cleaned,
-    originalData: `data:image/jpeg;base64,${cleaned}`,
+    minX: Math.min(...xs),
+    maxX: Math.max(...xs),
+    minY: Math.min(...ys),
+    maxY: Math.max(...ys),
   };
 }
 
-async function parseImageData(imageData) {
-  const raw = asText(imageData);
-  if (!raw) return null;
-
-  if (/^https?:\/\//i.test(raw)) {
-    const response = await fetch(raw);
-    if (!response.ok) {
-      throw new ApiError(`Failed to load image URL (${response.status}).`, 400);
-    }
-
-    const contentType = asText(response.headers.get("content-type")).split(";")[0];
-    const mediaType = contentType || "image/jpeg";
-    const arrayBuffer = await response.arrayBuffer();
-    const base64Data = Buffer.from(arrayBuffer).toString("base64");
-    if (!base64Data) {
-      throw new ApiError("Failed to read image URL payload.", 400);
-    }
-
-    return {
-      mediaType,
-      base64Data,
-      originalData: `data:${mediaType};base64,${base64Data}`,
-    };
+async function extractTextElements({ googleVisionApiKey, base64Data }) {
+  if (!googleVisionApiKey) {
+    throw new ApiError("GOOGLE_VISION_API_KEY is not configured.", 500);
   }
 
-  return parseImageDataSync(raw);
+  const response = await fetch(`${GOOGLE_VISION_ENDPOINT}?key=${encodeURIComponent(googleVisionApiKey)}`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      requests: [
+        {
+          image: { content: base64Data },
+          features: [{ type: "DOCUMENT_TEXT_DETECTION" }],
+        },
+      ],
+    }),
+  });
+
+  const responseText = await response.text();
+  let payload = null;
+  try {
+    payload = responseText ? JSON.parse(responseText) : null;
+  } catch {
+    payload = null;
+  }
+
+  if (!response.ok) {
+    const message =
+      asText(payload?.error?.message) ||
+      asText(payload?.error) ||
+      asText(responseText) ||
+      "Google Vision OCR request failed.";
+    throw new ApiError(message, 500);
+  }
+
+  const responseError = asText(payload?.responses?.[0]?.error?.message);
+  if (responseError) {
+    throw new ApiError(responseError, 500);
+  }
+
+  const full = payload?.responses?.[0]?.fullTextAnnotation;
+  const fullText = asText(full?.text);
+  const pages = Array.isArray(full?.pages) ? full.pages : [];
+
+  const elements = [];
+  let elementId = 0;
+
+  pages.forEach((page) => {
+    (Array.isArray(page?.blocks) ? page.blocks : []).forEach((block) => {
+      (Array.isArray(block?.paragraphs) ? block.paragraphs : []).forEach((paragraph) => {
+        (Array.isArray(paragraph?.words) ? paragraph.words : []).forEach((word) => {
+          const text = buildWordText(word);
+          if (!text) return;
+          const bounds = normalizeVertices(word?.boundingBox?.vertices || []);
+          if (!bounds) return;
+
+          elements.push({
+            id: elementId,
+            text,
+            xMin: bounds.minX,
+            yMin: bounds.minY,
+            xMax: bounds.maxX,
+            yMax: bounds.maxY,
+            confidence: typeof word?.confidence === "number" ? word.confidence : 1,
+          });
+          elementId += 1;
+        });
+      });
+    });
+  });
+
+  return { elements, fullText };
+}
+
+function buildSpatialRepresentation(elements) {
+  const sorted = (Array.isArray(elements) ? elements : [])
+    .slice()
+    .sort((a, b) => (a.yMin - b.yMin) || (a.xMin - b.xMin));
+
+  return JSON.stringify(
+    sorted.map((element) => ({
+      id: element.id,
+      text: element.text,
+      bounds: {
+        x_min: roundCoord(element.xMin, 2),
+        y_min: roundCoord(element.yMin, 2),
+        x_max: roundCoord(element.xMax, 2),
+        y_max: roundCoord(element.yMax, 2),
+      },
+    })),
+    null,
+    2,
+  );
+}
+
+function buildPrompt(spatialMap, fullText, existingNames) {
+  const truncatedFullText = fullText.length > MAX_FULL_TEXT_CHARS
+    ? `${fullText.slice(0, MAX_FULL_TEXT_CHARS)}\n[TRUNCATED]`
+    : fullText;
+
+  const existingSection = existingNames.length
+    ? `## Existing Dish Names (from previous overlays)\nIf you see a dish that matches one of these, use the exact string in the "name" field so we can preserve IDs.\n${existingNames.map((name) => `- ${name}`).join("\n")}\n\n`
+    : "";
+
+  return `You are a menu analysis system. Your task is to identify individual menu items (dishes) and specify which OCR text elements belong to each item.
+
+## Input
+I've extracted text elements from a menu image using OCR. Each element has:
+- **id**: Unique integer identifier
+- **text**: The word/text content
+- **bounds**: Pixel coordinates (x_min, y_min, x_max, y_max)
+
+${existingSection}## Your Task
+Identify each menu item (dish, soup, salad, appetizer, entree, etc.) and list the element IDs that belong to it.
+
+## What Constitutes a Menu Item
+A menu item typically includes:
+- **Name/Title** (often larger, bolder, or different font)
+- **Description** (ingredients, preparation method, accompaniments)
+- **Price(s)** (may have multiple for different sizes)
+- **Size options** (Small/Large, Cup/Bowl, etc.)
+- **Add-on options** (e.g., "Add chicken $3" or "With grilled shrimp 14")
+
+## Rules
+1. **EXCLUDE** section headers like "SALADS", "APPETIZERS", "ENTREES" - these are NOT dishes
+2. **EXCLUDE** standalone dressing lists, sauce lists, or side option menus that aren't part of a specific dish
+3. **INCLUDE** all text that describes a single dish: name + description + all prices + size options + add-ons
+4. **Be comprehensive** - don't miss any menu items
+5. **Be precise** - only include element IDs that actually belong to each dish
+6. If an add-on option clearly belongs to a specific dish (spatially close, logically connected), include it with that dish
+
+## OCR Data
+${spatialMap}
+
+## Full Text (for context)
+${truncatedFullText}
+
+## Required Output Format
+Return a JSON array. Each dish object must have:
+- "name": string - The dish name
+- "description": string - Brief description of the dish
+- "prices": string - All price information
+- "element_ids": array of integers - IDs of text elements belonging to this dish
+
+Output ONLY the JSON array. No markdown, no explanation, no code blocks.`;
 }
 
 function extractBalancedJsonObjects(value) {
@@ -256,30 +731,30 @@ function extractBalancedJsonObjects(value) {
   let escaped = false;
 
   for (let index = 0; index < text.length; index += 1) {
-    const ch = text[index];
+    const character = text[index];
     if (inString) {
       if (escaped) {
         escaped = false;
-      } else if (ch === "\\") {
+      } else if (character === "\\") {
         escaped = true;
-      } else if (ch === '"') {
+      } else if (character === '"') {
         inString = false;
       }
       continue;
     }
 
-    if (ch === '"') {
+    if (character === '"') {
       inString = true;
       continue;
     }
 
-    if (ch === "{") {
+    if (character === "[") {
       if (depth === 0) start = index;
       depth += 1;
       continue;
     }
 
-    if (ch === "}") {
+    if (character === "]") {
       if (depth <= 0) continue;
       depth -= 1;
       if (depth === 0 && start >= 0) {
@@ -292,588 +767,32 @@ function extractBalancedJsonObjects(value) {
   return out;
 }
 
-function parseClaudeJson(responseText) {
-  const value = asText(responseText);
-  if (!value) return null;
+function extractClaudeJsonArray(text) {
+  const raw = asText(text);
+  if (!raw) throw new ApiError("Claude response was empty.", 500);
 
-  try {
-    return JSON.parse(value);
-  } catch {
-    // continue
-  }
+  const candidates = [raw];
+  const fenced = raw.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+  if (fenced?.[1]) candidates.push(asText(fenced[1]));
+  candidates.push(...extractBalancedJsonObjects(raw));
 
-  const fenced = value.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
-  if (fenced?.[1]) {
+  for (let index = 0; index < candidates.length; index += 1) {
+    const candidate = asText(candidates[index]);
+    if (!candidate) continue;
+
     try {
-      return JSON.parse(fenced[1]);
+      const parsed = JSON.parse(candidate);
+      if (Array.isArray(parsed)) return parsed;
+      if (parsed && Array.isArray(parsed.dishes)) return parsed.dishes;
     } catch {
-      // continue
+      // Continue with next candidate.
     }
   }
 
-  const balancedObjects = extractBalancedJsonObjects(value);
-  for (let index = balancedObjects.length - 1; index >= 0; index -= 1) {
-    try {
-      return JSON.parse(balancedObjects[index]);
-    } catch {
-      // continue
-    }
-  }
-
-  return null;
+  throw new ApiError("Claude response JSON was not an array.", 500);
 }
 
-function parseFiniteNumber(value) {
-  if (Number.isFinite(Number(value))) return Number(value);
-  const text = asText(value);
-  if (!text) return NaN;
-  const normalized = text.replace(/[^0-9+\-.]/g, "");
-  const parsed = Number(normalized);
-  return Number.isFinite(parsed) ? parsed : NaN;
-}
-
-function pickFinite(...candidates) {
-  for (const candidate of candidates) {
-    const value = parseFiniteNumber(candidate);
-    if (Number.isFinite(value)) return value;
-  }
-  return NaN;
-}
-
-function isObjectLike(value) {
-  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
-}
-
-function parsePoint(value) {
-  if (Array.isArray(value)) {
-    const [xRaw, yRaw] = value;
-    const x = parseFiniteNumber(xRaw);
-    const y = parseFiniteNumber(yRaw);
-    if (Number.isFinite(x) && Number.isFinite(y)) return { x, y };
-    return null;
-  }
-
-  if (!isObjectLike(value)) return null;
-  const x = pickFinite(value.x, value.left, value.cx, value.centerX, value.center_x);
-  const y = pickFinite(value.y, value.top, value.cy, value.centerY, value.center_y);
-  if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
-  return { x, y };
-}
-
-function rectFromPointList(points) {
-  const list = (Array.isArray(points) ? points : [])
-    .map((point) => parsePoint(point))
-    .filter(Boolean);
-  if (list.length < 2) return null;
-
-  const xs = list.map((point) => point.x);
-  const ys = list.map((point) => point.y);
-  const minX = Math.min(...xs);
-  const maxX = Math.max(...xs);
-  const minY = Math.min(...ys);
-  const maxY = Math.max(...ys);
-
-  const w = maxX - minX;
-  const h = maxY - minY;
-  if (!Number.isFinite(w) || !Number.isFinite(h) || w <= 0 || h <= 0) return null;
-
-  return {
-    x: minX,
-    y: minY,
-    w,
-    h,
-  };
-}
-
-function rectFromEdges(source) {
-  if (!isObjectLike(source)) return null;
-
-  const left = pickFinite(source.left, source.x, source.x0, source.minX, source.min_x, source.l);
-  const top = pickFinite(source.top, source.y, source.y0, source.minY, source.min_y, source.t);
-  const right = pickFinite(source.right, source.x1, source.maxX, source.max_x, source.r);
-  const bottom = pickFinite(source.bottom, source.y1, source.maxY, source.max_y, source.b);
-
-  if (
-    !Number.isFinite(left) ||
-    !Number.isFinite(top) ||
-    !Number.isFinite(right) ||
-    !Number.isFinite(bottom)
-  ) {
-    return null;
-  }
-
-  const w = right - left;
-  const h = bottom - top;
-  if (w <= 0 || h <= 0) return null;
-
-  return {
-    x: left,
-    y: top,
-    w,
-    h,
-  };
-}
-
-function rectFromCenter(source) {
-  if (!isObjectLike(source)) return null;
-
-  const centerX = pickFinite(source.centerX, source.center_x, source.cx, source.midX, source.mid_x);
-  const centerY = pickFinite(source.centerY, source.center_y, source.cy, source.midY, source.mid_y);
-  const w = pickFinite(source.w, source.width, source.relativeW, source.relative_w);
-  const h = pickFinite(source.h, source.height, source.relativeH, source.relative_h);
-
-  if (
-    !Number.isFinite(centerX) ||
-    !Number.isFinite(centerY) ||
-    !Number.isFinite(w) ||
-    !Number.isFinite(h) ||
-    w <= 0 ||
-    h <= 0
-  ) {
-    return null;
-  }
-
-  return {
-    x: centerX - w / 2,
-    y: centerY - h / 2,
-    w,
-    h,
-  };
-}
-
-function extractRectFromObject(source) {
-  if (!isObjectLike(source)) return null;
-
-  const x = pickFinite(source.x, source.left, source.relativeX, source.relative_x);
-  const y = pickFinite(source.y, source.top, source.relativeY, source.relative_y);
-  const w = pickFinite(source.w, source.width, source.relativeW, source.relative_w);
-  const h = pickFinite(source.h, source.height, source.relativeH, source.relative_h);
-
-  if (
-    Number.isFinite(x) &&
-    Number.isFinite(y) &&
-    Number.isFinite(w) &&
-    Number.isFinite(h) &&
-    w > 0 &&
-    h > 0
-  ) {
-    return { x, y, w, h };
-  }
-
-  const fromEdges = rectFromEdges(source);
-  if (fromEdges) return fromEdges;
-
-  const fromCenter = rectFromCenter(source);
-  if (fromCenter) return fromCenter;
-
-  const pointListKeys = ["vertices", "points", "polygon", "coords", "coordinates"];
-  for (const key of pointListKeys) {
-    const fromPoints = rectFromPointList(source[key]);
-    if (fromPoints) return fromPoints;
-  }
-
-  if (isObjectLike(source.corners)) {
-    const corners = source.corners;
-    const fromCorners = rectFromPointList([
-      corners.topLeft || corners.top_left,
-      corners.topRight || corners.top_right,
-      corners.bottomRight || corners.bottom_right,
-      corners.bottomLeft || corners.bottom_left,
-    ]);
-    if (fromCorners) return fromCorners;
-  }
-
-  const fromCornerPoints = rectFromPointList([
-    source.topLeft || source.top_left,
-    source.topRight || source.top_right,
-    source.bottomRight || source.bottom_right,
-    source.bottomLeft || source.bottom_left,
-  ]);
-  if (fromCornerPoints) return fromCornerPoints;
-
-  return null;
-}
-
-function normalizeCoordSpace(value) {
-  const token = normalizeToken(value);
-  if (!token) return "";
-  if (token === "ratio" || token.includes("normalizedratio")) return "ratio";
-  if (token === "percent" || token === "percentage" || token.includes("pct")) return "percent";
-  if (token === "pixels" || token === "pixel" || token === "px") return "pixels";
-  if (token === "thousand" || token.includes("thousand")) return "thousand";
-  return "";
-}
-
-function hasThousandScaleHint(entry) {
-  const candidates = [
-    entry?.scale,
-    entry?.coordinateScale,
-    entry?.coordinate_scale,
-    entry?.bounds?.scale,
-    entry?.bbox?.scale,
-    entry?.box?.scale,
-    entry?.rect?.scale,
-  ];
-
-  for (const candidate of candidates) {
-    const numeric = parseFiniteNumber(candidate);
-    if (Number.isFinite(numeric) && numeric >= 900 && numeric <= 1100) {
-      return true;
-    }
-  }
-
-  const unitHints = [
-    entry?.units,
-    entry?.unit,
-    entry?.coordSpace,
-    entry?.coord_space,
-    entry?.space,
-    entry?.bounds?.units,
-    entry?.bbox?.units,
-  ];
-
-  return unitHints.some((value) => normalizeCoordSpace(value) === "thousand");
-}
-
-function inferCoordSpace(rect, entry) {
-  const x = Number(rect?.x);
-  const y = Number(rect?.y);
-  const w = Number(rect?.w);
-  const h = Number(rect?.h);
-  const values = [x, y, w, h].filter((value) => Number.isFinite(value));
-  if (!values.length) return "";
-
-  const maxCoord = Math.max(...values.map((value) => Math.abs(value)));
-  const minCoord = Math.min(...values);
-  const nonNegative = minCoord >= 0;
-
-  if (nonNegative && maxCoord <= 1.2) return "ratio";
-  if (nonNegative && maxCoord <= 100.5) return "percent";
-  if (maxCoord >= 1400) return "pixels";
-  if (hasThousandScaleHint(entry) && maxCoord > 100 && maxCoord <= 1200) return "thousand";
-  return "";
-}
-
-function extractRawRect(entry) {
-  const candidates = [
-    entry,
-    entry?.bounds,
-    entry?.bbox,
-    entry?.box,
-    entry?.rect,
-    entry?.region,
-    entry?.location,
-    entry?.position,
-    entry?.frame,
-    entry?.geometry,
-    entry?.boundingBox,
-    entry?.bounding_box,
-    entry?.coordinates,
-  ];
-
-  for (const candidate of candidates) {
-    const rect = extractRectFromObject(candidate);
-    if (rect) return rect;
-  }
-
-  return null;
-}
-
-function convertRectToThousand({ x, y, w, h, coordSpace, imageWidth, imageHeight }) {
-  const values = [x, y, w, h].map((value) => Number(value));
-  if (values.some((value) => !Number.isFinite(value))) return null;
-
-  let [nextX, nextY, nextW, nextH] = values;
-  if (nextW <= 0 || nextH <= 0) return null;
-
-  const nonNegative = Math.min(nextX, nextY, nextW, nextH) >= 0;
-  const maxAbs = Math.max(Math.abs(nextX), Math.abs(nextY), Math.abs(nextW), Math.abs(nextH));
-
-  const hasDimensions =
-    Number.isFinite(Number(imageWidth)) &&
-    Number.isFinite(Number(imageHeight)) &&
-    Number(imageWidth) > 0 &&
-    Number(imageHeight) > 0;
-
-  const widthValue = Number(imageWidth);
-  const heightValue = Number(imageHeight);
-
-  const fitsPercent =
-    nonNegative &&
-    nextX <= 100.5 &&
-    nextY <= 100.5 &&
-    nextW <= 100.5 &&
-    nextH <= 100.5 &&
-    nextX + nextW <= 100.5 &&
-    nextY + nextH <= 100.5;
-
-  const fitsThousand =
-    nonNegative &&
-    nextX <= 1200 &&
-    nextY <= 1200 &&
-    nextW <= 1200 &&
-    nextH <= 1200 &&
-    nextX + nextW <= 1200 &&
-    nextY + nextH <= 1200;
-
-  const looksPixels =
-    hasDimensions &&
-    nonNegative &&
-    nextX <= widthValue * 1.1 &&
-    nextW <= widthValue * 1.1 &&
-    nextY <= heightValue * 1.1 &&
-    nextH <= heightValue * 1.1 &&
-    nextX + nextW <= widthValue * 1.1 &&
-    nextY + nextH <= heightValue * 1.1;
-
-  let mode = normalizeCoordSpace(coordSpace);
-  if (!mode) {
-    if (nonNegative && maxAbs <= 1.2) {
-      mode = "ratio";
-    } else if (fitsPercent) {
-      mode = "percent";
-    } else if (looksPixels) {
-      mode = "pixels";
-    } else if (fitsThousand) {
-      mode = "thousand";
-    }
-  }
-
-  if (mode === "ratio") {
-    nextX *= 1000;
-    nextY *= 1000;
-    nextW *= 1000;
-    nextH *= 1000;
-  } else if (mode === "percent") {
-    nextX *= 10;
-    nextY *= 10;
-    nextW *= 10;
-    nextH *= 10;
-  } else if (mode === "pixels") {
-    if (!hasDimensions) return null;
-    nextX = (nextX / widthValue) * 1000;
-    nextY = (nextY / heightValue) * 1000;
-    nextW = (nextW / widthValue) * 1000;
-    nextH = (nextH / heightValue) * 1000;
-  } else if (mode === "thousand") {
-    // already target scale
-  } else {
-    return null;
-  }
-
-  nextX = clamp(nextX, 0, REMAP_CANVAS_SIZE);
-  nextY = clamp(nextY, 0, REMAP_CANVAS_SIZE);
-  if (nextX > REMAP_CANVAS_SIZE - 1) nextX = REMAP_CANVAS_SIZE - 1;
-  if (nextY > REMAP_CANVAS_SIZE - 1) nextY = REMAP_CANVAS_SIZE - 1;
-
-  nextW = clamp(nextW, 1, REMAP_CANVAS_SIZE - nextX);
-  nextH = clamp(nextH, 1, REMAP_CANVAS_SIZE - nextY);
-
-  return {
-    x: roundCoord(nextX),
-    y: roundCoord(nextY),
-    w: roundCoord(nextW),
-    h: roundCoord(nextH),
-    mode: mode || "unknown",
-  };
-}
-
-function sanitizeRemapOverlay(entry, options = {}) {
-  const name = asText(
-    entry?.id || entry?.name || entry?.dishName || entry?.item || entry?.label || entry?.title,
-  );
-  if (!name) return null;
-
-  const rawRect = extractRawRect(entry);
-  if (!rawRect) return null;
-
-  const explicitCoordSpace = normalizeCoordSpace(
-    entry?.coordSpace || entry?.coord_space || entry?.space || entry?.units || entry?.unit,
-  );
-  const inferredCoordSpace = inferCoordSpace(rawRect, entry);
-  const coordSpace = explicitCoordSpace || inferredCoordSpace;
-
-  const normalized = convertRectToThousand({
-    x: rawRect.x,
-    y: rawRect.y,
-    w: rawRect.w,
-    h: rawRect.h,
-    coordSpace,
-    imageWidth: options.imageWidth,
-    imageHeight: options.imageHeight,
-  });
-  if (!normalized) return null;
-
-  return {
-    id: name,
-    name,
-    x: normalized.x,
-    y: normalized.y,
-    w: normalized.w,
-    h: normalized.h,
-    coordSpace: "thousand",
-    _mode: normalized.mode,
-  };
-}
-
-function dedupeByName(items) {
-  const out = [];
-  const seen = new Set();
-  (Array.isArray(items) ? items : []).forEach((item) => {
-    const token = normalizeToken(item?.name || item?.id);
-    if (!token || seen.has(token)) return;
-    seen.add(token);
-    out.push(item);
-  });
-  return out;
-}
-
-function summarizeCoordModes(items) {
-  return (Array.isArray(items) ? items : []).reduce((accumulator, item) => {
-    const key = asText(item?._mode) || "unknown";
-    accumulator[key] = (accumulator[key] || 0) + 1;
-    return accumulator;
-  }, {});
-}
-
-function parseRemapArrays(payload) {
-  const updatedRaw = Array.isArray(payload?.updatedOverlays)
-    ? payload.updatedOverlays
-    : Array.isArray(payload?.updated)
-      ? payload.updated
-      : Array.isArray(payload?.repositioned)
-        ? payload.repositioned
-        : [];
-
-  const newRaw = Array.isArray(payload?.newOverlays)
-    ? payload.newOverlays
-    : Array.isArray(payload?.newDishes)
-      ? payload.newDishes
-      : Array.isArray(payload?.addedOverlays)
-        ? payload.addedOverlays
-        : Array.isArray(payload?.dishes)
-          ? payload.dishes
-          : Array.isArray(payload?.overlays)
-            ? payload.overlays
-            : [];
-
-  return { updatedRaw, newRaw };
-}
-
-function normalizeRemapResponse({
-  payload,
-  imageWidth,
-  imageHeight,
-  oldOverlayTokens,
-  discoveryMode = false,
-}) {
-  const { updatedRaw, newRaw } = parseRemapArrays(payload);
-
-  const sanitizedUpdatedRaw = updatedRaw
-    .map((entry) => sanitizeRemapOverlay(entry, { imageWidth, imageHeight }))
-    .filter(Boolean);
-
-  const sanitizedNewRaw = newRaw
-    .map((entry) => sanitizeRemapOverlay(entry, { imageWidth, imageHeight }))
-    .filter(Boolean);
-
-  const updatedOverlays = [];
-  const promotedNew = [];
-  const seenUpdatedTokens = new Set();
-
-  if (discoveryMode) {
-    promotedNew.push(...sanitizedUpdatedRaw);
-  } else {
-    sanitizedUpdatedRaw.forEach((overlay) => {
-      const token = normalizeToken(overlay?.name);
-      if (!token || seenUpdatedTokens.has(token)) return;
-
-      if (oldOverlayTokens.size && !oldOverlayTokens.has(token)) {
-        promotedNew.push(overlay);
-        return;
-      }
-
-      seenUpdatedTokens.add(token);
-      updatedOverlays.push(overlay);
-    });
-  }
-
-  const newOverlays = [];
-  const seenNewTokens = new Set();
-  [...promotedNew, ...sanitizedNewRaw].forEach((overlay) => {
-    const token = normalizeToken(overlay?.name);
-    if (!token || seenUpdatedTokens.has(token) || seenNewTokens.has(token)) return;
-    seenNewTokens.add(token);
-    newOverlays.push(overlay);
-  });
-
-  const cleanOverlay = (overlay) => ({
-    id: overlay.name,
-    name: overlay.name,
-    x: overlay.x,
-    y: overlay.y,
-    w: overlay.w,
-    h: overlay.h,
-    coordSpace: "thousand",
-  });
-
-  const cleanUpdated = dedupeByName(updatedOverlays.map(cleanOverlay));
-  const cleanNew = dedupeByName(newOverlays.map(cleanOverlay));
-  const allClean = [...cleanUpdated, ...cleanNew];
-
-  return {
-    updatedOverlays: cleanUpdated,
-    newOverlays: cleanNew,
-    dishes: allClean,
-    rawDishCount: updatedRaw.length + newRaw.length,
-    validDishCount: allClean.length,
-    modeCounts: summarizeCoordModes([...updatedOverlays, ...newOverlays]),
-    diagnostics: {
-      engine: "next-local-reposition",
-      anchorMatchCount: 0,
-      anchorMissCount: 0,
-      corridorClamps: 0,
-      conservativeFallbackCount: 0,
-      rowWidePreventionApplied: 0,
-    },
-  };
-}
-
-function extractTextContent(payload) {
-  const blocks = Array.isArray(payload?.content) ? payload.content : [];
-  const text = blocks
-    .filter(
-      (block) =>
-        block &&
-        typeof block === "object" &&
-        typeof block.text === "string" &&
-        (block.type === "text" || block.type === "output_text" || !block.type),
-    )
-    .map((block) => block.text)
-    .join("\n")
-    .trim();
-
-  return text || asText(payload?.content);
-}
-
-function buildAnthropicImageBlock(image) {
-  return {
-    type: "image",
-    source: {
-      type: "base64",
-      media_type: image.mediaType,
-      data: image.base64Data,
-    },
-  };
-}
-
-async function callAnthropicMessages({
-  apiKey,
-  model,
-  systemPrompt,
-  content,
-  maxTokens = 5000,
-}) {
+async function callAnthropicMessages({ apiKey, model, image, prompt }) {
   const response = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
@@ -884,12 +803,21 @@ async function callAnthropicMessages({
     body: JSON.stringify({
       model: asText(model) || DEFAULT_ANTHROPIC_MODEL,
       temperature: 0,
-      max_tokens: maxTokens,
-      system: systemPrompt,
+      max_tokens: 8192,
       messages: [
         {
           role: "user",
-          content,
+          content: [
+            {
+              type: "image",
+              source: {
+                type: "base64",
+                media_type: image.mediaType,
+                data: image.base64Data,
+              },
+            },
+            { type: "text", text: prompt },
+          ],
         },
       ],
     }),
@@ -912,423 +840,473 @@ async function callAnthropicMessages({
     throw new ApiError(message, 500);
   }
 
-  return {
-    payload,
-    responseText: extractTextContent(payload),
-  };
-}
-
-function parseVisionWord(word) {
-  const text = asText(
-    (Array.isArray(word?.symbols) ? word.symbols : [])
-      .map((symbol) => asText(symbol?.text))
-      .join(""),
-  );
-  const vertices = Array.isArray(word?.boundingBox?.vertices) ? word.boundingBox.vertices : [];
-  if (!text || vertices.length < 4) return null;
-
-  const xs = vertices.map((vertex) => Number(vertex?.x) || 0);
-  const ys = vertices.map((vertex) => Number(vertex?.y) || 0);
-  const x0 = Math.min(...xs);
-  const x1 = Math.max(...xs);
-  const y0 = Math.min(...ys);
-  const y1 = Math.max(...ys);
-  const width = Math.max(x1 - x0, 1);
-  const height = Math.max(y1 - y0, 1);
-
-  return {
-    text,
-    bbox: { x0, y0, x1, y1 },
-    centerX: x0 + width / 2,
-    centerY: y0 + height / 2,
-    width,
-    height,
-  };
-}
-
-function groupVisionLines(words) {
-  const sorted = (Array.isArray(words) ? words : [])
-    .filter(Boolean)
-    .sort((a, b) => a.centerY - b.centerY || a.bbox.x0 - b.bbox.x0);
-  if (!sorted.length) return [];
-
-  const heights = sorted.map((word) => Math.max(Number(word.height) || 0, 1)).sort((a, b) => a - b);
-  const mid = Math.floor(heights.length / 2);
-  const medianHeight =
-    heights.length % 2 === 0 ? (heights[mid - 1] + heights[mid]) / 2 : heights[mid];
-  const yTolerance = Math.max(12, medianHeight * 0.75);
-
-  const grouped = [];
-  sorted.forEach((word) => {
-    const last = grouped[grouped.length - 1];
-    if (!last) {
-      grouped.push({ words: [word], centerY: word.centerY });
-      return;
-    }
-
-    if (Math.abs(word.centerY - last.centerY) <= yTolerance) {
-      last.words.push(word);
-      const centerSum = last.words.reduce((sum, item) => sum + item.centerY, 0);
-      last.centerY = centerSum / last.words.length;
-      return;
-    }
-
-    grouped.push({ words: [word], centerY: word.centerY });
-  });
-
-  return grouped
-    .map((group, index) => {
-      const lineWords = [...group.words].sort((a, b) => a.bbox.x0 - b.bbox.x0);
-      const text = lineWords.map((item) => item.text).join(" ").trim();
-      if (!text) return null;
-
-      const x0 = Math.min(...lineWords.map((item) => item.bbox.x0));
-      const x1 = Math.max(...lineWords.map((item) => item.bbox.x1));
-      const y0 = Math.min(...lineWords.map((item) => item.bbox.y0));
-      const y1 = Math.max(...lineWords.map((item) => item.bbox.y1));
-
-      return {
-        index,
-        text,
-        bbox: { x0, y0, x1, y1 },
-        wordCount: lineWords.length,
-      };
+  const contentBlocks = Array.isArray(payload?.content) ? payload.content : [];
+  const text = contentBlocks
+    .filter((block) => {
+      if (!block || typeof block !== "object") return false;
+      if (typeof block.text !== "string") return false;
+      return block.type === "text" || block.type === "output_text" || !block.type;
     })
-    .filter(Boolean);
+    .map((block) => block.text)
+    .join("\n")
+    .trim();
+
+  return text || asText(payload?.content);
 }
 
-async function getVisionAnalysis({ googleVisionApiKey, base64Data }) {
-  const response = await fetch(
-    `https://vision.googleapis.com/v1/images:annotate?key=${encodeURIComponent(googleVisionApiKey)}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        requests: [
-          {
-            image: { content: base64Data },
-            features: [{ type: "DOCUMENT_TEXT_DETECTION" }],
-          },
-        ],
-      }),
-    },
-  );
-
-  const payloadText = await response.text();
-  let payload = null;
-  try {
-    payload = payloadText ? JSON.parse(payloadText) : null;
-  } catch {
-    payload = null;
-  }
-
-  if (!response.ok) {
-    const message =
-      asText(payload?.error?.message) || asText(payload?.error) || "Google Vision OCR request failed.";
-    throw new ApiError(message, 500);
-  }
-
-  const responseError = asText(payload?.responses?.[0]?.error?.message);
-  if (responseError) {
-    throw new ApiError(responseError, 500);
-  }
-
-  const annotation = payload?.responses?.[0]?.fullTextAnnotation;
-  const firstPage = annotation?.pages?.[0] || {};
-  const pageWidth =
-    Number.isFinite(Number(firstPage?.width)) && Number(firstPage?.width) > 0
-      ? Number(firstPage.width)
-      : REMAP_CANVAS_SIZE;
-  const pageHeight =
-    Number.isFinite(Number(firstPage?.height)) && Number(firstPage?.height) > 0
-      ? Number(firstPage.height)
-      : REMAP_CANVAS_SIZE;
-
-  const words = [];
-  (annotation?.pages || []).forEach((page) => {
-    (page?.blocks || []).forEach((block) => {
-      (block?.paragraphs || []).forEach((paragraph) => {
-        (paragraph?.words || []).forEach((word) => {
-          const parsedWord = parseVisionWord(word);
-          if (!parsedWord) return;
-          words.push(parsedWord);
-        });
-      });
-    });
-  });
-
-  const lines = groupVisionLines(words);
-  return {
-    words,
-    lines,
-    pageWidth,
-    pageHeight,
-  };
-}
-
-function compactVisionForPrompt(vision, { maxWords = 280, maxLines = 160 } = {}) {
-  const words = Array.isArray(vision?.words) ? vision.words : [];
-  const lines = Array.isArray(vision?.lines) ? vision.lines : [];
-
-  return {
-    pageWidth: Number.isFinite(Number(vision?.pageWidth)) ? Number(vision.pageWidth) : REMAP_CANVAS_SIZE,
-    pageHeight: Number.isFinite(Number(vision?.pageHeight)) ? Number(vision.pageHeight) : REMAP_CANVAS_SIZE,
-    totalWordCount: words.length,
-    totalLineCount: lines.length,
-    lines: lines.slice(0, maxLines).map((line) => ({
-      text: line.text,
-      bbox: {
-        x0: roundCoord(line?.bbox?.x0, 2),
-        y0: roundCoord(line?.bbox?.y0, 2),
-        x1: roundCoord(line?.bbox?.x1, 2),
-        y1: roundCoord(line?.bbox?.y1, 2),
-      },
-      wordCount: Number(line?.wordCount) || 0,
-    })),
-    words: words.slice(0, maxWords).map((word) => ({
-      text: word.text,
-      bbox: {
-        x0: roundCoord(word?.bbox?.x0, 2),
-        y0: roundCoord(word?.bbox?.y0, 2),
-        x1: roundCoord(word?.bbox?.x1, 2),
-        y1: roundCoord(word?.bbox?.y1, 2),
-      },
-    })),
-  };
-}
-
-function compactOverlayHints(overlays, limit = 220) {
-  return (Array.isArray(overlays) ? overlays : [])
-    .slice(0, limit)
-    .map((overlay) => ({
-      name: asText(overlay?.name || overlay?.id),
-      x: roundCoord(overlay?.x, 2),
-      y: roundCoord(overlay?.y, 2),
-      w: roundCoord(overlay?.w, 2),
-      h: roundCoord(overlay?.h, 2),
-    }))
-    .filter((overlay) => overlay.name);
-}
-
-function buildRemapSystemPrompt({ discoveryMode = false } = {}) {
-  return `You are a menu overlay remapping assistant.
-Return ONLY valid JSON.
-
-Output schema:
-{
-  "updatedOverlays": [
-    {"name":"Dish Name","x":0,"y":0,"w":0,"h":0}
-  ],
-  "newOverlays": [
-    {"name":"Dish Name","x":0,"y":0,"w":0,"h":0}
-  ]
-}
-
-Rules:
-- Coordinates MUST be in 0-1000 on the NEW image letterboxed canvas.
-- One dish per box. Never merge neighboring dishes.
-- Each box should include the full dish block: title, price, description/modifier lines, and nearby legend symbols that belong to that dish.
-- Do not include section headers, decorative text, or unrelated artwork.
-- Keep one entry per dish name.
-- If uncertain, omit the dish.
-- No markdown, no commentary, no extra root keys.
-${discoveryMode ? "- Discovery mode: put all detections in newOverlays and leave updatedOverlays empty." : ""}`;
-}
-
-async function runLocalRemapPipeline({
-  body,
-  anthropicApiKey,
-  googleVisionApiKey,
-  model,
-}) {
-  const newImageInput = await parseImageData(body?.newImageData || body?.imageData);
-  if (!newImageInput) {
-    throw new ApiError("newImageData is required for remap mode.", 400);
-  }
-
-  const oldImageInput = await parseImageData(body?.oldImageData || "");
-
-  const requestedWidth = Number.isFinite(Number(body?.imageWidth))
-    ? Number(body.imageWidth)
-    : REMAP_CANVAS_SIZE;
-  const requestedHeight = Number.isFinite(Number(body?.imageHeight))
-    ? Number(body.imageHeight)
-    : REMAP_CANVAS_SIZE;
-
-  const baselineOverlays = dedupeByName(
-    (Array.isArray(body?.overlays) ? body.overlays : [])
-      .map((entry) =>
-        sanitizeRemapOverlay(entry, {
-          imageWidth: requestedWidth,
-          imageHeight: requestedHeight,
-        }),
-      )
-      .filter(Boolean),
-  );
-
-  const oldOverlayTokens = new Set(
-    baselineOverlays.map((overlay) => normalizeToken(overlay?.name)).filter(Boolean),
-  );
-
-  const [newVision, oldVision] = await Promise.all([
-    getVisionAnalysis({
-      googleVisionApiKey,
-      base64Data: newImageInput.base64Data,
-    }),
-    oldImageInput
-      ? getVisionAnalysis({
-          googleVisionApiKey,
-          base64Data: oldImageInput.base64Data,
-        })
-      : Promise.resolve(null),
-  ]);
-
-  const remapContext = {
-    pageIndex: Number.isFinite(Number(body?.pageIndex)) ? Number(body.pageIndex) : null,
-    targetCoordinateSpace:
-      "All overlay coordinates MUST be x/y/w/h on a 0-1000 letterboxed canvas for the NEW image.",
-    oldOverlayHints: compactOverlayHints(baselineOverlays),
-    newImageVision: compactVisionForPrompt(newVision),
-    oldImageVision: oldVision ? compactVisionForPrompt(oldVision) : null,
-  };
-
-  const content = [];
-  if (oldImageInput) {
-    content.push({ type: "text", text: "OLD MENU IMAGE (reference for existing overlays)" });
-    content.push(buildAnthropicImageBlock(oldImageInput));
-  }
-  content.push({ type: "text", text: "NEW MENU IMAGE (target image)" });
-  content.push(buildAnthropicImageBlock(newImageInput));
-  content.push({
-    type: "text",
-    text: `Remap overlays using this context JSON:\n${JSON.stringify(remapContext)}`,
-  });
-
-  const { responseText } = await callAnthropicMessages({
+async function analyzeMenu({ imageInput, elements, fullText, existingNames, model, anthropicApiKey }) {
+  const spatialMap = buildSpatialRepresentation(elements);
+  const prompt = buildPrompt(spatialMap, fullText, existingNames);
+  const responseText = await callAnthropicMessages({
     apiKey: anthropicApiKey,
     model,
-    systemPrompt: buildRemapSystemPrompt({ discoveryMode: false }),
-    content,
-    maxTokens: 5000,
+    image: imageInput,
+    prompt,
   });
+  return extractClaudeJsonArray(responseText);
+}
 
-  const parsed = parseClaudeJson(responseText);
-  if (!parsed || typeof parsed !== "object") {
-    throw new ApiError("Failed to parse remap analysis output.", 500);
-  }
+function buildDetectedDishes(dishData, elements, padding, bounds) {
+  const elementsById = new Map((Array.isArray(elements) ? elements : []).map((element) => [element.id, element]));
+  const dishes = [];
 
-  const normalized = normalizeRemapResponse({
-    payload: parsed,
-    imageWidth: requestedWidth,
-    imageHeight: requestedHeight,
-    oldOverlayTokens,
-    discoveryMode: false,
-  });
+  (Array.isArray(dishData) ? dishData : []).forEach((dish) => {
+    const rawIds = Array.isArray(dish?.element_ids)
+      ? dish.element_ids
+      : Array.isArray(dish?.elementIds)
+        ? dish.elementIds
+        : [];
 
-  if (process.env.NODE_ENV !== "production") {
-    console.debug("[menu-image-analysis] next-local-reposition", {
-      mode: "remap",
-      pageIndex: remapContext.pageIndex,
-      baselineOverlayCount: baselineOverlays.length,
-      rawDishCount: normalized.rawDishCount,
-      validDishCount: normalized.validDishCount,
-      updatedCount: normalized.updatedOverlays.length,
-      newCount: normalized.newOverlays.length,
-      modeCounts: normalized.modeCounts,
+    const elementIds = rawIds.map((id) => Number(id)).filter((id) => Number.isFinite(id));
+    const selected = elementIds.map((id) => elementsById.get(id)).filter(Boolean);
+    if (!selected.length) return;
+
+    const xMin = Math.max(0, Math.min(...selected.map((element) => element.xMin)) - padding);
+    const yMin = Math.max(0, Math.min(...selected.map((element) => element.yMin)) - padding);
+    const xMax = Math.min(bounds.width, Math.max(...selected.map((element) => element.xMax)) + padding);
+    const yMax = Math.min(bounds.height, Math.max(...selected.map((element) => element.yMax)) + padding);
+
+    if (
+      !Number.isFinite(xMin) ||
+      !Number.isFinite(yMin) ||
+      !Number.isFinite(xMax) ||
+      !Number.isFinite(yMax) ||
+      xMax <= xMin ||
+      yMax <= yMin
+    ) {
+      return;
+    }
+
+    const name = asText(dish?.name) || "Unknown";
+
+    dishes.push({
+      name,
+      description: asText(dish?.description),
+      prices: asText(dish?.prices),
+      elementIds,
+      xMin,
+      yMin,
+      xMax,
+      yMax,
     });
+  });
+
+  return dishes;
+}
+
+function resolveOverlaps(dishes, bounds) {
+  const source = Array.isArray(dishes) ? dishes : [];
+  if (source.length <= 1) return source;
+
+  const sorted = source.slice().sort((a, b) => (a.yMin - b.yMin) || (a.xMin - b.xMin));
+
+  const boxesOverlap = (first, second) => {
+    return !(
+      first.xMax <= second.xMin ||
+      second.xMax <= first.xMin ||
+      first.yMax <= second.yMin ||
+      second.yMax <= first.yMin
+    );
+  };
+
+  const maxIterations = 50;
+  let iteration = 0;
+
+  while (iteration < maxIterations) {
+    let foundOverlap = false;
+
+    for (let i = 0; i < sorted.length; i += 1) {
+      for (let j = i + 1; j < sorted.length; j += 1) {
+        const first = sorted[i];
+        const second = sorted[j];
+        if (!boxesOverlap(first, second)) continue;
+
+        foundOverlap = true;
+        const xOverlap = Math.min(first.xMax, second.xMax) - Math.max(first.xMin, second.xMin);
+        const yOverlap = Math.min(first.yMax, second.yMax) - Math.max(first.yMin, second.yMin);
+
+        if (yOverlap > xOverlap) {
+          const midpoint = Math.floor((Math.min(first.xMax, second.xMax) + Math.max(first.xMin, second.xMin)) / 2);
+          if (first.xMin <= second.xMin) {
+            first.xMax = Math.max(first.xMin + 1, midpoint - 1);
+            second.xMin = Math.min(second.xMax - 1, midpoint + 1);
+          } else {
+            second.xMax = Math.max(second.xMin + 1, midpoint - 1);
+            first.xMin = Math.min(first.xMax - 1, midpoint + 1);
+          }
+        } else {
+          const midpoint = Math.floor((Math.min(first.yMax, second.yMax) + Math.max(first.yMin, second.yMin)) / 2);
+          if (first.yMin <= second.yMin) {
+            first.yMax = Math.max(first.yMin + 1, midpoint - 1);
+            second.yMin = Math.min(second.yMax - 1, midpoint + 1);
+          } else {
+            second.yMax = Math.max(second.yMin + 1, midpoint - 1);
+            first.yMin = Math.min(first.yMax - 1, midpoint + 1);
+          }
+        }
+
+        break;
+      }
+
+      if (foundOverlap) break;
+    }
+
+    if (!foundOverlap) break;
+    iteration += 1;
   }
+
+  sorted.forEach((dish) => {
+    dish.xMin = clamp(dish.xMin, 0, bounds.width - 1);
+    dish.yMin = clamp(dish.yMin, 0, bounds.height - 1);
+    dish.xMax = clamp(dish.xMax, dish.xMin + 1, bounds.width);
+    dish.yMax = clamp(dish.yMax, dish.yMin + 1, bounds.height);
+  });
+
+  return sorted;
+}
+
+function normalizeName(name) {
+  return asText(name).toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+}
+
+function tokenizeName(name) {
+  return normalizeName(name)
+    .split(/\s+/)
+    .map((token) => token.trim())
+    .filter((token) => token.length > 1);
+}
+
+function jaccardScore(firstTokens, secondTokens) {
+  if (!firstTokens.length || !secondTokens.length) return 0;
+
+  const firstSet = new Set(firstTokens);
+  const secondSet = new Set(secondTokens);
+  let intersection = 0;
+
+  firstSet.forEach((token) => {
+    if (secondSet.has(token)) intersection += 1;
+  });
+
+  const union = firstSet.size + secondSet.size - intersection;
+  return union > 0 ? intersection / union : 0;
+}
+
+function getOverlayLabel(overlay) {
+  const raw = overlay?.id ?? overlay?.name ?? overlay?.text ?? "";
+  return asText(raw);
+}
+
+function scoreOverlayMatch(existingName, detectedName) {
+  const existingNorm = normalizeName(existingName);
+  const detectedNorm = normalizeName(detectedName);
+  if (!existingNorm || !detectedNorm) return 0;
+  if (existingNorm === detectedNorm) return 1;
+
+  const existingTokens = tokenizeName(existingName);
+  const detectedTokens = tokenizeName(detectedName);
+  let score = jaccardScore(existingTokens, detectedTokens);
+
+  if (existingNorm.includes(detectedNorm) || detectedNorm.includes(existingNorm)) {
+    score += 0.15;
+  }
+  if (existingTokens.length && detectedTokens.length && existingTokens[0] === detectedTokens[0]) {
+    score += 0.1;
+  }
+
+  return score;
+}
+
+function ensureUniqueId(baseId, usedIds) {
+  const baseLabel = asText(baseId) || "New Item";
+  let candidate = baseLabel;
+  let suffix = 2;
+
+  while (usedIds.has(candidate)) {
+    candidate = `${baseLabel} (${suffix})`;
+    suffix += 1;
+  }
+
+  usedIds.add(candidate);
+  return candidate;
+}
+
+function matchDetectedOverlays(detected, overlays) {
+  const detectedList = Array.isArray(detected) ? detected : [];
+  const existingList = Array.isArray(overlays) ? overlays : [];
+
+  if (!existingList.length) {
+    return { updatedOverlays: [], newOverlays: detectedList, matched: 0 };
+  }
+
+  const existingEntries = existingList.map((overlay, index) => ({
+    index,
+    overlay,
+    name: getOverlayLabel(overlay),
+  }));
+
+  const usedExisting = new Set();
+  const usedDetected = new Set();
+  const updatedOverlays = [];
+
+  const existingByNorm = new Map();
+  existingEntries.forEach((entry) => {
+    const norm = normalizeName(entry.name);
+    if (!norm) return;
+    const list = existingByNorm.get(norm) || [];
+    list.push(entry.index);
+    existingByNorm.set(norm, list);
+  });
+
+  detectedList.forEach((dish, detectedIndex) => {
+    const norm = normalizeName(dish.id);
+    if (!norm) return;
+
+    const candidates = existingByNorm.get(norm);
+    if (!candidates) return;
+
+    const matchIndex = candidates.find((candidate) => !usedExisting.has(candidate));
+    if (matchIndex === undefined) return;
+
+    usedExisting.add(matchIndex);
+    usedDetected.add(detectedIndex);
+
+    const existing = existingEntries.find((entry) => entry.index === matchIndex);
+    const id = existing?.name || dish.id;
+    updatedOverlays.push({ id, x: dish.x, y: dish.y, w: dish.w, h: dish.h });
+  });
+
+  const candidates = [];
+  existingEntries.forEach((entry) => {
+    if (usedExisting.has(entry.index)) return;
+
+    detectedList.forEach((dish, detectedIndex) => {
+      if (usedDetected.has(detectedIndex)) return;
+
+      const score = scoreOverlayMatch(entry.name, dish.id);
+      if (score >= 0.35) {
+        candidates.push({
+          existingIdx: entry.index,
+          detectedIdx: detectedIndex,
+          score,
+        });
+      }
+    });
+  });
+
+  candidates.sort((first, second) => second.score - first.score);
+  candidates.forEach((candidate) => {
+    if (usedExisting.has(candidate.existingIdx) || usedDetected.has(candidate.detectedIdx)) {
+      return;
+    }
+
+    usedExisting.add(candidate.existingIdx);
+    usedDetected.add(candidate.detectedIdx);
+
+    const existing = existingEntries.find((entry) => entry.index === candidate.existingIdx);
+    const dish = detectedList[candidate.detectedIdx];
+    const id = existing?.name || dish.id;
+    updatedOverlays.push({ id, x: dish.x, y: dish.y, w: dish.w, h: dish.h });
+  });
+
+  const usedIds = new Set(existingEntries.map((entry) => entry.name).filter(Boolean));
+  updatedOverlays.forEach((overlay) => usedIds.add(overlay.id));
+
+  const newOverlays = detectedList
+    .filter((_, index) => !usedDetected.has(index))
+    .map((dish) => ({
+      id: ensureUniqueId(dish.id, usedIds),
+      x: dish.x,
+      y: dish.y,
+      w: dish.w,
+      h: dish.h,
+    }));
 
   return {
-    success: true,
-    dishes: normalized.dishes,
-    updatedOverlays: normalized.updatedOverlays,
-    newOverlays: normalized.newOverlays,
-    rawDishCount: normalized.rawDishCount,
-    validDishCount: normalized.validDishCount,
-    diagnostics: normalized.diagnostics,
+    updatedOverlays,
+    newOverlays,
+    matched: updatedOverlays.length,
   };
 }
 
-async function runLocalDiscoveryPipeline({
+function toOutputOverlay(overlay) {
+  const id = asText(overlay?.id || overlay?.name);
+  const x = Number(overlay?.x);
+  const y = Number(overlay?.y);
+  const w = Number(overlay?.w);
+  const h = Number(overlay?.h);
+
+  if (!id || !Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(w) || !Number.isFinite(h)) {
+    return null;
+  }
+
+  const clampedX = clamp(Math.round(x), 0, REMAP_CANVAS_SIZE - 1);
+  const clampedY = clamp(Math.round(y), 0, REMAP_CANVAS_SIZE - 1);
+  const clampedW = clamp(Math.round(w), 1, REMAP_CANVAS_SIZE - clampedX);
+  const clampedH = clamp(Math.round(h), 1, REMAP_CANVAS_SIZE - clampedY);
+
+  return {
+    id,
+    name: id,
+    x: clampedX,
+    y: clampedY,
+    w: clampedW,
+    h: clampedH,
+    coordSpace: "thousand",
+  };
+}
+
+async function runLegacyRepositionPipeline({
   body,
+  mode,
   anthropicApiKey,
   googleVisionApiKey,
   model,
 }) {
-  const imageInput = await parseImageData(body?.imageData);
-  if (!imageInput) {
+  const sourceImage = mode === "remap"
+    ? asText(body?.newImageData || body?.imageData)
+    : asText(body?.imageData);
+
+  if (!sourceImage) {
+    if (mode === "remap") {
+      throw new ApiError("newImageData is required for remap mode.", 400);
+    }
     throw new ApiError("imageData is required.", 400);
   }
 
-  const requestedWidth = Number.isFinite(Number(body?.imageWidth))
-    ? Number(body.imageWidth)
-    : REMAP_CANVAS_SIZE;
-  const requestedHeight = Number.isFinite(Number(body?.imageHeight))
-    ? Number(body.imageHeight)
-    : REMAP_CANVAS_SIZE;
+  const imageInput = await parseImageData(sourceImage);
+  if (!imageInput) {
+    throw new ApiError("Unable to parse menu image payload.", 400);
+  }
 
-  const vision = await getVisionAnalysis({
+  const paddingRaw = Number(body?.padding);
+  const padding = Number.isFinite(paddingRaw) ? Math.max(0, paddingRaw) : DEFAULT_PADDING;
+
+  const existingOverlays = mode === "remap" && Array.isArray(body?.overlays)
+    ? body.overlays
+    : [];
+  const existingNames = existingOverlays.map(getOverlayLabel).filter(Boolean);
+  const uniqueExistingNames = Array.from(new Set(existingNames)).slice(0, EXISTING_NAME_LIMIT);
+  const existingNamesTruncated = existingNames.length > uniqueExistingNames.length;
+
+  const { elements, fullText } = await extractTextElements({
     googleVisionApiKey,
     base64Data: imageInput.base64Data,
   });
 
-  const discoveryContext = {
-    pageIndex: Number.isFinite(Number(body?.pageIndex)) ? Number(body.pageIndex) : null,
-    targetCoordinateSpace:
-      "All overlay coordinates MUST be x/y/w/h on a 0-1000 letterboxed canvas for this image.",
-    newImageVision: compactVisionForPrompt(vision),
+  if (!elements.length) {
+    return {
+      success: true,
+      dishes: [],
+      updatedOverlays: [],
+      newOverlays: [],
+      rawDishCount: 0,
+      validDishCount: 0,
+      diagnostics: {
+        engine: "next-legacy-reposition",
+        mode,
+        elementCount: 0,
+        dishCount: 0,
+        detectedOverlayCount: 0,
+        matchedCount: 0,
+        existingNameCount: existingNames.length,
+        existingNamesTruncated,
+        padding,
+        model,
+        anchorMatchCount: 0,
+        anchorMissCount: 0,
+        corridorClamps: 0,
+        conservativeFallbackCount: 0,
+        rowWidePreventionApplied: 0,
+      },
+    };
+  }
+
+  const dishData = await analyzeMenu({
+    imageInput,
+    elements,
+    fullText,
+    existingNames: uniqueExistingNames,
+    model,
+    anthropicApiKey,
+  });
+
+  const inferredWidth = Math.max(...elements.map((element) => Number(element.xMax) || 0), 0) || REMAP_CANVAS_SIZE;
+  const inferredHeight = Math.max(...elements.map((element) => Number(element.yMax) || 0), 0) || REMAP_CANVAS_SIZE;
+  const bounds = {
+    width: Number(body?.imageWidth) > 0 ? Number(body.imageWidth) : inferredWidth,
+    height: Number(body?.imageHeight) > 0 ? Number(body.imageHeight) : inferredHeight,
   };
 
-  const content = [
-    { type: "text", text: "MENU IMAGE (detection target)" },
-    buildAnthropicImageBlock(imageInput),
-    {
-      type: "text",
-      text: `Detect dish overlays using this context JSON:\n${JSON.stringify(discoveryContext)}`,
-    },
-  ];
+  let dishes = buildDetectedDishes(dishData, elements, padding, bounds);
+  dishes = resolveOverlaps(dishes, bounds);
 
-  const { responseText } = await callAnthropicMessages({
-    apiKey: anthropicApiKey,
-    model,
-    systemPrompt: buildRemapSystemPrompt({ discoveryMode: true }),
-    content,
-    maxTokens: 4500,
-  });
+  const detectedOverlays = dishes
+    .map((dish) => ({
+      id: dish.name,
+      x: Math.round(dish.xMin),
+      y: Math.round(dish.yMin),
+      w: Math.round(dish.xMax - dish.xMin),
+      h: Math.round(dish.yMax - dish.yMin),
+    }))
+    .filter((overlay) => overlay.w > 1 && overlay.h > 1);
 
-  const parsed = parseClaudeJson(responseText);
-  if (!parsed || typeof parsed !== "object") {
-    throw new ApiError("Failed to parse discovery analysis output.", 500);
-  }
-
-  const normalized = normalizeRemapResponse({
-    payload: parsed,
-    imageWidth: requestedWidth,
-    imageHeight: requestedHeight,
-    oldOverlayTokens: new Set(),
-    discoveryMode: true,
-  });
-
-  if (process.env.NODE_ENV !== "production") {
-    console.debug("[menu-image-analysis] next-local-reposition", {
-      mode: "detect",
-      pageIndex: discoveryContext.pageIndex,
-      rawDishCount: normalized.rawDishCount,
-      validDishCount: normalized.validDishCount,
-      updatedCount: normalized.updatedOverlays.length,
-      newCount: normalized.newOverlays.length,
-      modeCounts: normalized.modeCounts,
-    });
-  }
+  const matchResult = matchDetectedOverlays(detectedOverlays, existingOverlays);
+  const updatedOverlays = dedupeByName(
+    (Array.isArray(matchResult.updatedOverlays) ? matchResult.updatedOverlays : [])
+      .map(toOutputOverlay)
+      .filter(Boolean),
+  );
+  const newOverlays = dedupeByName(
+    (Array.isArray(matchResult.newOverlays) ? matchResult.newOverlays : [])
+      .map(toOutputOverlay)
+      .filter(Boolean),
+  );
+  const allOverlays = [...updatedOverlays, ...newOverlays];
 
   return {
     success: true,
-    dishes: normalized.dishes,
-    updatedOverlays: normalized.updatedOverlays,
-    newOverlays: normalized.newOverlays,
-    rawDishCount: normalized.rawDishCount,
-    validDishCount: normalized.validDishCount,
-    diagnostics: normalized.diagnostics,
+    dishes: allOverlays,
+    updatedOverlays,
+    newOverlays,
+    rawDishCount: Array.isArray(dishData) ? dishData.length : detectedOverlays.length,
+    validDishCount: allOverlays.length,
+    diagnostics: {
+      engine: "next-legacy-reposition",
+      mode,
+      elementCount: elements.length,
+      dishCount: dishes.length,
+      detectedOverlayCount: detectedOverlays.length,
+      matchedCount: Number(matchResult?.matched || 0),
+      existingNameCount: existingNames.length,
+      existingNamesTruncated,
+      padding,
+      model,
+      anchorMatchCount: 0,
+      anchorMissCount: 0,
+      corridorClamps: 0,
+      conservativeFallbackCount: 0,
+      rowWidePreventionApplied: 0,
+    },
   };
 }
 
@@ -1338,19 +1316,19 @@ export async function analyzeMenuImageWithLocalEngine({ body, env = process.env 
     throw new ApiError("ANTHROPIC_API_KEY is not configured.", 500);
   }
 
-  const googleVisionApiKey = readFirstEnv(env, ["GOOGLE_VISION_API_KEY"]);
+  const googleVisionApiKey = readFirstEnv(env, ["GOOGLE_VISION_API_KEY", "GOOGLE_CLOUD_API_KEY"]);
   if (!googleVisionApiKey) {
     throw new ApiError("GOOGLE_VISION_API_KEY is not configured.", 500);
   }
 
-  const model = readFirstEnv(env, ["ANTHROPIC_MODEL"]) || DEFAULT_ANTHROPIC_MODEL;
-  const mode = normalizeToken(body?.mode);
+  const model = asText(body?.model) || readFirstEnv(env, ["ANTHROPIC_MODEL"]) || DEFAULT_ANTHROPIC_MODEL;
+  const mode = normalizeToken(body?.mode) === "remap" ? "remap" : "detect";
 
   const fixtureReplay = await resolveFixtureReplay(body, mode);
   if (fixtureReplay) {
     if (process.env.NODE_ENV !== "production") {
-      console.debug("[menu-image-analysis] next-local-reposition", {
-        mode: mode === "remap" ? "remap" : "detect",
+      console.debug("[menu-image-analysis] next-legacy-reposition", {
+        mode,
         rawDishCount: fixtureReplay.rawDishCount,
         validDishCount: fixtureReplay.validDishCount,
         updatedCount: fixtureReplay.updatedOverlays.length,
@@ -1362,25 +1340,27 @@ export async function analyzeMenuImageWithLocalEngine({ body, env = process.env 
     return fixtureReplay;
   }
 
-  if (mode === "remap") {
-    return await runLocalRemapPipeline({
-      body,
-      anthropicApiKey,
-      googleVisionApiKey,
-      model,
-    });
-  }
-
-  if (!asText(body?.imageData)) {
-    throw new ApiError("imageData is required.", 400);
-  }
-
-  return await runLocalDiscoveryPipeline({
+  const result = await runLegacyRepositionPipeline({
     body,
+    mode,
     anthropicApiKey,
     googleVisionApiKey,
     model,
   });
+
+  if (process.env.NODE_ENV !== "production") {
+    console.debug("[menu-image-analysis] next-legacy-reposition", {
+      mode,
+      pageIndex: Number.isFinite(Number(body?.pageIndex)) ? Number(body.pageIndex) : null,
+      rawDishCount: result.rawDishCount,
+      validDishCount: result.validDishCount,
+      updatedCount: result.updatedOverlays.length,
+      newCount: result.newOverlays.length,
+      matchedCount: Number(result?.diagnostics?.matchedCount || 0),
+    });
+  }
+
+  return result;
 }
 
 export { ApiError, normalizeToken, dedupeByName, sanitizeRemapOverlay };
