@@ -16,6 +16,10 @@ function normalizeToken(value) {
   return asText(value).toLowerCase().replace(/[^a-z0-9]/g, "");
 }
 
+function normalizeLegacyMatchKey(value) {
+  return asText(value).toLowerCase().replace(/\s+/g, " ");
+}
+
 function normalizeCoordSpace(value) {
   const token = normalizeToken(value);
   if (!token) return "";
@@ -2183,6 +2187,9 @@ export function useRestaurantEditor({
               accumulator[key] = (accumulator[key] || 0) + 1;
               return accumulator;
             }, {});
+            const diagnostics = result?.diagnostics && typeof result.diagnostics === "object"
+              ? result.diagnostics
+              : null;
             console.debug("[restaurant-editor] menu remap normalization", {
               pageIndex: pageIndex + 1,
               sourceIndex,
@@ -2191,6 +2198,11 @@ export function useRestaurantEditor({
               updatedCount: updatedDishes.length,
               newCount: newDishes.length,
               modeCounts,
+              anchorMatchCount: Number(diagnostics?.anchorMatchCount || 0),
+              anchorMissCount: Number(diagnostics?.anchorMissCount || 0),
+              corridorClamps: Number(diagnostics?.corridorClamps || 0),
+              conservativeFallbackCount: Number(diagnostics?.conservativeFallbackCount || 0),
+              rowWidePreventionApplied: Number(diagnostics?.rowWidePreventionApplied || 0),
             });
           }
 
@@ -2220,6 +2232,7 @@ export function useRestaurantEditor({
             mode: "remap",
             updatedDishes,
             newDishes,
+            replacePageOverlays: updatedDishes.length === 0 && newDishes.length > 0,
             detectedTokens,
           });
           pageResults.push({
@@ -2393,10 +2406,23 @@ export function useRestaurantEditor({
         const pageIndex = Number(detection?.pageIndex) || 0;
 
         if (detection?.mode === "remap") {
+          if (detection?.replacePageOverlays) {
+            for (let index = next.length - 1; index >= 0; index -= 1) {
+              const overlay = next[index];
+              const page = Number.isFinite(Number(overlay?.pageIndex))
+                ? Number(overlay.pageIndex)
+                : 0;
+              if (page !== pageIndex) continue;
+              next.splice(index, 1);
+              removedCount += 1;
+            }
+          }
+
           const usedMatchIndexes = new Set();
           const mergeDish = (dish) => {
             const token = normalizeToken(dish?.name);
             if (!token) return;
+            const dishMatchKey = normalizeLegacyMatchKey(dish?.name);
 
             const matchedIndex = next.findIndex((overlay, index) => {
               if (usedMatchIndexes.has(index)) return false;
@@ -2404,6 +2430,10 @@ export function useRestaurantEditor({
                 ? Number(overlay.pageIndex)
                 : 0;
               if (page !== pageIndex) return false;
+              const overlayMatchKey = normalizeLegacyMatchKey(overlay?.id || overlay?.name);
+              if (dishMatchKey && overlayMatchKey && overlayMatchKey === dishMatchKey) {
+                return true;
+              }
               const overlayToken = normalizeToken(overlay?.id || overlay?.name);
               return overlayToken === token;
             });
@@ -2460,21 +2490,6 @@ export function useRestaurantEditor({
 
           (Array.isArray(detection.updatedDishes) ? detection.updatedDishes : []).forEach(mergeDish);
           (Array.isArray(detection.newDishes) ? detection.newDishes : []).forEach(mergeDish);
-
-          if (removeUnmatchedPages.has(pageIndex)) {
-            for (let index = next.length - 1; index >= 0; index -= 1) {
-              const overlay = next[index];
-              const page = Number.isFinite(Number(overlay?.pageIndex))
-                ? Number(overlay.pageIndex)
-                : 0;
-              if (page !== pageIndex) continue;
-              const token = normalizeToken(overlay?.id || overlay?.name);
-              if (!token || !detection.detectedTokens?.has(token)) {
-                next.splice(index, 1);
-                removedCount += 1;
-              }
-            }
-          }
 
           return;
         }

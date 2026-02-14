@@ -1,0 +1,385 @@
+{
+  "generatedAt": "2026-02-14T18:01:43.283Z",
+  "sourceEngine": "legacy-reposition-overlays",
+  "restaurant": {
+    "id": "c92c16ec-43df-402d-b7bf-f7cebd28393e",
+    "slug": "demo-menu",
+    "name": "Demo Menu",
+    "capturedPageCount": 3,
+    "totalPageCount": 3
+  },
+  "fixtures": [
+    {
+      "id": "discovery-page-1",
+      "mode": "discovery",
+      "source": {
+        "oldPageIndex": null,
+        "newPageIndex": 0
+      },
+      "checksums": {
+        "oldImageSha256": null,
+        "newImageSha256": "27a1a9be44eeb23ae38c247d53f006a03bb76652553b03bb7a63ae3ba523be90"
+      },
+      "imageWidth": 1000,
+      "imageHeight": 1000,
+      "pageIndex": 0,
+      "overlayHints": [],
+      "expected": {
+        "updatedOverlays": [],
+        "newOverlays": [
+          {
+            "id": "Grilled Tofu",
+            "name": "Grilled Tofu",
+            "x": 74,
+            "y": 304,
+            "w": 405,
+            "h": 101
+          },
+          {
+            "id": "Spaghetti Bolognese",
+            "name": "Spaghetti Bolognese",
+            "x": 74,
+            "y": 463,
+            "w": 429,
+            "h": 98
+          },
+          {
+            "id": "Lemon Herb Chicken",
+            "name": "Lemon Herb Chicken",
+            "x": 74,
+            "y": 611,
+            "w": 385,
+            "h": 128
+          }
+        ]
+      }
+    },
+    {
+      "id": "remap-identity-page-1",
+      "mode": "remap",
+      "source": {
+        "oldPageIndex": 0,
+        "newPageIndex": 0
+      },
+      "checksums": {
+        "oldImageSha256": "27a1a9be44eeb23ae38c247d53f006a03bb76652553b03bb7a63ae3ba523be90",
+        "newImageSha256": "27a1a9be44eeb23ae38c247d53f006a03bb76652553b03bb7a63ae3ba523be90"
+      },
+      "imageWidth": 1000,
+      "imageHeight": 1000,
+      "pageIndex": 0,
+      "overlayHints": [
+        {
+          "id": "Grilled Tofu",
+          "name": "Grilled Tofu",
+          "x": 74,
+          "y": 304,
+          "w": 405,
+          "h": 101
+        },
+        {
+          "id": "Spaghetti Bolognese",
+          "name": "Spaghetti Bolognese",
+          "x": 74,
+          "y": 463,
+          "w": 429,
+          "h": 98
+        },
+        {
+          "id": "Lemon Herb Chicken",
+          "name": "Lemon Herb Chicken",
+          "x": 74,
+          "y": 611,
+          "w": 385,
+          "h": 128
+        }
+      ],
+      "expected": {
+        "updatedOverlays": [
+          {
+            "id": "Grilled Tofu",
+            "name": "Grilled Tofu",
+            "x": 74,
+            "y": 304,
+            "w": 405,
+            "h": 101
+          },
+          {
+            "id": "Spaghetti Bolognese",
+            "name": "Spaghetti Bolognese",
+            "x": 74,
+            "y": 463,
+            "w": 429,
+            "h": 98
+          },
+          {
+            "id": "Lemon Herb Chicken",
+            "name": "Lemon Herb Chicken",
+            "x": 74,
+            "y": 611,
+            "w": 385,
+            "h": 128
+          }
+        ],
+        "newOverlays": []
+      }
+    },
+    {
+      "id": "discovery-page-2",
+      "mode": "discovery",
+      "source": {
+        "oldPageIndex": null,
+        "newPageIndex": 1
+      },
+      "checksums": {
+        "oldImageSha256": null,
+        "newImageSha256": "007bf40a414253a23f86a31ba1e386e99d9c25c7712f0a1e6d1a4fadc364296a"
+      },
+      "imageWidth": 1000,
+      "imageHeight": 1000,
+      "pageIndex": 1,
+      "overlayHints": [],
+      "expected": {
+        "updatedOverlays": [],
+        "newOverlays": []
+      }
+    },
+    {
+      "id": "remap-identity-page-2",
+      "mode": "remap",
+      "source": {
+        "oldPageIndex": 1,
+        "newPageIndex": 1
+      },
+      "checksums": {
+        "oldImageSha256": "007bf40a414253a23f86a31ba1e386e99d9c25c7712f0a1e6d1a4fadc364296a",
+        "newImageSha256": "007bf40a414253a23f86a31ba1e386e99d9c25c7712f0a1e6d1a4fadc364296a"
+      },
+      "imageWidth": 1000,
+      "imageHeight": 1000,
+      "pageIndex": 1,
+      "overlayHints": [],
+      "expected": {
+        "updatedOverlays": [],
+        "newOverlays": []
+      }
+    },
+    {
+      "id": "discovery-page-3",
+      "mode": "discovery",
+      "source": {
+        "oldPageIndex": null,
+        "newPageIndex": 2
+      },
+      "checksums": {
+        "oldImageSha256": null,
+        "newImageSha256": "de1cffce10fcebcdffbcea25db9f2ffdf59756f9e97751aac12368f0b797f396"
+      },
+      "imageWidth": 1000,
+      "imageHeight": 1000,
+      "pageIndex": 2,
+      "overlayHints": [],
+      "expected": {
+        "updatedOverlays": [],
+        "newOverlays": [
+          {
+            "id": "TONKOTSU RAMEN",
+            "name": "TONKOTSU RAMEN",
+            "x": 872,
+            "y": 48,
+            "w": 128,
+            "h": 188
+          },
+          {
+            "id": "SPICY RAMEN",
+            "name": "SPICY RAMEN",
+            "x": 55,
+            "y": 405,
+            "w": 371,
+            "h": 125
+          },
+          {
+            "id": "VEGAN RAMEN",
+            "name": "VEGAN RAMEN",
+            "x": 726,
+            "y": 520,
+            "w": 274,
+            "h": 144
+          },
+          {
+            "id": "SPICY MISO RAMEN",
+            "name": "SPICY MISO RAMEN",
+            "x": 943,
+            "y": 767,
+            "w": 57,
+            "h": 180
+          }
+        ]
+      }
+    },
+    {
+      "id": "remap-identity-page-3",
+      "mode": "remap",
+      "source": {
+        "oldPageIndex": 2,
+        "newPageIndex": 2
+      },
+      "checksums": {
+        "oldImageSha256": "de1cffce10fcebcdffbcea25db9f2ffdf59756f9e97751aac12368f0b797f396",
+        "newImageSha256": "de1cffce10fcebcdffbcea25db9f2ffdf59756f9e97751aac12368f0b797f396"
+      },
+      "imageWidth": 1000,
+      "imageHeight": 1000,
+      "pageIndex": 2,
+      "overlayHints": [
+        {
+          "id": "TONKOTSU RAMEN",
+          "name": "TONKOTSU RAMEN",
+          "x": 872,
+          "y": 48,
+          "w": 128,
+          "h": 188
+        },
+        {
+          "id": "SPICY RAMEN",
+          "name": "SPICY RAMEN",
+          "x": 55,
+          "y": 405,
+          "w": 371,
+          "h": 125
+        },
+        {
+          "id": "VEGAN RAMEN",
+          "name": "VEGAN RAMEN",
+          "x": 726,
+          "y": 520,
+          "w": 274,
+          "h": 144
+        },
+        {
+          "id": "SPICY MISO RAMEN",
+          "name": "SPICY MISO RAMEN",
+          "x": 943,
+          "y": 767,
+          "w": 57,
+          "h": 180
+        }
+      ],
+      "expected": {
+        "updatedOverlays": [
+          {
+            "id": "TONKOTSU RAMEN",
+            "name": "TONKOTSU RAMEN",
+            "x": 872,
+            "y": 48,
+            "w": 128,
+            "h": 188
+          },
+          {
+            "id": "SPICY RAMEN",
+            "name": "SPICY RAMEN",
+            "x": 55,
+            "y": 405,
+            "w": 371,
+            "h": 125
+          },
+          {
+            "id": "VEGAN RAMEN",
+            "name": "VEGAN RAMEN",
+            "x": 726,
+            "y": 520,
+            "w": 274,
+            "h": 144
+          },
+          {
+            "id": "SPICY MISO RAMEN",
+            "name": "SPICY MISO RAMEN",
+            "x": 943,
+            "y": 767,
+            "w": 57,
+            "h": 180
+          }
+        ],
+        "newOverlays": []
+      }
+    },
+    {
+      "id": "remap-cross-page-1-to-3",
+      "mode": "remap",
+      "source": {
+        "oldPageIndex": 0,
+        "newPageIndex": 2
+      },
+      "checksums": {
+        "oldImageSha256": "27a1a9be44eeb23ae38c247d53f006a03bb76652553b03bb7a63ae3ba523be90",
+        "newImageSha256": "de1cffce10fcebcdffbcea25db9f2ffdf59756f9e97751aac12368f0b797f396"
+      },
+      "imageWidth": 1000,
+      "imageHeight": 1000,
+      "pageIndex": 2,
+      "overlayHints": [
+        {
+          "id": "Grilled Tofu",
+          "name": "Grilled Tofu",
+          "x": 74,
+          "y": 304,
+          "w": 405,
+          "h": 101
+        },
+        {
+          "id": "Spaghetti Bolognese",
+          "name": "Spaghetti Bolognese",
+          "x": 74,
+          "y": 463,
+          "w": 429,
+          "h": 98
+        },
+        {
+          "id": "Lemon Herb Chicken",
+          "name": "Lemon Herb Chicken",
+          "x": 74,
+          "y": 611,
+          "w": 385,
+          "h": 128
+        }
+      ],
+      "expected": {
+        "updatedOverlays": [],
+        "newOverlays": [
+          {
+            "id": "TONKOTSU RAMEN",
+            "name": "TONKOTSU RAMEN",
+            "x": 872,
+            "y": 48,
+            "w": 128,
+            "h": 188
+          },
+          {
+            "id": "SPICY RAMEN",
+            "name": "SPICY RAMEN",
+            "x": 55,
+            "y": 405,
+            "w": 371,
+            "h": 125
+          },
+          {
+            "id": "VEGAN RAMEN",
+            "name": "VEGAN RAMEN",
+            "x": 726,
+            "y": 520,
+            "w": 274,
+            "h": 144
+          },
+          {
+            "id": "SPICY MISO RAMEN",
+            "name": "SPICY MISO RAMEN",
+            "x": 943,
+            "y": 767,
+            "w": 57,
+            "h": 180
+          }
+        ]
+      }
+    }
+  ]
+}

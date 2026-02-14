@@ -116,6 +116,10 @@ export async function analyzeMenuImageWithAi(payload = {}) {
       : Array.isArray(result?.dishes)
         ? result.dishes.length
         : 0,
+    diagnostics:
+      result?.diagnostics && typeof result.diagnostics === "object"
+        ? result.diagnostics
+        : null,
     error: asText(result?.error),
   };
 }
