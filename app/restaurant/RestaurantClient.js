@@ -22,6 +22,7 @@ import RestaurantEditor from "./features/editor/RestaurantEditor";
 import RestaurantViewer from "./features/viewer/RestaurantViewer";
 import {
   analyzeDishWithAi,
+  analyzeMenuImageWithAi,
   analyzeIngredientNameWithAi,
   analyzeIngredientScanRequirement,
   compareDishSets,
@@ -785,6 +786,9 @@ export default function RestaurantClient() {
       },
       onAnalyzeIngredientScanRequirement: async ({ ingredientName, dishName }) => {
         return await analyzeIngredientScanRequirement({ ingredientName, dishName });
+      },
+      onAnalyzeMenuImage: async ({ imageData }) => {
+        return await analyzeMenuImageWithAi({ imageData });
       },
       onSubmitIngredientAppeal: async ({
         restaurantId,

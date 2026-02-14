@@ -66,6 +66,25 @@ export async function detectMenuCorners({ imageData, width, height }) {
   };
 }
 
+export async function analyzeMenuImageWithAi({ imageData }) {
+  const response = await fetch("/api/menu-image-analysis", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      imageData: asText(imageData),
+    }),
+  });
+
+  const result = await parseFunctionResponse(response, "menu-image-analysis");
+  return {
+    success: Boolean(result?.success),
+    dishes: Array.isArray(result?.dishes) ? result.dishes : [],
+    error: asText(result?.error),
+  };
+}
+
 export async function analyzeDishWithAi({ dishName, text, imageData }) {
   const payload = {
     dishName: asText(dishName),
@@ -191,6 +210,7 @@ export function compareDishSets({ detectedDishes, existingDishNames }) {
 export default {
   detectMenuDishes,
   detectMenuCorners,
+  analyzeMenuImageWithAi,
   analyzeDishWithAi,
   analyzeIngredientNameWithAi,
   analyzeIngredientScanRequirement,

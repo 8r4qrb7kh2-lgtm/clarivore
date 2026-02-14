@@ -6,14 +6,6 @@ import { Button, Input, Modal, Textarea } from "../../../components/ui";
 import { CLARIVORE_LOGO_SRC } from "../../../components/clarivoreBrand";
 import ConfirmToggleButton from "../../../components/ingredient-scan/ConfirmToggleButton";
 import {
-  buildDefaultScannerCorners,
-  fileToDataUrl as readScannerFileToDataUrl,
-  mapDetectedCornersToOriginal,
-  normalizeImageForCornerDetection,
-  splitTallImageIntoSections,
-  warpImageFromCorners,
-} from "./menuScanner";
-import {
   buildAllergenRows as buildDishAllergenRows,
   buildAllergenCrossRows as buildDishAllergenCrossRows,
   buildDietRows as buildDishDietRows,
@@ -2470,528 +2462,297 @@ function ConfirmInfoModal({ editor }) {
   );
 }
 
-function MenuScannerModal({
-  open,
-  sourceImage,
-  corners,
-  processing,
-  detectionError,
-  onOpenChange,
-  onCornerChange,
-  onReset,
-  onApply,
-  onUseOriginal,
-}) {
-  const imageRef = useRef(null);
-  const dragCornerRef = useRef("");
-
-  const updateCornerFromPointer = useCallback(
-    (cornerKey, pointerEvent) => {
-      if (!cornerKey || !pointerEvent) return;
-      const imageNode = imageRef.current;
-      if (!imageNode) return;
-      const rect = imageNode.getBoundingClientRect();
-      if (!rect.width || !rect.height) return;
-
-      const x = clamp(((pointerEvent.clientX - rect.left) / rect.width) * 1000, 0, 1000);
-      const y = clamp(((pointerEvent.clientY - rect.top) / rect.height) * 1000, 0, 1000);
-      onCornerChange?.(cornerKey, { x, y });
-    },
-    [onCornerChange],
-  );
-
-  useEffect(() => {
-    if (!open) return undefined;
-
-    const handlePointerMove = (event) => {
-      if (!dragCornerRef.current) return;
-      event.preventDefault();
-      updateCornerFromPointer(dragCornerRef.current, event);
-    };
-
-    const handlePointerUp = () => {
-      dragCornerRef.current = "";
-    };
-
-    window.addEventListener("pointermove", handlePointerMove);
-    window.addEventListener("pointerup", handlePointerUp);
-    return () => {
-      window.removeEventListener("pointermove", handlePointerMove);
-      window.removeEventListener("pointerup", handlePointerUp);
-      dragCornerRef.current = "";
-    };
-  }, [open, updateCornerFromPointer]);
-
-  const points = useMemo(() => {
-    const safe = corners && typeof corners === "object" ? corners : buildDefaultScannerCorners();
-    return {
-      topLeft: safe.topLeft || { x: 50, y: 50 },
-      topRight: safe.topRight || { x: 950, y: 50 },
-      bottomRight: safe.bottomRight || { x: 950, y: 950 },
-      bottomLeft: safe.bottomLeft || { x: 50, y: 950 },
-    };
-  }, [corners]);
-
-  const polygonPoints = `${(points.topLeft.x / 1000) * 100},${(points.topLeft.y / 1000) * 100} ${(points.topRight.x / 1000) * 100},${(points.topRight.y / 1000) * 100} ${(points.bottomRight.x / 1000) * 100},${(points.bottomRight.y / 1000) * 100} ${(points.bottomLeft.x / 1000) * 100},${(points.bottomLeft.y / 1000) * 100}`;
-
-  return (
-    <Modal
-      open={open}
-      onOpenChange={(next) => {
-        if (processing) return;
-        onOpenChange?.(next);
-      }}
-      title="Adjust menu corners"
-      className="max-w-[980px]"
-      closeOnOverlay={!processing}
-      closeOnEsc={!processing}
-    >
-      <div className="space-y-3">
-        <p className="note m-0 text-sm">
-          Drag the green corners to match the page edges, then confirm crop.
-        </p>
-        {detectionError ? (
-          <p className="m-0 rounded-lg border border-[#8c6c1a] bg-[rgba(123,86,10,0.25)] px-3 py-2 text-sm text-[#ffe4a8]">
-            {detectionError}
-          </p>
-        ) : null}
-
-        <div className="relative rounded-xl border border-[#2a3261] bg-[#070b16] p-2">
-          {sourceImage ? (
-            <div className="relative">
-              <img
-                ref={imageRef}
-                src={sourceImage}
-                alt="Menu scan source"
-                className="max-h-[62vh] w-full rounded object-contain"
-                draggable={false}
-              />
-              <svg
-                viewBox="0 0 100 100"
-                preserveAspectRatio="none"
-                style={{
-                  position: "absolute",
-                  inset: 0,
-                  width: "100%",
-                  height: "100%",
-                  pointerEvents: "none",
-                }}
-              >
-                <polygon
-                  points={polygonPoints}
-                  fill="rgba(34,197,94,0.12)"
-                  stroke="rgba(74,222,128,0.95)"
-                  strokeWidth="0.4"
-                />
-              </svg>
-              {Object.entries(points).map(([cornerKey, point]) => (
-                <button
-                  key={cornerKey}
-                  type="button"
-                  aria-label={`Move ${cornerKey}`}
-                  onPointerDown={(event) => {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    dragCornerRef.current = cornerKey;
-                    updateCornerFromPointer(cornerKey, event);
-                  }}
-                  style={{
-                    position: "absolute",
-                    left: `${(point.x / 1000) * 100}%`,
-                    top: `${(point.y / 1000) * 100}%`,
-                    width: 18,
-                    height: 18,
-                    borderRadius: "50%",
-                    border: "2px solid #d9ffe6",
-                    background: "#16a34a",
-                    transform: "translate(-50%, -50%)",
-                    boxShadow: "0 0 0 2px rgba(5,8,20,0.45)",
-                    cursor: "grab",
-                  }}
-                />
-              ))}
-            </div>
-          ) : (
-            <div className="flex h-[220px] items-center justify-center text-sm text-[#9ea9c8]">
-              No image selected.
-            </div>
-          )}
-        </div>
-
-        <div className="flex flex-wrap items-center justify-end gap-2">
-          <Button size="compact" variant="outline" onClick={onUseOriginal} disabled={processing}>
-            Use original
-          </Button>
-          <Button size="compact" variant="outline" onClick={onReset} disabled={processing}>
-            Reset corners
-          </Button>
-          <Button size="compact" tone="success" loading={processing} onClick={onApply}>
-            Confirm &amp; crop
-          </Button>
-        </div>
-      </div>
-    </Modal>
-  );
-}
-
 function MenuPagesModal({ editor }) {
-  const scannerEnabled = true;
   const replaceInputsRef = useRef({});
-  const replaceScannerInputsRef = useRef({});
   const addInputRef = useRef(null);
-  const scanAddInputRef = useRef(null);
-  const scanCameraInputRef = useRef(null);
+  const [sessionSnapshot, setSessionSnapshot] = useState(null);
+  const [changedPageIndices, setChangedPageIndices] = useState([]);
+  const [analyzeAllPages, setAnalyzeAllPages] = useState(false);
+  const [sessionDirty, setSessionDirty] = useState(false);
+  const [saveBusy, setSaveBusy] = useState(false);
+  const [saveError, setSaveError] = useState("");
+  const [saveNotice, setSaveNotice] = useState("");
+  const wasOpenRef = useRef(false);
 
-  const [scannerOpen, setScannerOpen] = useState(false);
-  const [scannerMode, setScannerMode] = useState("add");
-  const [scannerTargetIndex, setScannerTargetIndex] = useState(-1);
-  const [scannerSourceImage, setScannerSourceImage] = useState("");
-  const [scannerCorners, setScannerCorners] = useState(buildDefaultScannerCorners());
-  const [scannerBusy, setScannerBusy] = useState(false);
-  const [scannerApplying, setScannerApplying] = useState(false);
-  const [scannerDetectionError, setScannerDetectionError] = useState("");
-  const [scannerNotice, setScannerNotice] = useState("");
+  const markPageChanged = useCallback((pageIndex) => {
+    const safePage = Math.max(0, Math.floor(Number(pageIndex) || 0));
+    setSessionDirty(true);
+    setChangedPageIndices((current) =>
+      current.includes(safePage) ? current : [...current, safePage],
+    );
+  }, []);
 
-  const resetScanner = useCallback(() => {
-    setScannerOpen(false);
-    setScannerMode("add");
-    setScannerTargetIndex(-1);
-    setScannerSourceImage("");
-    setScannerCorners(buildDefaultScannerCorners());
-    setScannerDetectionError("");
-    setScannerApplying(false);
+  const markAllPagesChanged = useCallback(() => {
+    setSessionDirty(true);
+    setAnalyzeAllPages(true);
   }, []);
 
   useEffect(() => {
-    if (!editor.menuPagesOpen) {
-      setScannerNotice("");
-      resetScanner();
+    if (editor.menuPagesOpen && !wasOpenRef.current) {
+      setSessionSnapshot(
+        typeof editor.createDraftSnapshot === "function"
+          ? editor.createDraftSnapshot()
+          : null,
+      );
+      setChangedPageIndices([]);
+      setAnalyzeAllPages(false);
+      setSessionDirty(false);
+      setSaveBusy(false);
+      setSaveError("");
+      setSaveNotice("");
+    } else if (!editor.menuPagesOpen && wasOpenRef.current) {
+      setSessionSnapshot(null);
+      setChangedPageIndices([]);
+      setAnalyzeAllPages(false);
+      setSessionDirty(false);
+      setSaveBusy(false);
+      setSaveError("");
+      setSaveNotice("");
     }
-  }, [editor.menuPagesOpen, resetScanner]);
 
-  const launchScannerFromFile = useCallback(
-    async (file, options = {}) => {
-      if (!file || !scannerEnabled) return;
+    wasOpenRef.current = editor.menuPagesOpen;
+  }, [editor.createDraftSnapshot, editor.menuPagesOpen]);
 
-      try {
-        setScannerBusy(true);
-        setScannerNotice("");
-        setScannerDetectionError("");
+  const closeMenuModal = useCallback(() => {
+    editor.setMenuPagesOpen(false);
+  }, [editor]);
 
-        const sourceImage = await readScannerFileToDataUrl(file);
-        if (!sourceImage) {
-          throw new Error("Failed to read image.");
-        }
+  const handleCancel = useCallback(() => {
+    if (saveBusy) return;
+    if (sessionSnapshot && typeof editor.restoreDraftSnapshot === "function") {
+      editor.restoreDraftSnapshot(sessionSnapshot);
+    }
+    closeMenuModal();
+  }, [closeMenuModal, editor.restoreDraftSnapshot, saveBusy, sessionSnapshot]);
 
-        const normalized = await normalizeImageForCornerDetection(sourceImage);
-        const detection = await editor.detectMenuCorners({
-          imageData: normalized.dataUrl,
-          width: normalized.width,
-          height: normalized.height,
-        });
+  const handleSave = useCallback(async () => {
+    if (saveBusy) return;
+    setSaveError("");
+    setSaveNotice("");
 
-        const mappedCorners = detection?.corners
-          ? mapDetectedCornersToOriginal(detection.corners, normalized.metrics)
-          : buildDefaultScannerCorners();
+    if (!sessionDirty) {
+      closeMenuModal();
+      return;
+    }
 
-        setScannerMode(options.mode === "replace" ? "replace" : "add");
-        setScannerTargetIndex(
-          Number.isFinite(Number(options.targetIndex))
-            ? Number(options.targetIndex)
-            : -1,
+    const pageCount = Math.max(editor.draftMenuImages.length, 1);
+    const pagesToAnalyze = analyzeAllPages
+      ? Array.from({ length: pageCount }, (_, index) => index)
+      : Array.from(
+          new Set(
+            changedPageIndices
+              .map((index) => Number(index))
+              .filter((index) => Number.isFinite(index))
+              .map((index) => clamp(Math.floor(index), 0, pageCount - 1)),
+          ),
         );
-        setScannerSourceImage(sourceImage);
-        setScannerCorners(mappedCorners);
-        setScannerDetectionError(
-          detection?.success
-            ? ""
-            : detection?.error || "Corner detection failed. You can adjust corners manually.",
-        );
-        setScannerOpen(true);
-      } catch (error) {
-        setScannerMode(options.mode === "replace" ? "replace" : "add");
-        setScannerTargetIndex(
-          Number.isFinite(Number(options.targetIndex))
-            ? Number(options.targetIndex)
-            : -1,
-        );
-        if (!scannerSourceImage) {
-          try {
-            const fallbackSource = await readScannerFileToDataUrl(file);
-            setScannerSourceImage(fallbackSource);
-          } catch {
-            setScannerSourceImage("");
-          }
-        }
-        setScannerCorners(buildDefaultScannerCorners());
-        setScannerDetectionError(
-          error?.message ||
-            "Automatic corner detection failed. Adjust corners manually.",
-        );
-        setScannerOpen(true);
-      } finally {
-        setScannerBusy(false);
+
+    setSaveBusy(true);
+    try {
+      const result = await editor.analyzeMenuPagesAndMergeOverlays({
+        pageIndices: pagesToAnalyze.length
+          ? pagesToAnalyze
+          : Array.from({ length: pageCount }, (_, index) => index),
+      });
+
+      if (!result?.success) {
+        const errorLines = Array.isArray(result?.errors) ? result.errors : [];
+        setSaveError(errorLines[0] || "Failed to run menu analysis.");
+        return;
       }
-    },
-    [editor, scannerEnabled, scannerSourceImage],
-  );
 
-  const applyScanner = useCallback(
-    async (useOriginalImage = false) => {
-      if (!scannerSourceImage) return;
-      setScannerApplying(true);
-
-      try {
-        let processedImage = scannerSourceImage;
-        let usedFallback = false;
-
-        if (!useOriginalImage) {
-          const warp = await warpImageFromCorners(scannerSourceImage, scannerCorners);
-          if (warp?.dataUrl) {
-            processedImage = warp.dataUrl;
-            usedFallback = Boolean(warp.usedFallback);
-          }
-        }
-
-        const sections = await splitTallImageIntoSections(processedImage, {
-          maxAspectRatio: 1.75,
-          maxSections: 5,
-        });
-        const sectionPayload = sections.length
-          ? sections
-          : [{ dataUrl: processedImage, yStart: 0, yEnd: 100 }];
-
-        if (scannerMode === "replace" && scannerTargetIndex >= 0) {
-          editor.replaceMenuPageWithSections(scannerTargetIndex, sectionPayload);
-        } else {
-          editor.addMenuPages(sectionPayload.map((section) => section.dataUrl));
-        }
-
-        if (sectionPayload.length > 1) {
-          setScannerNotice(
-            `Page split into ${sectionPayload.length} sections for easier overlay editing.`,
-          );
-        } else if (usedFallback) {
-          setScannerNotice(
-            "Perspective warp fallback applied because OpenCV is unavailable in this runtime.",
-          );
-        } else {
-          setScannerNotice("Scanner applied successfully.");
-        }
-
-        resetScanner();
-      } catch (error) {
-        setScannerDetectionError(error?.message || "Failed to apply scanned image.");
-      } finally {
-        setScannerApplying(false);
-      }
-    },
-    [
-      editor,
-      resetScanner,
-      scannerCorners,
-      scannerMode,
-      scannerSourceImage,
-      scannerTargetIndex,
-    ],
-  );
+      setSaveNotice(
+        `Analysis complete: ${result.updatedCount || 0} updated, ${result.addedCount || 0} added.`,
+      );
+      closeMenuModal();
+    } catch (error) {
+      setSaveError(error?.message || "Failed to run menu analysis.");
+    } finally {
+      setSaveBusy(false);
+    }
+  }, [
+    analyzeAllPages,
+    changedPageIndices,
+    closeMenuModal,
+    editor.analyzeMenuPagesAndMergeOverlays,
+    editor.draftMenuImages.length,
+    saveBusy,
+    sessionDirty,
+  ]);
 
   return (
-    <>
-      <Modal
-        open={editor.menuPagesOpen}
-        onOpenChange={(open) => editor.setMenuPagesOpen(open)}
-        title="Edit menu images"
-        className="max-w-[980px]"
-      >
-        <div className="space-y-3">
-          <div className="flex flex-wrap gap-2">
-            <Button
-              size="compact"
-              tone="primary"
-              onClick={() => addInputRef.current?.click()}
-            >
-              Add page
-            </Button>
-            <input
-              ref={addInputRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={async (event) => {
-                const file = event.target.files?.[0];
-                if (!file) return;
-                const image = await fileToDataUrl(file);
-                editor.addMenuPage(image);
-                event.target.value = "";
-              }}
-            />
-
-            {scannerEnabled ? (
-              <>
-                <Button
-                  size="compact"
-                  variant="outline"
-                  onClick={() => scanAddInputRef.current?.click()}
-                >
-                  Scan + add
-                </Button>
-                <Button
-                  size="compact"
-                  variant="outline"
-                  onClick={() => scanCameraInputRef.current?.click()}
-                >
-                  Scan camera
-                </Button>
-                <input
-                  ref={scanAddInputRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={async (event) => {
-                    const file = event.target.files?.[0];
-                    if (!file) return;
-                    await launchScannerFromFile(file, { mode: "add" });
-                    event.target.value = "";
-                  }}
-                />
-                <input
-                  ref={scanCameraInputRef}
-                  type="file"
-                  accept="image/*"
-                  capture="environment"
-                  className="hidden"
-                  onChange={async (event) => {
-                    const file = event.target.files?.[0];
-                    if (!file) return;
-                    await launchScannerFromFile(file, { mode: "add" });
-                    event.target.value = "";
-                  }}
-                />
-              </>
-            ) : null}
-          </div>
-
-          {scannerBusy ? (
-            <p className="m-0 rounded-lg border border-[#2a3261] bg-[rgba(12,18,44,0.62)] px-3 py-2 text-sm text-[#ced8f8]">
-              Detecting menu corners...
-            </p>
-          ) : null}
-
-          {scannerNotice ? (
-            <p className="m-0 rounded-lg border border-[#2a3261] bg-[rgba(12,18,44,0.62)] px-3 py-2 text-sm text-[#ced8f8]">
-              {scannerNotice}
-            </p>
-          ) : null}
-
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {editor.draftMenuImages.map((image, index) => (
-              <div
-                key={`menu-page-${index}`}
-                className="rounded-xl border border-[#2a3261] bg-[rgba(17,22,48,0.8)] p-2"
-              >
-                <div className="rounded-lg border border-[#2a3261] bg-[#070b16] p-1">
-                  {image ? (
-                    <img
-                      src={image}
-                      alt={`Menu page ${index + 1}`}
-                      className="h-[180px] w-full rounded object-contain"
-                    />
-                  ) : (
-                    <div className="flex h-[180px] items-center justify-center text-xs text-[#9ea9c8]">
-                      No image
-                    </div>
-                  )}
-                </div>
-                <div className="mt-2 space-y-2">
-                  <span className="block text-xs text-[#c4cfec]">Page {index + 1}</span>
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      size="compact"
-                      variant="outline"
-                      onClick={() => replaceInputsRef.current[index]?.click()}
-                    >
-                      Replace
-                    </Button>
-                    {scannerEnabled ? (
-                      <Button
-                        size="compact"
-                        variant="outline"
-                        onClick={() => replaceScannerInputsRef.current[index]?.click()}
-                      >
-                        Scan replace
-                      </Button>
-                    ) : null}
-                    {editor.draftMenuImages.length > 1 ? (
-                      <Button
-                        size="compact"
-                        tone="danger"
-                        variant="outline"
-                        onClick={() => editor.removeMenuPage(index)}
-                      >
-                        Remove
-                      </Button>
-                    ) : null}
-                  </div>
-                </div>
-                <input
-                  ref={(node) => {
-                    replaceInputsRef.current[index] = node;
-                  }}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={async (event) => {
-                    const file = event.target.files?.[0];
-                    if (!file) return;
-                    const imageData = await fileToDataUrl(file);
-                    editor.replaceMenuPage(index, imageData);
-                    event.target.value = "";
-                  }}
-                />
-                <input
-                  ref={(node) => {
-                    replaceScannerInputsRef.current[index] = node;
-                  }}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={async (event) => {
-                    const file = event.target.files?.[0];
-                    if (!file) return;
-                    await launchScannerFromFile(file, {
-                      mode: "replace",
-                      targetIndex: index,
-                    });
-                    event.target.value = "";
-                  }}
-                />
-              </div>
-            ))}
-          </div>
-        </div>
-      </Modal>
-
-      <MenuScannerModal
-        open={scannerOpen}
-        onOpenChange={(next) => {
-          if (!next) resetScanner();
-        }}
-        sourceImage={scannerSourceImage}
-        corners={scannerCorners}
-        processing={scannerApplying}
-        detectionError={scannerDetectionError}
-        onCornerChange={(cornerKey, point) =>
-          setScannerCorners((current) => ({
-            ...(current || buildDefaultScannerCorners()),
-            [cornerKey]: point,
-          }))
+    <Modal
+      open={editor.menuPagesOpen}
+      onOpenChange={(open) => {
+        if (open) {
+          editor.setMenuPagesOpen(true);
+          return;
         }
-        onReset={() => setScannerCorners(buildDefaultScannerCorners())}
-        onApply={() => applyScanner(false)}
-        onUseOriginal={() => applyScanner(true)}
-      />
-    </>
+        handleCancel();
+      }}
+      title="Edit menu images"
+      className="max-w-[980px]"
+      closeOnOverlay={false}
+      closeOnEsc={false}
+      footer={
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <Button
+            size="compact"
+            variant="outline"
+            disabled={saveBusy}
+            onClick={handleCancel}
+          >
+            Cancel
+          </Button>
+          <Button
+            size="compact"
+            tone="primary"
+            loading={saveBusy}
+            onClick={handleSave}
+          >
+            Save
+          </Button>
+        </div>
+      }
+    >
+      <div className="space-y-3">
+        <div className="flex flex-wrap gap-2">
+          <Button
+            size="compact"
+            tone="primary"
+            disabled={saveBusy}
+            onClick={() => addInputRef.current?.click()}
+          >
+            Add Page
+          </Button>
+          <input
+            ref={addInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={async (event) => {
+              const file = event.target.files?.[0];
+              if (!file) return;
+              const image = await fileToDataUrl(file);
+              editor.addMenuPage(image);
+              markPageChanged(editor.draftMenuImages.length);
+              event.target.value = "";
+            }}
+          />
+        </div>
+
+        {saveNotice ? (
+          <p className="m-0 rounded-lg border border-[#2a3261] bg-[rgba(12,18,44,0.62)] px-3 py-2 text-sm text-[#ced8f8]">
+            {saveNotice}
+          </p>
+        ) : null}
+
+        {saveError ? (
+          <p className="m-0 rounded-lg border border-[#a12525] bg-[rgba(139,29,29,0.32)] px-3 py-2 text-sm text-[#ffd0d0]">
+            {saveError}
+          </p>
+        ) : null}
+
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {editor.draftMenuImages.map((image, index) => (
+            <div
+              key={`menu-page-${index}`}
+              className="rounded-xl border border-[#2a3261] bg-[rgba(17,22,48,0.8)] p-2"
+            >
+              <div className="mb-2 flex items-center justify-between">
+                <span className="text-xs text-[#c4cfec]">Page {index + 1}</span>
+                <div className="flex gap-1">
+                  <Button
+                    size="compact"
+                    variant="outline"
+                    disabled={saveBusy || index <= 0}
+                    className="min-w-[30px] px-2"
+                    onClick={() => {
+                      editor.moveMenuPage(index, index - 1);
+                      markAllPagesChanged();
+                    }}
+                    title="Move page up"
+                    aria-label={`Move page ${index + 1} up`}
+                  >
+                    ↑
+                  </Button>
+                  <Button
+                    size="compact"
+                    variant="outline"
+                    disabled={saveBusy || index >= editor.draftMenuImages.length - 1}
+                    className="min-w-[30px] px-2"
+                    onClick={() => {
+                      editor.moveMenuPage(index, index + 1);
+                      markAllPagesChanged();
+                    }}
+                    title="Move page down"
+                    aria-label={`Move page ${index + 1} down`}
+                  >
+                    ↓
+                  </Button>
+                </div>
+              </div>
+
+              <div className="rounded-lg border border-[#2a3261] bg-[#070b16] p-1">
+                {image ? (
+                  <img
+                    src={image}
+                    alt={`Menu page ${index + 1}`}
+                    className="h-[180px] w-full rounded object-contain"
+                  />
+                ) : (
+                  <div className="flex h-[180px] items-center justify-center text-xs text-[#9ea9c8]">
+                    No image
+                  </div>
+                )}
+              </div>
+
+              <div className="mt-2 flex flex-wrap gap-2">
+                <Button
+                  size="compact"
+                  variant="outline"
+                  disabled={saveBusy}
+                  onClick={() => replaceInputsRef.current[index]?.click()}
+                >
+                  Replace
+                </Button>
+                {editor.draftMenuImages.length > 1 ? (
+                  <Button
+                    size="compact"
+                    tone="danger"
+                    variant="outline"
+                    disabled={saveBusy}
+                    onClick={() => {
+                      editor.removeMenuPage(index);
+                      markAllPagesChanged();
+                    }}
+                  >
+                    Remove
+                  </Button>
+                ) : null}
+              </div>
+
+              <input
+                ref={(node) => {
+                  replaceInputsRef.current[index] = node;
+                }}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={async (event) => {
+                  const file = event.target.files?.[0];
+                  if (!file) return;
+                  const imageData = await fileToDataUrl(file);
+                  editor.replaceMenuPage(index, imageData);
+                  markPageChanged(index);
+                  event.target.value = "";
+                }}
+              />
+            </div>
+          ))}
+        </div>
+      </div>
+    </Modal>
   );
 }
 

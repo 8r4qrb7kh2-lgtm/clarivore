@@ -486,6 +486,36 @@ async function toDataUrlFromImage(source) {
   }
 }
 
+function cloneSnapshotList(value) {
+  return JSON.parse(JSON.stringify(Array.isArray(value) ? value : []));
+}
+
+function buildPageMoveIndexMap(pageCount, fromIndex, toIndex) {
+  const safeCount = Math.max(Number(pageCount) || 0, 1);
+  const safeFrom = clamp(Number(fromIndex) || 0, 0, safeCount - 1);
+  const safeTo = clamp(Number(toIndex) || 0, 0, safeCount - 1);
+  const mapping = Array.from({ length: safeCount }, (_, index) => index);
+  if (safeFrom === safeTo) return mapping;
+
+  mapping.forEach((_, oldIndex) => {
+    if (oldIndex === safeFrom) {
+      mapping[oldIndex] = safeTo;
+      return;
+    }
+
+    if (safeFrom < safeTo && oldIndex > safeFrom && oldIndex <= safeTo) {
+      mapping[oldIndex] = oldIndex - 1;
+      return;
+    }
+
+    if (safeFrom > safeTo && oldIndex >= safeTo && oldIndex < safeFrom) {
+      mapping[oldIndex] = oldIndex + 1;
+    }
+  });
+
+  return mapping;
+}
+
 function matchOverlayByDishName(overlays, dishName) {
   const target = asText(dishName).toLowerCase();
   if (!target) return null;
@@ -614,11 +644,23 @@ export function useRestaurantEditor({
 
   const captureSnapshot = useCallback(() => {
     return {
-      overlays: JSON.parse(JSON.stringify(overlaysRef.current || [])),
-      menuImages: JSON.parse(JSON.stringify(menuImagesRef.current || [])),
+      overlays: cloneSnapshotList(overlaysRef.current),
+      menuImages: cloneSnapshotList(menuImagesRef.current),
       pendingChanges: [...(pendingChangesRef.current || [])],
     };
   }, []);
+
+  const createDraftSnapshot = useCallback(() => {
+    return {
+      overlays: cloneSnapshotList(overlaysRef.current),
+      menuImages: cloneSnapshotList(menuImagesRef.current),
+      pendingChanges: [...(pendingChangesRef.current || [])],
+      selectedOverlayKey: asText(selectedOverlayKey),
+      activePageIndex: Number(activePageIndex) || 0,
+      history: cloneSnapshotList(historyRef.current),
+      historyIndex: Number(historyIndex) || 0,
+    };
+  }, [activePageIndex, historyIndex, selectedOverlayKey]);
 
   const pushHistory = useCallback(() => {
     const snapshot = captureSnapshot();
@@ -659,9 +701,15 @@ export function useRestaurantEditor({
         )
       : [];
 
+    overlaysRef.current = overlaysList;
+    menuImagesRef.current = images;
+    pendingChangesRef.current = Array.isArray(snapshot.pendingChanges)
+      ? [...snapshot.pendingChanges]
+      : [];
+
     setDraftOverlays(overlaysList);
     setDraftMenuImages(images);
-    setPendingChanges(Array.isArray(snapshot.pendingChanges) ? snapshot.pendingChanges : []);
+    setPendingChanges(pendingChangesRef.current);
     setSelectedOverlayKey((current) => {
       if (current && overlaysList.some((overlay) => overlay._editorKey === current)) {
         return current;
@@ -672,6 +720,62 @@ export function useRestaurantEditor({
       clamp(current, 0, Math.max(images.length - 1, 0)),
     );
   }, []);
+
+  const restoreDraftSnapshot = useCallback((snapshot) => {
+    if (!snapshot || typeof snapshot !== "object") return { success: false };
+
+    const nextSnapshot = {
+      overlays: cloneSnapshotList(snapshot.overlays),
+      menuImages: cloneSnapshotList(snapshot.menuImages),
+      pendingChanges: Array.isArray(snapshot.pendingChanges)
+        ? [...snapshot.pendingChanges]
+        : [],
+    };
+    if (!nextSnapshot.menuImages.length) {
+      nextSnapshot.menuImages = [""];
+    }
+
+    restoreHistorySnapshot(nextSnapshot);
+
+    const restoredOverlays = Array.isArray(nextSnapshot.overlays)
+      ? nextSnapshot.overlays
+      : [];
+    const selectedKey = asText(snapshot.selectedOverlayKey);
+    const restoredSelectedKey =
+      selectedKey &&
+      restoredOverlays.some((overlay) => overlay?._editorKey === selectedKey)
+        ? selectedKey
+        : restoredOverlays[0]?._editorKey || "";
+    setSelectedOverlayKey(restoredSelectedKey);
+
+    const restoredPage = clamp(
+      Number(snapshot.activePageIndex) || 0,
+      0,
+      Math.max(nextSnapshot.menuImages.length - 1, 0),
+    );
+    setActivePageIndex(restoredPage);
+
+    const historyList = Array.isArray(snapshot.history) && snapshot.history.length
+      ? cloneSnapshotList(snapshot.history).map((entry) => ({
+          overlays: cloneSnapshotList(entry?.overlays),
+          menuImages: cloneSnapshotList(entry?.menuImages),
+          pendingChanges: Array.isArray(entry?.pendingChanges)
+            ? [...entry.pendingChanges]
+            : [],
+        }))
+      : [nextSnapshot];
+
+    historyRef.current = historyList;
+    setHistoryIndex(
+      clamp(
+        Number(snapshot.historyIndex) || 0,
+        0,
+        Math.max(historyList.length - 1, 0),
+      ),
+    );
+
+    return { success: true };
+  }, [restoreHistorySnapshot]);
 
   const undo = useCallback(() => {
     if (historyIndex <= 0) return;
@@ -1376,6 +1480,281 @@ export function useRestaurantEditor({
     appendPendingChange(`Menu pages: Removed page ${targetIndex + 1}`);
     queueMicrotask(() => pushHistory());
   }, [appendPendingChange, applyOverlayList, draftMenuImages.length, pushHistory]);
+
+  const moveMenuPage = useCallback((fromIndex, toIndex) => {
+    const pageCount = Math.max(menuImagesRef.current.length, 1);
+    const safeFrom = clamp(Number(fromIndex) || 0, 0, pageCount - 1);
+    const safeTo = clamp(Number(toIndex) || 0, 0, pageCount - 1);
+    if (safeFrom === safeTo) {
+      return { moved: false, fromIndex: safeFrom, toIndex: safeTo };
+    }
+
+    const indexMap = buildPageMoveIndexMap(pageCount, safeFrom, safeTo);
+
+    setDraftMenuImages((current) => {
+      const next = [...current];
+      const [movedImage] = next.splice(safeFrom, 1);
+      next.splice(safeTo, 0, movedImage || "");
+      menuImagesRef.current = next.length ? next : [""];
+      return menuImagesRef.current;
+    });
+
+    applyOverlayList((current) =>
+      current.map((overlay) => {
+        const page = clamp(
+          Number.isFinite(Number(overlay.pageIndex)) ? Number(overlay.pageIndex) : 0,
+          0,
+          pageCount - 1,
+        );
+        const mapped = Number.isFinite(Number(indexMap[page])) ? Number(indexMap[page]) : page;
+        return ensureOverlayVisibility(
+          {
+            ...overlay,
+            pageIndex: mapped,
+          },
+          pageCount,
+        );
+      }),
+    );
+
+    setActivePageIndex((current) => {
+      const safeCurrent = clamp(Number(current) || 0, 0, pageCount - 1);
+      const mapped = Number.isFinite(Number(indexMap[safeCurrent]))
+        ? Number(indexMap[safeCurrent])
+        : safeCurrent;
+      return clamp(mapped, 0, pageCount - 1);
+    });
+
+    appendPendingChange(`Menu pages: Moved page ${safeFrom + 1} to ${safeTo + 1}`);
+    queueMicrotask(() => pushHistory());
+
+    return { moved: true, fromIndex: safeFrom, toIndex: safeTo };
+  }, [appendPendingChange, applyOverlayList, pushHistory]);
+
+  const analyzeMenuPagesAndMergeOverlays = useCallback(async ({ pageIndices } = {}) => {
+    if (!callbacks?.onAnalyzeMenuImage) {
+      return {
+        success: false,
+        updatedCount: 0,
+        addedCount: 0,
+        errors: ["Menu image analysis callback is not configured."],
+      };
+    }
+
+    const pageCount = Math.max(menuImagesRef.current.length, 1);
+    const candidatePages =
+      Array.isArray(pageIndices) && pageIndices.length
+        ? pageIndices
+        : Array.from({ length: pageCount }, (_, index) => index);
+    const targetPages = Array.from(
+      new Set(
+        candidatePages
+          .map((index) => Number(index))
+          .filter((index) => Number.isFinite(index))
+          .map((index) => clamp(Math.floor(index), 0, pageCount - 1)),
+      ),
+    );
+
+    if (!targetPages.length) {
+      return {
+        success: false,
+        updatedCount: 0,
+        addedCount: 0,
+        errors: ["No menu pages were selected for analysis."],
+      };
+    }
+
+    const pageDetections = [];
+    const errors = [];
+
+    const normalizeDetectedRect = (dish) => {
+      const name = asText(dish?.name || dish?.dishName);
+      if (!name) return null;
+
+      const xValue = Number(dish?.x);
+      const yValue = Number(dish?.y);
+      const wValue = Number(dish?.w);
+      const hValue = Number(dish?.h);
+      if (
+        !Number.isFinite(xValue) ||
+        !Number.isFinite(yValue) ||
+        !Number.isFinite(wValue) ||
+        !Number.isFinite(hValue)
+      ) {
+        return null;
+      }
+
+      let x = clamp(xValue, 0, 100);
+      let y = clamp(yValue, 0, 100);
+      let w = clamp(wValue, 0.5, 100);
+      let h = clamp(hValue, 0.5, 100);
+
+      if (x > 99.5) x = 99.5;
+      if (y > 99.5) y = 99.5;
+
+      w = clamp(w, 0.5, 100 - x);
+      h = clamp(h, 0.5, 100 - y);
+
+      return {
+        name,
+        x,
+        y,
+        w,
+        h,
+      };
+    };
+
+    for (const pageIndex of targetPages) {
+      const imageSource = asText(menuImagesRef.current[pageIndex]);
+      if (!imageSource) {
+        errors.push(`Page ${pageIndex + 1}: No menu image available.`);
+        continue;
+      }
+
+      // eslint-disable-next-line no-await-in-loop
+      const imageData = await toDataUrlFromImage(imageSource);
+      if (!imageData) {
+        errors.push(`Page ${pageIndex + 1}: Failed to prepare image for analysis.`);
+        continue;
+      }
+
+      try {
+        // eslint-disable-next-line no-await-in-loop
+        const result = await callbacks.onAnalyzeMenuImage({
+          imageData,
+          pageIndex,
+        });
+        if (!result?.success) {
+          errors.push(
+            `Page ${pageIndex + 1}: ${asText(result?.error) || "Menu image analysis failed."}`,
+          );
+          continue;
+        }
+
+        const seenDishTokens = new Set();
+        const dishes = (Array.isArray(result?.dishes) ? result.dishes : [])
+          .map((dish) => normalizeDetectedRect(dish))
+          .filter(Boolean)
+          .filter((dish) => {
+            const token = normalizeToken(dish.name);
+            if (!token || seenDishTokens.has(token)) return false;
+            seenDishTokens.add(token);
+            return true;
+          });
+
+        pageDetections.push({ pageIndex, dishes });
+      } catch (error) {
+        errors.push(
+          `Page ${pageIndex + 1}: ${asText(error?.message) || "Menu image analysis failed."}`,
+        );
+      }
+    }
+
+    if (errors.length) {
+      return {
+        success: false,
+        updatedCount: 0,
+        addedCount: 0,
+        errors,
+      };
+    }
+
+    let updatedCount = 0;
+    let addedCount = 0;
+
+    applyOverlayList((current) => {
+      const next = [...current];
+
+      pageDetections.forEach(({ pageIndex, dishes }) => {
+        if (!dishes.length) return;
+        const usedMatchIndexes = new Set();
+
+        dishes.forEach((dish) => {
+          const dishToken = normalizeToken(dish.name);
+          if (!dishToken) return;
+
+          const matchedIndex = next.findIndex((overlay, index) => {
+            if (usedMatchIndexes.has(index)) return false;
+            const page = Number.isFinite(Number(overlay.pageIndex))
+              ? Number(overlay.pageIndex)
+              : 0;
+            if (page !== pageIndex) return false;
+            const overlayToken = normalizeToken(overlay?.id || overlay?.name);
+            return overlayToken === dishToken;
+          });
+
+          if (matchedIndex >= 0) {
+            usedMatchIndexes.add(matchedIndex);
+            const existing = next[matchedIndex];
+            next[matchedIndex] = ensureOverlayVisibility(
+              {
+                ...existing,
+                id: asText(existing?.id) || dish.name,
+                name: asText(existing?.name) || dish.name,
+                x: dish.x,
+                y: dish.y,
+                w: dish.w,
+                h: dish.h,
+                pageIndex,
+              },
+              pageCount,
+            );
+            updatedCount += 1;
+            return;
+          }
+
+          const nextOverlayKey = `ov-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+          const nextOverlay = ensureOverlayVisibility(
+            normalizeOverlay(
+              {
+                _editorKey: nextOverlayKey,
+                id: dish.name,
+                name: dish.name,
+                description: "",
+                x: dish.x,
+                y: dish.y,
+                w: dish.w,
+                h: dish.h,
+                pageIndex,
+                allergens: [],
+                diets: [],
+                removable: [],
+                crossContaminationAllergens: [],
+                crossContaminationDiets: [],
+                details: {},
+                ingredients: [],
+              },
+              next.length,
+              nextOverlayKey,
+            ),
+            pageCount,
+          );
+
+          next.push(nextOverlay);
+          addedCount += 1;
+        });
+      });
+
+      return next;
+    });
+
+    if (updatedCount || addedCount) {
+      appendPendingChange(
+        `Menu analysis: Updated ${updatedCount} overlay${updatedCount === 1 ? "" : "s"} and added ${addedCount} overlay${addedCount === 1 ? "" : "s"}.`,
+      );
+    } else {
+      appendPendingChange("Menu analysis: No dishes detected on selected pages.");
+    }
+
+    queueMicrotask(() => pushHistory());
+
+    return {
+      success: true,
+      updatedCount,
+      addedCount,
+      errors: [],
+    };
+  }, [appendPendingChange, applyOverlayList, callbacks, pushHistory]);
 
   const jumpToPage = useCallback((index) => {
     setActivePageIndex((current) =>
@@ -2414,11 +2793,15 @@ export function useRestaurantEditor({
 
     menuPagesOpen,
     setMenuPagesOpen,
+    createDraftSnapshot,
+    restoreDraftSnapshot,
     addMenuPages,
     addMenuPage,
     replaceMenuPage,
     replaceMenuPageWithSections,
     removeMenuPage,
+    moveMenuPage,
+    analyzeMenuPagesAndMergeOverlays,
 
     restaurantSettingsOpen,
     setRestaurantSettingsOpen,
