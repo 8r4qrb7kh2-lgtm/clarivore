@@ -53,6 +53,61 @@ async function fileToDataUrl(file) {
   });
 }
 
+function normalizePageIndexList(values, pageCount = Number.POSITIVE_INFINITY) {
+  const maxPage = Number.isFinite(Number(pageCount))
+    ? Math.max(Number(pageCount) - 1, 0)
+    : Number.POSITIVE_INFINITY;
+  const seen = new Set();
+  const output = [];
+
+  (Array.isArray(values) ? values : []).forEach((value) => {
+    const numeric = Number(value);
+    if (!Number.isFinite(numeric)) return;
+    const safe = Math.max(0, Math.floor(numeric));
+    if (safe > maxPage) return;
+    if (seen.has(safe)) return;
+    seen.add(safe);
+    output.push(safe);
+  });
+
+  return output;
+}
+
+function remapPageIndexListForMove(values, fromIndex, toIndex, pageCount) {
+  const safeCount = Math.max(Number(pageCount) || 0, 1);
+  const safeFrom = clamp(Number(fromIndex) || 0, 0, safeCount - 1);
+  const safeTo = clamp(Number(toIndex) || 0, 0, safeCount - 1);
+  if (safeFrom === safeTo) {
+    return normalizePageIndexList(values, safeCount);
+  }
+
+  const remapIndex = (index) => {
+    if (index === safeFrom) return safeTo;
+    if (safeFrom < safeTo && index > safeFrom && index <= safeTo) return index - 1;
+    if (safeFrom > safeTo && index >= safeTo && index < safeFrom) return index + 1;
+    return index;
+  };
+
+  return normalizePageIndexList(
+    (Array.isArray(values) ? values : []).map((value) => remapIndex(Number(value) || 0)),
+    safeCount,
+  );
+}
+
+function remapPageIndexListForRemove(values, removedIndex, pageCountBefore) {
+  const safeBefore = Math.max(Number(pageCountBefore) || 0, 1);
+  const safeRemoved = clamp(Number(removedIndex) || 0, 0, safeBefore - 1);
+  const safeAfter = Math.max(safeBefore - 1, 1);
+
+  const remapped = (Array.isArray(values) ? values : [])
+    .map((value) => Number(value))
+    .filter((value) => Number.isFinite(value))
+    .filter((value) => value !== safeRemoved)
+    .map((value) => (value > safeRemoved ? value - 1 : value));
+
+  return normalizePageIndexList(remapped, safeAfter);
+}
+
 function parseChangePayload(log) {
   if (!log?.changes) return null;
   if (typeof log.changes === "object") return log.changes;
@@ -2466,25 +2521,27 @@ function MenuPagesModal({ editor }) {
   const replaceInputsRef = useRef({});
   const addInputRef = useRef(null);
   const [sessionSnapshot, setSessionSnapshot] = useState(null);
-  const [changedPageIndices, setChangedPageIndices] = useState([]);
-  const [analyzeAllPages, setAnalyzeAllPages] = useState(false);
+  const [imageChangedPageIndices, setImageChangedPageIndices] = useState([]);
+  const [removeUnmatchedPageIndices, setRemoveUnmatchedPageIndices] = useState([]);
   const [sessionDirty, setSessionDirty] = useState(false);
   const [saveBusy, setSaveBusy] = useState(false);
   const [saveError, setSaveError] = useState("");
   const [saveNotice, setSaveNotice] = useState("");
   const wasOpenRef = useRef(false);
 
-  const markPageChanged = useCallback((pageIndex) => {
-    const safePage = Math.max(0, Math.floor(Number(pageIndex) || 0));
+  const markSessionDirty = useCallback(() => {
     setSessionDirty(true);
-    setChangedPageIndices((current) =>
-      current.includes(safePage) ? current : [...current, safePage],
-    );
   }, []);
 
-  const markAllPagesChanged = useCallback(() => {
+  const markImagePageChanged = useCallback((pageIndex) => {
+    const safePage = Math.max(0, Math.floor(Number(pageIndex) || 0));
     setSessionDirty(true);
-    setAnalyzeAllPages(true);
+    setImageChangedPageIndices((current) =>
+      current.includes(safePage) ? current : [...current, safePage],
+    );
+    setRemoveUnmatchedPageIndices((current) =>
+      current.includes(safePage) ? current : [...current, safePage],
+    );
   }, []);
 
   useEffect(() => {
@@ -2494,16 +2551,16 @@ function MenuPagesModal({ editor }) {
           ? editor.createDraftSnapshot()
           : null,
       );
-      setChangedPageIndices([]);
-      setAnalyzeAllPages(false);
+      setImageChangedPageIndices([]);
+      setRemoveUnmatchedPageIndices([]);
       setSessionDirty(false);
       setSaveBusy(false);
       setSaveError("");
       setSaveNotice("");
     } else if (!editor.menuPagesOpen && wasOpenRef.current) {
       setSessionSnapshot(null);
-      setChangedPageIndices([]);
-      setAnalyzeAllPages(false);
+      setImageChangedPageIndices([]);
+      setRemoveUnmatchedPageIndices([]);
       setSessionDirty(false);
       setSaveBusy(false);
       setSaveError("");
@@ -2536,33 +2593,36 @@ function MenuPagesModal({ editor }) {
     }
 
     const pageCount = Math.max(editor.draftMenuImages.length, 1);
-    const pagesToAnalyze = analyzeAllPages
-      ? Array.from({ length: pageCount }, (_, index) => index)
-      : Array.from(
-          new Set(
-            changedPageIndices
-              .map((index) => Number(index))
-              .filter((index) => Number.isFinite(index))
-              .map((index) => clamp(Math.floor(index), 0, pageCount - 1)),
-          ),
-        );
+    const pagesToAnalyze = normalizePageIndexList(imageChangedPageIndices, pageCount);
+    const pagesToRemoveUnmatched = normalizePageIndexList(
+      removeUnmatchedPageIndices,
+      pageCount,
+    );
+
+    if (!pagesToAnalyze.length) {
+      closeMenuModal();
+      return;
+    }
 
     setSaveBusy(true);
     try {
       const result = await editor.analyzeMenuPagesAndMergeOverlays({
-        pageIndices: pagesToAnalyze.length
-          ? pagesToAnalyze
-          : Array.from({ length: pageCount }, (_, index) => index),
+        pageIndices: pagesToAnalyze,
+        removeUnmatchedPageIndices: pagesToRemoveUnmatched,
+        requireDetectionsForPageIndices: pagesToAnalyze,
       });
 
       if (!result?.success) {
         const errorLines = Array.isArray(result?.errors) ? result.errors : [];
-        setSaveError(errorLines[0] || "Failed to run menu analysis.");
+        const firstError = errorLines[0] || "Failed to run menu analysis.";
+        const suffix =
+          errorLines.length > 1 ? ` (${errorLines.length} pages failed)` : "";
+        setSaveError(`${firstError}${suffix}`);
         return;
       }
 
       setSaveNotice(
-        `Analysis complete: ${result.updatedCount || 0} updated, ${result.addedCount || 0} added.`,
+        `Analysis complete: ${result.updatedCount || 0} updated, ${result.addedCount || 0} added, ${result.removedCount || 0} removed.`,
       );
       closeMenuModal();
     } catch (error) {
@@ -2571,11 +2631,11 @@ function MenuPagesModal({ editor }) {
       setSaveBusy(false);
     }
   }, [
-    analyzeAllPages,
-    changedPageIndices,
     closeMenuModal,
     editor.analyzeMenuPagesAndMergeOverlays,
     editor.draftMenuImages.length,
+    imageChangedPageIndices,
+    removeUnmatchedPageIndices,
     saveBusy,
     sessionDirty,
   ]);
@@ -2635,7 +2695,7 @@ function MenuPagesModal({ editor }) {
               if (!file) return;
               const image = await fileToDataUrl(file);
               editor.addMenuPage(image);
-              markPageChanged(editor.draftMenuImages.length);
+              markImagePageChanged(editor.draftMenuImages.length);
               event.target.value = "";
             }}
           />
@@ -2668,8 +2728,15 @@ function MenuPagesModal({ editor }) {
                     disabled={saveBusy || index <= 0}
                     className="min-w-[30px] px-2"
                     onClick={() => {
+                      const pageCount = Math.max(editor.draftMenuImages.length, 1);
                       editor.moveMenuPage(index, index - 1);
-                      markAllPagesChanged();
+                      setImageChangedPageIndices((current) =>
+                        remapPageIndexListForMove(current, index, index - 1, pageCount),
+                      );
+                      setRemoveUnmatchedPageIndices((current) =>
+                        remapPageIndexListForMove(current, index, index - 1, pageCount),
+                      );
+                      markSessionDirty();
                     }}
                     title="Move page up"
                     aria-label={`Move page ${index + 1} up`}
@@ -2682,8 +2749,15 @@ function MenuPagesModal({ editor }) {
                     disabled={saveBusy || index >= editor.draftMenuImages.length - 1}
                     className="min-w-[30px] px-2"
                     onClick={() => {
+                      const pageCount = Math.max(editor.draftMenuImages.length, 1);
                       editor.moveMenuPage(index, index + 1);
-                      markAllPagesChanged();
+                      setImageChangedPageIndices((current) =>
+                        remapPageIndexListForMove(current, index, index + 1, pageCount),
+                      );
+                      setRemoveUnmatchedPageIndices((current) =>
+                        remapPageIndexListForMove(current, index, index + 1, pageCount),
+                      );
+                      markSessionDirty();
                     }}
                     title="Move page down"
                     aria-label={`Move page ${index + 1} down`}
@@ -2723,8 +2797,15 @@ function MenuPagesModal({ editor }) {
                     variant="outline"
                     disabled={saveBusy}
                     onClick={() => {
+                      const pageCount = Math.max(editor.draftMenuImages.length, 1);
                       editor.removeMenuPage(index);
-                      markAllPagesChanged();
+                      setImageChangedPageIndices((current) =>
+                        remapPageIndexListForRemove(current, index, pageCount),
+                      );
+                      setRemoveUnmatchedPageIndices((current) =>
+                        remapPageIndexListForRemove(current, index, pageCount),
+                      );
+                      markSessionDirty();
                     }}
                   >
                     Remove
@@ -2744,7 +2825,7 @@ function MenuPagesModal({ editor }) {
                   if (!file) return;
                   const imageData = await fileToDataUrl(file);
                   editor.replaceMenuPage(index, imageData);
-                  markPageChanged(index);
+                  markImagePageChanged(index);
                   event.target.value = "";
                 }}
               />

@@ -81,6 +81,16 @@ export async function analyzeMenuImageWithAi({ imageData }) {
   return {
     success: Boolean(result?.success),
     dishes: Array.isArray(result?.dishes) ? result.dishes : [],
+    rawDishCount: Number.isFinite(Number(result?.rawDishCount))
+      ? Number(result.rawDishCount)
+      : Array.isArray(result?.dishes)
+        ? result.dishes.length
+        : 0,
+    validDishCount: Number.isFinite(Number(result?.validDishCount))
+      ? Number(result.validDishCount)
+      : Array.isArray(result?.dishes)
+        ? result.dishes.length
+        : 0,
     error: asText(result?.error),
   };
 }

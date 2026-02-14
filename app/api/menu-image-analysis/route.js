@@ -16,6 +16,24 @@ function clamp(value, min, max) {
   return Math.min(Math.max(value, min), max);
 }
 
+function parseFiniteNumber(value) {
+  if (Number.isFinite(Number(value))) return Number(value);
+  const text = asText(value);
+  if (!text) return null;
+  const normalized = text.replace(/%/g, "").replace(/,/g, "");
+  const parsed = Number.parseFloat(normalized);
+  if (!Number.isFinite(parsed)) return null;
+  return parsed;
+}
+
+function pickFinite(...values) {
+  for (const value of values) {
+    const parsed = parseFiniteNumber(value);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return null;
+}
+
 function parseImageData(imageData) {
   const value = asText(imageData);
   if (!value) return null;
@@ -63,13 +81,53 @@ function parseClaudeJson(responseText) {
 }
 
 function sanitizeDetectedDish(entry) {
-  const name = asText(entry?.name || entry?.dishName || entry?.item);
+  const bounds = entry?.bounds && typeof entry.bounds === "object" ? entry.bounds : null;
+
+  const name = asText(
+    entry?.name || entry?.dishName || entry?.item || entry?.label || entry?.title,
+  );
   if (!name) return null;
 
-  const rawX = Number(entry?.x ?? entry?.left);
-  const rawY = Number(entry?.y ?? entry?.top);
-  const rawW = Number(entry?.w ?? entry?.width);
-  const rawH = Number(entry?.h ?? entry?.height);
+  const rawX = pickFinite(
+    entry?.x,
+    entry?.left,
+    entry?.relativeX,
+    entry?.relative_x,
+    bounds?.x,
+    bounds?.left,
+    bounds?.relativeX,
+    bounds?.relative_x,
+  );
+  const rawY = pickFinite(
+    entry?.y,
+    entry?.top,
+    entry?.relativeY,
+    entry?.relative_y,
+    bounds?.y,
+    bounds?.top,
+    bounds?.relativeY,
+    bounds?.relative_y,
+  );
+  const rawW = pickFinite(
+    entry?.w,
+    entry?.width,
+    entry?.relativeW,
+    entry?.relative_w,
+    bounds?.w,
+    bounds?.width,
+    bounds?.relativeW,
+    bounds?.relative_w,
+  );
+  const rawH = pickFinite(
+    entry?.h,
+    entry?.height,
+    entry?.relativeH,
+    entry?.relative_h,
+    bounds?.h,
+    bounds?.height,
+    bounds?.relativeH,
+    bounds?.relative_h,
+  );
 
   if (
     !Number.isFinite(rawX) ||
@@ -252,13 +310,17 @@ Rules:
       : Array.isArray(parsedResult?.items)
         ? parsedResult.items
         : [];
+    const rawDishCount = rawDishes.length;
 
     const dishes = dedupeDishes(rawDishes.map((entry) => sanitizeDetectedDish(entry)).filter(Boolean));
+    const validDishCount = dishes.length;
 
     return corsJson(
       {
         success: true,
         dishes,
+        rawDishCount,
+        validDishCount,
       },
       { status: 200 },
     );
@@ -268,6 +330,8 @@ Rules:
         success: false,
         error: asText(error?.message) || "Failed to analyze menu image.",
         dishes: [],
+        rawDishCount: 0,
+        validDishCount: 0,
       },
       { status: 500 },
     );

@@ -1531,13 +1531,19 @@ export function useRestaurantEditor({
     return { moved: true, fromIndex: safeFrom, toIndex: safeTo };
   }, [appendPendingChange, applyOverlayList, pushHistory]);
 
-  const analyzeMenuPagesAndMergeOverlays = useCallback(async ({ pageIndices } = {}) => {
+  const analyzeMenuPagesAndMergeOverlays = useCallback(async ({
+    pageIndices,
+    removeUnmatchedPageIndices,
+    requireDetectionsForPageIndices,
+  } = {}) => {
     if (!callbacks?.onAnalyzeMenuImage) {
       return {
         success: false,
         updatedCount: 0,
         addedCount: 0,
+        removedCount: 0,
         errors: ["Menu image analysis callback is not configured."],
+        pageResults: [],
       };
     }
 
@@ -1560,11 +1566,27 @@ export function useRestaurantEditor({
         success: false,
         updatedCount: 0,
         addedCount: 0,
+        removedCount: 0,
         errors: ["No menu pages were selected for analysis."],
+        pageResults: [],
       };
     }
 
+    const removeUnmatchedPages = new Set(
+      (Array.isArray(removeUnmatchedPageIndices) ? removeUnmatchedPageIndices : [])
+        .map((index) => Number(index))
+        .filter((index) => Number.isFinite(index))
+        .map((index) => clamp(Math.floor(index), 0, pageCount - 1)),
+    );
+    const requiredDetectionPages = new Set(
+      (Array.isArray(requireDetectionsForPageIndices) ? requireDetectionsForPageIndices : [])
+        .map((index) => Number(index))
+        .filter((index) => Number.isFinite(index))
+        .map((index) => clamp(Math.floor(index), 0, pageCount - 1)),
+    );
+
     const pageDetections = [];
+    const pageResults = [];
     const errors = [];
 
     const normalizeDetectedRect = (dish) => {
@@ -1607,14 +1629,34 @@ export function useRestaurantEditor({
     for (const pageIndex of targetPages) {
       const imageSource = asText(menuImagesRef.current[pageIndex]);
       if (!imageSource) {
-        errors.push(`Page ${pageIndex + 1}: No menu image available.`);
+        const message = "No menu image available.";
+        errors.push(`Page ${pageIndex + 1}: ${message}`);
+        pageResults.push({
+          pageIndex,
+          success: false,
+          rawDishCount: 0,
+          validDishCount: 0,
+          removedUnmatched: removeUnmatchedPages.has(pageIndex),
+          requiredDetections: requiredDetectionPages.has(pageIndex),
+          error: message,
+        });
         continue;
       }
 
       // eslint-disable-next-line no-await-in-loop
       const imageData = await toDataUrlFromImage(imageSource);
       if (!imageData) {
-        errors.push(`Page ${pageIndex + 1}: Failed to prepare image for analysis.`);
+        const message = "Failed to prepare image for analysis.";
+        errors.push(`Page ${pageIndex + 1}: ${message}`);
+        pageResults.push({
+          pageIndex,
+          success: false,
+          rawDishCount: 0,
+          validDishCount: 0,
+          removedUnmatched: removeUnmatchedPages.has(pageIndex),
+          requiredDetections: requiredDetectionPages.has(pageIndex),
+          error: message,
+        });
         continue;
       }
 
@@ -1625,12 +1667,31 @@ export function useRestaurantEditor({
           pageIndex,
         });
         if (!result?.success) {
+          const rawDishCount = Number.isFinite(Number(result?.rawDishCount))
+            ? Number(result.rawDishCount)
+            : Array.isArray(result?.dishes)
+              ? result.dishes.length
+              : 0;
           errors.push(
             `Page ${pageIndex + 1}: ${asText(result?.error) || "Menu image analysis failed."}`,
           );
+          pageResults.push({
+            pageIndex,
+            success: false,
+            rawDishCount,
+            validDishCount: 0,
+            removedUnmatched: removeUnmatchedPages.has(pageIndex),
+            requiredDetections: requiredDetectionPages.has(pageIndex),
+            error: asText(result?.error) || "Menu image analysis failed.",
+          });
           continue;
         }
 
+        const rawDishCount = Number.isFinite(Number(result?.rawDishCount))
+          ? Number(result.rawDishCount)
+          : Array.isArray(result?.dishes)
+            ? result.dishes.length
+            : 0;
         const seenDishTokens = new Set();
         const dishes = (Array.isArray(result?.dishes) ? result.dishes : [])
           .map((dish) => normalizeDetectedRect(dish))
@@ -1641,12 +1702,50 @@ export function useRestaurantEditor({
             seenDishTokens.add(token);
             return true;
           });
+        const validDishCount = dishes.length;
 
-        pageDetections.push({ pageIndex, dishes });
+        if (requiredDetectionPages.has(pageIndex) && validDishCount === 0) {
+          const pageError =
+            `Page ${pageIndex + 1}: No valid dish overlays detected. Try a clearer image or retry analysis.`;
+          errors.push(pageError);
+          pageResults.push({
+            pageIndex,
+            success: false,
+            rawDishCount,
+            validDishCount,
+            removedUnmatched: removeUnmatchedPages.has(pageIndex),
+            requiredDetections: true,
+            error: pageError,
+          });
+          continue;
+        }
+
+        pageDetections.push({
+          pageIndex,
+          dishes,
+          detectedTokens: new Set(dishes.map((dish) => normalizeToken(dish?.name))),
+        });
+        pageResults.push({
+          pageIndex,
+          success: true,
+          rawDishCount,
+          validDishCount,
+          removedUnmatched: removeUnmatchedPages.has(pageIndex),
+          requiredDetections: requiredDetectionPages.has(pageIndex),
+          error: "",
+        });
       } catch (error) {
-        errors.push(
-          `Page ${pageIndex + 1}: ${asText(error?.message) || "Menu image analysis failed."}`,
-        );
+        const message = asText(error?.message) || "Menu image analysis failed.";
+        errors.push(`Page ${pageIndex + 1}: ${message}`);
+        pageResults.push({
+          pageIndex,
+          success: false,
+          rawDishCount: 0,
+          validDishCount: 0,
+          removedUnmatched: removeUnmatchedPages.has(pageIndex),
+          requiredDetections: requiredDetectionPages.has(pageIndex),
+          error: message,
+        });
       }
     }
 
@@ -1655,17 +1754,35 @@ export function useRestaurantEditor({
         success: false,
         updatedCount: 0,
         addedCount: 0,
+        removedCount: 0,
         errors,
+        pageResults,
       };
     }
 
     let updatedCount = 0;
     let addedCount = 0;
+    let removedCount = 0;
 
     applyOverlayList((current) => {
       const next = [...current];
 
-      pageDetections.forEach(({ pageIndex, dishes }) => {
+      pageDetections.forEach(({ pageIndex, dishes, detectedTokens }) => {
+        if (removeUnmatchedPages.has(pageIndex)) {
+          for (let index = next.length - 1; index >= 0; index -= 1) {
+            const overlay = next[index];
+            const page = Number.isFinite(Number(overlay?.pageIndex))
+              ? Number(overlay.pageIndex)
+              : 0;
+            if (page !== pageIndex) continue;
+            const token = normalizeToken(overlay?.id || overlay?.name);
+            if (!token || !detectedTokens.has(token)) {
+              next.splice(index, 1);
+              removedCount += 1;
+            }
+          }
+        }
+
         if (!dishes.length) return;
         const usedMatchIndexes = new Set();
 
@@ -1740,7 +1857,11 @@ export function useRestaurantEditor({
 
     if (updatedCount || addedCount) {
       appendPendingChange(
-        `Menu analysis: Updated ${updatedCount} overlay${updatedCount === 1 ? "" : "s"} and added ${addedCount} overlay${addedCount === 1 ? "" : "s"}.`,
+        `Menu analysis: Updated ${updatedCount} overlay${updatedCount === 1 ? "" : "s"}, added ${addedCount} overlay${addedCount === 1 ? "" : "s"}, removed ${removedCount} overlay${removedCount === 1 ? "" : "s"}.`,
+      );
+    } else if (removedCount) {
+      appendPendingChange(
+        `Menu analysis: Removed ${removedCount} unmatched overlay${removedCount === 1 ? "" : "s"}.`,
       );
     } else {
       appendPendingChange("Menu analysis: No dishes detected on selected pages.");
@@ -1752,7 +1873,9 @@ export function useRestaurantEditor({
       success: true,
       updatedCount,
       addedCount,
+      removedCount,
       errors: [],
+      pageResults,
     };
   }, [appendPendingChange, applyOverlayList, callbacks, pushHistory]);
 
