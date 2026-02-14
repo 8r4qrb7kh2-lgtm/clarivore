@@ -1148,7 +1148,7 @@ function matchDetectedOverlays(detected, overlays) {
   };
 }
 
-function toOutputOverlay(overlay) {
+function toOutputOverlay(overlay, bounds = {}) {
   const id = asText(overlay?.id || overlay?.name);
   const x = Number(overlay?.x);
   const y = Number(overlay?.y);
@@ -1159,10 +1159,21 @@ function toOutputOverlay(overlay) {
     return null;
   }
 
-  const clampedX = clamp(Math.round(x), 0, REMAP_CANVAS_SIZE - 1);
-  const clampedY = clamp(Math.round(y), 0, REMAP_CANVAS_SIZE - 1);
-  const clampedW = clamp(Math.round(w), 1, REMAP_CANVAS_SIZE - clampedX);
-  const clampedH = clamp(Math.round(h), 1, REMAP_CANVAS_SIZE - clampedY);
+  const boundsWidth = Number(bounds?.width);
+  const boundsHeight = Number(bounds?.height);
+  const safeWidth = Number.isFinite(boundsWidth) && boundsWidth > 0 ? boundsWidth : REMAP_CANVAS_SIZE;
+  const safeHeight = Number.isFinite(boundsHeight) && boundsHeight > 0 ? boundsHeight : REMAP_CANVAS_SIZE;
+
+  // Convert legacy pixel-space boxes into canonical thousand-space.
+  const thousandX = (x / safeWidth) * REMAP_CANVAS_SIZE;
+  const thousandY = (y / safeHeight) * REMAP_CANVAS_SIZE;
+  const thousandW = (w / safeWidth) * REMAP_CANVAS_SIZE;
+  const thousandH = (h / safeHeight) * REMAP_CANVAS_SIZE;
+
+  const clampedX = clamp(Math.round(thousandX), 0, REMAP_CANVAS_SIZE - 1);
+  const clampedY = clamp(Math.round(thousandY), 0, REMAP_CANVAS_SIZE - 1);
+  const clampedW = clamp(Math.round(thousandW), 1, REMAP_CANVAS_SIZE - clampedX);
+  const clampedH = clamp(Math.round(thousandH), 1, REMAP_CANVAS_SIZE - clampedY);
 
   return {
     id,
@@ -1273,12 +1284,12 @@ async function runLegacyRepositionPipeline({
   const matchResult = matchDetectedOverlays(detectedOverlays, existingOverlays);
   const updatedOverlays = dedupeByName(
     (Array.isArray(matchResult.updatedOverlays) ? matchResult.updatedOverlays : [])
-      .map(toOutputOverlay)
+      .map((overlay) => toOutputOverlay(overlay, bounds))
       .filter(Boolean),
   );
   const newOverlays = dedupeByName(
     (Array.isArray(matchResult.newOverlays) ? matchResult.newOverlays : [])
-      .map(toOutputOverlay)
+      .map((overlay) => toOutputOverlay(overlay, bounds))
       .filter(Boolean),
   );
   const allOverlays = [...updatedOverlays, ...newOverlays];

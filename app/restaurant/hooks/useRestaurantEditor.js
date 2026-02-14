@@ -2270,6 +2270,8 @@ export function useRestaurantEditor({
             const fallbackResult = await callbacks.onAnalyzeMenuImage({
               mode: "detect",
               imageData: newNormalized.dataUrl,
+              imageWidth: 1000,
+              imageHeight: 1000,
               pageIndex,
             });
 
@@ -2297,10 +2299,22 @@ export function useRestaurantEditor({
               : Array.isArray(fallbackResult?.dishes)
                 ? fallbackResult.dishes.length
                 : 0;
-            const fallbackDishes = normalizeDetectedDishes(
-              fallbackResult?.dishes,
-              { width: 1000, height: 1000 },
-            );
+            const fallbackSeenTokens = new Set();
+            const fallbackDishes = (Array.isArray(fallbackResult?.dishes) ? fallbackResult.dishes : [])
+              .map((dish) =>
+                normalizeRemappedRect(
+                  dish,
+                  newNormalized.metrics,
+                  { width: newNormalized.imageWidth, height: newNormalized.imageHeight },
+                ),
+              )
+              .filter(Boolean)
+              .filter((dish) => {
+                const token = normalizeToken(dish?.name);
+                if (!token || fallbackSeenTokens.has(token)) return false;
+                fallbackSeenTokens.add(token);
+                return true;
+              });
             const fallbackValidDishCount = fallbackDishes.length;
 
             if (requiredDetectionPages.has(pageIndex) && fallbackValidDishCount === 0) {
