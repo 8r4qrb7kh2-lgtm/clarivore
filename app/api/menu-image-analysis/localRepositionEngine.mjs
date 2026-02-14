@@ -866,7 +866,95 @@ async function analyzeMenu({ imageInput, elements, fullText, existingNames, mode
   return extractClaudeJsonArray(responseText);
 }
 
+function normalizeBounds(bounds = {}) {
+  const width = Number(bounds?.width);
+  const height = Number(bounds?.height);
+
+  return {
+    width: Number.isFinite(width) && width > 1 ? width : REMAP_CANVAS_SIZE,
+    height: Number.isFinite(height) && height > 1 ? height : REMAP_CANVAS_SIZE,
+  };
+}
+
+function clampDishToBounds(dish, bounds) {
+  if (!dish || typeof dish !== "object") return dish;
+  const safeBounds = normalizeBounds(bounds);
+
+  const xMin = Number(dish.xMin);
+  const yMin = Number(dish.yMin);
+  const xMax = Number(dish.xMax);
+  const yMax = Number(dish.yMax);
+  if (!Number.isFinite(xMin) || !Number.isFinite(yMin) || !Number.isFinite(xMax) || !Number.isFinite(yMax)) {
+    return dish;
+  }
+
+  dish.xMin = clamp(xMin, 0, safeBounds.width - 1);
+  dish.yMin = clamp(yMin, 0, safeBounds.height - 1);
+  dish.xMax = clamp(xMax, dish.xMin + 1, safeBounds.width);
+  dish.yMax = clamp(yMax, dish.yMin + 1, safeBounds.height);
+  return dish;
+}
+
+function enforceUniformPaddingForDish(dish, bounds) {
+  if (!dish || typeof dish !== "object") return dish;
+
+  const xMin = Number(dish.xMin);
+  const yMin = Number(dish.yMin);
+  const xMax = Number(dish.xMax);
+  const yMax = Number(dish.yMax);
+  const contentXMin = Number(dish.contentXMin);
+  const contentYMin = Number(dish.contentYMin);
+  const contentXMax = Number(dish.contentXMax);
+  const contentYMax = Number(dish.contentYMax);
+
+  if (
+    !Number.isFinite(xMin) ||
+    !Number.isFinite(yMin) ||
+    !Number.isFinite(xMax) ||
+    !Number.isFinite(yMax) ||
+    !Number.isFinite(contentXMin) ||
+    !Number.isFinite(contentYMin) ||
+    !Number.isFinite(contentXMax) ||
+    !Number.isFinite(contentYMax) ||
+    contentXMax <= contentXMin ||
+    contentYMax <= contentYMin
+  ) {
+    return dish;
+  }
+
+  const leftPad = Math.max(0, contentXMin - xMin);
+  const topPad = Math.max(0, contentYMin - yMin);
+  const rightPad = Math.max(0, xMax - contentXMax);
+  const bottomPad = Math.max(0, yMax - contentYMax);
+  const uniformPad = Math.min(leftPad, topPad, rightPad, bottomPad);
+  if (!Number.isFinite(uniformPad)) return dish;
+
+  const targetXMin = contentXMin - uniformPad;
+  const targetYMin = contentYMin - uniformPad;
+  const targetXMax = contentXMax + uniformPad;
+  const targetYMax = contentYMax + uniformPad;
+
+  // Shrink-only normalization: never expand outward.
+  const nextXMin = Math.max(xMin, targetXMin);
+  const nextYMin = Math.max(yMin, targetYMin);
+  const nextXMax = Math.min(xMax, targetXMax);
+  const nextYMax = Math.min(yMax, targetYMax);
+
+  if (nextXMax - nextXMin < 1 || nextYMax - nextYMin < 1) {
+    return dish;
+  }
+
+  dish.xMin = nextXMin;
+  dish.yMin = nextYMin;
+  dish.xMax = nextXMax;
+  dish.yMax = nextYMax;
+
+  return clampDishToBounds(dish, bounds);
+}
+
 function buildDetectedDishes(dishData, elements, padding, bounds) {
+  const safeBounds = normalizeBounds(bounds);
+  const safePadding = Number.isFinite(Number(padding)) ? Math.max(0, Number(padding)) : 0;
   const elementsById = new Map((Array.isArray(elements) ? elements : []).map((element) => [element.id, element]));
   const dishes = [];
 
@@ -881,10 +969,15 @@ function buildDetectedDishes(dishData, elements, padding, bounds) {
     const selected = elementIds.map((id) => elementsById.get(id)).filter(Boolean);
     if (!selected.length) return;
 
-    const xMin = Math.max(0, Math.min(...selected.map((element) => element.xMin)) - padding);
-    const yMin = Math.max(0, Math.min(...selected.map((element) => element.yMin)) - padding);
-    const xMax = Math.min(bounds.width, Math.max(...selected.map((element) => element.xMax)) + padding);
-    const yMax = Math.min(bounds.height, Math.max(...selected.map((element) => element.yMax)) + padding);
+    const contentXMin = clamp(Math.min(...selected.map((element) => element.xMin)), 0, safeBounds.width - 1);
+    const contentYMin = clamp(Math.min(...selected.map((element) => element.yMin)), 0, safeBounds.height - 1);
+    const contentXMax = clamp(Math.max(...selected.map((element) => element.xMax)), contentXMin + 1, safeBounds.width);
+    const contentYMax = clamp(Math.max(...selected.map((element) => element.yMax)), contentYMin + 1, safeBounds.height);
+
+    const xMin = Math.max(0, contentXMin - safePadding);
+    const yMin = Math.max(0, contentYMin - safePadding);
+    const xMax = Math.min(safeBounds.width, contentXMax + safePadding);
+    const yMax = Math.min(safeBounds.height, contentYMax + safePadding);
 
     if (
       !Number.isFinite(xMin) ||
@@ -908,6 +1001,10 @@ function buildDetectedDishes(dishData, elements, padding, bounds) {
       yMin,
       xMax,
       yMax,
+      contentXMin,
+      contentYMin,
+      contentXMax,
+      contentYMax,
     });
   });
 
@@ -916,8 +1013,9 @@ function buildDetectedDishes(dishData, elements, padding, bounds) {
 
 function resolveOverlaps(dishes, bounds) {
   const source = Array.isArray(dishes) ? dishes : [];
-  if (source.length <= 1) return source;
+  if (!source.length) return source;
 
+  const safeBounds = normalizeBounds(bounds);
   const sorted = source.slice().sort((a, b) => (a.yMin - b.yMin) || (a.xMin - b.xMin));
 
   const boxesOverlap = (first, second) => {
@@ -932,7 +1030,7 @@ function resolveOverlaps(dishes, bounds) {
   const maxIterations = 50;
   let iteration = 0;
 
-  while (iteration < maxIterations) {
+  while (sorted.length > 1 && iteration < maxIterations) {
     let foundOverlap = false;
 
     for (let i = 0; i < sorted.length; i += 1) {
@@ -976,10 +1074,13 @@ function resolveOverlaps(dishes, bounds) {
   }
 
   sorted.forEach((dish) => {
-    dish.xMin = clamp(dish.xMin, 0, bounds.width - 1);
-    dish.yMin = clamp(dish.yMin, 0, bounds.height - 1);
-    dish.xMax = clamp(dish.xMax, dish.xMin + 1, bounds.width);
-    dish.yMax = clamp(dish.yMax, dish.yMin + 1, bounds.height);
+    clampDishToBounds(dish, safeBounds);
+  });
+  sorted.forEach((dish) => {
+    enforceUniformPaddingForDish(dish, safeBounds);
+  });
+  sorted.forEach((dish) => {
+    clampDishToBounds(dish, safeBounds);
   });
 
   return sorted;
@@ -1374,4 +1475,10 @@ export async function analyzeMenuImageWithLocalEngine({ body, env = process.env 
   return result;
 }
 
-export { ApiError, normalizeToken, dedupeByName, sanitizeRemapOverlay };
+const __test = {
+  buildDetectedDishes,
+  resolveOverlaps,
+  enforceUniformPaddingForDish,
+};
+
+export { ApiError, normalizeToken, dedupeByName, sanitizeRemapOverlay, __test };
