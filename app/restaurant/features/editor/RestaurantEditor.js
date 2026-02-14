@@ -295,48 +295,88 @@ function buildRowConflictMessages({
 }) {
   if (typeof getDietAllergenConflicts !== "function") return [];
 
-  const selectedAllergens = dedupeTokenList([
+  const selectedAllergenEntries = dedupeTokenList([
     ...(Array.isArray(allergens) ? allergens : []),
     ...(Array.isArray(ingredient?.allergens) ? ingredient.allergens : []),
     ...(Array.isArray(ingredient?.crossContaminationAllergens)
       ? ingredient.crossContaminationAllergens
       : []),
-  ]).filter((token) => {
-    const state = readTokenState({
-      containsValues: ingredient?.allergens,
-      crossValues: ingredient?.crossContaminationAllergens,
-      token,
-    });
-    return state !== "none";
-  });
+  ])
+    .map((token) => {
+      const state = readTokenState({
+        containsValues: ingredient?.allergens,
+        crossValues: ingredient?.crossContaminationAllergens,
+        token,
+      });
+      return {
+        token,
+        state,
+      };
+    })
+    .filter((entry) => entry.state !== "none");
 
-  const selectedDiets = dedupeTokenList([
+  const selectedDietEntries = dedupeTokenList([
     ...(Array.isArray(diets) ? diets : []),
     ...(Array.isArray(ingredient?.diets) ? ingredient.diets : []),
     ...(Array.isArray(ingredient?.crossContaminationDiets)
       ? ingredient.crossContaminationDiets
       : []),
-  ]).filter((token) => {
-    const state = readTokenState({
-      containsValues: ingredient?.diets,
-      crossValues: ingredient?.crossContaminationDiets,
-      token,
-    });
-    return state !== "none";
-  });
+  ])
+    .map((token) => {
+      const state = readTokenState({
+        containsValues: ingredient?.diets,
+        crossValues: ingredient?.crossContaminationDiets,
+        token,
+      });
+      return {
+        token,
+        state,
+      };
+    })
+    .filter((entry) => entry.state !== "none");
+
+  const resolveSelectedAllergenState = (target) => {
+    const targetToken = normalizeToken(target);
+    if (!targetToken) return "none";
+    for (const entry of selectedAllergenEntries) {
+      if (normalizeToken(entry.token) === targetToken) {
+        return entry.state;
+      }
+    }
+    return "none";
+  };
 
   const messages = [];
-  selectedDiets.forEach((diet) => {
+  selectedDietEntries.forEach(({ token: diet, state: dietState }) => {
     const conflicts = dedupeTokenList(getDietAllergenConflicts(diet));
     conflicts.forEach((allergen) => {
-      if (!includesToken(selectedAllergens, allergen)) return;
+      const allergenState = resolveSelectedAllergenState(allergen);
+      if (allergenState === "none") return;
+
+      const formattedDiet = formatDietLabel(diet);
+      const formattedAllergen = formatAllergenLabel(allergen);
+      if (dietState === "contains" && allergenState === "contains") {
+        messages.push(
+          `Conflict warning: ${formattedDiet} conflicts with ${formattedAllergen} because both are marked as contains.`,
+        );
+        return;
+      }
+
       messages.push(
-        `Conflict warning: ${formatDietLabel(diet)} conflicts with ${formatAllergenLabel(allergen)} while both are selected.`,
+        `Cross-contamination warning: ${formattedDiet} may be compromised by ${formattedAllergen} (${formatTokenStateLabel(dietState)} diet selection and ${formatTokenStateLabel(allergenState)} allergen risk).`,
       );
     });
   });
 
   return dedupeTokenList(messages);
+}
+
+function normalizePreviewOptions(values, { formatLabel, getEmoji }) {
+  return dedupeTokenList(values).map((value) => ({
+    key: value,
+    label: formatLabel(value),
+    emoji: getEmoji(value),
+  }));
 }
 
 function normalizeBrandEntry(brand) {
@@ -537,21 +577,37 @@ function DishEditorModal({ editor, runtimeConfigHealth }) {
       a.name.localeCompare(b.name, undefined, { sensitivity: "base" }),
     );
   }, [editor.overlays]);
+  const previewAllergenOptions = useMemo(
+    () =>
+      normalizePreviewOptions(allergens, {
+        formatLabel: editor.config.formatAllergenLabel,
+        getEmoji: editor.config.getAllergenEmoji,
+      }),
+    [allergens, editor.config.formatAllergenLabel, editor.config.getAllergenEmoji],
+  );
+  const previewDietOptions = useMemo(
+    () =>
+      normalizePreviewOptions(diets, {
+        formatLabel: editor.config.formatDietLabel,
+        getEmoji: editor.config.getDietEmoji,
+      }),
+    [diets, editor.config.formatDietLabel, editor.config.getDietEmoji],
+  );
   const previewAllergenRows = useMemo(
     () =>
       mergeDishSectionRows(
-        buildDishAllergenRows(overlay, editor.config?.savedAllergens || []),
-        buildDishAllergenCrossRows(overlay, editor.config?.savedAllergens || []),
+        buildDishAllergenRows(overlay, previewAllergenOptions),
+        buildDishAllergenCrossRows(overlay, previewAllergenOptions),
       ),
-    [editor.config?.savedAllergens, overlay],
+    [overlay, previewAllergenOptions],
   );
   const previewDietRows = useMemo(
     () =>
       mergeDishSectionRows(
-        buildDishDietRows(overlay, editor.config?.savedDiets || []),
-        buildDishDietCrossRows(overlay, editor.config?.savedDiets || []),
+        buildDishDietRows(overlay, previewDietOptions),
+        buildDishDietCrossRows(overlay, previewDietOptions),
       ),
-    [editor.config?.savedDiets, overlay],
+    [overlay, previewDietOptions],
   );
 
   useEffect(() => {

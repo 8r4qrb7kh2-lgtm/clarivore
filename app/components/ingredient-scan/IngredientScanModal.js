@@ -47,31 +47,6 @@ function clampPercentage(value) {
   return value;
 }
 
-function hasPhraseBoundary(token) {
-  return /[,;]/.test(asText(token));
-}
-
-function findPhraseBounds(tokens, index) {
-  const safeTokens = Array.isArray(tokens) ? tokens : [];
-  if (!safeTokens.length) return { start: 0, end: 0 };
-  const safeIndex = Math.min(
-    Math.max(0, Number(index) || 0),
-    Math.max(safeTokens.length - 1, 0),
-  );
-
-  let start = safeIndex;
-  while (start > 0 && !hasPhraseBoundary(safeTokens[start - 1])) {
-    start -= 1;
-  }
-
-  let end = safeIndex;
-  while (end < safeTokens.length - 1 && !hasPhraseBoundary(safeTokens[end])) {
-    end += 1;
-  }
-
-  return { start, end };
-}
-
 function resolveLineTokenIndex(globalIndex, wordOffsets, tokenCounts) {
   const target = Number(globalIndex);
   if (!Number.isFinite(target) || target < 0) return null;
@@ -529,10 +504,9 @@ function CroppedLineCard({
 
 function buildWordRiskMap(flags, lines, wordOffsets) {
   const map = new Map();
-  const lineTokens = (Array.isArray(lines) ? lines : []).map((line) =>
-    splitWords(line?.text),
+  const tokenCounts = (Array.isArray(lines) ? lines : []).map((line) =>
+    splitWords(line?.text).length,
   );
-  const tokenCounts = lineTokens.map((tokens) => tokens.length);
 
   (Array.isArray(flags) ? flags : []).forEach((flag) => {
     const risk = asText(flag?.risk_type).toLowerCase().includes("cross")
@@ -548,19 +522,14 @@ function buildWordRiskMap(flags, lines, wordOffsets) {
       const resolved = resolveLineTokenIndex(idx, wordOffsets, tokenCounts);
       if (!resolved) return;
 
-      const tokens = lineTokens[resolved.lineIndex] || [];
-      const bounds = findPhraseBounds(tokens, resolved.tokenIndex);
-      const offset = Number(wordOffsets[resolved.lineIndex]) || 0;
-
-      for (let tokenIndex = bounds.start; tokenIndex <= bounds.end; tokenIndex += 1) {
-        const globalIndex = offset + tokenIndex;
-        const current = map.get(globalIndex);
-        if (current === "contained") continue;
-        if (risk === "contained") {
-          map.set(globalIndex, "contained");
-        } else if (!current) {
-          map.set(globalIndex, "cross-contamination");
-        }
+      const globalIndex =
+        (Number(wordOffsets[resolved.lineIndex]) || 0) + resolved.tokenIndex;
+      const current = map.get(globalIndex);
+      if (current === "contained") return;
+      if (risk === "contained") {
+        map.set(globalIndex, "contained");
+      } else if (!current) {
+        map.set(globalIndex, "cross-contamination");
       }
     });
   });

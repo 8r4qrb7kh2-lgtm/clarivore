@@ -73,8 +73,14 @@ export async function analyzeDishWithAi({ dishName, text, imageData }) {
     imageData: asText(imageData),
   };
 
-  const result = await postFunctionViaProxy("dish-editor", payload);
-  return result;
+  const response = await fetch("/api/dish-editor-analysis", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+  return await parseFunctionResponse(response, "dish-editor-analysis");
 }
 
 export async function analyzeIngredientNameWithAi({ ingredientName, dishName }) {

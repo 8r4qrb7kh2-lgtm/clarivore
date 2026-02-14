@@ -2,19 +2,11 @@ import { corsJson, corsOptions } from "../_shared/cors";
 
 export const runtime = "nodejs";
 
-const PINNED_ANTHROPIC_MODEL = "claude-sonnet-4-5";
-// Anthropic enforces a minimum thinking budget of 1024 tokens.
-const ANTHROPIC_THINKING_BUDGET_TOKENS = 1024;
-// Keep enough response tokens available after thinking to avoid truncated JSON.
-const ANTHROPIC_MIN_OUTPUT_TOKENS = 2200;
-
+const DEFAULT_ANTHROPIC_MODEL = "claude-sonnet-4-20250514";
 const CONFIG_TTL_MS = 5 * 60 * 1000;
+
 let cachedConfig = null;
 let cachedConfigAt = 0;
-
-export function OPTIONS() {
-  return corsOptions();
-}
 
 function asText(value) {
   return String(value ?? "").trim();
@@ -59,6 +51,12 @@ function buildCodebook(values) {
   };
 }
 
+function buildPromptCodebookLines(entries) {
+  return (Array.isArray(entries) ? entries : [])
+    .map((entry) => `${entry.code} = ${entry.value}`)
+    .join("\n");
+}
+
 function parseCodeList(input, codeToValue) {
   const out = [];
   (Array.isArray(input) ? input : []).forEach((value) => {
@@ -75,23 +73,19 @@ function parseLegacyList(input, tokenToValue, aliasResolver) {
   (Array.isArray(input) ? input : []).forEach((value) => {
     const token = canonicalToken(value);
     if (!token) return;
+
     const strictMatch = tokenToValue.get(token);
     if (strictMatch) {
       out.push(strictMatch);
       return;
     }
+
     if (typeof aliasResolver === "function") {
       const alias = asText(aliasResolver(token));
       if (alias) out.push(alias);
     }
   });
   return out;
-}
-
-function buildPromptCodebookLines(entries) {
-  return (Array.isArray(entries) ? entries : [])
-    .map((entry) => `${entry.code} = ${entry.value}`)
-    .join("\n");
 }
 
 function parseClaudeJson(responseText) {
@@ -118,9 +112,26 @@ function parseClaudeJson(responseText) {
         return null;
       }
     }
-
-    return null;
   }
+
+  return null;
+}
+
+function parseImageData(imageData) {
+  const value = asText(imageData);
+  if (!value) return null;
+
+  if (value.startsWith("data:") && value.includes(",")) {
+    const [header, base64Data] = value.split(",", 2);
+    const mediaType = asText(header.split(";")[0]?.replace("data:", "")) || "image/jpeg";
+    if (!base64Data) return null;
+    return { mediaType, base64Data };
+  }
+
+  return {
+    mediaType: "image/jpeg",
+    base64Data: value,
+  };
 }
 
 function readSupabaseRuntime() {
@@ -141,10 +152,17 @@ async function fetchJson(url, headers) {
     headers,
   });
   const text = await response.text();
-  const parsed = text ? JSON.parse(text) : [];
+  let parsed = [];
+  try {
+    parsed = text ? JSON.parse(text) : [];
+  } catch {
+    parsed = [];
+  }
+
   if (!response.ok) {
     throw new Error(asText(parsed?.message) || `Supabase fetch failed (${response.status}).`);
   }
+
   return parsed;
 }
 
@@ -215,21 +233,17 @@ async function fetchAllergenDietConfig() {
     aiDiets,
   };
   cachedConfigAt = now;
+
   return cachedConfig;
 }
 
-async function callAnthropicText({
+async function callAnthropic({
   apiKey,
   model,
   systemPrompt,
-  userPrompt,
-  maxTokens = 1200,
+  content,
+  maxTokens = 4000,
 }) {
-  const safeMaxTokens = Math.max(
-    Number(maxTokens) || 0,
-    ANTHROPIC_THINKING_BUDGET_TOKENS + ANTHROPIC_MIN_OUTPUT_TOKENS,
-  );
-
   const response = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
@@ -238,17 +252,13 @@ async function callAnthropicText({
       "content-type": "application/json",
     },
     body: JSON.stringify({
-      model: asText(model) || PINNED_ANTHROPIC_MODEL,
-      max_tokens: safeMaxTokens,
-      thinking: {
-        type: "enabled",
-        budget_tokens: ANTHROPIC_THINKING_BUDGET_TOKENS,
-      },
+      model: asText(model) || DEFAULT_ANTHROPIC_MODEL,
+      max_tokens: maxTokens,
       system: systemPrompt,
       messages: [
         {
           role: "user",
-          content: userPrompt,
+          content,
         },
       ],
     }),
@@ -271,8 +281,8 @@ async function callAnthropicText({
     throw new Error(message);
   }
 
-  const content = Array.isArray(payload?.content) ? payload.content : [];
-  const text = content
+  const blocks = Array.isArray(payload?.content) ? payload.content : [];
+  const text = blocks
     .filter(
       (block) =>
         block &&
@@ -308,35 +318,52 @@ function buildDietAliasResolver({ glutenFreeLabel, pescatarianLabel }) {
   };
 }
 
+function expandDietHierarchy(diets, labels) {
+  const out = new Set(
+    (Array.isArray(diets) ? diets : []).filter((value) => typeof value === "string"),
+  );
+  if (labels.veganLabel && out.has(labels.veganLabel)) {
+    if (labels.vegetarianLabel) out.add(labels.vegetarianLabel);
+    if (labels.pescatarianLabel) out.add(labels.pescatarianLabel);
+  }
+  if (labels.vegetarianLabel && out.has(labels.vegetarianLabel)) {
+    if (labels.pescatarianLabel) out.add(labels.pescatarianLabel);
+  }
+  return Array.from(out);
+}
+
+function buildAllDietCodesExample(labels, dietCodebook) {
+  return JSON.stringify(
+    [labels.veganLabel, labels.vegetarianLabel, labels.pescatarianLabel, labels.glutenFreeLabel]
+      .filter(Boolean)
+      .map((label) => dietCodebook.entries.find((entry) => entry.value === label)?.code || null)
+      .filter((code) => Number.isFinite(Number(code))),
+  );
+}
+
+export function OPTIONS() {
+  return corsOptions();
+}
+
 export async function POST(request) {
-  let body;
+  let body = null;
   try {
     body = await request.json();
   } catch {
     return corsJson(
-      { success: false, error: "Invalid JSON payload.", flags: [] },
+      { error: "Invalid JSON payload.", ingredients: [] },
       { status: 400 },
     );
   }
 
-  const transcriptLines = (Array.isArray(body?.transcriptLines) ? body.transcriptLines : [])
-    .map((line) => asText(line))
-    .filter(Boolean);
-
-  if (!transcriptLines.length) {
-    return corsJson({ success: true, flags: [] }, { status: 200 });
-  }
+  const dishName = asText(body?.dishName);
+  const text = asText(body?.text);
+  const parsedImage = parseImageData(body?.imageData);
 
   const anthropicApiKey = asText(process.env.ANTHROPIC_API_KEY);
-  const anthropicModel = PINNED_ANTHROPIC_MODEL;
-
   if (!anthropicApiKey) {
     return corsJson(
-      {
-        success: false,
-        error: "ANTHROPIC_API_KEY is not configured.",
-        flags: [],
-      },
+      { error: "ANTHROPIC_API_KEY is not configured.", ingredients: [] },
       { status: 500 },
     );
   }
@@ -377,103 +404,164 @@ export async function POST(request) {
       return "";
     };
 
-    const pescatarianLabel = findDietLabel("Pescatarian");
-    const glutenFreeLabel = findDietLabel("Gluten-free", "Gluten Free");
+    const labels = {
+      veganLabel: findDietLabel("Vegan"),
+      vegetarianLabel: findDietLabel("Vegetarian"),
+      pescatarianLabel: findDietLabel("Pescatarian"),
+      glutenFreeLabel: findDietLabel("Gluten-free", "Gluten Free"),
+    };
 
     const resolveDietAlias = buildDietAliasResolver({
-      glutenFreeLabel,
-      pescatarianLabel,
+      glutenFreeLabel: labels.glutenFreeLabel,
+      pescatarianLabel: labels.pescatarianLabel,
     });
+
+    const allDietCodesExample = buildAllDietCodesExample(labels, dietCodebook);
+    const vegetarianDietCodesExample = JSON.stringify(
+      [labels.vegetarianLabel, labels.pescatarianLabel]
+        .filter(Boolean)
+        .map(
+          (label) => dietCodebook.entries.find((entry) => entry.value === label)?.code || null,
+        )
+        .filter((code) => Number.isFinite(Number(code))),
+    );
+    const vegetarianGlutenFreeCodesExample = JSON.stringify(
+      [labels.vegetarianLabel, labels.pescatarianLabel, labels.glutenFreeLabel]
+        .filter(Boolean)
+        .map(
+          (label) => dietCodebook.entries.find((entry) => entry.value === label)?.code || null,
+        )
+        .filter((code) => Number.isFinite(Number(code))),
+    );
 
     const allergenCodebookText = buildPromptCodebookLines(allergenCodebook.entries);
     const dietCodebookText = buildPromptCodebookLines(dietCodebook.entries);
 
-    const wordList = [];
-    transcriptLines.forEach((line) => {
-      line.split(/\s+/).forEach((word) => {
-        const safe = asText(word);
-        if (safe) wordList.push(safe);
-      });
-    });
+    const systemPrompt = parsedImage
+      ? `You are an ingredient analysis assistant for a restaurant allergen awareness system.
 
-    const indexedWordList = wordList
-      .map((word, index) => `${index}: "${word}"`)
-      .join("\n");
+CRITICAL: respond with ONLY valid JSON.
 
-    const systemPrompt = `You are an allergen and dietary preference analyzer for a restaurant allergen awareness system.
-Think carefully and step-by-step before answering, but only output valid JSON.
-
-Analyze transcripted ingredient-label lines and return allergen/diet flags tied to word indices.
-Use ONLY numeric codes from these codebooks.
-
+Use ONLY numeric codes in output.
 Allergen codebook:
 ${allergenCodebookText}
 
 Diet codebook:
 ${dietCodebookText}
 
-CRITICAL ALLERGEN RULES:
-- ONLY flag allergens from the codebook list.
-- Do NOT flag "gluten" as a separate allergen.
-- Oats by themselves are NOT wheat unless wheat is explicitly present.
+INSTRUCTIONS:
+1. Read all ingredient-related text from the image.
+2. Create separate ingredient entries for distinct ingredients.
+3. Include optional ingredients and garnishes.
+4. For each ingredient, return allergen_codes and diet_codes using the codebooks.
+5. Return dish-level dietary_option_codes.
+6. You MUST explicitly evaluate gluten-free for each ingredient and the overall dish.
+7. Gluten-free is allowed only when no gluten-containing grains/derivatives are indicated (wheat, barley, rye, malt, brewer's yeast, triticale).
+8. Do NOT output a separate "gluten" allergen.
 
-RISK TYPES:
-- "contained" for direct ingredients or explicit contains statements.
-- "cross-contamination" for may contain/shared facility style risk.
-
-PHRASE + WORD INDEX RULES:
-- Define each flagged ingredient phrase strictly by delimiter boundaries.
-- Start at the first word immediately after the nearest previous comma (or semicolon), or line start if none.
-- End at the last word immediately before the next comma (or semicolon), or line end if none.
-- "ingredient" must be exactly that bounded phrase and must not be a parent/group phrase.
-- "word_indices" must include ALL and ONLY words from that exact bounded phrase.
-- "word_indices" must be unique and sorted ascending.
-- For a single-word ingredient phrase, return exactly one index.
-- Do NOT include section-heading/context tokens (e.g. "INGREDIENTS:", "CONTAINS") unless they are part of that exact bounded ingredient phrase.
-- If an allergen is in a sub-ingredient phrase, do NOT return the broader parent phrase name.
-- Always use 0-based word indices from the provided numbered transcript list.
-
-DIET PRECISION RULES:
-- Add diet codes only when directly justified by ingredient evidence in that phrase.
-- Do NOT infer broader diet failures from stricter diets.
-- If one phrase indicates a Vegan violation, do not auto-add Vegetarian/Pescatarian unless separately justified.
-- For wheat/gluten evidence, prefer Gluten-free only (unless additional direct evidence supports other diet violations).
+Return this exact JSON shape:
+{
+  "ingredients": [
+    {
+      "name": "ingredient name",
+      "brand": "brand name or empty string",
+      "allergen_codes": [1],
+      "diet_codes": ${allDietCodesExample},
+      "ingredientsList": ["sub-ingredient line"],
+      "imageQuality": "good|poor|unreadable"
+    }
+  ],
+  "dietary_option_codes": ${allDietCodesExample},
+  "verifiedFromImage": true
+}
 
 EXAMPLES:
-- Positive: "Wheat flour" -> include allergen wheat, include Gluten-free diet violation.
-- Negative: "Wheat flour" -> do NOT include Vegan, Vegetarian, or Pescatarian diet violations from that phrase alone.
-- Delimiter-boundary positive: "Confectionery Coating (Allulose, Sustainable Palm Kernel And Palm Oil, Whole Milk Powder, Tapioca Fiber, Cocoa Processed With Alkali, Sunflower Lecithin)" with milk evidence -> ingredient must be exactly "Whole Milk Powder".
-- Delimiter-boundary negative: For the same line, do NOT return "Confectionery Coating (Allulose, Sustainable Palm Kernel And Palm Oil, Whole Milk Powder, Tapioca Fiber, Cocoa Processed With Alkali, Sunflower Lecithin)" as the milk ingredient phrase.
+- "spinach" -> allergen_codes: [], diet_codes: ${allDietCodesExample}
+- "cottage cheese" -> allergen_codes: [${allergenCodebook.entries.find((entry) => entry.value === "milk")?.code || 0}], diet_codes: ${vegetarianDietCodesExample}
+- "egg" -> allergen_codes: [${allergenCodebook.entries.find((entry) => entry.value === "egg")?.code || 0}], diet_codes: ${vegetarianDietCodesExample}
+- "wheat flour" -> allergen_codes: [${allergenCodebook.entries.find((entry) => entry.value === "wheat")?.code || 0}], diet_codes: []
+- A dish with milk/egg but no gluten grains should include dietary_option_codes: ${vegetarianGlutenFreeCodesExample}`
+      : `You are an ingredient analysis assistant for a restaurant allergen awareness system.
 
-Return ONLY JSON:
+CRITICAL: respond with ONLY valid JSON.
+
+Use ONLY numeric codes in output.
+Allergen codebook:
+${allergenCodebookText}
+
+Diet codebook:
+${dietCodebookText}
+
+SOURCE PRIORITY RULES:
+1. Description is the PRIMARY ingredient source.
+2. Dish Name is CONTEXT ONLY and must not replace explicit Description ingredients.
+3. Extract explicit ingredients listed in Description, including comma-, newline-, and semicolon-separated lists.
+4. Do NOT substitute a generic dish-name-only ingredient guess when Description provides explicit ingredients.
+5. Use Dish Name only to disambiguate unclear Description terms.
+
+Analyze the dish description and extract ingredients, with allergen_codes and diet_codes for each ingredient.
+Return dish-level dietary_option_codes.
+You MUST explicitly evaluate gluten-free at ingredient and dish level.
+
+Return this exact JSON shape:
 {
-  "flags": [
+  "ingredients": [
     {
-      "ingredient": "Wheat flour",
-      "word_indices": [45, 46],
+      "name": "ingredient name",
+      "brand": "brand name or empty string",
       "allergen_codes": [1],
-      "diet_codes": [2],
-      "risk_type": "contained"
+      "diet_codes": ${allDietCodesExample},
+      "ingredientsList": ["sub-ingredient line"]
     }
-  ]
+  ],
+  "dietary_option_codes": ${allDietCodesExample},
+  "verifiedFromImage": false
 }`;
 
-    const userPrompt = `Here is the transcript with each word numbered (0-based):
-${indexedWordList}
+    const userPrompt = parsedImage
+      ? `${dishName ? `Dish Name (context only): ${dishName}` : ""}
+${text ? `Description context: ${text}` : ""}
 
-Use the numbered list above for word_indices. Do not compute your own indices outside this list.`;
+Analyze this ingredient image.`
+      : `Dish Name (context only): ${dishName || "Unknown"}
+Description (primary source): ${text || "No description provided."}
 
-    const responseText = await callAnthropicText({
+Analyze this dish description. Use the Description as the primary ingredient source and extract explicit listed ingredients.`;
+
+    const content = [];
+    if (parsedImage) {
+      content.push({
+        type: "image",
+        source: {
+          type: "base64",
+          media_type: parsedImage.mediaType,
+          data: parsedImage.base64Data,
+        },
+      });
+    }
+    content.push({
+      type: "text",
+      text: userPrompt,
+    });
+
+    const responseText = await callAnthropic({
       apiKey: anthropicApiKey,
-      model: anthropicModel,
+      model: DEFAULT_ANTHROPIC_MODEL,
       systemPrompt,
-      userPrompt,
-      maxTokens: 1400,
+      content,
+      maxTokens: 4000,
     });
 
     const parsed = parseClaudeJson(responseText);
-    if (!parsed || typeof parsed !== "object" || !Array.isArray(parsed.flags)) {
-      throw new Error("Ingredient allergen analyzer returned malformed JSON output.");
+    if (!parsed || typeof parsed !== "object") {
+      return corsJson(
+        {
+          error: "AI returned invalid format. Please try again or describe ingredients in text.",
+          ingredients: [],
+          raw_response: asText(responseText).substring(0, 200),
+        },
+        { status: 200 },
+      );
     }
 
     const mapAllergens = (raw) =>
@@ -488,48 +576,52 @@ Use the numbered list above for word_indices. Do not compute your own indices ou
         ...parseLegacyList(raw?.diets, dietCodebook.tokenToValue, resolveDietAlias),
       ]);
 
-    const flags = parsed.flags
-      .map((flag) => {
-        const riskRaw = asText(flag?.risk_type).toLowerCase();
-        const risk_type = riskRaw.includes("cross")
-          ? "cross-contamination"
-          : "contained";
-
-        const word_indices = (Array.isArray(flag?.word_indices) ? flag.word_indices : [])
-          .map((value) => Number(value))
-          .filter((value) => Number.isFinite(value) && value >= 0)
-          .map((value) => Math.trunc(value));
+    const ingredients = (Array.isArray(parsed?.ingredients) ? parsed.ingredients : [])
+      .map((ingredient, index) => {
+        const name = asText(ingredient?.name) || `Ingredient ${index + 1}`;
+        const allergens = mapAllergens(ingredient);
+        const diets = expandDietHierarchy(mapDiets(ingredient), labels);
+        const ingredientsList = Array.isArray(ingredient?.ingredientsList)
+          ? ingredient.ingredientsList.map((entry) => asText(entry)).filter(Boolean)
+          : [];
 
         return {
-          ingredient: asText(flag?.ingredient),
-          word_indices,
-          allergens: mapAllergens(flag),
-          diets: mapDiets(flag),
-          risk_type,
+          name,
+          brand: asText(ingredient?.brand),
+          allergens,
+          diets,
+          ingredientsList,
+          imageQuality: asText(ingredient?.imageQuality),
         };
       })
-      .filter((flag) =>
-        flag.ingredient ||
-        flag.word_indices.length ||
-        flag.allergens.length ||
-        flag.diets.length,
-      );
+      .filter(Boolean);
+
+    const dietaryOptions = expandDietHierarchy(
+      dedupeStrings([
+        ...parseCodeList(parsed?.dietary_option_codes, dietCodebook.codeToValue),
+        ...parseLegacyList(parsed?.dietaryOptions, dietCodebook.tokenToValue, resolveDietAlias),
+      ]),
+      labels,
+    );
 
     return corsJson(
       {
-        success: true,
-        flags,
+        ingredients,
+        dietaryOptions,
+        verifiedFromImage:
+          parsed?.verifiedFromImage !== undefined
+            ? Boolean(parsed.verifiedFromImage)
+            : Boolean(parsedImage),
       },
       { status: 200 },
     );
   } catch (error) {
     return corsJson(
       {
-        success: false,
-        error: asText(error?.message) || "Failed to analyze ingredient transcript.",
-        flags: [],
+        error: asText(error?.message) || "Failed to process request",
+        ingredients: [],
       },
-      { status: 200 },
+      { status: 500 },
     );
   }
 }
