@@ -113,10 +113,20 @@ function readDietBlockers(dish, keys) {
 export function buildAllergenRows(dish, savedAllergens) {
   if (!savedAllergens.length) return [];
 
+  const removableAllergens = Array.isArray(dish?.removable) ? dish.removable : [];
+
   return savedAllergens.map((item) => {
     const contains =
       includesPreference(dish?.allergens, item.key) ||
       includesPreference(dish?.allergens, item.label);
+
+    const removableEntry = removableAllergens.find((entry) => {
+      return (
+        includesPreference([entry?.allergen], item.key) ||
+        includesPreference([entry?.allergen], item.label)
+      );
+    });
+    const accommodatable = contains && Boolean(removableEntry);
 
     const detail = contains ? lookupDetailByKeys(dish, [item.key, item.label]) : "";
     const detailReasons = parseDetailReasons(detail);
@@ -129,14 +139,22 @@ export function buildAllergenRows(dish, savedAllergens) {
         })
       : [];
 
+    const removableReason = asText(removableEntry?.component);
+
     return {
       key: item.key,
-      tone: contains ? "bad" : "good",
+      tone: contains ? (accommodatable ? "warn" : "bad") : "good",
       title: contains
-        ? `${item.emoji || "⚠"} Contains ${item.label}`
+        ? accommodatable
+          ? `${item.emoji || "⚠"} Can be made ${item.label}-free`
+          : `${item.emoji || "⚠"} Contains ${item.label}`
         : `${item.emoji || "✓"} This dish is free of ${item.label}`,
       reasonBullet: contains
-        ? buildDueBullet(detailReasons.length ? detailReasons : ingredientReasons)
+        ? accommodatable
+          ? removableReason
+            ? `by removing/replacing ${removableReason}`
+            : "by removing/replacing a flagged ingredient"
+          : buildDueBullet(detailReasons.length ? detailReasons : ingredientReasons)
         : "",
     };
   });
@@ -159,6 +177,7 @@ export function buildDietRows(dish, savedDiets) {
       blockers.length > 0 && blockers.every((entry) => Boolean(entry?.removable));
     const accommodatable = !compatible && allBlockersRemovable;
     const reasonValues = blockerReasons.length ? blockerReasons : detailReasons;
+    const removableReason = formatOxfordList(blockerReasons);
 
     return {
       key: item.key,
@@ -166,10 +185,14 @@ export function buildDietRows(dish, savedDiets) {
       title: compatible
         ? `${item.emoji || "✓"} This dish is ${item.label}`
         : accommodatable
-          ? `${item.emoji || "⚠"} This dish can be adjusted to be ${item.label}`
+          ? `${item.emoji || "⚠"} Can be made ${item.label}`
           : `${item.emoji || "⚠"} This dish is not ${item.label}`,
       reasonBullet: !compatible
-        ? buildDueBullet(reasonValues)
+        ? accommodatable
+          ? removableReason
+            ? `by removing/replacing ${removableReason}`
+            : "by removing/replacing a flagged ingredient"
+          : buildDueBullet(reasonValues)
         : "",
     };
   });

@@ -488,11 +488,6 @@ export default function RestaurantClient() {
       queryClient.invalidateQueries({
         queryKey: queryKeys.restaurant.boot(slug, inviteToken, isQrVisit),
       });
-      pushToast({
-        tone: "success",
-        title: "Saved",
-        description: "Webpage editor changes were saved.",
-      });
     },
   });
 
@@ -699,7 +694,113 @@ export default function RestaurantClient() {
     },
     callbacks: {
       getAuthorName: () => editorAuthorName,
-      onSaveDraft: async ({ overlays: nextOverlays, menuImage, menuImages, changePayload }) => {
+      onPreparePendingSave: async ({
+        overlays: nextOverlays,
+        baselineOverlays,
+        changePayload,
+        stateHash,
+      }) => {
+        if (!supabase) throw new Error("Supabase is not configured.");
+        if (!boot?.restaurant?.id) throw new Error("Restaurant missing.");
+
+        const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError) throw sessionError;
+
+        const accessToken = sessionData?.session?.access_token || "";
+        if (!accessToken) {
+          throw new Error("You must be signed in to save editor changes.");
+        }
+
+        const response = await fetch("/api/editor-pending-save/stage", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify({
+            restaurantId: boot.restaurant.id,
+            overlays: Array.isArray(nextOverlays) ? nextOverlays : [],
+            baselineOverlays: Array.isArray(baselineOverlays) ? baselineOverlays : [],
+            changePayload,
+            stateHash,
+            author: editorAuthorName,
+          }),
+        });
+
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok || !payload?.success) {
+          throw new Error(payload?.error || "Failed to stage pending save changes.");
+        }
+
+        return payload;
+      },
+      onApplyPendingSave: async ({ batchId, menuImage, overlays: nextOverlays }) => {
+        if (!supabase) throw new Error("Supabase is not configured.");
+        if (!boot?.restaurant?.id) throw new Error("Restaurant missing.");
+
+        const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError) throw sessionError;
+
+        const accessToken = sessionData?.session?.access_token || "";
+        if (!accessToken) {
+          throw new Error("You must be signed in to save editor changes.");
+        }
+
+        const response = await fetch("/api/editor-pending-save/apply", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify({
+            restaurantId: boot.restaurant.id,
+            batchId,
+          }),
+        });
+
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok || !payload?.success) {
+          throw new Error(payload?.error || "Failed to apply pending save changes.");
+        }
+
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.restaurant.boot(slug, inviteToken, isQrVisit),
+        });
+
+        const existingMenuImage =
+          boot?.restaurant?.menu_image || boot?.restaurant?.menuImage || "";
+        const menuImageChanged = Boolean(menuImage && menuImage !== existingMenuImage);
+
+        if (menuImageChanged) {
+          try {
+            const imageData = await dataUrlFromImageSource(menuImage);
+            const detection = await detectMenuDishes({ imageData });
+            if (detection?.success) {
+              const existingDishNames = (nextOverlays || []).map(
+                (overlay) => overlay?.id || overlay?.name || "",
+              );
+              const diff = compareDishSets({
+                detectedDishes: detection.dishes,
+                existingDishNames,
+              });
+              if (diff.addedItems.length || diff.removedItems.length) {
+                await sendMenuUpdateNotification({
+                  restaurantName: boot?.restaurant?.name || "Restaurant",
+                  restaurantSlug: boot?.restaurant?.slug || slug,
+                  addedItems: diff.addedItems,
+                  removedItems: diff.removedItems,
+                  keptItems: diff.keptItems,
+                });
+              }
+            }
+          } catch (error) {
+            console.error("[restaurant] menu-update notification failed", error);
+          }
+        }
+
+        return payload;
+      },
+      onSaveDraft: async ({ overlays: nextOverlays, menuImage, menuImages, changePayload, skipChangeLog }) => {
         const existingMenuImage =
           boot?.restaurant?.menu_image || boot?.restaurant?.menuImage || "";
         const menuImageChanged = Boolean(menuImage && menuImage !== existingMenuImage);
@@ -710,12 +811,14 @@ export default function RestaurantClient() {
           menuImages,
         });
 
-        await insertChangeLogEntry({
-          type: "update",
-          description: editorAuthorName,
-          changes: changePayload,
-          photos: [],
-        });
+        if (!skipChangeLog) {
+          await insertChangeLogEntry({
+            type: "update",
+            description: editorAuthorName,
+            changes: changePayload,
+            photos: [],
+          });
+        }
 
         if (menuImageChanged) {
           try {
@@ -771,6 +874,41 @@ export default function RestaurantClient() {
 
         if (error) throw error;
         return Array.isArray(data) ? data : [];
+      },
+      onLoadPendingSaveTable: async (restaurantId) => {
+        if (!supabase) throw new Error("Supabase is not configured.");
+        if (!boot?.restaurant?.id) {
+          return { batch: null, rows: [] };
+        }
+
+        const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError) throw sessionError;
+
+        const accessToken = sessionData?.session?.access_token || "";
+        if (!accessToken) {
+          throw new Error("You must be signed in to view pending changes.");
+        }
+
+        const safeRestaurantId = String(restaurantId || boot.restaurant.id).trim();
+        const response = await fetch(
+          `/api/editor-pending-save/current?restaurantId=${encodeURIComponent(safeRestaurantId)}`,
+          {
+            method: "GET",
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+            },
+          },
+        );
+
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok || !payload?.success) {
+          throw new Error(payload?.error || "Failed to load pending table.");
+        }
+
+        return {
+          batch: payload?.batch && typeof payload.batch === "object" ? payload.batch : null,
+          rows: Array.isArray(payload?.rows) ? payload.rows : [],
+        };
       },
       onSaveRestaurantSettings: async (payload) => {
         return await saveRestaurantSettingsMutation.mutateAsync(payload);

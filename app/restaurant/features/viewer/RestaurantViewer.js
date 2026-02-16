@@ -13,8 +13,8 @@ import {
 import {
   buildMinimapViewport,
   computeMinimapJumpTarget,
-  resolveMostVisiblePageIndex,
 } from "../shared/minimapGeometry";
+import { useMinimapSync } from "../shared/useMinimapSync";
 
 function clamp(value, min, max) {
   return Math.min(Math.max(value, min), max);
@@ -132,12 +132,6 @@ export function RestaurantViewer({
 }) {
   const [selectedOverlay, setSelectedOverlay] = useState(null);
   const [acknowledgedReferenceNote, setAcknowledgedReferenceNote] = useState(false);
-  const [scrollSnapshot, setScrollSnapshot] = useState({
-    scrollTop: 0,
-    scrollHeight: 1,
-    clientHeight: 1,
-  });
-  const [activePageIndex, setActivePageIndex] = useState(0);
 
   const menuScrollRef = useRef(null);
   const pageRefs = useRef([]);
@@ -154,117 +148,17 @@ export function RestaurantViewer({
     [restaurant?.last_confirmed],
   );
 
-  const refreshScrollSnapshot = useCallback(() => {
-    const scrollNode = menuScrollRef.current;
-    if (!scrollNode) return;
-
-    const next = {
-      scrollTop: scrollNode.scrollTop,
-      scrollHeight: Math.max(scrollNode.scrollHeight, 1),
-      clientHeight: Math.max(scrollNode.clientHeight, 1),
-    };
-
-    setScrollSnapshot((current) => {
-      if (
-        current.scrollTop === next.scrollTop &&
-        current.scrollHeight === next.scrollHeight &&
-        current.clientHeight === next.clientHeight
-      ) {
-        return current;
-      }
-      return next;
-    });
-
-    const pageNodes = Array.from({ length: viewer.pageCount }, (_, index) =>
-      pageRefs.current[index] || pageImageRefs.current[index],
-    );
-    const resolvedPage = resolveMostVisiblePageIndex(scrollNode, pageNodes, activePageIndex);
-    setActivePageIndex(resolvedPage);
-  }, [activePageIndex, viewer.pageCount]);
-
-  useEffect(() => {
-    if (!acknowledgedReferenceNote) {
-      return undefined;
-    }
-    refreshScrollSnapshot();
-    const animationFrame = window.requestAnimationFrame(() => {
-      refreshScrollSnapshot();
-    });
-    return () => {
-      window.cancelAnimationFrame(animationFrame);
-    };
-  }, [acknowledgedReferenceNote, refreshScrollSnapshot, viewer.menuPages.length]);
-
-  useEffect(() => {
-    if (!acknowledgedReferenceNote) {
-      return undefined;
-    }
-    const scrollNode = menuScrollRef.current;
-    if (!scrollNode) return undefined;
-
-    let animationFrame = 0;
-    const scheduleRefresh = () => {
-      if (animationFrame) return;
-      animationFrame = window.requestAnimationFrame(() => {
-        animationFrame = 0;
-        refreshScrollSnapshot();
-      });
-    };
-
-    scheduleRefresh();
-    scrollNode.addEventListener("scroll", scheduleRefresh, { passive: true });
-    window.addEventListener("resize", scheduleRefresh);
-
-    let resizeObserver = null;
-    if (typeof ResizeObserver !== "undefined") {
-      resizeObserver = new ResizeObserver(scheduleRefresh);
-      resizeObserver.observe(scrollNode);
-      pageRefs.current.forEach((node) => {
-        if (node) resizeObserver.observe(node);
-      });
-      pageImageRefs.current.forEach((node) => {
-        if (node) resizeObserver.observe(node);
-      });
-    }
-
-    return () => {
-      scrollNode.removeEventListener("scroll", scheduleRefresh);
-      window.removeEventListener("resize", scheduleRefresh);
-      if (resizeObserver) resizeObserver.disconnect();
-      if (animationFrame) window.cancelAnimationFrame(animationFrame);
-    };
-  }, [acknowledgedReferenceNote, refreshScrollSnapshot, viewer.menuPages.length]);
-
-  useEffect(() => {
-    if (!acknowledgedReferenceNote) {
-      return undefined;
-    }
-
-    let animationFrame = 0;
-    const scheduleRefresh = () => {
-      if (animationFrame) return;
-      animationFrame = window.requestAnimationFrame(() => {
-        animationFrame = 0;
-        refreshScrollSnapshot();
-      });
-    };
-
-    const imageNodes = pageImageRefs.current.filter(Boolean);
-    imageNodes.forEach((node) => {
-      node.addEventListener("load", scheduleRefresh);
-      if (node.complete) scheduleRefresh();
-    });
-    if (!imageNodes.length) {
-      scheduleRefresh();
-    }
-
-    return () => {
-      imageNodes.forEach((node) => {
-        node.removeEventListener("load", scheduleRefresh);
-      });
-      if (animationFrame) window.cancelAnimationFrame(animationFrame);
-    };
-  }, [acknowledgedReferenceNote, refreshScrollSnapshot, viewer.menuPages.length]);
+  const {
+    activePageIndex,
+    scrollSnapshot,
+  } = useMinimapSync({
+    enabled: acknowledgedReferenceNote,
+    menuScrollRef,
+    pageRefs,
+    pageImageRefs,
+    pageCount: viewer.pageCount,
+    pageVersionKey: viewer.menuPages.length,
+  });
 
   const centerOverlayInView = useCallback(
     (overlay, behavior = "smooth") => {

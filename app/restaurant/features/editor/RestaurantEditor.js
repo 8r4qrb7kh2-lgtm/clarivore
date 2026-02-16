@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { Button, Input, Modal, Textarea } from "../../../components/ui";
 import { CLARIVORE_LOGO_SRC } from "../../../components/clarivoreBrand";
+import AppLoadingScreen from "../../../components/AppLoadingScreen";
 import ConfirmToggleButton from "../../../components/ingredient-scan/ConfirmToggleButton";
 import {
   buildAllergenRows as buildDishAllergenRows,
@@ -15,8 +16,8 @@ import {
 import {
   buildMinimapViewport,
   computeMinimapJumpTarget,
-  resolveMostVisiblePageIndex,
 } from "../shared/minimapGeometry";
+import { useMinimapSync } from "../shared/useMinimapSync";
 
 function clamp(value, min, max) {
   return Math.min(Math.max(value, min), max);
@@ -34,13 +35,7 @@ function parseOverlayNumber(value) {
   const parsed =
     typeof value === "string" ? Number.parseFloat(value) : Number(value);
   if (!Number.isFinite(parsed)) return 0;
-  let next = parsed;
-  if (Math.abs(next) > 0 && Math.abs(next) <= 1.2) {
-    next *= 100;
-  } else if (Math.abs(next) > 150 && Math.abs(next) <= 1200) {
-    next /= 10;
-  }
-  return clamp(next, 0, 100);
+  return clamp(parsed, 0, 100);
 }
 
 async function fileToDataUrl(file) {
@@ -119,12 +114,88 @@ function parseChangePayload(log) {
   }
 }
 
-function hasChangeSnapshot(log) {
-  const parsed = parseChangePayload(log);
-  return Boolean(
-    parsed?.snapshot ||
-      parsed?.__editorSnapshot ||
-      (parsed?.meta && parsed.meta.snapshot),
+function formatChangeText(value) {
+  if (typeof value === "string") return value;
+  if (typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+  if (!value) return "";
+  if (Array.isArray(value)) {
+    return value.map((entry) => formatChangeText(entry)).filter(Boolean).join(", ");
+  }
+  if (typeof value === "object") {
+    const message =
+      value.message || value.summary || value.text || value.description || value.title;
+    if (message) return String(message);
+    const ingredient = value.ingredient || value.ingredientName || value.name;
+    const action = value.action || value.type || value.operation;
+    const category = value.category || value.classification || value.mode;
+    const detailParts = [ingredient, action, category]
+      .map((part) => String(part || "").trim())
+      .filter(Boolean);
+    if (detailParts.length) return detailParts.join(" · ");
+    try {
+      return JSON.stringify(value);
+    } catch {
+      return "";
+    }
+  }
+  return "";
+}
+
+function normalizeLegacyDiff(value) {
+  if (value == null || value === "") return "None";
+  if (typeof value === "string") return value;
+  if (typeof value === "number" || typeof value === "boolean") return String(value);
+  if (Array.isArray(value)) {
+    const text = value.map((entry) => formatChangeText(entry)).filter(Boolean).join(", ");
+    return text || "None";
+  }
+
+  if (typeof value === "object") {
+    const pairs = Object.entries(value)
+      .map(([key, entry]) => {
+        const text = formatChangeText(entry);
+        return text ? `${key}: ${text}` : "";
+      })
+      .filter(Boolean);
+
+    if (pairs.length) return pairs.join("\n");
+
+    try {
+      return JSON.stringify(value, null, 2);
+    } catch {
+      return "None";
+    }
+  }
+
+  return "None";
+}
+
+function renderChangeLine(line, key) {
+  const summary = formatChangeText(line);
+  const before =
+    line && typeof line === "object"
+      ? line.before ?? line.previous ?? line.prev ?? line.from
+      : null;
+  const after =
+    line && typeof line === "object"
+      ? line.after ?? line.next ?? line.current ?? line.to
+      : null;
+  const hasDiff = before != null || after != null;
+
+  return (
+    <li key={key}>
+      {summary || "Updated"}
+      {hasDiff ? (
+        <div className="mt-1 whitespace-pre-line rounded-md border border-[#263260] bg-[rgba(10,18,50,0.72)] px-2 py-1 text-xs text-[#9fb0dd]">
+          <div className="font-medium text-[#c6d5ff]">Before:</div>
+          <div>{normalizeLegacyDiff(before)}</div>
+          <div className="mt-1 font-medium text-[#c6d5ff]">After:</div>
+          <div>{normalizeLegacyDiff(after)}</div>
+        </div>
+      ) : null}
+    </li>
   );
 }
 
@@ -139,6 +210,219 @@ function formatLogTimestamp(value) {
     hour: "numeric",
     minute: "2-digit",
   });
+}
+
+function formatPendingChangeLine(line) {
+  const text = asText(line);
+  if (!text.startsWith("__pc__:")) return text;
+  const separatorIndex = text.indexOf("::", "__pc__:".length);
+  if (separatorIndex < 0) return text;
+  return asText(text.slice(separatorIndex + 2));
+}
+
+function parsePendingChangeLine(line) {
+  const text = asText(line);
+  if (!text.startsWith("__pc__:")) {
+    return {
+      key: "",
+      text,
+    };
+  }
+
+  const separatorIndex = text.indexOf("::", "__pc__:".length);
+  if (separatorIndex < 0) {
+    return {
+      key: "",
+      text,
+    };
+  }
+
+  const encodedKey = text.slice("__pc__:".length, separatorIndex);
+  let key = "";
+  try {
+    key = asText(decodeURIComponent(encodedKey));
+  } catch {
+    key = asText(encodedKey);
+  }
+  return {
+    key,
+    text: asText(text.slice(separatorIndex + 2)),
+  };
+}
+
+function parseIngredientFlagChangeKey(key) {
+  const text = asText(key);
+  if (!text.startsWith("ingredient-flag:")) return null;
+  const parts = text.split(":");
+  if (parts.length !== 5) return null;
+  const [, dishToken, ingredientRef, type, valueToken] = parts;
+  if (!dishToken || !ingredientRef || !type || !valueToken) return null;
+  if (type !== "allergen" && type !== "diet") return null;
+  const numericIngredientIndex = Number(ingredientRef);
+  return {
+    dishToken,
+    ingredientToken: /^\d+$/.test(ingredientRef) ? "" : ingredientRef,
+    ingredientIndex:
+      Number.isFinite(numericIngredientIndex) && numericIngredientIndex >= 0
+        ? Math.floor(numericIngredientIndex)
+        : null,
+    type,
+    valueToken,
+  };
+}
+
+function parseOverlayPositionChangeKey(key) {
+  const text = asText(key);
+  if (!text.startsWith("overlay-position:")) return null;
+  const dishToken = asText(text.slice("overlay-position:".length));
+  if (!dishToken) return null;
+  return { dishToken };
+}
+
+function parseAiAppliedDishToken(lineText) {
+  const text = asText(lineText);
+  const suffix = ": Applied AI ingredient analysis";
+  if (!text.endsWith(suffix)) return "";
+  const prefix = asText(text.slice(0, -suffix.length));
+  const dishName = asText(prefix.split(":")[0]);
+  return normalizeToken(dishName);
+}
+
+function findOverlayByDishToken(overlays, dishToken) {
+  const token = normalizeToken(dishToken);
+  if (!token) return null;
+  return (Array.isArray(overlays) ? overlays : []).find(
+    (overlay) => normalizeToken(overlay?.id || overlay?.name) === token,
+  ) || null;
+}
+
+function findIngredientByToken(overlay, ingredientToken) {
+  const token = normalizeToken(ingredientToken);
+  if (!token) return null;
+  return (Array.isArray(overlay?.ingredients) ? overlay.ingredients : []).find(
+    (ingredient) => normalizeToken(ingredient?.name) === token,
+  ) || null;
+}
+
+function getIngredientTokenStateForComparison({
+  overlays,
+  dishToken,
+  ingredientToken,
+  ingredientIndex,
+  type,
+  valueToken,
+}) {
+  const overlay = findOverlayByDishToken(overlays, dishToken);
+  const ingredientRows = Array.isArray(overlay?.ingredients) ? overlay.ingredients : [];
+  const ingredient =
+    Number.isFinite(Number(ingredientIndex)) && Number(ingredientIndex) >= 0
+      ? ingredientRows[Math.floor(Number(ingredientIndex))]
+      : findIngredientByToken(overlay, ingredientToken);
+  const containsField = type === "diet" ? "diets" : "allergens";
+  const crossField =
+    type === "diet" ? "crossContaminationDiets" : "crossContaminationAllergens";
+  return readTokenState({
+    containsValues: ingredient?.[containsField],
+    crossValues: ingredient?.[crossField],
+    token: valueToken,
+  });
+}
+
+function replaceIngredientNameInPendingLine(lineText, ingredientName) {
+  const text = asText(lineText);
+  const replacement = asText(ingredientName);
+  if (!text || !replacement) return text;
+
+  const firstColon = text.indexOf(":");
+  if (firstColon < 0) return text;
+  const secondColon = text.indexOf(":", firstColon + 1);
+  if (secondColon < 0) return text;
+
+  const dishPart = asText(text.slice(0, firstColon));
+  const tail = asText(text.slice(secondColon + 1));
+  if (!dishPart || !tail) return text;
+  return `${dishPart}: ${replacement}: ${tail}`;
+}
+
+function resolvePendingChangeLineForDisplay({ lineText, parsedKey, overlays }) {
+  const text = asText(lineText);
+  if (!text) return "";
+
+  const ingredientFlagKey = parseIngredientFlagChangeKey(parsedKey);
+  if (ingredientFlagKey?.dishToken) {
+    const overlay = findOverlayByDishToken(overlays, ingredientFlagKey.dishToken);
+    const ingredientRows = Array.isArray(overlay?.ingredients) ? overlay.ingredients : [];
+    const latestIngredientName =
+      Number.isFinite(Number(ingredientFlagKey.ingredientIndex)) &&
+      Number(ingredientFlagKey.ingredientIndex) >= 0
+        ? asText(ingredientRows[Math.floor(Number(ingredientFlagKey.ingredientIndex))]?.name)
+        : "";
+    if (latestIngredientName) {
+      return replaceIngredientNameInPendingLine(text, latestIngredientName);
+    }
+  }
+
+  const addedIngredientMatch = text.match(/^(.*?):\s*Added ingredient\s+Ingredient\s+(\d+)$/i);
+  if (addedIngredientMatch) {
+    const dishName = asText(addedIngredientMatch[1]);
+    const ingredientIndex = Math.max(Number(addedIngredientMatch[2]) - 1, 0);
+    const overlay = findOverlayByDishToken(overlays, dishName);
+    const latestIngredientName = asText(
+      (Array.isArray(overlay?.ingredients) ? overlay.ingredients : [])[ingredientIndex]?.name,
+    );
+    if (latestIngredientName) {
+      return `${dishName}: Added ingredient ${latestIngredientName}`;
+    }
+  }
+
+  return text;
+}
+
+function normalizeOverlayRectSignature(overlay) {
+  if (!overlay) return "";
+  return JSON.stringify({
+    pageIndex: Number.isFinite(Number(overlay.pageIndex)) ? Number(overlay.pageIndex) : 0,
+    x: parseOverlayNumber(overlay.x),
+    y: parseOverlayNumber(overlay.y),
+    w: parseOverlayNumber(overlay.w),
+    h: parseOverlayNumber(overlay.h),
+  });
+}
+
+function summarizeAiSelectionTokens(overlay) {
+  const ingredientRows = Array.isArray(overlay?.ingredients) ? overlay.ingredients : [];
+  const allergenStates = new Map();
+  const dietStates = new Map();
+
+  ingredientRows.forEach((ingredient) => {
+    dedupeTokenList(ingredient?.aiDetectedAllergens).forEach((token) => {
+      allergenStates.set(token, "contains");
+    });
+    dedupeTokenList(ingredient?.aiDetectedCrossContaminationAllergens).forEach((token) => {
+      if (allergenStates.get(token) !== "contains") {
+        allergenStates.set(token, "cross");
+      }
+    });
+
+    dedupeTokenList(ingredient?.aiDetectedDiets).forEach((token) => {
+      dietStates.set(token, "contains");
+    });
+    dedupeTokenList(ingredient?.aiDetectedCrossContaminationDiets).forEach((token) => {
+      if (dietStates.get(token) !== "contains") {
+        dietStates.set(token, "cross");
+      }
+    });
+  });
+
+  const formatStateList = (map) =>
+    Array.from(map.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([name, state]) => `${name} (${state === "contains" ? "contains" : "cross-contamination risk"})`);
+
+  return {
+    allergens: formatStateList(allergenStates),
+    diets: formatStateList(dietStates),
+  };
 }
 
 function buildAllergenDisplay(editor, overlay) {
@@ -447,9 +731,16 @@ function normalizeBrandEntry(brand) {
 
 function normalizeIngredientEntry(ingredient, index) {
   const base = ingredient && typeof ingredient === "object" ? ingredient : {};
+  const rawName =
+    typeof base.name === "string"
+      ? base.name
+      : base.name == null
+        ? ""
+        : String(base.name);
+  const normalizedName = rawName.trim() ? rawName : `Ingredient ${index + 1}`;
   return {
     ...base,
-    name: asText(base.name) || `Ingredient ${index + 1}`,
+    name: normalizedName,
     allergens: dedupeTokenList(base.allergens),
     diets: dedupeTokenList(base.diets),
     crossContaminationAllergens: dedupeTokenList(base.crossContaminationAllergens),
@@ -573,10 +864,20 @@ function deriveDishStateFromIngredients({
   };
 }
 
-function DishEditorModal({ editor, runtimeConfigHealth }) {
+function DishEditorModal({
+  editor,
+  runtimeConfigHealth,
+  saveIssueJumpRequest,
+  onSaveIssueJumpHandled,
+  confirmationGuide,
+  onGuideBack,
+  onGuideForward,
+  onGuideCancel,
+}) {
   const overlay = editor.selectedOverlay;
   const [showDeleteWarning, setShowDeleteWarning] = useState(false);
   const [applyBusyByRow, setApplyBusyByRow] = useState({});
+  const [lastAppliedIngredientNameByRow, setLastAppliedIngredientNameByRow] = useState({});
   const [scanStateByRow, setScanStateByRow] = useState({});
   const [searchOpenRow, setSearchOpenRow] = useState(-1);
   const [searchQueryByRow, setSearchQueryByRow] = useState({});
@@ -587,8 +888,11 @@ function DishEditorModal({ editor, runtimeConfigHealth }) {
   const [appealBusyByRow, setAppealBusyByRow] = useState({});
   const [appealFeedbackByRow, setAppealFeedbackByRow] = useState({});
   const [processInputBusy, setProcessInputBusy] = useState(false);
+  const [dictateActive, setDictateActive] = useState(false);
   const [modalError, setModalError] = useState("");
   const recipeTextareaRef = useRef(null);
+  const dictationRecognitionRef = useRef(null);
+  const ingredientRowRefs = useRef({});
   const runtimeMissingKeys = Array.isArray(runtimeConfigHealth?.missing)
     ? runtimeConfigHealth.missing
     : [];
@@ -610,6 +914,17 @@ function DishEditorModal({ editor, runtimeConfigHealth }) {
       ),
     [overlay?.ingredients],
   );
+  const latestIngredientsRef = useRef(ingredients);
+  const latestOverlayDetailsRef = useRef(overlay?.details);
+
+  useEffect(() => {
+    latestIngredientsRef.current = ingredients;
+  }, [ingredients]);
+
+  useEffect(() => {
+    latestOverlayDetailsRef.current = overlay?.details;
+  }, [overlay?.details]);
+
   const existingBrandItems = useMemo(() => {
     const map = new Map();
     (Array.isArray(editor.overlays) ? editor.overlays : []).forEach((dish) => {
@@ -662,8 +977,13 @@ function DishEditorModal({ editor, runtimeConfigHealth }) {
 
   useEffect(() => {
     if (!editor.dishEditorOpen) {
+      if (dictationRecognitionRef.current) {
+        dictationRecognitionRef.current.stop();
+        dictationRecognitionRef.current = null;
+      }
       setShowDeleteWarning(false);
       setApplyBusyByRow({});
+      setLastAppliedIngredientNameByRow({});
       setScanStateByRow({});
       setSearchOpenRow(-1);
       setSearchQueryByRow({});
@@ -674,9 +994,23 @@ function DishEditorModal({ editor, runtimeConfigHealth }) {
       setAppealBusyByRow({});
       setAppealFeedbackByRow({});
       setProcessInputBusy(false);
+      setDictateActive(false);
       setModalError("");
     }
   }, [editor.dishEditorOpen]);
+
+  useEffect(() => {
+    setLastAppliedIngredientNameByRow({});
+  }, [overlay?._editorKey]);
+
+  useEffect(() => {
+    return () => {
+      if (dictationRecognitionRef.current) {
+        dictationRecognitionRef.current.stop();
+        dictationRecognitionRef.current = null;
+      }
+    };
+  }, []);
 
   const handleAppealPhotoChange = useCallback(async (ingredientIndex, file) => {
     if (!file) return;
@@ -735,7 +1069,9 @@ function DishEditorModal({ editor, runtimeConfigHealth }) {
 
   const applyIngredientChanges = useCallback(
     (updater, options = {}) => {
-      const current = ingredients;
+      const current = Array.isArray(latestIngredientsRef.current)
+        ? latestIngredientsRef.current
+        : [];
       const nextRaw = typeof updater === "function" ? updater(current) : updater;
       const nextList = Array.isArray(nextRaw)
         ? nextRaw.map((item, index) => normalizeIngredientEntry(item, index))
@@ -755,9 +1091,11 @@ function DishEditorModal({ editor, runtimeConfigHealth }) {
       });
       const derived = deriveDishStateFromIngredients({
         ingredients: nextListWithConfirmation,
-        existingDetails: overlay?.details,
+        existingDetails: latestOverlayDetailsRef.current,
         configuredDiets: editor.config?.diets,
       });
+      latestIngredientsRef.current = derived.ingredients;
+      latestOverlayDetailsRef.current = derived.details;
       editor.updateSelectedOverlay(
         {
           ingredients: derived.ingredients,
@@ -772,7 +1110,7 @@ function DishEditorModal({ editor, runtimeConfigHealth }) {
         options,
       );
     },
-    [editor, ingredients, overlay?.details],
+    [editor],
   );
 
   const normalizeAllergenList = useCallback(
@@ -806,11 +1144,30 @@ function DishEditorModal({ editor, runtimeConfigHealth }) {
     (ingredientIndex, type, token) => {
       const value = asText(token);
       if (!value) return;
+      const ingredientName =
+        asText(ingredients[ingredientIndex]?.name) || `Ingredient ${ingredientIndex + 1}`;
+      const dishName = asText(overlay?.id || "Dish");
       const containsField = type === "diet" ? "diets" : "allergens";
       const crossField =
         type === "diet"
           ? "crossContaminationDiets"
           : "crossContaminationAllergens";
+
+      const currentIngredient = ingredients[ingredientIndex];
+      const currentState = readTokenState({
+        containsValues: currentIngredient?.[containsField],
+        crossValues: currentIngredient?.[crossField],
+        token: value,
+      });
+      const nextState = nextTokenState(currentState);
+      const categoryLabel = type === "diet" ? "diet" : "allergen";
+      const changeText =
+        nextState === "contains"
+          ? `${dishName}: ${ingredientName}: added ${value} ${categoryLabel} (contains)`
+          : nextState === "cross"
+            ? `${dishName}: ${ingredientName}: ${value} ${categoryLabel} marked cross-contamination risk`
+            : `${dishName}: ${ingredientName}: removed ${value} ${categoryLabel}`;
+      const changeKey = `ingredient-flag:${normalizeToken(dishName)}:${ingredientIndex}:${type}:${normalizeToken(value)}`;
 
       applyIngredientChanges((current) =>
         current.map((ingredient, index) => {
@@ -844,9 +1201,14 @@ function DishEditorModal({ editor, runtimeConfigHealth }) {
             [crossField]: dedupeTokenList(nextCross),
           };
         }),
+        {
+          changeText,
+          changeKey,
+          recordHistory: true,
+        },
       );
     },
-    [applyIngredientChanges],
+    [applyIngredientChanges, ingredients, overlay?.id],
   );
 
   const toggleIngredientRemovable = useCallback(
@@ -894,6 +1256,8 @@ function DishEditorModal({ editor, runtimeConfigHealth }) {
   );
 
   const addIngredientRow = useCallback(() => {
+    const dishName = asText(overlay?.id || "Dish");
+    const nextIngredientName = `Ingredient ${ingredients.length + 1}`;
     applyIngredientChanges(
       (current) => [
         ...current,
@@ -918,11 +1282,12 @@ function DishEditorModal({ editor, runtimeConfigHealth }) {
         ),
       ],
       {
-        changeText: `${overlay?.id || "Dish"}: Added ingredient`,
+        changeText: `${dishName}: Added ingredient ${nextIngredientName}`,
         recordHistory: true,
       },
     );
-  }, [applyIngredientChanges, overlay?.id]);
+    setLastAppliedIngredientNameByRow({});
+  }, [applyIngredientChanges, ingredients.length, overlay?.id]);
 
   const removeIngredientRow = useCallback(
     (ingredientIndex) => {
@@ -934,6 +1299,7 @@ function DishEditorModal({ editor, runtimeConfigHealth }) {
           recordHistory: true,
         },
       );
+      setLastAppliedIngredientNameByRow({});
     },
     [applyIngredientChanges, ingredients, overlay?.id],
   );
@@ -1057,6 +1423,12 @@ function DishEditorModal({ editor, runtimeConfigHealth }) {
 
   const applyIngredientSmartDetection = useCallback(
     async (ingredientIndex) => {
+      const ingredientNameAtApply =
+        typeof ingredients[ingredientIndex]?.name === "string"
+          ? ingredients[ingredientIndex].name
+          : ingredients[ingredientIndex]?.name == null
+            ? ""
+            : String(ingredients[ingredientIndex].name);
       setApplyBusyByRow((current) => ({ ...current, [ingredientIndex]: true }));
       setModalError("");
       const detection = await analyzeIngredientForSmartDetection(ingredientIndex);
@@ -1075,10 +1447,15 @@ function DishEditorModal({ editor, runtimeConfigHealth }) {
         scanRequirement: detection.scanRequirement,
         preserveExistingBrand: true,
       });
+      setLastAppliedIngredientNameByRow((current) => ({
+        ...current,
+        [ingredientIndex]: ingredientNameAtApply,
+      }));
     },
     [
       analyzeIngredientForSmartDetection,
       applyIngredientDetectionResult,
+      ingredients,
     ],
   );
 
@@ -1460,19 +1837,80 @@ function DishEditorModal({ editor, runtimeConfigHealth }) {
     ],
   );
 
-  const handleSaveToDish = useCallback(() => {
-    const confirmationIssues = editor.getIngredientConfirmationIssues(overlay);
-    if (confirmationIssues.length) {
-      setModalError(
-        confirmationIssues[0]?.message ||
-          "Every ingredient row must be confirmed before saving this dish.",
-      );
-      return;
-    }
+  const handleCloseDishEditor = useCallback(() => {
     setModalError("");
     editor.pushHistory();
     editor.closeDishEditor();
-  }, [editor, overlay]);
+  }, [editor]);
+
+  const handleDictate = useCallback(() => {
+    if (typeof window === "undefined") return;
+
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      editor.setAiAssistDraft((current) => ({
+        ...current,
+        error:
+          "Voice dictation is not supported in this browser. Please type your ingredients.",
+      }));
+      return;
+    }
+
+    if (dictationRecognitionRef.current) {
+      dictationRecognitionRef.current.stop();
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.lang = "en-US";
+    recognition.continuous = true;
+    recognition.interimResults = true;
+
+    const initialText = asText(
+      recipeTextareaRef.current?.value || editor.aiAssistDraft.text,
+    );
+
+    recognition.onstart = () => {
+      setDictateActive(true);
+      editor.setAiAssistDraft((current) => ({
+        ...current,
+        error: "",
+      }));
+    };
+
+    recognition.onresult = (event) => {
+      let transcript = "";
+      for (let index = 0; index < event.results.length; index += 1) {
+        transcript += ` ${asText(event.results[index]?.[0]?.transcript)}`;
+      }
+      const spokenText = asText(transcript);
+      const nextText = [initialText, spokenText].filter(Boolean).join(" ");
+      editor.setAiAssistDraft((current) => ({
+        ...current,
+        imageData: "",
+        text: nextText,
+      }));
+    };
+
+    recognition.onerror = (event) => {
+      const errorCode = asText(event?.error) || "unknown_error";
+      const denied = errorCode === "not-allowed" || errorCode === "service-not-allowed";
+      editor.setAiAssistDraft((current) => ({
+        ...current,
+        error: denied
+          ? "Microphone permission is blocked. Allow microphone access and try again."
+          : `Dictation failed (${errorCode}). Try again.`,
+      }));
+    };
+
+    recognition.onend = () => {
+      dictationRecognitionRef.current = null;
+      setDictateActive(false);
+    };
+
+    dictationRecognitionRef.current = recognition;
+    recognition.start();
+  }, [editor]);
 
   const onProcessInput = async () => {
     if (processInputBusy) return;
@@ -1512,6 +1950,45 @@ function DishEditorModal({ editor, runtimeConfigHealth }) {
 
   const isIngredientGenerationBusy =
     processInputBusy || editor.aiAssistDraft.loading;
+  const hasIngredientRows = ingredients.length > 0;
+  const hasProcessableInput = Boolean(
+    asText(editor.aiAssistDraft.text) || asText(editor.aiAssistDraft.imageData),
+  );
+  const showPostProcessSections = hasIngredientRows;
+
+  useEffect(() => {
+    if (!editor.dishEditorOpen) return;
+    if (!saveIssueJumpRequest) return;
+    if (
+      saveIssueJumpRequest.overlayKey &&
+      saveIssueJumpRequest.overlayKey !== overlay?._editorKey
+    ) {
+      return;
+    }
+
+    const targetToken = normalizeToken(saveIssueJumpRequest.ingredientName);
+    if (!targetToken) {
+      onSaveIssueJumpHandled?.();
+      return;
+    }
+
+    const targetIndex = ingredients.findIndex(
+      (ingredient) => normalizeToken(ingredient?.name) === targetToken,
+    );
+    if (targetIndex < 0) return;
+
+    const rowNode = ingredientRowRefs.current[targetIndex];
+    if (!rowNode) return;
+
+    rowNode.scrollIntoView({ behavior: "smooth", block: "center" });
+    onSaveIssueJumpHandled?.();
+  }, [
+    editor.dishEditorOpen,
+    ingredients,
+    onSaveIssueJumpHandled,
+    overlay?._editorKey,
+    saveIssueJumpRequest,
+  ]);
 
   return (
     <Modal
@@ -1528,6 +2005,60 @@ function DishEditorModal({ editor, runtimeConfigHealth }) {
         <p className="note">Select an overlay to edit.</p>
       ) : (
         <div className="restaurant-legacy-editor-dish-modal">
+          {confirmationGuide ? (
+            <div
+              style={{
+                position: "sticky",
+                top: 0,
+                zIndex: 5,
+                marginBottom: 10,
+                display: "flex",
+                justifyContent: "center",
+              }}
+            >
+              <div
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 10,
+                  padding: "6px 10px",
+                  borderRadius: 10,
+                  border: "1px solid rgba(127,29,29,0.65)",
+                  background: "rgba(76, 9, 9, 0.92)",
+                }}
+              >
+                <span style={{ fontSize: "0.84rem", color: "#ffd0d0", fontWeight: 600 }}>
+                  Confirming rows {confirmationGuide.currentIndex + 1} of {confirmationGuide.issues.length}
+                </span>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button
+                    type="button"
+                    className="btn btnSmall"
+                    disabled={!confirmationGuide.canBack}
+                    onClick={onGuideBack}
+                  >
+                    Back
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btnSmall"
+                    disabled={!confirmationGuide.canForward}
+                    onClick={onGuideForward}
+                  >
+                    Forward
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btnDanger btnSmall"
+                    onClick={onGuideCancel}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : null}
+
           <div className="restaurant-legacy-editor-dish-head">
             <h2>Dish editor</h2>
             <div className="restaurant-legacy-editor-dish-head-actions">
@@ -1541,12 +2072,9 @@ function DishEditorModal({ editor, runtimeConfigHealth }) {
               <button
                 type="button"
                 className="btn"
-                onClick={() => {
-                  editor.pushHistory();
-                  editor.closeDishEditor();
-                }}
+                onClick={handleCloseDishEditor}
               >
-                ×
+                Done
               </button>
             </div>
           </div>
@@ -1635,16 +2163,9 @@ function DishEditorModal({ editor, runtimeConfigHealth }) {
               <button
                 type="button"
                 className="btn"
-                onClick={() =>
-                  editor.setAiAssistDraft((current) => ({
-                    ...current,
-                    text:
-                      current.text ||
-                      `Ingredients for ${overlay.id || overlay.name || "this dish"}: `,
-                  }))
-                }
+                onClick={handleDictate}
               >
-                🎙 Dictate
+                {dictateActive ? "⏹ Stop dictation" : "🎙 Dictate"}
               </button>
               <button
                 type="button"
@@ -1683,11 +2204,27 @@ function DishEditorModal({ editor, runtimeConfigHealth }) {
               ✓ Process Input
             </Button>
 
+            {!showPostProcessSections ? (
+              <p className="note m-0 mt-2 text-sm">
+                Add recipe text or a photo, then run <strong>Process Input</strong> to populate ingredient rows.
+              </p>
+            ) : null}
+
+            {showPostProcessSections ? (
             <div className="restaurant-legacy-editor-dish-ingredients">
               <h3>Ingredients</h3>
               {ingredients.length ? (
                 <div className="restaurant-legacy-editor-dish-ingredient-list">
                   {ingredients.map((ingredient, index) => {
+                  const currentIngredientName =
+                    typeof ingredient?.name === "string"
+                      ? ingredient.name
+                      : ingredient?.name == null
+                        ? ""
+                        : String(ingredient.name);
+                  const showApplyButton =
+                    currentIngredientName !==
+                    (lastAppliedIngredientNameByRow[index] ?? "");
                   const selectedBrandName = asText(ingredient?.brands?.[0]?.name);
                   const selectedBrandImage = asText(
                     ingredient?.brands?.[0]?.brandImage ||
@@ -1762,8 +2299,11 @@ function DishEditorModal({ editor, runtimeConfigHealth }) {
                     .slice(0, 8);
                     return (
                     <div
-                      key={`${ingredient?.name || "ingredient"}-${index}`}
+                      key={`ingredient-row-${index}`}
                       className="restaurant-legacy-editor-dish-ingredient-card"
+                      ref={(node) => {
+                        ingredientRowRefs.current[index] = node;
+                      }}
                     >
                       <div className="restaurant-legacy-editor-dish-ingredient-main">
                         <div className="restaurant-legacy-editor-dish-ingredient-name-col">
@@ -1775,14 +2315,16 @@ function DishEditorModal({ editor, runtimeConfigHealth }) {
                                 updateIngredientName(index, event.target.value)
                               }
                             />
-                            <button
-                              type="button"
-                              className="btn btnSmall"
-                              disabled={Boolean(applyBusyByRow[index])}
-                              onClick={() => applyIngredientSmartDetection(index)}
-                            >
-                              {applyBusyByRow[index] ? "Applying..." : "Apply"}
-                            </button>
+                            {showApplyButton ? (
+                              <button
+                                type="button"
+                                className="btn btnSmall btnWarning"
+                                disabled={Boolean(applyBusyByRow[index])}
+                                onClick={() => applyIngredientSmartDetection(index)}
+                              >
+                                {applyBusyByRow[index] ? "Applying..." : "Apply"}
+                              </button>
+                            ) : null}
                           </div>
 
                         <div
@@ -2163,15 +2705,9 @@ function DishEditorModal({ editor, runtimeConfigHealth }) {
                 <button type="button" className="btn btnSmall" onClick={addIngredientRow}>
                   Add ingredient
                 </button>
-                <button
-                  type="button"
-                  className="btn btnPrimary btnSmall"
-                  onClick={handleSaveToDish}
-                >
-                  ✓ Save to Dish
-                </button>
               </div>
             </div>
+            ) : null}
 
             {isIngredientGenerationBusy ? (
               <div
@@ -2197,6 +2733,7 @@ function DishEditorModal({ editor, runtimeConfigHealth }) {
             ) : null}
           </div>
 
+          {showPostProcessSections ? (
           <div className="restaurant-legacy-editor-dish-preview">
             <h3>Preview: What customers will see</h3>
             <div className="restaurant-legacy-editor-dish-preview-panel">
@@ -2237,6 +2774,7 @@ function DishEditorModal({ editor, runtimeConfigHealth }) {
               </div>
             </div>
           </div>
+          ) : null}
 
           {showDeleteWarning ? (
             <div id="editorDeleteWarning" style={{ display: "block", background: "#1a0a0a", border: "2px solid #dc2626", borderRadius: 8, padding: 20, margin: "16px 0" }}>
@@ -2302,22 +2840,30 @@ function ChangeLogModal({ editor }) {
           {editor.changeLogs.map((log) => {
             const parsed = parseChangePayload(log);
             const items = parsed?.items && typeof parsed.items === "object" ? parsed.items : {};
-            const general = Array.isArray(parsed?.general) ? parsed.general : [];
+            const general = Array.isArray(parsed?.general)
+              ? parsed.general
+              : parsed?.general != null
+                ? [parsed.general]
+                : [];
+            const author = formatChangeText(parsed?.author || log.description || "Manager");
+            const photos = Array.isArray(log?.photos)
+              ? log.photos
+                  .map((photo) => (typeof photo === "string" ? photo.trim() : ""))
+                  .filter(Boolean)
+              : [];
 
             return (
               <div key={log.id || `${log.timestamp}-${log.type}`} className="rounded-xl border border-[#2a3261] bg-[rgba(17,22,48,0.75)] p-3">
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-sm font-semibold text-[#e9eefc]">
-                    {parsed?.author || log.description || "Manager"}
+                    {author || "Manager"}
                   </span>
                   <span className="text-xs text-[#a7b2d1]">{formatLogTimestamp(log.timestamp)}</span>
                 </div>
 
                 {general.length ? (
                   <ul className="mt-2 mb-0 list-disc pl-5 text-sm text-[#cfd8f7]">
-                    {general.map((line, index) => (
-                      <li key={`${log.id}-general-${index}`}>{line}</li>
-                    ))}
+                    {general.map((line, index) => renderChangeLine(line, `${log.id}-general-${index}`))}
                   </ul>
                 ) : null}
 
@@ -2325,16 +2871,16 @@ function ChangeLogModal({ editor }) {
                   <div key={`${log.id}-${dishName}`} className="mt-2">
                     <div className="text-sm font-medium text-[#dbe3ff]">{dishName}</div>
                     <ul className="mb-0 mt-1 list-disc pl-5 text-sm text-[#c7d2f4]">
-                      {(Array.isArray(changes) ? changes : []).map((line, idx) => (
-                        <li key={`${log.id}-${dishName}-${idx}`}>{line}</li>
-                      ))}
+                      {(Array.isArray(changes) ? changes : [changes])
+                        .filter((line) => line != null)
+                        .map((line, idx) => renderChangeLine(line, `${log.id}-${dishName}-${idx}`))}
                     </ul>
                   </div>
                 ))}
 
-                {Array.isArray(log.photos) && log.photos.length ? (
+                {photos.length ? (
                   <div className="mt-2 flex flex-wrap gap-2">
-                    {log.photos.map((photo, index) => (
+                    {photos.map((photo, index) => (
                       <a
                         key={`${log.id}-photo-${index}`}
                         href={photo}
@@ -2351,22 +2897,312 @@ function ChangeLogModal({ editor }) {
                   </div>
                 ) : null}
 
-                {hasChangeSnapshot(log) ? (
-                  <div className="mt-2 flex justify-end">
-                    <Button
-                      size="compact"
-                      tone="primary"
-                      onClick={() => editor.restoreFromChangeLog(log)}
-                    >
-                      Restore this version
-                    </Button>
-                  </div>
-                ) : null}
               </div>
             );
           })}
         </div>
       )}
+
+      <div className="mt-4 flex justify-end">
+        <Button
+          size="compact"
+          tone="neutral"
+          onClick={() => editor.setChangeLogOpen(false)}
+        >
+          Close
+        </Button>
+      </div>
+    </Modal>
+  );
+}
+
+function PendingTableModal({ editor }) {
+  return (
+    <Modal
+      open={editor.pendingTableOpen}
+      onOpenChange={(open) => editor.setPendingTableOpen(open)}
+      title="Pending Changes Table"
+      className="max-w-[980px]"
+    >
+      <div className="space-y-3">
+        <div className="flex items-center justify-between gap-2">
+          <p className="note m-0 text-sm">Live DB view of current pending batch and rows.</p>
+          <Button
+            size="compact"
+            variant="outline"
+            loading={editor.loadingPendingTable}
+            onClick={() => editor.loadPendingTable()}
+          >
+            Refresh
+          </Button>
+        </div>
+
+        {editor.loadingPendingTable ? (
+          <p className="note m-0">Loading pending table...</p>
+        ) : editor.pendingTableError ? (
+          <p className="m-0 rounded-lg border border-[#a12525] bg-[rgba(139,29,29,0.32)] px-3 py-2 text-sm text-[#ffd0d0]">
+            {editor.pendingTableError}
+          </p>
+        ) : !editor.pendingTableBatch ? (
+          <p className="note m-0">No pending batch exists.</p>
+        ) : (
+          <>
+            <div className="rounded-xl border border-[#2a3261] bg-[rgba(17,22,48,0.75)] p-3 text-xs text-[#c9d3f3]">
+              <div><strong>batch_id:</strong> {editor.pendingTableBatch.id || "-"}</div>
+              <div><strong>status:</strong> {editor.pendingTableBatch.status || "-"}</div>
+              <div><strong>author:</strong> {editor.pendingTableBatch.author || "-"}</div>
+              <div><strong>row_count:</strong> {Number(editor.pendingTableBatch.row_count) || 0}</div>
+              <div><strong>updated_at:</strong> {formatLogTimestamp(editor.pendingTableBatch.updated_at) || "-"}</div>
+            </div>
+
+            {!editor.pendingTableRows.length ? (
+              <p className="note m-0">Pending batch has no rows.</p>
+            ) : (
+              <div className="max-h-[56vh] overflow-auto rounded-xl border border-[#2a3261] bg-[rgba(17,22,48,0.75)] p-2">
+                <table className="w-full border-collapse text-left text-xs text-[#d7e0fb]">
+                  <thead>
+                    <tr className="border-b border-[#2a3261] text-[#aebce4]">
+                      <th className="px-2 py-1">sort_order</th>
+                      <th className="px-2 py-1">dish_name</th>
+                      <th className="px-2 py-1">ingredient_name</th>
+                      <th className="px-2 py-1">change_type</th>
+                      <th className="px-2 py-1">field_key</th>
+                      <th className="px-2 py-1">summary</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {editor.pendingTableRows.map((row) => (
+                      <tr key={row.id || `${row.sort_order}-${row.summary}`} className="border-b border-[rgba(42,50,97,0.45)] align-top">
+                        <td className="px-2 py-1">{Number(row.sort_order) || 0}</td>
+                        <td className="px-2 py-1">{row.dish_name || "-"}</td>
+                        <td className="px-2 py-1">{row.ingredient_name || "-"}</td>
+                        <td className="px-2 py-1">{row.change_type || "-"}</td>
+                        <td className="px-2 py-1">{row.field_key || "-"}</td>
+                        <td className="px-2 py-1 whitespace-pre-wrap">{row.summary || "-"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </>
+        )}
+
+        <div className="flex justify-end">
+          <Button
+            size="compact"
+            tone="neutral"
+            onClick={() => editor.setPendingTableOpen(false)}
+          >
+            Close
+          </Button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+function PendingTableDock({ editor }) {
+  const [collapsed, setCollapsed] = useState(false);
+
+  useEffect(() => {
+    if (typeof editor?.loadPendingTable !== "function") return undefined;
+    editor.loadPendingTable();
+
+    const timer = window.setInterval(() => {
+      editor.loadPendingTable();
+    }, 4000);
+
+    return () => {
+      window.clearInterval(timer);
+    };
+  }, [editor?.loadPendingTable]);
+
+  return (
+    <div className="mt-2 rounded-xl border border-[#2a3261] bg-[rgba(17,22,48,0.75)] p-3">
+      <div className="flex items-center justify-between gap-2">
+        <div>
+          <div className="text-sm font-semibold text-[#e3ebff]">Pending changes (live)</div>
+          <div className="text-xs text-[#a9b6db]">
+            {editor.pendingTableBatch
+              ? `batch ${editor.pendingTableBatch.id || "-"} · rows ${Number(editor.pendingTableBatch.row_count) || 0}`
+              : "No pending batch"}
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          {editor.loadingPendingTable ? (
+            <span className="text-xs text-[#9fb0dd]">Refreshing…</span>
+          ) : null}
+          <Button
+            size="compact"
+            variant="outline"
+            loading={editor.loadingPendingTable}
+            onClick={() => editor.loadPendingTable()}
+          >
+            Refresh
+          </Button>
+          <Button
+            size="compact"
+            variant="outline"
+            onClick={() => setCollapsed((value) => !value)}
+          >
+            {collapsed ? "Expand" : "Collapse"}
+          </Button>
+          <Button
+            size="compact"
+            variant="outline"
+            onClick={() => editor.setPendingTableOpen(true)}
+          >
+            Open modal
+          </Button>
+        </div>
+      </div>
+
+      {!collapsed ? (
+        <div className="mt-2">
+          {editor.pendingTableError ? (
+            <p className="m-0 rounded-lg border border-[#a12525] bg-[rgba(139,29,29,0.32)] px-3 py-2 text-sm text-[#ffd0d0]">
+              {editor.pendingTableError}
+            </p>
+          ) : !editor.pendingTableRows.length ? (
+            <p className="note m-0 text-sm">
+              No pending rows yet. Rows appear for staged ingredient-row field changes.
+            </p>
+          ) : (
+            <div className="max-h-[220px] overflow-auto rounded-lg border border-[#2a3261] bg-[rgba(10,18,50,0.72)]">
+              <table className="w-full border-collapse text-left text-xs text-[#d7e0fb]">
+                <thead>
+                  <tr className="border-b border-[#2a3261] text-[#aebce4]">
+                    <th className="px-2 py-1">order</th>
+                    <th className="px-2 py-1">dish</th>
+                    <th className="px-2 py-1">ingredient</th>
+                    <th className="px-2 py-1">summary</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {editor.pendingTableRows.slice(0, 50).map((row) => (
+                    <tr
+                      key={row.id || `${row.sort_order}-${row.summary}`}
+                      className="border-b border-[rgba(42,50,97,0.45)] align-top"
+                    >
+                      <td className="px-2 py-1">{Number(row.sort_order) || 0}</td>
+                      <td className="px-2 py-1">{row.dish_name || "-"}</td>
+                      <td className="px-2 py-1">{row.ingredient_name || "-"}</td>
+                      <td className="px-2 py-1 whitespace-pre-wrap">{row.summary || "-"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function SaveReviewModal({ editor, open, onOpenChange, onConfirmSave }) {
+  const [expandedRows, setExpandedRows] = useState({});
+  const changes = useMemo(
+    () => (Array.isArray(editor.pendingSaveRows) ? editor.pendingSaveRows : []),
+    [editor.pendingSaveRows],
+  );
+
+  useEffect(() => {
+    if (open) return;
+    setExpandedRows({});
+  }, [open]);
+
+  return (
+    <Modal
+      open={open}
+      onOpenChange={(nextOpen) => {
+        onOpenChange(nextOpen);
+        if (!nextOpen) {
+          editor.clearPendingSaveBatch();
+        }
+      }}
+      title="Review your changes"
+      className="max-w-[760px]"
+    >
+      <div className="space-y-3">
+        <p className="note m-0 text-sm">Confirm everything looks right before saving to the website.</p>
+
+        {!changes.length ? (
+          <p className="note m-0">No ingredient-row status changes were detected for this save.</p>
+        ) : (
+          <div className="max-h-[52vh] space-y-2 overflow-auto pr-1">
+            {changes.map((entry) => (
+              <div
+                key={`pending-change-${entry.id || entry.sortOrder || entry.summary}`}
+                className="rounded-xl border border-[#2a3261] bg-[rgba(17,22,48,0.75)] px-3 py-2"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-sm text-[#dce4ff]">
+                    {asText(entry.summary) || "Ingredient row updated"}
+                  </span>
+                  <div className="flex items-center gap-2">
+                    {entry.beforeValue != null || entry.afterValue != null ? (
+                      <Button
+                        size="compact"
+                        variant="outline"
+                        onClick={() =>
+                          setExpandedRows((current) => ({
+                            ...current,
+                            [entry.id || entry.sortOrder || entry.summary]:
+                              !current[entry.id || entry.sortOrder || entry.summary],
+                          }))
+                        }
+                      >
+                        {expandedRows[entry.id || entry.sortOrder || entry.summary]
+                          ? "Hide details"
+                          : "Show details"}
+                      </Button>
+                    ) : null}
+                  </div>
+                </div>
+
+                {expandedRows[entry.id || entry.sortOrder || entry.summary] ? (
+                  <div className="mt-2 rounded-md border border-[#263260] bg-[rgba(10,18,50,0.72)] px-2 py-1 text-xs text-[#9fb0dd]">
+                    <div className="font-medium text-[#c6d5ff]">Before:</div>
+                    <div className="whitespace-pre-wrap">{normalizeLegacyDiff(entry.beforeValue)}</div>
+                    <div className="mt-1 font-medium text-[#c6d5ff]">After:</div>
+                    <div className="whitespace-pre-wrap">{normalizeLegacyDiff(entry.afterValue)}</div>
+                  </div>
+                ) : null}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {editor.pendingSaveError ? (
+          <p className="m-0 rounded-lg border border-[#a12525] bg-[rgba(139,29,29,0.32)] px-3 py-2 text-sm text-[#ffd0d0]">
+            {editor.pendingSaveError}
+          </p>
+        ) : null}
+
+        <div className="flex justify-end gap-2">
+          <Button
+            size="compact"
+            variant="outline"
+            onClick={() => {
+              editor.clearPendingSaveBatch();
+              onOpenChange(false);
+            }}
+          >
+            Cancel save
+          </Button>
+          <Button
+            size="compact"
+            tone="primary"
+            loading={editor.isSaving || editor.pendingSavePreparing}
+            disabled={editor.isSaving || editor.pendingSavePreparing || !editor.pendingSaveBatchId}
+            onClick={onConfirmSave}
+          >
+            Confirm &amp; Save
+          </Button>
+        </div>
+      </div>
     </Modal>
   );
 }
@@ -2526,6 +3362,7 @@ function MenuPagesModal({ editor }) {
   const [removeUnmatchedPageIndices, setRemoveUnmatchedPageIndices] = useState([]);
   const [sessionDirty, setSessionDirty] = useState(false);
   const [saveBusy, setSaveBusy] = useState(false);
+  const [uploadBusy, setUploadBusy] = useState(false);
   const [saveError, setSaveError] = useState("");
   const [saveNotice, setSaveNotice] = useState("");
   const wasOpenRef = useRef(false);
@@ -2561,6 +3398,7 @@ function MenuPagesModal({ editor }) {
       setRemoveUnmatchedPageIndices([]);
       setSessionDirty(false);
       setSaveBusy(false);
+      setUploadBusy(false);
       setSaveError("");
       setSaveNotice("");
     } else if (!editor.menuPagesOpen && wasOpenRef.current) {
@@ -2570,6 +3408,7 @@ function MenuPagesModal({ editor }) {
       setRemoveUnmatchedPageIndices([]);
       setSessionDirty(false);
       setSaveBusy(false);
+      setUploadBusy(false);
       setSaveError("");
       setSaveNotice("");
     }
@@ -2582,15 +3421,15 @@ function MenuPagesModal({ editor }) {
   }, [editor]);
 
   const handleCancel = useCallback(() => {
-    if (saveBusy) return;
+    if (saveBusy || uploadBusy) return;
     if (sessionSnapshot && typeof editor.restoreDraftSnapshot === "function") {
       editor.restoreDraftSnapshot(sessionSnapshot);
     }
     closeMenuModal();
-  }, [closeMenuModal, editor.restoreDraftSnapshot, saveBusy, sessionSnapshot]);
+  }, [closeMenuModal, editor.restoreDraftSnapshot, saveBusy, sessionSnapshot, uploadBusy]);
 
   const handleSave = useCallback(async () => {
-    if (saveBusy) return;
+    if (saveBusy || uploadBusy) return;
     setSaveError("");
     setSaveNotice("");
 
@@ -2658,6 +3497,7 @@ function MenuPagesModal({ editor }) {
     pageSourceIndexMap,
     removeUnmatchedPageIndices,
     saveBusy,
+    uploadBusy,
     sessionSnapshot?.menuImages,
     sessionSnapshot?.overlays,
     sessionDirty,
@@ -2682,7 +3522,7 @@ function MenuPagesModal({ editor }) {
           <Button
             size="compact"
             variant="outline"
-            disabled={saveBusy}
+            disabled={saveBusy || uploadBusy}
             onClick={handleCancel}
           >
             Cancel
@@ -2690,7 +3530,8 @@ function MenuPagesModal({ editor }) {
           <Button
             size="compact"
             tone="primary"
-            loading={saveBusy}
+            loading={saveBusy || uploadBusy}
+            disabled={uploadBusy}
             onClick={handleSave}
           >
             Save
@@ -2703,7 +3544,7 @@ function MenuPagesModal({ editor }) {
           <Button
             size="compact"
             tone="primary"
-            disabled={saveBusy}
+            disabled={saveBusy || uploadBusy}
             onClick={() => addInputRef.current?.click()}
           >
             Add Page
@@ -2716,11 +3557,16 @@ function MenuPagesModal({ editor }) {
             onChange={async (event) => {
               const file = event.target.files?.[0];
               if (!file) return;
-              const image = await fileToDataUrl(file);
-              editor.addMenuPage(image);
-              setPageSourceIndexMap((current) => [...current, null]);
-              markImagePageChanged(editor.draftMenuImages.length);
-              event.target.value = "";
+              setUploadBusy(true);
+              try {
+                const image = await fileToDataUrl(file);
+                editor.addMenuPage(image);
+                setPageSourceIndexMap((current) => [...current, null]);
+                markImagePageChanged(editor.draftMenuImages.length);
+              } finally {
+                event.target.value = "";
+                setUploadBusy(false);
+              }
             }}
           />
         </div>
@@ -2749,7 +3595,7 @@ function MenuPagesModal({ editor }) {
                   <Button
                     size="compact"
                     variant="outline"
-                    disabled={saveBusy || index <= 0}
+                    disabled={saveBusy || uploadBusy || index <= 0}
                     className="min-w-[30px] px-2"
                     onClick={() => {
                       const pageCount = Math.max(editor.draftMenuImages.length, 1);
@@ -2777,7 +3623,7 @@ function MenuPagesModal({ editor }) {
                   <Button
                     size="compact"
                     variant="outline"
-                    disabled={saveBusy || index >= editor.draftMenuImages.length - 1}
+                    disabled={saveBusy || uploadBusy || index >= editor.draftMenuImages.length - 1}
                     className="min-w-[30px] px-2"
                     onClick={() => {
                       const pageCount = Math.max(editor.draftMenuImages.length, 1);
@@ -2823,7 +3669,7 @@ function MenuPagesModal({ editor }) {
                 <Button
                   size="compact"
                   variant="outline"
-                  disabled={saveBusy}
+                  disabled={saveBusy || uploadBusy}
                   onClick={() => replaceInputsRef.current[index]?.click()}
                 >
                   Replace
@@ -2833,7 +3679,7 @@ function MenuPagesModal({ editor }) {
                     size="compact"
                     tone="danger"
                     variant="outline"
-                    disabled={saveBusy}
+                    disabled={saveBusy || uploadBusy}
                     onClick={() => {
                       const pageCount = Math.max(editor.draftMenuImages.length, 1);
                       editor.removeMenuPage(index);
@@ -2864,16 +3710,22 @@ function MenuPagesModal({ editor }) {
                 onChange={async (event) => {
                   const file = event.target.files?.[0];
                   if (!file) return;
-                  const imageData = await fileToDataUrl(file);
-                  editor.replaceMenuPage(index, imageData);
-                  markImagePageChanged(index);
-                  event.target.value = "";
+                  setUploadBusy(true);
+                  try {
+                    const imageData = await fileToDataUrl(file);
+                    editor.replaceMenuPage(index, imageData);
+                    markImagePageChanged(index);
+                  } finally {
+                    event.target.value = "";
+                    setUploadBusy(false);
+                  }
                 }}
               />
             </div>
           ))}
         </div>
       </div>
+      {uploadBusy ? <AppLoadingScreen label="menu image upload" /> : null}
     </Modal>
   );
 }
@@ -2977,14 +3829,13 @@ export function RestaurantEditor({ editor, onNavigate, runtimeConfigHealth }) {
   const pageRefs = useRef([]);
   const pageImageRefs = useRef([]);
   const overlayInteractionRef = useRef(null);
+  const stopOverlayInteractionRef = useRef(() => {});
   const mappingDragRef = useRef(null);
-
-  const [scrollSnapshot, setScrollSnapshot] = useState({
-    scrollTop: 0,
-    clientHeight: 1,
-    scrollHeight: 1,
-  });
   const [mappedRectPreview, setMappedRectPreview] = useState(null);
+  const [saveReviewOpen, setSaveReviewOpen] = useState(false);
+  const [saveIssueAlert, setSaveIssueAlert] = useState(null);
+  const [saveIssueJumpRequest, setSaveIssueJumpRequest] = useState(null);
+  const [confirmationGuide, setConfirmationGuide] = useState(null);
 
   const legacySaveButtonVisible = Boolean(
     editor.isDirty ||
@@ -3016,112 +3867,308 @@ export function RestaurantEditor({ editor, onNavigate, runtimeConfigHealth }) {
     Boolean(currentWizardDish) &&
     !allMapped;
 
+  const resolveIssueContext = useCallback(
+    (issue) => {
+      const overlayToken = normalizeToken(issue?.overlayName);
+      const ingredientToken = normalizeToken(issue?.ingredientName);
+      const matchedOverlay = (Array.isArray(editor.overlays) ? editor.overlays : []).find(
+        (overlay) => normalizeToken(overlay?.id || overlay?.name) === overlayToken,
+      );
+      const ingredientName = asText(issue?.ingredientName);
+
+      return {
+        ...issue,
+        overlayKey: matchedOverlay?._editorKey || "",
+        overlayName: asText(issue?.overlayName || matchedOverlay?.id || matchedOverlay?.name),
+        ingredientName,
+        message:
+          asText(issue?.message) ||
+          `${asText(issue?.overlayName) || "Dish"}: ${ingredientName || "Ingredient"} must be confirmed before saving`,
+        issueKey: `${normalizeToken(issue?.overlayName)}:${normalizeToken(issue?.ingredientName)}`,
+        canJump: Boolean(matchedOverlay?._editorKey && ingredientToken),
+      };
+    },
+    [editor.overlays],
+  );
+
+  const buildJumpableConfirmationIssues = useCallback(() => {
+    return editor
+      .getIngredientConfirmationIssues()
+      .map((issue) => resolveIssueContext(issue))
+      .filter((issue) => issue.canJump);
+  }, [editor, resolveIssueContext]);
+
+  const requestJumpToIssue = useCallback(
+    (issue) => {
+      if (!issue?.canJump) return;
+      editor.selectOverlay(issue.overlayKey);
+      editor.openDishEditor(issue.overlayKey);
+      setSaveIssueJumpRequest({
+        requestId: Date.now(),
+        overlayKey: issue.overlayKey,
+        ingredientName: issue.ingredientName,
+      });
+    },
+    [editor],
+  );
+
   const triggerSave = useCallback(async () => {
     if (editor.isSaving) return;
-    await editor.save();
+    const confirmationIssues = editor.getIngredientConfirmationIssues();
+    if (confirmationIssues.length) {
+      setConfirmationGuide(null);
+      setSaveIssueAlert(resolveIssueContext(confirmationIssues[0]));
+      return;
+    }
+
+    setSaveIssueAlert(null);
+    const staged = await editor.preparePendingSave();
+    if (!staged?.success) {
+      return;
+    }
+    setSaveReviewOpen(true);
+  }, [editor, resolveIssueContext]);
+
+  const startConfirmationGuide = useCallback(() => {
+    const guideIssues = buildJumpableConfirmationIssues();
+    if (!guideIssues.length) return;
+    setSaveIssueAlert(null);
+    setConfirmationGuide({ issues: guideIssues, currentIndex: 0, confirmedHistory: [] });
+    requestJumpToIssue(guideIssues[0]);
+  }, [buildJumpableConfirmationIssues, requestJumpToIssue]);
+
+  const goToPreviousGuideIssue = useCallback(() => {
+    setConfirmationGuide((current) => {
+      if (!current) return current;
+      const history = Array.isArray(current.confirmedHistory)
+        ? current.confirmedHistory
+        : [];
+      if (!history.length) return current;
+
+      const currentIssueKey = current.issues[current.currentIndex]?.issueKey;
+      const currentHistoryIndex = currentIssueKey
+        ? history.lastIndexOf(currentIssueKey)
+        : -1;
+      const targetHistoryIndex =
+        currentHistoryIndex > 0
+          ? currentHistoryIndex - 1
+          : currentHistoryIndex === -1
+            ? history.length - 1
+            : -1;
+      if (targetHistoryIndex < 0) return current;
+
+      const targetIssueKey = history[targetHistoryIndex];
+      const previousIndex = current.issues.findIndex(
+        (issue) => issue.issueKey === targetIssueKey,
+      );
+      if (previousIndex < 0) return current;
+
+      requestJumpToIssue(current.issues[previousIndex]);
+      return {
+        ...current,
+        currentIndex: previousIndex,
+      };
+    });
+  }, [requestJumpToIssue]);
+
+  const goToNextGuideIssue = useCallback(() => {
+    setConfirmationGuide((current) => {
+      if (!current?.issues?.length) return current;
+
+      const unresolvedKeys = new Set(
+        editor
+          .getIngredientConfirmationIssues()
+          .map(
+            (issue) =>
+              `${normalizeToken(issue?.overlayName)}:${normalizeToken(issue?.ingredientName)}`,
+          ),
+      );
+      if (!unresolvedKeys.size) return current;
+
+      const nextIndex = current.issues.findIndex(
+        (issue, index) => index > current.currentIndex && unresolvedKeys.has(issue.issueKey),
+      );
+      const targetIndex =
+        nextIndex >= 0
+          ? nextIndex
+          : current.issues.findIndex((issue) => unresolvedKeys.has(issue.issueKey));
+
+      if (targetIndex < 0 || targetIndex === current.currentIndex) return current;
+
+      requestJumpToIssue(current.issues[targetIndex]);
+      return {
+        ...current,
+        currentIndex: targetIndex,
+      };
+    });
+  }, [editor, requestJumpToIssue]);
+
+  const cancelConfirmationGuide = useCallback(() => {
+    setConfirmationGuide(null);
+  }, []);
+
+  const confirmSaveFromReview = useCallback(async () => {
+    if (editor.isSaving) return;
+    const result = await editor.save();
+    if (result?.success) {
+      setSaveReviewOpen(false);
+    }
   }, [editor]);
 
-  const refreshScrollSnapshot = useCallback(() => {
-    const scrollNode = menuScrollRef.current;
-    if (!scrollNode) return;
+  useEffect(() => {
+    if (!saveReviewOpen) return;
+    if (editor.pendingSaveBatchId) return;
+    setSaveReviewOpen(false);
+  }, [editor.pendingSaveBatchId, saveReviewOpen]);
 
-    const next = {
-      scrollTop: scrollNode.scrollTop,
-      clientHeight: Math.max(scrollNode.clientHeight, 1),
-      scrollHeight: Math.max(scrollNode.scrollHeight, 1),
-    };
+  useEffect(() => {
+    if (!saveIssueAlert?.issueKey) return;
+    const activeIssueKeys = editor
+      .getIngredientConfirmationIssues()
+      .map(
+        (issue) =>
+          `${normalizeToken(issue?.overlayName)}:${normalizeToken(issue?.ingredientName)}`,
+      );
+    if (!activeIssueKeys.includes(saveIssueAlert.issueKey)) {
+      setSaveIssueAlert(null);
+    }
+  }, [editor, saveIssueAlert]);
 
-    setScrollSnapshot((current) => {
-      if (
-        current.scrollTop === next.scrollTop &&
-        current.clientHeight === next.clientHeight &&
-        current.scrollHeight === next.scrollHeight
-      ) {
-        return current;
-      }
-      return next;
-    });
+  useEffect(() => {
+    if (!confirmationGuide?.issues?.length) return;
 
-    const pageNodes = editor.overlaysByPage.map(
-      (_, index) => pageRefs.current[index] || pageImageRefs.current[index],
+    const unresolvedKeys = new Set(
+      editor
+        .getIngredientConfirmationIssues()
+        .map(
+          (issue) =>
+            `${normalizeToken(issue?.overlayName)}:${normalizeToken(issue?.ingredientName)}`,
+        ),
     );
-    const bestPage = resolveMostVisiblePageIndex(scrollNode, pageNodes, editor.activePageIndex);
 
-    if (bestPage !== editor.activePageIndex) {
-      editor.jumpToPage(bestPage);
-    }
-  }, [editor]);
-
-  useEffect(() => {
-    const scrollNode = menuScrollRef.current;
-    if (!scrollNode) return undefined;
-
-    let frame = 0;
-    const schedule = () => {
-      if (frame) return;
-      frame = window.requestAnimationFrame(() => {
-        frame = 0;
-        refreshScrollSnapshot();
-      });
-    };
-
-    schedule();
-    scrollNode.addEventListener("scroll", schedule, { passive: true });
-    window.addEventListener("resize", schedule);
-
-    const resizeObserver =
-      typeof ResizeObserver !== "undefined"
-        ? new ResizeObserver(schedule)
-        : null;
-
-    if (resizeObserver) {
-      resizeObserver.observe(scrollNode);
-      pageRefs.current.forEach((node) => node && resizeObserver.observe(node));
-      pageImageRefs.current.forEach((node) => node && resizeObserver.observe(node));
+    if (!unresolvedKeys.size) {
+      setConfirmationGuide(null);
+      return;
     }
 
-    return () => {
-      scrollNode.removeEventListener("scroll", schedule);
-      window.removeEventListener("resize", schedule);
-      if (resizeObserver) resizeObserver.disconnect();
-      if (frame) window.cancelAnimationFrame(frame);
-    };
-  }, [refreshScrollSnapshot, editor.overlaysByPage.length]);
+    const currentIssue = confirmationGuide.issues[confirmationGuide.currentIndex];
+    if (!currentIssue) return;
+    const confirmedHistory = Array.isArray(confirmationGuide.confirmedHistory)
+      ? confirmationGuide.confirmedHistory
+      : [];
+    if (unresolvedKeys.has(currentIssue.issueKey)) {
+      return;
+    }
 
-  useEffect(() => {
-    const imageNodes = pageImageRefs.current.filter(Boolean);
-    if (!imageNodes.length) return undefined;
+    if (confirmedHistory.includes(currentIssue.issueKey)) {
+      return;
+    }
 
-    let frame = 0;
-    const schedule = () => {
-      if (frame) return;
-      frame = window.requestAnimationFrame(() => {
-        frame = 0;
-        refreshScrollSnapshot();
-      });
-    };
+    const nextHistory = [...confirmedHistory, currentIssue.issueKey];
 
-    imageNodes.forEach((node) => {
-      node.addEventListener("load", schedule);
-      if (node.complete) schedule();
-    });
+    const nextIndex = confirmationGuide.issues.findIndex(
+      (issue, index) =>
+        index > confirmationGuide.currentIndex && unresolvedKeys.has(issue.issueKey),
+    );
+    if (nextIndex >= 0) {
+      const nextIssue = confirmationGuide.issues[nextIndex];
+      setConfirmationGuide((current) =>
+        current
+          ? {
+              ...current,
+              currentIndex: nextIndex,
+              confirmedHistory: nextHistory,
+            }
+          : current,
+      );
+      requestJumpToIssue(nextIssue);
+      return;
+    }
 
-    return () => {
-      imageNodes.forEach((node) => node.removeEventListener("load", schedule));
-      if (frame) window.cancelAnimationFrame(frame);
-    };
-  }, [editor.overlaysByPage, refreshScrollSnapshot]);
+    const firstRemainingIndex = confirmationGuide.issues.findIndex((issue) =>
+      unresolvedKeys.has(issue.issueKey),
+    );
+    if (firstRemainingIndex >= 0) {
+      const firstRemainingIssue = confirmationGuide.issues[firstRemainingIndex];
+      setConfirmationGuide((current) =>
+        current
+          ? {
+              ...current,
+              currentIndex: firstRemainingIndex,
+              confirmedHistory: nextHistory,
+            }
+          : current,
+      );
+      requestJumpToIssue(firstRemainingIssue);
+      return;
+    }
+
+    setConfirmationGuide(null);
+  }, [confirmationGuide, editor, requestJumpToIssue]);
+
+  const guideCanBack = useMemo(() => {
+    if (!confirmationGuide?.issues?.length) return false;
+    const history = Array.isArray(confirmationGuide.confirmedHistory)
+      ? confirmationGuide.confirmedHistory
+      : [];
+    if (!history.length) return false;
+    const currentIssueKey = confirmationGuide.issues[confirmationGuide.currentIndex]?.issueKey;
+    const currentHistoryIndex = currentIssueKey
+      ? history.lastIndexOf(currentIssueKey)
+      : -1;
+    if (currentHistoryIndex > 0) return true;
+    return currentHistoryIndex === -1;
+  }, [confirmationGuide]);
+
+  const guideCanForward = useMemo(() => {
+    if (!confirmationGuide?.issues?.length) return false;
+    const unresolvedKeys = new Set(
+      editor
+        .getIngredientConfirmationIssues()
+        .map(
+          (issue) =>
+            `${normalizeToken(issue?.overlayName)}:${normalizeToken(issue?.ingredientName)}`,
+        ),
+    );
+    if (!unresolvedKeys.size) return false;
+
+    const nextIndex = confirmationGuide.issues.findIndex(
+      (issue, index) =>
+        index > confirmationGuide.currentIndex && unresolvedKeys.has(issue.issueKey),
+    );
+    if (nextIndex >= 0) return true;
+
+    const firstRemainingIndex = confirmationGuide.issues.findIndex((issue) =>
+      unresolvedKeys.has(issue.issueKey),
+    );
+    return firstRemainingIndex >= 0 && firstRemainingIndex !== confirmationGuide.currentIndex;
+  }, [confirmationGuide, editor]);
+
+  const { activePageIndex: minimapActivePageIndex, scrollSnapshot } = useMinimapSync({
+    enabled: true,
+    menuScrollRef,
+    pageRefs,
+    pageImageRefs,
+    pageCount: editor.overlaysByPage.length,
+    pageVersionKey: editor.overlaysByPage.length,
+    initialActivePageIndex: editor.activePageIndex,
+    onActivePageChange: editor.jumpToPage,
+  });
 
   const minimapViewport = useMemo(() => {
     const scrollNode = menuScrollRef.current;
-    const pageNode = pageRefs.current[editor.activePageIndex] || pageImageRefs.current[editor.activePageIndex];
+    const pageNode =
+      pageRefs.current[minimapActivePageIndex] ||
+      pageImageRefs.current[minimapActivePageIndex];
     return buildMinimapViewport(scrollNode, pageNode);
-  }, [editor.activePageIndex, scrollSnapshot.clientHeight, scrollSnapshot.scrollTop]);
+  }, [minimapActivePageIndex, scrollSnapshot.clientHeight, scrollSnapshot.scrollTop]);
 
   const jumpFromMinimap = useCallback(
     (event) => {
       const scrollNode = menuScrollRef.current;
-      const pageNode = pageRefs.current[editor.activePageIndex] || pageImageRefs.current[editor.activePageIndex];
+      const pageNode =
+        pageRefs.current[minimapActivePageIndex] ||
+        pageImageRefs.current[minimapActivePageIndex];
       if (!scrollNode || !pageNode) return;
 
       const bounds = event.currentTarget.getBoundingClientRect();
@@ -3131,7 +4178,7 @@ export function RestaurantEditor({ editor, onNavigate, runtimeConfigHealth }) {
 
       scrollNode.scrollTo({ top: target, behavior: "smooth" });
     },
-    [editor.activePageIndex],
+    [minimapActivePageIndex],
   );
 
   const getOverlaySnapTargets = useCallback(
@@ -3171,8 +4218,15 @@ export function RestaurantEditor({ editor, onNavigate, runtimeConfigHealth }) {
     const interaction = overlayInteractionRef.current;
     if (!interaction) return;
 
-    window.removeEventListener("pointermove", interaction.onMove);
-    window.removeEventListener("pointerup", interaction.onUp);
+    window.removeEventListener(interaction.moveEventName || "pointermove", interaction.onMove);
+    window.removeEventListener(interaction.upEventName || "pointerup", interaction.onUp);
+    window.removeEventListener("pointercancel", interaction.onUp);
+    if (interaction.captureTarget && interaction.onLostCapture) {
+      interaction.captureTarget.removeEventListener(
+        "lostpointercapture",
+        interaction.onLostCapture,
+      );
+    }
 
     if (
       interaction.captureTarget &&
@@ -3195,17 +4249,24 @@ export function RestaurantEditor({ editor, onNavigate, runtimeConfigHealth }) {
         {
           changeText:
             changeLabel || `${interaction.overlayName}: Adjusted overlay position`,
+          changeKey: `overlay-position:${normalizeToken(interaction.overlayName)}`,
           recordHistory: true,
         },
       );
     }
   }, [editor]);
 
+  useEffect(() => {
+    stopOverlayInteractionRef.current = stopOverlayInteraction;
+  }, [stopOverlayInteraction]);
+
   const startDragOverlay = useCallback(
     (event, overlay, pageIndex) => {
       if (mappingEnabled) return;
       if (!overlay?._editorKey) return;
-      if (event.button !== 0) return;
+      if (event?.type === "pointerdown" && event?.pointerType === "mouse") return;
+      if (event?.pointerType === "mouse" && event.button !== 0) return;
+      if (event?.type === "mousedown" && event.button !== 0) return;
       if (event.target.closest(".handle") || event.target.closest(".editBadge")) return;
 
       event.preventDefault();
@@ -3258,17 +4319,29 @@ export function RestaurantEditor({ editor, onNavigate, runtimeConfigHealth }) {
         stopOverlayInteraction(`${overlay.id || "Dish"}: Adjusted overlay position`);
       };
 
+      const moveEventName = pointerId !== null ? "pointermove" : "mousemove";
+      const upEventName = pointerId !== null ? "pointerup" : "mouseup";
+      const onLostCapture = () => onUp();
+
+      if (captureTarget && pointerId !== null) {
+        captureTarget.addEventListener("lostpointercapture", onLostCapture);
+      }
+
       overlayInteractionRef.current = {
         overlayKey: overlay._editorKey,
         overlayName: overlay.id || "Dish",
         pointerId,
         captureTarget,
+        moveEventName,
+        upEventName,
+        onLostCapture,
         onMove,
         onUp,
       };
 
-      window.addEventListener("pointermove", onMove);
-      window.addEventListener("pointerup", onUp);
+      window.addEventListener(moveEventName, onMove);
+      window.addEventListener(upEventName, onUp);
+      window.addEventListener("pointercancel", onUp);
     },
     [editor, mappingEnabled, stopOverlayInteraction],
   );
@@ -3277,7 +4350,9 @@ export function RestaurantEditor({ editor, onNavigate, runtimeConfigHealth }) {
     (event, overlay, pageIndex, corner) => {
       if (mappingEnabled) return;
       if (!overlay?._editorKey) return;
-      if (event.button !== 0) return;
+      if (event?.type === "pointerdown" && event?.pointerType === "mouse") return;
+      if (event?.pointerType === "mouse" && event.button !== 0) return;
+      if (event?.type === "mousedown" && event.button !== 0) return;
 
       event.preventDefault();
       event.stopPropagation();
@@ -3413,26 +4488,38 @@ export function RestaurantEditor({ editor, onNavigate, runtimeConfigHealth }) {
         stopOverlayInteraction(`${overlay.id || "Dish"}: Adjusted overlay position`);
       };
 
+      const moveEventName = pointerId !== null ? "pointermove" : "mousemove";
+      const upEventName = pointerId !== null ? "pointerup" : "mouseup";
+      const onLostCapture = () => onUp();
+
+      if (captureTarget && pointerId !== null) {
+        captureTarget.addEventListener("lostpointercapture", onLostCapture);
+      }
+
       overlayInteractionRef.current = {
         overlayKey: overlay._editorKey,
         overlayName: overlay.id || "Dish",
         pointerId,
         captureTarget,
+        moveEventName,
+        upEventName,
+        onLostCapture,
         onMove,
         onUp,
       };
 
-      window.addEventListener("pointermove", onMove);
-      window.addEventListener("pointerup", onUp);
+      window.addEventListener(moveEventName, onMove);
+      window.addEventListener(upEventName, onUp);
+      window.addEventListener("pointercancel", onUp);
     },
     [editor, getOverlaySnapTargets, mappingEnabled, stopOverlayInteraction],
   );
 
   useEffect(() => {
     return () => {
-      stopOverlayInteraction();
+      stopOverlayInteractionRef.current();
     };
-  }, [stopOverlayInteraction]);
+  }, []);
 
   const onPagePointerDown = useCallback(
     (event, pageIndex) => {
@@ -3539,10 +4626,10 @@ export function RestaurantEditor({ editor, onNavigate, runtimeConfigHealth }) {
                   onClick={jumpFromMinimap}
                   title="Jump to menu area"
                 >
-                  {editor.draftMenuImages[editor.activePageIndex] ? (
+                  {editor.draftMenuImages[minimapActivePageIndex] ? (
                     <img
-                      src={editor.draftMenuImages[editor.activePageIndex]}
-                      alt={`Menu thumbnail page ${editor.activePageIndex + 1}`}
+                      src={editor.draftMenuImages[minimapActivePageIndex]}
+                      alt={`Menu thumbnail page ${minimapActivePageIndex + 1}`}
                     />
                   ) : (
                     <span>No page</span>
@@ -3556,7 +4643,7 @@ export function RestaurantEditor({ editor, onNavigate, runtimeConfigHealth }) {
                   />
                 </button>
                 <div className="restaurant-legacy-page-footer">
-                  Page {editor.activePageIndex + 1} of {editor.draftMenuImages.length}
+                  Page {minimapActivePageIndex + 1} of {editor.draftMenuImages.length}
                 </div>
               </div>
             </div>
@@ -3570,22 +4657,24 @@ export function RestaurantEditor({ editor, onNavigate, runtimeConfigHealth }) {
                       <button className="btn btnPrimary" onClick={editor.addOverlay}>
                         + Add overlay
                       </button>
-                      <button
-                        className="btn"
-                        onClick={editor.undo}
-                        disabled={!editor.canUndo}
-                        style={{ opacity: editor.canUndo ? 1 : 0.5 }}
-                      >
-                        ↶ Undo
-                      </button>
-                      <button
-                        className="btn"
-                        onClick={editor.redo}
-                        disabled={!editor.canRedo}
-                        style={{ opacity: editor.canRedo ? 1 : 0.5 }}
-                      >
-                        ↷ Redo
-                      </button>
+                      <div style={{ display: "flex", gap: 8 }}>
+                        <button
+                          className="btn"
+                          onClick={editor.undo}
+                          disabled={!editor.canUndo}
+                          style={{ flex: 1, width: "auto", opacity: editor.canUndo ? 1 : 0.5 }}
+                        >
+                          ↶ Undo
+                        </button>
+                        <button
+                          className="btn"
+                          onClick={editor.redo}
+                          disabled={!editor.canRedo}
+                          style={{ flex: 1, width: "auto", opacity: editor.canRedo ? 1 : 0.5 }}
+                        >
+                          ↷ Redo
+                        </button>
+                      </div>
                       {legacySaveButtonVisible ? (
                         <button
                           className={`btn ${legacySaveButtonClass}`}
@@ -3594,6 +4683,20 @@ export function RestaurantEditor({ editor, onNavigate, runtimeConfigHealth }) {
                         >
                           {legacySaveButtonLabel}
                         </button>
+                      ) : null}
+                      {saveIssueAlert ? (
+                        <div className="w-full mt-2 rounded-lg border border-[#a12525] bg-[rgba(139,29,29,0.32)] px-3 py-2 text-sm text-[#ffd0d0]">
+                          <div>Please review unconfirmed rows</div>
+                          {saveIssueAlert.canJump ? (
+                            <button
+                              type="button"
+                              className="btn btnDanger btnSmall mt-2"
+                              onClick={startConfirmationGuide}
+                            >
+                              Review unconfirmed rows
+                            </button>
+                          ) : null}
+                        </div>
                       ) : null}
                     </div>
                   </div>
@@ -3606,6 +4709,9 @@ export function RestaurantEditor({ editor, onNavigate, runtimeConfigHealth }) {
                       </button>
                       <button className="btn" onClick={() => editor.setChangeLogOpen(true)}>
                         📋 View log of changes
+                      </button>
+                      <button className="btn" onClick={() => editor.setPendingTableOpen(true)}>
+                        🧾 View pending table
                       </button>
                     </div>
                   </div>
@@ -3641,6 +4747,8 @@ export function RestaurantEditor({ editor, onNavigate, runtimeConfigHealth }) {
                   {editor.saveError}
                 </p>
               ) : null}
+
+              <PendingTableDock editor={editor} />
             </div>
           </div>
 
@@ -3746,6 +4854,9 @@ export function RestaurantEditor({ editor, onNavigate, runtimeConfigHealth }) {
                       }}
                       title={overlay.id || "Dish"}
                       onPointerDown={(event) => startDragOverlay(event, overlay, page.pageIndex)}
+                      onMouseDown={(event) => {
+                        startDragOverlay(event, overlay, page.pageIndex);
+                      }}
                       onClick={(event) => {
                         event.preventDefault();
                         event.stopPropagation();
@@ -3771,6 +4882,9 @@ export function RestaurantEditor({ editor, onNavigate, runtimeConfigHealth }) {
                           onPointerDown={(event) =>
                             startResizeOverlay(event, overlay, page.pageIndex, corner)
                           }
+                          onMouseDown={(event) => {
+                            startResizeOverlay(event, overlay, page.pageIndex, corner);
+                          }}
                         />
                       ))}
                     </div>
@@ -3814,7 +4928,31 @@ export function RestaurantEditor({ editor, onNavigate, runtimeConfigHealth }) {
         )}
       </footer>
 
-      <DishEditorModal editor={editor} runtimeConfigHealth={runtimeConfigHealth} />
+      <DishEditorModal
+        editor={editor}
+        runtimeConfigHealth={runtimeConfigHealth}
+        saveIssueJumpRequest={saveIssueJumpRequest}
+        onSaveIssueJumpHandled={() => setSaveIssueJumpRequest(null)}
+        confirmationGuide={
+          confirmationGuide
+            ? {
+                ...confirmationGuide,
+                canBack: guideCanBack,
+                canForward: guideCanForward,
+              }
+            : null
+        }
+        onGuideBack={goToPreviousGuideIssue}
+        onGuideForward={goToNextGuideIssue}
+        onGuideCancel={cancelConfirmationGuide}
+      />
+      <SaveReviewModal
+        editor={editor}
+        open={saveReviewOpen}
+        onOpenChange={setSaveReviewOpen}
+        onConfirmSave={confirmSaveFromReview}
+      />
+      <PendingTableModal editor={editor} />
       <ChangeLogModal editor={editor} />
       <ConfirmInfoModal editor={editor} />
       <MenuPagesModal editor={editor} />

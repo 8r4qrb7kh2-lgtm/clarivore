@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 const HISTORY_LIMIT = 50;
+const PENDING_CHANGE_KEY_PREFIX = "__pc__:";
 
 function clamp(value, min, max) {
   return Math.min(Math.max(value, min), max);
@@ -242,10 +243,55 @@ function resolvePageOffset(overlays, pageCount) {
   return 0;
 }
 
+function buildOverlayBoundsByPage(overlays, pageOffset = 0) {
+  const byPage = new Map();
+
+  (Array.isArray(overlays) ? overlays : []).forEach((overlay) => {
+    const rawPage = firstFiniteNumber(
+      overlay?.pageIndex,
+      overlay?.page,
+      overlay?.pageNumber,
+      overlay?.page_number,
+    );
+    const pageIndex = Number.isFinite(rawPage)
+      ? Math.max(0, Math.floor(rawPage - pageOffset))
+      : 0;
+
+    const rawX = firstFiniteNumber(overlay?.x, overlay?.left);
+    const rawY = firstFiniteNumber(overlay?.y, overlay?.top);
+    const rawW = firstFiniteNumber(overlay?.w, overlay?.width);
+    const rawH = firstFiniteNumber(overlay?.h, overlay?.height);
+    if (
+      !Number.isFinite(rawX) ||
+      !Number.isFinite(rawY) ||
+      !Number.isFinite(rawW) ||
+      !Number.isFinite(rawH)
+    ) {
+      return;
+    }
+
+    const safeX = Math.max(0, rawX);
+    const safeY = Math.max(0, rawY);
+    const safeW = Math.max(0, rawW);
+    const safeH = Math.max(0, rawH);
+    const right = safeX + safeW;
+    const bottom = safeY + safeH;
+
+    const existing = byPage.get(pageIndex) || { maxRight: 0, maxBottom: 0 };
+    existing.maxRight = Math.max(existing.maxRight, right, safeX, safeW);
+    existing.maxBottom = Math.max(existing.maxBottom, bottom, safeY, safeH);
+    byPage.set(pageIndex, existing);
+  });
+
+  return byPage;
+}
+
 function buildOverlayNormalizationContext(overlays, pageCount) {
+  const pageOffset = resolvePageOffset(overlays, pageCount);
   return {
     scale: resolveOverlayScale(overlays),
-    pageOffset: resolvePageOffset(overlays, pageCount),
+    pageOffset,
+    boundsByPage: buildOverlayBoundsByPage(overlays, pageOffset),
   };
 }
 
@@ -277,6 +323,32 @@ function normalizeOverlay(overlay, index, fallbackKey, context = {}) {
   const rawW = firstFiniteNumber(overlay?.w, overlay?.width);
   const rawH = firstFiniteNumber(overlay?.h, overlay?.height);
 
+  const pageBounds = context?.boundsByPage instanceof Map
+    ? context.boundsByPage.get(pageIndex)
+    : null;
+  const pixelLikeBounds =
+    context?.scale === "percent" &&
+    pageBounds &&
+    (Number(pageBounds.maxRight) > 110 || Number(pageBounds.maxBottom) > 110);
+  const xScale = pixelLikeBounds && Number(pageBounds.maxRight) > 0
+    ? 100 / Number(pageBounds.maxRight)
+    : 1;
+  const yScale = pixelLikeBounds && Number(pageBounds.maxBottom) > 0
+    ? 100 / Number(pageBounds.maxBottom)
+    : 1;
+  const xValue = Number.isFinite(rawX)
+    ? rawX * scale * xScale
+    : 8;
+  const yValue = Number.isFinite(rawY)
+    ? rawY * scale * yScale
+    : 8;
+  const wValue = Number.isFinite(rawW)
+    ? rawW * scale * xScale
+    : 20;
+  const hValue = Number.isFinite(rawH)
+    ? rawH * scale * yScale
+    : 8;
+
   return {
     ...overlay,
     _editorKey:
@@ -284,10 +356,10 @@ function normalizeOverlay(overlay, index, fallbackKey, context = {}) {
     id: name,
     name,
     description: asText(overlay?.description),
-    x: normalizeRectValue(Number.isFinite(rawX) ? rawX * scale : 8, 8),
-    y: normalizeRectValue(Number.isFinite(rawY) ? rawY * scale : 8, 8),
-    w: clamp(normalizeRectValue(Number.isFinite(rawW) ? rawW * scale : 20, 20), 0.5, 100),
-    h: clamp(normalizeRectValue(Number.isFinite(rawH) ? rawH * scale : 8, 8), 0.5, 100),
+    x: normalizeRectValue(xValue, 8),
+    y: normalizeRectValue(yValue, 8),
+    w: clamp(normalizeRectValue(wValue, 20), 0.5, 100),
+    h: clamp(normalizeRectValue(hValue, 8), 0.5, 100),
     pageIndex,
     allergens: Array.isArray(overlay?.allergens) ? overlay.allergens.filter(Boolean) : [],
     diets: Array.isArray(overlay?.diets) ? overlay.diets.filter(Boolean) : [],
@@ -386,11 +458,55 @@ function stripEditorOverlay(overlay) {
   return next;
 }
 
+function projectOverlayForPendingSave(overlay) {
+  const next = stripEditorOverlay(overlay);
+  const ingredients = Array.isArray(next?.ingredients) ? next.ingredients : [];
+
+  return {
+    id: asText(next.id || next.name || "Dish"),
+    name: asText(next.name || next.id || "Dish"),
+    ingredients: ingredients.map((ingredient, index) => ({
+      rowIndex: index,
+      name: asText(ingredient?.name) || `Ingredient ${index + 1}`,
+      allergens: dedupeTokenList(ingredient?.allergens),
+      crossContaminationAllergens: dedupeTokenList(
+        ingredient?.crossContaminationAllergens,
+      ),
+      diets: dedupeTokenList(ingredient?.diets),
+      crossContaminationDiets: dedupeTokenList(ingredient?.crossContaminationDiets),
+      removable: Boolean(ingredient?.removable),
+    })),
+  };
+}
+
 function serializeEditorState(overlays, menuImages) {
   return JSON.stringify({
     overlays: (Array.isArray(overlays) ? overlays : []).map(stripEditorOverlay),
     menuImages: Array.isArray(menuImages) ? menuImages.filter(Boolean) : [],
   });
+}
+
+function parseSerializedEditorState(serialized) {
+  const text = asText(serialized);
+  if (!text) {
+    return {
+      overlays: [],
+      menuImages: [],
+    };
+  }
+
+  try {
+    const parsed = JSON.parse(text);
+    return {
+      overlays: Array.isArray(parsed?.overlays) ? parsed.overlays : [],
+      menuImages: Array.isArray(parsed?.menuImages) ? parsed.menuImages : [],
+    };
+  } catch {
+    return {
+      overlays: [],
+      menuImages: [],
+    };
+  }
 }
 
 function createEmptySettingsDraft(restaurant) {
@@ -423,11 +539,44 @@ function parseChangeLogPayload(log) {
   }
 }
 
+function decodePendingChangeLine(line) {
+  const text = asText(line);
+  if (!text.startsWith(PENDING_CHANGE_KEY_PREFIX)) {
+    return {
+      key: "",
+      text,
+    };
+  }
+
+  const separatorIndex = text.indexOf("::", PENDING_CHANGE_KEY_PREFIX.length);
+  if (separatorIndex < 0) {
+    return {
+      key: "",
+      text,
+    };
+  }
+
+  const encodedKey = text.slice(PENDING_CHANGE_KEY_PREFIX.length, separatorIndex);
+  const decodedKey = asText(decodeURIComponent(encodedKey));
+  return {
+    key: decodedKey,
+    text: asText(text.slice(separatorIndex + 2)),
+  };
+}
+
+function encodePendingChangeLine(text, key) {
+  const safeText = asText(text);
+  const safeKey = asText(key);
+  if (!safeText) return "";
+  if (!safeKey) return safeText;
+  return `${PENDING_CHANGE_KEY_PREFIX}${encodeURIComponent(safeKey)}::${safeText}`;
+}
+
 function buildDefaultChangeLogPayload({ author, pendingChanges, snapshot }) {
   const grouped = {};
   const general = [];
   (Array.isArray(pendingChanges) ? pendingChanges : []).forEach((line) => {
-    const text = asText(line);
+    const text = decodePendingChangeLine(line).text;
     if (!text) return;
     const splitIndex = text.indexOf(":");
     if (splitIndex > 0) {
@@ -635,6 +784,11 @@ export function useRestaurantEditor({
   const [zoomScale, setZoomScale] = useState(1);
   const [selectedOverlayKey, setSelectedOverlayKey] = useState("");
   const [pendingChanges, setPendingChanges] = useState([]);
+  const [pendingSaveBatchId, setPendingSaveBatchId] = useState("");
+  const [pendingSaveRows, setPendingSaveRows] = useState([]);
+  const [pendingSaveStateHash, setPendingSaveStateHash] = useState("");
+  const [pendingSaveError, setPendingSaveError] = useState("");
+  const [pendingSavePreparing, setPendingSavePreparing] = useState(false);
 
   const [saveError, setSaveError] = useState("");
   const [isSaving, setIsSaving] = useState(false);
@@ -643,6 +797,7 @@ export function useRestaurantEditor({
   const [dishEditorOpen, setDishEditorOpen] = useState(false);
   const [dishAiAssistOpen, setDishAiAssistOpen] = useState(false);
   const [changeLogOpen, setChangeLogOpen] = useState(false);
+  const [pendingTableOpen, setPendingTableOpen] = useState(false);
   const [confirmInfoOpen, setConfirmInfoOpen] = useState(false);
   const [menuPagesOpen, setMenuPagesOpen] = useState(false);
   const [restaurantSettingsOpen, setRestaurantSettingsOpen] = useState(false);
@@ -651,6 +806,13 @@ export function useRestaurantEditor({
   const [changeLogs, setChangeLogs] = useState([]);
   const [loadingChangeLogs, setLoadingChangeLogs] = useState(false);
   const [changeLogError, setChangeLogError] = useState("");
+  const changeLogLoadedForOpenRef = useRef(false);
+  const [pendingTableRows, setPendingTableRows] = useState([]);
+  const [pendingTableBatch, setPendingTableBatch] = useState(null);
+  const [loadingPendingTable, setLoadingPendingTable] = useState(false);
+  const [pendingTableError, setPendingTableError] = useState("");
+  const pendingTableLoadedForOpenRef = useRef(false);
+  const pendingTableLoadPromiseRef = useRef(null);
 
   const [confirmBusy, setConfirmBusy] = useState(false);
   const [confirmError, setConfirmError] = useState("");
@@ -679,8 +841,10 @@ export function useRestaurantEditor({
 
   const baselineRef = useRef("");
   const settingsBaselineRef = useRef("");
+  const hydratedRestaurantIdRef = useRef("");
   const historyRef = useRef([]);
   const saveStatusTimerRef = useRef(0);
+  const pendingSaveSyncTimerRef = useRef(0);
   const [historyIndex, setHistoryIndex] = useState(0);
 
   const overlaysRef = useRef(draftOverlays);
@@ -723,10 +887,36 @@ export function useRestaurantEditor({
     return () => clearSaveStatusTimer();
   }, [clearSaveStatusTimer]);
 
-  const appendPendingChange = useCallback((line) => {
+  useEffect(() => {
+    return () => {
+      if (pendingSaveSyncTimerRef.current) {
+        window.clearTimeout(pendingSaveSyncTimerRef.current);
+        pendingSaveSyncTimerRef.current = 0;
+      }
+    };
+  }, []);
+
+  const appendPendingChange = useCallback((line, options = {}) => {
     const text = asText(line);
+    const key = asText(options?.key);
     if (!text) return;
-    setPendingChanges((current) => [...current, text]);
+    setPendingChanges((current) => {
+      const encoded = encodePendingChangeLine(text, key);
+      if (!key) {
+        return [...current, encoded];
+      }
+
+      const filtered = current.filter((entry) => decodePendingChangeLine(entry).key !== key);
+      return [...filtered, encoded];
+    });
+  }, []);
+
+  const clearPendingSaveBatch = useCallback(() => {
+    setPendingSaveBatchId("");
+    setPendingSaveRows([]);
+    setPendingSaveStateHash("");
+    setPendingSaveError("");
+    setPendingSavePreparing(false);
   }, []);
 
   const captureSnapshot = useCallback(() => {
@@ -873,6 +1063,50 @@ export function useRestaurantEditor({
     setHistoryIndex(nextIndex);
   }, [historyIndex, restoreHistorySnapshot]);
 
+  const undoPendingChange = useCallback((changeIndex) => {
+    const safeIndex = Math.floor(Number(changeIndex));
+    if (!Number.isFinite(safeIndex) || safeIndex < 0) {
+      return { success: false };
+    }
+
+    const currentPending = Array.isArray(pendingChangesRef.current)
+      ? pendingChangesRef.current
+      : [];
+    if (!currentPending.length || safeIndex >= currentPending.length) {
+      return { success: false };
+    }
+
+    const targetPendingCount = safeIndex;
+    let targetHistoryIndex = -1;
+
+    for (let index = historyIndex; index >= 0; index -= 1) {
+      const snapshot = historyRef.current[index];
+      const snapshotPendingCount = Array.isArray(snapshot?.pendingChanges)
+        ? snapshot.pendingChanges.length
+        : 0;
+      if (snapshotPendingCount <= targetPendingCount) {
+        targetHistoryIndex = index;
+        break;
+      }
+    }
+
+    if (targetHistoryIndex < 0) {
+      return { success: false };
+    }
+
+    const targetSnapshot = historyRef.current[targetHistoryIndex];
+    if (!targetSnapshot) {
+      return { success: false };
+    }
+
+    restoreHistorySnapshot(targetSnapshot);
+    setHistoryIndex(targetHistoryIndex);
+    return {
+      success: true,
+      undoneCount: Math.max(currentPending.length - targetPendingCount, 0),
+    };
+  }, [historyIndex, restoreHistorySnapshot]);
+
   const redo = useCallback(() => {
     if (historyIndex >= historyRef.current.length - 1) return;
     const nextIndex = historyIndex + 1;
@@ -907,10 +1141,24 @@ export function useRestaurantEditor({
     );
 
     const nextBaseline = serializeEditorState(nextOverlays, nextMenuImages);
-    baselineRef.current = nextBaseline;
-
     const settingsDraft = createEmptySettingsDraft(restaurant);
-    settingsBaselineRef.current = serializeSettingsDraft(settingsDraft);
+    const nextSettingsBaseline = serializeSettingsDraft(settingsDraft);
+    const nextRestaurantId = asText(restaurant?.id);
+
+    const shouldReinitialize =
+      nextBaseline !== baselineRef.current ||
+      nextSettingsBaseline !== settingsBaselineRef.current ||
+      nextRestaurantId !== hydratedRestaurantIdRef.current;
+
+    if (!shouldReinitialize) {
+      setChangeLogOpen(Boolean(params?.openLog));
+      setConfirmInfoOpen(Boolean(params?.openConfirm));
+      return;
+    }
+
+    baselineRef.current = nextBaseline;
+    settingsBaselineRef.current = nextSettingsBaseline;
+    hydratedRestaurantIdRef.current = nextRestaurantId;
 
     setDraftOverlays(nextOverlays);
     setDraftMenuImages(nextMenuImages);
@@ -918,6 +1166,7 @@ export function useRestaurantEditor({
     setZoomScale(1);
     setSelectedOverlayKey(nextOverlays[0]?._editorKey || "");
     setPendingChanges([]);
+    clearPendingSaveBatch();
     setSaveError("");
     setIsSaving(false);
     clearSaveStatusTimer();
@@ -957,6 +1206,7 @@ export function useRestaurantEditor({
       result: null,
     });
   }, [
+    clearPendingSaveBatch,
     clearSaveStatusTimer,
     overlays,
     restaurant?.id,
@@ -979,9 +1229,24 @@ export function useRestaurantEditor({
     [draftMenuImages, draftOverlays],
   );
 
+  useEffect(() => {
+    if (!pendingSaveBatchId || !pendingSaveStateHash) return;
+    if (editorStateSerialized === pendingSaveStateHash) return;
+    clearPendingSaveBatch();
+  }, [
+    clearPendingSaveBatch,
+    editorStateSerialized,
+    pendingSaveBatchId,
+    pendingSaveStateHash,
+  ]);
+
   const isDirty = editorStateSerialized !== baselineRef.current;
   const settingsDirty =
     serializeSettingsDraft(restaurantSettingsDraft) !== settingsBaselineRef.current;
+
+  const getBaselineSnapshot = useCallback(() => {
+    return parseSerializedEditorState(baselineRef.current);
+  }, []);
 
   useEffect(() => {
     if (!isDirty) return;
@@ -1112,7 +1377,9 @@ export function useRestaurantEditor({
     );
 
     if (options?.changeText) {
-      appendPendingChange(options.changeText);
+      appendPendingChange(options.changeText, {
+        key: options?.changeKey,
+      });
     }
 
     if (options?.recordHistory) {
@@ -1357,6 +1624,9 @@ export function useRestaurantEditor({
     appendPendingChange(
       `Menu pages: Added ${values.length} page${values.length === 1 ? "" : "s"}`,
     );
+    appendPendingChange(
+      `Menu images: Uploaded ${values.length} new image${values.length === 1 ? "" : "s"}`,
+    );
     queueMicrotask(() => pushHistory());
 
     return {
@@ -1519,6 +1789,9 @@ export function useRestaurantEditor({
 
     appendPendingChange(
       `Menu pages: Replaced page ${targetIndex + 1} with ${normalizedEntries.length} section${normalizedEntries.length === 1 ? "" : "s"}`,
+    );
+    appendPendingChange(
+      `Menu images: Uploaded replacement image for page ${targetIndex + 1}`,
     );
     queueMicrotask(() => pushHistory());
 
@@ -2440,6 +2713,8 @@ export function useRestaurantEditor({
         // eslint-disable-next-line no-await-in-loop
         const result = await callbacks.onAnalyzeMenuImage({
           imageData,
+          imageWidth: Number(imageDimensions?.width) || undefined,
+          imageHeight: Number(imageDimensions?.height) || undefined,
           pageIndex,
         });
         if (!result?.success) {
@@ -2799,24 +3074,71 @@ export function useRestaurantEditor({
   }, []);
 
   const loadChangeLogs = useCallback(async () => {
-    if (!callbacks?.onLoadChangeLogs || !restaurant?.id) return;
+    const onLoadChangeLogs = callbacks?.onLoadChangeLogs;
+    if (!onLoadChangeLogs || !restaurant?.id) return;
     setLoadingChangeLogs(true);
     setChangeLogError("");
 
     try {
-      const logs = await callbacks.onLoadChangeLogs(restaurant.id);
+      const logs = await onLoadChangeLogs(restaurant.id);
       setChangeLogs(Array.isArray(logs) ? logs : []);
     } catch (error) {
       setChangeLogError(error?.message || "Failed to load change log.");
     } finally {
       setLoadingChangeLogs(false);
     }
-  }, [callbacks, restaurant?.id]);
+  }, [callbacks?.onLoadChangeLogs, restaurant?.id]);
+
+  const loadPendingTable = useCallback(async () => {
+    const onLoadPendingSaveTable = callbacks?.onLoadPendingSaveTable;
+    if (!onLoadPendingSaveTable || !restaurant?.id) return;
+    if (pendingTableLoadPromiseRef.current) {
+      return pendingTableLoadPromiseRef.current;
+    }
+
+    setLoadingPendingTable(true);
+    setPendingTableError("");
+
+    const request = (async () => {
+      try {
+        const result = await onLoadPendingSaveTable(restaurant.id);
+        setPendingTableBatch(
+          result?.batch && typeof result.batch === "object" ? result.batch : null,
+        );
+        setPendingTableRows(Array.isArray(result?.rows) ? result.rows : []);
+      } catch (error) {
+        setPendingTableError(error?.message || "Failed to load pending table.");
+        setPendingTableBatch(null);
+        setPendingTableRows([]);
+      } finally {
+        setLoadingPendingTable(false);
+        pendingTableLoadPromiseRef.current = null;
+      }
+    })();
+
+    pendingTableLoadPromiseRef.current = request;
+    return request;
+  }, [callbacks?.onLoadPendingSaveTable, restaurant?.id]);
 
   useEffect(() => {
-    if (!changeLogOpen) return;
+    if (!changeLogOpen) {
+      changeLogLoadedForOpenRef.current = false;
+      return;
+    }
+    if (changeLogLoadedForOpenRef.current) return;
+    changeLogLoadedForOpenRef.current = true;
     loadChangeLogs();
   }, [changeLogOpen, loadChangeLogs]);
+
+  useEffect(() => {
+    if (!pendingTableOpen) {
+      pendingTableLoadedForOpenRef.current = false;
+      return;
+    }
+    if (pendingTableLoadedForOpenRef.current) return;
+    pendingTableLoadedForOpenRef.current = true;
+    loadPendingTable();
+  }, [loadPendingTable, pendingTableOpen]);
 
   const restoreFromChangeLog = useCallback((log) => {
     const parsed = parseChangeLogPayload(log);
@@ -2852,7 +3174,7 @@ export function useRestaurantEditor({
       return { success: false };
     }
 
-    if (!callbacks?.onSaveDraft) {
+    if (!callbacks?.onSaveDraft && !callbacks?.onApplyPendingSave) {
       setSaveError("Save callback is not configured.");
       setSaveStatus("error");
       return { success: false };
@@ -2894,16 +3216,51 @@ export function useRestaurantEditor({
         pendingChanges: pendingChangesRef.current,
         snapshot,
       });
+      const stateHash = serializeEditorState(cleanedOverlays, cleanedMenuImages);
 
-      await callbacks.onSaveDraft({
-        overlays: cleanedOverlays,
-        menuImages: cleanedMenuImages,
-        menuImage,
-        changePayload,
-      });
+      if (callbacks?.onApplyPendingSave) {
+        if (!pendingSaveBatchId) {
+          setSaveError("No pending save batch found. Review changes before confirming save.");
+          setSaveStatus("error");
+          return { success: false };
+        }
+
+        if (pendingSaveStateHash && pendingSaveStateHash !== stateHash) {
+          setSaveError("Changes were edited after review. Please re-open save review.");
+          setSaveStatus("error");
+          return { success: false };
+        }
+
+        if (callbacks?.onSaveDraft) {
+          await callbacks.onSaveDraft({
+            overlays: cleanedOverlays,
+            menuImages: cleanedMenuImages,
+            menuImage,
+            changePayload,
+            skipChangeLog: true,
+          });
+        }
+
+        await callbacks.onApplyPendingSave({
+          batchId: pendingSaveBatchId,
+          overlays: cleanedOverlays,
+          menuImages: cleanedMenuImages,
+          menuImage,
+          changePayload,
+          stateHash,
+        });
+      } else {
+        await callbacks.onSaveDraft({
+          overlays: cleanedOverlays,
+          menuImages: cleanedMenuImages,
+          menuImage,
+          changePayload,
+        });
+      }
 
       baselineRef.current = serializeEditorState(cleanedOverlays, cleanedMenuImages);
       setPendingChanges([]);
+      clearPendingSaveBatch();
 
       const snapshotAfterSave = {
         overlays: JSON.parse(JSON.stringify(overlaysRef.current || [])),
@@ -2929,7 +3286,149 @@ export function useRestaurantEditor({
     } finally {
       setIsSaving(false);
     }
-  }, [callbacks, canEdit, clearSaveStatusTimer, restaurant?.id]);
+  }, [
+    callbacks,
+    canEdit,
+    clearPendingSaveBatch,
+    clearSaveStatusTimer,
+    pendingSaveBatchId,
+    pendingSaveStateHash,
+    restaurant?.id,
+  ]);
+
+  const preparePendingSave = useCallback(async () => {
+    if (!canEdit || !restaurant?.id) {
+      setPendingSaveError("You do not have permission to edit this restaurant.");
+      return { success: false };
+    }
+
+    if (!callbacks?.onPreparePendingSave) {
+      setPendingSaveError("Pending-save preparation callback is not configured.");
+      return { success: false };
+    }
+
+    if (pendingSavePreparing) {
+      return {
+        success: Boolean(pendingSaveBatchId),
+        batchId: pendingSaveBatchId,
+        rows: Array.isArray(pendingSaveRows) ? pendingSaveRows : [],
+      };
+    }
+
+    try {
+      const cleanedOverlays = (overlaysRef.current || []).map(stripEditorOverlay);
+      const cleanedMenuImages = (menuImagesRef.current || []).filter(Boolean);
+      const baselineSnapshot = parseSerializedEditorState(baselineRef.current);
+      const baselineOverlays = Array.isArray(baselineSnapshot?.overlays)
+        ? baselineSnapshot.overlays
+        : [];
+
+      const author =
+        asText(callbacks?.getAuthorName?.()) || asText(callbacks?.authorName) || "Manager";
+
+      const snapshot = {
+        overlays: cleanedOverlays,
+        menuImages: cleanedMenuImages,
+      };
+
+      const changePayload = buildDefaultChangeLogPayload({
+        author,
+        pendingChanges: pendingChangesRef.current,
+        snapshot,
+      });
+
+      const stateHash = serializeEditorState(cleanedOverlays, cleanedMenuImages);
+
+      if (pendingSaveBatchId && pendingSaveStateHash === stateHash) {
+        return {
+          success: true,
+          batchId: pendingSaveBatchId,
+          rows: Array.isArray(pendingSaveRows) ? pendingSaveRows : [],
+        };
+      }
+
+      setPendingSavePreparing(true);
+      setPendingSaveError("");
+      setSaveError("");
+
+      const stagedOverlays = cleanedOverlays.map(projectOverlayForPendingSave);
+      const stagedBaselineOverlays = baselineOverlays.map(projectOverlayForPendingSave);
+
+      const result = await callbacks.onPreparePendingSave({
+        overlays: stagedOverlays,
+        baselineOverlays: stagedBaselineOverlays,
+        changePayload,
+        stateHash,
+      });
+
+      const nextBatchId = asText(result?.batchId);
+      if (!nextBatchId) {
+        throw new Error("Failed to stage pending save batch.");
+      }
+
+      setPendingSaveBatchId(nextBatchId);
+      setPendingSaveRows(Array.isArray(result?.rows) ? result.rows : []);
+      setPendingSaveStateHash(asText(result?.stateHash) || stateHash);
+      setPendingSaveError("");
+
+      return {
+        success: true,
+        batchId: nextBatchId,
+        rows: Array.isArray(result?.rows) ? result.rows : [],
+      };
+    } catch (error) {
+      const message = error?.message || "Failed to prepare pending save.";
+      setPendingSaveError(message);
+      setSaveError(message);
+      setSaveStatus("error");
+      return { success: false, error };
+    } finally {
+      setPendingSavePreparing(false);
+    }
+  }, [
+    callbacks,
+    canEdit,
+    pendingSaveBatchId,
+    pendingSavePreparing,
+    pendingSaveRows,
+    pendingSaveStateHash,
+    restaurant?.id,
+  ]);
+
+  useEffect(() => {
+    if (!canEdit) return;
+    if (!callbacks?.onPreparePendingSave) return;
+    if (isSaving || pendingSavePreparing) return;
+
+    const shouldSync = isDirty || Boolean(pendingSaveBatchId);
+    if (!shouldSync) return;
+
+    if (pendingSaveSyncTimerRef.current) {
+      window.clearTimeout(pendingSaveSyncTimerRef.current);
+      pendingSaveSyncTimerRef.current = 0;
+    }
+
+    pendingSaveSyncTimerRef.current = window.setTimeout(() => {
+      pendingSaveSyncTimerRef.current = 0;
+      preparePendingSave();
+    }, 700);
+
+    return () => {
+      if (pendingSaveSyncTimerRef.current) {
+        window.clearTimeout(pendingSaveSyncTimerRef.current);
+        pendingSaveSyncTimerRef.current = 0;
+      }
+    };
+  }, [
+    callbacks?.onPreparePendingSave,
+    canEdit,
+    editorStateSerialized,
+    isDirty,
+    isSaving,
+    pendingSaveBatchId,
+    pendingSavePreparing,
+    preparePendingSave,
+  ]);
 
   const discardUnsavedChanges = useCallback(() => {
     clearSaveStatusTimer();
@@ -2944,12 +3443,13 @@ export function useRestaurantEditor({
     }
 
     setPendingChanges([]);
+    clearPendingSaveBatch();
     setSaveError("");
     setIsSaving(false);
     setSaveStatus("idle");
 
     return { success: true };
-  }, [clearSaveStatusTimer, restoreHistorySnapshot]);
+  }, [clearPendingSaveBatch, clearSaveStatusTimer, restoreHistorySnapshot]);
 
   const confirmInfo = useCallback(async (photos) => {
     if (!callbacks?.onConfirmInfo || !restaurant?.id) {
@@ -3186,7 +3686,16 @@ export function useRestaurantEditor({
       ingredientsBlockingDiets,
     });
 
-    appendPendingChange(`${selectedOverlay.id || "Dish"}: Applied AI ingredient analysis`);
+    const selectedDishName = asText(selectedOverlay.id || selectedOverlay.name || "Dish");
+    const firstIngredientRowName = asText(
+      ingredients.find((ingredient) => asText(ingredient?.name))?.name || "Ingredient row",
+    );
+    appendPendingChange(
+      `${selectedDishName}: ${firstIngredientRowName}: Applied AI ingredient analysis`,
+      {
+        key: `ai-analysis:${normalizeToken(selectedDishName)}:${normalizeToken(firstIngredientRowName)}`,
+      },
+    );
     queueMicrotask(() => pushHistory());
     return { success: true };
   }, [
@@ -3754,6 +4263,11 @@ export function useRestaurantEditor({
     zoomScale,
 
     pendingChanges,
+    pendingSaveBatchId,
+    pendingSaveRows,
+    pendingSaveError,
+    pendingSavePreparing,
+    getBaselineSnapshot,
     isDirty,
     saveError,
     isSaving,
@@ -3762,6 +4276,7 @@ export function useRestaurantEditor({
     canUndo,
     canRedo,
     undo,
+    undoPendingChange,
     redo,
     pushHistory,
 
@@ -3802,6 +4317,8 @@ export function useRestaurantEditor({
     setZoomScale,
 
     save,
+    preparePendingSave,
+    clearPendingSaveBatch,
     discardUnsavedChanges,
     confirmInfo,
     confirmBusy,
@@ -3814,6 +4331,14 @@ export function useRestaurantEditor({
     changeLogError,
     loadChangeLogs,
     restoreFromChangeLog,
+
+    pendingTableOpen,
+    setPendingTableOpen,
+    pendingTableRows,
+    pendingTableBatch,
+    loadingPendingTable,
+    pendingTableError,
+    loadPendingTable,
 
     menuPagesOpen,
     setMenuPagesOpen,

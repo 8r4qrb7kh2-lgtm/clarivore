@@ -1,0 +1,17 @@
+{
+  "title": "Legacy Editor Parity Verification",
+  "runId": "legacy-parity-20260214230841",
+  "baseUrl": "http://127.0.0.1:8081",
+  "slug": "demo-menu",
+  "startedAt": "2026-02-14T23:08:41.075Z",
+  "finishedAt": "2026-02-14T23:08:41.075Z",
+  "checks": [
+    {
+      "name": "Unhandled failure",
+      "status": "failed",
+      "error": "Missing required env vars: QA_MANAGER_EMAIL, QA_MANAGER_PASSWORD"
+    }
+  ],
+  "screenshots": [],
+  "verdict": "FAIL"
+}

@@ -43,6 +43,11 @@ function clamp(value, min, max) {
   return Math.min(Math.max(value, min), max);
 }
 
+function isTruthyFlag(value) {
+  const token = normalizeToken(value);
+  return token === "1" || token === "true" || token === "yes" || token === "on";
+}
+
 function roundCoord(value, digits = 3) {
   const numeric = Number(value);
   if (!Number.isFinite(numeric)) return 0;
@@ -895,6 +900,42 @@ function clampDishToBounds(dish, bounds) {
   return dish;
 }
 
+function enforceContentContainment(dish, bounds) {
+  if (!dish || typeof dish !== "object") return dish;
+  const safeBounds = normalizeBounds(bounds);
+
+  const contentXMinRaw = Number(dish.contentXMin);
+  const contentYMinRaw = Number(dish.contentYMin);
+  const contentXMaxRaw = Number(dish.contentXMax);
+  const contentYMaxRaw = Number(dish.contentYMax);
+
+  if (
+    !Number.isFinite(contentXMinRaw) ||
+    !Number.isFinite(contentYMinRaw) ||
+    !Number.isFinite(contentXMaxRaw) ||
+    !Number.isFinite(contentYMaxRaw)
+  ) {
+    return clampDishToBounds(dish, safeBounds);
+  }
+
+  const contentXMin = clamp(contentXMinRaw, 0, safeBounds.width - 1);
+  const contentYMin = clamp(contentYMinRaw, 0, safeBounds.height - 1);
+  const contentXMax = clamp(contentXMaxRaw, contentXMin + 1, safeBounds.width);
+  const contentYMax = clamp(contentYMaxRaw, contentYMin + 1, safeBounds.height);
+
+  const xMin = Number.isFinite(Number(dish.xMin)) ? Number(dish.xMin) : contentXMin;
+  const yMin = Number.isFinite(Number(dish.yMin)) ? Number(dish.yMin) : contentYMin;
+  const xMax = Number.isFinite(Number(dish.xMax)) ? Number(dish.xMax) : contentXMax;
+  const yMax = Number.isFinite(Number(dish.yMax)) ? Number(dish.yMax) : contentYMax;
+
+  dish.xMin = clamp(Math.min(xMin, contentXMin), 0, safeBounds.width - 1);
+  dish.yMin = clamp(Math.min(yMin, contentYMin), 0, safeBounds.height - 1);
+  dish.xMax = clamp(Math.max(xMax, contentXMax), dish.xMin + 1, safeBounds.width);
+  dish.yMax = clamp(Math.max(yMax, contentYMax), dish.yMin + 1, safeBounds.height);
+
+  return clampDishToBounds(dish, safeBounds);
+}
+
 function enforceUniformPaddingForDish(dish, bounds) {
   if (!dish || typeof dish !== "object") return dish;
 
@@ -952,6 +993,100 @@ function enforceUniformPaddingForDish(dish, bounds) {
   return clampDishToBounds(dish, bounds);
 }
 
+function median(values) {
+  const source = (Array.isArray(values) ? values : [])
+    .map((value) => Number(value))
+    .filter((value) => Number.isFinite(value))
+    .sort((a, b) => a - b);
+  if (!source.length) return null;
+  const mid = Math.floor(source.length / 2);
+  if (source.length % 2 === 1) return source[mid];
+  return (source[mid - 1] + source[mid]) / 2;
+}
+
+function trimDishElementOutliers(elements) {
+  const source = Array.isArray(elements) ? elements.filter(Boolean) : [];
+  if (source.length <= 2) return source;
+
+  let centers = source.map((element) => ({
+    element,
+    centerX: (Number(element.xMin) + Number(element.xMax)) / 2,
+    centerY: (Number(element.yMin) + Number(element.yMax)) / 2,
+  })).filter((entry) => Number.isFinite(entry.centerX) && Number.isFinite(entry.centerY));
+
+  if (centers.length <= 2) {
+    return centers.map((entry) => entry.element);
+  }
+
+  const heights = centers
+    .map((entry) => Math.max(1, Number(entry.element?.yMax) - Number(entry.element?.yMin)))
+    .filter((value) => Number.isFinite(value));
+  const medianHeight = median(heights);
+  const gapThreshold = Number.isFinite(medianHeight)
+    ? Math.max(36, medianHeight * 3.5)
+    : 36;
+
+  const byY = centers.slice().sort((a, b) => a.centerY - b.centerY);
+  let splitIndex = -1;
+  let largestGap = 0;
+  for (let index = 0; index < byY.length - 1; index += 1) {
+    const gap = byY[index + 1].centerY - byY[index].centerY;
+    if (gap > largestGap) {
+      largestGap = gap;
+      splitIndex = index;
+    }
+  }
+
+  if (splitIndex >= 0 && largestGap >= gapThreshold) {
+    const top = byY.slice(0, splitIndex + 1);
+    const bottom = byY.slice(splitIndex + 1);
+
+    let dominant = top;
+    if (bottom.length > top.length) {
+      dominant = bottom;
+    } else if (bottom.length === top.length) {
+      const topSpan = Math.max(0, top[top.length - 1].centerY - top[0].centerY);
+      const bottomSpan = Math.max(0, bottom[bottom.length - 1].centerY - bottom[0].centerY);
+      dominant = topSpan <= bottomSpan ? top : bottom;
+    }
+
+    if (dominant.length >= 2 && dominant.length >= Math.ceil(byY.length * 0.6)) {
+      centers = dominant;
+    }
+  }
+
+  if (centers.length <= 3) {
+    return centers.map((entry) => entry.element);
+  }
+
+  const medianX = median(centers.map((entry) => entry.centerX));
+  const medianY = median(centers.map((entry) => entry.centerY));
+  if (!Number.isFinite(medianX) || !Number.isFinite(medianY)) {
+    return centers.map((entry) => entry.element);
+  }
+
+  const madX = median(centers.map((entry) => Math.abs(entry.centerX - medianX)));
+  const madY = median(centers.map((entry) => Math.abs(entry.centerY - medianY)));
+  if (!Number.isFinite(madX) || !Number.isFinite(madY) || madX <= 0 || madY <= 0) {
+    return centers.map((entry) => entry.element);
+  }
+
+  const kept = centers
+    .filter((entry) => {
+      const scoreX = (0.6745 * Math.abs(entry.centerX - medianX)) / madX;
+      const scoreY = (0.6745 * Math.abs(entry.centerY - medianY)) / madY;
+      return scoreX <= 4 && scoreY <= 4;
+    })
+    .map((entry) => entry.element);
+
+  // If trimming is too aggressive, keep original set to avoid false drops.
+  if (kept.length < 2 || kept.length < Math.ceil(source.length * 0.4)) {
+    return source;
+  }
+
+  return kept;
+}
+
 function buildDetectedDishes(dishData, elements, padding, bounds) {
   const safeBounds = normalizeBounds(bounds);
   const safePadding = Number.isFinite(Number(padding)) ? Math.max(0, Number(padding)) : 0;
@@ -969,10 +1104,13 @@ function buildDetectedDishes(dishData, elements, padding, bounds) {
     const selected = elementIds.map((id) => elementsById.get(id)).filter(Boolean);
     if (!selected.length) return;
 
-    const contentXMin = clamp(Math.min(...selected.map((element) => element.xMin)), 0, safeBounds.width - 1);
-    const contentYMin = clamp(Math.min(...selected.map((element) => element.yMin)), 0, safeBounds.height - 1);
-    const contentXMax = clamp(Math.max(...selected.map((element) => element.xMax)), contentXMin + 1, safeBounds.width);
-    const contentYMax = clamp(Math.max(...selected.map((element) => element.yMax)), contentYMin + 1, safeBounds.height);
+    const coreSelected = trimDishElementOutliers(selected);
+    const boundsSource = coreSelected.length ? coreSelected : selected;
+
+    const contentXMin = clamp(Math.min(...boundsSource.map((element) => element.xMin)), 0, safeBounds.width - 1);
+    const contentYMin = clamp(Math.min(...boundsSource.map((element) => element.yMin)), 0, safeBounds.height - 1);
+    const contentXMax = clamp(Math.max(...boundsSource.map((element) => element.xMax)), contentXMin + 1, safeBounds.width);
+    const contentYMax = clamp(Math.max(...boundsSource.map((element) => element.yMax)), contentYMin + 1, safeBounds.height);
 
     const xMin = Math.max(0, contentXMin - safePadding);
     const yMin = Math.max(0, contentYMin - safePadding);
@@ -996,7 +1134,7 @@ function buildDetectedDishes(dishData, elements, padding, bounds) {
       name,
       description: asText(dish?.description),
       prices: asText(dish?.prices),
-      elementIds,
+      elementIds: boundsSource.map((element) => element.id),
       xMin,
       yMin,
       xMax,
@@ -1039,11 +1177,36 @@ function resolveOverlaps(dishes, bounds) {
         const second = sorted[j];
         if (!boxesOverlap(first, second)) continue;
 
-        foundOverlap = true;
         const xOverlap = Math.min(first.xMax, second.xMax) - Math.max(first.xMin, second.xMin);
         const yOverlap = Math.min(first.yMax, second.yMax) - Math.max(first.yMin, second.yMin);
 
-        if (yOverlap > xOverlap) {
+        const snapshot = {
+          first: {
+            xMin: first.xMin,
+            yMin: first.yMin,
+            xMax: first.xMax,
+            yMax: first.yMax,
+          },
+          second: {
+            xMin: second.xMin,
+            yMin: second.yMin,
+            xMax: second.xMax,
+            yMax: second.yMax,
+          },
+        };
+
+        const restore = () => {
+          first.xMin = snapshot.first.xMin;
+          first.yMin = snapshot.first.yMin;
+          first.xMax = snapshot.first.xMax;
+          first.yMax = snapshot.first.yMax;
+          second.xMin = snapshot.second.xMin;
+          second.yMin = snapshot.second.yMin;
+          second.xMax = snapshot.second.xMax;
+          second.yMax = snapshot.second.yMax;
+        };
+
+        const splitOnX = () => {
           const midpoint = Math.floor((Math.min(first.xMax, second.xMax) + Math.max(first.xMin, second.xMin)) / 2);
           if (first.xMin <= second.xMin) {
             first.xMax = Math.max(first.xMin + 1, midpoint - 1);
@@ -1052,7 +1215,9 @@ function resolveOverlaps(dishes, bounds) {
             second.xMax = Math.max(second.xMin + 1, midpoint - 1);
             first.xMin = Math.min(first.xMax - 1, midpoint + 1);
           }
-        } else {
+        };
+
+        const splitOnY = () => {
           const midpoint = Math.floor((Math.min(first.yMax, second.yMax) + Math.max(first.yMin, second.yMin)) / 2);
           if (first.yMin <= second.yMin) {
             first.yMax = Math.max(first.yMin + 1, midpoint - 1);
@@ -1061,9 +1226,106 @@ function resolveOverlaps(dishes, bounds) {
             second.yMax = Math.max(second.yMin + 1, midpoint - 1);
             first.yMin = Math.min(first.yMax - 1, midpoint + 1);
           }
-        }
+        };
 
-        break;
+        const contentCoverageRatio = (dish, axis) => {
+          if (axis === "x") {
+            const cMin = Number(dish.contentXMin);
+            const cMax = Number(dish.contentXMax);
+            if (!Number.isFinite(cMin) || !Number.isFinite(cMax) || cMax <= cMin) return 1;
+            const kept = Math.max(0, Math.min(Number(dish.xMax), cMax) - Math.max(Number(dish.xMin), cMin));
+            return kept / (cMax - cMin);
+          }
+
+          const cMin = Number(dish.contentYMin);
+          const cMax = Number(dish.contentYMax);
+          if (!Number.isFinite(cMin) || !Number.isFinite(cMax) || cMax <= cMin) return 1;
+          const kept = Math.max(0, Math.min(Number(dish.yMax), cMax) - Math.max(Number(dish.yMin), cMin));
+          return kept / (cMax - cMin);
+        };
+
+        const trySplitStrict = (axis) => {
+          if (axis === "x") {
+            splitOnX();
+          } else {
+            splitOnY();
+          }
+
+          enforceContentContainment(first, safeBounds);
+          enforceContentContainment(second, safeBounds);
+          clampDishToBounds(first, safeBounds);
+          clampDishToBounds(second, safeBounds);
+
+          if (boxesOverlap(first, second)) {
+            restore();
+            return false;
+          }
+
+          return true;
+        };
+
+        const trySplitGuarded = (axis) => {
+          if (axis === "x") {
+            splitOnX();
+          } else {
+            splitOnY();
+          }
+
+          clampDishToBounds(first, safeBounds);
+          clampDishToBounds(second, safeBounds);
+
+          if (boxesOverlap(first, second)) {
+            restore();
+            return false;
+          }
+
+          const firstBeforeWidth = snapshot.first.xMax - snapshot.first.xMin;
+          const firstBeforeHeight = snapshot.first.yMax - snapshot.first.yMin;
+          const secondBeforeWidth = snapshot.second.xMax - snapshot.second.xMin;
+          const secondBeforeHeight = snapshot.second.yMax - snapshot.second.yMin;
+
+          const firstAfterWidth = Number(first.xMax) - Number(first.xMin);
+          const firstAfterHeight = Number(first.yMax) - Number(first.yMin);
+          const secondAfterWidth = Number(second.xMax) - Number(second.xMin);
+          const secondAfterHeight = Number(second.yMax) - Number(second.yMin);
+
+          const minFirstSpan = axis === "x"
+            ? Math.max(8, firstBeforeWidth * 0.28)
+            : Math.max(8, firstBeforeHeight * 0.28);
+          const minSecondSpan = axis === "x"
+            ? Math.max(8, secondBeforeWidth * 0.28)
+            : Math.max(8, secondBeforeHeight * 0.28);
+          const firstAfterSpan = axis === "x" ? firstAfterWidth : firstAfterHeight;
+          const secondAfterSpan = axis === "x" ? secondAfterWidth : secondAfterHeight;
+
+          const firstCoverage = contentCoverageRatio(first, axis);
+          const secondCoverage = contentCoverageRatio(second, axis);
+
+          if (
+            firstAfterSpan < minFirstSpan ||
+            secondAfterSpan < minSecondSpan ||
+            firstCoverage < 0.65 ||
+            secondCoverage < 0.65
+          ) {
+            restore();
+            return false;
+          }
+
+          return true;
+        };
+
+        const preferredAxis = yOverlap > xOverlap ? "x" : "y";
+        const alternateAxis = preferredAxis === "x" ? "y" : "x";
+
+        if (
+          trySplitStrict(preferredAxis) ||
+          trySplitStrict(alternateAxis) ||
+          trySplitGuarded(preferredAxis) ||
+          trySplitGuarded(alternateAxis)
+        ) {
+          foundOverlap = true;
+          break;
+        }
       }
 
       if (foundOverlap) break;
@@ -1436,7 +1698,13 @@ export async function analyzeMenuImageWithLocalEngine({ body, env = process.env 
   const model = asText(body?.model) || readFirstEnv(env, ["ANTHROPIC_MODEL"]) || DEFAULT_ANTHROPIC_MODEL;
   const mode = normalizeToken(body?.mode) === "remap" ? "remap" : "detect";
 
-  const fixtureReplay = await resolveFixtureReplay(body, mode);
+  const fixtureReplayEnabled =
+    isTruthyFlag(readFirstEnv(env, ["MENU_ANALYSIS_FIXTURE_REPLAY"])) ||
+    normalizeToken(env?.NODE_ENV) === "test";
+
+  const fixtureReplay = fixtureReplayEnabled
+    ? await resolveFixtureReplay(body, mode)
+    : null;
   if (fixtureReplay) {
     if (process.env.NODE_ENV !== "production") {
       console.debug("[menu-image-analysis] next-legacy-reposition", {

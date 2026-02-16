@@ -151,3 +151,78 @@ test("resolveOverlaps keeps dishes non-overlapping after symmetric normalization
   assert.equal(boxesOverlap(resolved[0], resolved[1]), false);
   resolved.forEach((dish) => assertUniformPads(dish));
 });
+
+test("buildDetectedDishes trims single vertical outlier in small groups", () => {
+  const dishData = [
+    {
+      name: "Fettuccine Alfredo",
+      element_ids: [1, 2, 3],
+    },
+  ];
+
+  const elements = [
+    { id: 1, text: "Fettuccine", xMin: 120, yMin: 220, xMax: 250, yMax: 242 },
+    { id: 2, text: "$15", xMin: 255, yMin: 222, xMax: 300, yMax: 245 },
+    { id: 3, text: "Stray", xMin: 128, yMin: 730, xMax: 188, yMax: 752 },
+  ];
+
+  const [dish] = __test.buildDetectedDishes(dishData, elements, 8, {
+    width: 1000,
+    height: 1000,
+  });
+
+  assert.ok(dish);
+  assert.equal(dish.elementIds.length, 2);
+  assert.ok(dish.contentYMax <= 250);
+  assert.ok(dish.yMax - dish.yMin <= 60);
+});
+
+test("resolveOverlaps keeps most content when forced to split overlaps", () => {
+  const dishes = [
+    {
+      name: "Dish One",
+      contentXMin: 100,
+      contentYMin: 100,
+      contentXMax: 180,
+      contentYMax: 180,
+      xMin: 90,
+      yMin: 90,
+      xMax: 210,
+      yMax: 210,
+    },
+    {
+      name: "Dish Two",
+      contentXMin: 150,
+      contentYMin: 100,
+      contentXMax: 230,
+      contentYMax: 180,
+      xMin: 140,
+      yMin: 90,
+      xMax: 260,
+      yMax: 210,
+    },
+  ];
+
+  const resolved = __test.resolveOverlaps(dishes, { width: 1000, height: 1000 });
+
+  const coverageRatio = (dish, axis) => {
+    if (axis === "x") {
+      const cMin = Number(dish.contentXMin);
+      const cMax = Number(dish.contentXMax);
+      const kept = Math.max(0, Math.min(Number(dish.xMax), cMax) - Math.max(Number(dish.xMin), cMin));
+      return kept / (cMax - cMin);
+    }
+
+    const cMin = Number(dish.contentYMin);
+    const cMax = Number(dish.contentYMax);
+    const kept = Math.max(0, Math.min(Number(dish.yMax), cMax) - Math.max(Number(dish.yMin), cMin));
+    return kept / (cMax - cMin);
+  };
+
+  resolved.forEach((dish) => {
+    assert.ok(coverageRatio(dish, "x") >= 0.65);
+    assert.ok(coverageRatio(dish, "y") >= 0.65);
+    assert.ok(Number(dish.xMax) - Number(dish.xMin) >= 8);
+    assert.ok(Number(dish.yMax) - Number(dish.yMin) >= 8);
+  });
+});

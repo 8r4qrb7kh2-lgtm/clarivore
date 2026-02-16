@@ -53,6 +53,33 @@ export function resolveMostVisiblePageIndex(scrollNode, pageNodes, fallbackIndex
     return 0;
   }
 
+  if (typeof scrollNode.getBoundingClientRect === "function") {
+    const scrollRect = scrollNode.getBoundingClientRect();
+    const topEdge = scrollRect.top + 8;
+
+    for (let index = 0; index < nodes.length; index += 1) {
+      const node = nodes[index];
+      if (!node || typeof node.getBoundingClientRect !== "function") continue;
+      const rect = node.getBoundingClientRect();
+      const rectHeight = Math.max(Number(rect.height) || 0, 0);
+      if (rectHeight <= 0) continue;
+      if (topEdge >= rect.top && topEdge < rect.bottom) {
+        return index;
+      }
+    }
+  }
+
+  const topMarker = topScroll + 1;
+  for (let index = 0; index < nodes.length; index += 1) {
+    const node = nodes[index];
+    if (!node) continue;
+    const pageTop = Number(node.offsetTop) || 0;
+    const pageBottom = pageTop + Math.max(Number(node.offsetHeight) || 0, 1);
+    if (topMarker >= pageTop && topMarker < pageBottom) {
+      return index;
+    }
+  }
+
   let bestIndex = clamp(Number(fallbackIndex) || 0, 0, Math.max(nodes.length - 1, 0));
   let bestVisibleHeight = -1;
 
