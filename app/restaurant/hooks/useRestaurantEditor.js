@@ -458,27 +458,6 @@ function stripEditorOverlay(overlay) {
   return next;
 }
 
-function projectOverlayForPendingSave(overlay) {
-  const next = stripEditorOverlay(overlay);
-  const ingredients = Array.isArray(next?.ingredients) ? next.ingredients : [];
-
-  return {
-    id: asText(next.id || next.name || "Dish"),
-    name: asText(next.name || next.id || "Dish"),
-    ingredients: ingredients.map((ingredient, index) => ({
-      rowIndex: index,
-      name: asText(ingredient?.name) || `Ingredient ${index + 1}`,
-      allergens: dedupeTokenList(ingredient?.allergens),
-      crossContaminationAllergens: dedupeTokenList(
-        ingredient?.crossContaminationAllergens,
-      ),
-      diets: dedupeTokenList(ingredient?.diets),
-      crossContaminationDiets: dedupeTokenList(ingredient?.crossContaminationDiets),
-      removable: Boolean(ingredient?.removable),
-    })),
-  };
-}
-
 function serializeEditorState(overlays, menuImages) {
   return JSON.stringify({
     overlays: (Array.isArray(overlays) ? overlays : []).map(stripEditorOverlay),
@@ -3231,16 +3210,6 @@ export function useRestaurantEditor({
           return { success: false };
         }
 
-        if (callbacks?.onSaveDraft) {
-          await callbacks.onSaveDraft({
-            overlays: cleanedOverlays,
-            menuImages: cleanedMenuImages,
-            menuImage,
-            changePayload,
-            skipChangeLog: true,
-          });
-        }
-
         await callbacks.onApplyPendingSave({
           batchId: pendingSaveBatchId,
           overlays: cleanedOverlays,
@@ -3351,12 +3320,11 @@ export function useRestaurantEditor({
       setPendingSaveError("");
       setSaveError("");
 
-      const stagedOverlays = cleanedOverlays.map(projectOverlayForPendingSave);
-      const stagedBaselineOverlays = baselineOverlays.map(projectOverlayForPendingSave);
-
       const result = await callbacks.onPreparePendingSave({
-        overlays: stagedOverlays,
-        baselineOverlays: stagedBaselineOverlays,
+        overlays: cleanedOverlays,
+        baselineOverlays,
+        menuImage: cleanedMenuImages[0] || "",
+        menuImages: cleanedMenuImages,
         changePayload,
         stateHash,
       });

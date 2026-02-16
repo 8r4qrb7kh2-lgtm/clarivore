@@ -29,6 +29,19 @@ function parseBatchChangePayload(batch) {
   return {};
 }
 
+function parseJsonArray(value, fallback = []) {
+  if (Array.isArray(value)) return value;
+  if (typeof value === "string") {
+    try {
+      const parsed = JSON.parse(value);
+      return Array.isArray(parsed) ? parsed : fallback;
+    } catch {
+      return fallback;
+    }
+  }
+  return fallback;
+}
+
 function buildIngredientRowsFromOverlays(overlays) {
   const output = [];
 
@@ -82,6 +95,7 @@ export async function POST(request) {
 
   const restaurantId = asText(body?.restaurantId);
   const batchId = asText(body?.batchId);
+  const expectedStateHash = asText(body?.stateHash);
 
   if (!restaurantId || !batchId) {
     return NextResponse.json(
@@ -115,12 +129,31 @@ export async function POST(request) {
         throw new Error("Pending save batch not found or already applied.");
       }
 
+      const batchStateHash = asText(batch?.state_hash);
+      if (expectedStateHash && batchStateHash && expectedStateHash !== batchStateHash) {
+        throw new Error("Pending save batch is stale. Re-open save review.");
+      }
+
       const changePayload = toJsonSafe(parseBatchChangePayload(batch), {});
-      const restaurant = await tx.restaurants.findUnique({
+      const stagedOverlays = toJsonSafe(parseJsonArray(batch?.staged_overlays, []), []);
+      const stagedMenuImages = parseJsonArray(batch?.staged_menu_images, [])
+        .map((value) => asText(value))
+        .filter(Boolean);
+      const stagedMenuImage =
+        asText(batch?.staged_menu_image) || stagedMenuImages[0] || "";
+
+      if (!stagedMenuImages.length && stagedMenuImage) {
+        stagedMenuImages.push(stagedMenuImage);
+      }
+
+      await tx.restaurants.update({
         where: { id: restaurantId },
-        select: { overlays: true },
+        data: {
+          overlays: stagedOverlays,
+          menu_image: stagedMenuImage || null,
+          menu_images: toJsonSafe(stagedMenuImages, []),
+        },
       });
-      const overlays = Array.isArray(restaurant?.overlays) ? restaurant.overlays : [];
 
       await tx.dish_ingredient_rows.deleteMany({
         where: {
@@ -142,7 +175,7 @@ export async function POST(request) {
       const dietIdByToken = buildTokenMap(dietRows, (item) => item.label);
       const supportedDietLabels = dietRows.map((row) => row.label);
 
-      const ingredientRows = buildIngredientRowsFromOverlays(overlays);
+      const ingredientRows = buildIngredientRowsFromOverlays(stagedOverlays);
       if (ingredientRows.length) {
         await tx.dish_ingredient_rows.createMany({
           data: ingredientRows.map((row) => ({
@@ -259,13 +292,13 @@ export async function POST(request) {
 
       await tx.change_logs.create({
         data: {
-        restaurant_id: restaurantId,
-        type: "update",
-        description: asText(batch?.author) || "Manager",
-        changes: JSON.stringify(changePayload),
-        user_email: userEmail || null,
-        photos: [],
-        timestamp: new Date(),
+          restaurant_id: restaurantId,
+          type: "update",
+          description: asText(batch?.author) || "Manager",
+          changes: JSON.stringify(changePayload),
+          user_email: userEmail || null,
+          photos: [],
+          timestamp: new Date(),
         },
       });
 
@@ -279,6 +312,7 @@ export async function POST(request) {
       );
 
       return {
+        overlays: Array.isArray(stagedOverlays) ? stagedOverlays.length : 0,
         rows: ingredientRows.length,
         allergens: allergenEntries.length,
         diets: dietEntries.length,
@@ -299,6 +333,8 @@ export async function POST(request) {
           : message === "Not authorized"
             ? 403
             : message === "Pending save batch not found or already applied."
+              ? 409
+              : message === "Pending save batch is stale. Re-open save review."
               ? 409
               : 500;
 

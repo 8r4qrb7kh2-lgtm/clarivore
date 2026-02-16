@@ -697,6 +697,8 @@ export default function RestaurantClient() {
       onPreparePendingSave: async ({
         overlays: nextOverlays,
         baselineOverlays,
+        menuImage,
+        menuImages,
         changePayload,
         stateHash,
       }) => {
@@ -721,6 +723,8 @@ export default function RestaurantClient() {
             restaurantId: boot.restaurant.id,
             overlays: Array.isArray(nextOverlays) ? nextOverlays : [],
             baselineOverlays: Array.isArray(baselineOverlays) ? baselineOverlays : [],
+            menuImage: String(menuImage || ""),
+            menuImages: Array.isArray(menuImages) ? menuImages.filter(Boolean) : [],
             changePayload,
             stateHash,
             author: editorAuthorName,
@@ -734,7 +738,12 @@ export default function RestaurantClient() {
 
         return payload;
       },
-      onApplyPendingSave: async ({ batchId, menuImage, overlays: nextOverlays }) => {
+      onApplyPendingSave: async ({
+        batchId,
+        stateHash,
+        menuImage,
+        overlays: nextOverlays,
+      }) => {
         if (!supabase) throw new Error("Supabase is not configured.");
         if (!boot?.restaurant?.id) throw new Error("Restaurant missing.");
 
@@ -755,6 +764,7 @@ export default function RestaurantClient() {
           body: JSON.stringify({
             restaurantId: boot.restaurant.id,
             batchId,
+            stateHash,
           }),
         });
 
