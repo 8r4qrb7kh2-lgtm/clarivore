@@ -3069,119 +3069,6 @@ function PendingTableModal({ editor }) {
   );
 }
 
-function PendingTableDock({ editor }) {
-  const [collapsed, setCollapsed] = useState(false);
-  const fallbackRows = useMemo(
-    () => buildPendingBatchSummaryRows(editor.pendingTableBatch),
-    [editor.pendingTableBatch],
-  );
-  const hasPendingRows = Array.isArray(editor.pendingTableRows) && editor.pendingTableRows.length > 0;
-  const tableRows = hasPendingRows ? editor.pendingTableRows : fallbackRows;
-  const usingSummaryRows = !hasPendingRows && fallbackRows.length > 0;
-
-  useEffect(() => {
-    if (typeof editor?.loadPendingTable !== "function") return undefined;
-    editor.loadPendingTable();
-
-    const timer = window.setInterval(() => {
-      editor.loadPendingTable();
-    }, 4000);
-
-    return () => {
-      window.clearInterval(timer);
-    };
-  }, [editor?.loadPendingTable]);
-
-  return (
-    <div className="mt-2 rounded-xl border border-[#2a3261] bg-[rgba(17,22,48,0.75)] p-3">
-      <div className="flex items-center justify-between gap-2">
-        <div>
-          <div className="text-sm font-semibold text-[#e3ebff]">Pending changes (live)</div>
-          <div className="text-xs text-[#a9b6db]">
-            {editor.pendingTableBatch
-              ? `batch ${editor.pendingTableBatch.id || "-"} · rows ${Number(editor.pendingTableBatch.row_count) || 0}`
-              : "No pending batch"}
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          {editor.loadingPendingTable ? (
-            <span className="text-xs text-[#9fb0dd]">Refreshing…</span>
-          ) : null}
-          <Button
-            size="compact"
-            variant="outline"
-            loading={editor.loadingPendingTable}
-            onClick={() => editor.loadPendingTable()}
-          >
-            Refresh
-          </Button>
-          <Button
-            size="compact"
-            variant="outline"
-            onClick={() => setCollapsed((value) => !value)}
-          >
-            {collapsed ? "Expand" : "Collapse"}
-          </Button>
-          <Button
-            size="compact"
-            variant="outline"
-            onClick={() => editor.setPendingTableOpen(true)}
-          >
-            Open modal
-          </Button>
-        </div>
-      </div>
-
-      {!collapsed ? (
-        <div className="mt-2">
-          {editor.pendingTableError ? (
-            <p className="m-0 rounded-lg border border-[#a12525] bg-[rgba(139,29,29,0.32)] px-3 py-2 text-sm text-[#ffd0d0]">
-              {editor.pendingTableError}
-            </p>
-          ) : !tableRows.length ? (
-            <p className="note m-0 text-sm">
-              No pending rows yet. Rows appear for staged ingredient-row field changes.
-            </p>
-          ) : (
-            <>
-              {usingSummaryRows ? (
-                <p className="note m-0 text-xs">
-                  Showing staged summary rows from `change_payload`.
-                </p>
-              ) : null}
-              <div className="max-h-[220px] overflow-auto rounded-lg border border-[#2a3261] bg-[rgba(10,18,50,0.72)]">
-                <table className="w-full border-collapse text-left text-xs text-[#d7e0fb]">
-                  <thead>
-                    <tr className="border-b border-[#2a3261] text-[#aebce4]">
-                      <th className="px-2 py-1">order</th>
-                      <th className="px-2 py-1">dish</th>
-                      <th className="px-2 py-1">ingredient</th>
-                      <th className="px-2 py-1">summary</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {tableRows.slice(0, 50).map((row, index) => (
-                      <tr
-                        key={row.id || `${row.sort_order || index}-${row.summary}`}
-                        className="border-b border-[rgba(42,50,97,0.45)] align-top"
-                      >
-                        <td className="px-2 py-1">{Number.isFinite(Number(row.sort_order)) ? Number(row.sort_order) : index}</td>
-                        <td className="px-2 py-1">{row.dish_name || "-"}</td>
-                        <td className="px-2 py-1">{row.ingredient_name || "-"}</td>
-                        <td className="px-2 py-1 whitespace-pre-wrap">{row.summary || "-"}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </>
-          )}
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
 function SaveReviewModal({ editor, open, onOpenChange, onConfirmSave }) {
   const [expandedRows, setExpandedRows] = useState({});
   const changes = useMemo(
@@ -4829,7 +4716,6 @@ export function RestaurantEditor({ editor, onNavigate, runtimeConfigHealth }) {
                 </p>
               ) : null}
 
-              <PendingTableDock editor={editor} />
             </div>
           </div>
 
