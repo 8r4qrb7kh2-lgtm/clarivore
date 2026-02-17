@@ -1102,14 +1102,21 @@ async function runCleanup() {
     `);
   }
 
+  const hasManagerRestaurantAccessTable =
+    (await psqlScalar(
+      "SELECT to_regclass('public.manager_restaurant_access') IS NOT NULL;",
+    )) === "t";
+
   if (restaurantId && managerUserId) {
     const managerUserIdLiteral = sqlLiteral(managerUserId);
 
-    await psqlExec(`
-      DELETE FROM public.manager_restaurant_access
-      WHERE restaurant_id = ${restaurantIdLiteral}
-        AND user_id = ${managerUserIdLiteral};
-    `);
+    if (hasManagerRestaurantAccessTable) {
+      await psqlExec(`
+        DELETE FROM public.manager_restaurant_access
+        WHERE restaurant_id = ${restaurantIdLiteral}
+          AND user_id = ${managerUserIdLiteral};
+      `);
+    }
 
     await psqlExec(`
       DELETE FROM public.restaurant_managers
@@ -1139,6 +1146,10 @@ async function validateNoResidue() {
   const restaurantIdLiteral = state.createdRestaurant?.id
     ? sqlLiteral(state.createdRestaurant.id)
     : null;
+  const hasManagerRestaurantAccessTable =
+    (await psqlScalar(
+      "SELECT to_regclass('public.manager_restaurant_access') IS NOT NULL;",
+    )) === "t";
 
   const scopedManagerResidueSql = restaurantIdLiteral
     ? `
@@ -1152,10 +1163,16 @@ async function validateNoResidue() {
       FROM public.restaurant_managers
       WHERE restaurant_id = ${restaurantIdLiteral}
 
+      ${
+        hasManagerRestaurantAccessTable
+          ? `
       UNION ALL
       SELECT 'manager_restaurant_access' AS bucket, COUNT(*)::bigint AS count
       FROM public.manager_restaurant_access
       WHERE restaurant_id = ${restaurantIdLiteral}
+      `
+          : ""
+      }
     `
     : "";
 
