@@ -76,9 +76,10 @@ Behavior:
 - Trigger on `public.restaurants` for `INSERT/UPDATE/DELETE`
 - Rejects write unless `current_setting('app.restaurant_write_context', true) = 'gateway'`
 
-Note:
+Status:
 
-- As of this review, this is present in repo and activates when migrations are applied in deployment.
+- Applied in target environment (`fgoiyycctnwnghrvsilt`) on 2026-02-17.
+- Trigger/function are active and direct `public.restaurants` writes without gateway context now fail with the expected `42501` error.
 
 ### 5) Monitoring flow moved to Next + gateway
 
@@ -254,9 +255,8 @@ flowchart LR
 
 ## Remaining Release-Gate Checklist
 
-1. Apply pending DB migrations in deployment environment (includes restaurant trigger enforcement).
-2. Run `npm run verify:next-transition` in QA with full required env vars.
-3. Smoke test:
+1. Run `npm run verify:next-transition` in QA with full required env vars.
+2. Smoke test:
    - `/api/ai-proxy` returns `404`.
    - Manager/admin restaurant edits succeed through stage/commit.
    - Monitoring stat updates succeed through `/api/monitor-menus` + `/api/restaurant-write/system` and do not bump `write_version`.

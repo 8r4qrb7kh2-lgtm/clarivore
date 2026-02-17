@@ -1,0 +1,323 @@
+{
+  "title": "Next Transition Verification",
+  "stages": [
+    {
+      "name": "Environment Validation",
+      "startedAt": "2026-02-17T22:09:20.255Z",
+      "status": "passed",
+      "details": [],
+      "finishedAt": "2026-02-17T22:09:20.285Z"
+    },
+    {
+      "name": "Structural Migration Checks",
+      "startedAt": "2026-02-17T22:09:20.285Z",
+      "status": "passed",
+      "details": [],
+      "finishedAt": "2026-02-17T22:09:20.429Z"
+    },
+    {
+      "name": "Build + Preview Smoke",
+      "startedAt": "2026-02-17T22:09:20.429Z",
+      "status": "passed",
+      "details": [],
+      "finishedAt": "2026-02-17T22:09:27.930Z"
+    },
+    {
+      "name": "Authenticated Browser E2E",
+      "startedAt": "2026-02-17T22:09:27.930Z",
+      "status": "passed",
+      "details": [],
+      "finishedAt": "2026-02-17T22:10:12.870Z"
+    },
+    {
+      "name": "Deterministic Cleanup",
+      "startedAt": "2026-02-17T22:10:12.889Z",
+      "status": "passed",
+      "details": [],
+      "finishedAt": "2026-02-17T22:10:15.646Z"
+    },
+    {
+      "name": "Capacitor Copy Verification",
+      "startedAt": "2026-02-17T22:10:15.646Z",
+      "status": "passed",
+      "details": [],
+      "finishedAt": "2026-02-17T22:10:22.115Z"
+    },
+    {
+      "name": "Git Delta Guard",
+      "startedAt": "2026-02-17T22:10:22.115Z",
+      "status": "passed",
+      "details": [],
+      "finishedAt": "2026-02-17T22:10:22.129Z"
+    }
+  ],
+  "summary": {
+    "environment": {
+      "targetEnv": "staging",
+      "baseUrl": "http://127.0.0.1:8081",
+      "worktreeRoot": "/Users/mattdavis/.cursor/worktrees/clarivore-main/9J1NT"
+    },
+    "baselineGitPathCount": 6,
+    "residue": [
+      {
+        "bucket": "restaurants",
+        "count": 0
+      },
+      {
+        "bucket": "restaurant_direct_messages",
+        "count": 0
+      },
+      {
+        "bucket": "tablet_orders",
+        "count": 0
+      },
+      {
+        "bucket": "manager_invites",
+        "count": 0
+      },
+      {
+        "bucket": "user_loved_dishes",
+        "count": 0
+      },
+      {
+        "bucket": "restaurant_direct_message_reads",
+        "count": 0
+      },
+      {
+        "bucket": "restaurant_managers",
+        "count": 0
+      },
+      {
+        "bucket": "manager_restaurant_access",
+        "count": 0
+      }
+    ],
+    "gitDelta": {
+      "baselinePathCount": 6,
+      "introducedPathCount": 0,
+      "introduced": [],
+      "unexpected": []
+    },
+    "runId": "next-transition-20260217220920",
+    "baseUrl": "http://127.0.0.1:8081",
+    "verdict": "PASS",
+    "finishedAt": "2026-02-17T22:10:22.129Z",
+    "generatedAt": "2026-02-17T22:10:22.129Z",
+    "restaurant": {
+      "id": "a97b83b8-c78f-4d39-8366-c2438bc6f6ca",
+      "slug": "next-transition-qa-next-transition-20260217220920",
+      "name": "Next Transition QA next-transition-20260217220920",
+      "initialOverlaysJson": "[]"
+    },
+    "inviteTokenCaptured": true,
+    "checks": {
+      "routeChecks": [
+        {
+          "route": "/",
+          "status": 200,
+          "bytes": 6548
+        },
+        {
+          "route": "/home/",
+          "status": 200,
+          "bytes": 7683
+        },
+        {
+          "route": "/restaurants/",
+          "status": 200,
+          "bytes": 7943
+        },
+        {
+          "route": "/favorites/",
+          "status": 200,
+          "bytes": 7732
+        },
+        {
+          "route": "/dish-search/",
+          "status": 200,
+          "bytes": 7754
+        },
+        {
+          "route": "/restaurant/",
+          "status": 200,
+          "bytes": 8428
+        },
+        {
+          "route": "/account/",
+          "status": 200,
+          "bytes": 7759
+        },
+        {
+          "route": "/my-dishes/",
+          "status": 200,
+          "bytes": 9777
+        },
+        {
+          "route": "/help-contact/",
+          "status": 200,
+          "bytes": 11190
+        },
+        {
+          "route": "/report-issue/",
+          "status": 200,
+          "bytes": 11150
+        },
+        {
+          "route": "/order-feedback/",
+          "status": 200,
+          "bytes": 8109
+        },
+        {
+          "route": "/manager-dashboard/",
+          "status": 200,
+          "bytes": 8148
+        },
+        {
+          "route": "/admin-dashboard/",
+          "status": 200,
+          "bytes": 7770
+        },
+        {
+          "route": "/kitchen-tablet/",
+          "status": 200,
+          "bytes": 18634
+        },
+        {
+          "route": "/server-tablet/",
+          "status": 200,
+          "bytes": 21126
+        }
+      ],
+      "legacyChecks": [
+        {
+          "legacyPath": "/index.html",
+          "firstStatus": 308,
+          "location": "/",
+          "finalStatus": 200,
+          "expectedDestination": "/"
+        },
+        {
+          "legacyPath": "/home.html",
+          "firstStatus": 308,
+          "location": "/home/",
+          "finalStatus": 200,
+          "expectedDestination": "/home/"
+        },
+        {
+          "legacyPath": "/restaurants.html",
+          "firstStatus": 308,
+          "location": "/restaurants/",
+          "finalStatus": 200,
+          "expectedDestination": "/restaurants/"
+        },
+        {
+          "legacyPath": "/favorites.html",
+          "firstStatus": 308,
+          "location": "/favorites/",
+          "finalStatus": 200,
+          "expectedDestination": "/favorites/"
+        },
+        {
+          "legacyPath": "/dish-search.html",
+          "firstStatus": 308,
+          "location": "/dish-search/",
+          "finalStatus": 200,
+          "expectedDestination": "/dish-search/"
+        },
+        {
+          "legacyPath": "/restaurant.html",
+          "firstStatus": 308,
+          "location": "/restaurant/",
+          "finalStatus": 200,
+          "expectedDestination": "/restaurant/"
+        },
+        {
+          "legacyPath": "/account.html",
+          "firstStatus": 308,
+          "location": "/account/",
+          "finalStatus": 200,
+          "expectedDestination": "/account/"
+        },
+        {
+          "legacyPath": "/my-dishes.html",
+          "firstStatus": 308,
+          "location": "/my-dishes/",
+          "finalStatus": 200,
+          "expectedDestination": "/my-dishes/"
+        },
+        {
+          "legacyPath": "/help-contact.html",
+          "firstStatus": 308,
+          "location": "/help-contact/",
+          "finalStatus": 200,
+          "expectedDestination": "/help-contact/"
+        },
+        {
+          "legacyPath": "/report-issue.html",
+          "firstStatus": 308,
+          "location": "/report-issue/",
+          "finalStatus": 200,
+          "expectedDestination": "/report-issue/"
+        },
+        {
+          "legacyPath": "/order-feedback.html",
+          "firstStatus": 308,
+          "location": "/order-feedback/",
+          "finalStatus": 200,
+          "expectedDestination": "/order-feedback/"
+        },
+        {
+          "legacyPath": "/manager-dashboard.html",
+          "firstStatus": 308,
+          "location": "/manager-dashboard/",
+          "finalStatus": 200,
+          "expectedDestination": "/manager-dashboard/"
+        },
+        {
+          "legacyPath": "/admin-dashboard.html",
+          "firstStatus": 308,
+          "location": "/admin-dashboard/",
+          "finalStatus": 200,
+          "expectedDestination": "/admin-dashboard/"
+        },
+        {
+          "legacyPath": "/kitchen-tablet.html",
+          "firstStatus": 308,
+          "location": "/kitchen-tablet/",
+          "finalStatus": 200,
+          "expectedDestination": "/kitchen-tablet/"
+        },
+        {
+          "legacyPath": "/server-tablet.html",
+          "firstStatus": 308,
+          "location": "/server-tablet/",
+          "finalStatus": 200,
+          "expectedDestination": "/server-tablet/"
+        }
+      ],
+      "apiChecks": [
+        {
+          "path": "/api/help-assistant/",
+          "getStatus": 405,
+          "postStatus": 400,
+          "postBody": "{\"error\":\"Query is required.\"}"
+        },
+        {
+          "path": "/api/ingredient-status-sync/",
+          "getStatus": 405,
+          "postStatus": 410,
+          "postBody": "{\"error\":\"Deprecated endpoint: ingredient status writes are only applied through POST /api/restaurant-write/commit.\"}"
+        }
+      ],
+      "parityChecks": [
+        {
+          "status": "skipped",
+          "slug": "next-transition-qa-next-transition-20260217220920",
+          "reason": "Legacy editor parity is disabled unless VERIFY_RUN_LEGACY_PARITY=1."
+        }
+      ]
+    },
+    "failedStageCount": 0,
+    "failedStages": []
+  }
+}

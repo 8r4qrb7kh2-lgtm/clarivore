@@ -35,10 +35,15 @@ export default function AdminDashboardClient() {
           throw new Error("Supabase env vars are missing.");
         }
 
-        await loadScript(
-          "https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js",
-          { defer: true },
-        );
+        try {
+          await loadScript(
+            "https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js",
+            { defer: true },
+          );
+        } catch (scriptError) {
+          // QR generation should not block admin boot in offline/CDN-restricted environments.
+          console.warn("[admin-dashboard-next] failed to load QR script", scriptError);
+        }
 
         const bootPayload = await prepareAdminDashboardBootPayload();
         if (!cancelled) {

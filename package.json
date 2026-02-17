@@ -16,7 +16,7 @@
     "cap:copy": "npm run build && npx cap copy",
     "cap:sync": "npm run build && npx cap sync",
     "cap:open:ios": "npx cap open ios",
-    "verify:next-transition": "node scripts/verify-next-transition.mjs",
+    "verify:next-transition": "bash -lc 'set -a; [ -f .env ] && source .env; [ -f .env.local ] && source .env.local; set +a; node scripts/verify-next-transition.mjs'",
     "verify:legacy-editor-parity": "node scripts/verify-legacy-editor-parity.mjs",
     "capture:menu-overlay-fixtures": "node scripts/capture-menu-overlay-fixtures.mjs",
     "verify:menu-overlay-parity": "node scripts/verify-menu-overlay-engine-parity.mjs"
