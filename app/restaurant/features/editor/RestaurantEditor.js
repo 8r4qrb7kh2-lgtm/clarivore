@@ -114,6 +114,35 @@ function parseChangePayload(log) {
   }
 }
 
+function summarizeForDedup(value) {
+  const summary = formatChangeText(value);
+  return normalizeToken(summary);
+}
+
+function collectRenderedChangeSummaryTokens(general, items) {
+  const tokens = new Set();
+  (Array.isArray(general) ? general : []).forEach((line) => {
+    const token = summarizeForDedup(line);
+    if (token) tokens.add(token);
+  });
+
+  Object.entries(items && typeof items === "object" ? items : {}).forEach(([dishName, changes]) => {
+    const safeDishName = asText(dishName);
+    const dishToken = normalizeToken(safeDishName);
+    const lines = Array.isArray(changes) ? changes : [changes];
+    lines.forEach((line) => {
+      const summary = formatChangeText(line);
+      const summaryToken = normalizeToken(summary);
+      if (summaryToken) tokens.add(summaryToken);
+      if (dishToken && summaryToken) {
+        tokens.add(normalizeToken(`${safeDishName}: ${summary}`));
+      }
+    });
+  });
+
+  return tokens;
+}
+
 function formatChangeText(value) {
   if (typeof value === "string") return value;
   if (typeof value === "number" || typeof value === "boolean") {
@@ -2845,6 +2874,21 @@ function ChangeLogModal({ editor }) {
               : parsed?.general != null
                 ? [parsed.general]
                 : [];
+            const renderedSummaryTokens = collectRenderedChangeSummaryTokens(general, items);
+            const seenReviewTokens = new Set();
+            const reviewRows = (Array.isArray(parsed?.reviewRows) ? parsed.reviewRows : [])
+              .filter((row) => row && typeof row === "object")
+              .filter((row) => {
+                const summary = asText(row?.summary);
+                if (!summary) return false;
+                const token = normalizeToken(summary);
+                if (!token) return true;
+                if (renderedSummaryTokens.has(token) || seenReviewTokens.has(token)) {
+                  return false;
+                }
+                seenReviewTokens.add(token);
+                return true;
+              });
             const author = formatChangeText(parsed?.author || log.description || "Manager");
             const photos = Array.isArray(log?.photos)
               ? log.photos
@@ -2877,6 +2921,24 @@ function ChangeLogModal({ editor }) {
                     </ul>
                   </div>
                 ))}
+
+                {reviewRows.length ? (
+                  <div className="mt-2">
+                    <div className="text-sm font-medium text-[#dbe3ff]">Review rows</div>
+                    <ul className="mb-0 mt-1 list-disc pl-5 text-sm text-[#c7d2f4]">
+                      {reviewRows.map((row, index) =>
+                        renderChangeLine(
+                          {
+                            summary: row.summary,
+                            before: row.beforeValue,
+                            after: row.afterValue,
+                          },
+                          `${log.id}-review-${index}`,
+                        ),
+                      )}
+                    </ul>
+                  </div>
+                ) : null}
 
                 {photos.length ? (
                   <div className="mt-2 flex flex-wrap gap-2">
@@ -2944,7 +3006,7 @@ function SaveReviewModal({ editor, open, onOpenChange, onConfirmSave }) {
         <p className="note m-0 text-sm">Confirm everything looks right before saving to the website.</p>
 
         {!changes.length ? (
-          <p className="note m-0">No ingredient-row status changes were detected for this save.</p>
+          <p className="note m-0">No changes detected for this save.</p>
         ) : (
           <div className="max-h-[52vh] space-y-2 overflow-auto pr-1">
             {changes.map((entry) => (
@@ -2954,7 +3016,7 @@ function SaveReviewModal({ editor, open, onOpenChange, onConfirmSave }) {
               >
                 <div className="flex items-center justify-between gap-3">
                   <span className="text-sm text-[#dce4ff]">
-                    {asText(entry.summary) || "Ingredient row updated"}
+                    {asText(entry.summary) || "Change recorded"}
                   </span>
                   <div className="flex items-center gap-2">
                     {entry.beforeValue != null || entry.afterValue != null ? (

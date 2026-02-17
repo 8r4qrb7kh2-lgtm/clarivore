@@ -144,6 +144,54 @@ function valuesEqual(left, right) {
   return JSON.stringify(left) === JSON.stringify(right);
 }
 
+const MENU_STATE_CHANGED_FIELD_KEYS = {
+  OVERLAYS: "overlays",
+  MENU_IMAGES: "menuImages",
+};
+
+const MENU_STATE_ALLOWED_CHANGED_FIELDS = new Set(
+  Object.values(MENU_STATE_CHANGED_FIELD_KEYS),
+);
+
+function hasOwnPropertyValue(value, key) {
+  return Boolean(value) && Object.prototype.hasOwnProperty.call(value, key);
+}
+
+function normalizeMenuStateChangedFields(changedFields) {
+  const output = [];
+  const seen = new Set();
+  (Array.isArray(changedFields) ? changedFields : []).forEach((value) => {
+    const token = asText(value);
+    if (!MENU_STATE_ALLOWED_CHANGED_FIELDS.has(token) || seen.has(token)) return;
+    seen.add(token);
+    output.push(token);
+  });
+  return output;
+}
+
+function normalizeMenuImageValues(operationPayload) {
+  const menuImages = (Array.isArray(operationPayload?.menuImages)
+    ? operationPayload.menuImages
+    : []
+  )
+    .map((value) => asText(value))
+    .filter(Boolean);
+  const menuImage = asText(operationPayload?.menuImage) || menuImages[0] || "";
+  const menuImagesProvided =
+    operationPayload?.menuImagesProvided === true ||
+    menuImages.length > 0 ||
+    asText(operationPayload?.menuImage).length > 0;
+  if (menuImagesProvided && !menuImages.length && menuImage) {
+    menuImages.push(menuImage);
+  }
+
+  return {
+    menuImage,
+    menuImages,
+    menuImagesProvided,
+  };
+}
+
 function toOverlayDishKey(overlay) {
   const name = readOverlayDishName(overlay);
   return toDishKey(name);
@@ -399,6 +447,212 @@ function buildMenuChangeRows({ baselineOverlays, overlays }) {
   });
 
   return output;
+}
+
+function summarizeChangeLine(value) {
+  if (typeof value === "string") return asText(value);
+  if (typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+  if (Array.isArray(value)) {
+    return value.map((entry) => summarizeChangeLine(entry)).filter(Boolean).join(", ");
+  }
+  if (!value || typeof value !== "object") return "";
+
+  const message = asText(
+    value?.message ||
+      value?.summary ||
+      value?.text ||
+      value?.description ||
+      value?.title,
+  );
+  if (message) return message;
+
+  const detailParts = [
+    asText(value?.ingredient || value?.ingredientName || value?.name),
+    asText(value?.action || value?.type || value?.operation),
+    asText(value?.category || value?.classification || value?.mode),
+  ].filter(Boolean);
+  if (detailParts.length) {
+    return detailParts.join(" · ");
+  }
+
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return "";
+  }
+}
+
+function readSummaryRowBeforeValue(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const keys = ["before", "previous", "prev", "from"];
+  for (const key of keys) {
+    if (hasOwnPropertyValue(value, key)) {
+      return value[key];
+    }
+  }
+  return null;
+}
+
+function readSummaryRowAfterValue(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const keys = ["after", "next", "current", "to"];
+  for (const key of keys) {
+    if (hasOwnPropertyValue(value, key)) {
+      return value[key];
+    }
+  }
+  return null;
+}
+
+function appendSummaryRowsFromChangePayload(output, changePayload) {
+  const payload = changePayload && typeof changePayload === "object" ? changePayload : {};
+  const general = Array.isArray(payload?.general)
+    ? payload.general
+    : payload?.general != null
+      ? [payload.general]
+      : [];
+  general.forEach((line, index) => {
+    const summary = summarizeChangeLine(line);
+    if (!summary) return;
+    output.push({
+      id: `summary:general:${index}`,
+      changeType: "change_summary",
+      fieldKey: "summary",
+      beforeValue: readSummaryRowBeforeValue(line),
+      afterValue: readSummaryRowAfterValue(line),
+      summary,
+    });
+  });
+
+  const items = payload?.items && typeof payload.items === "object" ? payload.items : {};
+  Object.entries(items).forEach(([dishName, changes]) => {
+    const safeDishName = asText(dishName) || "Dish";
+    const lines = Array.isArray(changes) ? changes : [changes];
+    lines.forEach((line, index) => {
+      const rawSummary = summarizeChangeLine(line);
+      if (!rawSummary) return;
+      const prefixedSummary =
+        safeDishName &&
+        !normalizeToken(rawSummary).startsWith(normalizeToken(safeDishName))
+          ? `${safeDishName}: ${rawSummary}`
+          : rawSummary;
+      output.push({
+        id: `summary:item:${normalizeToken(safeDishName) || "dish"}:${index}`,
+        dishName: safeDishName,
+        changeType: "change_summary",
+        fieldKey: "summary",
+        beforeValue: readSummaryRowBeforeValue(line),
+        afterValue: readSummaryRowAfterValue(line),
+        summary: prefixedSummary,
+      });
+    });
+  });
+}
+
+function buildMenuChangedFieldFallbackRows(changedFields) {
+  const changed = new Set(normalizeMenuStateChangedFields(changedFields));
+  const rows = [];
+  if (changed.has(MENU_STATE_CHANGED_FIELD_KEYS.OVERLAYS)) {
+    rows.push({
+      id: "fallback:overlays",
+      changeType: "menu_overlays_changed",
+      fieldKey: "overlays",
+      summary: "Menu overlays updated",
+      beforeValue: null,
+      afterValue: null,
+    });
+  }
+  if (changed.has(MENU_STATE_CHANGED_FIELD_KEYS.MENU_IMAGES)) {
+    rows.push({
+      id: "fallback:menu-images",
+      changeType: "menu_images_changed",
+      fieldKey: "menu_images",
+      summary: "Menu images updated",
+      beforeValue: null,
+      afterValue: null,
+    });
+  }
+  return rows;
+}
+
+function toReviewRowDedupeKey(row) {
+  const explicit = asText(row?.key);
+  if (explicit) {
+    return `key:${normalizeToken(explicit) || explicit.toLowerCase()}`;
+  }
+  const summary = asText(row?.summary);
+  const summaryToken = normalizeToken(summary);
+  if (summaryToken) {
+    return `summary:${summaryToken}`;
+  }
+  const fallbackTokens = [
+    normalizeToken(row?.dishName),
+    normalizeToken(row?.ingredientName),
+    normalizeToken(row?.fieldKey),
+    normalizeToken(row?.changeType),
+  ].filter(Boolean);
+  return fallbackTokens.length ? `fields:${fallbackTokens.join(":")}` : "";
+}
+
+function finalizeMenuReviewRows(rows) {
+  const output = [];
+  const seen = new Set();
+  (Array.isArray(rows) ? rows : []).forEach((row) => {
+    const summary = asText(row?.summary);
+    if (!summary && row?.beforeValue == null && row?.afterValue == null) return;
+    const dedupeKey = toReviewRowDedupeKey(row);
+    if (dedupeKey && seen.has(dedupeKey)) return;
+    if (dedupeKey) {
+      seen.add(dedupeKey);
+    }
+
+    output.push({
+      id: asText(row?.id) || `row:${output.length}`,
+      sortOrder: output.length,
+      dishName: asText(row?.dishName),
+      rowIndex:
+        Number.isFinite(Number(row?.rowIndex)) && Number(row?.rowIndex) >= 0
+          ? Math.floor(Number(row.rowIndex))
+          : null,
+      ingredientName: asText(row?.ingredientName),
+      changeType: asText(row?.changeType),
+      fieldKey: asText(row?.fieldKey),
+      beforeValue: hasOwnPropertyValue(row, "beforeValue") ? row.beforeValue : null,
+      afterValue: hasOwnPropertyValue(row, "afterValue") ? row.afterValue : null,
+      summary: summary || "Updated",
+    });
+  });
+  return output;
+}
+
+function buildMenuReviewRows({
+  changePayload,
+  changedFields,
+  ingredientRows,
+}) {
+  const summaryRows = [];
+  appendSummaryRowsFromChangePayload(summaryRows, changePayload);
+  if (!summaryRows.length) {
+    summaryRows.push(...buildMenuChangedFieldFallbackRows(changedFields));
+  }
+
+  const ingredientReviewRows = (Array.isArray(ingredientRows) ? ingredientRows : []).map(
+    (row, index) => ({
+      id: `detail:${index}`,
+      dishName: row?.dishName,
+      rowIndex: row?.rowIndex,
+      ingredientName: row?.ingredientName,
+      changeType: row?.changeType,
+      fieldKey: row?.fieldKey,
+      beforeValue: row?.beforeValue,
+      afterValue: row?.afterValue,
+      summary: asText(row?.summary),
+    }),
+  );
+
+  return finalizeMenuReviewRows([...summaryRows, ...ingredientReviewRows]);
 }
 
 function buildIngredientRowsFromOverlays(overlays) {
@@ -709,20 +963,9 @@ function normalizeMenuStatePayload(operationPayload) {
   const overlayOrder = hasOverlayDeltaPayload && overlayOrderProvided
     ? normalizeOverlayKeyList(operationPayload?.overlayOrder)
     : [];
-  const menuImagesProvided =
-    operationPayload?.menuImagesProvided === true ||
-    Array.isArray(operationPayload?.menuImages) ||
-    asText(operationPayload?.menuImage).length > 0;
-  const menuImages = (Array.isArray(operationPayload?.menuImages)
-    ? operationPayload.menuImages
-    : []
-  )
-    .map((value) => asText(value))
-    .filter(Boolean);
-  const menuImage = asText(operationPayload?.menuImage) || menuImages[0] || "";
-  if (menuImagesProvided && !menuImages.length && menuImage) {
-    menuImages.push(menuImage);
-  }
+  const { menuImagesProvided, menuImages, menuImage } = normalizeMenuImageValues(operationPayload);
+  const changedFieldsProvided = Array.isArray(operationPayload?.changedFields);
+  const changedFields = normalizeMenuStateChangedFields(operationPayload?.changedFields);
 
   const stateHash = asText(operationPayload?.stateHash) || (
     hasOverlayDeltaPayload
@@ -734,9 +977,14 @@ function normalizeMenuStatePayload(operationPayload) {
   );
 
   const changePayload = toJsonSafe(operationPayload?.changePayload, {});
-  const rows = hasOverlayDeltaPayload
+  const ingredientRows = hasOverlayDeltaPayload
     ? buildMenuChangeRows({ baselineOverlays, overlays: overlayUpserts })
     : buildMenuChangeRows({ baselineOverlays, overlays });
+  const rows = buildMenuReviewRows({
+    changePayload,
+    changedFields,
+    ingredientRows,
+  });
 
   return {
     overlays: toJsonSafe(overlays, []),
@@ -748,20 +996,11 @@ function normalizeMenuStatePayload(operationPayload) {
     menuImage,
     menuImages,
     menuImagesProvided,
+    changedFieldsProvided,
+    changedFields: toJsonSafe(changedFields, []),
     stateHash,
     changePayload,
-    rows: rows.map((row, index) => ({
-      id: `row:${index}`,
-      sortOrder: index,
-      dishName: row.dishName,
-      rowIndex: row.rowIndex,
-      ingredientName: row.ingredientName,
-      changeType: row.changeType,
-      fieldKey: row.fieldKey,
-      beforeValue: row.beforeValue,
-      afterValue: row.afterValue,
-      summary: row.summary,
-    })),
+    rows: toJsonSafe(rows, []),
     rowCount: rows.length,
   };
 }
@@ -789,20 +1028,7 @@ function normalizeConfirmInfoPayload(operationPayload) {
 
 function normalizeBrandReplacementPayload(operationPayload) {
   const overlays = Array.isArray(operationPayload?.overlays) ? operationPayload.overlays : [];
-  const menuImagesProvided =
-    operationPayload?.menuImagesProvided === true ||
-    Array.isArray(operationPayload?.menuImages) ||
-    asText(operationPayload?.menuImage).length > 0;
-  const menuImages = (Array.isArray(operationPayload?.menuImages)
-    ? operationPayload.menuImages
-    : []
-  )
-    .map((value) => asText(value))
-    .filter(Boolean);
-  const menuImage = asText(operationPayload?.menuImage) || menuImages[0] || "";
-  if (menuImagesProvided && !menuImages.length && menuImage) {
-    menuImages.push(menuImage);
-  }
+  const { menuImagesProvided, menuImages, menuImage } = normalizeMenuImageValues(operationPayload);
 
   return {
     overlays: toJsonSafe(overlays, []),
@@ -1016,13 +1242,14 @@ export function buildReviewSummary(batch, operations) {
     (operation) =>
       operation.operationType === RESTAURANT_WRITE_OPERATION_TYPES.MENU_STATE_REPLACE,
   );
+  const menuRows = Array.isArray(menuOp?.payload?.rows) ? menuOp.payload.rows : [];
 
   const reviewSummary = {
     operationCount: normalizedOps.length,
     operationTypes: normalizedOps.map((operation) => operation.operationType),
     summaries: normalizedOps.map((operation) => operation.summary).filter(Boolean),
-    menuRows: Array.isArray(menuOp?.payload?.rows) ? menuOp.payload.rows : [],
-    rowCount: Number(menuOp?.payload?.rowCount) || 0,
+    menuRows,
+    rowCount: Number(menuOp?.payload?.rowCount) || menuRows.length,
     stateHash: asText(menuOp?.payload?.stateHash),
     baseWriteVersion: toSafeVersion(
       batch?.base_write_version ?? batch?.baseWriteVersion,
@@ -1296,6 +1523,7 @@ function buildPersistedMenuChangePayload({
   inputChangePayload,
   overlays,
   menuImages,
+  reviewRows,
 }) {
   const payload = toJsonSafe(inputChangePayload, {});
   const snapshot = payload?.snapshot;
@@ -1309,6 +1537,11 @@ function buildPersistedMenuChangePayload({
       menuImages: toJsonSafe(menuImages, []),
     };
   }
+
+  payload.reviewRows = toJsonSafe(
+    Array.isArray(reviewRows) ? reviewRows : payload?.reviewRows,
+    [],
+  );
 
   return payload;
 }
@@ -1338,7 +1571,19 @@ export async function applyWriteOperations({
           Array.isArray(payload?.overlayUpserts) ||
           Array.isArray(payload?.overlayDeletes) ||
           payload?.overlayOrderProvided === true;
+        const changedFieldsProvided = hasOwnPropertyValue(payload, "changedFieldsProvided")
+          ? payload?.changedFieldsProvided === true
+          : Array.isArray(payload?.changedFields);
+        const changedFields = normalizeMenuStateChangedFields(payload?.changedFields);
+        const changedFieldSet = new Set(changedFields);
+        const shouldUpdateOverlays = changedFieldsProvided
+          ? changedFieldSet.has(MENU_STATE_CHANGED_FIELD_KEYS.OVERLAYS)
+          : true;
         let overlays = normalizeOverlayListForStorage(payload?.overlays);
+        const { menuImage, menuImages, menuImagesProvided } = normalizeMenuImageValues(payload);
+        const shouldUpdateMenuImages = changedFieldsProvided
+          ? changedFieldSet.has(MENU_STATE_CHANGED_FIELD_KEYS.MENU_IMAGES)
+          : menuImagesProvided;
 
         if (hasOverlayDeltaPayload) {
           const existingRestaurant = await tx.restaurants.findUnique({
@@ -1354,30 +1599,21 @@ export async function applyWriteOperations({
           });
         }
 
-        const menuImagesProvided =
-          payload?.menuImagesProvided === true ||
-          Array.isArray(payload?.menuImages) ||
-          asText(payload?.menuImage).length > 0;
-        const menuImages = (Array.isArray(payload?.menuImages) ? payload.menuImages : [])
-          .map((value) => asText(value))
-          .filter(Boolean);
-        const menuImage = asText(payload?.menuImage) || menuImages[0] || null;
-        if (menuImagesProvided && !menuImages.length && menuImage) {
-          menuImages.push(menuImage);
+        const updateData = {};
+        if (shouldUpdateOverlays) {
+          updateData.overlays = toJsonSafe(overlays, []);
         }
-
-        const updateData = {
-          overlays: toJsonSafe(overlays, []),
-        };
-        if (menuImagesProvided) {
+        if (shouldUpdateMenuImages) {
           updateData.menu_image = menuImage || null;
           updateData.menu_images = toJsonSafe(menuImages, []);
         }
 
-        await tx.restaurants.update({
-          where: { id: restaurantId },
-          data: updateData,
-        });
+        if (Object.keys(updateData).length) {
+          await tx.restaurants.update({
+            where: { id: restaurantId },
+            data: updateData,
+          });
+        }
 
         const restaurantSnapshot = await tx.restaurants.findUnique({
           where: { id: restaurantId },
@@ -1390,13 +1626,16 @@ export async function applyWriteOperations({
           inputChangePayload: payload?.changePayload,
           overlays,
           menuImages: readMenuImagesFromRestaurantRecord(restaurantSnapshot),
+          reviewRows: Array.isArray(payload?.rows) ? payload.rows : [],
         });
 
-        const syncResult = await syncIngredientStatusFromOverlays(
-          tx,
-          restaurantId,
-          overlays,
-        );
+        const syncResult = shouldUpdateOverlays
+          ? await syncIngredientStatusFromOverlays(
+              tx,
+              restaurantId,
+              overlays,
+            )
+          : { rows: 0, allergens: 0, diets: 0 };
 
         await tx.change_logs.create({
           data: {
@@ -1414,6 +1653,7 @@ export async function applyWriteOperations({
         operationResults.push({
           operationType,
           summary,
+          changedFields,
           ...syncResult,
         });
         break;
@@ -1441,17 +1681,7 @@ export async function applyWriteOperations({
           });
         }
 
-        const menuImagesProvided =
-          payload?.menuImagesProvided === true ||
-          Array.isArray(payload?.menuImages) ||
-          asText(payload?.menuImage).length > 0;
-        const menuImages = (Array.isArray(payload?.menuImages) ? payload.menuImages : [])
-          .map((value) => asText(value))
-          .filter(Boolean);
-        const menuImage = asText(payload?.menuImage) || menuImages[0] || null;
-        if (menuImagesProvided && !menuImages.length && menuImage) {
-          menuImages.push(menuImage);
-        }
+        const { menuImage, menuImages, menuImagesProvided } = normalizeMenuImageValues(payload);
 
         const updateData = {
           overlays: toJsonSafe(overlays, []),
@@ -1477,6 +1707,7 @@ export async function applyWriteOperations({
           inputChangePayload: payload?.changePayload,
           overlays,
           menuImages: readMenuImagesFromRestaurantRecord(restaurantSnapshot),
+          reviewRows: Array.isArray(payload?.rows) ? payload.rows : [],
         });
 
         const syncResult = await syncIngredientStatusFromOverlays(

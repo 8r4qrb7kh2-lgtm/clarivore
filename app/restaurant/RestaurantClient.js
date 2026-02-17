@@ -750,6 +750,7 @@ export default function RestaurantClient() {
         overlayBaselines,
         overlayOrder,
         overlayOrderProvided,
+        changedFields,
         menuImage,
         menuImages,
         menuImagesProvided,
@@ -770,6 +771,9 @@ export default function RestaurantClient() {
               overlayBaselines: Array.isArray(overlayBaselines) ? overlayBaselines : [],
               overlayOrder: Array.isArray(overlayOrder) ? overlayOrder : [],
               overlayOrderProvided: overlayOrderProvided === true,
+              changedFields: Array.isArray(changedFields)
+                ? changedFields.filter((field) => field === "overlays" || field === "menuImages")
+                : [],
               ...(includeMenuImages
                 ? {
                     menuImage: String(menuImage || ""),

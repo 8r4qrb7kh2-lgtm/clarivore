@@ -3539,6 +3539,13 @@ export function useRestaurantEditor({
       });
 
       const stateHash = serializeEditorState(cleanedOverlays, optimizedMenuImages);
+      const changedFields = [];
+      if (overlayDelta.hasOverlayChanges) {
+        changedFields.push("overlays");
+      }
+      if (menuImagesChanged) {
+        changedFields.push("menuImages");
+      }
 
       if (pendingSaveBatchId && pendingSaveStateHash === stateHash) {
         return {
@@ -3561,6 +3568,7 @@ export function useRestaurantEditor({
         overlayOrder: overlayDelta.overlayOrder,
         overlayOrderProvided: overlayDelta.overlayOrderProvided,
         hasOverlayChanges: overlayDelta.hasOverlayChanges,
+        changedFields,
         menuImage: menuImagesChanged ? optimizedMenuImages[0] || "" : "",
         menuImages: menuImagesChanged ? optimizedMenuImages : [],
         menuImagesProvided: menuImagesChanged,
