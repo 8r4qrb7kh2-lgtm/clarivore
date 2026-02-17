@@ -144,6 +144,110 @@ function valuesEqual(left, right) {
   return JSON.stringify(left) === JSON.stringify(right);
 }
 
+function toOverlayDishKey(overlay) {
+  const name = readOverlayDishName(overlay);
+  return toDishKey(name);
+}
+
+function normalizeOverlayForStorage(overlay) {
+  const safe = toJsonSafe(overlay, {});
+  const name = readOverlayDishName(safe) || "Dish";
+  const pageIndex = Number.isFinite(Number(safe?.pageIndex))
+    ? Math.max(Math.floor(Number(safe.pageIndex)), 0)
+    : 0;
+
+  return {
+    ...safe,
+    id: name,
+    name,
+    pageIndex,
+  };
+}
+
+function normalizeOverlayListForStorage(overlays) {
+  return (Array.isArray(overlays) ? overlays : [])
+    .map((overlay) => normalizeOverlayForStorage(overlay))
+    .filter((overlay) => Boolean(toOverlayDishKey(overlay)));
+}
+
+function buildOverlayOrderAndMap(overlays) {
+  const byKey = new Map();
+  const order = [];
+  const seen = new Set();
+
+  normalizeOverlayListForStorage(overlays).forEach((overlay) => {
+    const key = toOverlayDishKey(overlay);
+    if (!key) return;
+    if (!seen.has(key)) {
+      seen.add(key);
+      order.push(key);
+    }
+    byKey.set(key, overlay);
+  });
+
+  return { byKey, order };
+}
+
+function normalizeOverlayKeyList(values) {
+  const seen = new Set();
+  const output = [];
+
+  (Array.isArray(values) ? values : []).forEach((value) => {
+    const key = toDishKey(value);
+    if (!key || seen.has(key)) return;
+    seen.add(key);
+    output.push(key);
+  });
+
+  return output;
+}
+
+function applyOverlayDelta({
+  baseOverlays,
+  overlayUpserts,
+  overlayDeletes,
+  overlayOrder,
+  overlayOrderProvided,
+}) {
+  const baseIndex = buildOverlayOrderAndMap(baseOverlays);
+  const nextByKey = new Map(baseIndex.byKey);
+  const deleteKeys = new Set(normalizeOverlayKeyList(overlayDeletes));
+  const upsertKeysInOrder = [];
+
+  deleteKeys.forEach((key) => {
+    nextByKey.delete(key);
+  });
+
+  normalizeOverlayListForStorage(overlayUpserts).forEach((overlay) => {
+    const key = toOverlayDishKey(overlay);
+    if (!key) return;
+    nextByKey.set(key, overlay);
+    if (!upsertKeysInOrder.includes(key)) {
+      upsertKeysInOrder.push(key);
+    }
+  });
+
+  const finalOrder = [];
+  const seen = new Set();
+  const preferredOrder = overlayOrderProvided ? normalizeOverlayKeyList(overlayOrder) : [];
+
+  if (overlayOrderProvided) {
+    preferredOrder.forEach((key) => {
+      if (!nextByKey.has(key) || seen.has(key)) return;
+      seen.add(key);
+      finalOrder.push(key);
+    });
+  }
+
+  [...baseIndex.order, ...upsertKeysInOrder, ...Array.from(nextByKey.keys())].forEach((key) => {
+    if (!nextByKey.has(key) || seen.has(key)) return;
+    seen.add(key);
+    finalOrder.push(key);
+  });
+
+  return finalOrder.map((key) => nextByKey.get(key)).filter(Boolean);
+}
+
 function buildDishRowMap(overlays) {
   const dishMap = new Map();
   (Array.isArray(overlays) ? overlays : []).forEach((overlay) => {
@@ -583,10 +687,32 @@ export async function getRestaurantWriteVersion(
 }
 
 function normalizeMenuStatePayload(operationPayload) {
-  const overlays = Array.isArray(operationPayload?.overlays) ? operationPayload.overlays : [];
-  const baselineOverlays = Array.isArray(operationPayload?.baselineOverlays)
-    ? operationPayload.baselineOverlays
+  const hasOverlayDeltaPayload =
+    Array.isArray(operationPayload?.overlayUpserts) ||
+    Array.isArray(operationPayload?.overlayDeletes) ||
+    operationPayload?.overlayOrderProvided === true;
+  const overlays = hasOverlayDeltaPayload
+    ? []
+    : normalizeOverlayListForStorage(operationPayload?.overlays);
+  const baselineOverlays = hasOverlayDeltaPayload
+    ? normalizeOverlayListForStorage(operationPayload?.overlayBaselines)
+    : normalizeOverlayListForStorage(operationPayload?.baselineOverlays);
+  const overlayUpserts = hasOverlayDeltaPayload
+    ? normalizeOverlayListForStorage(operationPayload?.overlayUpserts)
     : [];
+  const overlayDeletes = hasOverlayDeltaPayload
+    ? normalizeOverlayKeyList(operationPayload?.overlayDeletes)
+    : [];
+  const overlayOrderProvided = hasOverlayDeltaPayload
+    ? operationPayload?.overlayOrderProvided === true
+    : false;
+  const overlayOrder = hasOverlayDeltaPayload && overlayOrderProvided
+    ? normalizeOverlayKeyList(operationPayload?.overlayOrder)
+    : [];
+  const menuImagesProvided =
+    operationPayload?.menuImagesProvided === true ||
+    Array.isArray(operationPayload?.menuImages) ||
+    asText(operationPayload?.menuImage).length > 0;
   const menuImages = (Array.isArray(operationPayload?.menuImages)
     ? operationPayload.menuImages
     : []
@@ -594,25 +720,34 @@ function normalizeMenuStatePayload(operationPayload) {
     .map((value) => asText(value))
     .filter(Boolean);
   const menuImage = asText(operationPayload?.menuImage) || menuImages[0] || "";
-  if (!menuImages.length && menuImage) {
+  if (menuImagesProvided && !menuImages.length && menuImage) {
     menuImages.push(menuImage);
   }
 
-  const stateHash =
-    asText(operationPayload?.stateHash) ||
-    getStateHashForSave({
-      overlays,
-      menuImages,
-    });
+  const stateHash = asText(operationPayload?.stateHash) || (
+    hasOverlayDeltaPayload
+      ? ""
+      : getStateHashForSave({
+          overlays,
+          menuImages,
+        })
+  );
 
   const changePayload = toJsonSafe(operationPayload?.changePayload, {});
-  const rows = buildMenuChangeRows({ baselineOverlays, overlays });
+  const rows = hasOverlayDeltaPayload
+    ? buildMenuChangeRows({ baselineOverlays, overlays: overlayUpserts })
+    : buildMenuChangeRows({ baselineOverlays, overlays });
 
   return {
     overlays: toJsonSafe(overlays, []),
     baselineOverlays: toJsonSafe(baselineOverlays, []),
+    overlayUpserts: toJsonSafe(overlayUpserts, []),
+    overlayDeletes: toJsonSafe(overlayDeletes, []),
+    overlayOrder: toJsonSafe(overlayOrder, []),
+    overlayOrderProvided,
     menuImage,
     menuImages,
+    menuImagesProvided,
     stateHash,
     changePayload,
     rows: rows.map((row, index) => ({
@@ -654,6 +789,10 @@ function normalizeConfirmInfoPayload(operationPayload) {
 
 function normalizeBrandReplacementPayload(operationPayload) {
   const overlays = Array.isArray(operationPayload?.overlays) ? operationPayload.overlays : [];
+  const menuImagesProvided =
+    operationPayload?.menuImagesProvided === true ||
+    Array.isArray(operationPayload?.menuImages) ||
+    asText(operationPayload?.menuImage).length > 0;
   const menuImages = (Array.isArray(operationPayload?.menuImages)
     ? operationPayload.menuImages
     : []
@@ -661,7 +800,7 @@ function normalizeBrandReplacementPayload(operationPayload) {
     .map((value) => asText(value))
     .filter(Boolean);
   const menuImage = asText(operationPayload?.menuImage) || menuImages[0] || "";
-  if (!menuImages.length && menuImage) {
+  if (menuImagesProvided && !menuImages.length && menuImage) {
     menuImages.push(menuImage);
   }
 
@@ -669,6 +808,7 @@ function normalizeBrandReplacementPayload(operationPayload) {
     overlays: toJsonSafe(overlays, []),
     menuImage,
     menuImages,
+    menuImagesProvided,
     changePayload: toJsonSafe(operationPayload?.changePayload, {}),
   };
 }
@@ -817,6 +957,16 @@ export function validateWriteStageRequest(body) {
   if (operationType === RESTAURANT_WRITE_OPERATION_TYPES.RESTAURANT_DELETE) {
     if (!asText(normalizedPayload?.restaurantId)) {
       throw new Error("Restaurant delete payload requires restaurantId");
+    }
+  }
+
+  if (operationType === RESTAURANT_WRITE_OPERATION_TYPES.MENU_STATE_REPLACE) {
+    const hasOverlayDeltaPayload =
+      Array.isArray(normalizedPayload?.overlayUpserts) ||
+      Array.isArray(normalizedPayload?.overlayDeletes) ||
+      normalizedPayload?.overlayOrderProvided === true;
+    if (hasOverlayDeltaPayload && !asText(normalizedPayload?.stateHash)) {
+      throw new Error("Menu state delta payload requires stateHash");
     }
   }
 
@@ -1126,6 +1276,43 @@ export async function setRestaurantWriteContext(tx) {
   `);
 }
 
+function readMenuImagesFromRestaurantRecord(record) {
+  const images = (Array.isArray(record?.menu_images)
+    ? record.menu_images
+    : Array.isArray(record?.menuImages)
+      ? record.menuImages
+      : []
+  )
+    .map((value) => asText(value))
+    .filter(Boolean);
+  const singleImage = asText(record?.menu_image || record?.menuImage);
+  if (!images.length && singleImage) {
+    images.push(singleImage);
+  }
+  return images;
+}
+
+function buildPersistedMenuChangePayload({
+  inputChangePayload,
+  overlays,
+  menuImages,
+}) {
+  const payload = toJsonSafe(inputChangePayload, {});
+  const snapshot = payload?.snapshot;
+  const shouldInjectSnapshot =
+    !snapshot ||
+    (typeof snapshot === "object" && asText(snapshot?.mode) === "server_generated");
+
+  if (shouldInjectSnapshot) {
+    payload.snapshot = {
+      overlays: toJsonSafe(overlays, []),
+      menuImages: toJsonSafe(menuImages, []),
+    };
+  }
+
+  return payload;
+}
+
 export async function applyWriteOperations({
   tx,
   batch,
@@ -1147,22 +1334,62 @@ export async function applyWriteOperations({
     switch (operationType) {
       case RESTAURANT_WRITE_OPERATION_TYPES.MENU_STATE_REPLACE: {
         const restaurantId = asText(batch?.restaurant_id);
-        const overlays = Array.isArray(payload?.overlays) ? payload.overlays : [];
+        const hasOverlayDeltaPayload =
+          Array.isArray(payload?.overlayUpserts) ||
+          Array.isArray(payload?.overlayDeletes) ||
+          payload?.overlayOrderProvided === true;
+        let overlays = normalizeOverlayListForStorage(payload?.overlays);
+
+        if (hasOverlayDeltaPayload) {
+          const existingRestaurant = await tx.restaurants.findUnique({
+            where: { id: restaurantId },
+            select: { overlays: true },
+          });
+          overlays = applyOverlayDelta({
+            baseOverlays: parseJsonArray(existingRestaurant?.overlays, []),
+            overlayUpserts: payload?.overlayUpserts,
+            overlayDeletes: payload?.overlayDeletes,
+            overlayOrder: payload?.overlayOrder,
+            overlayOrderProvided: payload?.overlayOrderProvided === true,
+          });
+        }
+
+        const menuImagesProvided =
+          payload?.menuImagesProvided === true ||
+          Array.isArray(payload?.menuImages) ||
+          asText(payload?.menuImage).length > 0;
         const menuImages = (Array.isArray(payload?.menuImages) ? payload.menuImages : [])
           .map((value) => asText(value))
           .filter(Boolean);
         const menuImage = asText(payload?.menuImage) || menuImages[0] || null;
-        if (!menuImages.length && menuImage) {
+        if (menuImagesProvided && !menuImages.length && menuImage) {
           menuImages.push(menuImage);
+        }
+
+        const updateData = {
+          overlays: toJsonSafe(overlays, []),
+        };
+        if (menuImagesProvided) {
+          updateData.menu_image = menuImage || null;
+          updateData.menu_images = toJsonSafe(menuImages, []);
         }
 
         await tx.restaurants.update({
           where: { id: restaurantId },
-          data: {
-            overlays: toJsonSafe(overlays, []),
-            menu_image: menuImage || null,
-            menu_images: toJsonSafe(menuImages, []),
+          data: updateData,
+        });
+
+        const restaurantSnapshot = await tx.restaurants.findUnique({
+          where: { id: restaurantId },
+          select: {
+            menu_image: true,
+            menu_images: true,
           },
+        });
+        const persistedChangePayload = buildPersistedMenuChangePayload({
+          inputChangePayload: payload?.changePayload,
+          overlays,
+          menuImages: readMenuImagesFromRestaurantRecord(restaurantSnapshot),
         });
 
         const syncResult = await syncIngredientStatusFromOverlays(
@@ -1176,7 +1403,7 @@ export async function applyWriteOperations({
             restaurant_id: restaurantId,
             type: "update",
             description: asText(batch?.author) || "Manager",
-            changes: toJsonSafe(payload?.changePayload, {}),
+            changes: persistedChangePayload,
             user_email: userEmail || null,
             photos: [],
             timestamp: new Date(),
@@ -1194,22 +1421,62 @@ export async function applyWriteOperations({
 
       case RESTAURANT_WRITE_OPERATION_TYPES.BRAND_REPLACEMENT: {
         const restaurantId = asText(batch?.restaurant_id);
-        const overlays = Array.isArray(payload?.overlays) ? payload.overlays : [];
+        const hasOverlayDeltaPayload =
+          Array.isArray(payload?.overlayUpserts) ||
+          Array.isArray(payload?.overlayDeletes) ||
+          payload?.overlayOrderProvided === true;
+        let overlays = normalizeOverlayListForStorage(payload?.overlays);
+
+        if (hasOverlayDeltaPayload) {
+          const existingRestaurant = await tx.restaurants.findUnique({
+            where: { id: restaurantId },
+            select: { overlays: true },
+          });
+          overlays = applyOverlayDelta({
+            baseOverlays: parseJsonArray(existingRestaurant?.overlays, []),
+            overlayUpserts: payload?.overlayUpserts,
+            overlayDeletes: payload?.overlayDeletes,
+            overlayOrder: payload?.overlayOrder,
+            overlayOrderProvided: payload?.overlayOrderProvided === true,
+          });
+        }
+
+        const menuImagesProvided =
+          payload?.menuImagesProvided === true ||
+          Array.isArray(payload?.menuImages) ||
+          asText(payload?.menuImage).length > 0;
         const menuImages = (Array.isArray(payload?.menuImages) ? payload.menuImages : [])
           .map((value) => asText(value))
           .filter(Boolean);
         const menuImage = asText(payload?.menuImage) || menuImages[0] || null;
-        if (!menuImages.length && menuImage) {
+        if (menuImagesProvided && !menuImages.length && menuImage) {
           menuImages.push(menuImage);
+        }
+
+        const updateData = {
+          overlays: toJsonSafe(overlays, []),
+        };
+        if (menuImagesProvided) {
+          updateData.menu_image = menuImage || null;
+          updateData.menu_images = toJsonSafe(menuImages, []);
         }
 
         await tx.restaurants.update({
           where: { id: restaurantId },
-          data: {
-            overlays: toJsonSafe(overlays, []),
-            menu_image: menuImage || null,
-            menu_images: toJsonSafe(menuImages, []),
+          data: updateData,
+        });
+
+        const restaurantSnapshot = await tx.restaurants.findUnique({
+          where: { id: restaurantId },
+          select: {
+            menu_image: true,
+            menu_images: true,
           },
+        });
+        const persistedChangePayload = buildPersistedMenuChangePayload({
+          inputChangePayload: payload?.changePayload,
+          overlays,
+          menuImages: readMenuImagesFromRestaurantRecord(restaurantSnapshot),
         });
 
         const syncResult = await syncIngredientStatusFromOverlays(
@@ -1223,7 +1490,7 @@ export async function applyWriteOperations({
             restaurant_id: restaurantId,
             type: "update",
             description: asText(batch?.author) || "Manager",
-            changes: toJsonSafe(payload?.changePayload, {}),
+            changes: persistedChangePayload,
             user_email: userEmail || null,
             photos: [],
             timestamp: new Date(),

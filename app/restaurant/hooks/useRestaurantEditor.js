@@ -458,11 +458,217 @@ function stripEditorOverlay(overlay) {
   return next;
 }
 
+function toOverlayDishKey(overlay) {
+  const name = asText(overlay?.id || overlay?.name || overlay?.dishName);
+  if (!name) return "";
+  const token = name.toLowerCase().replace(/[^a-z0-9]/g, "");
+  return token || name;
+}
+
+function buildOverlayOrderAndMap(overlays) {
+  const byKey = new Map();
+  const order = [];
+  const seen = new Set();
+
+  (Array.isArray(overlays) ? overlays : []).forEach((overlay) => {
+    const normalized = stripEditorOverlay(overlay);
+    const key = toOverlayDishKey(normalized);
+    if (!key) return;
+    if (!seen.has(key)) {
+      seen.add(key);
+      order.push(key);
+    }
+    byKey.set(key, normalized);
+  });
+
+  return { byKey, order };
+}
+
+function overlaysEqual(left, right) {
+  return JSON.stringify(left) === JSON.stringify(right);
+}
+
+function buildOverlayDeltaPayload({ baselineOverlays, overlays }) {
+  const baselineIndex = buildOverlayOrderAndMap(baselineOverlays);
+  const currentIndex = buildOverlayOrderAndMap(overlays);
+  const overlayUpserts = [];
+  const overlayDeletes = [];
+  const overlayBaselines = [];
+  const baselineAdded = new Set();
+
+  currentIndex.byKey.forEach((nextOverlay, key) => {
+    const previousOverlay = baselineIndex.byKey.get(key);
+    if (!previousOverlay || !overlaysEqual(previousOverlay, nextOverlay)) {
+      overlayUpserts.push(nextOverlay);
+      if (previousOverlay && !baselineAdded.has(key)) {
+        overlayBaselines.push(previousOverlay);
+        baselineAdded.add(key);
+      }
+    }
+  });
+
+  baselineIndex.byKey.forEach((previousOverlay, key) => {
+    if (currentIndex.byKey.has(key)) return;
+    overlayDeletes.push(key);
+    if (!baselineAdded.has(key)) {
+      overlayBaselines.push(previousOverlay);
+      baselineAdded.add(key);
+    }
+  });
+
+  const overlayOrderProvided =
+    JSON.stringify(currentIndex.order) !== JSON.stringify(baselineIndex.order);
+
+  return {
+    overlayUpserts,
+    overlayDeletes,
+    overlayBaselines,
+    overlayOrder: overlayOrderProvided ? currentIndex.order : [],
+    overlayOrderProvided,
+    hasOverlayChanges:
+      overlayUpserts.length > 0 || overlayDeletes.length > 0 || overlayOrderProvided,
+  };
+}
+
 function serializeEditorState(overlays, menuImages) {
   return JSON.stringify({
     overlays: (Array.isArray(overlays) ? overlays : []).map(stripEditorOverlay),
     menuImages: Array.isArray(menuImages) ? menuImages.filter(Boolean) : [],
   });
+}
+
+function normalizeMenuImageList(menuImages) {
+  return (Array.isArray(menuImages) ? menuImages : [])
+    .map((value) => asText(value))
+    .filter(Boolean);
+}
+
+function serializeMenuImageList(menuImages) {
+  return JSON.stringify(normalizeMenuImageList(menuImages));
+}
+
+function getUtf8ByteLength(value) {
+  const text = asText(value);
+  if (!text) return 0;
+  try {
+    return new TextEncoder().encode(text).length;
+  } catch {
+    return text.length;
+  }
+}
+
+async function compressMenuImageDataUrl(
+  source,
+  { targetMaxBytes = 220_000, maxDimension = 1600 } = {},
+) {
+  const input = asText(source);
+  if (!input || !input.startsWith("data:image")) return input;
+  if (getUtf8ByteLength(input) <= targetMaxBytes) return input;
+
+  return await new Promise((resolve) => {
+    const image = new Image();
+
+    image.onload = () => {
+      const naturalWidth = Number(image.naturalWidth || image.width || 0);
+      const naturalHeight = Number(image.naturalHeight || image.height || 0);
+      if (!Number.isFinite(naturalWidth) || !Number.isFinite(naturalHeight)) {
+        resolve(input);
+        return;
+      }
+      if (naturalWidth <= 0 || naturalHeight <= 0) {
+        resolve(input);
+        return;
+      }
+
+      const scale = Math.min(1, maxDimension / Math.max(naturalWidth, naturalHeight));
+      let width = Math.max(1, Math.floor(naturalWidth * scale));
+      let height = Math.max(1, Math.floor(naturalHeight * scale));
+
+      const canvas = document.createElement("canvas");
+      const context = canvas.getContext("2d");
+      if (!context) {
+        resolve(input);
+        return;
+      }
+
+      let best = input;
+      let bestBytes = getUtf8ByteLength(input);
+      const qualities = [0.82, 0.74, 0.66, 0.58];
+
+      for (let pass = 0; pass < 4; pass += 1) {
+        canvas.width = width;
+        canvas.height = height;
+        context.clearRect(0, 0, width, height);
+        context.imageSmoothingEnabled = true;
+        context.imageSmoothingQuality = "high";
+
+        try {
+          context.drawImage(image, 0, 0, width, height);
+        } catch {
+          resolve(input);
+          return;
+        }
+
+        for (const quality of qualities) {
+          const candidate = canvas.toDataURL("image/jpeg", quality);
+          const candidateBytes = getUtf8ByteLength(candidate);
+          if (candidateBytes < bestBytes) {
+            best = candidate;
+            bestBytes = candidateBytes;
+          }
+          if (candidateBytes <= targetMaxBytes) {
+            resolve(candidate);
+            return;
+          }
+        }
+
+        if (width <= 720 || height <= 720) {
+          break;
+        }
+
+        width = Math.max(720, Math.floor(width * 0.82));
+        height = Math.max(720, Math.floor(height * 0.82));
+      }
+
+      resolve(best);
+    };
+
+    image.onerror = () => resolve(input);
+    image.src = input;
+  });
+}
+
+async function optimizeMenuImagesForWrite(
+  menuImages,
+  { perImageMaxBytes = 220_000, totalMaxBytes = 850_000 } = {},
+) {
+  const normalized = normalizeMenuImageList(menuImages);
+  if (!normalized.length) return [];
+
+  let output = await Promise.all(
+    normalized.map((image) =>
+      compressMenuImageDataUrl(image, { targetMaxBytes: perImageMaxBytes }),
+    ),
+  );
+
+  const totalBytes = output.reduce((sum, image) => sum + getUtf8ByteLength(image), 0);
+  if (totalBytes <= totalMaxBytes) {
+    return output;
+  }
+
+  const tightenedPerImage = Math.max(
+    90_000,
+    Math.floor(totalMaxBytes / Math.max(output.length, 1)),
+  );
+  output = await Promise.all(
+    output.map((image) =>
+      compressMenuImageDataUrl(image, {
+        targetMaxBytes: tightenedPerImage,
+        maxDimension: 1400,
+      }),
+    ),
+  );
+  return output;
 }
 
 function parseSerializedEditorState(serialized) {
@@ -576,12 +782,17 @@ function buildDefaultChangeLogPayload({ author, pendingChanges, snapshot }) {
     general.push("Menu overlays updated");
   }
 
-  return {
+  const payload = {
     author: author || "Manager",
     general,
     items: grouped,
-    snapshot,
   };
+
+  if (snapshot && typeof snapshot === "object") {
+    payload.snapshot = snapshot;
+  }
+
+  return payload;
 }
 
 function computeDietBlockers(ingredients, diets) {
@@ -3179,23 +3390,36 @@ export function useRestaurantEditor({
       }
 
       const cleanedOverlays = (overlaysRef.current || []).map(stripEditorOverlay);
-      const cleanedMenuImages = (menuImagesRef.current || []).filter(Boolean);
-      const menuImage = cleanedMenuImages[0] || "";
-
-      const snapshot = {
-        overlays: cleanedOverlays,
-        menuImages: cleanedMenuImages,
-      };
+      const cleanedMenuImages = normalizeMenuImageList(menuImagesRef.current);
+      const baselineSnapshot = parseSerializedEditorState(baselineRef.current);
+      const baselineMenuImages = normalizeMenuImageList(baselineSnapshot?.menuImages);
+      const menuImagesChanged =
+        serializeMenuImageList(cleanedMenuImages) !==
+        serializeMenuImageList(baselineMenuImages);
+      const optimizedMenuImages = menuImagesChanged
+        ? await optimizeMenuImagesForWrite(cleanedMenuImages)
+        : cleanedMenuImages;
+      const optimizedChanged =
+        serializeMenuImageList(optimizedMenuImages) !==
+        serializeMenuImageList(cleanedMenuImages);
+      if (optimizedChanged) {
+        menuImagesRef.current = optimizedMenuImages;
+        setDraftMenuImages(optimizedMenuImages);
+      }
+      const menuImage = optimizedMenuImages[0] || "";
 
       const author =
         asText(callbacks?.getAuthorName?.()) || asText(callbacks?.authorName) || "Manager";
 
+      const stateHash = serializeEditorState(cleanedOverlays, optimizedMenuImages);
       const changePayload = buildDefaultChangeLogPayload({
         author,
         pendingChanges: pendingChangesRef.current,
-        snapshot,
+        snapshot: {
+          mode: "server_generated",
+          stateHash,
+        },
       });
-      const stateHash = serializeEditorState(cleanedOverlays, cleanedMenuImages);
 
       if (!pendingSaveBatchId) {
         setSaveError("No pending save batch found. Review changes before confirming save.");
@@ -3212,19 +3436,20 @@ export function useRestaurantEditor({
       await callbacks.onApplyPendingSave({
         batchId: pendingSaveBatchId,
         overlays: cleanedOverlays,
-        menuImages: cleanedMenuImages,
-        menuImage,
+        menuImages: menuImagesChanged ? optimizedMenuImages : [],
+        menuImage: menuImagesChanged ? menuImage : "",
+        menuImagesProvided: menuImagesChanged,
         changePayload,
         stateHash,
       });
 
-      baselineRef.current = serializeEditorState(cleanedOverlays, cleanedMenuImages);
+      baselineRef.current = serializeEditorState(cleanedOverlays, optimizedMenuImages);
       setPendingChanges([]);
       clearPendingSaveBatch();
 
       const snapshotAfterSave = {
         overlays: JSON.parse(JSON.stringify(overlaysRef.current || [])),
-        menuImages: JSON.parse(JSON.stringify(menuImagesRef.current || [])),
+        menuImages: JSON.parse(JSON.stringify(optimizedMenuImages || [])),
         pendingChanges: [],
       };
 
@@ -3254,6 +3479,7 @@ export function useRestaurantEditor({
     pendingSaveBatchId,
     pendingSaveStateHash,
     restaurant?.id,
+    setDraftMenuImages,
   ]);
 
   const preparePendingSave = useCallback(async () => {
@@ -3277,27 +3503,42 @@ export function useRestaurantEditor({
 
     try {
       const cleanedOverlays = (overlaysRef.current || []).map(stripEditorOverlay);
-      const cleanedMenuImages = (menuImagesRef.current || []).filter(Boolean);
+      const cleanedMenuImages = normalizeMenuImageList(menuImagesRef.current);
       const baselineSnapshot = parseSerializedEditorState(baselineRef.current);
       const baselineOverlays = Array.isArray(baselineSnapshot?.overlays)
         ? baselineSnapshot.overlays
         : [];
+      const overlayDelta = buildOverlayDeltaPayload({
+        baselineOverlays,
+        overlays: cleanedOverlays,
+      });
+      const baselineMenuImages = normalizeMenuImageList(baselineSnapshot?.menuImages);
+      const menuImagesChanged =
+        serializeMenuImageList(cleanedMenuImages) !==
+        serializeMenuImageList(baselineMenuImages);
+      const optimizedMenuImages = menuImagesChanged
+        ? await optimizeMenuImagesForWrite(cleanedMenuImages)
+        : cleanedMenuImages;
+      const optimizedChanged =
+        serializeMenuImageList(optimizedMenuImages) !==
+        serializeMenuImageList(cleanedMenuImages);
+      if (optimizedChanged) {
+        menuImagesRef.current = optimizedMenuImages;
+        setDraftMenuImages(optimizedMenuImages);
+      }
 
       const author =
         asText(callbacks?.getAuthorName?.()) || asText(callbacks?.authorName) || "Manager";
 
-      const snapshot = {
-        overlays: cleanedOverlays,
-        menuImages: cleanedMenuImages,
-      };
-
       const changePayload = buildDefaultChangeLogPayload({
         author,
         pendingChanges: pendingChangesRef.current,
-        snapshot,
+        snapshot: {
+          mode: "server_generated",
+        },
       });
 
-      const stateHash = serializeEditorState(cleanedOverlays, cleanedMenuImages);
+      const stateHash = serializeEditorState(cleanedOverlays, optimizedMenuImages);
 
       if (pendingSaveBatchId && pendingSaveStateHash === stateHash) {
         return {
@@ -3314,8 +3555,15 @@ export function useRestaurantEditor({
       const result = await callbacks.onPreparePendingSave({
         overlays: cleanedOverlays,
         baselineOverlays,
-        menuImage: cleanedMenuImages[0] || "",
-        menuImages: cleanedMenuImages,
+        overlayUpserts: overlayDelta.overlayUpserts,
+        overlayDeletes: overlayDelta.overlayDeletes,
+        overlayBaselines: overlayDelta.overlayBaselines,
+        overlayOrder: overlayDelta.overlayOrder,
+        overlayOrderProvided: overlayDelta.overlayOrderProvided,
+        hasOverlayChanges: overlayDelta.hasOverlayChanges,
+        menuImage: menuImagesChanged ? optimizedMenuImages[0] || "" : "",
+        menuImages: menuImagesChanged ? optimizedMenuImages : [],
+        menuImagesProvided: menuImagesChanged,
         changePayload,
         stateHash,
       });
@@ -3352,6 +3600,7 @@ export function useRestaurantEditor({
     pendingSaveRows,
     pendingSaveStateHash,
     restaurant?.id,
+    setDraftMenuImages,
   ]);
 
   useEffect(() => {

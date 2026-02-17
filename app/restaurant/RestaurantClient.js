@@ -745,14 +745,19 @@ export default function RestaurantClient() {
     callbacks: {
       getAuthorName: () => editorAuthorName,
       onPreparePendingSave: async ({
-        overlays: nextOverlays,
-        baselineOverlays,
+        overlayUpserts,
+        overlayDeletes,
+        overlayBaselines,
+        overlayOrder,
+        overlayOrderProvided,
         menuImage,
         menuImages,
+        menuImagesProvided,
         changePayload,
         stateHash,
       }) => {
         if (!boot?.restaurant?.id) throw new Error("Restaurant missing.");
+        const includeMenuImages = menuImagesProvided === true;
         const payload = await stageRestaurantWrite({
           supabase,
           payload: {
@@ -760,10 +765,20 @@ export default function RestaurantClient() {
             restaurantId: boot.restaurant.id,
             operationType: "MENU_STATE_REPLACE",
             operationPayload: {
-              overlays: Array.isArray(nextOverlays) ? nextOverlays : [],
-              baselineOverlays: Array.isArray(baselineOverlays) ? baselineOverlays : [],
-              menuImage: String(menuImage || ""),
-              menuImages: Array.isArray(menuImages) ? menuImages.filter(Boolean) : [],
+              overlayUpserts: Array.isArray(overlayUpserts) ? overlayUpserts : [],
+              overlayDeletes: Array.isArray(overlayDeletes) ? overlayDeletes : [],
+              overlayBaselines: Array.isArray(overlayBaselines) ? overlayBaselines : [],
+              overlayOrder: Array.isArray(overlayOrder) ? overlayOrder : [],
+              overlayOrderProvided: overlayOrderProvided === true,
+              ...(includeMenuImages
+                ? {
+                    menuImage: String(menuImage || ""),
+                    menuImages: Array.isArray(menuImages)
+                      ? menuImages.filter(Boolean)
+                      : [],
+                  }
+                : {}),
+              menuImagesProvided: includeMenuImages,
               changePayload,
               stateHash,
             },
