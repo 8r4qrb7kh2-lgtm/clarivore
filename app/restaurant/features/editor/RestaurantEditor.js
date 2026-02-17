@@ -250,58 +250,6 @@ function parsePendingChangeLine(line) {
   };
 }
 
-function buildPendingBatchSummaryRows(batch) {
-  const payload =
-    batch?.change_payload && typeof batch.change_payload === "object"
-      ? batch.change_payload
-      : {};
-  const rows = [];
-  let nextSortOrder = 0;
-
-  const appendRow = ({ dishName, ingredientName, summary, changeType, fieldKey }) => {
-    const safeSummary = asText(summary);
-    if (!safeSummary) return;
-    rows.push({
-      id: `summary-${nextSortOrder}`,
-      sort_order: nextSortOrder,
-      dish_name: asText(dishName),
-      ingredient_name: asText(ingredientName),
-      change_type: asText(changeType) || "editor_summary",
-      field_key: asText(fieldKey) || "summary",
-      summary: safeSummary,
-    });
-    nextSortOrder += 1;
-  };
-
-  const general = Array.isArray(payload?.general) ? payload.general : [];
-  general.forEach((entry) => {
-    appendRow({
-      dishName: "",
-      ingredientName: "",
-      summary: formatChangeText(entry),
-      changeType: "editor_summary_general",
-      fieldKey: "general",
-    });
-  });
-
-  const items = payload?.items && typeof payload.items === "object" ? payload.items : {};
-  Object.entries(items).forEach(([itemName, value]) => {
-    const itemLabel = asText(itemName) || "Dish";
-    (Array.isArray(value) ? value : [value]).forEach((entry) => {
-      const summary = formatChangeText(entry);
-      appendRow({
-        dishName: itemLabel,
-        ingredientName: "",
-        summary: summary ? `${itemLabel}: ${summary}` : itemLabel,
-        changeType: "editor_summary_item",
-        fieldKey: "item",
-      });
-    });
-  });
-
-  return rows;
-}
-
 function parseIngredientFlagChangeKey(key) {
   const text = asText(key);
   if (!text.startsWith("ingredient-flag:")) return null;
@@ -2968,107 +2916,6 @@ function ChangeLogModal({ editor }) {
   );
 }
 
-function PendingTableModal({ editor }) {
-  const fallbackRows = useMemo(
-    () => buildPendingBatchSummaryRows(editor.pendingTableBatch),
-    [editor.pendingTableBatch],
-  );
-  const hasPendingRows = Array.isArray(editor.pendingTableRows) && editor.pendingTableRows.length > 0;
-  const tableRows = hasPendingRows ? editor.pendingTableRows : fallbackRows;
-  const usingSummaryRows = !hasPendingRows && fallbackRows.length > 0;
-
-  return (
-    <Modal
-      open={editor.pendingTableOpen}
-      onOpenChange={(open) => editor.setPendingTableOpen(open)}
-      title="Pending Changes Table"
-      className="max-w-[980px]"
-    >
-      <div className="space-y-3">
-        <div className="flex items-center justify-between gap-2">
-          <p className="note m-0 text-sm">Live DB view of current pending batch and rows.</p>
-          <Button
-            size="compact"
-            variant="outline"
-            loading={editor.loadingPendingTable}
-            onClick={() => editor.loadPendingTable()}
-          >
-            Refresh
-          </Button>
-        </div>
-
-        {editor.loadingPendingTable ? (
-          <p className="note m-0">Loading pending table...</p>
-        ) : editor.pendingTableError ? (
-          <p className="m-0 rounded-lg border border-[#a12525] bg-[rgba(139,29,29,0.32)] px-3 py-2 text-sm text-[#ffd0d0]">
-            {editor.pendingTableError}
-          </p>
-        ) : !editor.pendingTableBatch ? (
-          <p className="note m-0">No pending batch exists.</p>
-        ) : (
-          <>
-            <div className="rounded-xl border border-[#2a3261] bg-[rgba(17,22,48,0.75)] p-3 text-xs text-[#c9d3f3]">
-              <div><strong>batch_id:</strong> {editor.pendingTableBatch.id || "-"}</div>
-              <div><strong>status:</strong> {editor.pendingTableBatch.status || "-"}</div>
-              <div><strong>author:</strong> {editor.pendingTableBatch.author || "-"}</div>
-              <div><strong>row_count:</strong> {Number(editor.pendingTableBatch.row_count) || 0}</div>
-              <div><strong>updated_at:</strong> {formatLogTimestamp(editor.pendingTableBatch.updated_at) || "-"}</div>
-            </div>
-
-            {!tableRows.length ? (
-              <p className="note m-0">Pending batch has no rows.</p>
-            ) : (
-              <>
-                {usingSummaryRows ? (
-                  <p className="note m-0 text-xs">
-                    Showing staged summary rows from `change_payload` because no ingredient-row diffs were generated.
-                  </p>
-                ) : null}
-                <div className="max-h-[56vh] overflow-auto rounded-xl border border-[#2a3261] bg-[rgba(17,22,48,0.75)] p-2">
-                  <table className="w-full border-collapse text-left text-xs text-[#d7e0fb]">
-                    <thead>
-                      <tr className="border-b border-[#2a3261] text-[#aebce4]">
-                        <th className="px-2 py-1">sort_order</th>
-                        <th className="px-2 py-1">dish_name</th>
-                        <th className="px-2 py-1">ingredient_name</th>
-                        <th className="px-2 py-1">change_type</th>
-                        <th className="px-2 py-1">field_key</th>
-                        <th className="px-2 py-1">summary</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {tableRows.map((row, index) => (
-                        <tr key={row.id || `${row.sort_order || index}-${row.summary}`} className="border-b border-[rgba(42,50,97,0.45)] align-top">
-                          <td className="px-2 py-1">{Number.isFinite(Number(row.sort_order)) ? Number(row.sort_order) : index}</td>
-                          <td className="px-2 py-1">{row.dish_name || "-"}</td>
-                          <td className="px-2 py-1">{row.ingredient_name || "-"}</td>
-                          <td className="px-2 py-1">{row.change_type || "-"}</td>
-                          <td className="px-2 py-1">{row.field_key || "-"}</td>
-                          <td className="px-2 py-1 whitespace-pre-wrap">{row.summary || "-"}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </>
-            )}
-          </>
-        )}
-
-        <div className="flex justify-end">
-          <Button
-            size="compact"
-            tone="neutral"
-            onClick={() => editor.setPendingTableOpen(false)}
-          >
-            Close
-          </Button>
-        </div>
-      </div>
-    </Modal>
-  );
-}
-
 function SaveReviewModal({ editor, open, onOpenChange, onConfirmSave }) {
   const [expandedRows, setExpandedRows] = useState({});
   const changes = useMemo(
@@ -4678,9 +4525,6 @@ export function RestaurantEditor({ editor, onNavigate, runtimeConfigHealth }) {
                       <button className="btn" onClick={() => editor.setChangeLogOpen(true)}>
                         📋 View log of changes
                       </button>
-                      <button className="btn" onClick={() => editor.setPendingTableOpen(true)}>
-                        🧾 View pending table
-                      </button>
                     </div>
                   </div>
 
@@ -4919,7 +4763,6 @@ export function RestaurantEditor({ editor, onNavigate, runtimeConfigHealth }) {
         onOpenChange={setSaveReviewOpen}
         onConfirmSave={confirmSaveFromReview}
       />
-      <PendingTableModal editor={editor} />
       <ChangeLogModal editor={editor} />
       <ConfirmInfoModal editor={editor} />
       <MenuPagesModal editor={editor} />

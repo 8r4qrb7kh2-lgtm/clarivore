@@ -15,6 +15,11 @@ import {
   isManagerUser,
   isOwnerUser,
 } from "../lib/managerRestaurants";
+import {
+  commitRestaurantWrite,
+  loadCurrentRestaurantWrite,
+  stageRestaurantWrite,
+} from "../lib/restaurantWriteGatewayClient";
 import { queryKeys } from "../lib/queryKeys";
 import { supabaseClient as supabase } from "../lib/supabase";
 import { buildTrainingRestaurantPayload, HOW_IT_WORKS_SLUG } from "./boot/trainingRestaurant";
@@ -431,33 +436,78 @@ export default function RestaurantClient() {
     return "Manager";
   }, [boot?.user]);
 
-  const insertChangeLogEntry = useCallback(
-    async ({ type, description, changes, photos }) => {
-      if (!supabase) throw new Error("Supabase is not configured.");
+  const restaurantWriteVersionRef = useRef(0);
+  useEffect(() => {
+    const nextVersion = Number(boot?.restaurant?.write_version);
+    restaurantWriteVersionRef.current = Number.isFinite(nextVersion)
+      ? Math.max(Math.floor(nextVersion), 0)
+      : 0;
+  }, [boot?.restaurant?.id, boot?.restaurant?.write_version]);
+
+  const applyWriteVersionsFromCommit = useCallback(
+    (payload, targetRestaurantId = "") => {
+      const restaurantId = String(targetRestaurantId || boot?.restaurant?.id || "").trim();
+      if (!restaurantId) return;
+      const rows = Array.isArray(payload?.nextWriteVersions)
+        ? payload.nextWriteVersions
+        : [];
+      const matched = rows.find(
+        (row) => String(row?.restaurantId || "").trim() === restaurantId,
+      );
+      const nextVersion = Number(matched?.writeVersion);
+      if (!Number.isFinite(nextVersion)) return;
+      restaurantWriteVersionRef.current = Math.max(Math.floor(nextVersion), 0);
+    },
+    [boot?.restaurant?.id],
+  );
+
+  const stageRestaurantScopeWrite = useCallback(
+    async ({ operationType, operationPayload, summary }) => {
       if (!boot?.restaurant?.id) throw new Error("Restaurant missing.");
+      return await stageRestaurantWrite({
+        supabase,
+        payload: {
+          scopeType: "RESTAURANT",
+          restaurantId: boot.restaurant.id,
+          operationType,
+          operationPayload,
+          summary,
+          author: editorAuthorName,
+          expectedWriteVersion: restaurantWriteVersionRef.current,
+        },
+      });
+    },
+    [boot?.restaurant?.id, editorAuthorName],
+  );
 
-      const payload = {
-        restaurant_id: boot.restaurant.id,
-        type: type || "update",
-        description: description || editorAuthorName,
-        changes:
-          typeof changes === "string"
-            ? changes
-            : JSON.stringify(changes || {}),
-        user_email: boot?.user?.email || null,
-        photos: Array.isArray(photos) ? photos : [],
-        timestamp: new Date().toISOString(),
-      };
-
-      const { error } = await supabase.from("change_logs").insert(payload);
-      if (error) throw error;
+  const commitStagedWrite = useCallback(
+    async ({ batchId, targetRestaurantId }) => {
+      const payload = await commitRestaurantWrite({
+        supabase,
+        batchId,
+      });
+      applyWriteVersionsFromCommit(payload, targetRestaurantId);
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.restaurant.boot(slug, inviteToken, isQrVisit),
+      });
       return payload;
     },
-    [boot?.restaurant?.id, boot?.user?.email, editorAuthorName],
+    [
+      applyWriteVersionsFromCommit,
+      inviteToken,
+      isQrVisit,
+      queryClient,
+      slug,
+    ],
   );
 
   const saveEditorDraftMutation = useMutation({
-    mutationFn: async ({ overlays: nextOverlays, menuImage, menuImages }) => {
+    mutationFn: async ({
+      overlays: nextOverlays,
+      menuImage,
+      menuImages,
+      changePayload,
+    }) => {
       if (!supabase) throw new Error("Supabase is not configured.");
       if (!boot?.restaurant?.id) throw new Error("Restaurant missing.");
 
@@ -465,29 +515,22 @@ export default function RestaurantClient() {
       const imageList = Array.isArray(menuImages)
         ? menuImages.filter(Boolean)
         : [];
-
-      const patch = {
-        overlays: sanitized,
-      };
-      if (typeof menuImage === "string") {
-        patch.menu_image = menuImage;
-      }
-      if (imageList.length) {
-        patch.menu_images = imageList;
-      }
-
-      const { error } = await supabase
-        .from("restaurants")
-        .update(patch)
-        .eq("id", boot.restaurant.id);
-
-      if (error) throw error;
-      return { overlays: sanitized, menuImage, menuImages: imageList };
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.restaurant.boot(slug, inviteToken, isQrVisit),
+      const stageResult = await stageRestaurantScopeWrite({
+        operationType: "MENU_STATE_REPLACE",
+        summary: "Save menu state",
+        operationPayload: {
+          overlays: sanitized,
+          baselineOverlays: sanitized,
+          menuImage,
+          menuImages: imageList,
+          changePayload: changePayload || {},
+        },
       });
+      await commitStagedWrite({
+        batchId: stageResult.batchId,
+        targetRestaurantId: boot.restaurant.id,
+      });
+      return { overlays: sanitized, menuImage, menuImages: imageList };
     },
   });
 
@@ -497,24 +540,23 @@ export default function RestaurantClient() {
       if (!boot?.restaurant?.id) throw new Error("Restaurant missing.");
 
       const confirmedAt = timestamp || new Date().toISOString();
-      const { error } = await supabase
-        .from("restaurants")
-        .update({
-          last_confirmed: confirmedAt,
-        })
-        .eq("id", boot.restaurant.id);
-
-      if (error) throw error;
-
-      await insertChangeLogEntry({
-        type: "confirm",
-        description: editorAuthorName,
-        changes: changePayload || {
-          author: editorAuthorName,
-          general: ["Allergen information confirmed"],
-          items: {},
+      const stageResult = await stageRestaurantScopeWrite({
+        operationType: "CONFIRM_INFO",
+        summary: "Confirm allergen information",
+        operationPayload: {
+          confirmedAt,
+          photos: Array.isArray(photos) ? photos : [],
+          changePayload:
+            changePayload || {
+              author: editorAuthorName,
+              general: ["Allergen information confirmed"],
+              items: {},
+            },
         },
-        photos: Array.isArray(photos) ? photos : [],
+      });
+      await commitStagedWrite({
+        batchId: stageResult.batchId,
+        targetRestaurantId: boot.restaurant.id,
       });
 
       return { confirmedAt };
@@ -536,17 +578,25 @@ export default function RestaurantClient() {
       if (!supabase) throw new Error("Supabase is not configured.");
       if (!boot?.restaurant?.id) throw new Error("Restaurant missing.");
 
-      const { error } = await supabase
-        .from("restaurants")
-        .update({
+      const stageResult = await stageRestaurantScopeWrite({
+        operationType: "RESTAURANT_SETTINGS_UPDATE",
+        summary: "Update restaurant settings",
+        operationPayload: {
           website: website || null,
           phone: phone || null,
           delivery_url: delivery_url || null,
           menu_url: menu_url || null,
-        })
-        .eq("id", boot.restaurant.id);
-
-      if (error) throw error;
+          changePayload: {
+            author: editorAuthorName,
+            general: ["Restaurant settings updated"],
+            items: {},
+          },
+        },
+      });
+      await commitStagedWrite({
+        batchId: stageResult.batchId,
+        targetRestaurantId: boot.restaurant.id,
+      });
       return { website, phone, delivery_url, menu_url };
     },
     onSuccess: () => {
@@ -702,79 +752,37 @@ export default function RestaurantClient() {
         changePayload,
         stateHash,
       }) => {
-        if (!supabase) throw new Error("Supabase is not configured.");
         if (!boot?.restaurant?.id) throw new Error("Restaurant missing.");
-
-        const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-        if (sessionError) throw sessionError;
-
-        const accessToken = sessionData?.session?.access_token || "";
-        if (!accessToken) {
-          throw new Error("You must be signed in to save editor changes.");
-        }
-
-        const response = await fetch("/api/editor-pending-save/stage", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${accessToken}`,
-          },
-          body: JSON.stringify({
+        const payload = await stageRestaurantWrite({
+          supabase,
+          payload: {
+            scopeType: "RESTAURANT",
             restaurantId: boot.restaurant.id,
-            overlays: Array.isArray(nextOverlays) ? nextOverlays : [],
-            baselineOverlays: Array.isArray(baselineOverlays) ? baselineOverlays : [],
-            menuImage: String(menuImage || ""),
-            menuImages: Array.isArray(menuImages) ? menuImages.filter(Boolean) : [],
-            changePayload,
-            stateHash,
+            operationType: "MENU_STATE_REPLACE",
+            operationPayload: {
+              overlays: Array.isArray(nextOverlays) ? nextOverlays : [],
+              baselineOverlays: Array.isArray(baselineOverlays) ? baselineOverlays : [],
+              menuImage: String(menuImage || ""),
+              menuImages: Array.isArray(menuImages) ? menuImages.filter(Boolean) : [],
+              changePayload,
+              stateHash,
+            },
+            summary: "Menu edits staged",
             author: editorAuthorName,
-          }),
+            expectedWriteVersion: restaurantWriteVersionRef.current,
+          },
         });
-
-        const payload = await response.json().catch(() => ({}));
-        if (!response.ok || !payload?.success) {
-          throw new Error(payload?.error || "Failed to stage pending save changes.");
-        }
-
         return payload;
       },
       onApplyPendingSave: async ({
         batchId,
-        stateHash,
         menuImage,
         overlays: nextOverlays,
       }) => {
-        if (!supabase) throw new Error("Supabase is not configured.");
         if (!boot?.restaurant?.id) throw new Error("Restaurant missing.");
-
-        const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-        if (sessionError) throw sessionError;
-
-        const accessToken = sessionData?.session?.access_token || "";
-        if (!accessToken) {
-          throw new Error("You must be signed in to save editor changes.");
-        }
-
-        const response = await fetch("/api/editor-pending-save/apply", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${accessToken}`,
-          },
-          body: JSON.stringify({
-            restaurantId: boot.restaurant.id,
-            batchId,
-            stateHash,
-          }),
-        });
-
-        const payload = await response.json().catch(() => ({}));
-        if (!response.ok || !payload?.success) {
-          throw new Error(payload?.error || "Failed to apply pending save changes.");
-        }
-
-        queryClient.invalidateQueries({
-          queryKey: queryKeys.restaurant.boot(slug, inviteToken, isQrVisit),
+        const payload = await commitStagedWrite({
+          batchId,
+          targetRestaurantId: boot.restaurant.id,
         });
 
         const existingMenuImage =
@@ -810,7 +818,7 @@ export default function RestaurantClient() {
 
         return payload;
       },
-      onSaveDraft: async ({ overlays: nextOverlays, menuImage, menuImages, changePayload, skipChangeLog }) => {
+      onSaveDraft: async ({ overlays: nextOverlays, menuImage, menuImages, changePayload }) => {
         const existingMenuImage =
           boot?.restaurant?.menu_image || boot?.restaurant?.menuImage || "";
         const menuImageChanged = Boolean(menuImage && menuImage !== existingMenuImage);
@@ -819,16 +827,8 @@ export default function RestaurantClient() {
           overlays: nextOverlays,
           menuImage,
           menuImages,
+          changePayload,
         });
-
-        if (!skipChangeLog) {
-          await insertChangeLogEntry({
-            type: "update",
-            description: editorAuthorName,
-            changes: changePayload,
-            photos: [],
-          });
-        }
 
         if (menuImageChanged) {
           try {
@@ -886,38 +886,36 @@ export default function RestaurantClient() {
         return Array.isArray(data) ? data : [];
       },
       onLoadPendingSaveTable: async (restaurantId) => {
-        if (!supabase) throw new Error("Supabase is not configured.");
         if (!boot?.restaurant?.id) {
           return { batch: null, rows: [] };
         }
 
-        const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-        if (sessionError) throw sessionError;
-
-        const accessToken = sessionData?.session?.access_token || "";
-        if (!accessToken) {
-          throw new Error("You must be signed in to view pending changes.");
-        }
-
         const safeRestaurantId = String(restaurantId || boot.restaurant.id).trim();
-        const response = await fetch(
-          `/api/editor-pending-save/current?restaurantId=${encodeURIComponent(safeRestaurantId)}`,
-          {
-            method: "GET",
-            headers: {
-              Authorization: `Bearer ${accessToken}`,
-            },
-          },
-        );
+        const payload = await loadCurrentRestaurantWrite({
+          supabase,
+          scopeType: "RESTAURANT",
+          restaurantId: safeRestaurantId,
+        });
 
-        const payload = await response.json().catch(() => ({}));
-        if (!response.ok || !payload?.success) {
-          throw new Error(payload?.error || "Failed to load pending table.");
-        }
-
+        const reviewSummary =
+          payload?.reviewSummary && typeof payload.reviewSummary === "object"
+            ? payload.reviewSummary
+            : {};
+        const rows = Array.isArray(reviewSummary?.menuRows)
+          ? reviewSummary.menuRows
+          : [];
+        const batch = payload?.batch && typeof payload.batch === "object"
+          ? payload.batch
+          : null;
         return {
-          batch: payload?.batch && typeof payload.batch === "object" ? payload.batch : null,
-          rows: Array.isArray(payload?.rows) ? payload.rows : [],
+          batch: batch
+            ? {
+                ...batch,
+                row_count: Number(reviewSummary?.rowCount) || rows.length || 0,
+                state_hash: String(reviewSummary?.stateHash || ""),
+              }
+            : null,
+          rows,
         };
       },
       onSaveRestaurantSettings: async (payload) => {

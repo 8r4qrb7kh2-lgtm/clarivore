@@ -7,6 +7,11 @@ import ChatMessageText from "../../components/chat/ChatMessageText";
 import PageHeading from "../../components/surfaces/PageHeading";
 import { notifyManagerChat } from "../../lib/chatNotifications";
 import { formatChatTimestamp } from "../../lib/chatMessage";
+import {
+  commitRestaurantWrite,
+  discardRestaurantWrite,
+  stageRestaurantWrite,
+} from "../../lib/restaurantWriteGatewayClient";
 import { loadScript } from "../../runtime/scriptLoader";
 import { supabaseClient as supabase } from "../../lib/supabase";
 
@@ -504,21 +509,43 @@ export default function AdminDashboardDom({
       setCreatingRestaurant(true);
       try {
         const slug = slugifyName(name);
-        const { data, error } = await supabase
-          .from("restaurants")
-          .insert({
-            name,
-            slug,
-            menu_image: menuImagePreview,
-            overlays: [],
-            last_confirmed: null,
-          })
-          .select("id, slug")
-          .single();
+        const stageResult = await stageRestaurantWrite({
+          supabase,
+          payload: {
+            scopeType: "ADMIN_GLOBAL",
+            operationType: "RESTAURANT_CREATE",
+            operationPayload: {
+              name,
+              slug,
+              menuImage: menuImagePreview,
+              menuImages: menuImagePreview ? [menuImagePreview] : [],
+              overlays: [],
+              website: String(restaurantWebsite || "").trim() || null,
+            },
+            summary: `Create restaurant: ${name}`,
+          },
+        });
 
-        if (error) throw error;
+        const shouldCommit = window.confirm(
+          `Review staged create:\n\nName: ${name}\nSlug: ${slug}\n\nCommit this new restaurant to site?`,
+        );
+        if (!shouldCommit) {
+          await discardRestaurantWrite({
+            supabase,
+            batchId: stageResult.batchId,
+          });
+          showStatus("Restaurant creation was canceled.", "neutral");
+          return;
+        }
 
-        const createdSlug = data?.slug || slug;
+        const commitResult = await commitRestaurantWrite({
+          supabase,
+          batchId: stageResult.batchId,
+        });
+        const created = Array.isArray(commitResult?.createdRestaurants)
+          ? commitResult.createdRestaurants[0]
+          : null;
+        const createdSlug = String(created?.slug || slug).trim();
         showStatus(`Added ${name}. Downloading QR code...`, "success");
 
         try {
@@ -544,12 +571,13 @@ export default function AdminDashboardDom({
       loadRestaurants,
       menuImagePreview,
       restaurantName,
+      restaurantWebsite,
       showStatus,
     ],
   );
 
   const deleteRestaurant = useCallback(
-    async (restaurantId, restaurantNameValue) => {
+    async (restaurantId, restaurantNameValue, writeVersion) => {
       if (!supabase || !restaurantId) return;
       const confirmed = window.confirm(
         `Delete "${restaurantNameValue}" from the website? This cannot be undone.`,
@@ -557,21 +585,43 @@ export default function AdminDashboardDom({
       if (!confirmed) return;
 
       try {
-        const { data, error } = await supabase
-          .from("restaurants")
-          .delete()
-          .eq("id", restaurantId)
-          .select("id");
+        const expectedWriteVersion = Number(writeVersion);
+        const safeExpectedWriteVersion = Number.isFinite(expectedWriteVersion)
+          ? Math.max(Math.floor(expectedWriteVersion), 0)
+          : null;
 
-        if (error) throw error;
+        const stageResult = await stageRestaurantWrite({
+          supabase,
+          payload: {
+            scopeType: "RESTAURANT",
+            restaurantId,
+            operationType: "RESTAURANT_DELETE",
+            operationPayload: {
+              restaurantId,
+            },
+            summary: `Delete restaurant: ${restaurantNameValue}`,
+            ...(Number.isFinite(safeExpectedWriteVersion)
+              ? { expectedWriteVersion: safeExpectedWriteVersion }
+              : {}),
+          },
+        });
 
-        if (!data || data.length === 0) {
-          showStatus(
-            `Unable to delete ${restaurantNameValue}. Check permissions and try again.`,
-            "error",
-          );
+        const shouldCommit = window.confirm(
+          `Review staged delete:\n\nRestaurant: ${restaurantNameValue}\n\nCommit permanent delete?`,
+        );
+        if (!shouldCommit) {
+          await discardRestaurantWrite({
+            supabase,
+            batchId: stageResult.batchId,
+          });
+          showStatus("Restaurant deletion was canceled.", "neutral");
           return;
         }
+
+        await commitRestaurantWrite({
+          supabase,
+          batchId: stageResult.batchId,
+        });
 
         showStatus(`Deleted ${restaurantNameValue}.`, "success");
         await loadRestaurants();
@@ -1485,7 +1535,11 @@ export default function AdminDashboardDom({
                                     type="button"
                                     className="btn-danger"
                                     onClick={() =>
-                                      deleteRestaurant(restaurant.id, restaurant.name)
+                                      deleteRestaurant(
+                                        restaurant.id,
+                                        restaurant.name,
+                                        restaurant.write_version,
+                                      )
                                     }
                                   >
                                     Delete

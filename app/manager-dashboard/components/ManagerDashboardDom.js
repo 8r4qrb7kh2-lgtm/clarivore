@@ -11,6 +11,11 @@ import { notifyManagerChat } from "../../lib/chatNotifications";
 import { getActiveAllergenDietConfig } from "../../lib/allergenConfigRuntime";
 import { resolveChatLink } from "../../lib/chatMessage";
 import { supabaseClient as supabase } from "../../lib/supabase";
+import {
+  commitRestaurantWrite,
+  discardRestaurantWrite,
+  stageRestaurantWrite,
+} from "../../lib/restaurantWriteGatewayClient";
 import { resolveManagerDisplayName } from "../../lib/userIdentity";
 
 const ADMIN_DISPLAY_NAME = "Matt D (clarivore administrator)";
@@ -1521,14 +1526,72 @@ export default function ManagerDashboardDom({
           normalizeDietLabel,
         );
 
-        const { error } = await supabase
-          .from("restaurants")
-          .update({ overlays: updatedOverlays })
-          .eq("id", selectedRestaurantId);
-        if (error) throw error;
+        const expectedWriteVersion = Number(currentRestaurantData?.write_version);
+        const safeExpectedWriteVersion = Number.isFinite(expectedWriteVersion)
+          ? Math.max(Math.floor(expectedWriteVersion), 0)
+          : null;
+        const stageResult = await stageRestaurantWrite({
+          supabase,
+          payload: {
+            scopeType: "RESTAURANT",
+            restaurantId: selectedRestaurantId,
+            operationType: "BRAND_REPLACEMENT",
+            operationPayload: {
+              overlays: updatedOverlays,
+              menuImage: currentRestaurantData?.menu_image || "",
+              menuImages: Array.isArray(currentRestaurantData?.menu_images)
+                ? currentRestaurantData.menu_images
+                : [],
+              changePayload: {
+                author: managerDisplayName || "Manager",
+                general: [
+                  `Brand replacement: ${brandItem.brandName || "Brand"} -> ${newBrandName}`,
+                ],
+                items: {},
+              },
+            },
+            summary: `Replace brand item ${brandItem.brandName || "Brand"}`,
+            author: managerDisplayName || "Manager",
+            ...(Number.isFinite(safeExpectedWriteVersion)
+              ? { expectedWriteVersion: safeExpectedWriteVersion }
+              : {}),
+          },
+        });
+
+        const shouldCommit = window.confirm(
+          `Review brand replacement:\n\nFrom: ${brandItem.brandName || "Unknown brand"}\nTo: ${newBrandName}\n\nCommit this change to site?`,
+        );
+        if (!shouldCommit) {
+          await discardRestaurantWrite({
+            supabase,
+            batchId: stageResult.batchId,
+          });
+          setStatus("Brand replacement was canceled.", "neutral");
+          return;
+        }
+
+        const commitResult = await commitRestaurantWrite({
+          supabase,
+          batchId: stageResult.batchId,
+        });
+        const versionRows = Array.isArray(commitResult?.nextWriteVersions)
+          ? commitResult.nextWriteVersions
+          : [];
+        const matchedVersion = versionRows.find(
+          (row) => String(row?.restaurantId || "") === String(selectedRestaurantId),
+        );
+        const nextWriteVersion = Number(matchedVersion?.writeVersion);
 
         setCurrentRestaurantData((current) =>
-          current ? { ...current, overlays: updatedOverlays } : current,
+          current
+            ? {
+                ...current,
+                overlays: updatedOverlays,
+                write_version: Number.isFinite(nextWriteVersion)
+                  ? Math.max(Math.floor(nextWriteVersion), 0)
+                  : current.write_version,
+              }
+            : current,
         );
         setStatus("Brand item replaced successfully.", "success");
       } catch (error) {
@@ -1540,6 +1603,10 @@ export default function ManagerDashboardDom({
     },
     [
       currentRestaurantData?.overlays,
+      currentRestaurantData?.menu_image,
+      currentRestaurantData?.menu_images,
+      currentRestaurantData?.write_version,
+      managerDisplayName,
       normalizeAllergen,
       normalizeDietLabel,
       selectedRestaurantId,

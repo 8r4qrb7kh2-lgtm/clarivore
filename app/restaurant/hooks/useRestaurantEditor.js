@@ -3153,8 +3153,8 @@ export function useRestaurantEditor({
       return { success: false };
     }
 
-    if (!callbacks?.onSaveDraft && !callbacks?.onApplyPendingSave) {
-      setSaveError("Save callback is not configured.");
+    if (!callbacks?.onApplyPendingSave) {
+      setSaveError("Write gateway save callback is not configured.");
       setSaveStatus("error");
       return { success: false };
     }
@@ -3197,35 +3197,26 @@ export function useRestaurantEditor({
       });
       const stateHash = serializeEditorState(cleanedOverlays, cleanedMenuImages);
 
-      if (callbacks?.onApplyPendingSave) {
-        if (!pendingSaveBatchId) {
-          setSaveError("No pending save batch found. Review changes before confirming save.");
-          setSaveStatus("error");
-          return { success: false };
-        }
-
-        if (pendingSaveStateHash && pendingSaveStateHash !== stateHash) {
-          setSaveError("Changes were edited after review. Please re-open save review.");
-          setSaveStatus("error");
-          return { success: false };
-        }
-
-        await callbacks.onApplyPendingSave({
-          batchId: pendingSaveBatchId,
-          overlays: cleanedOverlays,
-          menuImages: cleanedMenuImages,
-          menuImage,
-          changePayload,
-          stateHash,
-        });
-      } else {
-        await callbacks.onSaveDraft({
-          overlays: cleanedOverlays,
-          menuImages: cleanedMenuImages,
-          menuImage,
-          changePayload,
-        });
+      if (!pendingSaveBatchId) {
+        setSaveError("No pending save batch found. Review changes before confirming save.");
+        setSaveStatus("error");
+        return { success: false };
       }
+
+      if (pendingSaveStateHash && pendingSaveStateHash !== stateHash) {
+        setSaveError("Changes were edited after review. Please re-open save review.");
+        setSaveStatus("error");
+        return { success: false };
+      }
+
+      await callbacks.onApplyPendingSave({
+        batchId: pendingSaveBatchId,
+        overlays: cleanedOverlays,
+        menuImages: cleanedMenuImages,
+        menuImage,
+        changePayload,
+        stateHash,
+      });
 
       baselineRef.current = serializeEditorState(cleanedOverlays, cleanedMenuImages);
       setPendingChanges([]);
