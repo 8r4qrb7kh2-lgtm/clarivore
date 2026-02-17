@@ -70,7 +70,7 @@ BEGIN
   END IF;
 
   LOOP
-    v_token := encode(gen_random_bytes(24), 'hex');
+    v_token := md5(random()::text || clock_timestamp()::text || COALESCE(auth.uid()::text, ''));
     BEGIN
       INSERT INTO public.manager_invites (
         token,

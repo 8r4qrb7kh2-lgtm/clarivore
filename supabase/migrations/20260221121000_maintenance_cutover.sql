@@ -82,46 +82,7 @@ ALTER TABLE IF EXISTS public.editor_pending_save_batches
 ALTER TABLE IF EXISTS public.editor_pending_save_batches_v2
   ADD COLUMN IF NOT EXISTS migrated_to_write_gateway_at timestamptz;
 
-INSERT INTO public.restaurant_write_batches (
-  id,
-  scope_type,
-  scope_key,
-  restaurant_id,
-  created_by,
-  author,
-  status,
-  base_write_version,
-  review_summary,
-  created_at,
-  updated_at,
-  applied_at,
-  discarded_at
-)
-SELECT
-  src.id,
-  'RESTAURANT',
-  src.restaurant_id::text,
-  src.restaurant_id,
-  COALESCE(src.created_by, gen_random_uuid()),
-  src.author,
-  CASE
-    WHEN src.status IN ('pending', 'applied', 'discarded') THEN src.status
-    ELSE 'failed'
-  END,
-  COALESCE(r.write_version, 0),
-  jsonb_build_object(
-    'migratedFrom', src.source_table,
-    'rowCount', COALESCE(src.row_count, 0),
-    'stateHash', COALESCE(src.state_hash, '')
-  ),
-  COALESCE(src.created_at, now()),
-  COALESCE(src.updated_at, now()),
-  src.applied_at,
-  CASE
-    WHEN src.status = 'discarded' THEN COALESCE(src.updated_at, now())
-    ELSE NULL
-  END
-FROM (
+WITH legacy_source AS (
   SELECT
     b.id,
     b.restaurant_id,
@@ -159,10 +120,85 @@ FROM (
     b2.change_payload,
     'editor_pending_save_batches_v2'::text AS source_table
   FROM public.editor_pending_save_batches_v2 AS b2
-) AS src
+),
+normalized_source AS (
+  SELECT
+    src.*,
+    COALESCE(src.created_by, gen_random_uuid()) AS created_by_safe,
+    CASE
+      WHEN src.status IN ('pending', 'applied', 'discarded') THEN src.status
+      ELSE 'failed'
+    END AS normalized_status
+  FROM legacy_source AS src
+),
+deduped_source AS (
+  SELECT
+    ns.*,
+    CASE
+      WHEN ns.normalized_status = 'pending' THEN
+        row_number() OVER (
+          PARTITION BY ns.restaurant_id, ns.created_by_safe
+          ORDER BY COALESCE(ns.updated_at, ns.created_at, now()) DESC, ns.id DESC
+        )
+      ELSE 1
+    END AS pending_rank
+  FROM normalized_source AS ns
+)
+INSERT INTO public.restaurant_write_batches (
+  id,
+  scope_type,
+  scope_key,
+  restaurant_id,
+  created_by,
+  author,
+  status,
+  base_write_version,
+  review_summary,
+  created_at,
+  updated_at,
+  applied_at,
+  discarded_at
+)
+SELECT
+  ds.id,
+  'RESTAURANT',
+  ds.restaurant_id::text,
+  ds.restaurant_id,
+  ds.created_by_safe,
+  ds.author,
+  CASE
+    WHEN ds.normalized_status = 'pending'
+      AND (
+        ds.pending_rank > 1
+        OR EXISTS (
+          SELECT 1
+          FROM public.restaurant_write_batches AS wb
+          WHERE wb.scope_type = 'RESTAURANT'
+            AND wb.scope_key = ds.restaurant_id::text
+            AND wb.created_by = ds.created_by_safe
+            AND wb.status = 'pending'
+        )
+      )
+      THEN 'failed'
+    ELSE ds.normalized_status
+  END,
+  COALESCE(r.write_version, 0),
+  jsonb_build_object(
+    'migratedFrom', ds.source_table,
+    'rowCount', COALESCE(ds.row_count, 0),
+    'stateHash', COALESCE(ds.state_hash, '')
+  ),
+  COALESCE(ds.created_at, now()),
+  COALESCE(ds.updated_at, now()),
+  ds.applied_at,
+  CASE
+    WHEN ds.normalized_status = 'discarded' THEN COALESCE(ds.updated_at, now())
+    ELSE NULL
+  END
+FROM deduped_source AS ds
 LEFT JOIN public.restaurants AS r
-  ON r.id = src.restaurant_id
-WHERE src.restaurant_id IS NOT NULL
+  ON r.id = ds.restaurant_id
+WHERE ds.restaurant_id IS NOT NULL
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO public.restaurant_write_ops (
