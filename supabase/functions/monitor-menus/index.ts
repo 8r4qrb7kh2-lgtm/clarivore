@@ -18,8 +18,40 @@ interface MenuSnapshot {
   restaurant_id: string
   content_hash: string
   menu_text: string
-  dishes_json?: string
+  dishes_json?: unknown
   detected_at: string
+}
+
+type Dish = { name: string; description: string }
+
+function normalizeDishArray(input: unknown): { ok: boolean; dishes: Dish[] } {
+  let value: unknown = input
+  if (typeof value === 'string') {
+    try {
+      value = JSON.parse(value)
+    } catch {
+      return { ok: false, dishes: [] }
+    }
+  }
+
+  if (!Array.isArray(value)) {
+    return { ok: false, dishes: [] }
+  }
+
+  const dishes = value
+    .map((row) => {
+      const candidate =
+        row && typeof row === 'object'
+          ? (row as Record<string, unknown>)
+          : {}
+      return {
+        name: String(candidate.name || '').trim(),
+        description: String(candidate.description || '').trim(),
+      }
+    })
+    .filter((row) => row.name || row.description)
+
+  return { ok: true, dishes }
 }
 
 serve(async (req) => {
@@ -98,7 +130,7 @@ serve(async (req) => {
             restaurant_id: restaurant.id,
             content_hash: currentHash,
             menu_text: menuText,
-            dishes_json: JSON.stringify(detectedDishes),
+            dishes_json: detectedDishes,
             detected_at: new Date().toISOString()
           })
 
@@ -116,19 +148,15 @@ serve(async (req) => {
             restaurant_id: restaurant.id,
             content_hash: currentHash,
             menu_text: menuText,
-            dishes_json: JSON.stringify(detectedDishes),
+            dishes_json: detectedDishes,
             detected_at: new Date().toISOString()
           })
 
           // Get previous dishes from stored JSON, or extract from text as fallback
           let previousDishes: Array<{ name: string; description: string }> = []
-          if (previousSnapshot.dishes_json) {
-            try {
-              previousDishes = JSON.parse(previousSnapshot.dishes_json)
-            } catch (e) {
-              console.error('Failed to parse previous dishes JSON, extracting from text')
-              previousDishes = await extractDishesWithAI(previousSnapshot.menu_text)
-            }
+          const storedDishes = normalizeDishArray(previousSnapshot.dishes_json)
+          if (storedDishes.ok) {
+            previousDishes = storedDishes.dishes
           } else {
             // Old snapshot without dishes_json, extract from text
             previousDishes = await extractDishesWithAI(previousSnapshot.menu_text)

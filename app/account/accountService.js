@@ -196,46 +196,30 @@ export async function getInviteValidation(supabase, inviteToken, cacheRef) {
   return result;
 }
 
-export async function grantManagerInviteAccess(supabase, inviteToken, userId, restaurantIds) {
-  const ids = Array.isArray(restaurantIds) ? restaurantIds : [];
-
-  for (const restaurantId of ids) {
-    const { error: managerError } = await supabase.from("restaurant_managers").insert({
-      user_id: userId,
-      restaurant_id: restaurantId,
-      created_at: new Date().toISOString(),
-    });
-    if (managerError) {
-      console.log("[invite] restaurant_managers insert warning", managerError);
-    }
+export async function grantManagerInviteAccess(supabase, inviteToken) {
+  const token = String(inviteToken || "").trim();
+  if (!token) {
+    throw new Error("Invite token is required.");
   }
 
-  for (const restaurantId of ids) {
-    const { error: accessError } = await supabase
-      .from("manager_restaurant_access")
-      .insert({
-        user_id: userId,
-        restaurant_id: restaurantId,
-        granted_by: null,
-      });
-    if (accessError) {
-      console.log("[invite] manager_restaurant_access insert warning", accessError);
-    }
+  const { data, error } = await supabase.rpc("consume_manager_invite", {
+    p_token: token,
+  });
+
+  if (error) {
+    throw error;
   }
 
-  if (inviteToken) {
-    const { error: updateError } = await supabase
-      .from("manager_invites")
-      .update({
-        used_at: new Date().toISOString(),
-        used_by: userId,
-      })
-      .eq("token", inviteToken);
-
-    if (updateError) {
-      console.log("[invite] mark used warning", updateError);
-    }
+  if (!data?.success) {
+    throw new Error(
+      data?.message || "Manager invite could not be consumed.",
+    );
   }
+
+  return {
+    restaurantIds: Array.isArray(data?.restaurant_ids) ? data.restaurant_ids : [],
+    grantedCount: Number(data?.granted_count) || 0,
+  };
 }
 
 export async function applyManagerInviteToCurrentUser(
@@ -248,7 +232,13 @@ export async function applyManagerInviteToCurrentUser(
     throw new Error("Manager invitation is not valid.");
   }
 
-  const restaurantIds = validation.invitation?.restaurant_ids || [];
+  const grantResult = await grantManagerInviteAccess(
+    supabase,
+    inviteToken,
+  );
+  const restaurantIds = Array.isArray(grantResult?.restaurantIds)
+    ? grantResult.restaurantIds
+    : validation.invitation?.restaurant_ids || [];
   const nextMetadata = { ...(user?.user_metadata || {}), role: "manager" };
 
   const { data: userData, error: userError } = await supabase.auth.updateUser({
@@ -257,7 +247,6 @@ export async function applyManagerInviteToCurrentUser(
   if (userError) throw userError;
 
   const updatedUser = userData?.user || user;
-  await grantManagerInviteAccess(supabase, inviteToken, updatedUser.id, restaurantIds);
 
   return {
     user: updatedUser,
@@ -273,7 +262,6 @@ export async function deleteUserAccount(supabase, userId) {
   console.error("RPC delete error:", rpcError);
 
   await supabase.from("user_allergies").delete().eq("user_id", userId);
-  await supabase.from("restaurant_managers").delete().eq("user_id", userId);
 }
 
 export function getDefaultPostLoginPath(user, redirectParam, inviteValidation) {

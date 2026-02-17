@@ -1,4 +1,3 @@
-import { isOwnerUser } from "../../lib/managerRestaurants";
 import { supabaseClient as supabase } from "../../lib/supabase";
 
 export async function prepareAdminDashboardBootPayload() {
@@ -21,7 +20,17 @@ export async function prepareAdminDashboardBootPayload() {
     };
   }
 
-  const isAdmin = isOwnerUser(user);
+  const { data: adminMembership, error: adminError } = await supabase
+    .from("app_admins")
+    .select("user_id")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (adminError) {
+    console.error("[admin-dashboard-next] failed to verify admin membership", adminError);
+  }
+
+  const isAdmin = Boolean(adminMembership?.user_id);
 
   return {
     user,

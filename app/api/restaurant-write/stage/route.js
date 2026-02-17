@@ -4,7 +4,9 @@ import {
   asText,
   buildReviewSummary,
   ensureRestaurantWriteInfrastructure,
+  getWriteMaintenanceMessage,
   getRestaurantWriteVersion,
+  isWriteMaintenanceModeEnabled,
   loadPendingBatchForScope,
   mapBatchForResponse,
   mapOperationsForResponse,
@@ -20,6 +22,13 @@ import {
 export const runtime = "nodejs";
 
 export async function POST(request) {
+  if (isWriteMaintenanceModeEnabled()) {
+    return NextResponse.json(
+      { error: getWriteMaintenanceMessage() },
+      { status: 503 },
+    );
+  }
+
   let body;
   try {
     body = await request.json();
@@ -222,15 +231,16 @@ export async function POST(request) {
         ? 401
         : message === "Invalid user session"
           ? 401
-          : message === "Not authorized" || message === "Owner access required"
+          : message === "Not authorized" || message === "Admin access required"
             ? 403
-            : message === "Restaurant not found"
-              ? 404
-              : message === "Write scope is stale. Reload before staging changes."
-                ? 409
+          : message === "Restaurant not found"
+            ? 404
+          : message === "Write scope is stale. Reload before staging changes."
+            ? 409
+            : message === getWriteMaintenanceMessage()
+              ? 503
                 : 500;
 
     return NextResponse.json({ error: message }, { status });
   }
 }
-

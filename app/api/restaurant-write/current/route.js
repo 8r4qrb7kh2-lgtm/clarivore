@@ -7,7 +7,7 @@ import {
   mapBatchForResponse,
   mapOperationsForResponse,
   prisma,
-  requireOwnerSession,
+  requireAdminSession,
   requireRestaurantAccessSession,
   WRITE_SCOPE_TYPES,
 } from "../_shared/writeGatewayUtils";
@@ -41,7 +41,7 @@ export async function GET(request) {
     const session =
       scopeType === WRITE_SCOPE_TYPES.RESTAURANT
         ? await requireRestaurantAccessSession(request, restaurantId)
-        : await requireOwnerSession(request);
+        : await requireAdminSession(request);
 
     await ensureRestaurantWriteInfrastructure(prisma);
 
@@ -84,13 +84,12 @@ export async function GET(request) {
         ? 401
         : message === "Invalid user session"
           ? 401
-          : message === "Not authorized" || message === "Owner access required"
+          : message === "Not authorized" || message === "Admin access required"
             ? 403
-            : message === "Restaurant not found"
-              ? 404
+          : message === "Restaurant not found"
+            ? 404
               : 500;
 
     return NextResponse.json({ error: message }, { status });
   }
 }
-

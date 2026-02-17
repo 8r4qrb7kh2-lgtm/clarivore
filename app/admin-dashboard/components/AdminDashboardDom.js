@@ -42,27 +42,6 @@ function toDateLabel(value) {
   return parsed.toLocaleString();
 }
 
-function generateToken(length = 32) {
-  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-  const cryptoApi = typeof window !== "undefined" ? window.crypto : null;
-
-  if (cryptoApi?.getRandomValues) {
-    let token = "";
-    const randomValues = new Uint32Array(length);
-    cryptoApi.getRandomValues(randomValues);
-    for (let index = 0; index < length; index += 1) {
-      token += chars[randomValues[index] % chars.length];
-    }
-    return token;
-  }
-
-  let fallbackToken = "";
-  for (let index = 0; index < length; index += 1) {
-    fallbackToken += chars[Math.floor(Math.random() * chars.length)];
-  }
-  return fallbackToken;
-}
-
 function getInviteUrl(token, entryPage) {
   const origin = typeof window !== "undefined" ? window.location.origin : "";
   if (entryPage?.startsWith("restaurant:")) {
@@ -901,23 +880,18 @@ export default function AdminDashboardDom({
 
       setInviteBusyByRestaurant((current) => ({ ...current, [restaurantId]: true }));
       try {
-        const token = generateToken();
-        const expiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString();
         const entryPage = "dashboard";
-
-        const { error } = await supabase
-          .from("manager_invites")
-          .insert({
-            token,
-            restaurant_ids: [restaurantId],
-            entry_page: entryPage,
-            expires_at: expiresAt,
-            created_by: currentUser.id,
-          })
-          .select("token")
-          .single();
-
+        const { data, error } = await supabase.rpc("create_manager_invite", {
+          p_restaurant_ids: [restaurantId],
+          p_entry_page: entryPage,
+          p_expires_in_hours: 48,
+        });
         if (error) throw error;
+
+        const token = String(data?.token || "").trim();
+        if (!token) {
+          throw new Error("Invite token was not returned.");
+        }
 
         const url = getInviteUrl(token, entryPage);
         setManagerInviteLinks((current) => ({ ...current, [restaurantId]: url }));

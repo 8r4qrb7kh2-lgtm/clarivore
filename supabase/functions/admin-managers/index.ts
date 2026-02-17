@@ -4,7 +4,6 @@ import { getCorsHeaders } from "../_shared/cors.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
-const ADMIN_EMAIL = Deno.env.get("ADMIN_EMAIL") || "matt.29.ds@gmail.com";
 
 const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
   auth: { persistSession: false },
@@ -46,7 +45,12 @@ async function requireAdmin(req: Request) {
   });
   const { data, error } = await authClient.auth.getUser();
   if (error || !data?.user) return null;
-  if (data.user.email !== ADMIN_EMAIL) return null;
+  const { data: adminMembership, error: adminError } = await supabaseAdmin
+    .from("app_admins")
+    .select("user_id")
+    .eq("user_id", data.user.id)
+    .maybeSingle();
+  if (adminError || !adminMembership?.user_id) return null;
   return data.user;
 }
 
@@ -102,20 +106,14 @@ async function listManagers() {
 }
 
 async function revokeManager(restaurantId: string, userId: string) {
-  const { error: deleteError } = await supabaseAdmin
-    .from("restaurant_managers")
-    .delete()
-    .eq("restaurant_id", restaurantId)
-    .eq("user_id", userId);
-  if (deleteError) throw deleteError;
-
-  const { error: accessError } = await supabaseAdmin
-    .from("manager_restaurant_access")
-    .delete()
-    .eq("restaurant_id", restaurantId)
-    .eq("user_id", userId);
-  if (accessError && !String(accessError.message || "").includes("does not exist")) {
-    throw accessError;
+  const { data, error } = await supabaseAdmin.rpc("set_manager_access", {
+    p_user_id: userId,
+    p_restaurant_id: restaurantId,
+    p_enabled: false,
+  });
+  if (error) throw error;
+  if (!data?.success) {
+    throw new Error(data?.message || "Failed to update manager access.");
   }
 }
 

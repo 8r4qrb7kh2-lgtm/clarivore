@@ -407,6 +407,8 @@ model users {
   sessions                                                                 sessions[]
   accommodation_requests_accommodation_requests_manager_reviewed_byTousers accommodation_requests[]     @relation("accommodation_requests_manager_reviewed_byTousers")
   accommodation_requests_accommodation_requests_user_idTousers             accommodation_requests[]     @relation("accommodation_requests_user_idTousers")
+  app_admins_app_admins_granted_byTousers                                  app_admins[]                @relation("app_admins_granted_byTousers")
+  app_admins_app_admins_user_idTousers                                     app_admins[]                @relation("app_admins_user_idTousers")
   diner_device_tokens                                                      diner_device_tokens[]
   diner_push_subscriptions                                                 diner_push_subscriptions[]
   dish_interactions                                                        dish_interactions[]
@@ -483,6 +485,19 @@ model allergen_detection_issues {
 }
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model app_admins {
+  id                                      String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id                                 String    @unique @db.Uuid
+  granted_by                              String?   @db.Uuid
+  created_at                              DateTime  @default(now()) @db.Timestamptz(6)
+  users_app_admins_granted_byTousers      users?    @relation("app_admins_granted_byTousers", fields: [granted_by], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  users_app_admins_user_idTousers         users     @relation("app_admins_user_idTousers", fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([granted_by], map: "idx_app_admins_granted_by")
+  @@schema("public")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model allergens {
   id                        String                      @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
   key                       String                      @unique
@@ -519,7 +534,7 @@ model change_logs {
   restaurant_id String?      @db.Uuid
   type          String
   description   String?
-  changes       String?
+  changes       Json?
   photos        Json?        @default("[]")
   user_email    String?
   timestamp     DateTime?    @default(now()) @db.Timestamptz(6)
@@ -813,7 +828,7 @@ model menu_snapshots {
   menu_text     String
   detected_at   DateTime?   @default(now()) @db.Timestamptz(6)
   created_at    DateTime?   @default(now()) @db.Timestamptz(6)
-  dishes_json   String?
+  dishes_json   Json?       @default("[]")
   restaurants   restaurants @relation(fields: [restaurant_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([detected_at(sort: Desc)], map: "idx_menu_snapshots_detected_at")
@@ -896,15 +911,57 @@ model restaurant_direct_messages {
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model restaurant_managers {
   id            String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  restaurant_id String?      @db.Uuid
-  user_id       String?      @db.Uuid
+  restaurant_id String       @db.Uuid
+  user_id       String       @db.Uuid
   created_at    DateTime?    @default(now()) @db.Timestamptz(6)
-  restaurants   restaurants? @relation(fields: [restaurant_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  users         users?       @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  restaurants   restaurants  @relation(fields: [restaurant_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users         users        @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@unique([restaurant_id, user_id])
   @@index([restaurant_id], map: "idx_restaurant_managers_restaurant")
   @@index([user_id], map: "idx_restaurant_managers_user")
+  @@schema("public")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+model restaurant_write_batches {
+  id                   String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  scope_type           String
+  scope_key            String
+  restaurant_id        String?                @db.Uuid
+  created_by           String                 @db.Uuid
+  author               String?
+  status               String                 @default("pending")
+  base_write_version   BigInt?
+  review_summary       Json                   @default("{}")
+  created_at           DateTime               @default(now()) @db.Timestamptz(6)
+  updated_at           DateTime               @default(now()) @db.Timestamptz(6)
+  applied_at           DateTime?              @db.Timestamptz(6)
+  discarded_at         DateTime?              @db.Timestamptz(6)
+  restaurants          restaurants?           @relation(fields: [restaurant_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  restaurant_write_ops restaurant_write_ops[]
+
+  @@index([restaurant_id], map: "idx_restaurant_write_batches_restaurant_id")
+  @@index([scope_type, scope_key, created_by, created_at(sort: Desc)], map: "restaurant_write_batches_scope_idx")
+  @@schema("public")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model restaurant_write_ops {
+  id                     String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  batch_id               String                 @db.Uuid
+  sort_order             Int                    @default(0)
+  operation_type         String
+  operation_payload      Json                   @default("{}")
+  summary                String
+  created_at             DateTime               @default(now()) @db.Timestamptz(6)
+  updated_at             DateTime               @default(now()) @db.Timestamptz(6)
+  restaurant_write_batch restaurant_write_batches @relation(fields: [batch_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([batch_id, operation_type])
+  @@index([batch_id, sort_order, created_at], map: "restaurant_write_ops_batch_idx")
   @@schema("public")
 }
 
@@ -929,6 +986,7 @@ model restaurants {
   website                         String?
   phone                           String?
   menu_images                     Json?
+  write_version                   BigInt                            @default(0)
   accommodation_requests          accommodation_requests[]
   allergen_detection_issues       allergen_detection_issues[]
   anonymous_feedback              anonymous_feedback[]
@@ -944,6 +1002,7 @@ model restaurants {
   restaurant_direct_message_reads restaurant_direct_message_reads[]
   restaurant_direct_messages      restaurant_direct_messages[]
   restaurant_managers             restaurant_managers[]
+  restaurant_write_batches        restaurant_write_batches[]
   tablet_orders                   tablet_orders[]
   user_favorites                  user_favorites[]
   user_loved_dishes               user_loved_dishes[]

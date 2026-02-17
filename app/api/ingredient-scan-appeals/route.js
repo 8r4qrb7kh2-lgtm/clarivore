@@ -7,7 +7,6 @@ export function OPTIONS() {
   return corsOptions();
 }
 
-const OWNER_EMAIL = "matt.29.ds@gmail.com";
 const DEFAULT_APPEAL_PHOTO_BUCKET = "ingredient-scan-appeals";
 
 function asText(value) {
@@ -198,8 +197,17 @@ export async function POST(request) {
   }
 
   const user = userData.user;
-  const isOwner = asText(user?.email).toLowerCase() === OWNER_EMAIL.toLowerCase();
-  if (!isOwner) {
+  const { data: adminRecord, error: adminError } = await privilegedSupabase
+    .from("app_admins")
+    .select("user_id")
+    .eq("user_id", user.id)
+    .maybeSingle();
+  if (adminError) {
+    return errorResponse(adminError.message || "Failed to verify admin access.", 500);
+  }
+
+  const isAdmin = Boolean(adminRecord?.user_id);
+  if (!isAdmin) {
     const { data: managerRecord, error: managerError } = await privilegedSupabase
       .from("restaurant_managers")
       .select("id")

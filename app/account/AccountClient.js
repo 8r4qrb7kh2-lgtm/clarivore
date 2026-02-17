@@ -586,7 +586,6 @@ export default function AccountClient() {
 
     try {
       let role = "customer";
-      let restaurantIds = [];
       let inviteValidation = null;
 
       if (inviteToken) {
@@ -596,8 +595,8 @@ export default function AccountClient() {
           inviteValidationCache,
         );
         if (inviteValidation.isValid) {
+          await grantManagerInviteAccess(supabase, inviteToken);
           role = "manager";
-          restaurantIds = inviteValidation.invitation?.restaurant_ids || [];
         } else if (inviteValidation.message) {
           setOnboardingStatus({ message: inviteValidation.message, kind: "error" });
         }
@@ -621,10 +620,6 @@ export default function AccountClient() {
         },
         { onConflict: "user_id" },
       );
-
-      if (role === "manager") {
-        await grantManagerInviteAccess(supabase, inviteToken, user.id, restaurantIds);
-      }
 
       clearQrSelections();
 

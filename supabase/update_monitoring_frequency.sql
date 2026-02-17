@@ -1,33 +1,49 @@
--- Update menu monitoring frequency from every 6 hours to every 24 hours
+-- Update menu monitoring frequency to daily without embedding credentials in source.
+-- Requires DB settings:
+--   app.settings.supabase_functions_url
+--   app.settings.supabase_service_role_key
 
--- First, unschedule the existing job
-SELECT cron.unschedule('monitor-restaurant-menus');
+DO $$
+DECLARE
+  functions_url text := current_setting('app.settings.supabase_functions_url', true);
+  service_role_key text := current_setting('app.settings.supabase_service_role_key', true);
+BEGIN
+  IF COALESCE(functions_url, '') = '' OR COALESCE(service_role_key, '') = '' THEN
+    RAISE NOTICE 'Skipping cron update: set app.settings.supabase_functions_url and app.settings.supabase_service_role_key first.';
+    RETURN;
+  END IF;
 
--- Create new schedule for every 24 hours (daily at midnight UTC)
-SELECT cron.schedule(
-  'monitor-restaurant-menus',
-  '0 0 * * *',  -- Every day at midnight (00:00 UTC)
-  $$
-  SELECT net.http_post(
-    url := 'https://fgoiyycctnwnghrvsilt.supabase.co/functions/v1/monitor-menus',
-    headers := jsonb_build_object(
-      'Content-Type', 'application/json',
-      'Authorization', 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZnb2l5eWNjdG53bmdocnZzaWx0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA0MzY1MjYsImV4cCI6MjA3NjAxMjUyNn0.xlSSXr0Gl7j-vsckrj-2anpPmp4BG2SUIdN-_dquSA8',
-      'apikey', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZnb2l5eWNjdG53bmdocnZzaWx0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA0MzY1MjYsImV4cCI6MjA3NjAxMjUyNn0.xlSSXr0Gl7j-vsckrj-2anpPmp4BG2SUIdN-_dquSA8'
+  PERFORM cron.unschedule('monitor-restaurant-menus');
+
+  PERFORM cron.schedule(
+    'monitor-restaurant-menus',
+    '0 0 * * *',
+    format(
+      $cmd$
+      SELECT net.http_post(
+        url := %L,
+        headers := jsonb_build_object(
+          'Content-Type', 'application/json',
+          'Authorization', %L,
+          'apikey', %L
+        )
+      );
+      $cmd$,
+      functions_url || '/monitor-menus',
+      'Bearer ' || service_role_key,
+      service_role_key
     )
   );
-  $$
-);
+END $$;
 
--- Verify the cron job was updated
 SELECT
   jobid,
   jobname,
   schedule,
   active,
   CASE
-    WHEN schedule = '0 0 * * *' THEN '✓ Updated to daily (midnight UTC)'
-    ELSE '⚠ Schedule not updated correctly'
-  END as status
+    WHEN schedule = '0 0 * * *' THEN 'updated to daily (midnight UTC)'
+    ELSE 'schedule differs from expected daily trigger'
+  END AS status
 FROM cron.job
 WHERE jobname = 'monitor-restaurant-menus';

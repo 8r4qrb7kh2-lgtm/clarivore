@@ -1,6 +1,5 @@
 import { randomUUID } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
-import { isOwnerUser } from "../../../lib/managerRestaurants";
 import {
   asText,
   getStateHashForSave,
@@ -41,16 +40,32 @@ const RESTAURANT_SCOPED_OPS = new Set([
   RESTAURANT_WRITE_OPERATION_TYPES.RESTAURANT_DELETE,
 ]);
 
-const OWNER_ONLY_OPS = new Set([
+const ADMIN_ONLY_OPS = new Set([
   RESTAURANT_WRITE_OPERATION_TYPES.RESTAURANT_CREATE,
   RESTAURANT_WRITE_OPERATION_TYPES.RESTAURANT_DELETE,
 ]);
 
 const ALL_OPERATION_TYPES = new Set(Object.values(RESTAURANT_WRITE_OPERATION_TYPES));
+const WRITE_MAINTENANCE_MODE_ENV = "CLARIVORE_WRITE_MAINTENANCE_MODE";
+const WRITE_MAINTENANCE_MESSAGE =
+  "Restaurant write maintenance mode is enabled. Please retry after maintenance.";
 
 function parseBearerToken(request) {
   const authHeader = request.headers.get("authorization") || "";
   return authHeader.startsWith("Bearer ") ? authHeader.slice("Bearer ".length) : "";
+}
+
+function toBooleanFlag(value) {
+  const normalized = asText(value).toLowerCase();
+  return normalized === "1" || normalized === "true" || normalized === "yes" || normalized === "on";
+}
+
+export function isWriteMaintenanceModeEnabled() {
+  return toBooleanFlag(process.env[WRITE_MAINTENANCE_MODE_ENV]);
+}
+
+export function getWriteMaintenanceMessage() {
+  return WRITE_MAINTENANCE_MESSAGE;
 }
 
 function parseJsonValue(value, fallback) {
@@ -460,12 +475,42 @@ export async function requireAuthenticatedSession(request) {
   };
 }
 
-export async function requireOwnerSession(request) {
-  const session = await requireAuthenticatedSession(request);
-  if (!isOwnerUser(session.user)) {
-    throw new Error("Owner access required");
+export async function isAppAdminUser(client, userId) {
+  const safeUserId = asText(userId);
+  if (!safeUserId) return false;
+
+  let rows;
+  try {
+    rows = await client.$queryRawUnsafe(
+      `
+      SELECT 1
+      FROM public.app_admins
+      WHERE user_id = $1::uuid
+      LIMIT 1
+    `,
+      safeUserId,
+    );
+  } catch (error) {
+    const message = asText(error?.message).toLowerCase();
+    if (message.includes("app_admins") && message.includes("does not exist")) {
+      return false;
+    }
+    throw error;
   }
-  return session;
+
+  return Boolean(rows?.[0]);
+}
+
+export async function requireAdminSession(request) {
+  const session = await requireAuthenticatedSession(request);
+  const isAdmin = await isAppAdminUser(prisma, session.userId);
+  if (!isAdmin) {
+    throw new Error("Admin access required");
+  }
+  return {
+    ...session,
+    isAdmin: true,
+  };
 }
 
 export async function requireRestaurantAccessSession(request, restaurantId) {
@@ -475,10 +520,11 @@ export async function requireRestaurantAccessSession(request, restaurantId) {
   }
 
   const session = await requireAuthenticatedSession(request);
-  if (isOwnerUser(session.user)) {
+  const isAdmin = await isAppAdminUser(prisma, session.userId);
+  if (isAdmin) {
     return {
       ...session,
-      isOwner: true,
+      isAdmin: true,
     };
   }
 
@@ -495,7 +541,7 @@ export async function requireRestaurantAccessSession(request, restaurantId) {
 
   return {
     ...session,
-    isOwner: false,
+    isAdmin: false,
   };
 }
 
@@ -761,8 +807,8 @@ export async function authorizeWriteStage({
   operationType,
   restaurantId,
 }) {
-  if (OWNER_ONLY_OPS.has(operationType)) {
-    return await requireOwnerSession(request);
+  if (ADMIN_ONLY_OPS.has(operationType)) {
+    return await requireAdminSession(request);
   }
 
   if (RESTAURANT_SCOPED_OPS.has(operationType)) {
@@ -1085,7 +1131,7 @@ export async function applyWriteOperations({
             restaurant_id: restaurantId,
             type: "update",
             description: asText(batch?.author) || "Manager",
-            changes: JSON.stringify(toJsonSafe(payload?.changePayload, {})),
+            changes: toJsonSafe(payload?.changePayload, {}),
             user_email: userEmail || null,
             photos: [],
             timestamp: new Date(),
@@ -1132,7 +1178,7 @@ export async function applyWriteOperations({
             restaurant_id: restaurantId,
             type: "update",
             description: asText(batch?.author) || "Manager",
-            changes: JSON.stringify(toJsonSafe(payload?.changePayload, {})),
+            changes: toJsonSafe(payload?.changePayload, {}),
             user_email: userEmail || null,
             photos: [],
             timestamp: new Date(),
@@ -1167,7 +1213,7 @@ export async function applyWriteOperations({
             restaurant_id: restaurantId,
             type: "update",
             description: asText(batch?.author) || "Manager",
-            changes: JSON.stringify(toJsonSafe(payload?.changePayload, nextSettings)),
+            changes: toJsonSafe(payload?.changePayload, nextSettings),
             user_email: userEmail || null,
             photos: [],
             timestamp: new Date(),
@@ -1198,7 +1244,7 @@ export async function applyWriteOperations({
             restaurant_id: restaurantId,
             type: "confirm",
             description: asText(batch?.author) || "Manager",
-            changes: JSON.stringify(toJsonSafe(payload?.changePayload, {})),
+            changes: toJsonSafe(payload?.changePayload, {}),
             user_email: userEmail || null,
             photos: toJsonSafe(
               (Array.isArray(payload?.photos) ? payload.photos : [])
