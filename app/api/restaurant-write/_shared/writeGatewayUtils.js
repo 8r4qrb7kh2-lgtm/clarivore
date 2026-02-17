@@ -30,6 +30,7 @@ export const RESTAURANT_WRITE_OPERATION_TYPES = {
   BRAND_REPLACEMENT: "BRAND_REPLACEMENT",
   RESTAURANT_CREATE: "RESTAURANT_CREATE",
   RESTAURANT_DELETE: "RESTAURANT_DELETE",
+  MONITORING_STATS_UPDATE: "MONITORING_STATS_UPDATE",
 };
 
 const RESTAURANT_SCOPED_OPS = new Set([
@@ -43,6 +44,10 @@ const RESTAURANT_SCOPED_OPS = new Set([
 const ADMIN_ONLY_OPS = new Set([
   RESTAURANT_WRITE_OPERATION_TYPES.RESTAURANT_CREATE,
   RESTAURANT_WRITE_OPERATION_TYPES.RESTAURANT_DELETE,
+]);
+
+const SYSTEM_ONLY_OPS = new Set([
+  RESTAURANT_WRITE_OPERATION_TYPES.MONITORING_STATS_UPDATE,
 ]);
 
 const ALL_OPERATION_TYPES = new Set(Object.values(RESTAURANT_WRITE_OPERATION_TYPES));
@@ -91,6 +96,12 @@ function toSafeInteger(value, fallback = 0) {
   const numeric = Number(value);
   if (!Number.isFinite(numeric)) return fallback;
   return Math.floor(numeric);
+}
+
+function toSafeNonNegativeInteger(value, fallback = 0) {
+  const numeric = toSafeInteger(value, fallback);
+  if (!Number.isFinite(Number(numeric))) return fallback;
+  return Math.max(Number(numeric), 0);
 }
 
 function toSafeVersion(value, fallback = 0) {
@@ -335,12 +346,6 @@ export async function ensureRestaurantWriteInfrastructure(client = prisma) {
   await client.$executeRawUnsafe(`
     ALTER TABLE public.restaurants
     ADD COLUMN IF NOT EXISTS write_version bigint NOT NULL DEFAULT 0
-  `);
-
-  await client.$executeRawUnsafe(`
-    UPDATE public.restaurants
-    SET write_version = 0
-    WHERE write_version IS NULL
   `);
 
   await client.$executeRawUnsafe(`
@@ -704,6 +709,25 @@ function normalizeRestaurantDeletePayload(operationPayload, restaurantId) {
   };
 }
 
+function normalizeMonitoringStatsPayload(operationPayload, restaurantId) {
+  return {
+    restaurantId: asText(operationPayload?.restaurantId) || asText(restaurantId),
+    lastChecked: asText(operationPayload?.lastChecked || operationPayload?.last_checked),
+    totalChecksIncrement: Number.isFinite(Number(operationPayload?.totalChecksIncrement))
+      ? toSafeNonNegativeInteger(operationPayload.totalChecksIncrement, 0)
+      : null,
+    emailsSentIncrement: Number.isFinite(Number(operationPayload?.emailsSentIncrement))
+      ? toSafeNonNegativeInteger(operationPayload.emailsSentIncrement, 0)
+      : null,
+    totalChecks: Number.isFinite(Number(operationPayload?.totalChecks))
+      ? toSafeNonNegativeInteger(operationPayload.totalChecks, 0)
+      : null,
+    emailsSent: Number.isFinite(Number(operationPayload?.emailsSent))
+      ? toSafeNonNegativeInteger(operationPayload.emailsSent, 0)
+      : null,
+  };
+}
+
 export function normalizeOperationPayload({
   operationType,
   operationPayload,
@@ -722,6 +746,8 @@ export function normalizeOperationPayload({
       return normalizeRestaurantCreatePayload(operationPayload);
     case RESTAURANT_WRITE_OPERATION_TYPES.RESTAURANT_DELETE:
       return normalizeRestaurantDeletePayload(operationPayload, restaurantId);
+    case RESTAURANT_WRITE_OPERATION_TYPES.MONITORING_STATS_UPDATE:
+      return normalizeMonitoringStatsPayload(operationPayload, restaurantId);
     default:
       return toJsonSafe(operationPayload, {});
   }
@@ -743,6 +769,10 @@ export function validateWriteStageRequest(body) {
 
   if (!operationType) {
     throw new Error("operationType is required");
+  }
+
+  if (SYSTEM_ONLY_OPS.has(operationType)) {
+    throw new Error("This operation type is internal only.");
   }
 
   if (scopeType === WRITE_SCOPE_TYPES.RESTAURANT && !restaurantId) {
@@ -807,6 +837,10 @@ export async function authorizeWriteStage({
   operationType,
   restaurantId,
 }) {
+  if (SYSTEM_ONLY_OPS.has(operationType)) {
+    throw new Error("This operation type is internal only.");
+  }
+
   if (ADMIN_ONLY_OPS.has(operationType)) {
     return await requireAdminSession(request);
   }
@@ -1070,6 +1104,8 @@ export async function bumpRestaurantWriteVersion(tx, restaurantId) {
   const safeRestaurantId = asText(restaurantId);
   if (!safeRestaurantId) return 0;
 
+  await setRestaurantWriteContext(tx);
+
   const rows = await tx.$queryRawUnsafe(
     `
     UPDATE public.restaurants
@@ -1083,12 +1119,21 @@ export async function bumpRestaurantWriteVersion(tx, restaurantId) {
   return toSafeVersion(rows?.[0]?.write_version, 0);
 }
 
+export async function setRestaurantWriteContext(tx) {
+  if (!tx || typeof tx.$executeRawUnsafe !== "function") return;
+  await tx.$executeRawUnsafe(`
+    SELECT set_config('app.restaurant_write_context', 'gateway', true)
+  `);
+}
+
 export async function applyWriteOperations({
   tx,
   batch,
   operations,
   userEmail,
 }) {
+  await setRestaurantWriteContext(tx);
+
   const touchedRestaurantIds = new Set();
   const deletedRestaurantIds = new Set();
   const createdRestaurants = [];
@@ -1332,6 +1377,53 @@ export async function applyWriteOperations({
           operationType,
           summary,
           restaurantId,
+        });
+        break;
+      }
+
+      case RESTAURANT_WRITE_OPERATION_TYPES.MONITORING_STATS_UPDATE: {
+        const restaurantId = asText(payload?.restaurantId || batch?.restaurant_id);
+        if (!restaurantId) {
+          throw new Error("Monitoring stats update operation missing restaurant id.");
+        }
+
+        const updateData = {};
+        const lastCheckedRaw = asText(payload?.lastChecked || payload?.last_checked);
+        if (lastCheckedRaw) {
+          updateData.last_checked = new Date(lastCheckedRaw);
+        } else {
+          updateData.last_checked = new Date();
+        }
+
+        if (Number.isFinite(Number(payload?.totalChecksIncrement))) {
+          const increment = toSafeNonNegativeInteger(payload.totalChecksIncrement, 0);
+          updateData.total_checks = { increment };
+        } else if (Number.isFinite(Number(payload?.totalChecks))) {
+          updateData.total_checks = toSafeNonNegativeInteger(payload.totalChecks, 0);
+        }
+
+        if (Number.isFinite(Number(payload?.emailsSentIncrement))) {
+          const increment = toSafeNonNegativeInteger(payload.emailsSentIncrement, 0);
+          updateData.emails_sent = { increment };
+        } else if (Number.isFinite(Number(payload?.emailsSent))) {
+          updateData.emails_sent = toSafeNonNegativeInteger(payload.emailsSent, 0);
+        }
+
+        await tx.restaurants.update({
+          where: { id: restaurantId },
+          data: updateData,
+        });
+
+        operationResults.push({
+          operationType,
+          summary,
+          restaurantId,
+          totalChecksIncrement: Number.isFinite(Number(payload?.totalChecksIncrement))
+            ? toSafeNonNegativeInteger(payload.totalChecksIncrement, 0)
+            : null,
+          emailsSentIncrement: Number.isFinite(Number(payload?.emailsSentIncrement))
+            ? toSafeNonNegativeInteger(payload.emailsSentIncrement, 0)
+            : null,
         });
         break;
       }

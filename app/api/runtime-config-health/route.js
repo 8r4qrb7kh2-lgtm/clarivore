@@ -9,6 +9,7 @@ const REQUIRED = [
   "SUPABASE_ANON_KEY|NEXT_PUBLIC_SUPABASE_ANON_KEY",
   "ANTHROPIC_API_KEY",
   "GOOGLE_VISION_API_KEY",
+  "CLARIVORE_SYSTEM_WRITE_KEY",
 ];
 
 function asText(value) {
@@ -44,6 +45,10 @@ function readRuntimeConfigHealth() {
 
   if (!hasEnv("GOOGLE_VISION_API_KEY")) {
     missing.push("GOOGLE_VISION_API_KEY");
+  }
+
+  if (!hasEnv("CLARIVORE_SYSTEM_WRITE_KEY")) {
+    missing.push("CLARIVORE_SYSTEM_WRITE_KEY");
   }
 
   return {

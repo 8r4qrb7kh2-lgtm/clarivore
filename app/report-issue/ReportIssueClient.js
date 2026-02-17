@@ -37,10 +37,18 @@ export default function ReportIssueClient() {
 
   const submitMutation = useMutation({
     mutationFn: async (payload) => {
-      const { error } = await supabase.functions.invoke("report-issue", {
-        body: payload,
+      const response = await fetch("/api/report-issue", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload || {}),
       });
-      if (error) throw error;
+
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !data?.success) {
+        throw new Error(data?.error || "Failed to submit issue report.");
+      }
       return true;
     },
   });

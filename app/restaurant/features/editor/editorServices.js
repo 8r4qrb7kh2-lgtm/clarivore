@@ -24,16 +24,13 @@ async function parseFunctionResponse(response, functionName) {
   return data;
 }
 
-async function postFunctionViaProxy(functionName, payload) {
-  const response = await fetch("/api/ai-proxy", {
+async function postFunctionRequest(routePath, functionName, payload) {
+  const response = await fetch(routePath, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({
-      functionName,
-      payload: payload || {},
-    }),
+    body: JSON.stringify(payload || {}),
   });
   return await parseFunctionResponse(response, functionName);
 }
@@ -42,7 +39,11 @@ export async function detectMenuDishes({ imageData }) {
   const payload = {
     imageData: asText(imageData),
   };
-  const result = await postFunctionViaProxy("detect-menu-dishes", payload);
+  const result = await postFunctionRequest(
+    "/api/detect-menu-dishes",
+    "detect-menu-dishes",
+    payload,
+  );
   return {
     success: Boolean(result?.success),
     dishes: Array.isArray(result?.dishes) ? result.dishes : [],
@@ -57,7 +58,7 @@ export async function detectMenuCorners({ imageData, width, height }) {
     height: Number.isFinite(Number(height)) ? Number(height) : 1000,
   };
 
-  const result = await postFunctionViaProxy("detect-corners", payload);
+  const result = await postFunctionRequest("/api/detect-corners", "detect-corners", payload);
   return {
     success: Boolean(result?.success),
     corners: result?.corners || null,
@@ -172,7 +173,11 @@ export async function analyzeIngredientScanRequirement({ ingredientName, dishNam
     dishName: asText(dishName),
   };
 
-  const result = await postFunctionViaProxy("analyze-ingredient-scan", payload);
+  const result = await postFunctionRequest(
+    "/api/analyze-ingredient-scan",
+    "analyze-ingredient-scan",
+    payload,
+  );
   return {
     needsScan:
       typeof result?.needsScan === "boolean" ? result.needsScan : null,
@@ -197,7 +202,11 @@ export async function sendMenuUpdateNotification({
     keptItems: Number.isFinite(Number(keptItems)) ? Number(keptItems) : 0,
   };
 
-  return await postFunctionViaProxy("send-notification-email", payload);
+  return await postFunctionRequest(
+    "/api/notifications/email",
+    "send-notification-email",
+    payload,
+  );
 }
 
 export async function dataUrlFromImageSource(source) {

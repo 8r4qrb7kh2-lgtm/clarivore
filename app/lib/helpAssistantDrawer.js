@@ -1,5 +1,3 @@
-import { supabaseClient as defaultSupabaseClient } from "./supabase";
-
 const HELP_ASSISTANT_MODE_KEY = 'helpAssistantMode';
 const HELP_ASSISTANT_CONVO_PREFIX = 'helpAssistantConversation';
 const HELP_ASSISTANT_OPEN_KEY = 'helpAssistantDrawerOpen';
@@ -524,37 +522,19 @@ export function attachHelpLinkHandlers(container) {
 
 export async function requestHelpAssistant({ query, mode, messages }) {
   const payload = { query, mode, messages, pageContext: collectPageContext() };
-  let data = null;
-  const client =
-    defaultSupabaseClient ||
-    (typeof window !== "undefined" ? window.supabaseClient || null : null);
-  if (client?.functions?.invoke) {
-    try {
-      const invokeRes = await client.functions.invoke('help-assistant', { body: payload });
-      if (!invokeRes.error) {
-        data = invokeRes.data;
-      }
-    } catch (_) {
-      // ignore and try proxy fallback
+  try {
+    const res = await fetch("/api/help-assistant", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    if (res.ok) {
+      return await res.json();
     }
+  } catch (err) {
+    console.error("Help assistant request failed:", err);
   }
-
-  if (!data) {
-    try {
-      const res = await fetch('/api/ai-proxy/', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ functionName: 'help-assistant', payload })
-      });
-      if (res.ok) {
-        data = await res.json();
-      }
-    } catch (err) {
-      console.error('Help assistant proxy failed:', err);
-    }
-  }
-
-  return data;
+  return null;
 }
 
 function renderConversation(container, messages) {

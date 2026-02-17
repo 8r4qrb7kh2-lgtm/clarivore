@@ -7,11 +7,5 @@ port = 54321
 [functions.dish-editor]
 verify_jwt = true
 
-[functions.analyze-ingredient-scan]
-verify_jwt = true
-
 [functions.spelling-corrector]
-verify_jwt = true
-
-[functions.monitor-menus]
 verify_jwt = true

@@ -18,8 +18,6 @@ import {
 } from "../lib/managerRestaurants";
 import {
   supabaseClient as supabase,
-  supabaseAnonKey,
-  supabaseUrl,
 } from "../lib/supabase";
 import { queryKeys } from "../lib/queryKeys";
 
@@ -502,26 +500,15 @@ export default function DishSearchClient() {
 
     try {
       let data = null;
-      const invokeRes = await supabase.functions.invoke("ai-dish-search", {
-        body: payload,
+      const res = await fetch("/api/ai-dish-search", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
       });
-      if (!invokeRes.error) {
-        data = invokeRes.data;
-      }
-
-      if (!data && supabaseUrl && supabaseAnonKey) {
-        const res = await fetch(`${supabaseUrl}/functions/v1/ai-dish-search`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${supabaseAnonKey}`,
-            apikey: supabaseAnonKey,
-          },
-          body: JSON.stringify(payload),
-        });
-        if (res.ok) {
-          data = await res.json();
-        }
+      if (res.ok) {
+        data = await res.json();
       }
 
       if (data) {

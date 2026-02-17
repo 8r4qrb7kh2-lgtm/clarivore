@@ -414,14 +414,22 @@ export default function HelpContactClient() {
         ]);
         if (error) throw error;
       } else {
-        await supabase.functions.invoke("report-issue", {
-          body: {
+        const response = await fetch("/api/report-issue", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
             context: "help_feedback",
             message: text,
             pageUrl: window.location.href,
             restaurantName: "Clarivore",
-          },
+          }),
         });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok || !result?.success) {
+          throw new Error(result?.error || "Failed to send feedback.");
+        }
       }
 
       setFeedbackStatus("Thanks for the feedback.");
@@ -462,10 +470,17 @@ export default function HelpContactClient() {
         accountId: user?.id || null,
       };
 
-      const { error } = await supabase.functions.invoke("report-issue", {
-        body: payload,
+      const response = await fetch("/api/report-issue", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload || {}),
       });
-      if (error) throw error;
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || !result?.success) {
+        throw new Error(result?.error || "Issue report request failed.");
+      }
 
       setIssueStatus("Report sent. Thank you.");
       setIssueTone("success");

@@ -67,9 +67,29 @@ export async function upsertTabletOrder({ supabase, order, fallbackStatus }) {
 export async function notifyDinerNoticeUpdate({ supabase, orderId, logLabel }) {
   if (!supabase || !orderId) return;
   try {
-    await supabase.functions.invoke("notify-diner-notice", {
-      body: { orderId },
+    const {
+      data: { session },
+      error: sessionError,
+    } = await supabase.auth.getSession();
+    if (sessionError) throw sessionError;
+
+    const accessToken = String(session?.access_token || "").trim();
+    if (!accessToken) {
+      throw new Error("Missing access token");
+    }
+
+    const response = await fetch("/api/notifications/diner-notice", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({ orderId }),
     });
+    if (!response.ok) {
+      const data = await response.json().catch(() => null);
+      throw new Error(data?.error || `Notification request failed (${response.status})`);
+    }
   } catch (error) {
     if (logLabel) {
       console.error(`[${logLabel}] failed to notify diner`, error);

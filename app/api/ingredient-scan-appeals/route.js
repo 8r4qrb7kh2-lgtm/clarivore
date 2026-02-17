@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { corsJson, corsOptions } from "../_shared/cors";
+import { sendNotificationEmail } from "../notifications/_shared/emailSender";
 
 export const runtime = "nodejs";
 
@@ -96,41 +97,6 @@ async function ensureAppealBucketExists({
   }
 
   return { success: true };
-}
-
-async function invokeSupabaseFunction({
-  supabaseUrl,
-  supabaseApiKey,
-  authToken,
-  functionName,
-  payload,
-}) {
-  const response = await fetch(`${supabaseUrl}/functions/v1/${functionName}`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${authToken || supabaseApiKey}`,
-      apikey: supabaseApiKey,
-    },
-    body: JSON.stringify(payload || {}),
-  });
-
-  const bodyText = await response.text();
-  let parsed = null;
-  try {
-    parsed = bodyText ? JSON.parse(bodyText) : null;
-  } catch {
-    parsed = null;
-  }
-
-  if (!response.ok) {
-    throw new Error(
-      asText(parsed?.error) ||
-        asText(parsed?.message) ||
-        `Failed request to ${functionName}.`,
-    );
-  }
-  return parsed || {};
 }
 
 export async function POST(request) {
@@ -288,22 +254,16 @@ export async function POST(request) {
   }
 
   try {
-    const emailResult = await invokeSupabaseFunction({
-      supabaseUrl,
-      supabaseApiKey: serviceRoleKey || supabaseAnonKey,
-      authToken: serviceRoleKey || token,
-      functionName: "send-notification-email",
-      payload: {
-        type: "appeal",
-        restaurantName: asText(restaurantRecord?.name) || "Unknown Restaurant",
-        restaurantSlug: asText(restaurantRecord?.slug),
-        ingredientName,
-        dishName,
-        photoUrl,
-        managerMessage,
-      },
+    const emailResult = await sendNotificationEmail({
+      type: "appeal",
+      restaurantName: asText(restaurantRecord?.name) || "Unknown Restaurant",
+      restaurantSlug: asText(restaurantRecord?.slug),
+      ingredientName,
+      dishName,
+      photoUrl,
+      managerMessage,
     });
-    if (!emailResult?.success) {
+    if (!emailResult?.success && !emailResult?.skipped) {
       throw new Error(emailResult?.error || "Appeal email notification failed.");
     }
   } catch (emailError) {

@@ -852,16 +852,44 @@ export default function AdminDashboardDom({
     [loadChatThread, showStatus],
   );
 
+  const callAdminManagersApi = useCallback(async (payload = {}) => {
+    if (!supabase) {
+      throw new Error("Supabase is not configured.");
+    }
+
+    const {
+      data: { session },
+      error: sessionError,
+    } = await supabase.auth.getSession();
+    if (sessionError) throw sessionError;
+
+    const accessToken = String(session?.access_token || "").trim();
+    if (!accessToken) {
+      throw new Error("You must be signed in.");
+    }
+
+    const response = await fetch("/api/admin/managers", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify(payload || {}),
+    });
+
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(result?.error || "Admin manager request failed.");
+    }
+    return result;
+  }, []);
+
   const loadManagerAccess = useCallback(async () => {
     if (!supabase || !isAdmin) return;
 
     setManagerAccessLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke("admin-managers", {
-        body: { action: "list" },
-      });
-      if (error) throw error;
-
+      const data = await callAdminManagersApi({ action: "list" });
       setManagerAccessRestaurants(data?.restaurants || []);
       setManagerAccessLoaded(true);
     } catch (error) {
@@ -872,7 +900,7 @@ export default function AdminDashboardDom({
     } finally {
       setManagerAccessLoading(false);
     }
-  }, [isAdmin, showStatus]);
+  }, [callAdminManagersApi, isAdmin, showStatus]);
 
   const createManagerInviteLink = useCallback(
     async (restaurantId) => {
@@ -945,17 +973,14 @@ export default function AdminDashboardDom({
       if (!confirmed) return;
 
       try {
-        const { error } = await supabase.functions.invoke("admin-managers", {
-          body: { action: "revoke", restaurantId, userId },
-        });
-        if (error) throw error;
+        await callAdminManagersApi({ action: "revoke", restaurantId, userId });
         await loadManagerAccess();
       } catch (error) {
         console.error("[admin-dashboard-next] failed to remove manager access", error);
         showStatus(`Error removing manager access: ${error.message || error}`, "error");
       }
     },
-    [loadManagerAccess, showStatus],
+    [callAdminManagersApi, loadManagerAccess, showStatus],
   );
 
   const loadAppeals = useCallback(

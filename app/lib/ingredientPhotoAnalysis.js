@@ -2490,25 +2490,22 @@ Notes:
 
         try {
           const reportMeta = getIssueReportMeta();
-          const response = await fetch("/api/ai-proxy", {
+          const response = await fetch("/api/report-issue", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
             },
             body: JSON.stringify({
-              functionName: "report-issue",
-              payload: {
-                message: msg,
-                productName: ingredientName,
-                context: "photo_analysis",
-                analysisDetails: analysisResult,
-                userEmail: reportMeta.userEmail,
-                reporterName: reportMeta.reporterName,
-                accountName: reportMeta.accountName,
-                accountId: reportMeta.accountId,
-                pageUrl: reportMeta.pageUrl,
-                restaurantName: state.restaurant?.name || null,
-              },
+              message: msg,
+              productName: ingredientName,
+              context: "photo_analysis",
+              analysisDetails: analysisResult,
+              userEmail: reportMeta.userEmail,
+              reporterName: reportMeta.reporterName,
+              accountName: reportMeta.accountName,
+              accountId: reportMeta.accountId,
+              pageUrl: reportMeta.pageUrl,
+              restaurantName: state.restaurant?.name || null,
             }),
           });
 

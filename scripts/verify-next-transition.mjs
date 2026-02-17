@@ -584,10 +584,10 @@ async function runLegacyRedirectChecks() {
 async function runApiContractChecks() {
   const checks = [
     {
-      path: "/api/ai-proxy/",
+      path: "/api/help-assistant/",
       expectedGet: 405,
       expectedPost: 400,
-      postBodyNeedle: "functionName is required",
+      postBodyNeedle: "Query is required",
     },
     {
       path: "/api/ingredient-status-sync/",
@@ -978,6 +978,7 @@ async function runCleanup() {
     const overlayTag = `OVERLAY_${Date.now()}`;
     const overlayJson = state.createdRestaurant.initialOverlaysJson;
     await psqlExec(`
+      SELECT set_config('app.restaurant_write_context', 'gateway', false);
       UPDATE public.restaurants
       SET overlays = $${overlayTag}$${overlayJson}$${overlayTag}$::jsonb
       WHERE id = ${restaurantIdLiteral};
@@ -1047,12 +1048,14 @@ async function runCleanup() {
 
   if (restaurantId) {
     await psqlExec(`
+      SELECT set_config('app.restaurant_write_context', 'gateway', false);
       DELETE FROM public.restaurants
       WHERE id = ${restaurantIdLiteral};
     `);
   }
 
   await psqlExec(`
+    SELECT set_config('app.restaurant_write_context', 'gateway', false);
     DELETE FROM public.restaurants
     WHERE name ILIKE '%' || ${runIdLiteral} || '%'
        OR slug ILIKE '%' || ${runIdLiteral} || '%';
