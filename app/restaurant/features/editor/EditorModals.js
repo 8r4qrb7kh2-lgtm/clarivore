@@ -462,6 +462,11 @@ function createBrandCard(item) {
     differences: [],
     confidence: "low",
     selectedAction: "",
+    scanSessionId: "",
+    scanPhase: "",
+    scanMessage: "",
+    scanError: "",
+    scanBaseStatus: "",
     dishes: Array.isArray(item?.dishes) ? item.dishes : [],
     ingredientNames: Array.isArray(item?.ingredientNames) ? item.ingredientNames : [],
   };
@@ -484,6 +489,12 @@ function ConfirmInfoCard({
   const removeSelected = selectedAction === "remove";
   const replaceSelected = selectedAction === "replace";
   const captureSelected = selectedAction === "capture";
+  const scanPhase = asText(card?.scanPhase).toLowerCase();
+  const scanMessage = asText(card?.scanMessage);
+  const scanError = asText(card?.scanError);
+  const isScanProcessing = scanPhase === "processing";
+  const statusMessage =
+    scanMessage || (card.status === "matching" ? "Comparing images..." : asText(card?.message));
   return (
     <div className="min-w-[300px] max-w-[300px] rounded-xl border border-[#2a3261] bg-[rgba(17,22,48,0.82)] p-3">
       <div className="text-xs font-semibold text-[#e6ecff]">{card.label}</div>
@@ -534,6 +545,17 @@ function ConfirmInfoCard({
           </div>
         </div>
       </div>
+
+      {isScanProcessing ? (
+        <div className="mt-2 inline-flex items-center gap-2 text-xs text-[#93c5fd]">
+          <span className="inline-block h-3 w-3 animate-spin rounded-full border border-current border-r-transparent" />
+          <span>{statusMessage || "Analyzing ingredient label in background..."}</span>
+        </div>
+      ) : (
+        <div className="mt-2 text-xs" style={{ color: scanError ? "#fca5a5" : statusColor }}>
+          {scanError || statusMessage}
+        </div>
+      )}
 
       <div className="mt-2 grid grid-cols-1 gap-2">
         {showRemove ? (
@@ -590,10 +612,6 @@ function ConfirmInfoCard({
         className="hidden"
         onChange={onPickCapture}
       />
-
-      <div className="mt-2 text-xs" style={{ color: statusColor }}>
-        {card.status === "matching" ? "Comparing images..." : card.message}
-      </div>
       {Array.isArray(card.differences) && card.differences.length ? (
         <ul className="mb-0 mt-2 list-disc pl-4 text-[11px] text-[#ffb9b9]">
           {card.differences.slice(0, 3).map((line, index) => (
@@ -613,7 +631,6 @@ function ConfirmInfoModal({ editor }) {
   const [mostCurrent, setMostCurrent] = useState(null);
   const [flowError, setFlowError] = useState("");
   const [menuComparisonBusy, setMenuComparisonBusy] = useState(false);
-  const [brandReplacementBusyCardId, setBrandReplacementBusyCardId] = useState("");
 
   const menuReplaceInputRefs = useRef({});
   const menuCaptureInputRefs = useRef({});
@@ -655,7 +672,6 @@ function ConfirmInfoModal({ editor }) {
       setMostCurrent(null);
       setFlowError("");
       setMenuComparisonBusy(false);
-      setBrandReplacementBusyCardId("");
       menuReplaceInputRefs.current = {};
       menuCaptureInputRefs.current = {};
       brandReplaceInputRefs.current = {};
@@ -684,7 +700,6 @@ function ConfirmInfoModal({ editor }) {
     setAllDishesVisible(null);
     setMostCurrent(null);
     setMenuComparisonBusy(false);
-    setBrandReplacementBusyCardId("");
     setFlowError(
       menuPageCards.length
         ? ""
@@ -902,6 +917,32 @@ function ConfirmInfoModal({ editor }) {
 
   const handleReplaceBrandCard = useCallback(
     async (card) => {
+      const scanPhase = asText(card?.scanPhase).toLowerCase();
+      const existingSessionId = asText(card?.scanSessionId);
+      if (
+        existingSessionId &&
+        (scanPhase === "ready_for_review" || scanPhase === "review_open")
+      ) {
+        setFlowError("");
+        const resumeResult = await editor.resumeIngredientLabelScan({
+          sessionId: existingSessionId,
+        });
+        if (!resumeResult?.success) {
+          setFlowError(
+            asText(resumeResult?.error?.message) || "Unable to reopen scan results.",
+          );
+          updateBrandCard(card.id, {
+            scanPhase: "",
+            scanMessage: "",
+            scanError: asText(resumeResult?.error?.message) || "Unable to reopen scan results.",
+          });
+        }
+        return;
+      }
+      if (scanPhase === "capture_open" || scanPhase === "processing") {
+        return;
+      }
+
       const previousBrandKey = asText(card?.brandKey);
       if (!previousBrandKey) {
         setFlowError("Unable to replace this brand item because no brand key was found.");
@@ -917,20 +958,97 @@ function ConfirmInfoModal({ editor }) {
       setFlowError("");
       updateBrandCard(card.id, {
         selectedAction: "replace",
+        scanSessionId: "",
+        scanPhase: "capture_open",
+        scanMessage: "Capture ingredient label photo.",
+        scanError: "",
+        scanBaseStatus: asText(card?.scanBaseStatus) || asText(card?.status) || "idle",
       });
-      setBrandReplacementBusyCardId(card.id);
       try {
         const result = await editor.openIngredientLabelScan({
           ingredientName: seedIngredientName,
           scanProfile: "dish_editor_brand",
+          onPhaseChange: (event) => {
+            const phase = asText(event?.phase).toLowerCase();
+            const sessionId = asText(event?.sessionId);
+            const message = asText(event?.message);
+            const error = asText(event?.error);
+
+            updateBrandCard(card.id, (current) => {
+              const baseStatus =
+                asText(current?.scanBaseStatus) || asText(current?.status) || "idle";
+              if (phase === "cancelled") {
+                return {
+                  ...current,
+                  status: baseStatus,
+                  scanSessionId: "",
+                  scanPhase: "",
+                  scanMessage: "",
+                  scanError: "",
+                  scanBaseStatus: "",
+                };
+              }
+
+              const next = {
+                ...current,
+                selectedAction: "replace",
+                scanSessionId: sessionId || asText(current?.scanSessionId),
+                scanPhase: phase || asText(current?.scanPhase),
+                scanMessage:
+                  message ||
+                  (phase === "processing"
+                    ? "Analyzing ingredient label in background..."
+                    : asText(current?.scanMessage)),
+                scanError:
+                  phase === "failed"
+                    ? error || message || "Ingredient label scan failed."
+                    : "",
+              };
+
+              if (phase === "processing") {
+                next.status = "matching";
+                next.message = "Analyzing ingredient label in background...";
+              } else if (phase === "ready_for_review" || phase === "review_open") {
+                next.status = baseStatus;
+                next.message = "Scan ready for review. Click Replace to review/apply.";
+              } else if (phase === "failed") {
+                next.status = baseStatus;
+                next.message = error || message || "Ingredient label scan failed.";
+              } else if (phase === "capture_open") {
+                next.status = baseStatus;
+              }
+
+              return next;
+            });
+          },
         });
         if (!result?.success) {
-          setFlowError(asText(result?.error?.message) || "Failed to replace brand item.");
+          const errorMessage = asText(result?.error?.message) || "Failed to replace brand item.";
+          setFlowError(errorMessage);
+          updateBrandCard(card.id, (current) => ({
+            ...current,
+            status: asText(current?.scanBaseStatus) || asText(current?.status) || "idle",
+            scanPhase: "",
+            scanMessage: "",
+            scanError: errorMessage,
+            scanBaseStatus: "",
+          }));
           return;
         }
 
         const payload = result?.result;
-        if (!payload) return;
+        if (!payload) {
+          updateBrandCard(card.id, (current) => ({
+            ...current,
+            status: asText(current?.scanBaseStatus) || asText(current?.status) || "idle",
+            scanSessionId: "",
+            scanPhase: "",
+            scanMessage: "",
+            scanError: "",
+            scanBaseStatus: "",
+          }));
+          return;
+        }
 
         const replacementBrand = normalizeBrandEntry({
           name: asText(payload.productName) || seedIngredientName,
@@ -946,6 +1064,14 @@ function ConfirmInfoModal({ editor }) {
         });
         if (!replacementBrand) {
           setFlowError("Failed to build replacement brand item.");
+          updateBrandCard(card.id, (current) => ({
+            ...current,
+            status: asText(current?.scanBaseStatus) || asText(current?.status) || "idle",
+            scanPhase: "",
+            scanMessage: "",
+            scanError: "Failed to build replacement brand item.",
+            scanBaseStatus: "",
+          }));
           return;
         }
 
@@ -957,6 +1083,15 @@ function ConfirmInfoModal({ editor }) {
           setFlowError(
             "No ingredient rows matched that brand item, so no replacements were applied.",
           );
+          updateBrandCard(card.id, (current) => ({
+            ...current,
+            status: asText(current?.scanBaseStatus) || asText(current?.status) || "idle",
+            scanPhase: "",
+            scanMessage: "",
+            scanError:
+              "No ingredient rows matched that brand item, so no replacements were applied.",
+            scanBaseStatus: "",
+          }));
           return;
         }
 
@@ -977,15 +1112,27 @@ function ConfirmInfoModal({ editor }) {
           message: `Replaced and applied to ${applied.replacedRows} ingredient row${applied.replacedRows === 1 ? "" : "s"}.`,
           differences: [],
           selectedAction: "replace",
+          scanSessionId: "",
+          scanPhase: "",
+          scanMessage: "",
+          scanError: "",
+          scanBaseStatus: "",
           dishes: applied.dishes.length ? applied.dishes : card.dishes,
           ingredientNames: applied.ingredientNames.length
             ? applied.ingredientNames
             : card.ingredientNames,
         });
       } catch (error) {
-        setFlowError(asText(error?.message) || "Failed to replace brand item.");
-      } finally {
-        setBrandReplacementBusyCardId("");
+        const errorMessage = asText(error?.message) || "Failed to replace brand item.";
+        setFlowError(errorMessage);
+        updateBrandCard(card.id, (current) => ({
+          ...current,
+          status: asText(current?.scanBaseStatus) || asText(current?.status) || "idle",
+          scanPhase: "",
+          scanMessage: "",
+          scanError: errorMessage,
+          scanBaseStatus: "",
+        }));
       }
     },
     [applyBrandReplacementToOverlays, editor, updateBrandCard],
@@ -1033,7 +1180,6 @@ function ConfirmInfoModal({ editor }) {
   const menuHasProcessing =
     menuComparisonBusy || menuComparableCards.some((card) => card.status === "matching");
   const brandHasProcessing =
-    Boolean(asText(brandReplacementBusyCardId)) ||
     brandCards.some((card) => card.status === "matching");
   const brandCardsAllMatched =
     brandCards.length === 0 || brandCards.every((card) => card.status === "matched");
@@ -1278,7 +1424,7 @@ function ConfirmInfoModal({ editor }) {
                 <ConfirmInfoCard
                   key={card.id}
                   card={card}
-                  busy={editor.confirmBusy || Boolean(asText(brandReplacementBusyCardId))}
+                  busy={editor.confirmBusy}
                   replaceInputRef={getCardInputRef(brandReplaceInputRefs, card.id)}
                   captureInputRef={getCardInputRef(brandCaptureInputRefs, card.id)}
                   showRemove={false}
@@ -1287,6 +1433,14 @@ function ConfirmInfoModal({ editor }) {
                   onPickCapture={async (event) => {
                     const file = event.target.files?.[0];
                     if (file) {
+                      updateBrandCard(card.id, {
+                        selectedAction: "capture",
+                        scanSessionId: "",
+                        scanPhase: "",
+                        scanMessage: "",
+                        scanError: "",
+                        scanBaseStatus: "",
+                      });
                       await processCardFile({
                         file,
                         kind: "brand_item",
