@@ -16,6 +16,9 @@ import {
   renderChangeLine,
   formatLogTimestamp,
   ReviewRowGroupedList,
+  normalizeBrandEntry,
+  normalizeIngredientEntry,
+  deriveDishStateFromIngredients,
 } from "./editorUtils";
 import { compareConfirmInfoImages } from "./editorServices";
 
@@ -337,6 +340,15 @@ function normalizeBrandKey(value) {
   return asText(value).toLowerCase();
 }
 
+function resolveBrandVerificationKey(brand) {
+  const brandName = asText(brand?.name || brand?.productName);
+  const barcodeKey = normalizeBrandKey(brand?.barcode);
+  const nameKey = normalizeBrandKey(brandName);
+  if (barcodeKey) return `barcode:${barcodeKey}`;
+  if (nameKey) return `name:${nameKey}`;
+  return "";
+}
+
 function resolveOverlayDishName(overlay, fallbackIndex = 0) {
   return (
     asText(overlay?.id) ||
@@ -373,9 +385,7 @@ function collectBrandVerificationItems(overlays) {
         const brandName = asText(brand?.name);
         if (!brandName) return;
 
-        const barcodeKey = normalizeBrandKey(brand?.barcode);
-        const nameKey = normalizeBrandKey(brandName);
-        const itemKey = barcodeKey ? `barcode:${barcodeKey}` : `name:${nameKey}`;
+        const itemKey = resolveBrandVerificationKey(brand);
         if (!itemKey) return;
 
         if (!items.has(itemKey)) {
@@ -439,6 +449,7 @@ function createBrandCard(item) {
   const baselineImage = asText(item?.baselineImage);
   return {
     id: asText(item?.id),
+    brandKey: asText(item?.key),
     label: asText(item?.label) || "Brand item",
     baselineImage,
     candidateImage: "",
@@ -459,8 +470,11 @@ function ConfirmInfoCard({
   captureInputRef,
   busy,
   onRemove,
+  onReplace,
   onPickReplace,
   onPickCapture,
+  showRemove = true,
+  replaceWithFile = true,
 }) {
   const statusColor = resolveConfirmStatusColor(card.status);
   return (
@@ -515,19 +529,27 @@ function ConfirmInfoCard({
       </div>
 
       <div className="mt-2 grid grid-cols-1 gap-2">
+        {showRemove ? (
+          <Button
+            size="compact"
+            variant="outline"
+            disabled={busy || card.status === "matching"}
+            onClick={onRemove}
+          >
+            {card.removed ? "Undo remove" : "Remove"}
+          </Button>
+        ) : null}
         <Button
           size="compact"
           variant="outline"
           disabled={busy || card.status === "matching"}
-          onClick={onRemove}
-        >
-          {card.removed ? "Undo remove" : "Remove"}
-        </Button>
-        <Button
-          size="compact"
-          variant="outline"
-          disabled={busy || card.status === "matching"}
-          onClick={() => replaceInputRef.current?.click()}
+          onClick={() => {
+            if (replaceWithFile) {
+              replaceInputRef.current?.click();
+              return;
+            }
+            onReplace?.();
+          }}
         >
           Replace
         </Button>
@@ -541,13 +563,15 @@ function ConfirmInfoCard({
         </Button>
       </div>
 
-      <input
-        ref={replaceInputRef}
-        type="file"
-        accept="image/*"
-        className="hidden"
-        onChange={onPickReplace}
-      />
+      {replaceWithFile ? (
+        <input
+          ref={replaceInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={onPickReplace}
+        />
+      ) : null}
       <input
         ref={captureInputRef}
         type="file"
@@ -579,6 +603,7 @@ function ConfirmInfoModal({ editor }) {
   const [mostCurrent, setMostCurrent] = useState(null);
   const [flowError, setFlowError] = useState("");
   const [menuComparisonBusy, setMenuComparisonBusy] = useState(false);
+  const [brandReplacementBusyCardId, setBrandReplacementBusyCardId] = useState("");
 
   const menuReplaceInputRefs = useRef({});
   const menuCaptureInputRefs = useRef({});
@@ -620,6 +645,7 @@ function ConfirmInfoModal({ editor }) {
       setMostCurrent(null);
       setFlowError("");
       setMenuComparisonBusy(false);
+      setBrandReplacementBusyCardId("");
       menuReplaceInputRefs.current = {};
       menuCaptureInputRefs.current = {};
       brandReplaceInputRefs.current = {};
@@ -648,6 +674,7 @@ function ConfirmInfoModal({ editor }) {
     setAllDishesVisible(null);
     setMostCurrent(null);
     setMenuComparisonBusy(false);
+    setBrandReplacementBusyCardId("");
     setFlowError(
       menuPageCards.length
         ? ""
@@ -758,6 +785,180 @@ function ConfirmInfoModal({ editor }) {
     }
   }, [compareCard]);
 
+  const applyBrandReplacementToOverlays = useCallback(
+    ({ previousBrandKey, replacementBrand }) => {
+      const targetKey = asText(previousBrandKey);
+      if (!targetKey || !replacementBrand) {
+        return {
+          replacedRows: 0,
+          dishes: [],
+          ingredientNames: [],
+        };
+      }
+
+      const overlays = Array.isArray(editor.draftOverlays) ? editor.draftOverlays : [];
+      const matchedDishes = new Set();
+      const matchedIngredients = new Set();
+      let replacedRows = 0;
+
+      overlays.forEach((overlay, overlayIndex) => {
+        const overlayKey = asText(overlay?._editorKey);
+        if (!overlayKey) return;
+
+        const dishName = resolveOverlayDishName(overlay, overlayIndex);
+        const ingredientRows = Array.isArray(overlay?.ingredients) ? overlay.ingredients : [];
+        let changed = false;
+        const nextIngredients = ingredientRows.map((ingredient) => {
+          const brands = Array.isArray(ingredient?.brands) ? ingredient.brands : [];
+          const matchesPreviousBrand = brands.some(
+            (brand) => resolveBrandVerificationKey(brand) === targetKey,
+          );
+          if (!matchesPreviousBrand) return ingredient;
+
+          changed = true;
+          replacedRows += 1;
+          if (dishName) matchedDishes.add(dishName);
+          const ingredientName = asText(ingredient?.name);
+          if (ingredientName) matchedIngredients.add(ingredientName);
+
+          return {
+            ...ingredient,
+            allergens: replacementBrand.allergens,
+            diets: replacementBrand.diets,
+            crossContaminationAllergens: replacementBrand.crossContaminationAllergens,
+            crossContaminationDiets: replacementBrand.crossContaminationDiets,
+            aiDetectedAllergens: replacementBrand.allergens,
+            aiDetectedDiets: replacementBrand.diets,
+            aiDetectedCrossContaminationAllergens:
+              replacementBrand.crossContaminationAllergens,
+            aiDetectedCrossContaminationDiets: replacementBrand.crossContaminationDiets,
+            brands: [replacementBrand],
+            confirmed: true,
+          };
+        });
+
+        if (!changed) return;
+
+        const normalizedIngredients = nextIngredients.map((row, rowIndex) =>
+          normalizeIngredientEntry(row, rowIndex),
+        );
+        const derived = deriveDishStateFromIngredients({
+          ingredients: normalizedIngredients,
+          existingDetails: overlay?.details,
+          configuredDiets: editor.config?.diets,
+        });
+
+        editor.updateOverlay(overlayKey, {
+          ingredients: derived.ingredients,
+          allergens: derived.allergens,
+          diets: derived.diets,
+          details: derived.details,
+          removable: derived.removable,
+          crossContaminationAllergens: derived.crossContaminationAllergens,
+          crossContaminationDiets: derived.crossContaminationDiets,
+          ingredientsBlockingDiets: derived.ingredientsBlockingDiets,
+        });
+      });
+
+      if (replacedRows > 0 && typeof editor.pushHistory === "function") {
+        queueMicrotask(() => editor.pushHistory());
+      }
+
+      return {
+        replacedRows,
+        dishes: Array.from(matchedDishes),
+        ingredientNames: Array.from(matchedIngredients),
+      };
+    },
+    [editor],
+  );
+
+  const handleReplaceBrandCard = useCallback(
+    async (card) => {
+      const previousBrandKey = asText(card?.brandKey);
+      if (!previousBrandKey) {
+        setFlowError("Unable to replace this brand item because no brand key was found.");
+        return;
+      }
+
+      const seedIngredientName = asText(card?.ingredientNames?.[0]) || asText(card?.label);
+      if (!seedIngredientName) {
+        setFlowError("Ingredient name is required before replacing this brand item.");
+        return;
+      }
+
+      setFlowError("");
+      setBrandReplacementBusyCardId(card.id);
+      try {
+        const result = await editor.openIngredientLabelScan({
+          ingredientName: seedIngredientName,
+        });
+        if (!result?.success) {
+          setFlowError(asText(result?.error?.message) || "Failed to replace brand item.");
+          return;
+        }
+
+        const payload = result?.result;
+        if (!payload) return;
+
+        const replacementBrand = normalizeBrandEntry({
+          name: asText(payload.productName) || seedIngredientName,
+          allergens: payload.allergens,
+          diets: payload.diets,
+          crossContaminationAllergens: payload.crossContaminationAllergens,
+          crossContaminationDiets: payload.crossContaminationDiets,
+          ingredientsList: Array.isArray(payload.ingredientsList)
+            ? payload.ingredientsList
+            : [],
+          brandImage: asText(payload.brandImage),
+          ingredientsImage: asText(payload.ingredientsImage),
+        });
+        if (!replacementBrand) {
+          setFlowError("Failed to build replacement brand item.");
+          return;
+        }
+
+        const applied = applyBrandReplacementToOverlays({
+          previousBrandKey,
+          replacementBrand,
+        });
+        if (!applied.replacedRows) {
+          setFlowError(
+            "No ingredient rows matched that brand item, so no replacements were applied.",
+          );
+          return;
+        }
+
+        const replacementImage = asText(
+          replacementBrand.brandImage ||
+            replacementBrand.image ||
+            replacementBrand.ingredientsImage,
+        );
+        const replacementBrandKey =
+          resolveBrandVerificationKey(replacementBrand) || previousBrandKey;
+        updateBrandCard(card.id, {
+          brandKey: replacementBrandKey,
+          label: replacementBrand.name,
+          baselineImage: replacementImage,
+          candidateImage: asText(replacementBrand.ingredientsImage || replacementImage),
+          status: "matched",
+          confidence: "high",
+          message: `Replaced and applied to ${applied.replacedRows} ingredient row${applied.replacedRows === 1 ? "" : "s"}.`,
+          differences: [],
+          dishes: applied.dishes.length ? applied.dishes : card.dishes,
+          ingredientNames: applied.ingredientNames.length
+            ? applied.ingredientNames
+            : card.ingredientNames,
+        });
+      } catch (error) {
+        setFlowError(asText(error?.message) || "Failed to replace brand item.");
+      } finally {
+        setBrandReplacementBusyCardId("");
+      }
+    },
+    [applyBrandReplacementToOverlays, editor, updateBrandCard],
+  );
+
   const clearCard = useCallback((card, updateCard) => {
     const baselineExists = Boolean(asText(card?.baselineImage));
     updateCard(card.id, {
@@ -796,7 +997,9 @@ function ConfirmInfoModal({ editor }) {
   const menuHasCompareError = menuComparableCards.some((card) => card.status === "error");
   const menuHasProcessing =
     menuComparisonBusy || menuComparableCards.some((card) => card.status === "matching");
-  const brandHasProcessing = brandCards.some((card) => card.status === "matching");
+  const brandHasProcessing =
+    Boolean(asText(brandReplacementBusyCardId)) ||
+    brandCards.some((card) => card.status === "matching");
   const brandCardsAllMatched =
     brandCards.length === 0 || brandCards.every((card) => card.status === "matched");
   const brandHasMismatch = brandCards.some((card) => card.status === "mismatched");
@@ -1034,22 +1237,12 @@ function ConfirmInfoModal({ editor }) {
                 <ConfirmInfoCard
                   key={card.id}
                   card={card}
-                  busy={editor.confirmBusy}
+                  busy={editor.confirmBusy || Boolean(asText(brandReplacementBusyCardId))}
                   replaceInputRef={getCardInputRef(brandReplaceInputRefs, card.id)}
                   captureInputRef={getCardInputRef(brandCaptureInputRefs, card.id)}
-                  onRemove={() => clearCard(card, updateBrandCard)}
-                  onPickReplace={async (event) => {
-                    const file = event.target.files?.[0];
-                    if (file) {
-                      await processCardFile({
-                        file,
-                        kind: "brand_item",
-                        card,
-                        updateCard: updateBrandCard,
-                      });
-                    }
-                    event.target.value = "";
-                  }}
+                  showRemove={false}
+                  replaceWithFile={false}
+                  onReplace={() => handleReplaceBrandCard(card)}
                   onPickCapture={async (event) => {
                     const file = event.target.files?.[0];
                     if (file) {
