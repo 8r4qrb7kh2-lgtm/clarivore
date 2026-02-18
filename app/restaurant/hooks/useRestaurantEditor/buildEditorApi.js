@@ -110,6 +110,7 @@ export function buildEditorApi({
 
     selectOverlay: overlayActions.selectOverlay,
     updateOverlay: overlayActions.updateOverlay,
+    applyOverlayList: derivedApi.applyOverlayList,
     updateSelectedOverlay: overlayActions.updateSelectedOverlay,
     addOverlay: overlayActions.addOverlay,
     removeOverlay: overlayActions.removeOverlay,

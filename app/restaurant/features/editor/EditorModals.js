@@ -492,9 +492,20 @@ function ConfirmInfoCard({
   const scanPhase = asText(card?.scanPhase).toLowerCase();
   const scanMessage = asText(card?.scanMessage);
   const scanError = asText(card?.scanError);
+  const hasReviewReady = scanPhase === "ready_for_review" || scanPhase === "review_open";
   const isScanProcessing = scanPhase === "processing";
+  const isScanCapture = scanPhase === "capture_open";
   const statusMessage =
-    scanMessage || (card.status === "matching" ? "Comparing images..." : asText(card?.message));
+    (!scanError && hasReviewReady ? "Analysis done." : "") ||
+    scanMessage ||
+    (card.status === "matching" ? "Comparing images..." : asText(card?.message));
+  const replaceButtonText = hasReviewReady
+    ? "View results"
+    : isScanProcessing
+      ? "Analyzing..."
+      : isScanCapture
+        ? "Capture open..."
+        : "Replace";
   return (
     <div className="min-w-[300px] max-w-[300px] rounded-xl border border-[#2a3261] bg-[rgba(17,22,48,0.82)] p-3">
       <div className="text-xs font-semibold text-[#e6ecff]">{card.label}</div>
@@ -573,7 +584,7 @@ function ConfirmInfoCard({
           size="compact"
           variant={replaceSelected ? "solid" : "outline"}
           tone={replaceSelected ? "primary" : "neutral"}
-          disabled={busy || card.status === "matching"}
+          disabled={busy || card.status === "matching" || isScanCapture || isScanProcessing}
           onClick={() => {
             if (replaceWithFile) {
               replaceInputRef.current?.click();
@@ -582,7 +593,7 @@ function ConfirmInfoCard({
             onReplace?.();
           }}
         >
-          Replace
+          {replaceButtonText}
         </Button>
         <Button
           size="compact"
@@ -842,11 +853,7 @@ function ConfirmInfoModal({ editor }) {
       const matchedDishes = new Set();
       const matchedIngredients = new Set();
       let replacedRows = 0;
-
-      overlays.forEach((overlay, overlayIndex) => {
-        const overlayKey = asText(overlay?._editorKey);
-        if (!overlayKey) return;
-
+      const nextOverlays = overlays.map((overlay, overlayIndex) => {
         const dishName = resolveOverlayDishName(overlay, overlayIndex);
         const ingredientRows = Array.isArray(overlay?.ingredients) ? overlay.ingredients : [];
         let changed = false;
@@ -879,7 +886,7 @@ function ConfirmInfoModal({ editor }) {
           };
         });
 
-        if (!changed) return;
+        if (!changed) return overlay;
 
         const normalizedIngredients = nextIngredients.map((row, rowIndex) =>
           normalizeIngredientEntry(row, rowIndex),
@@ -890,7 +897,8 @@ function ConfirmInfoModal({ editor }) {
           configuredDiets: editor.config?.diets,
         });
 
-        editor.updateOverlay(overlayKey, {
+        return {
+          ...overlay,
           ingredients: derived.ingredients,
           allergens: derived.allergens,
           diets: derived.diets,
@@ -899,8 +907,32 @@ function ConfirmInfoModal({ editor }) {
           crossContaminationAllergens: derived.crossContaminationAllergens,
           crossContaminationDiets: derived.crossContaminationDiets,
           ingredientsBlockingDiets: derived.ingredientsBlockingDiets,
-        });
+        };
       });
+
+      if (replacedRows > 0) {
+        if (typeof editor.applyOverlayList === "function") {
+          editor.applyOverlayList(nextOverlays);
+        } else {
+          nextOverlays.forEach((nextOverlay, overlayIndex) => {
+            if (nextOverlay === overlays[overlayIndex]) return;
+            const overlayKey = asText(
+              overlays[overlayIndex]?._editorKey || nextOverlay?._editorKey,
+            );
+            if (!overlayKey) return;
+            editor.updateOverlay(overlayKey, {
+              ingredients: nextOverlay.ingredients,
+              allergens: nextOverlay.allergens,
+              diets: nextOverlay.diets,
+              details: nextOverlay.details,
+              removable: nextOverlay.removable,
+              crossContaminationAllergens: nextOverlay.crossContaminationAllergens,
+              crossContaminationDiets: nextOverlay.crossContaminationDiets,
+              ingredientsBlockingDiets: nextOverlay.ingredientsBlockingDiets,
+            });
+          });
+        }
+      }
 
       if (replacedRows > 0 && typeof editor.pushHistory === "function") {
         queueMicrotask(() => editor.pushHistory());
@@ -998,6 +1030,8 @@ function ConfirmInfoModal({ editor }) {
                   message ||
                   (phase === "processing"
                     ? "Analyzing ingredient label in background..."
+                    : phase === "ready_for_review" || phase === "review_open"
+                      ? "Analysis done."
                     : asText(current?.scanMessage)),
                 scanError:
                   phase === "failed"
@@ -1010,7 +1044,7 @@ function ConfirmInfoModal({ editor }) {
                 next.message = "Analyzing ingredient label in background...";
               } else if (phase === "ready_for_review" || phase === "review_open") {
                 next.status = baseStatus;
-                next.message = "Scan ready for review. Click Replace to review/apply.";
+                next.message = "Analysis done. Click View results to review/apply.";
               } else if (phase === "failed") {
                 next.status = baseStatus;
                 next.message = error || message || "Ingredient label scan failed.";
