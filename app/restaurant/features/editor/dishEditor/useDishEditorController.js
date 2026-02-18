@@ -24,6 +24,12 @@ import {
   deriveDishStateFromIngredients,
 } from "../editorUtils";
 
+function coerceIngredientNameForApply(value) {
+  if (typeof value?.name === "string") return value.name;
+  if (value?.name == null) return "";
+  return String(value.name);
+}
+
 export function useDishEditorController({
   editor,
   runtimeConfigHealth,
@@ -163,8 +169,37 @@ export function useDishEditorController({
   }, [editor.dishEditorOpen]);
 
   useEffect(() => {
-    setLastAppliedIngredientNameByRow({});
+    // Seed row baselines for Apply visibility whenever a dish is opened.
+    const seeded = {};
+    ingredients.forEach((ingredient, index) => {
+      seeded[index] = coerceIngredientNameForApply(ingredient);
+    });
+    setLastAppliedIngredientNameByRow(seeded);
   }, [overlay?._editorKey]);
+
+  useEffect(() => {
+    // Keep index-based row baselines aligned when row count changes.
+    setLastAppliedIngredientNameByRow((current) => {
+      const next = { ...current };
+      let changed = false;
+
+      ingredients.forEach((ingredient, index) => {
+        if (Object.prototype.hasOwnProperty.call(next, index)) return;
+        next[index] = coerceIngredientNameForApply(ingredient);
+        changed = true;
+      });
+
+      Object.keys(next).forEach((key) => {
+        const numeric = Number(key);
+        if (!Number.isFinite(numeric) || numeric < 0 || numeric >= ingredients.length) {
+          delete next[key];
+          changed = true;
+        }
+      });
+
+      return changed ? next : current;
+    });
+  }, [ingredients.length]);
 
   useEffect(() => {
     return () => {
@@ -424,6 +459,7 @@ export function useDishEditorController({
   const addIngredientRow = useCallback(() => {
     const dishName = asText(overlay?.id || "Dish");
     const nextIngredientName = `Ingredient ${ingredients.length + 1}`;
+    const nextIndex = ingredients.length;
     applyIngredientChanges(
       (current) => [
         ...current,
@@ -452,7 +488,11 @@ export function useDishEditorController({
         recordHistory: true,
       },
     );
-    setLastAppliedIngredientNameByRow({});
+    // New rows should not show Apply until the manager edits the row name.
+    setLastAppliedIngredientNameByRow((current) => ({
+      ...current,
+      [nextIndex]: nextIngredientName,
+    }));
   }, [applyIngredientChanges, ingredients.length, overlay?.id]);
 
   const removeIngredientRow = useCallback(
@@ -465,7 +505,22 @@ export function useDishEditorController({
           recordHistory: true,
         },
       );
-      setLastAppliedIngredientNameByRow({});
+      // Shift baselines for index-based rows after deletion.
+      setLastAppliedIngredientNameByRow((current) => {
+        const next = {};
+        Object.keys(current || {}).forEach((key) => {
+          const numeric = Number(key);
+          if (!Number.isFinite(numeric)) return;
+          if (numeric < ingredientIndex) {
+            next[numeric] = current[key];
+            return;
+          }
+          if (numeric > ingredientIndex) {
+            next[numeric - 1] = current[key];
+          }
+        });
+        return next;
+      });
     },
     [applyIngredientChanges, ingredients, overlay?.id],
   );
@@ -591,12 +646,23 @@ export function useDishEditorController({
 
   const applyIngredientSmartDetection = useCallback(
     async (ingredientIndex) => {
-      const ingredientNameAtApply =
-        typeof ingredients[ingredientIndex]?.name === "string"
-          ? ingredients[ingredientIndex].name
-          : ingredients[ingredientIndex]?.name == null
-            ? ""
-            : String(ingredients[ingredientIndex].name);
+      const ingredient = ingredients[ingredientIndex];
+      const ingredientNameAtApply = coerceIngredientNameForApply(ingredient);
+      const hasAssignedBrand = (Array.isArray(ingredient?.brands) ? ingredient.brands : []).some(
+        (brand) => asText(brand?.name),
+      );
+
+      // Brand-assigned rows are source-of-truth from the selected brand item.
+      // Apply should only clear the row's dirty-name state, not mutate brand/allergen/diet values.
+      if (hasAssignedBrand) {
+        setLastAppliedIngredientNameByRow((current) => ({
+          ...current,
+          [ingredientIndex]: ingredientNameAtApply,
+        }));
+        setModalError("");
+        return;
+      }
+
       setApplyBusyByRow((current) => ({ ...current, [ingredientIndex]: true }));
       setModalError("");
       const detection = await analyzeIngredientForSmartDetection(ingredientIndex);

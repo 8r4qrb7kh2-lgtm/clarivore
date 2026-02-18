@@ -60,16 +60,21 @@ export function DishIngredientCard({
       : ingredient?.name == null
         ? ""
         : String(ingredient.name);
-  const showApplyButton = currentIngredientName !== (lastAppliedIngredientName ?? "");
-
   // Brand assignment drives confirmation gating and row warnings.
   const selectedBrandName = asText(ingredient?.brands?.[0]?.name);
   const selectedBrandImage = asText(
     ingredient?.brands?.[0]?.brandImage ||
       ingredient?.brands?.[0]?.image ||
-      ingredient?.brandImage,
+      ingredient?.brands?.[0]?.ingredientsImage ||
+      ingredient?.brandImage ||
+      ingredient?.image ||
+      ingredient?.ingredientsImage,
   );
   const hasAssignedBrand = Boolean(selectedBrandName);
+  // Apply only appears after a true manual name change on rows without an assigned brand item.
+  const showApplyButton =
+    !hasAssignedBrand &&
+    currentIngredientName !== (lastAppliedIngredientName ?? currentIngredientName);
   const requiresBrandBeforeConfirm =
     Boolean(ingredient?.brandRequired) && !hasAssignedBrand && ingredient?.confirmed !== true;
 
