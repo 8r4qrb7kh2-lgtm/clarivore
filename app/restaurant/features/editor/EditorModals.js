@@ -17,6 +17,7 @@ import {
   formatLogTimestamp,
   ReviewRowGroupedList,
 } from "./editorUtils";
+import { compareConfirmInfoImages } from "./editorServices";
 
 // Change log modal focuses on human-readable change history + review row drill-down.
 function ChangeLogModal({ editor }) {
@@ -238,7 +239,6 @@ function SaveReviewModal({ editor, open, onOpenChange, onConfirmSave }) {
 }
 
 // Confirmation flow collects proof photos before manager attestation is submitted.
-const CONFIRM_INFO_MAX_PHOTOS = 6;
 const CONFIRM_INFO_TARGET_PHOTO_BYTES = 320 * 1024;
 const CONFIRM_INFO_MAX_PHOTO_EDGE = 1600;
 const CONFIRM_INFO_COMPRESSION_QUALITIES = [0.9, 0.82, 0.74, 0.66, 0.58];
@@ -313,194 +313,649 @@ async function compressConfirmPhotoDataUrl(dataUrl) {
   }
 }
 
+function normalizeBrandKey(value) {
+  return asText(value).toLowerCase();
+}
+
+function resolveOverlayDishName(overlay, fallbackIndex = 0) {
+  return (
+    asText(overlay?.id) ||
+    asText(overlay?.dish_name) ||
+    asText(overlay?.label) ||
+    asText(overlay?.name) ||
+    `Dish ${fallbackIndex + 1}`
+  );
+}
+
+function readOverlayIngredients(overlay) {
+  if (overlay?.aiIngredients) {
+    try {
+      const parsed = JSON.parse(overlay.aiIngredients);
+      if (Array.isArray(parsed) && parsed.length) return parsed;
+    } catch {
+      // Fall back to direct ingredient array.
+    }
+  }
+  return Array.isArray(overlay?.ingredients) ? overlay.ingredients : [];
+}
+
+function collectBrandVerificationItems(overlays) {
+  const items = new Map();
+
+  (Array.isArray(overlays) ? overlays : []).forEach((overlay, overlayIndex) => {
+    const dishName = resolveOverlayDishName(overlay, overlayIndex);
+    const ingredients = readOverlayIngredients(overlay);
+
+    ingredients.forEach((ingredient) => {
+      const ingredientName = asText(ingredient?.name);
+      const brands = Array.isArray(ingredient?.brands) ? ingredient.brands : [];
+      brands.forEach((brand) => {
+        const brandName = asText(brand?.name);
+        if (!brandName) return;
+
+        const barcodeKey = normalizeBrandKey(brand?.barcode);
+        const nameKey = normalizeBrandKey(brandName);
+        const itemKey = barcodeKey ? `barcode:${barcodeKey}` : `name:${nameKey}`;
+        if (!itemKey) return;
+
+        if (!items.has(itemKey)) {
+          items.set(itemKey, {
+            key: itemKey,
+            brandName,
+            baselineImage: asText(brand?.brandImage || brand?.image || brand?.ingredientsImage),
+            dishes: new Set(),
+            ingredientNames: new Set(),
+          });
+        }
+
+        const item = items.get(itemKey);
+        if (!item.baselineImage) {
+          item.baselineImage = asText(brand?.brandImage || brand?.image || brand?.ingredientsImage);
+        }
+        if (dishName) item.dishes.add(dishName);
+        if (ingredientName) item.ingredientNames.add(ingredientName);
+      });
+    });
+  });
+
+  return Array.from(items.values())
+    .map((item, index) => ({
+      id: `brand-${index}-${item.key}`,
+      key: item.key,
+      label: item.brandName || "Brand item",
+      baselineImage: item.baselineImage,
+      dishes: Array.from(item.dishes),
+      ingredientNames: Array.from(item.ingredientNames),
+    }))
+    .sort((left, right) => left.label.localeCompare(right.label));
+}
+
+function resolveConfirmStatusColor(status) {
+  if (status === "matched") return "#22c55e";
+  if (status === "mismatched") return "#f87171";
+  if (status === "error" || status === "blocked") return "#fca5a5";
+  if (status === "matching") return "#93c5fd";
+  return "#a7b2d1";
+}
+
+function createMenuCard(image, index) {
+  return {
+    id: `menu-page-${index}`,
+    label: `Menu page ${index + 1}`,
+    baselineImage: asText(image),
+    candidateImage: "",
+    status: asText(image) ? "idle" : "blocked",
+    message: asText(image)
+      ? "Capture or replace with a current photo to run comparison."
+      : "No baseline menu image was found for this page.",
+    differences: [],
+    confidence: "low",
+  };
+}
+
+function createBrandCard(item) {
+  const baselineImage = asText(item?.baselineImage);
+  return {
+    id: asText(item?.id),
+    label: asText(item?.label) || "Brand item",
+    baselineImage,
+    candidateImage: "",
+    status: baselineImage ? "idle" : "blocked",
+    message: baselineImage
+      ? "Capture or replace with a current photo to run comparison."
+      : "No baseline brand image was found for this item.",
+    differences: [],
+    confidence: "low",
+    dishes: Array.isArray(item?.dishes) ? item.dishes : [],
+    ingredientNames: Array.isArray(item?.ingredientNames) ? item.ingredientNames : [],
+  };
+}
+
+function ConfirmInfoCard({
+  card,
+  replaceInputRef,
+  captureInputRef,
+  busy,
+  onRemove,
+  onPickReplace,
+  onPickCapture,
+}) {
+  const statusColor = resolveConfirmStatusColor(card.status);
+  return (
+    <div className="min-w-[300px] max-w-[300px] rounded-xl border border-[#2a3261] bg-[rgba(17,22,48,0.82)] p-3">
+      <div className="text-xs font-semibold text-[#e6ecff]">{card.label}</div>
+      {card.dishes?.length ? (
+        <div className="mt-1 text-[11px] text-[#9fb0df]">
+          Used in: {card.dishes.slice(0, 2).join(", ")}
+          {card.dishes.length > 2 ? ` +${card.dishes.length - 2} more` : ""}
+        </div>
+      ) : null}
+      {card.ingredientNames?.length ? (
+        <div className="mt-1 text-[11px] text-[#9fb0df]">
+          Ingredients: {card.ingredientNames.slice(0, 2).join(", ")}
+          {card.ingredientNames.length > 2 ? ` +${card.ingredientNames.length - 2} more` : ""}
+        </div>
+      ) : null}
+
+      <div className="mt-2 grid grid-cols-2 gap-2">
+        <div>
+          <div className="mb-1 text-[11px] text-[#a7b2d1]">Saved</div>
+          <div className="h-[110px] rounded border border-[#2a3261] bg-[#070b16] p-1">
+            {card.baselineImage ? (
+              <img
+                src={card.baselineImage}
+                alt={`${card.label} baseline`}
+                className="h-full w-full rounded object-cover"
+              />
+            ) : (
+              <div className="flex h-full items-center justify-center text-[11px] text-[#9ea9c8]">
+                Missing baseline
+              </div>
+            )}
+          </div>
+        </div>
+        <div>
+          <div className="mb-1 text-[11px] text-[#a7b2d1]">Current</div>
+          <div className="h-[110px] rounded border border-[#2a3261] bg-[#070b16] p-1">
+            {card.candidateImage ? (
+              <img
+                src={card.candidateImage}
+                alt={`${card.label} current`}
+                className="h-full w-full rounded object-cover"
+              />
+            ) : (
+              <div className="flex h-full items-center justify-center text-[11px] text-[#9ea9c8]">
+                No current photo
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-2 grid grid-cols-1 gap-2">
+        <Button
+          size="compact"
+          variant="outline"
+          disabled={busy || card.status === "matching"}
+          onClick={onRemove}
+        >
+          Remove
+        </Button>
+        <Button
+          size="compact"
+          variant="outline"
+          disabled={busy || card.status === "matching"}
+          onClick={() => replaceInputRef.current?.click()}
+        >
+          Replace
+        </Button>
+        <Button
+          size="compact"
+          variant="outline"
+          disabled={busy || card.status === "matching"}
+          onClick={() => captureInputRef.current?.click()}
+        >
+          Capture photo of current version
+        </Button>
+      </div>
+
+      <input
+        ref={replaceInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={onPickReplace}
+      />
+      <input
+        ref={captureInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        className="hidden"
+        onChange={onPickCapture}
+      />
+
+      <div className="mt-2 text-xs" style={{ color: statusColor }}>
+        {card.status === "matching" ? "Comparing images..." : card.message}
+      </div>
+      {Array.isArray(card.differences) && card.differences.length ? (
+        <ul className="mb-0 mt-2 list-disc pl-4 text-[11px] text-[#ffb9b9]">
+          {card.differences.slice(0, 3).map((line, index) => (
+            <li key={`${card.id}-difference-${index}`}>{line}</li>
+          ))}
+        </ul>
+      ) : null}
+    </div>
+  );
+}
+
 function ConfirmInfoModal({ editor }) {
-  const [photos, setPhotos] = useState([]);
-  const [step, setStep] = useState("capture");
-  const [uploadError, setUploadError] = useState("");
-  const hasPhotos = photos.length > 0;
+  const [step, setStep] = useState("menu");
+  const [menuCards, setMenuCards] = useState([]);
+  const [brandCards, setBrandCards] = useState([]);
+  const [allDishesVisible, setAllDishesVisible] = useState(null);
+  const [mostCurrent, setMostCurrent] = useState(null);
+  const [flowError, setFlowError] = useState("");
+
+  const menuReplaceInputRefs = useRef({});
+  const menuCaptureInputRefs = useRef({});
+  const brandReplaceInputRefs = useRef({});
+  const brandCaptureInputRefs = useRef({});
+  const getCardInputRef = useCallback((store, cardId) => {
+    if (!store.current[cardId]) {
+      store.current[cardId] = { current: null };
+    }
+    return store.current[cardId];
+  }, []);
+
+  const updateMenuCard = useCallback((cardId, updater) => {
+    setMenuCards((current) =>
+      current.map((card) => {
+        if (card.id !== cardId) return card;
+        if (typeof updater === "function") return updater(card);
+        return { ...card, ...updater };
+      }),
+    );
+  }, []);
+
+  const updateBrandCard = useCallback((cardId, updater) => {
+    setBrandCards((current) =>
+      current.map((card) => {
+        if (card.id !== cardId) return card;
+        if (typeof updater === "function") return updater(card);
+        return { ...card, ...updater };
+      }),
+    );
+  }, []);
 
   useEffect(() => {
     if (!editor.confirmInfoOpen) {
-      setPhotos([]);
-      setStep("capture");
-      setUploadError("");
-    }
-  }, [editor.confirmInfoOpen]);
-
-  useEffect(() => {
-    if (hasPhotos) return;
-    setStep("capture");
-  }, [hasPhotos]);
-
-  const addFiles = async (files) => {
-    const list = Array.from(files || []);
-    if (!list.length) return;
-    setUploadError("");
-    const remainingSlots = Math.max(CONFIRM_INFO_MAX_PHOTOS - photos.length, 0);
-    if (!remainingSlots) {
-      setUploadError(`You can upload up to ${CONFIRM_INFO_MAX_PHOTOS} photos.`);
+      setStep("menu");
+      setMenuCards([]);
+      setBrandCards([]);
+      setAllDishesVisible(null);
+      setMostCurrent(null);
+      setFlowError("");
+      menuReplaceInputRefs.current = {};
+      menuCaptureInputRefs.current = {};
+      brandReplaceInputRefs.current = {};
+      brandCaptureInputRefs.current = {};
       return;
     }
 
-    const acceptedFiles = list.slice(0, remainingSlots);
-    const values = [];
-    let failedCount = 0;
-    for (const file of acceptedFiles) {
-      // eslint-disable-next-line no-await-in-loop
-      const url = await fileToDataUrl(file).catch(() => "");
-      if (!url) {
-        failedCount += 1;
-        continue;
-      }
-      // eslint-disable-next-line no-await-in-loop
-      const compressed = await compressConfirmPhotoDataUrl(url);
-      if (!compressed) {
-        failedCount += 1;
-        continue;
-      }
-      values.push(compressed);
-    }
-    if (values.length) {
-      setPhotos((current) => [...current, ...values]);
+    const snapshot =
+      typeof editor.getBaselineSnapshot === "function" ? editor.getBaselineSnapshot() : null;
+    const baselineMenuImages = (Array.isArray(snapshot?.menuImages) ? snapshot.menuImages : []).map(
+      (value) => asText(value),
+    );
+    const baselineOverlays = Array.isArray(snapshot?.overlays) ? snapshot.overlays : [];
+    const menuPageCards = baselineMenuImages.map((image, index) => createMenuCard(image, index));
+    const brandItems = collectBrandVerificationItems(baselineOverlays);
+    const brandItemCards = brandItems.map((item) => createBrandCard(item));
+
+    setStep("menu");
+    setMenuCards(menuPageCards);
+    setBrandCards(brandItemCards);
+    setAllDishesVisible(null);
+    setMostCurrent(null);
+    setFlowError(
+      menuPageCards.length
+        ? ""
+        : "No saved menu pages were found. Update menu images before confirming.",
+    );
+  }, [editor.confirmInfoOpen, editor.getBaselineSnapshot]);
+
+  const compareCard = useCallback(async ({ kind, card, candidateImage, updateCard }) => {
+    const baselineImage = asText(card?.baselineImage);
+    if (!baselineImage) {
+      updateCard(card.id, {
+        candidateImage: "",
+        status: "blocked",
+        confidence: "low",
+        message: "No baseline image was found for this item.",
+        differences: [],
+      });
+      return;
     }
 
-    const issues = [];
-    if (list.length > acceptedFiles.length) {
-      issues.push(`Only ${CONFIRM_INFO_MAX_PHOTOS} photos can be attached.`);
+    updateCard(card.id, {
+      candidateImage,
+      status: "matching",
+      confidence: "low",
+      message: "Comparing images...",
+      differences: [],
+    });
+
+    try {
+      const result = await compareConfirmInfoImages({
+        kind,
+        baselineImage,
+        candidateImage,
+        label: card.label,
+      });
+      const summary = asText(result?.summary);
+      const differences = Array.isArray(result?.differences) ? result.differences : [];
+      if (result?.match) {
+        updateCard(card.id, {
+          candidateImage,
+          status: "matched",
+          confidence: result.confidence || "medium",
+          message: summary || "Images were determined to match.",
+          differences: [],
+        });
+        return;
+      }
+
+      const mismatchSummary = summary
+        ? `These images were determined to not match. ${summary}`
+        : "These images were determined to not match.";
+      updateCard(card.id, {
+        candidateImage,
+        status: "mismatched",
+        confidence: result.confidence || "low",
+        message: mismatchSummary,
+        differences,
+      });
+    } catch (error) {
+      updateCard(card.id, {
+        candidateImage,
+        status: "error",
+        confidence: "low",
+        message: asText(error?.message) || "Failed to compare images. Please retry.",
+        differences: [],
+      });
     }
-    if (failedCount > 0) {
-      issues.push(`Could not process ${failedCount} photo(s).`);
+  }, []);
+
+  const processCardFile = useCallback(async ({ file, kind, card, updateCard }) => {
+    if (!file || !card) return;
+    setFlowError("");
+    try {
+      const dataUrl = await fileToDataUrl(file);
+      const compressed = await compressConfirmPhotoDataUrl(dataUrl);
+      if (!compressed) {
+        throw new Error("Failed to process the selected photo.");
+      }
+      await compareCard({
+        kind,
+        card,
+        candidateImage: compressed,
+        updateCard,
+      });
+    } catch (error) {
+      setFlowError(asText(error?.message) || "Failed to process selected photo.");
     }
-    setUploadError(issues.join(" "));
-  };
+  }, [compareCard]);
+
+  const clearCard = useCallback((card, updateCard) => {
+    const baselineExists = Boolean(asText(card?.baselineImage));
+    updateCard(card.id, {
+      candidateImage: "",
+      status: baselineExists ? "idle" : "blocked",
+      confidence: "low",
+      message: baselineExists
+        ? "Capture or replace with a current photo to run comparison."
+        : "No baseline image was found for this item.",
+      differences: [],
+    });
+  }, []);
+
+  const menuCardsAllMatched =
+    menuCards.length > 0 && menuCards.every((card) => card.status === "matched");
+  const menuAttestationsPassed = allDishesVisible === true && mostCurrent === true;
+  const menuStepReady = menuCardsAllMatched && menuAttestationsPassed;
+  const menuHasMismatch = menuCards.some((card) => card.status === "mismatched");
+  const menuHasProcessing = menuCards.some((card) => card.status === "matching");
+  const brandHasProcessing = brandCards.some((card) => card.status === "matching");
+  const brandCardsAllMatched =
+    brandCards.length === 0 || brandCards.every((card) => card.status === "matched");
+  const brandHasMismatch = brandCards.some((card) => card.status === "mismatched");
+  const brandHasBlocked = brandCards.some((card) => card.status === "blocked");
+  const canSubmitConfirmation =
+    menuStepReady && brandCardsAllMatched && !menuHasProcessing && !brandHasProcessing;
+  const verifiedMenuPhotos = menuCards
+    .map((card) => asText(card.candidateImage))
+    .filter(Boolean);
 
   return (
     <Modal
       open={editor.confirmInfoOpen}
       onOpenChange={(open) => editor.setConfirmInfoOpen(open)}
       title="Confirm Allergen Information"
-      className="max-w-[820px]"
+      className="max-w-[1120px]"
     >
       <div className="space-y-3">
-        <p className="note m-0 text-sm">
-          Take photos of your current menu to confirm that it aligns with the menu on Clarivore.
-        </p>
-
-        <div className="flex items-center gap-2">
-          <label className="btn" htmlFor="confirm-photos-input">
-            Upload photos
-          </label>
-          <input
-            id="confirm-photos-input"
-            type="file"
-            accept="image/*"
-            multiple
-            capture="environment"
-            className="hidden"
-            onChange={async (event) => {
-              await addFiles(event.target.files);
-              event.target.value = "";
-            }}
-          />
-          <span className="text-xs text-[#a7b2d1]">{photos.length} photo(s)</span>
+        <div className="flex items-center justify-between gap-2">
+          <p className="note m-0 text-sm">
+            {step === "menu"
+              ? "Take a current photo for each menu page and compare it against the saved page."
+              : "Now verify each brand item currently used by your dishes."}
+          </p>
+          <div className="text-xs text-[#a7b2d1]">
+            Step {step === "menu" ? "1 of 2" : "2 of 2"}
+          </div>
         </div>
 
-        {!hasPhotos ? (
-          <div className="rounded-lg border border-[#2a3261] bg-[rgba(6,10,28,0.55)] p-3 text-sm text-[#ced8f8]">
-            Upload at least one menu photo to continue.
-          </div>
-        ) : null}
-
-        {photos.length ? (
-          <div className="flex flex-wrap gap-2">
-            {photos.map((photo, index) => (
-              <div key={`confirm-photo-${index}`} className="relative">
-                <img
-                  src={photo}
-                  alt={`Menu confirmation ${index + 1}`}
-                  className="h-[72px] w-[110px] rounded border border-[#2a3261] object-cover"
-                />
-                <button
-                  type="button"
-                  className="btn btnDanger"
-                  style={{
-                    position: "absolute",
-                    top: -8,
-                    right: -8,
-                    width: 22,
-                    height: 22,
-                    minWidth: 22,
-                    padding: 0,
-                    borderRadius: "50%",
+        {step === "menu" ? (
+          <div className="space-y-3">
+            <div className="flex gap-3 overflow-x-auto pb-1">
+              {menuCards.map((card) => (
+                <ConfirmInfoCard
+                  key={card.id}
+                  card={card}
+                  busy={editor.confirmBusy}
+                  replaceInputRef={getCardInputRef(menuReplaceInputRefs, card.id)}
+                  captureInputRef={getCardInputRef(menuCaptureInputRefs, card.id)}
+                  onRemove={() => clearCard(card, updateMenuCard)}
+                  onPickReplace={async (event) => {
+                    const file = event.target.files?.[0];
+                    if (file) {
+                      await processCardFile({
+                        file,
+                        kind: "menu_page",
+                        card,
+                        updateCard: updateMenuCard,
+                      });
+                    }
+                    event.target.value = "";
                   }}
-                  onClick={() =>
-                    setPhotos((current) => current.filter((_, i) => i !== index))
-                  }
-                >
-                  ×
-                </button>
-              </div>
-            ))}
-          </div>
-        ) : null}
+                  onPickCapture={async (event) => {
+                    const file = event.target.files?.[0];
+                    if (file) {
+                      await processCardFile({
+                        file,
+                        kind: "menu_page",
+                        card,
+                        updateCard: updateMenuCard,
+                      });
+                    }
+                    event.target.value = "";
+                  }}
+                />
+              ))}
+            </div>
 
-        {hasPhotos && step === "capture" ? (
-          <div className="rounded-lg border border-[#2a3261] bg-[rgba(6,10,28,0.55)] p-3 text-sm text-[#ced8f8]">
-            Are all dishes clearly visible in these photos?
-            <div className="mt-2 flex gap-2">
-              <Button size="compact" tone="success" onClick={() => setStep("current")}>✓ Yes</Button>
+            <div className="rounded-lg border border-[#2a3261] bg-[rgba(6,10,28,0.55)] p-3 text-sm text-[#ced8f8]">
+              <div>Are all dishes clearly visible in these photos?</div>
+              <div className="mt-2 flex gap-2">
+                <Button
+                  size="compact"
+                  tone={allDishesVisible === true ? "success" : "neutral"}
+                  onClick={() => setAllDishesVisible(true)}
+                >
+                  Yes
+                </Button>
+                <Button
+                  size="compact"
+                  tone={allDishesVisible === false ? "danger" : "neutral"}
+                  onClick={() => setAllDishesVisible(false)}
+                >
+                  No
+                </Button>
+              </div>
+            </div>
+
+            <div className="rounded-lg border border-[#2a3261] bg-[rgba(6,10,28,0.55)] p-3 text-sm text-[#ced8f8]">
+              <div>Are these photos of your most current menu?</div>
+              <div className="mt-2 flex gap-2">
+                <Button
+                  size="compact"
+                  tone={mostCurrent === true ? "success" : "neutral"}
+                  onClick={() => setMostCurrent(true)}
+                >
+                  Yes
+                </Button>
+                <Button
+                  size="compact"
+                  tone={mostCurrent === false ? "danger" : "neutral"}
+                  onClick={() => setMostCurrent(false)}
+                >
+                  No
+                </Button>
+              </div>
+            </div>
+
+            {allDishesVisible === false || mostCurrent === false ? (
+              <p className="m-0 rounded-lg border border-[#a12525] bg-[rgba(139,29,29,0.32)] px-3 py-2 text-sm text-[#ffd0d0]">
+                Confirmation is blocked until both menu attestation questions are answered Yes.
+              </p>
+            ) : null}
+
+            <div className="flex flex-wrap gap-2 justify-end">
+              {menuHasMismatch ? (
+                <Button
+                  size="compact"
+                  tone="danger"
+                  variant="outline"
+                  onClick={() => {
+                    editor.setConfirmInfoOpen(false);
+                    editor.setMenuPagesOpen(true);
+                  }}
+                >
+                  Update menu images
+                </Button>
+              ) : null}
               <Button
                 size="compact"
-                tone="danger"
-                onClick={() => {
-                  setPhotos([]);
-                  setStep("capture");
-                }}
+                variant="outline"
+                onClick={() => editor.setConfirmInfoOpen(false)}
               >
-                ✗ No
+                Cancel
+              </Button>
+              <Button
+                size="compact"
+                tone="primary"
+                disabled={!menuStepReady}
+                onClick={() => setStep("brand")}
+              >
+                Continue to brand items
               </Button>
             </div>
           </div>
-        ) : null}
+        ) : (
+          <div className="space-y-3">
+            <div className="flex gap-3 overflow-x-auto pb-1">
+              {brandCards.map((card) => (
+                <ConfirmInfoCard
+                  key={card.id}
+                  card={card}
+                  busy={editor.confirmBusy}
+                  replaceInputRef={getCardInputRef(brandReplaceInputRefs, card.id)}
+                  captureInputRef={getCardInputRef(brandCaptureInputRefs, card.id)}
+                  onRemove={() => clearCard(card, updateBrandCard)}
+                  onPickReplace={async (event) => {
+                    const file = event.target.files?.[0];
+                    if (file) {
+                      await processCardFile({
+                        file,
+                        kind: "brand_item",
+                        card,
+                        updateCard: updateBrandCard,
+                      });
+                    }
+                    event.target.value = "";
+                  }}
+                  onPickCapture={async (event) => {
+                    const file = event.target.files?.[0];
+                    if (file) {
+                      await processCardFile({
+                        file,
+                        kind: "brand_item",
+                        card,
+                        updateCard: updateBrandCard,
+                      });
+                    }
+                    event.target.value = "";
+                  }}
+                />
+              ))}
+            </div>
 
-        {hasPhotos && step === "current" ? (
-          <div className="rounded-lg border border-[#2a3261] bg-[rgba(6,10,28,0.55)] p-3 text-sm text-[#ced8f8]">
-            Are these photos of your most current menu?
-            <div className="mt-2 flex gap-2">
+            {!brandCards.length ? (
+              <div className="rounded-lg border border-[#2a3261] bg-[rgba(6,10,28,0.55)] p-3 text-sm text-[#ced8f8]">
+                No brand items are currently linked to this menu.
+              </div>
+            ) : null}
+
+            {brandHasMismatch ? (
+              <p className="m-0 rounded-lg border border-[#a12525] bg-[rgba(139,29,29,0.32)] px-3 py-2 text-sm text-[#ffd0d0]">
+                At least one brand item was determined to not match. Replace or capture a new photo
+                for each mismatched item before final confirmation.
+              </p>
+            ) : null}
+
+            {brandHasBlocked ? (
+              <p className="m-0 rounded-lg border border-[#a12525] bg-[rgba(139,29,29,0.32)] px-3 py-2 text-sm text-[#ffd0d0]">
+                One or more brand items are missing baseline images and cannot be verified.
+              </p>
+            ) : null}
+
+            <div className="flex flex-wrap gap-2 justify-end">
+              <Button size="compact" variant="outline" onClick={() => setStep("menu")}>
+                Back to menu verification
+              </Button>
               <Button
                 size="compact"
                 tone="success"
                 loading={editor.confirmBusy}
-                disabled={!hasPhotos || editor.confirmBusy}
+                disabled={!canSubmitConfirmation || editor.confirmBusy}
                 onClick={async () => {
-                  if (!hasPhotos) {
-                    setStep("capture");
-                    setUploadError("Upload at least one menu photo before confirming.");
-                    return;
-                  }
-                  const result = await editor.confirmInfo(photos);
+                  const result = await editor.confirmInfo(verifiedMenuPhotos);
                   if (result?.success) {
                     editor.setConfirmInfoOpen(false);
                   }
                 }}
               >
-                ✓ Yes, confirm
-              </Button>
-              <Button
-                size="compact"
-                tone="danger"
-                onClick={() => editor.setConfirmInfoOpen(false)}
-              >
-                ✗ Cancel
+                Confirm information is up-to-date
               </Button>
             </div>
           </div>
-        ) : null}
+        )}
 
-        {uploadError ? (
-          <p className="m-0 rounded-lg border border-[#a12525] bg-[rgba(139,29,29,0.32)] px-3 py-2 text-sm text-[#ffd0d0]">
-            {uploadError}
-          </p>
+        {flowError ? (
+          <div className="rounded-lg border border-[#2a3261] bg-[rgba(6,10,28,0.55)] p-3 text-sm text-[#ced8f8]">
+            {flowError}
+          </div>
         ) : null}
 
         {editor.confirmError ? (

@@ -186,6 +186,35 @@ export async function analyzeIngredientScanRequirement({ ingredientName, dishNam
   };
 }
 
+export async function compareConfirmInfoImages(payload = {}) {
+  const requestBody = {
+    kind: asText(payload?.kind),
+    baselineImage: asText(payload?.baselineImage),
+    candidateImage: asText(payload?.candidateImage),
+    label: asText(payload?.label),
+  };
+  if (!requestBody.label) delete requestBody.label;
+
+  const response = await fetch("/api/confirm-info-compare", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(requestBody),
+  });
+
+  const result = await parseFunctionResponse(response, "confirm-info-compare");
+  return {
+    success: result?.success === true,
+    match: result?.match === true,
+    confidence: asText(result?.confidence).toLowerCase() || "low",
+    summary: asText(result?.summary),
+    differences: Array.isArray(result?.differences)
+      ? result.differences.map((value) => asText(value)).filter(Boolean)
+      : [],
+  };
+}
+
 export async function sendMenuUpdateNotification({
   restaurantName,
   restaurantSlug,
@@ -262,6 +291,7 @@ export default {
   analyzeDishWithAi,
   analyzeIngredientNameWithAi,
   analyzeIngredientScanRequirement,
+  compareConfirmInfoImages,
   sendMenuUpdateNotification,
   dataUrlFromImageSource,
   compareDishSets,
