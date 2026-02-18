@@ -1,5 +1,6 @@
 import { corsJson, corsOptions } from "../_shared/cors";
 import { asText, prisma } from "../editor-pending-save/_shared/pendingSaveUtils";
+import { fetchRestaurantMenuStateMapFromTablesWithPrisma } from "../../lib/server/restaurantMenuStateServer.js";
 
 export const runtime = "nodejs";
 
@@ -111,17 +112,25 @@ export async function POST(request) {
         name: true,
         slug: true,
         last_confirmed: true,
-        overlays: true,
       },
       orderBy: { name: "asc" },
     });
+
+    const restaurantMenuState = await fetchRestaurantMenuStateMapFromTablesWithPrisma(
+      prisma,
+      (Array.isArray(restaurants) ? restaurants : []).map((restaurant) => restaurant.id),
+    );
 
     const terms = tokenize(userQuery);
     const candidates = [];
     const maxCandidates = 400;
 
     for (const restaurant of Array.isArray(restaurants) ? restaurants : []) {
-      const overlays = Array.isArray(restaurant.overlays) ? restaurant.overlays : [];
+      const overlays = Array.isArray(
+        restaurantMenuState.get(asText(restaurant.id))?.overlays,
+      )
+        ? restaurantMenuState.get(asText(restaurant.id)).overlays
+        : [];
       for (const overlay of overlays) {
         const dishName = asText(overlay?.name || overlay?.id || overlay?.dishName);
         if (!dishName) continue;

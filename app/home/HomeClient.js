@@ -10,6 +10,7 @@ import PageShell from "../components/PageShell";
 import RestaurantCard from "../components/RestaurantCard";
 import RestaurantGridState from "../components/RestaurantGridState";
 import { queryKeys } from "../lib/queryKeys";
+import { hydrateRestaurantsWithTableMenuState } from "../lib/restaurantMenuStateClient";
 import { filterRestaurantsByVisibility } from "../lib/restaurantVisibility";
 import { supabaseClient as supabase } from "../lib/supabase";
 import { resolveGreetingFirstName } from "../lib/userIdentity";
@@ -49,11 +50,15 @@ export default function HomeClient() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("restaurants")
-        .select("id, name, slug, menu_image, last_confirmed")
+        .select("id, name, slug, last_confirmed")
         .order("last_confirmed", { ascending: false })
         .limit(6);
       if (error) throw error;
-      return filterRestaurantsByVisibility(Array.isArray(data) ? data : [], {
+      const restaurants = await hydrateRestaurantsWithTableMenuState(
+        supabase,
+        Array.isArray(data) ? data : [],
+      );
+      return filterRestaurantsByVisibility(restaurants, {
         user: authQuery.data || null,
       });
     },

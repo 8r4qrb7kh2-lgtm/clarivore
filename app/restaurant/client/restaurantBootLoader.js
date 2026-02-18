@@ -4,6 +4,7 @@ import {
   isManagerUser,
   isOwnerUser,
 } from "../../lib/managerRestaurants";
+import { hydrateRestaurantWithTableMenuState } from "../../lib/restaurantMenuStateClient";
 
 // Keep a short "recently viewed" list so returning users can reopen restaurants quickly.
 function trackRecentlyViewed(slug) {
@@ -96,16 +97,22 @@ export async function loadRestaurantBoot({
     }
   }
 
-  // Primary runtime restaurant source: direct row from the database.
-  const { data: restaurant, error: restaurantError } = await supabaseClient
+  // Primary runtime source: restaurant core fields + table-backed menu state.
+  const { data: restaurantBase, error: restaurantError } = await supabaseClient
     .from("restaurants")
-    .select("*")
+    .select(
+      "id, slug, name, last_confirmed, created_at, updated_at, menu_url, last_checked, monitor_enabled, total_checks, emails_sent, check_frequency_hours, delivery_url, website, phone, write_version",
+    )
     .eq("slug", slug)
     .single();
 
-  if (restaurantError || !restaurant) {
+  if (restaurantError || !restaurantBase) {
     throw new Error(restaurantError?.message || "Restaurant not found.");
   }
+  const restaurant = await hydrateRestaurantWithTableMenuState(
+    supabaseClient,
+    restaurantBase,
+  );
 
   // Start with session preferences, then override with persisted profile values when available.
   let allergies = sessionSavedPreferences.allergies;

@@ -12,6 +12,7 @@ import { Button, Textarea } from "../components/ui";
 import { supabaseClient as supabase } from "../lib/supabase";
 import { loadAllergenDietConfig } from "../lib/allergenConfig";
 import { queryKeys } from "../lib/queryKeys";
+import { hydrateRestaurantWithTableMenuState } from "../lib/restaurantMenuStateClient";
 
 function getDefaultConfig() {
   const normalizeAllergen = (value) => String(value ?? "").trim();
@@ -105,15 +106,20 @@ export default function OrderFeedbackClient() {
         return { invalid: true };
       }
 
-      const { data: restaurant, error: restaurantError } = await supabase
+      const { data: restaurantBase, error: restaurantError } = await supabase
         .from("restaurants")
-        .select("id, name, slug, overlays, menu_images")
+        .select("id, name, slug")
         .eq("id", queueEntry.restaurant_id)
         .maybeSingle();
 
-      if (restaurantError || !restaurant) {
+      if (restaurantError || !restaurantBase) {
         return { invalid: true };
       }
+
+      const restaurant = await hydrateRestaurantWithTableMenuState(
+        supabase,
+        restaurantBase,
+      );
 
       return {
         invalid: false,

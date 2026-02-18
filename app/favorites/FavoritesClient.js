@@ -14,6 +14,7 @@ import {
   isOwnerUser,
 } from "../lib/managerRestaurants";
 import { queryKeys } from "../lib/queryKeys";
+import { hydrateRestaurantsWithTableMenuState } from "../lib/restaurantMenuStateClient";
 import { filterRestaurantsByVisibility } from "../lib/restaurantVisibility";
 import { supabaseClient as supabase } from "../lib/supabase";
 
@@ -119,7 +120,7 @@ export default function FavoritesClient() {
 
       const { data: restaurantsData, error: restaurantsError } = await supabase
         .from("restaurants")
-        .select("*")
+        .select("id, name, slug, last_confirmed")
         .in("id", ids)
         .order("name");
 
@@ -127,7 +128,11 @@ export default function FavoritesClient() {
         throw new Error("Unable to load my restaurants.");
       }
 
-      const filtered = filterRestaurantsByVisibility(restaurantsData || [], {
+      const hydratedRestaurants = await hydrateRestaurantsWithTableMenuState(
+        supabase,
+        restaurantsData || [],
+      );
+      const filtered = filterRestaurantsByVisibility(hydratedRestaurants, {
         user,
       });
       const visibleIds = new Set(filtered.map((restaurant) => String(restaurant.id)));

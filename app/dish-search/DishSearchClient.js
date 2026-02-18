@@ -16,6 +16,7 @@ import {
   isManagerUser,
   isOwnerUser,
 } from "../lib/managerRestaurants";
+import { hydrateRestaurantsWithTableMenuState } from "../lib/restaurantMenuStateClient";
 import {
   supabaseClient as supabase,
 } from "../lib/supabase";
@@ -142,12 +143,16 @@ export default function DishSearchClient() {
       try {
         const { data, error } = await supabase
           .from("restaurants")
-          .select("id, name, slug, overlays")
+          .select("id, name, slug")
           .order("name");
         if (!error) {
-          restaurants = Array.isArray(data) ? data : [];
+          const restaurantRows = Array.isArray(data) ? data : [];
+          restaurants = await hydrateRestaurantsWithTableMenuState(
+            supabase,
+            restaurantRows,
+          );
           selectedRestaurantIds = new Set(
-            (data || []).map((row) => String(row.id)),
+            restaurants.map((row) => String(row.id)),
           );
         }
       } catch (error) {

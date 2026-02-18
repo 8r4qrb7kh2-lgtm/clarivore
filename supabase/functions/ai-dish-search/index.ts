@@ -2,8 +2,6 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getCorsHeaders } from "../_shared/cors.ts";
 
-type Dish = { name: string; description?: string };
-
 const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
 
 serve(async (req: Request) => {
@@ -30,13 +28,33 @@ serve(async (req: Request) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
 
-    // Fetch all restaurants (including overlays which contain dishes)
-    // Only use overlays since they contain confirmed allergen and dietary data from restaurant managers
+    // Load restaurants, then load table-backed dish rows from normalized menu tables.
     const { data: restaurants, error: restaurantsError } = await supabase
       .from("restaurants")
-      .select("id, name, slug, last_confirmed, overlays")
+      .select("id, name, slug, last_confirmed")
       .order("name");
     if (restaurantsError) throw restaurantsError;
+
+    const restaurantIds = (restaurants || [])
+      .map((restaurant: any) => String(restaurant?.id || "").trim())
+      .filter(Boolean);
+
+    const { data: menuDishes, error: menuDishesError } = restaurantIds.length
+      ? await supabase
+          .from("restaurant_menu_dishes")
+          .select("restaurant_id,dish_name,description,details_json,payload_json")
+          .in("restaurant_id", restaurantIds)
+      : { data: [], error: null };
+
+    if (menuDishesError) throw menuDishesError;
+
+    const dishesByRestaurant = new Map<string, any[]>();
+    (menuDishes || []).forEach((row: any) => {
+      const restaurantId = String(row?.restaurant_id || "").trim();
+      if (!restaurantId) return;
+      if (!dishesByRestaurant.has(restaurantId)) dishesByRestaurant.set(restaurantId, []);
+      dishesByRestaurant.get(restaurantId)!.push(row);
+    });
 
     // Build candidate list for AI; apply quick keyword prefilter to reduce tokens
     const normalizedQueryTerms = tokenize(userQuery);
@@ -50,111 +68,71 @@ serve(async (req: Request) => {
       dish_description: string;
     };
 
-    const candidates: Candidate[] = [];
-    for (const r of restaurants || []) {
-      const rid = String(r.id);
-      // Only use overlays - they contain confirmed allergen and dietary data from restaurant managers
-      if ((r as any).overlays && Array.isArray((r as any).overlays)) {
-        const overlayDishes = ((r as any).overlays as any[]).map((ov: any) => {
-          // Extract description from various possible fields
-          let description = "";
-          if (ov.description) {
-            description = ov.description;
-          } else if (ov.details && ov.details.__ingredientsSummary) {
-            description = ov.details.__ingredientsSummary;
-          } else if (ov.aiIngredientSummary) {
+    const allCandidates: Candidate[] = [];
+    for (const restaurant of restaurants || []) {
+      const restaurantId = String((restaurant as any)?.id || "");
+      const restaurantName = String((restaurant as any)?.name || "");
+      const restaurantSlug = (restaurant as any)?.slug || null;
+      const dishRows = dishesByRestaurant.get(restaurantId) || [];
+
+      dishRows.forEach((dishRow: any) => {
+        const dishName = String(dishRow?.dish_name || "").trim();
+        if (!dishName) return;
+
+        let dishDescription = String(dishRow?.description || "").trim();
+        if (!dishDescription) {
+          const details = dishRow?.details_json && typeof dishRow.details_json === "object"
+            ? dishRow.details_json
+            : {};
+          dishDescription = String(details?.__ingredientsSummary || "").trim();
+        }
+        if (!dishDescription) {
+          const payload = dishRow?.payload_json && typeof dishRow.payload_json === "object"
+            ? dishRow.payload_json
+            : {};
+          const aiSummary = payload?.aiIngredientSummary;
+          if (Array.isArray(aiSummary)) {
+            dishDescription = aiSummary.map((value: any) => String(value || "").trim()).filter(Boolean).join(", ");
+          } else if (typeof aiSummary === "string") {
             try {
-              // aiIngredientSummary is stored as a JSON string array
-              const summaryArray = JSON.parse(ov.aiIngredientSummary);
-              if (Array.isArray(summaryArray)) {
-                description = summaryArray.join(", ");
+              const parsed = JSON.parse(aiSummary);
+              if (Array.isArray(parsed)) {
+                dishDescription = parsed.map((value: any) => String(value || "").trim()).filter(Boolean).join(", ");
+              } else {
+                dishDescription = aiSummary;
               }
-            } catch (e) {
-              // If parsing fails, use as-is
-              description = ov.aiIngredientSummary;
+            } catch {
+              dishDescription = aiSummary;
             }
-          } else if (ov.ingredients) {
-            description = ov.ingredients;
-          }
-          
-          return {
-            name: ov.name || ov.id || "",
-            description: description,
-          };
-        }).filter((d: Dish) => d.name);
-        
-        for (const d of overlayDishes) {
-          const name = (d?.name || "").toString();
-          const desc = (d?.description || "").toString();
-          if (!name) continue;
-          const prefilterScore = simpleScore(`${name} ${desc}`, normalizedQueryTerms);
-          // For single-word queries, include all dishes; for longer queries, require at least one term match
-          const shouldInclude = normalizedQueryTerms.length === 1 ? true : prefilterScore > 0;
-          if (shouldInclude) {
-            candidates.push({
-              restaurant_id: rid,
-              restaurant_name: r.name,
-              restaurant_slug: (r as any).slug || null,
-              dish_name: name,
-              dish_description: desc,
-            });
+          } else if (Array.isArray(payload?.ingredients)) {
+            dishDescription = payload.ingredients
+              .map((ingredient: any) => String(ingredient?.name || ingredient || "").trim())
+              .filter(Boolean)
+              .join(", ");
           }
         }
-      }
+
+        allCandidates.push({
+          restaurant_id: restaurantId,
+          restaurant_name: restaurantName,
+          restaurant_slug: restaurantSlug,
+          dish_name: dishName,
+          dish_description: dishDescription,
+        });
+      });
     }
-    
-    // If no keyword matches but we have dishes, include all dishes for AI to evaluate
-    if (candidates.length === 0 && normalizedQueryTerms.length > 1) {
-      for (const r of restaurants || []) {
-        const rid = String(r.id);
-        // Only use overlays
-        if ((r as any).overlays && Array.isArray((r as any).overlays)) {
-          const overlayDishes = ((r as any).overlays as any[]).map((ov: any) => {
-            // Extract description from various possible fields
-            let description = "";
-            if (ov.description) {
-              description = ov.description;
-            } else if (ov.details && ov.details.__ingredientsSummary) {
-              description = ov.details.__ingredientsSummary;
-            } else if (ov.aiIngredientSummary) {
-              try {
-                // aiIngredientSummary is stored as a JSON string array
-                const summaryArray = JSON.parse(ov.aiIngredientSummary);
-                if (Array.isArray(summaryArray)) {
-                  description = summaryArray.join(", ");
-                }
-              } catch (e) {
-                // If parsing fails, use as-is
-                description = ov.aiIngredientSummary;
-              }
-            } else if (ov.ingredients) {
-              description = ov.ingredients;
-            }
-            
-            return {
-              name: ov.name || ov.id || "",
-              description: description,
-            };
-          }).filter((d: Dish) => d.name);
-          
-          for (const d of overlayDishes) {
-            const name = (d?.name || "").toString();
-            const desc = (d?.description || "").toString();
-            if (!name) continue;
-            candidates.push({
-              restaurant_id: rid,
-              restaurant_name: r.name,
-              restaurant_slug: (r as any).slug || null,
-              dish_name: name,
-              dish_description: desc,
-            });
-          }
-        }
-      }
-      // Cap fallback to prevent too many candidates
-      if (candidates.length > MAX_CANDIDATES) {
-        candidates.splice(MAX_CANDIDATES);
-      }
+
+    let candidates = allCandidates.filter((candidate) => {
+      if (normalizedQueryTerms.length === 1) return true;
+      return simpleScore(
+        `${candidate.dish_name} ${candidate.dish_description}`,
+        normalizedQueryTerms,
+      ) > 0;
+    });
+
+    // If no keyword matches but we have dishes, include all dishes for AI to evaluate.
+    if (!candidates.length && normalizedQueryTerms.length > 1) {
+      candidates = [...allCandidates];
     }
 
     // Cap to reasonable size to fit into Claude context

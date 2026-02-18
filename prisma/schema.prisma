@@ -971,8 +971,6 @@ model restaurants {
   id                              String                            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   slug                            String                            @unique
   name                            String
-  menu_image                      String?
-  overlays                        Json?                             @default("[]")
   last_confirmed                  DateTime?                         @db.Timestamptz(6)
   created_at                      DateTime?                         @default(now()) @db.Timestamptz(6)
   updated_at                      DateTime?                         @default(now()) @db.Timestamptz(6)
@@ -985,7 +983,6 @@ model restaurants {
   delivery_url                    String?
   website                         String?
   phone                           String?
-  menu_images                     Json?
   write_version                   BigInt                            @default(0)
   accommodation_requests          accommodation_requests[]
   allergen_detection_issues       allergen_detection_issues[]

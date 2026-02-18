@@ -15,6 +15,7 @@ import {
   resolveManagerRestaurantAccess,
 } from "../lib/managerRestaurants";
 import { queryKeys } from "../lib/queryKeys";
+import { hydrateRestaurantsWithTableMenuState } from "../lib/restaurantMenuStateClient";
 import { filterRestaurantsByVisibility } from "../lib/restaurantVisibility";
 import { supabaseClient as supabase } from "../lib/supabase";
 import { createCompatibilityEngine } from "../restaurant/features/shared/compatibility";
@@ -161,7 +162,7 @@ export default function RestaurantsClient() {
 
       let query = supabase
         .from("restaurants")
-        .select("id, name, slug, menu_image, last_confirmed, overlays")
+        .select("id, name, slug, last_confirmed")
         .order("name", { ascending: true });
 
       if (isManager && !isOwner) {
@@ -175,7 +176,10 @@ export default function RestaurantsClient() {
       const { data, error } = await query;
       if (error) throw error;
 
-      const list = Array.isArray(data) ? data : [];
+      const list = await hydrateRestaurantsWithTableMenuState(
+        supabase,
+        Array.isArray(data) ? data : [],
+      );
       return filterRestaurantsByVisibility(list, { user });
     },
     staleTime: 30 * 1000,

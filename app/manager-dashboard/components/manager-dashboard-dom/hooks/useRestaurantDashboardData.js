@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { supabaseClient as supabase } from "../../../../lib/supabase";
+import { hydrateRestaurantWithTableMenuState } from "../../../../lib/restaurantMenuStateClient";
 import { normalizeDishKey } from "../utils/menuUtils";
 
 // Loads the primary dashboard datasets for the selected restaurant.
@@ -48,7 +49,7 @@ export function useRestaurantDashboardData({
         ] = await Promise.all([
           supabase
             .from("restaurants")
-            .select("id, name, slug, menu_images, menu_image, overlays, last_confirmed, write_version")
+            .select("id, name, slug, last_confirmed, write_version")
             .eq("id", restaurantId)
             .single(),
           supabase
@@ -83,7 +84,10 @@ export function useRestaurantDashboardData({
         if (requestsResult.error) throw requestsResult.error;
         if (interactionsResult.error) throw interactionsResult.error;
 
-        const restaurant = restaurantResult.data || null;
+        const restaurantBase = restaurantResult.data || null;
+        const restaurant = restaurantBase
+          ? await hydrateRestaurantWithTableMenuState(supabase, restaurantBase)
+          : null;
         const changeLogs = Array.isArray(changeLogsResult.data) ? changeLogsResult.data : [];
         const analytics = Array.isArray(analyticsResult.data) ? analyticsResult.data : [];
         const requests = Array.isArray(requestsResult.data) ? requestsResult.data : [];

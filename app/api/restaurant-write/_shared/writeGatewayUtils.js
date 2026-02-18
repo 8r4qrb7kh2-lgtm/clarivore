@@ -12,6 +12,7 @@ import {
   toDishKey,
   toJsonSafe,
 } from "../../editor-pending-save/_shared/pendingSaveUtils.js";
+import { fetchRestaurantMenuStateFromTablesWithPrisma } from "../../../lib/server/restaurantMenuStateServer.js";
 
 export { asText, prisma };
 
@@ -93,11 +94,6 @@ function parseJsonValue(value, fallback) {
     }
   }
   return fallback;
-}
-
-function parseJsonArray(value, fallback = []) {
-  const parsed = parseJsonValue(value, fallback);
-  return Array.isArray(parsed) ? parsed : fallback;
 }
 
 function toSafeInteger(value, fallback = 0) {
@@ -336,9 +332,18 @@ function normalizeOverlayForStorage(overlay) {
 }
 
 function normalizeOverlayListForStorage(overlays) {
-  return (Array.isArray(overlays) ? overlays : [])
-    .map((overlay) => normalizeOverlayForStorage(overlay))
-    .filter((overlay) => Boolean(toOverlayDishKey(overlay)));
+  const output = [];
+  const seen = new Set();
+
+  (Array.isArray(overlays) ? overlays : []).forEach((overlay) => {
+    const normalized = normalizeOverlayForStorage(overlay);
+    const key = toOverlayDishKey(normalized);
+    if (!key || seen.has(key)) return;
+    seen.add(key);
+    output.push(normalized);
+  });
+
+  return output;
 }
 
 function buildOverlayOrderAndMap(overlays) {
@@ -1739,7 +1744,7 @@ function normalizeBrandReplacementPayload(operationPayload) {
 function normalizeRestaurantCreatePayload(operationPayload) {
   const name = asText(operationPayload?.name);
   const slug = asText(operationPayload?.slug) || slugifyName(name);
-  const menuImage = asText(operationPayload?.menuImage || operationPayload?.menu_image);
+  const menuImage = asText(operationPayload?.menuImage);
   const menuImages = (Array.isArray(operationPayload?.menuImages)
     ? operationPayload.menuImages
     : []
@@ -2396,20 +2401,16 @@ export async function setRestaurantWriteContext(tx) {
   `);
 }
 
-function readMenuImagesFromRestaurantRecord(record) {
-  const images = (Array.isArray(record?.menu_images)
-    ? record.menu_images
-    : Array.isArray(record?.menuImages)
-      ? record.menuImages
-      : []
-  )
+async function readRestaurantMenuStateSnapshot(tx, restaurantId) {
+  const state = await fetchRestaurantMenuStateFromTablesWithPrisma(tx, restaurantId);
+  const overlays = normalizeOverlayListForStorage(state?.overlays);
+  const menuImages = (Array.isArray(state?.menuImages) ? state.menuImages : [])
     .map((value) => asText(value))
     .filter(Boolean);
-  const singleImage = asText(record?.menu_image || record?.menuImage);
-  if (!images.length && singleImage) {
-    images.push(singleImage);
-  }
-  return images;
+  return {
+    overlays,
+    menuImages,
+  };
 }
 
 function buildPersistedMenuChangePayload({
@@ -2472,50 +2473,30 @@ export async function applyWriteOperations({
         const shouldUpdateOverlays = changedFieldsProvided
           ? changedFieldSet.has(MENU_STATE_CHANGED_FIELD_KEYS.OVERLAYS)
           : true;
-        let overlays = normalizeOverlayListForStorage(payload?.overlays);
-        const { menuImage, menuImages, menuImagesProvided } = normalizeMenuImageValues(payload);
+        const currentMenuState = await readRestaurantMenuStateSnapshot(tx, restaurantId);
+        let overlays = shouldUpdateOverlays
+          ? normalizeOverlayListForStorage(payload?.overlays)
+          : currentMenuState.overlays;
+        const { menuImages, menuImagesProvided } = normalizeMenuImageValues(payload);
         const shouldUpdateMenuImages = changedFieldsProvided
           ? changedFieldSet.has(MENU_STATE_CHANGED_FIELD_KEYS.MENU_IMAGES)
           : menuImagesProvided;
 
         if (hasOverlayDeltaPayload) {
-          const existingRestaurant = await tx.restaurants.findUnique({
-            where: { id: restaurantId },
-            select: { overlays: true },
-          });
-          overlays = applyOverlayDelta({
-            baseOverlays: parseJsonArray(existingRestaurant?.overlays, []),
+          const mergedOverlays = applyOverlayDelta({
+            baseOverlays: currentMenuState.overlays,
             overlayUpserts: payload?.overlayUpserts,
             overlayDeletes: payload?.overlayDeletes,
             overlayOrder: payload?.overlayOrder,
             overlayOrderProvided: payload?.overlayOrderProvided === true,
           });
+          overlays = shouldUpdateOverlays ? mergedOverlays : currentMenuState.overlays;
         }
 
-        const updateData = {};
-        if (shouldUpdateOverlays) {
-          updateData.overlays = toJsonSafe(overlays, []);
-        }
-        if (shouldUpdateMenuImages) {
-          updateData.menu_image = menuImage || null;
-          updateData.menu_images = toJsonSafe(menuImages, []);
-        }
-
-        if (Object.keys(updateData).length) {
-          await tx.restaurants.update({
-            where: { id: restaurantId },
-            data: updateData,
-          });
-        }
-
-        const restaurantSnapshot = await tx.restaurants.findUnique({
-          where: { id: restaurantId },
-          select: {
-            menu_image: true,
-            menu_images: true,
-          },
-        });
-        const persistedMenuImages = readMenuImagesFromRestaurantRecord(restaurantSnapshot);
+        const persistedMenuImages = shouldUpdateMenuImages
+          ? menuImages
+          : currentMenuState.menuImages;
+        const shouldSyncMenuState = shouldUpdateOverlays || shouldUpdateMenuImages;
         const persistedChangePayload = buildPersistedMenuChangePayload({
           inputChangePayload: payload?.changePayload,
           overlays,
@@ -2523,7 +2504,7 @@ export async function applyWriteOperations({
           reviewRows: Array.isArray(payload?.rows) ? payload.rows : [],
         });
 
-        const syncResult = shouldUpdateOverlays
+        const syncResult = shouldSyncMenuState
           ? await syncIngredientStatusFromOverlays(
               tx,
               restaurantId,
@@ -2568,15 +2549,12 @@ export async function applyWriteOperations({
           Array.isArray(payload?.overlayUpserts) ||
           Array.isArray(payload?.overlayDeletes) ||
           payload?.overlayOrderProvided === true;
+        const currentMenuState = await readRestaurantMenuStateSnapshot(tx, restaurantId);
         let overlays = normalizeOverlayListForStorage(payload?.overlays);
 
         if (hasOverlayDeltaPayload) {
-          const existingRestaurant = await tx.restaurants.findUnique({
-            where: { id: restaurantId },
-            select: { overlays: true },
-          });
           overlays = applyOverlayDelta({
-            baseOverlays: parseJsonArray(existingRestaurant?.overlays, []),
+            baseOverlays: currentMenuState.overlays,
             overlayUpserts: payload?.overlayUpserts,
             overlayDeletes: payload?.overlayDeletes,
             overlayOrder: payload?.overlayOrder,
@@ -2584,29 +2562,8 @@ export async function applyWriteOperations({
           });
         }
 
-        const { menuImage, menuImages, menuImagesProvided } = normalizeMenuImageValues(payload);
-
-        const updateData = {
-          overlays: toJsonSafe(overlays, []),
-        };
-        if (menuImagesProvided) {
-          updateData.menu_image = menuImage || null;
-          updateData.menu_images = toJsonSafe(menuImages, []);
-        }
-
-        await tx.restaurants.update({
-          where: { id: restaurantId },
-          data: updateData,
-        });
-
-        const restaurantSnapshot = await tx.restaurants.findUnique({
-          where: { id: restaurantId },
-          select: {
-            menu_image: true,
-            menu_images: true,
-          },
-        });
-        const persistedMenuImages = readMenuImagesFromRestaurantRecord(restaurantSnapshot);
+        const { menuImages, menuImagesProvided } = normalizeMenuImageValues(payload);
+        const persistedMenuImages = menuImagesProvided ? menuImages : currentMenuState.menuImages;
         const persistedChangePayload = buildPersistedMenuChangePayload({
           inputChangePayload: payload?.changePayload,
           overlays,
@@ -2727,12 +2684,6 @@ export async function applyWriteOperations({
           data: {
             name: asText(payload?.name),
             slug: asText(payload?.slug),
-            menu_image: asText(payload?.menuImage) || null,
-            menu_images: toJsonSafe(
-              createMenuImages,
-              [],
-            ),
-            overlays: toJsonSafe(createOverlays, []),
             website: asText(payload?.website) || null,
             phone: asText(payload?.phone) || null,
             delivery_url: asText(payload?.delivery_url) || null,
