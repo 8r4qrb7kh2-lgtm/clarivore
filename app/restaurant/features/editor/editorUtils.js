@@ -1,3 +1,4 @@
+// Primitive normalization helpers shared by editor, modals, and row components.
 function clamp(value, min, max) {
   return Math.min(Math.max(value, min), max);
 }
@@ -82,6 +83,7 @@ function remapPageIndexListForRemove(values, removedIndex, pageCountBefore) {
   return normalizePageIndexList(remapped, safeAfter);
 }
 
+// Change log helpers tolerate legacy payloads and newer structured objects.
 function parseChangePayload(log) {
   if (!log?.changes) return null;
   if (typeof log.changes === "object") return log.changes;
@@ -220,6 +222,7 @@ function formatLogTimestamp(value) {
   });
 }
 
+// Review-row parsing reconstructs pending-change metadata from serialized summary keys.
 function formatPendingChangeLine(line) {
   const text = asText(line);
   if (!text.startsWith("__pc__:")) return text;
@@ -376,6 +379,7 @@ function ReviewRowGroupedList({
   );
 }
 
+// Pending-change line parser recognizes synthetic keys emitted by review-row builders.
 function parsePendingChangeLine(line) {
   const text = asText(line);
   if (!text.startsWith("__pc__:")) {
@@ -581,6 +585,7 @@ function summarizeAiSelectionTokens(overlay) {
   };
 }
 
+// Display builders normalize configured labels while keeping unknown tokens visible.
 function buildAllergenDisplay(editor, overlay) {
   const configured = Array.isArray(editor.config?.allergens)
     ? editor.config.allergens
@@ -860,6 +865,7 @@ function buildRowConflictMessages({
   return dedupeTokenList(messages);
 }
 
+// Ingredient and brand normalizers guarantee a stable shape before state comparisons.
 function normalizePreviewOptions(values, { formatLabel, getEmoji }) {
   return dedupeTokenList(values).map((value) => ({
     key: value,
@@ -940,6 +946,7 @@ function computeIngredientDietBlockers(ingredients, diets) {
   return output;
 }
 
+// Dish-state derivation is the canonical reducer for ingredients -> allergens/diets/details.
 function deriveDishStateFromIngredients({
   ingredients,
   existingDetails,

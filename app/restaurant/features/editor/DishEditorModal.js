@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button, Modal, Textarea } from "../../../components/ui";
 import { CLARIVORE_LOGO_SRC } from "../../../components/clarivoreBrand";
-import ConfirmToggleButton from "../../../components/ingredient-scan/ConfirmToggleButton";
 import {
   buildAllergenRows as buildDishAllergenRows,
   buildAllergenCrossRows as buildDishAllergenCrossRows,
@@ -20,16 +19,14 @@ import {
   dedupeTokenList,
   readTokenState,
   nextTokenState,
-  getChipToneClass,
-  getChipBorderClass,
   buildPersistedIngredientSignature,
-  buildRowManualOverrideMessages,
-  buildRowConflictMessages,
   normalizePreviewOptions,
   normalizeBrandEntry,
   normalizeIngredientEntry,
   deriveDishStateFromIngredients,
 } from "./editorUtils";
+import { DishIngredientCard } from "./dishEditor/DishIngredientCard";
+import { DishPreviewPanel } from "./dishEditor/DishPreviewPanel";
 
 function DishEditorModal({
   editor,
@@ -41,6 +38,7 @@ function DishEditorModal({
   onGuideForward,
   onGuideCancel,
 }) {
+  // Base modal selection state comes directly from the shared editor store.
   const overlay = editor.selectedOverlay;
   const [showDeleteWarning, setShowDeleteWarning] = useState(false);
   const [applyBusyByRow, setApplyBusyByRow] = useState({});
@@ -60,6 +58,8 @@ function DishEditorModal({
   const recipeTextareaRef = useRef(null);
   const dictationRecognitionRef = useRef(null);
   const ingredientRowRefs = useRef({});
+
+  // Runtime configuration gates AI-powered actions and displays user-safe messaging.
   const runtimeMissingKeys = Array.isArray(runtimeConfigHealth?.missing)
     ? runtimeConfigHealth.missing
     : [];
@@ -68,6 +68,7 @@ function DishEditorModal({
     ? `Runtime configuration missing: ${runtimeMissingKeys.join(", ")}`
     : "Runtime configuration missing.";
 
+  // Derived overlays, ingredients, and preview rows feed both editor controls and preview UI.
   const allergens = useMemo(
     () => buildAllergenDisplay(editor, overlay),
     [editor, overlay],
@@ -84,6 +85,7 @@ function DishEditorModal({
   const latestIngredientsRef = useRef(ingredients);
   const latestOverlayDetailsRef = useRef(overlay?.details);
 
+  // Refs preserve the latest normalized state for async callbacks without stale closures.
   useEffect(() => {
     latestIngredientsRef.current = ingredients;
   }, [ingredients]);
@@ -142,6 +144,7 @@ function DishEditorModal({
     [overlay, previewDietOptions],
   );
 
+  // Modal close/reset keeps transient row-level UI state out of future editing sessions.
   useEffect(() => {
     if (!editor.dishEditorOpen) {
       if (dictationRecognitionRef.current) {
@@ -234,6 +237,7 @@ function DishEditorModal({
     });
   }, []);
 
+  // Route all ingredient writes through a single path so derived overlay fields stay in sync.
   const applyIngredientChanges = useCallback(
     (updater, options = {}) => {
       const current = Array.isArray(latestIngredientsRef.current)
@@ -280,6 +284,7 @@ function DishEditorModal({
     [editor],
   );
 
+  // Config-aware token normalization keeps manual toggles consistent with backend expectations.
   const normalizeAllergenList = useCallback(
     (values) =>
       typeof editor.config?.normalizeAllergenList === "function"
@@ -307,6 +312,7 @@ function DishEditorModal({
     [applyIngredientChanges],
   );
 
+  // Each click advances through none -> contains -> cross for a compact tri-state control.
   const cycleIngredientTokenState = useCallback(
     (ingredientIndex, type, token) => {
       const value = asText(token);
@@ -471,6 +477,7 @@ function DishEditorModal({
     [applyIngredientChanges, ingredients, overlay?.id],
   );
 
+  // Smart detection pipeline: name analysis + scan requirement + row mutation.
   const analyzeIngredientForSmartDetection = useCallback(
     async (ingredientIndex) => {
       const ingredient = ingredients[ingredientIndex];
@@ -518,6 +525,7 @@ function DishEditorModal({
     [editor, ingredients, overlay?.id, overlay?.name],
   );
 
+  // Apply a normalized analysis payload to a single row while preserving editor invariants.
   const applyIngredientDetectionResult = useCallback(
     ({
       ingredientIndex,
@@ -1000,6 +1008,43 @@ function DishEditorModal({
     ],
   );
 
+  // Row-scoped UI setters are centralized here to keep child row props simple.
+  const setIngredientRowRef = useCallback((index, node) => {
+    ingredientRowRefs.current[index] = node;
+  }, []);
+
+  const toggleIngredientSearchOpen = useCallback((ingredientIndex) => {
+    setSearchOpenRow((current) => (current === ingredientIndex ? -1 : ingredientIndex));
+  }, []);
+
+  const updateIngredientSearchQuery = useCallback((ingredientIndex, value) => {
+    setSearchQueryByRow((current) => ({
+      ...current,
+      [ingredientIndex]: value,
+    }));
+  }, []);
+
+  const toggleIngredientAppealOpen = useCallback((ingredientIndex) => {
+    setAppealOpenByRow((current) => ({
+      ...current,
+      [ingredientIndex]: !current[ingredientIndex],
+    }));
+  }, []);
+
+  const closeIngredientAppeal = useCallback((ingredientIndex) => {
+    setAppealOpenByRow((current) => ({
+      ...current,
+      [ingredientIndex]: false,
+    }));
+  }, []);
+
+  const updateIngredientAppealMessage = useCallback((ingredientIndex, value) => {
+    setAppealMessageByRow((current) => ({
+      ...current,
+      [ingredientIndex]: value,
+    }));
+  }, []);
+
   const handleCloseDishEditor = useCallback(() => {
     setModalError("");
     editor.pushHistory();
@@ -1114,11 +1159,9 @@ function DishEditorModal({
   const isIngredientGenerationBusy =
     processInputBusy || editor.aiAssistDraft.loading;
   const hasIngredientRows = ingredients.length > 0;
-  const hasProcessableInput = Boolean(
-    asText(editor.aiAssistDraft.text) || asText(editor.aiAssistDraft.imageData),
-  );
   const showPostProcessSections = hasIngredientRows;
 
+  // Save-review jump requests scroll directly to the relevant ingredient row in this modal.
   useEffect(() => {
     if (!editor.dishEditorOpen) return;
     if (!saveIssueJumpRequest) return;
@@ -1153,6 +1196,7 @@ function DishEditorModal({
     saveIssueJumpRequest,
   ]);
 
+  // Render layout: input capture + ingredient controls + customer-facing preview.
   return (
     <Modal
       open={editor.dishEditorOpen}
@@ -1262,6 +1306,7 @@ function DishEditorModal({
             Upload recipe photos or describe the dish ingredients below.
           </p>
 
+          {/* Input capture supports either photos or free-form text. */}
           <div className="restaurant-legacy-editor-dish-media-row">
             <label className="btn" htmlFor="dish-editor-upload-photo">
               📁 Upload photos
@@ -1373,505 +1418,79 @@ function DishEditorModal({
               </p>
             ) : null}
 
+            {/* Ingredient cards isolate row-local controls while reusing shared modal handlers. */}
             {showPostProcessSections ? (
-            <div className="restaurant-legacy-editor-dish-ingredients">
-              <h3>Ingredients</h3>
-              {ingredients.length ? (
-                <div className="restaurant-legacy-editor-dish-ingredient-list">
-                  {ingredients.map((ingredient, index) => {
-                  const currentIngredientName =
-                    typeof ingredient?.name === "string"
-                      ? ingredient.name
-                      : ingredient?.name == null
-                        ? ""
-                        : String(ingredient.name);
-                  const showApplyButton =
-                    currentIngredientName !==
-                    (lastAppliedIngredientNameByRow[index] ?? "");
-                  const selectedBrandName = asText(ingredient?.brands?.[0]?.name);
-                  const selectedBrandImage = asText(
-                    ingredient?.brands?.[0]?.brandImage ||
-                      ingredient?.brands?.[0]?.image ||
-                      ingredient?.brandImage,
-                  );
-                  const hasAssignedBrand = Boolean(selectedBrandName);
-                  const requiresBrandBeforeConfirm =
-                    Boolean(ingredient?.brandRequired) &&
-                    !hasAssignedBrand &&
-                    ingredient?.confirmed !== true;
-                  const manualOverrideMessages = buildRowManualOverrideMessages({
-                    ingredient,
-                    allergens,
-                    diets,
-                    formatAllergenLabel: editor.config.formatAllergenLabel,
-                    formatDietLabel: editor.config.formatDietLabel,
-                  });
-                  const manualOverrideText = manualOverrideMessages.join("; ");
-                  const conflictMessages = buildRowConflictMessages({
-                    ingredient,
-                    allergens,
-                    diets,
-                    getDietAllergenConflicts: editor.config.getDietAllergenConflicts,
-                    formatAllergenLabel: editor.config.formatAllergenLabel,
-                    formatDietLabel: editor.config.formatDietLabel,
-                  });
-                  const conflictWarningText = conflictMessages.join("; ");
-                  const searchOpen = searchOpenRow === index;
-                  const searchTerm = asText(searchQueryByRow[index]).toLowerCase();
-                  const appealOpen = Boolean(appealOpenByRow[index]);
-                  const appealMessage = String(appealMessageByRow[index] ?? "");
-                  const appealPhoto = appealPhotoByRow[index] || null;
-                  const appealPhotoDataUrl = asText(
-                    appealPhoto?.dataUrl || appealPhoto,
-                  );
-                  const appealPhotoFileName = asText(appealPhoto?.fileName);
-                  const appealPhotoError = asText(appealPhotoErrorByRow[index]);
-                  const appealBusy = Boolean(appealBusyByRow[index]);
-                  const appealFeedback = appealFeedbackByRow[index];
-                  const canSubmitAppeal =
-                    !appealBusy &&
-                    appealMessage.trim().length > 0 &&
-                    Boolean(appealPhotoDataUrl);
-                  const scanState = scanStateByRow[index] || {};
-                  const scanPhase = asText(scanState?.phase);
-                  const scanMessage = asText(scanState?.message);
-                  const scanError = asText(scanState?.error);
-                  const hasReviewReady =
-                    scanPhase === "ready_for_review" || scanPhase === "review_open";
-                  const isScanProcessing = scanPhase === "processing";
-                  const isScanCapture = scanPhase === "capture_open";
-                  const scanButtonText = hasReviewReady
-                    ? "Review scan results"
-                    : isScanProcessing
-                      ? "Analyzing..."
-                      : isScanCapture
-                        ? "Capture open..."
-                        : "Add new item";
-                  const scanButtonDisabled =
-                    aiActionsBlocked || isScanProcessing || isScanCapture;
-                  const matchingBrands = existingBrandItems
-                    .filter((brand) => {
-                      if (
-                        normalizeToken(brand.name) === normalizeToken(selectedBrandName)
-                      ) {
-                        return false;
-                      }
-                      if (!searchTerm) return true;
-                      return brand.name.toLowerCase().includes(searchTerm);
-                    })
-                    .slice(0, 8);
-                    return (
-                    <div
-                      key={`ingredient-row-${index}`}
-                      className="restaurant-legacy-editor-dish-ingredient-card"
-                      ref={(node) => {
-                        ingredientRowRefs.current[index] = node;
-                      }}
-                    >
-                      <div className="restaurant-legacy-editor-dish-ingredient-main">
-                        <div className="restaurant-legacy-editor-dish-ingredient-name-col">
-                          <div className="restaurant-legacy-editor-dish-ingredient-name-row">
-                            <input
-                              className="restaurant-legacy-editor-dish-ingredient-name-input"
-                              value={ingredient.name}
-                              onChange={(event) =>
-                                updateIngredientName(index, event.target.value)
-                              }
-                            />
-                            {showApplyButton ? (
-                              <button
-                                type="button"
-                                className="btn btnSmall btnWarning"
-                                disabled={Boolean(applyBusyByRow[index])}
-                                onClick={() => applyIngredientSmartDetection(index)}
-                              >
-                                {applyBusyByRow[index] ? "Applying..." : "Apply"}
-                              </button>
-                            ) : null}
-                          </div>
+              <div className="restaurant-legacy-editor-dish-ingredients">
+                <h3>Ingredients</h3>
+                {ingredients.length ? (
+                  <div className="restaurant-legacy-editor-dish-ingredient-list">
+                    {ingredients.map((ingredient, index) => (
+                      <DishIngredientCard
+                        key={`ingredient-row-${index}`}
+                        index={index}
+                        ingredient={ingredient}
+                        allergens={allergens}
+                        diets={diets}
+                        formatAllergenLabel={editor.config.formatAllergenLabel}
+                        formatDietLabel={editor.config.formatDietLabel}
+                        getDietAllergenConflicts={editor.config.getDietAllergenConflicts}
+                        aiActionsBlocked={aiActionsBlocked}
+                        runtimeBlockedTitle={runtimeBlockedTitle}
+                        lastAppliedIngredientName={lastAppliedIngredientNameByRow[index]}
+                        applyBusy={Boolean(applyBusyByRow[index])}
+                        searchOpen={searchOpenRow === index}
+                        searchQuery={searchQueryByRow[index] || ""}
+                        appealOpen={Boolean(appealOpenByRow[index])}
+                        appealMessage={String(appealMessageByRow[index] ?? "")}
+                        appealPhoto={appealPhotoByRow[index] || null}
+                        appealPhotoError={asText(appealPhotoErrorByRow[index])}
+                        appealBusy={Boolean(appealBusyByRow[index])}
+                        appealFeedback={appealFeedbackByRow[index]}
+                        scanState={scanStateByRow[index] || {}}
+                        existingBrandItems={existingBrandItems}
+                        onRowRef={setIngredientRowRef}
+                        onIngredientNameChange={updateIngredientName}
+                        onApplySmartDetection={applyIngredientSmartDetection}
+                        onRemoveBrandItem={removeIngredientBrandItem}
+                        onToggleSearchOpen={toggleIngredientSearchOpen}
+                        onSearchQueryChange={updateIngredientSearchQuery}
+                        onApplyExistingBrandItem={applyExistingBrandItem}
+                        onStartBrandScan={scanIngredientBrandItem}
+                        onReviewBrandScan={reviewIngredientScanResult}
+                        onToggleAppealOpen={toggleIngredientAppealOpen}
+                        onAppealMessageChange={updateIngredientAppealMessage}
+                        onAppealPhotoChange={handleAppealPhotoChange}
+                        onAppealPhotoClear={clearAppealPhoto}
+                        onSubmitAppeal={submitIngredientAppeal}
+                        onCloseAppeal={closeIngredientAppeal}
+                        onToggleRemovable={toggleIngredientRemovable}
+                        onCycleTokenState={cycleIngredientTokenState}
+                        onToggleConfirmed={toggleIngredientConfirmed}
+                        onRemoveIngredient={removeIngredientRow}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <p className="note m-0 text-sm">
+                    Run <strong>Process Input</strong> to infer ingredient allergens and diets.
+                  </p>
+                )}
 
-                        <div
-                          className={`restaurant-legacy-editor-dish-ingredient-brand ${ingredient.brandRequired && !hasAssignedBrand ? "is-required" : ""}`}
-                        >
-                          {hasAssignedBrand ? (
-                            <span className="restaurant-legacy-editor-dish-ingredient-brand-selected">
-                              Selected: {selectedBrandName}
-                            </span>
-                          ) : null}
-                          {hasAssignedBrand && selectedBrandImage ? (
-                            <img
-                              src={selectedBrandImage}
-                              alt={`${selectedBrandName} thumbnail`}
-                              className="restaurant-legacy-editor-dish-ingredient-brand-thumb"
-                            />
-                          ) : null}
-                          {hasAssignedBrand ? (
-                            <div className="restaurant-legacy-editor-dish-ingredient-brand-actions">
-                              <button
-                                type="button"
-                                className="btn btnDanger btnSmall"
-                                disabled={Boolean(applyBusyByRow[index])}
-                                onClick={() => removeIngredientBrandItem(index)}
-                              >
-                                {applyBusyByRow[index] ? "Removing..." : "Remove item"}
-                              </button>
-                            </div>
-                          ) : (
-                            <>
-                              <span>
-                                {ingredient.brandRequired
-                                  ? "⚠ Brand assignment required"
-                                  : "✓ Brand assignment optional"}
-                              </span>
-                              {ingredient.brandRequirementReason ? (
-                                <span className="restaurant-legacy-editor-dish-ingredient-brand-reason">
-                                  {ingredient.brandRequirementReason}
-                                </span>
-                              ) : null}
-                              <div className="restaurant-legacy-editor-dish-ingredient-brand-actions">
-                                <button
-                                  type="button"
-                                  className="btn btnSmall"
-                                  onClick={() =>
-                                    setSearchOpenRow((current) =>
-                                      current === index ? -1 : index,
-                                    )
-                                  }
-                                >
-                                  Search existing items
-                                </button>
-                                <button
-                                  type="button"
-                                  className="btn btnSuccess btnSmall"
-                                  disabled={scanButtonDisabled}
-                                  title={aiActionsBlocked ? runtimeBlockedTitle : ""}
-                                  onClick={() => {
-                                    if (hasReviewReady) {
-                                      reviewIngredientScanResult(index);
-                                      return;
-                                    }
-                                    scanIngredientBrandItem(index);
-                                  }}
-                                >
-                                  {scanButtonText}
-                                </button>
-                                {ingredient.brandRequired ? (
-                                  <button
-                                    type="button"
-                                    className="btn btnDanger btnSmall"
-                                    onClick={() =>
-                                      setAppealOpenByRow((current) => ({
-                                        ...current,
-                                        [index]: !current[index],
-                                      }))
-                                    }
-                                  >
-                                    Submit appeal
-                                  </button>
-                                ) : null}
-                              </div>
-                              {scanMessage ? (
-                                <span
-                                  style={{
-                                    display: "block",
-                                    marginTop: 6,
-                                    color: scanError ? "#fecaca" : "#93c5fd",
-                                    fontSize: "0.78rem",
-                                  }}
-                                >
-                                  {scanMessage}
-                                </span>
-                              ) : null}
-                              {scanError ? (
-                                <span
-                                  style={{
-                                    display: "block",
-                                    marginTop: 4,
-                                    color: "#fca5a5",
-                                    fontSize: "0.78rem",
-                                  }}
-                                >
-                                  {scanError}
-                                </span>
-                              ) : null}
-                              {searchOpen ? (
-                                <div className="restaurant-legacy-editor-dish-brand-search">
-                                  <input
-                                    className="restaurant-legacy-editor-dish-brand-search-input"
-                                    value={searchQueryByRow[index] || ""}
-                                    placeholder="Search brand item names"
-                                    onChange={(event) =>
-                                      setSearchQueryByRow((current) => ({
-                                        ...current,
-                                        [index]: event.target.value,
-                                      }))
-                                    }
-                                  />
-                                  <div className="restaurant-legacy-editor-dish-brand-search-results">
-                                    {matchingBrands.length ? (
-                                      matchingBrands.map((brand) => (
-                                        <button
-                                          key={`${index}-${brand.name}`}
-                                          type="button"
-                                          className="restaurant-legacy-editor-dish-brand-search-result"
-                                          onClick={() =>
-                                            applyExistingBrandItem(index, brand)
-                                          }
-                                        >
-                                          {brand.name}
-                                        </button>
-                                      ))
-                                    ) : (
-                                      <p className="restaurant-legacy-editor-dish-brand-search-empty">
-                                        No matching brand items in this menu.
-                                      </p>
-                                    )}
-                                  </div>
-                                </div>
-                              ) : null}
-                              {ingredient.brandRequired && appealOpen ? (
-                                <div className="restaurant-legacy-editor-dish-appeal-wrap">
-                                  <textarea
-                                    className="restaurant-legacy-editor-dish-appeal-input"
-                                    placeholder="Briefly explain why this ingredient should not require brand assignment."
-                                    value={appealMessage}
-                                    onChange={(event) =>
-                                      setAppealMessageByRow((current) => ({
-                                        ...current,
-                                        [index]: event.target.value,
-                                      }))
-                                    }
-                                  />
-                                  <div className="restaurant-legacy-editor-dish-appeal-photo-row">
-                                    <label className="btn btnSmall" htmlFor={`appeal-photo-${index}`}>
-                                      {appealPhotoDataUrl ? "Replace photo" : "Take/upload photo"}
-                                    </label>
-                                    <input
-                                      id={`appeal-photo-${index}`}
-                                      type="file"
-                                      accept="image/*"
-                                      capture="environment"
-                                      className="restaurant-legacy-editor-dish-appeal-photo-input"
-                                      onChange={(event) =>
-                                        handleAppealPhotoChange(index, event.target.files?.[0] || null)
-                                      }
-                                    />
-                                    {appealPhotoDataUrl ? (
-                                      <button
-                                        type="button"
-                                        className="btn btnSmall"
-                                        disabled={appealBusy}
-                                        onClick={() => clearAppealPhoto(index)}
-                                      >
-                                        Remove photo
-                                      </button>
-                                    ) : null}
-                                  </div>
-                                  {appealPhotoDataUrl ? (
-                                    <div className="restaurant-legacy-editor-dish-appeal-photo-preview-wrap">
-                                      <img
-                                        src={appealPhotoDataUrl}
-                                        alt="Appeal evidence"
-                                        className="restaurant-legacy-editor-dish-appeal-photo-preview"
-                                      />
-                                      <span className="restaurant-legacy-editor-dish-appeal-photo-name">
-                                        {appealPhotoFileName || "Selected photo"}
-                                      </span>
-                                    </div>
-                                  ) : null}
-                                  {appealPhotoError ? (
-                                    <span className="restaurant-legacy-editor-dish-appeal-feedback is-error">
-                                      {appealPhotoError}
-                                    </span>
-                                  ) : null}
-                                  <div className="restaurant-legacy-editor-dish-appeal-actions">
-                                    <button
-                                      type="button"
-                                      className="btn btnSmall btnDanger"
-                                      disabled={!canSubmitAppeal}
-                                      onClick={() => submitIngredientAppeal(index)}
-                                    >
-                                      {appealBusy ? "Submitting..." : "Send appeal"}
-                                    </button>
-                                    <button
-                                      type="button"
-                                      className="btn btnSmall"
-                                      disabled={appealBusy}
-                                      onClick={() =>
-                                        setAppealOpenByRow((current) => ({
-                                          ...current,
-                                          [index]: false,
-                                        }))
-                                      }
-                                    >
-                                      Cancel
-                                    </button>
-                                  </div>
-                                </div>
-                              ) : null}
-                              {appealFeedback?.message ? (
-                                <span
-                                  className={`restaurant-legacy-editor-dish-appeal-feedback ${appealFeedback.tone === "success" ? "is-success" : "is-error"}`}
-                                >
-                                  {appealFeedback.message}
-                                </span>
-                              ) : null}
-                            </>
-                          )}
-                        </div>
+                {modalError ? (
+                  <p className="m-0 rounded-lg border border-[#a12525] bg-[rgba(139,29,29,0.32)] px-3 py-2 text-sm text-[#ffd0d0]">
+                    {modalError}
+                  </p>
+                ) : null}
 
-                        <label className="restaurant-legacy-editor-dish-inline-check">
-                          <input
-                            type="checkbox"
-                            checked={Boolean(ingredient.removable)}
-                            onChange={(event) =>
-                              toggleIngredientRemovable(index, event.target.checked)
-                            }
-                          />
-                          Can be removed/replaced
-                        </label>
-                      </div>
-
-                      <div className="restaurant-legacy-editor-dish-ingredient-flags">
-                        <div className="restaurant-legacy-editor-dish-detection-note">
-                          <div className="restaurant-legacy-editor-dish-detection-key-row">
-                            <span className="restaurant-legacy-editor-dish-key-box restaurant-legacy-editor-dish-key-box-solid" />
-                            <span>Contains</span>
-                            <span className="restaurant-legacy-editor-dish-key-box restaurant-legacy-editor-dish-key-box-dashed" />
-                            <span>Cross-contamination risk</span>
-                          </div>
-                          <div className="restaurant-legacy-editor-dish-detection-key-row">
-                            <span className="restaurant-legacy-editor-dish-key-dot restaurant-legacy-editor-dish-key-dot-smart" />
-                            <span>Smart detection</span>
-                            <span className="restaurant-legacy-editor-dish-key-dot restaurant-legacy-editor-dish-key-dot-manual" />
-                            <span>Manual override</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="restaurant-legacy-editor-dish-ingredient-pills">
-                        <div className="restaurant-legacy-editor-dish-pill-column">
-                          {allergens.map((allergen) => {
-                            const selectedState = readTokenState({
-                              containsValues: ingredient.allergens,
-                              crossValues: ingredient.crossContaminationAllergens,
-                              token: allergen,
-                            });
-                            const smartState = readTokenState({
-                              containsValues: ingredient.aiDetectedAllergens,
-                              crossValues:
-                                ingredient.aiDetectedCrossContaminationAllergens,
-                              token: allergen,
-                            });
-                            const toneClass = getChipToneClass({
-                              selectedState,
-                              smartState,
-                            });
-                            const borderClass = getChipBorderClass(selectedState);
-                            return (
-                              <button
-                                key={`${index}-allergen-${allergen}`}
-                                type="button"
-                                className={`restaurant-legacy-editor-dish-chip ${toneClass} ${borderClass}`}
-                                onClick={() => cycleIngredientTokenState(index, "allergen", allergen)}
-                              >
-                                {editor.config.formatAllergenLabel(allergen)}
-                              </button>
-                            );
-                          })}
-                        </div>
-                        <div className="restaurant-legacy-editor-dish-pill-column">
-                          {diets.map((diet) => {
-                            const selectedState = readTokenState({
-                              containsValues: ingredient.diets,
-                              crossValues: ingredient.crossContaminationDiets,
-                              token: diet,
-                            });
-                            const smartState = readTokenState({
-                              containsValues: ingredient.aiDetectedDiets,
-                              crossValues: ingredient.aiDetectedCrossContaminationDiets,
-                              token: diet,
-                            });
-                            const toneClass = getChipToneClass({
-                              selectedState,
-                              smartState,
-                            });
-                            const borderClass = getChipBorderClass(selectedState);
-                            return (
-                              <button
-                                key={`${index}-diet-${diet}`}
-                                type="button"
-                                className={`restaurant-legacy-editor-dish-chip ${toneClass} ${borderClass}`}
-                                onClick={() => cycleIngredientTokenState(index, "diet", diet)}
-                              >
-                                {editor.config.formatDietLabel(diet)}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-
-                      <div className="restaurant-legacy-editor-dish-ingredient-status-col">
-                        <ConfirmToggleButton
-                          confirmed={ingredient.confirmed === true}
-                          pendingLabel="Mark confirmed"
-                          confirmedLabel="Confirmed"
-                          disabled={requiresBrandBeforeConfirm}
-                          onClick={() => toggleIngredientConfirmed(index)}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="restaurant-legacy-editor-dish-ingredient-footer">
-                      <div className="restaurant-legacy-editor-dish-ingredient-meta">
-                        {manualOverrideText ? (
-                          <span className="restaurant-legacy-editor-dish-manual-warning">
-                            {manualOverrideText}
-                          </span>
-                        ) : null}
-                        {conflictWarningText ? (
-                          <span className="restaurant-legacy-editor-dish-conflict-warning">
-                            {conflictWarningText}
-                          </span>
-                        ) : null}
-                        {ingredient.brandRequired && !hasAssignedBrand ? (
-                          <span className="restaurant-legacy-editor-dish-brand-warning">
-                            Assign a brand item before marking this ingredient confirmed.
-                          </span>
-                        ) : null}
-                      </div>
-                      <button
-                        type="button"
-                        className="btn btnDanger btnSmall"
-                        onClick={() => removeIngredientRow(index)}
-                      >
-                        Delete
-                      </button>
-                    </div>
-                    </div>
-                    );
-                  })}
+                <div className="restaurant-legacy-editor-dish-ingredient-actions">
+                  <button type="button" className="btn btnSmall" onClick={addIngredientRow}>
+                    Add ingredient
+                  </button>
                 </div>
-              ) : (
-                <p className="note m-0 text-sm">
-                  Run <strong>Process Input</strong> to infer ingredient allergens and diets.
-                </p>
-              )}
-
-              {modalError ? (
-                <p className="m-0 rounded-lg border border-[#a12525] bg-[rgba(139,29,29,0.32)] px-3 py-2 text-sm text-[#ffd0d0]">
-                  {modalError}
-                </p>
-              ) : null}
-
-              <div className="restaurant-legacy-editor-dish-ingredient-actions">
-                <button type="button" className="btn btnSmall" onClick={addIngredientRow}>
-                  Add ingredient
-                </button>
               </div>
-            </div>
             ) : null}
 
+            {/* Processing overlay blocks edits while AI updates row data. */}
             {isIngredientGenerationBusy ? (
               <div
                 className="restaurant-legacy-editor-dish-generation-overlay"
@@ -1897,48 +1516,13 @@ function DishEditorModal({
           </div>
 
           {showPostProcessSections ? (
-          <div className="restaurant-legacy-editor-dish-preview">
-            <h3>Preview: What customers will see</h3>
-            <div className="restaurant-legacy-editor-dish-preview-panel">
-              <h4>Allergens:</h4>
-              <div className="restaurant-legacy-dish-popover-section">
-                {previewAllergenRows.length ? (
-                  previewAllergenRows.map((row) => (
-                    <div key={row.key} className={`dish-row ${row.tone}`}>
-                      <div className="dish-row-title">{row.title}</div>
-                      {row.reasonBullet ? (
-                        <ul className="dish-row-reasons">
-                          <li>{row.reasonBullet}</li>
-                        </ul>
-                      ) : null}
-                    </div>
-                  ))
-                ) : (
-                  <p className="dish-row-empty">No saved allergens.</p>
-                )}
-              </div>
-
-              <h4>Diets:</h4>
-              <div className="restaurant-legacy-dish-popover-section">
-                {previewDietRows.length ? (
-                  previewDietRows.map((row) => (
-                    <div key={row.key} className={`dish-row ${row.tone}`}>
-                      <div className="dish-row-title">{row.title}</div>
-                      {row.reasonBullet ? (
-                        <ul className="dish-row-reasons">
-                          <li>{row.reasonBullet}</li>
-                        </ul>
-                      ) : null}
-                    </div>
-                  ))
-                ) : (
-                  <p className="dish-row-empty">No saved diets.</p>
-                )}
-              </div>
-            </div>
-          </div>
+            <DishPreviewPanel
+              previewAllergenRows={previewAllergenRows}
+              previewDietRows={previewDietRows}
+            />
           ) : null}
 
+          {/* Destructive action is isolated behind an explicit confirmation panel. */}
           {showDeleteWarning ? (
             <div id="editorDeleteWarning" style={{ display: "block", background: "#1a0a0a", border: "2px solid #dc2626", borderRadius: 8, padding: 20, margin: "16px 0" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>

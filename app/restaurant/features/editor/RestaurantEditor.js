@@ -18,6 +18,7 @@ import {
 } from "./EditorModals";
 
 export function RestaurantEditor({ editor, onNavigate, runtimeConfigHealth }) {
+  // Canvas refs and interaction refs coordinate pointer-driven overlay editing.
   const menuScrollRef = useRef(null);
   const pageRefs = useRef([]);
   const pageImageRefs = useRef([]);
@@ -30,6 +31,7 @@ export function RestaurantEditor({ editor, onNavigate, runtimeConfigHealth }) {
   const [saveIssueJumpRequest, setSaveIssueJumpRequest] = useState(null);
   const [confirmationGuide, setConfirmationGuide] = useState(null);
 
+  // Legacy save button states are preserved for parity with existing manager workflows.
   const legacySaveButtonVisible = Boolean(
     editor.isDirty ||
       editor.isSaving ||
@@ -60,6 +62,7 @@ export function RestaurantEditor({ editor, onNavigate, runtimeConfigHealth }) {
     Boolean(currentWizardDish) &&
     !allMapped;
 
+  // Save issue helpers keep unresolved row confirmations navigable from toolbar and modal.
   const resolveIssueContext = useCallback(
     (issue) => {
       const overlayToken = normalizeToken(issue?.overlayName);
@@ -337,6 +340,7 @@ export function RestaurantEditor({ editor, onNavigate, runtimeConfigHealth }) {
     return firstRemainingIndex >= 0 && firstRemainingIndex !== confirmationGuide.currentIndex;
   }, [confirmationGuide, editor]);
 
+  // Minimap sync keeps page and scroll position aligned while zooming/editing.
   const { activePageIndex: minimapActivePageIndex, scrollSnapshot } = useMinimapSync({
     enabled: true,
     menuScrollRef,
@@ -991,6 +995,7 @@ export function RestaurantEditor({ editor, onNavigate, runtimeConfigHealth }) {
           className="restaurant-legacy-editor-stage restaurant-legacy-editor-scroll"
           style={{ cursor: mappingEnabled ? "crosshair" : "default" }}
         >
+          {/* Page canvas renders source images plus absolute-positioned editable overlays. */}
           <div
             className="restaurant-legacy-editor-canvas"
             style={{

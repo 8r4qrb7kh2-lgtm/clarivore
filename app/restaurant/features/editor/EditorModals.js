@@ -18,6 +18,7 @@ import {
   ReviewRowGroupedList,
 } from "./editorUtils";
 
+// Change log modal focuses on human-readable change history + review row drill-down.
 function ChangeLogModal({ editor }) {
   const [expandedRowsByLog, setExpandedRowsByLog] = useState({});
 
@@ -44,6 +45,7 @@ function ChangeLogModal({ editor }) {
       ) : (
         <div className="space-y-3 max-h-[65vh] overflow-auto pr-1">
           {editor.changeLogs.map((log) => {
+            // Parse both legacy and structured payloads so old entries still render correctly.
             const parsed = parseChangePayload(log);
             const items = parsed?.items && typeof parsed.items === "object" ? parsed.items : {};
             const general = Array.isArray(parsed?.general)
@@ -119,6 +121,7 @@ function ChangeLogModal({ editor }) {
                 ) : null}
 
                 {photos.length ? (
+                  // Evidence photos are kept as raw links, then rendered as compact thumbnails.
                   <div className="mt-2 flex flex-wrap gap-2">
                     {photos.map((photo, index) => (
                       <a
@@ -156,6 +159,7 @@ function ChangeLogModal({ editor }) {
   );
 }
 
+// Save review modal is the final checkpoint before committing write operations.
 function SaveReviewModal({ editor, open, onOpenChange, onConfirmSave }) {
   const [expandedRows, setExpandedRows] = useState({});
   const changes = useMemo(
@@ -233,6 +237,7 @@ function SaveReviewModal({ editor, open, onOpenChange, onConfirmSave }) {
   );
 }
 
+// Confirmation flow collects proof photos before manager attestation is submitted.
 function ConfirmInfoModal({ editor }) {
   const [photos, setPhotos] = useState([]);
   const [step, setStep] = useState("capture");
@@ -379,6 +384,7 @@ function ConfirmInfoModal({ editor }) {
   );
 }
 
+// Menu page management tracks page reordering/replacement and maps changes back to analysis inputs.
 function MenuPagesModal({ editor }) {
   const replaceInputsRef = useRef({});
   const addInputRef = useRef(null);
@@ -465,6 +471,7 @@ function MenuPagesModal({ editor }) {
     }
 
     const pageCount = Math.max(editor.draftMenuImages.length, 1);
+    // Only changed pages are re-analyzed to keep save latency predictable.
     const pagesToAnalyze = normalizePageIndexList(imageChangedPageIndices, pageCount);
     const pagesToRemoveUnmatched = normalizePageIndexList(
       removeUnmatchedPageIndices,
@@ -756,6 +763,7 @@ function MenuPagesModal({ editor }) {
   );
 }
 
+// Restaurant settings modal is intentionally narrow: draft fields + save/cancel.
 function RestaurantSettingsModal({ editor }) {
   return (
     <Modal
