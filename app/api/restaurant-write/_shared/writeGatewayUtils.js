@@ -11,7 +11,7 @@ import {
   readOverlayIngredients,
   toDishKey,
   toJsonSafe,
-} from "../../editor-pending-save/_shared/pendingSaveUtils";
+} from "../../editor-pending-save/_shared/pendingSaveUtils.js";
 
 export { asText, prisma };
 
@@ -54,6 +54,14 @@ const ALL_OPERATION_TYPES = new Set(Object.values(RESTAURANT_WRITE_OPERATION_TYP
 const WRITE_MAINTENANCE_MODE_ENV = "CLARIVORE_WRITE_MAINTENANCE_MODE";
 const WRITE_MAINTENANCE_MESSAGE =
   "Restaurant write maintenance mode is enabled. Please retry after maintenance.";
+const INGREDIENT_PROVENANCE_SOURCES = {
+  SMART_DETECTED: "smart_detected",
+  MANUAL_OVERRIDE: "manual_override",
+};
+const INGREDIENT_PROVENANCE_LABELS = {
+  [INGREDIENT_PROVENANCE_SOURCES.SMART_DETECTED]: "smart-detected",
+  [INGREDIENT_PROVENANCE_SOURCES.MANUAL_OVERRIDE]: "manual override",
+};
 
 function parseBearerToken(request) {
   const authHeader = request.headers.get("authorization") || "";
@@ -144,6 +152,34 @@ function valuesEqual(left, right) {
   return JSON.stringify(left) === JSON.stringify(right);
 }
 
+function includesToken(values, targetToken) {
+  const normalizedTarget = normalizeToken(targetToken);
+  if (!normalizedTarget) return false;
+  return (Array.isArray(values) ? values : []).some(
+    (value) => normalizeToken(value) === normalizedTarget,
+  );
+}
+
+function readTokenState({
+  containsValues,
+  crossValues,
+  token,
+}) {
+  if (includesToken(containsValues, token)) return "contains";
+  if (includesToken(crossValues, token)) return "cross";
+  return "none";
+}
+
+function resolveIngredientProvenanceSource({ selectedState, smartState }) {
+  return selectedState === smartState
+    ? INGREDIENT_PROVENANCE_SOURCES.SMART_DETECTED
+    : INGREDIENT_PROVENANCE_SOURCES.MANUAL_OVERRIDE;
+}
+
+function readIngredientProvenanceLabel(source) {
+  return INGREDIENT_PROVENANCE_LABELS[source] || INGREDIENT_PROVENANCE_LABELS[INGREDIENT_PROVENANCE_SOURCES.MANUAL_OVERRIDE];
+}
+
 const MENU_STATE_CHANGED_FIELD_KEYS = {
   OVERLAYS: "overlays",
   MENU_IMAGES: "menuImages",
@@ -197,6 +233,48 @@ function toOverlayDishKey(overlay) {
   return toDishKey(name);
 }
 
+function normalizeBrandEntryForStorage(brand) {
+  const safe = brand && typeof brand === "object" ? toJsonSafe(brand, {}) : {};
+  const name = asText(safe?.name || safe?.productName);
+  if (!name) return null;
+  return {
+    ...safe,
+    name,
+  };
+}
+
+function readFirstBrandEntryForStorage(values) {
+  for (const value of Array.isArray(values) ? values : []) {
+    const normalized = normalizeBrandEntryForStorage(value);
+    if (normalized) return normalized;
+  }
+  return null;
+}
+
+function normalizeIngredientForStorage(row, index) {
+  const safe = row && typeof row === "object" ? toJsonSafe(row, {}) : {};
+  const normalized = normalizeIngredientRow(safe, index);
+  const firstBrand = readFirstBrandEntryForStorage(
+    normalized?.brands || safe?.brands,
+  );
+
+  return {
+    ...safe,
+    rowIndex: normalized.rowIndex,
+    name: normalized.name,
+    allergens: normalized.allergens,
+    crossContaminationAllergens: normalized.crossContaminationAllergens,
+    diets: normalized.diets,
+    crossContaminationDiets: normalized.crossContaminationDiets,
+    aiDetectedAllergens: normalized.aiDetectedAllergens,
+    aiDetectedCrossContaminationAllergens: normalized.aiDetectedCrossContaminationAllergens,
+    aiDetectedDiets: normalized.aiDetectedDiets,
+    aiDetectedCrossContaminationDiets: normalized.aiDetectedCrossContaminationDiets,
+    removable: Boolean(normalized.removable),
+    brands: firstBrand ? [firstBrand] : [],
+  };
+}
+
 function normalizeOverlayForStorage(overlay) {
   const safe = toJsonSafe(overlay, {});
   const name = readOverlayDishName(safe) || "Dish";
@@ -209,6 +287,9 @@ function normalizeOverlayForStorage(overlay) {
     id: name,
     name,
     pageIndex,
+    ingredients: readOverlayIngredients(safe).map((row, index) =>
+      normalizeIngredientForStorage(row, index),
+    ),
   };
 }
 
@@ -324,6 +405,121 @@ function buildDishRowMap(overlays) {
   return dishMap;
 }
 
+function readIngredientRowName(row, fallbackName) {
+  return asText(row?.name) || asText(fallbackName) || "Ingredient";
+}
+
+function readIngredientRowAppliedBrandItem(row) {
+  const direct = asText(row?.appliedBrandItem || row?.appliedBrand || row?.brandName);
+  if (direct) return direct;
+  for (const brand of Array.isArray(row?.brands) ? row.brands : []) {
+    const brandName = asText(brand?.name || brand?.productName);
+    if (brandName) return brandName;
+  }
+  return "";
+}
+
+function collectIngredientSelectionLines({
+  containsValues,
+  crossValues,
+  smartContainsValues,
+  smartCrossValues,
+  containsLabel,
+}) {
+  const selectedEntries = new Map();
+  normalizeStringList(containsValues).forEach((value) => {
+    const token = normalizeToken(value);
+    if (!token || selectedEntries.has(token)) return;
+    selectedEntries.set(token, {
+      label: value,
+      token,
+      selectedState: "contains",
+    });
+  });
+  normalizeStringList(crossValues).forEach((value) => {
+    const token = normalizeToken(value);
+    if (!token || selectedEntries.has(token)) return;
+    selectedEntries.set(token, {
+      label: value,
+      token,
+      selectedState: "cross",
+    });
+  });
+
+  return Array.from(selectedEntries.values())
+    .sort((left, right) => left.label.localeCompare(right.label))
+    .map((entry) => {
+      const smartState = readTokenState({
+        containsValues: smartContainsValues,
+        crossValues: smartCrossValues,
+        token: entry.token,
+      });
+      const source = resolveIngredientProvenanceSource({
+        selectedState: entry.selectedState,
+        smartState,
+      });
+      const stateLabel =
+        entry.selectedState === "contains" ? containsLabel : "cross-contamination risk";
+      return `${entry.label} - ${stateLabel} (${readIngredientProvenanceLabel(source)})`;
+    });
+}
+
+function formatIngredientRowReviewSnapshot({ dishName, row, fallbackName }) {
+  const safeDishName = asText(dishName) || "none";
+  const safeIngredientName = readIngredientRowName(row, fallbackName) || "none";
+  const allergenLines = collectIngredientSelectionLines({
+    containsValues: row?.allergens,
+    crossValues: row?.crossContaminationAllergens,
+    smartContainsValues: row?.aiDetectedAllergens,
+    smartCrossValues: row?.aiDetectedCrossContaminationAllergens,
+    containsLabel: "contains",
+  });
+  const dietLines = collectIngredientSelectionLines({
+    containsValues: row?.diets,
+    crossValues: row?.crossContaminationDiets,
+    smartContainsValues: row?.aiDetectedDiets,
+    smartCrossValues: row?.aiDetectedCrossContaminationDiets,
+    containsLabel: "compatible",
+  });
+  const appliedBrandItem = readIngredientRowAppliedBrandItem(row) || "none";
+
+  const lines = [
+    `Dish name: ${safeDishName}`,
+    `Ingredient row name: ${safeIngredientName}`,
+  ];
+
+  if (allergenLines.length) {
+    lines.push("Allergens:");
+    allergenLines.forEach((line) => lines.push(`- ${line}`));
+  } else {
+    lines.push("Allergens: none");
+  }
+
+  if (dietLines.length) {
+    lines.push("Diets:");
+    dietLines.forEach((line) => lines.push(`- ${line}`));
+  } else {
+    lines.push("Diets: none");
+  }
+
+  lines.push(`Removability: ${Boolean(row?.removable) ? "removable" : "non-removable"}`);
+  lines.push(`Applied brand item: ${appliedBrandItem}`);
+
+  return lines.join("\n");
+}
+
+function buildIngredientRowSummary({ dishName, ingredientName, changeKind }) {
+  const safeDishName = asText(dishName) || "Dish";
+  const safeIngredientName = asText(ingredientName) || "Ingredient";
+  if (changeKind === "added") {
+    return `${safeDishName}: Ingredient row added: ${safeIngredientName}`;
+  }
+  if (changeKind === "removed") {
+    return `${safeDishName}: Ingredient row removed: ${safeIngredientName}`;
+  }
+  return `${safeDishName}: Changes to ${safeIngredientName}`;
+}
+
 function buildMenuChangeRows({ baselineOverlays, overlays }) {
   const baselineDishMap = buildDishRowMap(baselineOverlays);
   const currentDishMap = buildDishRowMap(overlays);
@@ -351,97 +547,85 @@ function buildMenuChangeRows({ baselineOverlays, overlays }) {
     for (let rowIndex = 0; rowIndex < maxRows; rowIndex += 1) {
       const beforeRow = baselineDish.rowMap.get(rowIndex) || null;
       const afterRow = currentDish.rowMap.get(rowIndex) || null;
+      const fallbackIngredientName = `Ingredient ${rowIndex + 1}`;
 
       if (!beforeRow && !afterRow) continue;
 
       if (!beforeRow && afterRow) {
+        const ingredientName = readIngredientRowName(afterRow, fallbackIngredientName);
         output.push({
           dishName,
           rowIndex,
-          ingredientName: asText(afterRow.name) || `Ingredient ${rowIndex + 1}`,
+          ingredientName,
           changeType: "ingredient_row_added",
           fieldKey: "ingredient_row",
           beforeValue: null,
-          afterValue: afterRow,
-          summary: `${dishName}: Added ingredient row ${asText(afterRow.name) || `Ingredient ${rowIndex + 1}`}`,
+          afterValue: formatIngredientRowReviewSnapshot({
+            dishName,
+            row: afterRow,
+            fallbackName: fallbackIngredientName,
+          }),
+          summary: buildIngredientRowSummary({
+            dishName,
+            ingredientName,
+            changeKind: "added",
+          }),
         });
         continue;
       }
 
       if (beforeRow && !afterRow) {
-        output.push({
-          dishName,
-          rowIndex,
-          ingredientName: asText(beforeRow.name) || `Ingredient ${rowIndex + 1}`,
-          changeType: "ingredient_row_removed",
-          fieldKey: "ingredient_row",
-          beforeValue: beforeRow,
-          afterValue: null,
-          summary: `${dishName}: Removed ingredient row ${asText(beforeRow.name) || `Ingredient ${rowIndex + 1}`}`,
-        });
-        continue;
-      }
-
-      const ingredientName =
-        asText(afterRow?.name) || asText(beforeRow?.name) || `Ingredient ${rowIndex + 1}`;
-
-      const fieldComparisons = [
-        {
-          fieldKey: "name",
-          changeType: "ingredient_name_changed",
-          beforeValue: asText(beforeRow?.name),
-          afterValue: asText(afterRow?.name),
-          summary: `${dishName}: ${ingredientName}: Ingredient row name updated`,
-        },
-        {
-          fieldKey: "allergens",
-          changeType: "ingredient_allergens_changed",
-          beforeValue: normalizeStringList(beforeRow?.allergens),
-          afterValue: normalizeStringList(afterRow?.allergens),
-          summary: `${dishName}: ${ingredientName}: Contains allergen selection updated`,
-        },
-        {
-          fieldKey: "cross_contamination_allergens",
-          changeType: "ingredient_cross_allergens_changed",
-          beforeValue: normalizeStringList(beforeRow?.crossContaminationAllergens),
-          afterValue: normalizeStringList(afterRow?.crossContaminationAllergens),
-          summary: `${dishName}: ${ingredientName}: Cross-contamination allergen selection updated`,
-        },
-        {
-          fieldKey: "diets",
-          changeType: "ingredient_diets_changed",
-          beforeValue: normalizeStringList(beforeRow?.diets),
-          afterValue: normalizeStringList(afterRow?.diets),
-          summary: `${dishName}: ${ingredientName}: Diet compatibility updated`,
-        },
-        {
-          fieldKey: "cross_contamination_diets",
-          changeType: "ingredient_cross_diets_changed",
-          beforeValue: normalizeStringList(beforeRow?.crossContaminationDiets),
-          afterValue: normalizeStringList(afterRow?.crossContaminationDiets),
-          summary: `${dishName}: ${ingredientName}: Cross-contamination diet risk updated`,
-        },
-        {
-          fieldKey: "removable",
-          changeType: "ingredient_removable_changed",
-          beforeValue: Boolean(beforeRow?.removable),
-          afterValue: Boolean(afterRow?.removable),
-          summary: `${dishName}: ${ingredientName}: Removable flag updated`,
-        },
-      ];
-
-      fieldComparisons.forEach((entry) => {
-        if (valuesEqual(entry.beforeValue, entry.afterValue)) return;
+        const ingredientName = readIngredientRowName(beforeRow, fallbackIngredientName);
         output.push({
           dishName,
           rowIndex,
           ingredientName,
-          changeType: entry.changeType,
-          fieldKey: entry.fieldKey,
-          beforeValue: entry.beforeValue,
-          afterValue: entry.afterValue,
-          summary: entry.summary,
+          changeType: "ingredient_row_removed",
+          fieldKey: "ingredient_row",
+          beforeValue: formatIngredientRowReviewSnapshot({
+            dishName,
+            row: beforeRow,
+            fallbackName: fallbackIngredientName,
+          }),
+          afterValue: null,
+          summary: buildIngredientRowSummary({
+            dishName,
+            ingredientName,
+            changeKind: "removed",
+          }),
         });
+        continue;
+      }
+
+      const beforeValue = formatIngredientRowReviewSnapshot({
+        dishName,
+        row: beforeRow,
+        fallbackName: fallbackIngredientName,
+      });
+      const afterValue = formatIngredientRowReviewSnapshot({
+        dishName,
+        row: afterRow,
+        fallbackName: fallbackIngredientName,
+      });
+      if (valuesEqual(beforeValue, afterValue)) continue;
+
+      const ingredientName = readIngredientRowName(
+        afterRow,
+        readIngredientRowName(beforeRow, fallbackIngredientName),
+      );
+      output.push({
+        dishName,
+        rowIndex,
+        ingredientName,
+        changeType: "ingredient_row_changed",
+        fieldKey: "ingredient_row",
+        beforeValue,
+        afterValue,
+        summary: buildIngredientRowSummary({
+          dishName,
+          ingredientName,
+          changeKind: "changed",
+        }),
       });
     }
   });
@@ -482,6 +666,25 @@ function summarizeChangeLine(value) {
   } catch {
     return "";
   }
+}
+
+function shouldSkipDishSummaryLine(rawSummary) {
+  const summary = asText(rawSummary);
+  if (!summary) return true;
+
+  const normalized = summary.toLowerCase();
+  if (normalized.startsWith("ingredient row added:")) return true;
+  if (normalized.startsWith("ingredient row removed:")) return true;
+  if (normalized.startsWith("changes to ")) return true;
+
+  // Dish item summaries with a secondary colon are ingredient-scoped legacy lines,
+  // e.g. "apple: Applied AI ingredient analysis".
+  const firstColon = summary.indexOf(":");
+  if (firstColon > 0 && firstColon < summary.length - 1) {
+    return true;
+  }
+
+  return false;
 }
 
 function readSummaryRowBeforeValue(value) {
@@ -533,6 +736,7 @@ function appendSummaryRowsFromChangePayload(output, changePayload) {
     lines.forEach((line, index) => {
       const rawSummary = summarizeChangeLine(line);
       if (!rawSummary) return;
+      if (shouldSkipDishSummaryLine(rawSummary)) return;
       const prefixedSummary =
         safeDishName &&
         !normalizeToken(rawSummary).startsWith(normalizeToken(safeDishName))
@@ -680,6 +884,19 @@ function buildIngredientRowsFromOverlays(overlays) {
         crossContaminationDiets: Array.isArray(ingredient.crossContaminationDiets)
           ? ingredient.crossContaminationDiets
           : [],
+        aiDetectedAllergens: Array.isArray(ingredient.aiDetectedAllergens)
+          ? ingredient.aiDetectedAllergens
+          : [],
+        aiDetectedCrossContaminationAllergens: Array.isArray(ingredient.aiDetectedCrossContaminationAllergens)
+          ? ingredient.aiDetectedCrossContaminationAllergens
+          : [],
+        aiDetectedDiets: Array.isArray(ingredient.aiDetectedDiets)
+          ? ingredient.aiDetectedDiets
+          : [],
+        aiDetectedCrossContaminationDiets: Array.isArray(ingredient.aiDetectedCrossContaminationDiets)
+          ? ingredient.aiDetectedCrossContaminationDiets
+          : [],
+        appliedBrandItem: readIngredientRowAppliedBrandItem(ingredient),
       });
     });
   });
@@ -1390,8 +1607,19 @@ export async function syncIngredientStatusFromOverlays(tx, restaurantId, overlay
     );
     if (!rowId) return;
 
+    const selectedAllergenContains = Array.isArray(row.allergens) ? row.allergens : [];
+    const selectedAllergenCross = Array.isArray(row.crossContaminationAllergens)
+      ? row.crossContaminationAllergens
+      : [];
+    const smartAllergenContains = Array.isArray(row.aiDetectedAllergens)
+      ? row.aiDetectedAllergens
+      : [];
+    const smartAllergenCross = Array.isArray(row.aiDetectedCrossContaminationAllergens)
+      ? row.aiDetectedCrossContaminationAllergens
+      : [];
+
     const allergenStatusByToken = new Map();
-    (Array.isArray(row.allergens) ? row.allergens : []).forEach((value) => {
+    selectedAllergenContains.forEach((value) => {
       const token = normalizeToken(value);
       if (!token) return;
       allergenStatusByToken.set(token, {
@@ -1400,10 +1628,7 @@ export async function syncIngredientStatusFromOverlays(tx, restaurantId, overlay
       });
     });
 
-    (Array.isArray(row.crossContaminationAllergens)
-      ? row.crossContaminationAllergens
-      : []
-    ).forEach((value) => {
+    selectedAllergenCross.forEach((value) => {
       const token = normalizeToken(value);
       if (!token) return;
       const current = allergenStatusByToken.get(token) || {
@@ -1417,29 +1642,69 @@ export async function syncIngredientStatusFromOverlays(tx, restaurantId, overlay
     allergenStatusByToken.forEach((status, token) => {
       const allergenId = allergenIdByToken.get(token);
       if (!allergenId) return;
+      const selectedState = readTokenState({
+        containsValues: selectedAllergenContains,
+        crossValues: selectedAllergenCross,
+        token,
+      });
+      const smartState = readTokenState({
+        containsValues: smartAllergenContains,
+        crossValues: smartAllergenCross,
+        token,
+      });
+      const source = resolveIngredientProvenanceSource({
+        selectedState,
+        smartState,
+      });
       allergenEntries.push({
         ingredient_row_id: rowId,
         allergen_id: allergenId,
         is_violation: Boolean(status.is_violation),
         is_cross_contamination: Boolean(status.is_cross_contamination),
         is_removable: Boolean(row.removable),
+        source,
       });
     });
 
+    const selectedCompatibleDiets = Array.isArray(row.diets) ? row.diets : [];
+    const selectedCrossDiets = Array.isArray(row.crossContaminationDiets)
+      ? row.crossContaminationDiets
+      : [];
+    const smartCompatibleDiets = Array.isArray(row.aiDetectedDiets)
+      ? row.aiDetectedDiets
+      : [];
+    const smartCrossDiets = Array.isArray(row.aiDetectedCrossContaminationDiets)
+      ? row.aiDetectedCrossContaminationDiets
+      : [];
+
     const compatibleDietTokens = new Set(
-      (Array.isArray(row.diets) ? row.diets : []).map((value) => normalizeToken(value)),
+      selectedCompatibleDiets.map((value) => normalizeToken(value)).filter(Boolean),
     );
     const crossDietTokens = new Set(
-      (Array.isArray(row.crossContaminationDiets) ? row.crossContaminationDiets : []).map(
-        (value) => normalizeToken(value),
-      ),
+      selectedCrossDiets.map((value) => normalizeToken(value)).filter(Boolean),
     );
 
     supportedDietLabels.forEach((label) => {
-      const dietId = dietIdByToken.get(normalizeToken(label));
+      const labelToken = normalizeToken(label);
+      if (!labelToken) return;
+      const dietId = dietIdByToken.get(labelToken);
       if (!dietId) return;
 
-      const labelToken = normalizeToken(label);
+      const selectedState = crossDietTokens.has(labelToken)
+        ? "cross"
+        : compatibleDietTokens.has(labelToken)
+          ? "contains"
+          : "none";
+      const smartState = readTokenState({
+        containsValues: smartCompatibleDiets,
+        crossValues: smartCrossDiets,
+        token: labelToken,
+      });
+      const source = resolveIngredientProvenanceSource({
+        selectedState,
+        smartState,
+      });
+
       if (crossDietTokens.has(labelToken)) {
         dietEntries.push({
           ingredient_row_id: rowId,
@@ -1447,6 +1712,7 @@ export async function syncIngredientStatusFromOverlays(tx, restaurantId, overlay
           is_violation: false,
           is_cross_contamination: true,
           is_removable: Boolean(row.removable),
+          source,
         });
         return;
       }
@@ -1458,6 +1724,7 @@ export async function syncIngredientStatusFromOverlays(tx, restaurantId, overlay
           is_violation: true,
           is_cross_contamination: false,
           is_removable: Boolean(row.removable),
+          source,
         });
       }
     });

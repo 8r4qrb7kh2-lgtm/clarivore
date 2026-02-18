@@ -249,6 +249,154 @@ function formatPendingChangeLine(line) {
   return asText(text.slice(separatorIndex + 2));
 }
 
+function stripDishPrefixFromSummary(summary, dishName) {
+  const safeSummary = asText(summary);
+  const safeDishName = asText(dishName);
+  if (!safeSummary || !safeDishName) return safeSummary;
+  const prefix = `${safeDishName}:`;
+  if (!safeSummary.toLowerCase().startsWith(prefix.toLowerCase())) {
+    return safeSummary;
+  }
+  return asText(safeSummary.slice(prefix.length)) || safeSummary;
+}
+
+function toDiffLines(value) {
+  const text = normalizeLegacyDiff(value);
+  const lines = String(text)
+    .split(/\r?\n/)
+    .map((line) => String(line));
+  return lines.length ? lines : ["None"];
+}
+
+function markChangedLines(lines, comparisonLines) {
+  const comparisonCounts = new Map();
+  comparisonLines.forEach((line) => {
+    comparisonCounts.set(line, (comparisonCounts.get(line) || 0) + 1);
+  });
+
+  return lines.map((line) => {
+    const count = comparisonCounts.get(line) || 0;
+    if (count > 0) {
+      comparisonCounts.set(line, count - 1);
+      return { line, changed: false };
+    }
+    return { line, changed: true };
+  });
+}
+
+function buildLegacyDiffLineItems(beforeValue, afterValue) {
+  const beforeLines = toDiffLines(beforeValue);
+  const afterLines = toDiffLines(afterValue);
+  return {
+    beforeItems: markChangedLines(beforeLines, afterLines),
+    afterItems: markChangedLines(afterLines, beforeLines),
+  };
+}
+
+function groupReviewRowsByDish(rows) {
+  const groups = [];
+  const byDish = new Map();
+
+  (Array.isArray(rows) ? rows : []).forEach((entry) => {
+    const dishName = asText(entry?.dishName) || "General changes";
+    if (!byDish.has(dishName)) {
+      const group = { dishName, entries: [] };
+      byDish.set(dishName, group);
+      groups.push(group);
+    }
+    byDish.get(dishName).entries.push(entry);
+  });
+
+  return groups;
+}
+
+function getReviewRowKey(entry, index, prefix = "") {
+  return `${prefix}${entry?.id || entry?.sortOrder || entry?.summary || index}`;
+}
+
+function ReviewRowDiffDetails({ beforeValue, afterValue }) {
+  const { beforeItems, afterItems } = buildLegacyDiffLineItems(beforeValue, afterValue);
+
+  return (
+    <div className="mt-2 rounded-md border border-[#263260] bg-[rgba(10,18,50,0.72)] px-2 py-1 text-xs">
+      <div className="font-medium text-[#c6d5ff]">Before:</div>
+      <div className="mt-1 space-y-0.5">
+        {beforeItems.map((item, index) => (
+          <div
+            key={`before-line-${index}`}
+            className={`whitespace-pre-wrap ${item.changed ? "text-[#ff6b6b]" : "text-[#9fb0dd]"}`}
+          >
+            {item.line}
+          </div>
+        ))}
+      </div>
+      <div className="mt-2 font-medium text-[#c6d5ff]">After:</div>
+      <div className="mt-1 space-y-0.5">
+        {afterItems.map((item, index) => (
+          <div
+            key={`after-line-${index}`}
+            className={`whitespace-pre-wrap ${item.changed ? "text-[#ff6b6b]" : "text-[#9fb0dd]"}`}
+          >
+            {item.line}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ReviewRowGroupedList({
+  rows,
+  expandedRows,
+  onToggleRow,
+  rowKeyPrefix = "",
+}) {
+  const groupedChanges = groupReviewRowsByDish(rows);
+
+  return (
+    <div className="space-y-2">
+      {groupedChanges.map((group) => (
+        <div
+          key={`${rowKeyPrefix}group-${group.dishName}`}
+          className="rounded-xl border border-[#2a3261] bg-[rgba(17,22,48,0.75)] px-3 py-2"
+        >
+          <div className="text-sm font-semibold text-[#e9eefc]">{group.dishName}</div>
+          <ul className="mt-1 mb-0 list-disc pl-5 text-sm text-[#dce4ff] space-y-2">
+            {group.entries.map((entry, index) => {
+              const rowKey = getReviewRowKey(entry, index, rowKeyPrefix);
+              const hasDiff = entry.beforeValue != null || entry.afterValue != null;
+              const summary =
+                stripDishPrefixFromSummary(entry.summary, group.dishName) || "Change recorded";
+              return (
+                <li key={rowKey}>
+                  <div className="flex items-center justify-between gap-2">
+                    <span>{summary}</span>
+                    {hasDiff ? (
+                      <Button
+                        size="compact"
+                        variant="outline"
+                        onClick={() => onToggleRow(rowKey)}
+                      >
+                        {expandedRows[rowKey] ? "Hide details" : "Show details"}
+                      </Button>
+                    ) : null}
+                  </div>
+                  {expandedRows[rowKey] ? (
+                    <ReviewRowDiffDetails
+                      beforeValue={entry.beforeValue}
+                      afterValue={entry.afterValue}
+                    />
+                  ) : null}
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function parsePendingChangeLine(line) {
   const text = asText(line);
   if (!text.startsWith("__pc__:")) {
@@ -767,6 +915,10 @@ function normalizeIngredientEntry(ingredient, index) {
         ? ""
         : String(base.name);
   const normalizedName = rawName.trim() ? rawName : `Ingredient ${index + 1}`;
+  const normalizedBrands = (Array.isArray(base.brands) ? base.brands : [])
+    .map((brand) => normalizeBrandEntry(brand))
+    .filter(Boolean);
+  const firstBrand = normalizedBrands[0] || null;
   return {
     ...base,
     name: normalizedName,
@@ -782,9 +934,7 @@ function normalizeIngredientEntry(ingredient, index) {
     aiDetectedCrossContaminationDiets: dedupeTokenList(
       base.aiDetectedCrossContaminationDiets,
     ),
-    brands: (Array.isArray(base.brands) ? base.brands : [])
-      .map((brand) => normalizeBrandEntry(brand))
-      .filter(Boolean),
+    brands: firstBrand ? [firstBrand] : [],
     brandRequired: Boolean(base.brandRequired),
     brandRequirementReason: asText(base.brandRequirementReason),
     removable: Boolean(base.removable),
@@ -1311,7 +1461,7 @@ function DishEditorModal({
         ),
       ],
       {
-        changeText: `${dishName}: Added ingredient ${nextIngredientName}`,
+        changeText: `${dishName}: Ingredient row added: ${nextIngredientName}`,
         recordHistory: true,
       },
     );
@@ -1324,7 +1474,7 @@ function DishEditorModal({
       applyIngredientChanges(
         (current) => current.filter((_, index) => index !== ingredientIndex),
         {
-          changeText: `${overlay?.id || "Dish"}: Removed ingredient ${removedName}`,
+          changeText: `${overlay?.id || "Dish"}: Ingredient row removed: ${removedName}`,
           recordHistory: true,
         },
       );
@@ -1712,10 +1862,6 @@ function DishEditorModal({
                 return item;
               }
               applied = true;
-              const existing = (Array.isArray(item.brands) ? item.brands : [])
-                .map((brand) => normalizeBrandEntry(brand))
-                .filter(Boolean)
-                .filter((brand) => normalizeToken(brand.name) !== normalizeToken(brandItem.name));
               return {
                 ...item,
                 allergens: brandItem.allergens,
@@ -1727,7 +1873,7 @@ function DishEditorModal({
                 aiDetectedCrossContaminationAllergens:
                   brandItem.crossContaminationAllergens,
                 aiDetectedCrossContaminationDiets: brandItem.crossContaminationDiets,
-                brands: [brandItem, ...existing],
+                brands: [brandItem],
                 confirmed: true,
               };
             }),
@@ -2849,6 +2995,13 @@ function DishEditorModal({
 }
 
 function ChangeLogModal({ editor }) {
+  const [expandedRowsByLog, setExpandedRowsByLog] = useState({});
+
+  useEffect(() => {
+    if (editor.changeLogOpen) return;
+    setExpandedRowsByLog({});
+  }, [editor.changeLogOpen]);
+
   return (
     <Modal
       open={editor.changeLogOpen}
@@ -2925,18 +3078,19 @@ function ChangeLogModal({ editor }) {
                 {reviewRows.length ? (
                   <div className="mt-2">
                     <div className="text-sm font-medium text-[#dbe3ff]">Review rows</div>
-                    <ul className="mb-0 mt-1 list-disc pl-5 text-sm text-[#c7d2f4]">
-                      {reviewRows.map((row, index) =>
-                        renderChangeLine(
-                          {
-                            summary: row.summary,
-                            before: row.beforeValue,
-                            after: row.afterValue,
-                          },
-                          `${log.id}-review-${index}`,
-                        ),
-                      )}
-                    </ul>
+                    <div className="mt-1">
+                      <ReviewRowGroupedList
+                        rows={reviewRows}
+                        expandedRows={expandedRowsByLog}
+                        rowKeyPrefix={`log-${asText(log.id || log.timestamp || "entry")}-`}
+                        onToggleRow={(rowKey) =>
+                          setExpandedRowsByLog((current) => ({
+                            ...current,
+                            [rowKey]: !current[rowKey],
+                          }))
+                        }
+                      />
+                    </div>
                   </div>
                 ) : null}
 
@@ -3009,46 +3163,17 @@ function SaveReviewModal({ editor, open, onOpenChange, onConfirmSave }) {
           <p className="note m-0">No changes detected for this save.</p>
         ) : (
           <div className="max-h-[52vh] space-y-2 overflow-auto pr-1">
-            {changes.map((entry) => (
-              <div
-                key={`pending-change-${entry.id || entry.sortOrder || entry.summary}`}
-                className="rounded-xl border border-[#2a3261] bg-[rgba(17,22,48,0.75)] px-3 py-2"
-              >
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-sm text-[#dce4ff]">
-                    {asText(entry.summary) || "Change recorded"}
-                  </span>
-                  <div className="flex items-center gap-2">
-                    {entry.beforeValue != null || entry.afterValue != null ? (
-                      <Button
-                        size="compact"
-                        variant="outline"
-                        onClick={() =>
-                          setExpandedRows((current) => ({
-                            ...current,
-                            [entry.id || entry.sortOrder || entry.summary]:
-                              !current[entry.id || entry.sortOrder || entry.summary],
-                          }))
-                        }
-                      >
-                        {expandedRows[entry.id || entry.sortOrder || entry.summary]
-                          ? "Hide details"
-                          : "Show details"}
-                      </Button>
-                    ) : null}
-                  </div>
-                </div>
-
-                {expandedRows[entry.id || entry.sortOrder || entry.summary] ? (
-                  <div className="mt-2 rounded-md border border-[#263260] bg-[rgba(10,18,50,0.72)] px-2 py-1 text-xs text-[#9fb0dd]">
-                    <div className="font-medium text-[#c6d5ff]">Before:</div>
-                    <div className="whitespace-pre-wrap">{normalizeLegacyDiff(entry.beforeValue)}</div>
-                    <div className="mt-1 font-medium text-[#c6d5ff]">After:</div>
-                    <div className="whitespace-pre-wrap">{normalizeLegacyDiff(entry.afterValue)}</div>
-                  </div>
-                ) : null}
-              </div>
-            ))}
+            <ReviewRowGroupedList
+              rows={changes}
+              expandedRows={expandedRows}
+              rowKeyPrefix="pending-change-"
+              onToggleRow={(rowKey) =>
+                setExpandedRows((current) => ({
+                  ...current,
+                  [rowKey]: !current[rowKey],
+                }))
+              }
+            />
           </div>
         )}
 

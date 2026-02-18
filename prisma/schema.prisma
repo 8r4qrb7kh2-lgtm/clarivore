@@ -1075,6 +1075,7 @@ model dish_ingredient_allergens {
   is_violation           Boolean              @default(false)
   is_cross_contamination Boolean              @default(false)
   is_removable           Boolean              @default(false)
+  source                 ingredient_provenance_source @default(smart_detected)
   created_at             DateTime             @default(now()) @db.Timestamptz(6)
   updated_at             DateTime             @default(now()) @db.Timestamptz(6)
   allergens              allergens            @relation(fields: [allergen_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
@@ -1094,6 +1095,7 @@ model dish_ingredient_diets {
   is_violation           Boolean              @default(false)
   is_cross_contamination Boolean              @default(false)
   is_removable           Boolean              @default(false)
+  source                 ingredient_provenance_source @default(smart_detected)
   created_at             DateTime             @default(now()) @db.Timestamptz(6)
   updated_at             DateTime             @default(now()) @db.Timestamptz(6)
   diets                  diets                @relation(fields: [diet_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
@@ -1121,6 +1123,13 @@ model dish_ingredient_rows {
   @@unique([restaurant_id, dish_name, row_index])
   @@index([restaurant_id, dish_name], map: "dish_ingredient_rows_dish_idx")
   @@index([restaurant_id], map: "dish_ingredient_rows_restaurant_idx")
+  @@schema("public")
+}
+
+enum ingredient_provenance_source {
+  smart_detected
+  manual_override
+
   @@schema("public")
 }
 

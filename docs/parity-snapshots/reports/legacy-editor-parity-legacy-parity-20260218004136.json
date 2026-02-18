@@ -1,0 +1,28 @@
+{
+  "title": "Legacy Editor Parity Verification",
+  "runId": "legacy-parity-20260218004136",
+  "baseUrl": "http://127.0.0.1:8081",
+  "slug": "demo-menu",
+  "startedAt": "2026-02-18T00:41:36.296Z",
+  "finishedAt": "2026-02-18T00:42:00.420Z",
+  "checks": [
+    {
+      "name": "Manager sign in",
+      "status": "passed",
+      "durationMs": 1211
+    },
+    {
+      "name": "Load legacy parity editor",
+      "status": "failed",
+      "durationMs": 22037,
+      "error": "locator.waitFor: Timeout 20000ms exceeded.\nCall log:\n  - waiting for getByRole('heading', { name: 'Webpage editor' }).first() to be visible\n"
+    },
+    {
+      "name": "Unhandled failure",
+      "status": "failed",
+      "error": "locator.waitFor: Timeout 20000ms exceeded.\nCall log:\n  - waiting for getByRole('heading', { name: 'Webpage editor' }).first() to be visible\n"
+    }
+  ],
+  "screenshots": [],
+  "verdict": "FAIL"
+}

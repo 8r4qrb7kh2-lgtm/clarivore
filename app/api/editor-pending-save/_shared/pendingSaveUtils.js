@@ -40,7 +40,31 @@ export function readOverlayIngredients(overlay) {
   return Array.isArray(overlay?.ingredients) ? overlay.ingredients : [];
 }
 
+function normalizeBrandEntry(brand) {
+  const safe = brand && typeof brand === "object" ? brand : {};
+  const name = asText(safe?.name || safe?.productName);
+  if (!name) return null;
+  return {
+    ...safe,
+    name,
+  };
+}
+
+function readFirstBrandEntry(values) {
+  const list = Array.isArray(values) ? values : [];
+  for (const value of list) {
+    const normalized = normalizeBrandEntry(value);
+    if (normalized) return normalized;
+  }
+  return null;
+}
+
 export function normalizeIngredientRow(row, index) {
+  const firstBrand = readFirstBrandEntry(row?.brands);
+  const appliedBrandItem = asText(
+    firstBrand?.name || row?.appliedBrandItem || row?.appliedBrand || row?.brandName,
+  );
+
   return {
     rowIndex: Number.isFinite(Number(row?.rowIndex))
       ? Math.max(Math.floor(Number(row.rowIndex)), 0)
@@ -50,7 +74,19 @@ export function normalizeIngredientRow(row, index) {
     crossContaminationAllergens: normalizeStringList(row?.crossContaminationAllergens),
     diets: normalizeStringList(row?.diets),
     crossContaminationDiets: normalizeStringList(row?.crossContaminationDiets),
+    aiDetectedAllergens: normalizeStringList(
+      row?.aiDetectedAllergens || row?.allergens,
+    ),
+    aiDetectedCrossContaminationAllergens: normalizeStringList(
+      row?.aiDetectedCrossContaminationAllergens || row?.crossContaminationAllergens,
+    ),
+    aiDetectedDiets: normalizeStringList(row?.aiDetectedDiets || row?.diets),
+    aiDetectedCrossContaminationDiets: normalizeStringList(
+      row?.aiDetectedCrossContaminationDiets || row?.crossContaminationDiets,
+    ),
     removable: Boolean(row?.removable),
+    brands: firstBrand ? [firstBrand] : [],
+    appliedBrandItem,
   };
 }
 
