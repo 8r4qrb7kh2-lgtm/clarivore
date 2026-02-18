@@ -841,33 +841,64 @@ function normalizeMenuImagePageList(values, pageCount = Number.POSITIVE_INFINITY
   return output;
 }
 
-function readMenuImagePageRefsFromSummary(summary, pageCount) {
+function readMenuImageSummaryMetadata({ summary, dishName, pageCount }) {
   const safeSummary = asText(summary);
+  const safeDishName = asText(dishName);
   const safePageCount = Math.max(Number(pageCount) || 0, 0);
-  if (!safeSummary || !safePageCount) return [];
+  if (!safeSummary || !safePageCount) return null;
 
-  const replacementMatch = safeSummary.match(
-    /menu images:\s*uploaded replacement image for page\s+(\d+)/i,
-  );
-  if (replacementMatch) {
-    const pageNumber = Math.max(Number(replacementMatch[1]) || 0, 1);
-    return normalizeMenuImagePageList([pageNumber - 1], safePageCount);
-  }
+  const summaryWithDishPrefix =
+    safeDishName && !safeSummary.toLowerCase().startsWith(`${safeDishName.toLowerCase()}:`)
+      ? `${safeDishName}: ${safeSummary}`
+      : safeSummary;
 
-  const newImagesMatch = safeSummary.match(
-    /menu images:\s*uploaded\s+(\d+)\s+new image(?:s)?/i,
-  );
-  if (newImagesMatch) {
-    const count = Math.max(Number(newImagesMatch[1]) || 0, 0);
-    if (!count) return [];
-    const startIndex = Math.max(safePageCount - count, 0);
+  const readTrailingPageRefs = (count) => {
+    const safeCount = Math.max(Number(count) || 0, 0);
+    if (!safeCount) return [];
+    const startIndex = Math.max(safePageCount - safeCount, 0);
     return normalizeMenuImagePageList(
       Array.from({ length: safePageCount - startIndex }, (_, offset) => startIndex + offset),
       safePageCount,
     );
+  };
+
+  const replacementMatch = summaryWithDishPrefix.match(
+    /menu images:\s*uploaded replacement image for page\s+(\d+)/i,
+  );
+  const replacementFromPageMatch = summaryWithDishPrefix.match(
+    /menu pages:\s*replaced page\s+(\d+)\s+with\s+\d+\s+section(?:s)?/i,
+  );
+  if (replacementMatch || replacementFromPageMatch) {
+    const matchedPage = replacementMatch?.[1] || replacementFromPageMatch?.[1];
+    const pageNumber = Math.max(Number(matchedPage) || 0, 1);
+    const refs = normalizeMenuImagePageList([pageNumber - 1], safePageCount);
+    if (!refs.length) return null;
+    return {
+      menuImagePages: refs,
+      summary: `Uploaded replacement image for page ${pageNumber}`,
+      dishName: "Menu images",
+    };
   }
 
-  return [];
+  const newImagesMatch = summaryWithDishPrefix.match(
+    /menu images:\s*uploaded\s+(\d+)\s+new image(?:s)?/i,
+  );
+  const addedPagesMatch = summaryWithDishPrefix.match(
+    /menu pages:\s*added\s+(\d+)\s+page(?:s)?/i,
+  );
+  if (newImagesMatch || addedPagesMatch) {
+    const matchedCount = newImagesMatch?.[1] || addedPagesMatch?.[1];
+    const count = Math.max(Number(matchedCount) || 0, 0);
+    const refs = readTrailingPageRefs(count);
+    if (!refs.length) return null;
+    return {
+      menuImagePages: refs,
+      summary: `Uploaded ${count} new image${count === 1 ? "" : "s"}`,
+      dishName: "Menu images",
+    };
+  }
+
+  return null;
 }
 
 function attachMenuImagePageRefsToSummaryRows(summaryRows, menuImages, changedFields) {
@@ -879,14 +910,20 @@ function attachMenuImagePageRefsToSummaryRows(summaryRows, menuImages, changedFi
 
   let attachedAny = false;
   const withDetectedRefs = safeRows.map((row) => {
-    const refs = readMenuImagePageRefsFromSummary(row?.summary, safePageCount);
-    if (!refs.length) return row;
+    const metadata = readMenuImageSummaryMetadata({
+      summary: row?.summary,
+      dishName: row?.dishName,
+      pageCount: safePageCount,
+    });
+    if (!metadata?.menuImagePages?.length) return row;
     attachedAny = true;
     return {
       ...row,
+      dishName: asText(metadata?.dishName) || asText(row?.dishName),
+      summary: asText(metadata?.summary) || asText(row?.summary),
       changeType: asText(row?.changeType) || "menu_images_changed",
       fieldKey: asText(row?.fieldKey) || "menu_images",
-      menuImagePages: refs,
+      menuImagePages: metadata.menuImagePages,
     };
   });
 
@@ -905,6 +942,8 @@ function attachMenuImagePageRefsToSummaryRows(summaryRows, menuImages, changedFi
     }
     return {
       ...row,
+      dishName: "Menu images",
+      summary: "Menu images updated",
       changeType: asText(row?.changeType) || "menu_images_changed",
       fieldKey: asText(row?.fieldKey) || "menu_images",
       menuImagePages: [fallbackIndex],

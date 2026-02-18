@@ -71,9 +71,6 @@ export function useMenuPageActions({
     appendPendingChange(
       `Menu pages: Added ${values.length} page${values.length === 1 ? "" : "s"}`,
     );
-    appendPendingChange(
-      `Menu images: Uploaded ${values.length} new image${values.length === 1 ? "" : "s"}`,
-    );
     queueMicrotask(() => pushHistory());
 
     return {
@@ -242,9 +239,6 @@ export function useMenuPageActions({
 
     appendPendingChange(
       `Menu pages: Replaced page ${targetIndex + 1} with ${normalizedEntries.length} section${normalizedEntries.length === 1 ? "" : "s"}`,
-    );
-    appendPendingChange(
-      `Menu images: Uploaded replacement image for page ${targetIndex + 1}`,
     );
     queueMicrotask(() => pushHistory());
 
