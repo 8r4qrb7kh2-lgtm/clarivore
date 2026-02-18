@@ -818,8 +818,8 @@ function buildMenuChangedFieldFallbackRows(changedFields) {
   if (changed.has(MENU_STATE_CHANGED_FIELD_KEYS.MENU_IMAGES)) {
     rows.push({
       id: "fallback:menu-images",
-      changeType: "menu_images_changed",
-      fieldKey: "menu_images",
+      changeType: "menuImagesChanged",
+      fieldKey: "menuImages",
       summary: "Menu images updated",
       beforeValue: null,
       afterValue: null,
@@ -926,8 +926,8 @@ function attachMenuImagePageRefsToSummaryRows(summaryRows, menuImages, changedFi
       ...row,
       dishName: asText(metadata?.dishName) || asText(row?.dishName),
       summary: asText(metadata?.summary) || asText(row?.summary),
-      changeType: asText(row?.changeType) || "menu_images_changed",
-      fieldKey: asText(row?.fieldKey) || "menu_images",
+      changeType: asText(row?.changeType) || "menuImagesChanged",
+      fieldKey: asText(row?.fieldKey) || "menuImages",
       menuImagePages: metadata.menuImagePages,
     };
   });
@@ -949,8 +949,8 @@ function attachMenuImagePageRefsToSummaryRows(summaryRows, menuImages, changedFi
       ...row,
       dishName: "Menu images",
       summary: "Menu images updated",
-      changeType: asText(row?.changeType) || "menu_images_changed",
-      fieldKey: asText(row?.fieldKey) || "menu_images",
+      changeType: asText(row?.changeType) || "menuImagesChanged",
+      fieldKey: asText(row?.fieldKey) || "menuImages",
       menuImagePages: [fallbackIndex],
     };
   });

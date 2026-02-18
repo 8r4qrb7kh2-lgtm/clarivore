@@ -6,7 +6,7 @@ import {
 } from "../features/editor/editorServices";
 
 function getRestaurantMenuImage(restaurant) {
-  return restaurant?.menu_image || restaurant?.menuImage || "";
+  return restaurant?.menuImage || "";
 }
 
 // When menu artwork changes, run OCR dish detection and send notifications for added/removed dishes.

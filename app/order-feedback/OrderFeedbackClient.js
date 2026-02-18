@@ -159,7 +159,7 @@ export default function OrderFeedbackClient() {
   });
 
   const menuImages = useMemo(
-    () => (Array.isArray(restaurantData?.menu_images) ? restaurantData.menu_images : []),
+    () => (Array.isArray(restaurantData?.menuImages) ? restaurantData.menuImages : []),
     [restaurantData],
   );
 

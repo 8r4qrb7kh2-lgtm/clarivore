@@ -30,7 +30,7 @@ export default function RestaurantCard({
       <div className="restaurant-card-media">
         {mediaOverlay}
         <img
-          src={restaurant.menu_image || FALLBACK_MENU_IMAGE}
+          src={restaurant.menuImage || FALLBACK_MENU_IMAGE}
           alt={restaurant.name || "Restaurant"}
         />
       </div>

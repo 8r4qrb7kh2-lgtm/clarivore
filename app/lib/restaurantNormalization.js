@@ -48,8 +48,8 @@ export function normalizeRestaurantRow(row, deps = {}) {
       : (value) => String(value ?? "").trim();
 
   const id = row._id ?? row.id;
-  const menuImage = row.menuImage ?? row.menu_image;
-  const menuImages = row.menuImages ?? row.menu_images;
+  const menuImage = row.menuImage;
+  const menuImages = row.menuImages;
   const menuImagesArray = menuImages
     ? Array.isArray(menuImages)
       ? menuImages

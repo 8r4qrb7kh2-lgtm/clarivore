@@ -182,8 +182,6 @@ export function useEditorDerivedState({
     restaurant?.id,
     restaurant?.menuImage,
     restaurant?.menuImages,
-    restaurant?.menu_image,
-    restaurant?.menu_images,
     restaurant?.menu_url,
     restaurant?.overlays,
     restaurant?.phone,

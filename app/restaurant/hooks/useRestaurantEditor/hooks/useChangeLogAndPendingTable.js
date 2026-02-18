@@ -110,11 +110,7 @@ export function useChangeLogAndPendingTable({
     const nextSnapshot = snapshot && typeof snapshot === "object"
       ? {
           overlays: Array.isArray(snapshot.overlays) ? snapshot.overlays : [],
-          menuImages: Array.isArray(snapshot.menuImages)
-            ? snapshot.menuImages
-            : Array.isArray(snapshot.menu_images)
-              ? snapshot.menu_images
-              : [],
+          menuImages: Array.isArray(snapshot.menuImages) ? snapshot.menuImages : [],
           pendingChanges: ["Restored overlays from previous version"],
         }
       : null;

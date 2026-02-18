@@ -319,8 +319,6 @@ export function getEmptyRestaurantMenuState() {
     overlays: [],
     menuImages: [],
     menuImage: "",
-    menu_images: [],
-    menu_image: "",
   };
 }
 
@@ -421,8 +419,6 @@ export function buildRestaurantMenuStateMapFromRows({
       overlays,
       menuImages,
       menuImage,
-      menu_images: menuImages,
-      menu_image: menuImage,
     });
   });
 
@@ -439,8 +435,6 @@ export function mergeRestaurantWithMenuState(restaurant, menuState) {
   return {
     ...base,
     overlays: Array.isArray(state.overlays) ? state.overlays : [],
-    menu_images: Array.isArray(state.menuImages) ? state.menuImages : [],
-    menu_image: asText(state.menuImage),
     menuImages: Array.isArray(state.menuImages) ? state.menuImages : [],
     menuImage: asText(state.menuImage),
   };

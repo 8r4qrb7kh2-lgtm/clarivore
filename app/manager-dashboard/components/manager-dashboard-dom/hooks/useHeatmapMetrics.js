@@ -25,11 +25,11 @@ export function useHeatmapMetrics({
   );
 
   const menuImages = useMemo(() => {
-    const list = Array.isArray(currentRestaurantData?.menu_images)
-      ? [...currentRestaurantData.menu_images]
+    const list = Array.isArray(currentRestaurantData?.menuImages)
+      ? [...currentRestaurantData.menuImages]
       : [];
-    if (!list.length && currentRestaurantData?.menu_image) {
-      list.push(currentRestaurantData.menu_image);
+    if (!list.length && currentRestaurantData?.menuImage) {
+      list.push(currentRestaurantData.menuImage);
     }
     return list.filter(Boolean);
   }, [currentRestaurantData]);

@@ -131,9 +131,9 @@ export function useBrandManagement({
             operationType: "BRAND_REPLACEMENT",
             operationPayload: {
               overlays: updatedOverlays,
-              menuImage: currentRestaurantData?.menu_image || "",
-              menuImages: Array.isArray(currentRestaurantData?.menu_images)
-                ? currentRestaurantData.menu_images
+              menuImage: currentRestaurantData?.menuImage || "",
+              menuImages: Array.isArray(currentRestaurantData?.menuImages)
+                ? currentRestaurantData.menuImages
                 : [],
               changePayload: {
                 author: managerDisplayName || "Manager",
@@ -198,8 +198,8 @@ export function useBrandManagement({
       }
     },
     [
-      currentRestaurantData?.menu_image,
-      currentRestaurantData?.menu_images,
+      currentRestaurantData?.menuImage,
+      currentRestaurantData?.menuImages,
       currentRestaurantData?.overlays,
       currentRestaurantData?.write_version,
       managerDisplayName,

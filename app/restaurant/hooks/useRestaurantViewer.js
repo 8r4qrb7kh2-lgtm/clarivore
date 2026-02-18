@@ -29,12 +29,12 @@ function asText(value) {
 }
 
 function normalizeImageList(restaurant, overlays) {
-  const explicit = Array.isArray(restaurant?.menu_images)
-    ? restaurant.menu_images.filter(Boolean)
+  const explicit = Array.isArray(restaurant?.menuImages)
+    ? restaurant.menuImages.filter(Boolean)
     : [];
 
-  if (!explicit.length && restaurant?.menu_image) {
-    explicit.push(restaurant.menu_image);
+  if (!explicit.length && restaurant?.menuImage) {
+    explicit.push(restaurant.menuImage);
   }
 
   const maxOverlayPage = overlays.reduce((max, overlay) => {
@@ -45,7 +45,7 @@ function normalizeImageList(restaurant, overlays) {
   }, 0);
 
   const requiredLength = Math.max(explicit.length, maxOverlayPage + 1, 1);
-  const fallbackImage = explicit[0] || restaurant?.menu_image || "";
+  const fallbackImage = explicit[0] || restaurant?.menuImage || "";
   const out = [...explicit];
 
   while (out.length < requiredLength) {
