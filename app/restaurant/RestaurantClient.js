@@ -1,280 +1,42 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import Link from "next/link";
+import { useQuery } from "@tanstack/react-query";
 import AppTopbar from "../components/AppTopbar";
 import AppLoadingScreen from "../components/AppLoadingScreen";
 import PageShell from "../components/PageShell";
-import { Button, Modal, useToast } from "../components/ui";
+import { useToast } from "../components/ui";
 import { useIngredientScanController } from "../components/ingredient-scan/useIngredientScanController";
-import { loadAllergenDietConfig } from "../lib/allergenConfig";
 import {
-  fetchManagerRestaurants,
   isManagerUser,
   isOwnerUser,
 } from "../lib/managerRestaurants";
-import {
-  commitRestaurantWrite,
-  loadCurrentRestaurantWrite,
-  stageRestaurantWrite,
-} from "../lib/restaurantWriteGatewayClient";
 import { queryKeys } from "../lib/queryKeys";
 import { supabaseClient as supabase } from "../lib/supabase";
+import UnsavedChangesModal from "./client/UnsavedChangesModal";
+import { createRestaurantEditorCallbacks } from "./client/editorCallbacks";
+import {
+  isTruthyFlag,
+  readManagerModeDefault,
+} from "./client/navigationModeUtils";
+import { loadRestaurantBoot } from "./client/restaurantBootLoader";
+import { useRestaurantPersistence } from "./client/useRestaurantPersistence";
+import { useRuntimeConfigHealth } from "./client/useRuntimeConfigHealth";
+import { useUnsavedNavigationGuard } from "./client/useUnsavedNavigationGuard";
 import RestaurantEditor from "./features/editor/RestaurantEditor";
 import RestaurantViewer from "./features/viewer/RestaurantViewer";
-import {
-  analyzeDishWithAi,
-  analyzeMenuImageWithAi,
-  analyzeIngredientNameWithAi,
-  analyzeIngredientScanRequirement,
-  compareDishSets,
-  dataUrlFromImageSource,
-  detectMenuCorners,
-  detectMenuDishes,
-  sendMenuUpdateNotification,
-} from "./features/editor/editorServices";
 import { useOrderFlow } from "./hooks/useOrderFlow";
 import { useRestaurantEditor } from "./hooks/useRestaurantEditor";
 import { useRestaurantViewer } from "./hooks/useRestaurantViewer";
 
-function isTruthyFlag(value) {
-  return /^(1|true|yes|editor)$/i.test(String(value || ""));
-}
-
-function readManagerModeDefault({ editParam, isQrVisit }) {
-  if (isTruthyFlag(editParam)) return "editor";
-  if (editParam !== null) return "viewer";
-  if (isQrVisit) return "viewer";
-
-  try {
-    return localStorage.getItem("clarivoreManagerMode") === "editor"
-      ? "editor"
-      : "viewer";
-  } catch {
-    return "viewer";
-  }
-}
-
-function buildModeHref({ mode, slug, searchParams }) {
-  const params = new URLSearchParams(searchParams?.toString() || "");
-  const safeSlug = String(slug || "").trim();
-  if (safeSlug) {
-    params.set("slug", safeSlug);
-  }
-
-  if (mode === "editor") {
-    params.set("edit", "1");
-    params.delete("mode");
-  } else {
-    params.delete("edit");
-    params.delete("mode");
-  }
-
-  const query = params.toString();
-  return `/restaurant${query ? `?${query}` : ""}`;
-}
-
-function isGuardableInternalHref(href) {
-  const value = String(href || "").trim();
-  if (!value) return false;
-  if (value.startsWith("#")) return false;
-  if (/^(mailto:|tel:|javascript:)/i.test(value)) return false;
-  return true;
-}
-
-function trackRecentlyViewed(slug) {
-  if (!slug) return;
-  try {
-    const current = JSON.parse(
-      localStorage.getItem("recentlyViewedRestaurants") || "[]",
-    );
-    const filtered = Array.isArray(current)
-      ? current.filter((value) => value !== slug)
-      : [];
-    filtered.unshift(slug);
-    localStorage.setItem(
-      "recentlyViewedRestaurants",
-      JSON.stringify(filtered.slice(0, 10)),
-    );
-  } catch {
-    // Ignore local storage failures.
-  }
-}
-
-function isMissingSessionError(error) {
-  const message = String(error?.message || "");
-  if (!message) return false;
-  return /auth session missing|session missing|refresh token/i.test(message);
-}
-
-function readSessionSavedPreferences(config) {
-  const output = { allergies: [], diets: [] };
-  if (typeof window === "undefined" || !config) {
-    return output;
-  }
-
-  try {
-    const parsed = JSON.parse(sessionStorage.getItem("qrAllergies") || "[]");
-    if (Array.isArray(parsed)) {
-      output.allergies = parsed
-        .map((value) => config.normalizeAllergen(value))
-        .filter(Boolean);
-    }
-  } catch {
-    output.allergies = [];
-  }
-
-  try {
-    const parsed = JSON.parse(sessionStorage.getItem("qrDiets") || "[]");
-    if (Array.isArray(parsed)) {
-      output.diets = parsed
-        .map((value) => config.normalizeDietLabel(value))
-        .filter(Boolean);
-    }
-  } catch {
-    output.diets = [];
-  }
-
-  return output;
-}
-
-async function loadRestaurantBoot({ slug, isQrVisit, inviteToken }) {
-  if (!supabase) {
-    throw new Error("Supabase env vars are missing.");
-  }
-
-  if (!slug) {
-    throw new Error("No restaurant specified.");
-  }
-
-  trackRecentlyViewed(slug);
-
-  const config = await loadAllergenDietConfig(supabase);
-  const sessionSavedPreferences = readSessionSavedPreferences(config);
-
-  const { data: userData, error: userError } = await supabase.auth.getUser();
-  let user = userData?.user || null;
-  if (userError) {
-    if (isMissingSessionError(userError)) {
-      user = null;
-    } else {
-      throw userError;
-    }
-  }
-
-  // Primary restaurant source: this row is loaded directly from the `restaurants` database table.
-  const { data: restaurant, error: restaurantError } = await supabase
-    .from("restaurants")
-    .select("*")
-    .eq("slug", slug)
-    .single();
-
-  if (restaurantError || !restaurant) {
-    throw new Error(restaurantError?.message || "Restaurant not found.");
-  }
-
-  let allergies = sessionSavedPreferences.allergies;
-  let diets = sessionSavedPreferences.diets;
-  let canEdit = false;
-  let managerRestaurants = [];
-  let lovedDishNames = [];
-
-  if (user) {
-    const isOwner = isOwnerUser(user);
-    const isManager = isManagerUser(user);
-
-    const [{ data: allergyRecord }, { data: managerRecord, error: managerError }] =
-      await Promise.all([
-        supabase
-          .from("user_allergies")
-          .select("allergens, diets")
-          .eq("user_id", user.id)
-          .maybeSingle(),
-        supabase
-          .from("restaurant_managers")
-          .select("id")
-          .eq("user_id", user.id)
-          .eq("restaurant_id", restaurant.id)
-          .maybeSingle(),
-      ]);
-
-    if (managerError) {
-      console.error("[restaurant] manager lookup failed", managerError);
-    }
-
-    const dbAllergies = Array.isArray(allergyRecord?.allergens)
-      ? allergyRecord.allergens
-      : [];
-    const dbDiets = Array.isArray(allergyRecord?.diets) ? allergyRecord.diets : [];
-
-    // Prefer authenticated profile data; if absent, preserve session QR selections.
-    if (dbAllergies.length || dbDiets.length) {
-      allergies = dbAllergies;
-      diets = dbDiets;
-    }
-
-    canEdit = isOwner || Boolean(managerRecord);
-
-    if (isManager || isOwner) {
-      managerRestaurants = await fetchManagerRestaurants(supabase, user);
-    }
-
-    if (isManager && !isOwner && !managerRecord) {
-      return {
-        config,
-        restaurant,
-        user,
-        allergies,
-        diets,
-        canEdit: false,
-        managerRestaurants,
-        lovedDishNames: [],
-        redirect: "/restaurants",
-        inviteToken,
-      };
-    }
-
-    const { data: lovedRows } = await supabase
-      .from("user_loved_dishes")
-      .select("dish_name")
-      .eq("user_id", user.id)
-      .eq("restaurant_id", restaurant.id);
-
-    lovedDishNames = Array.isArray(lovedRows)
-      ? lovedRows
-          .map((row) => String(row?.dish_name || "").trim())
-          .filter(Boolean)
-      : [];
-  }
-
-  return {
-    config,
-    restaurant,
-    user: user
-      ? {
-          ...user,
-          managerRestaurants,
-        }
-      : { loggedIn: false },
-    allergies,
-    diets,
-    canEdit,
-    managerRestaurants,
-    lovedDishNames,
-    redirect: "",
-    inviteToken,
-  };
-}
-
 export default function RestaurantClient() {
   const router = useRouter();
-  const queryClient = useQueryClient();
   const { push: pushToast } = useToast();
   const searchParams = useSearchParams();
   const ingredientScan = useIngredientScanController();
 
+  // Read all route/query inputs once so downstream hooks can use plain values.
   const slug = searchParams?.get("slug") || "";
   const qrParam = searchParams?.get("qr");
   const inviteToken = searchParams?.get("invite") || "";
@@ -293,75 +55,16 @@ export default function RestaurantClient() {
     readManagerModeDefault({ editParam, isQrVisit }),
   );
   const [favoriteBusyDish, setFavoriteBusyDish] = useState("");
-  const [unsavedPromptOpen, setUnsavedPromptOpen] = useState(false);
-  const [unsavedPromptCopy, setUnsavedPromptCopy] = useState(
-    "Would you like to save before leaving editor mode?",
-  );
-  const [unsavedPromptError, setUnsavedPromptError] = useState("");
-  const [unsavedPromptSaving, setUnsavedPromptSaving] = useState(false);
-  const pendingNavigationRef = useRef(null);
-  const [runtimeConfigHealth, setRuntimeConfigHealth] = useState({
-    ok: true,
-    missing: [],
-    required: [],
-  });
-  const [runtimeConfigChecked, setRuntimeConfigChecked] = useState(false);
 
-  useEffect(() => {
-    let active = true;
+  const {
+    runtimeConfigChecked,
+    runtimeMissingKeys,
+    runtimeConfigBlocked,
+    runtimeConfigErrorMessage,
+  } = useRuntimeConfigHealth();
 
-    const loadRuntimeConfigHealth = async () => {
-      try {
-        const response = await fetch("/api/runtime-config-health", {
-          method: "GET",
-          headers: { Accept: "application/json" },
-          cache: "no-store",
-        });
-
-        const bodyText = await response.text();
-        let payload = null;
-        try {
-          payload = bodyText ? JSON.parse(bodyText) : null;
-        } catch {
-          payload = null;
-        }
-
-        if (!active) return;
-
-        if (!response.ok || !payload || typeof payload !== "object") {
-          throw new Error("Runtime config health check failed.");
-        }
-
-        const missing = (Array.isArray(payload.missing) ? payload.missing : [])
-          .map((key) => String(key || "").trim())
-          .filter(Boolean);
-        const required = (Array.isArray(payload.required) ? payload.required : [])
-          .map((key) => String(key || "").trim())
-          .filter(Boolean);
-        const ok = payload.ok === true && missing.length === 0;
-
-        setRuntimeConfigHealth({ ok, missing, required });
-      } catch {
-        if (!active) return;
-        setRuntimeConfigHealth({
-          ok: false,
-          missing: ["RUNTIME_CONFIG_HEALTH_CHECK_FAILED"],
-          required: [],
-        });
-      } finally {
-        if (active) {
-          setRuntimeConfigChecked(true);
-        }
-      }
-    };
-
-    loadRuntimeConfigHealth();
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  // Single runtime source for restaurant/menu state in this page: bootQuery -> loadRestaurantBoot -> database.
+  // Single runtime source for restaurant/menu state in this page:
+  // bootQuery -> loadRestaurantBoot -> database `restaurants` table.
   const bootQuery = useQuery({
     queryKey: queryKeys.restaurant.boot(slug, inviteToken, isQrVisit),
     enabled: Boolean(supabase) && Boolean(slug),
@@ -370,28 +73,22 @@ export default function RestaurantClient() {
         slug,
         isQrVisit,
         inviteToken,
+        supabaseClient: supabase,
       }),
     staleTime: 30 * 1000,
   });
 
   const boot = bootQuery.data;
-  // Every viewer/editor path below reads restaurant data from this single object.
+  // Viewer/editor consume this same object, so all dish/menu data comes from one place.
   const restaurantFromDatabase = boot?.restaurant || null;
-  const runtimeMissingKeys =
-    runtimeConfigChecked && runtimeConfigHealth.ok === false
-      ? runtimeConfigHealth.missing
-      : [];
-  const runtimeConfigBlocked =
-    runtimeConfigChecked && runtimeConfigHealth.ok === false;
-  const runtimeConfigErrorMessage = runtimeMissingKeys.length
-    ? `Runtime configuration is missing: ${runtimeMissingKeys.join(", ")}.`
-    : "Runtime configuration is missing.";
 
+  // Respect redirect responses from boot loader (manager access checks).
   useEffect(() => {
     if (!boot?.redirect) return;
     router.replace(boot.redirect);
   }, [boot?.redirect, router]);
 
+  // Re-evaluate default mode whenever boot data or mode-related query params change.
   useEffect(() => {
     if (!boot) return;
     const defaultMode = readManagerModeDefault({ editParam, isQrVisit });
@@ -403,6 +100,7 @@ export default function RestaurantClient() {
     return new Set(boot?.lovedDishNames || []);
   }, [boot?.lovedDishNames]);
 
+  // Build a stable display name for write history/change logs.
   const editorAuthorName = useMemo(() => {
     const firstName = boot?.user?.user_metadata?.first_name || "";
     const lastName = boot?.user?.user_metadata?.last_name || "";
@@ -413,240 +111,23 @@ export default function RestaurantClient() {
     return "Manager";
   }, [boot?.user]);
 
-  const restaurantWriteVersionRef = useRef(0);
-  useEffect(() => {
-    const nextVersion = Number(restaurantFromDatabase?.write_version);
-    restaurantWriteVersionRef.current = Number.isFinite(nextVersion)
-      ? Math.max(Math.floor(nextVersion), 0)
-      : 0;
-  }, [restaurantFromDatabase?.id, restaurantFromDatabase?.write_version]);
-
-  const applyWriteVersionsFromCommit = useCallback(
-    (payload, targetRestaurantId = "") => {
-      const restaurantId = String(targetRestaurantId || restaurantFromDatabase?.id || "").trim();
-      if (!restaurantId) return;
-      const rows = Array.isArray(payload?.nextWriteVersions)
-        ? payload.nextWriteVersions
-        : [];
-      const matched = rows.find(
-        (row) => String(row?.restaurantId || "").trim() === restaurantId,
-      );
-      const nextVersion = Number(matched?.writeVersion);
-      if (!Number.isFinite(nextVersion)) return;
-      restaurantWriteVersionRef.current = Math.max(Math.floor(nextVersion), 0);
-    },
-    [restaurantFromDatabase?.id],
-  );
-
-  const stageRestaurantScopeWrite = useCallback(
-    async ({ operationType, operationPayload, summary }) => {
-      if (!boot?.restaurant?.id) throw new Error("Restaurant missing.");
-      return await stageRestaurantWrite({
-        supabase,
-        payload: {
-          scopeType: "RESTAURANT",
-          restaurantId: boot.restaurant.id,
-          operationType,
-          operationPayload,
-          summary,
-          author: editorAuthorName,
-          expectedWriteVersion: restaurantWriteVersionRef.current,
-        },
-      });
-    },
-    [boot?.restaurant?.id, editorAuthorName],
-  );
-
-  const commitStagedWrite = useCallback(
-    async ({ batchId, targetRestaurantId }) => {
-      const payload = await commitRestaurantWrite({
-        supabase,
-        batchId,
-      });
-      applyWriteVersionsFromCommit(payload, targetRestaurantId);
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.restaurant.boot(slug, inviteToken, isQrVisit),
-      });
-      return payload;
-    },
-    [
-      applyWriteVersionsFromCommit,
-      inviteToken,
-      isQrVisit,
-      queryClient,
-      slug,
-    ],
-  );
-
-  const saveEditorDraftMutation = useMutation({
-    mutationFn: async ({
-      overlays: nextOverlays,
-      menuImage,
-      menuImages,
-      changePayload,
-    }) => {
-      if (!supabase) throw new Error("Supabase is not configured.");
-      if (!boot?.restaurant?.id) throw new Error("Restaurant missing.");
-
-      const sanitized = Array.isArray(nextOverlays) ? nextOverlays : [];
-      const imageList = Array.isArray(menuImages)
-        ? menuImages.filter(Boolean)
-        : [];
-      const stageResult = await stageRestaurantScopeWrite({
-        operationType: "MENU_STATE_REPLACE",
-        summary: "Save menu state",
-        operationPayload: {
-          overlays: sanitized,
-          baselineOverlays: sanitized,
-          menuImage,
-          menuImages: imageList,
-          changePayload: changePayload || {},
-        },
-      });
-      await commitStagedWrite({
-        batchId: stageResult.batchId,
-        targetRestaurantId: boot.restaurant.id,
-      });
-      return { overlays: sanitized, menuImage, menuImages: imageList };
-    },
-  });
-
-  const confirmInfoMutation = useMutation({
-    mutationFn: async ({ timestamp, photos, changePayload }) => {
-      if (!supabase) throw new Error("Supabase is not configured.");
-      if (!boot?.restaurant?.id) throw new Error("Restaurant missing.");
-
-      const confirmedAt = timestamp || new Date().toISOString();
-      const stageResult = await stageRestaurantScopeWrite({
-        operationType: "CONFIRM_INFO",
-        summary: "Confirm allergen information",
-        operationPayload: {
-          confirmedAt,
-          photos: Array.isArray(photos) ? photos : [],
-          changePayload:
-            changePayload || {
-              author: editorAuthorName,
-              general: ["Allergen information confirmed"],
-              items: {},
-            },
-        },
-      });
-      await commitStagedWrite({
-        batchId: stageResult.batchId,
-        targetRestaurantId: boot.restaurant.id,
-      });
-
-      return { confirmedAt };
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.restaurant.boot(slug, inviteToken, isQrVisit),
-      });
-      pushToast({
-        tone: "success",
-        title: "Confirmed",
-        description: "Confirmation recorded.",
-      });
-    },
-  });
-
-  const saveRestaurantSettingsMutation = useMutation({
-    mutationFn: async ({ website, phone, delivery_url, menu_url }) => {
-      if (!supabase) throw new Error("Supabase is not configured.");
-      if (!boot?.restaurant?.id) throw new Error("Restaurant missing.");
-
-      const stageResult = await stageRestaurantScopeWrite({
-        operationType: "RESTAURANT_SETTINGS_UPDATE",
-        summary: "Update restaurant settings",
-        operationPayload: {
-          website: website || null,
-          phone: phone || null,
-          delivery_url: delivery_url || null,
-          menu_url: menu_url || null,
-          changePayload: {
-            author: editorAuthorName,
-            general: ["Restaurant settings updated"],
-            items: {},
-          },
-        },
-      });
-      await commitStagedWrite({
-        batchId: stageResult.batchId,
-        targetRestaurantId: boot.restaurant.id,
-      });
-      return { website, phone, delivery_url, menu_url };
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.restaurant.boot(slug, inviteToken, isQrVisit),
-      });
-      pushToast({
-        tone: "success",
-        title: "Saved",
-        description: "Restaurant settings were updated.",
-      });
-    },
-  });
-
-  const toggleFavoriteMutation = useMutation({
-    mutationFn: async ({ dishName, shouldLove }) => {
-      if (!supabase) throw new Error("Supabase is not configured.");
-      const user = boot?.user;
-      if (!user?.id) {
-        throw new Error("Sign in to save loved dishes.");
-      }
-      if (!boot?.restaurant?.id) {
-        throw new Error("Restaurant is not loaded yet.");
-      }
-
-      if (shouldLove) {
-        const { error } = await supabase.from("user_loved_dishes").upsert(
-          {
-            user_id: user.id,
-            restaurant_id: boot.restaurant.id,
-            dish_name: dishName,
-          },
-          {
-            onConflict: "user_id,restaurant_id,dish_name",
-          },
-        );
-        if (error) throw error;
-        return { dishName, loved: true };
-      }
-
-      const { error } = await supabase
-        .from("user_loved_dishes")
-        .delete()
-        .eq("user_id", user.id)
-        .eq("restaurant_id", boot.restaurant.id)
-        .eq("dish_name", dishName);
-
-      if (error) throw error;
-      return { dishName, loved: false };
-    },
-    onSuccess: (result) => {
-      queryClient.setQueryData(
-        queryKeys.restaurant.boot(slug, inviteToken, isQrVisit),
-        (current) => {
-          if (!current) return current;
-          const lovedSet = new Set(current.lovedDishNames || []);
-          if (result.loved) {
-            lovedSet.add(result.dishName);
-          } else {
-            lovedSet.delete(result.dishName);
-          }
-          return {
-            ...current,
-            lovedDishNames: Array.from(lovedSet),
-          };
-        },
-      );
-      pushToast({
-        tone: result.loved ? "success" : "neutral",
-        title: result.loved ? "Loved dish saved" : "Loved dish removed",
-        description: result.dishName,
-      });
-    },
+  const {
+    saveDraft,
+    confirmInfo,
+    saveRestaurantSettings,
+    toggleFavorite,
+    preparePendingSave,
+    applyPendingSave,
+    loadChangeLogs,
+    loadPendingSaveTable,
+  } = useRestaurantPersistence({
+    supabaseClient: supabase,
+    boot,
+    slug,
+    inviteToken,
+    isQrVisit,
+    editorAuthorName,
+    pushToast,
   });
 
   const orderFlow = useOrderFlow({
@@ -659,8 +140,31 @@ export default function RestaurantClient() {
     },
   });
 
+  // Viewer favorite toggle is kept here because it updates local busy UI state.
+  const onToggleFavoriteDish = useCallback(
+    async (dish) => {
+      const dishName = String(dish?.id || dish?.name || "").trim();
+      if (!dishName) return;
+      const shouldLove = !lovedDishesSet.has(dishName);
+
+      try {
+        setFavoriteBusyDish(dishName);
+        await toggleFavorite({ dishName, shouldLove });
+      } catch (error) {
+        pushToast({
+          tone: "danger",
+          title: "Favorite update failed",
+          description: error?.message || "Unable to update favorite right now.",
+        });
+      } finally {
+        setFavoriteBusyDish("");
+      }
+    },
+    [lovedDishesSet, pushToast, toggleFavorite],
+  );
+
   const viewer = useRestaurantViewer({
-    // Viewer reads directly from the same database-backed restaurant object.
+    // Viewer reads from the same DB-backed restaurant object as editor.
     restaurant: restaurantFromDatabase,
     overlays: restaurantFromDatabase?.overlays || [],
     initialDishName: dishNameParam,
@@ -680,30 +184,47 @@ export default function RestaurantClient() {
       onAddDishToOrder: (dish) => {
         orderFlow.addDish(dish);
       },
-      onToggleFavoriteDish: async (dish) => {
-        const dishName = String(dish?.id || dish?.name || "").trim();
-        if (!dishName) return;
-        const shouldLove = !lovedDishesSet.has(dishName);
-
-        try {
-          setFavoriteBusyDish(dishName);
-          await toggleFavoriteMutation.mutateAsync({ dishName, shouldLove });
-        } catch (error) {
-          pushToast({
-            tone: "danger",
-            title: "Favorite update failed",
-            description:
-              error?.message || "Unable to update favorite right now.",
-          });
-        } finally {
-          setFavoriteBusyDish("");
-        }
-      },
+      onToggleFavoriteDish,
     },
   });
 
+  const editorCallbacks = useMemo(() => {
+    return createRestaurantEditorCallbacks({
+      supabaseClient: supabase,
+      boot,
+      slug,
+      editorAuthorName,
+      runtimeConfigBlocked,
+      runtimeConfigErrorMessage,
+      ingredientScan,
+      persistence: {
+        saveDraft,
+        confirmInfo,
+        saveRestaurantSettings,
+        preparePendingSave,
+        applyPendingSave,
+        loadChangeLogs,
+        loadPendingSaveTable,
+      },
+    });
+  }, [
+    applyPendingSave,
+    boot,
+    confirmInfo,
+    editorAuthorName,
+    ingredientScan,
+    loadChangeLogs,
+    loadPendingSaveTable,
+    preparePendingSave,
+    runtimeConfigBlocked,
+    runtimeConfigErrorMessage,
+    saveDraft,
+    saveRestaurantSettings,
+    slug,
+  ]);
+
   const editor = useRestaurantEditor({
-    // Editor also receives only this database-backed restaurant object (no alternate restaurant source).
+    // Editor also receives only the DB-backed restaurant object.
     restaurant: restaurantFromDatabase,
     overlays: restaurantFromDatabase?.overlays || [],
     permissions: {
@@ -721,287 +242,7 @@ export default function RestaurantClient() {
       openAI: shouldOpenAi,
       ingredientName: ingredientNameParam,
     },
-    callbacks: {
-      getAuthorName: () => editorAuthorName,
-      onPreparePendingSave: async ({
-        overlayUpserts,
-        overlayDeletes,
-        overlayBaselines,
-        overlayOrder,
-        overlayOrderProvided,
-        changedFields,
-        menuImage,
-        menuImages,
-        menuImagesProvided,
-        changePayload,
-        stateHash,
-      }) => {
-        if (!boot?.restaurant?.id) throw new Error("Restaurant missing.");
-        const includeMenuImages = menuImagesProvided === true;
-        const payload = await stageRestaurantWrite({
-          supabase,
-          payload: {
-            scopeType: "RESTAURANT",
-            restaurantId: boot.restaurant.id,
-            operationType: "MENU_STATE_REPLACE",
-            operationPayload: {
-              overlayUpserts: Array.isArray(overlayUpserts) ? overlayUpserts : [],
-              overlayDeletes: Array.isArray(overlayDeletes) ? overlayDeletes : [],
-              overlayBaselines: Array.isArray(overlayBaselines) ? overlayBaselines : [],
-              overlayOrder: Array.isArray(overlayOrder) ? overlayOrder : [],
-              overlayOrderProvided: overlayOrderProvided === true,
-              changedFields: Array.isArray(changedFields)
-                ? changedFields.filter((field) => field === "overlays" || field === "menuImages")
-                : [],
-              ...(includeMenuImages
-                ? {
-                    menuImage: String(menuImage || ""),
-                    menuImages: Array.isArray(menuImages)
-                      ? menuImages.filter(Boolean)
-                      : [],
-                  }
-                : {}),
-              menuImagesProvided: includeMenuImages,
-              changePayload,
-              stateHash,
-            },
-            summary: "Menu edits staged",
-            author: editorAuthorName,
-            expectedWriteVersion: restaurantWriteVersionRef.current,
-          },
-        });
-        return payload;
-      },
-      onApplyPendingSave: async ({
-        batchId,
-        menuImage,
-        overlays: nextOverlays,
-      }) => {
-        if (!boot?.restaurant?.id) throw new Error("Restaurant missing.");
-        const payload = await commitStagedWrite({
-          batchId,
-          targetRestaurantId: boot.restaurant.id,
-        });
-
-        const existingMenuImage =
-          boot?.restaurant?.menu_image || boot?.restaurant?.menuImage || "";
-        const menuImageChanged = Boolean(menuImage && menuImage !== existingMenuImage);
-
-        if (menuImageChanged) {
-          try {
-            const imageData = await dataUrlFromImageSource(menuImage);
-            const detection = await detectMenuDishes({ imageData });
-            if (detection?.success) {
-              const existingDishNames = (nextOverlays || []).map(
-                (overlay) => overlay?.id || overlay?.name || "",
-              );
-              const diff = compareDishSets({
-                detectedDishes: detection.dishes,
-                existingDishNames,
-              });
-              if (diff.addedItems.length || diff.removedItems.length) {
-                await sendMenuUpdateNotification({
-                  restaurantName: boot?.restaurant?.name || "Restaurant",
-                  restaurantSlug: boot?.restaurant?.slug || slug,
-                  addedItems: diff.addedItems,
-                  removedItems: diff.removedItems,
-                  keptItems: diff.keptItems,
-                });
-              }
-            }
-          } catch (error) {
-            console.error("[restaurant] menu-update notification failed", error);
-          }
-        }
-
-        return payload;
-      },
-      onSaveDraft: async ({ overlays: nextOverlays, menuImage, menuImages, changePayload }) => {
-        const existingMenuImage =
-          boot?.restaurant?.menu_image || boot?.restaurant?.menuImage || "";
-        const menuImageChanged = Boolean(menuImage && menuImage !== existingMenuImage);
-
-        const result = await saveEditorDraftMutation.mutateAsync({
-          overlays: nextOverlays,
-          menuImage,
-          menuImages,
-          changePayload,
-        });
-
-        if (menuImageChanged) {
-          try {
-            const imageData = await dataUrlFromImageSource(menuImage);
-            const detection = await detectMenuDishes({ imageData });
-            if (detection?.success) {
-              const existingDishNames = (nextOverlays || []).map(
-                (overlay) => overlay?.id || overlay?.name || "",
-              );
-              const diff = compareDishSets({
-                detectedDishes: detection.dishes,
-                existingDishNames,
-              });
-              if (diff.addedItems.length || diff.removedItems.length) {
-                await sendMenuUpdateNotification({
-                  restaurantName: boot?.restaurant?.name || "Restaurant",
-                  restaurantSlug: boot?.restaurant?.slug || slug,
-                  addedItems: diff.addedItems,
-                  removedItems: diff.removedItems,
-                  keptItems: diff.keptItems,
-                });
-              }
-            }
-          } catch (error) {
-            console.error("[restaurant] menu-update notification failed", error);
-          }
-        }
-
-        return result;
-      },
-      onConfirmInfo: async ({ timestamp, photos }) => {
-        const changePayload = {
-          author: editorAuthorName,
-          general: ["Allergen information confirmed"],
-          items: {},
-        };
-        return await confirmInfoMutation.mutateAsync({
-          timestamp,
-          photos,
-          changePayload,
-        });
-      },
-      onLoadChangeLogs: async () => {
-        if (!supabase) throw new Error("Supabase is not configured.");
-        if (!boot?.restaurant?.id) return [];
-
-        const { data, error } = await supabase
-          .from("change_logs")
-          .select("*")
-          .eq("restaurant_id", boot.restaurant.id)
-          .order("timestamp", { ascending: false })
-          .limit(80);
-
-        if (error) throw error;
-        return Array.isArray(data) ? data : [];
-      },
-      onLoadPendingSaveTable: async (restaurantId) => {
-        if (!boot?.restaurant?.id) {
-          return { batch: null, rows: [] };
-        }
-
-        const safeRestaurantId = String(restaurantId || boot.restaurant.id).trim();
-        const payload = await loadCurrentRestaurantWrite({
-          supabase,
-          scopeType: "RESTAURANT",
-          restaurantId: safeRestaurantId,
-        });
-
-        const reviewSummary =
-          payload?.reviewSummary && typeof payload.reviewSummary === "object"
-            ? payload.reviewSummary
-            : {};
-        const rows = Array.isArray(reviewSummary?.menuRows)
-          ? reviewSummary.menuRows
-          : [];
-        const batch = payload?.batch && typeof payload.batch === "object"
-          ? payload.batch
-          : null;
-        return {
-          batch: batch
-            ? {
-                ...batch,
-                row_count: Number(reviewSummary?.rowCount) || rows.length || 0,
-                state_hash: String(reviewSummary?.stateHash || ""),
-              }
-            : null,
-          rows,
-        };
-      },
-      onSaveRestaurantSettings: async (payload) => {
-        return await saveRestaurantSettingsMutation.mutateAsync(payload);
-      },
-      onAnalyzeDish: async ({ dishName, text, imageData }) => {
-        if (runtimeConfigBlocked) {
-          throw new Error(runtimeConfigErrorMessage);
-        }
-        return await analyzeDishWithAi({ dishName, text, imageData });
-      },
-      onAnalyzeIngredientName: async ({ ingredientName, dishName }) => {
-        return await analyzeIngredientNameWithAi({ ingredientName, dishName });
-      },
-      onAnalyzeIngredientScanRequirement: async ({ ingredientName, dishName }) => {
-        return await analyzeIngredientScanRequirement({ ingredientName, dishName });
-      },
-      onAnalyzeMenuImage: async (payload) => {
-        return await analyzeMenuImageWithAi(payload || {});
-      },
-      onSubmitIngredientAppeal: async ({
-        restaurantId,
-        dishName,
-        ingredientName,
-        managerMessage,
-        photoDataUrl,
-      }) => {
-        if (!supabase) throw new Error("Supabase is not configured.");
-
-        const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-        if (sessionError) throw sessionError;
-
-        const accessToken = sessionData?.session?.access_token || "";
-        if (!accessToken) {
-          throw new Error("You must be signed in to submit an appeal.");
-        }
-
-        const response = await fetch("/api/ingredient-scan-appeals", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${accessToken}`,
-          },
-          body: JSON.stringify({
-            restaurantId: restaurantId || boot?.restaurant?.id,
-            dishName,
-            ingredientName,
-            managerMessage,
-            photoDataUrl,
-          }),
-        });
-
-        const bodyText = await response.text();
-        let payload = null;
-        try {
-          payload = bodyText ? JSON.parse(bodyText) : null;
-        } catch {
-          payload = null;
-        }
-
-        if (!response.ok || !payload?.success) {
-          throw new Error(
-            payload?.error || "Unable to submit appeal right now.",
-          );
-        }
-
-        return payload;
-      },
-      onDetectMenuDishes: async ({ imageData }) => {
-        return await detectMenuDishes({ imageData });
-      },
-      onDetectMenuCorners: async ({ imageData, width, height }) => {
-        return await detectMenuCorners({ imageData, width, height });
-      },
-      onOpenIngredientLabelScan: async ({ ingredientName, onPhaseChange }) => {
-        if (runtimeConfigBlocked) {
-          throw new Error(runtimeConfigErrorMessage);
-        }
-        return await ingredientScan.openScan({
-          ingredientName,
-          supportedDiets: boot?.config?.DIETS || [],
-          onPhaseChange,
-        });
-      },
-      onResumeIngredientLabelScan: async ({ sessionId }) => {
-        return await ingredientScan.resumeScan({ sessionId });
-      },
-    },
+    callbacks: editorCallbacks,
   });
 
   const onSignOut = useCallback(async () => {
@@ -1010,120 +251,17 @@ export default function RestaurantClient() {
     router.replace("/account?mode=signin");
   }, [router]);
 
-  const commitMode = useCallback((nextMode) => {
-    const normalized = nextMode === "editor" ? "editor" : "viewer";
-    setActiveView(normalized);
-    try {
-      localStorage.setItem(
-        "clarivoreManagerMode",
-        normalized === "editor" ? "editor" : "viewer",
-      );
-    } catch {
-      // Ignore local storage failures.
-    }
-  }, []);
+  const navigationGuard = useUnsavedNavigationGuard({
+    activeView,
+    setActiveView,
+    editor,
+    router,
+    searchParams,
+    slug,
+    restaurantSlug: boot?.restaurant?.slug || slug,
+  });
 
-  const executePendingNavigation = useCallback(
-    (pending) => {
-      if (!pending || typeof pending !== "object") return;
-
-      const nextMode =
-        pending.nextMode === "editor"
-          ? "editor"
-          : pending.nextMode === "viewer"
-            ? "viewer"
-            : "";
-      if (nextMode) {
-        commitMode(nextMode);
-      }
-
-      const href = String(pending.href || "").trim();
-      if (!href) return;
-
-      if (typeof window !== "undefined") {
-        const current = `${window.location.pathname}${window.location.search}${window.location.hash}`;
-        if (href === current) return;
-      }
-
-      if (pending.replace) {
-        router.replace(href);
-      } else {
-        router.push(href);
-      }
-    },
-    [commitMode, router],
-  );
-
-  const queueNavigationWithUnsavedGuard = useCallback(
-    (pending, promptCopy = "Would you like to save before leaving editor mode?") => {
-      const leavingDirtyEditor = activeView === "editor" && Boolean(editor?.isDirty);
-      if (leavingDirtyEditor) {
-        pendingNavigationRef.current = pending;
-        setUnsavedPromptCopy(promptCopy);
-        setUnsavedPromptError("");
-        setUnsavedPromptSaving(false);
-        setUnsavedPromptOpen(true);
-        return;
-      }
-      executePendingNavigation(pending);
-    },
-    [activeView, editor?.isDirty, executePendingNavigation],
-  );
-
-  const setMode = useCallback(
-    (nextMode) => {
-      const normalized = nextMode === "editor" ? "editor" : "viewer";
-      if (normalized === activeView) return;
-
-      const modeHref = buildModeHref({
-        mode: normalized,
-        slug: boot?.restaurant?.slug || slug,
-        searchParams,
-      });
-
-      queueNavigationWithUnsavedGuard(
-        {
-          nextMode: normalized,
-          href: modeHref,
-        },
-        "Would you like to save before leaving editor mode?",
-      );
-    },
-    [
-      activeView,
-      boot?.restaurant?.slug,
-      queueNavigationWithUnsavedGuard,
-      searchParams,
-      slug,
-    ],
-  );
-
-  const onRestaurantNavigate = useCallback(
-    (href) => {
-      if (!isGuardableInternalHref(href)) return;
-      let targetHref = String(href || "").trim();
-
-      if (typeof window !== "undefined") {
-        try {
-          const parsed = new URL(targetHref, window.location.href);
-          if (parsed.origin !== window.location.origin) {
-            window.location.href = targetHref;
-            return;
-          }
-          targetHref = `${parsed.pathname}${parsed.search}${parsed.hash}`;
-        } catch {
-          return;
-        }
-      }
-
-      queueNavigationWithUnsavedGuard(
-        { href: targetHref },
-        "You have unsaved changes. Save before leaving this page?",
-      );
-    },
-    [queueNavigationWithUnsavedGuard],
-  );
-
+  // Lock body scrolling so the restaurant surface controls the viewport.
   useEffect(() => {
     if (!boot?.restaurant) return undefined;
     const previousBodyOverflow = document.body.style.overflow;
@@ -1135,41 +273,6 @@ export default function RestaurantClient() {
       document.documentElement.style.overflow = previousHtmlOverflow;
     };
   }, [boot?.restaurant]);
-
-  useEffect(() => {
-    const onDocumentClick = (event) => {
-      if (event.defaultPrevented) return;
-      if (event.button !== 0) return;
-      if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
-
-      const link = event.target?.closest?.("a[href]");
-      if (!link) return;
-      if (link.hasAttribute("data-unsaved-nav")) return;
-      if (link.target === "_blank" || link.hasAttribute("download")) return;
-
-      const href = link.getAttribute("href");
-      if (!isGuardableInternalHref(href)) return;
-
-      try {
-        const targetUrl = new URL(href, window.location.href);
-        if (targetUrl.origin !== window.location.origin) return;
-        const targetHref = `${targetUrl.pathname}${targetUrl.search}${targetUrl.hash}`;
-        const currentHref = `${window.location.pathname}${window.location.search}${window.location.hash}`;
-        if (targetHref === currentHref) return;
-
-        event.preventDefault();
-        queueNavigationWithUnsavedGuard(
-          { href: targetHref },
-          "You have unsaved changes. Save before leaving this page?",
-        );
-      } catch {
-        // Ignore malformed URLs.
-      }
-    };
-
-    document.addEventListener("click", onDocumentClick, true);
-    return () => document.removeEventListener("click", onDocumentClick, true);
-  }, [queueNavigationWithUnsavedGuard]);
 
   if (!supabase) {
     return (
@@ -1213,9 +316,11 @@ export default function RestaurantClient() {
       managerRestaurants={isOwner || isManager ? boot?.managerRestaurants || [] : []}
       currentRestaurantSlug={currentRestaurantSlug}
       showModeToggle={Boolean(boot?.canEdit)}
-      onModeChange={(nextMode) => setMode(nextMode === "editor" ? "editor" : "viewer")}
+      onModeChange={(nextMode) =>
+        navigationGuard.setMode(nextMode === "editor" ? "editor" : "viewer")
+      }
       onSignOut={onSignOut}
-      onNavigate={onRestaurantNavigate}
+      onNavigate={navigationGuard.onRestaurantNavigate}
     />
   );
 
@@ -1256,7 +361,7 @@ export default function RestaurantClient() {
           ) : null}
           <RestaurantEditor
             editor={editor}
-            onNavigate={onRestaurantNavigate}
+            onNavigate={navigationGuard.onRestaurantNavigate}
             runtimeConfigHealth={{
               checked: runtimeConfigChecked,
               blocked: runtimeConfigBlocked,
@@ -1274,98 +379,7 @@ export default function RestaurantClient() {
         />
       )}
 
-      <Modal
-        open={unsavedPromptOpen}
-        onOpenChange={(open) => {
-          if (!open && unsavedPromptSaving) return;
-          setUnsavedPromptOpen(open);
-          if (open) return;
-          pendingNavigationRef.current = null;
-          setUnsavedPromptError("");
-          setUnsavedPromptSaving(false);
-        }}
-        title="You have unsaved changes"
-        className="max-w-[560px]"
-        closeOnEsc={!unsavedPromptSaving}
-        closeOnOverlay={!unsavedPromptSaving}
-      >
-        <div className="space-y-3">
-          <p className="m-0 text-sm text-[#cfd8f6]">
-            {unsavedPromptCopy}
-          </p>
-          {unsavedPromptError ? (
-            <p className="m-0 rounded-lg border border-[#a12525] bg-[rgba(139,29,29,0.32)] px-3 py-2 text-sm text-[#ffd0d0]">
-              {unsavedPromptError}
-            </p>
-          ) : null}
-          <div className="flex flex-wrap gap-2 justify-end">
-            <Button
-              size="compact"
-              tone="primary"
-              loading={unsavedPromptSaving}
-              onClick={async () => {
-                if (unsavedPromptSaving) return;
-                setUnsavedPromptSaving(true);
-                setUnsavedPromptError("");
-
-                try {
-                  const result = await editor.save();
-                  if (result?.success) {
-                    const pending = pendingNavigationRef.current;
-                    pendingNavigationRef.current = null;
-                    setUnsavedPromptOpen(false);
-                    executePendingNavigation(pending);
-                    return;
-                  }
-
-                  setUnsavedPromptError(
-                    editor.saveError ||
-                      result?.error?.message ||
-                      "Failed to save changes.",
-                  );
-                } catch (error) {
-                  setUnsavedPromptError(
-                    error?.message || "Failed to save changes.",
-                  );
-                } finally {
-                  setUnsavedPromptSaving(false);
-                }
-              }}
-            >
-              Save then leave
-            </Button>
-            <Button
-              size="compact"
-              tone="danger"
-              variant="outline"
-              disabled={unsavedPromptSaving}
-              onClick={() => {
-                editor.discardUnsavedChanges();
-                const pending = pendingNavigationRef.current;
-                pendingNavigationRef.current = null;
-                setUnsavedPromptOpen(false);
-                setUnsavedPromptError("");
-                executePendingNavigation(pending);
-              }}
-            >
-              Leave without saving
-            </Button>
-            <Button
-              size="compact"
-              variant="outline"
-              disabled={unsavedPromptSaving}
-              onClick={() => {
-                pendingNavigationRef.current = null;
-                setUnsavedPromptOpen(false);
-                setUnsavedPromptError("");
-              }}
-            >
-              Stay here
-            </Button>
-          </div>
-        </div>
-      </Modal>
-
+      <UnsavedChangesModal modalState={navigationGuard.modal} />
       {ingredientScan.modalNode}
     </PageShell>
   );
