@@ -413,6 +413,7 @@ function collectBrandVerificationItems(overlays) {
 function resolveConfirmStatusColor(status) {
   if (status === "matched") return "#22c55e";
   if (status === "mismatched") return "#f87171";
+  if (status === "removed") return "#fbbf24";
   if (status === "error" || status === "blocked") return "#fca5a5";
   if (status === "matching") return "#93c5fd";
   return "#a7b2d1";
@@ -430,6 +431,7 @@ function createMenuCard(image, index) {
       : "No baseline menu image was found for this page.",
     differences: [],
     confidence: "low",
+    removed: false,
   };
 }
 
@@ -519,7 +521,7 @@ function ConfirmInfoCard({
           disabled={busy || card.status === "matching"}
           onClick={onRemove}
         >
-          Remove
+          {card.removed ? "Undo remove" : "Remove"}
         </Button>
         <Button
           size="compact"
@@ -576,6 +578,7 @@ function ConfirmInfoModal({ editor }) {
   const [allDishesVisible, setAllDishesVisible] = useState(null);
   const [mostCurrent, setMostCurrent] = useState(null);
   const [flowError, setFlowError] = useState("");
+  const [menuComparisonBusy, setMenuComparisonBusy] = useState(false);
 
   const menuReplaceInputRefs = useRef({});
   const menuCaptureInputRefs = useRef({});
@@ -616,6 +619,7 @@ function ConfirmInfoModal({ editor }) {
       setAllDishesVisible(null);
       setMostCurrent(null);
       setFlowError("");
+      setMenuComparisonBusy(false);
       menuReplaceInputRefs.current = {};
       menuCaptureInputRefs.current = {};
       brandReplaceInputRefs.current = {};
@@ -625,9 +629,14 @@ function ConfirmInfoModal({ editor }) {
 
     const snapshot =
       typeof editor.getBaselineSnapshot === "function" ? editor.getBaselineSnapshot() : null;
-    const baselineMenuImages = (Array.isArray(snapshot?.menuImages) ? snapshot.menuImages : []).map(
-      (value) => asText(value),
-    );
+    const baselineMenuImagesRaw = Array.isArray(snapshot?.menuImages) ? snapshot.menuImages : [];
+    const draftMenuImagesRaw = Array.isArray(editor.draftMenuImages) ? editor.draftMenuImages : [];
+    const baselineMenuImages = (baselineMenuImagesRaw.length
+      ? baselineMenuImagesRaw
+      : draftMenuImagesRaw
+    )
+      .map((value) => asText(value))
+      .filter(Boolean);
     const baselineOverlays = Array.isArray(snapshot?.overlays) ? snapshot.overlays : [];
     const menuPageCards = baselineMenuImages.map((image, index) => createMenuCard(image, index));
     const brandItems = collectBrandVerificationItems(baselineOverlays);
@@ -638,12 +647,17 @@ function ConfirmInfoModal({ editor }) {
     setBrandCards(brandItemCards);
     setAllDishesVisible(null);
     setMostCurrent(null);
+    setMenuComparisonBusy(false);
     setFlowError(
       menuPageCards.length
         ? ""
         : "No saved menu pages were found. Update menu images before confirming.",
     );
-  }, [editor.confirmInfoOpen, editor.getBaselineSnapshot]);
+  }, [
+    editor.confirmInfoOpen,
+    editor.draftMenuImages,
+    editor.getBaselineSnapshot,
+  ]);
 
   const compareCard = useCallback(async ({ kind, card, candidateImage, updateCard }) => {
     const baselineImage = asText(card?.baselineImage);
@@ -707,7 +721,13 @@ function ConfirmInfoModal({ editor }) {
     }
   }, []);
 
-  const processCardFile = useCallback(async ({ file, kind, card, updateCard }) => {
+  const processCardFile = useCallback(async ({
+    file,
+    kind,
+    card,
+    updateCard,
+    autoCompare = true,
+  }) => {
     if (!file || !card) return;
     setFlowError("");
     try {
@@ -715,6 +735,17 @@ function ConfirmInfoModal({ editor }) {
       const compressed = await compressConfirmPhotoDataUrl(dataUrl);
       if (!compressed) {
         throw new Error("Failed to process the selected photo.");
+      }
+      if (!autoCompare) {
+        updateCard(card.id, {
+          candidateImage: compressed,
+          status: "pending",
+          confidence: "low",
+          removed: false,
+          message: "Photo captured. Answer both questions to run comparison.",
+          differences: [],
+        });
+        return;
       }
       await compareCard({
         kind,
@@ -733,6 +764,7 @@ function ConfirmInfoModal({ editor }) {
       candidateImage: "",
       status: baselineExists ? "idle" : "blocked",
       confidence: "low",
+      removed: false,
       message: baselineExists
         ? "Capture or replace with a current photo to run comparison."
         : "No baseline image was found for this item.",
@@ -740,12 +772,30 @@ function ConfirmInfoModal({ editor }) {
     });
   }, []);
 
+  const menuSavedCards = menuCards.filter((card) => Boolean(asText(card?.baselineImage)));
+  const menuCardsReadyForAttestation =
+    menuSavedCards.length > 0 &&
+    menuSavedCards.every(
+      (card) => card.removed === true || Boolean(asText(card?.candidateImage)),
+    );
+  const menuComparableCards = menuSavedCards.filter((card) => card.removed !== true);
   const menuCardsAllMatched =
-    menuCards.length > 0 && menuCards.every((card) => card.status === "matched");
+    menuComparableCards.length > 0 &&
+    menuComparableCards.every((card) => card.status === "matched");
   const menuAttestationsPassed = allDishesVisible === true && mostCurrent === true;
-  const menuStepReady = menuCardsAllMatched && menuAttestationsPassed;
-  const menuHasMismatch = menuCards.some((card) => card.status === "mismatched");
-  const menuHasProcessing = menuCards.some((card) => card.status === "matching");
+  const menuHasPendingComparison = menuComparableCards.some(
+    (card) => Boolean(asText(card?.candidateImage)) && card.status === "pending",
+  );
+  const menuStepReady =
+    menuCardsReadyForAttestation &&
+    menuCardsAllMatched &&
+    menuAttestationsPassed &&
+    !menuHasPendingComparison &&
+    !menuComparisonBusy;
+  const menuHasMismatch = menuComparableCards.some((card) => card.status === "mismatched");
+  const menuHasCompareError = menuComparableCards.some((card) => card.status === "error");
+  const menuHasProcessing =
+    menuComparisonBusy || menuComparableCards.some((card) => card.status === "matching");
   const brandHasProcessing = brandCards.some((card) => card.status === "matching");
   const brandCardsAllMatched =
     brandCards.length === 0 || brandCards.every((card) => card.status === "matched");
@@ -753,9 +803,52 @@ function ConfirmInfoModal({ editor }) {
   const brandHasBlocked = brandCards.some((card) => card.status === "blocked");
   const canSubmitConfirmation =
     menuStepReady && brandCardsAllMatched && !menuHasProcessing && !brandHasProcessing;
-  const verifiedMenuPhotos = menuCards
+  const verifiedMenuPhotos = menuComparableCards
     .map((card) => asText(card.candidateImage))
     .filter(Boolean);
+
+  useEffect(() => {
+    if (!editor.confirmInfoOpen || step !== "menu") return;
+    if (!menuCardsReadyForAttestation) return;
+    if (!menuAttestationsPassed) return;
+    if (menuComparisonBusy) return;
+
+    const cardsToCompare = menuCards.filter((card) => {
+      if (!asText(card?.baselineImage)) return false;
+      if (card.removed === true) return false;
+      if (!asText(card?.candidateImage)) return false;
+      return card.status === "pending";
+    });
+    if (!cardsToCompare.length) return;
+
+    setFlowError("");
+    setMenuComparisonBusy(true);
+    (async () => {
+      try {
+        for (const card of cardsToCompare) {
+          await compareCard({
+            kind: "menu_page",
+            card,
+            candidateImage: asText(card?.candidateImage),
+            updateCard: updateMenuCard,
+          });
+        }
+      } catch (error) {
+        setFlowError(asText(error?.message) || "Failed to compare menu photos.");
+      } finally {
+        setMenuComparisonBusy(false);
+      }
+    })();
+  }, [
+    compareCard,
+    editor.confirmInfoOpen,
+    menuAttestationsPassed,
+    menuCards,
+    menuCardsReadyForAttestation,
+    menuComparisonBusy,
+    step,
+    updateMenuCard,
+  ]);
 
   return (
     <Modal
@@ -786,15 +879,34 @@ function ConfirmInfoModal({ editor }) {
                   busy={editor.confirmBusy}
                   replaceInputRef={getCardInputRef(menuReplaceInputRefs, card.id)}
                   captureInputRef={getCardInputRef(menuCaptureInputRefs, card.id)}
-                  onRemove={() => clearCard(card, updateMenuCard)}
+                  onRemove={() => {
+                    setFlowError("");
+                    setAllDishesVisible(null);
+                    setMostCurrent(null);
+                    if (card.removed === true) {
+                      clearCard(card, updateMenuCard);
+                      return;
+                    }
+                    updateMenuCard(card.id, {
+                      candidateImage: "",
+                      status: "removed",
+                      confidence: "low",
+                      removed: true,
+                      message: "Marked as removed from your current menu.",
+                      differences: [],
+                    });
+                  }}
                   onPickReplace={async (event) => {
                     const file = event.target.files?.[0];
                     if (file) {
+                      setAllDishesVisible(null);
+                      setMostCurrent(null);
                       await processCardFile({
                         file,
                         kind: "menu_page",
                         card,
                         updateCard: updateMenuCard,
+                        autoCompare: false,
                       });
                     }
                     event.target.value = "";
@@ -802,11 +914,14 @@ function ConfirmInfoModal({ editor }) {
                   onPickCapture={async (event) => {
                     const file = event.target.files?.[0];
                     if (file) {
+                      setAllDishesVisible(null);
+                      setMostCurrent(null);
                       await processCardFile({
                         file,
                         kind: "menu_page",
                         card,
                         updateCard: updateMenuCard,
+                        autoCompare: false,
                       });
                     }
                     event.target.value = "";
@@ -815,51 +930,71 @@ function ConfirmInfoModal({ editor }) {
               ))}
             </div>
 
-            <div className="rounded-lg border border-[#2a3261] bg-[rgba(6,10,28,0.55)] p-3 text-sm text-[#ced8f8]">
-              <div>Are all dishes clearly visible in these photos?</div>
-              <div className="mt-2 flex gap-2">
-                <Button
-                  size="compact"
-                  tone={allDishesVisible === true ? "success" : "neutral"}
-                  onClick={() => setAllDishesVisible(true)}
-                >
-                  Yes
-                </Button>
-                <Button
-                  size="compact"
-                  tone={allDishesVisible === false ? "danger" : "neutral"}
-                  onClick={() => setAllDishesVisible(false)}
-                >
-                  No
-                </Button>
+            {!menuCardsReadyForAttestation ? (
+              <div className="rounded-lg border border-[#2a3261] bg-[rgba(6,10,28,0.55)] p-3 text-sm text-[#ced8f8]">
+                Capture or replace a current photo for each saved menu page, or remove pages no
+                longer on your current menu.
               </div>
-            </div>
+            ) : (
+              <>
+                <div className="rounded-lg border border-[#2a3261] bg-[rgba(6,10,28,0.55)] p-3 text-sm text-[#ced8f8]">
+                  <div>Are all dishes clearly visible in these photos?</div>
+                  <div className="mt-2 flex gap-2">
+                    <Button
+                      size="compact"
+                      tone={allDishesVisible === true ? "success" : "neutral"}
+                      onClick={() => setAllDishesVisible(true)}
+                    >
+                      Yes
+                    </Button>
+                    <Button
+                      size="compact"
+                      tone={allDishesVisible === false ? "danger" : "neutral"}
+                      onClick={() => setAllDishesVisible(false)}
+                    >
+                      No
+                    </Button>
+                  </div>
+                </div>
 
-            <div className="rounded-lg border border-[#2a3261] bg-[rgba(6,10,28,0.55)] p-3 text-sm text-[#ced8f8]">
-              <div>Are these photos of your most current menu?</div>
-              <div className="mt-2 flex gap-2">
-                <Button
-                  size="compact"
-                  tone={mostCurrent === true ? "success" : "neutral"}
-                  onClick={() => setMostCurrent(true)}
-                >
-                  Yes
-                </Button>
-                <Button
-                  size="compact"
-                  tone={mostCurrent === false ? "danger" : "neutral"}
-                  onClick={() => setMostCurrent(false)}
-                >
-                  No
-                </Button>
-              </div>
-            </div>
+                <div className="rounded-lg border border-[#2a3261] bg-[rgba(6,10,28,0.55)] p-3 text-sm text-[#ced8f8]">
+                  <div>Are these photos of your most current menu?</div>
+                  <div className="mt-2 flex gap-2">
+                    <Button
+                      size="compact"
+                      tone={mostCurrent === true ? "success" : "neutral"}
+                      onClick={() => setMostCurrent(true)}
+                    >
+                      Yes
+                    </Button>
+                    <Button
+                      size="compact"
+                      tone={mostCurrent === false ? "danger" : "neutral"}
+                      onClick={() => setMostCurrent(false)}
+                    >
+                      No
+                    </Button>
+                  </div>
+                </div>
 
-            {allDishesVisible === false || mostCurrent === false ? (
-              <p className="m-0 rounded-lg border border-[#a12525] bg-[rgba(139,29,29,0.32)] px-3 py-2 text-sm text-[#ffd0d0]">
-                Confirmation is blocked until both menu attestation questions are answered Yes.
-              </p>
-            ) : null}
+                {allDishesVisible === false || mostCurrent === false ? (
+                  <p className="m-0 rounded-lg border border-[#a12525] bg-[rgba(139,29,29,0.32)] px-3 py-2 text-sm text-[#ffd0d0]">
+                    Confirmation is blocked until both menu attestation questions are answered Yes.
+                  </p>
+                ) : null}
+                {menuAttestationsPassed && menuHasProcessing ? (
+                  <p className="m-0 rounded-lg border border-[#2a3261] bg-[rgba(6,10,28,0.55)] px-3 py-2 text-sm text-[#ced8f8]">
+                    Comparing current photos to saved menu pages...
+                  </p>
+                ) : null}
+                {menuHasCompareError ? (
+                  <p className="m-0 rounded-lg border border-[#a12525] bg-[rgba(139,29,29,0.32)] px-3 py-2 text-sm text-[#ffd0d0]">
+                    One or more menu page comparisons failed. Retake those photos and answer both
+                    questions Yes again.
+                  </p>
+                ) : null}
+              </>
+            )}
 
             <div className="flex flex-wrap gap-2 justify-end">
               {menuHasMismatch ? (
