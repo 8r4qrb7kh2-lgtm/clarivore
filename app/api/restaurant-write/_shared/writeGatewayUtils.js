@@ -233,14 +233,42 @@ function toOverlayDishKey(overlay) {
   return toDishKey(name);
 }
 
+function sanitizePersistedImageValue(value) {
+  const text = asText(value);
+  if (!text) return "";
+  if (text.toLowerCase().startsWith("data:image")) return "";
+  return text;
+}
+
 function normalizeBrandEntryForStorage(brand) {
   const safe = brand && typeof brand === "object" ? toJsonSafe(brand, {}) : {};
   const name = asText(safe?.name || safe?.productName);
   if (!name) return null;
-  return {
+  const normalized = {
     ...safe,
     name,
+    allergens: normalizeStringList(safe?.allergens),
+    diets: normalizeStringList(safe?.diets),
+    crossContaminationAllergens: normalizeStringList(safe?.crossContaminationAllergens),
+    crossContaminationDiets: normalizeStringList(safe?.crossContaminationDiets),
+    ingredientsList: (Array.isArray(safe?.ingredientsList) ? safe.ingredientsList : [])
+      .map((value) => asText(value))
+      .filter(Boolean),
   };
+
+  const brandImage = sanitizePersistedImageValue(safe?.brandImage);
+  if (brandImage) normalized.brandImage = brandImage;
+  else delete normalized.brandImage;
+
+  const ingredientsImage = sanitizePersistedImageValue(safe?.ingredientsImage);
+  if (ingredientsImage) normalized.ingredientsImage = ingredientsImage;
+  else delete normalized.ingredientsImage;
+
+  const image = sanitizePersistedImageValue(safe?.image);
+  if (image) normalized.image = image;
+  else delete normalized.image;
+
+  return normalized;
 }
 
 function readFirstBrandEntryForStorage(values) {
@@ -258,7 +286,7 @@ function normalizeIngredientForStorage(row, index) {
     normalized?.brands || safe?.brands,
   );
 
-  return {
+  const next = {
     ...safe,
     rowIndex: normalized.rowIndex,
     name: normalized.name,
@@ -273,6 +301,20 @@ function normalizeIngredientForStorage(row, index) {
     removable: Boolean(normalized.removable),
     brands: firstBrand ? [firstBrand] : [],
   };
+
+  const brandImage = sanitizePersistedImageValue(safe?.brandImage);
+  if (brandImage) next.brandImage = brandImage;
+  else delete next.brandImage;
+
+  const ingredientsImage = sanitizePersistedImageValue(safe?.ingredientsImage);
+  if (ingredientsImage) next.ingredientsImage = ingredientsImage;
+  else delete next.ingredientsImage;
+
+  const image = sanitizePersistedImageValue(safe?.image);
+  if (image) next.image = image;
+  else delete next.image;
+
+  return next;
 }
 
 function normalizeOverlayForStorage(overlay) {

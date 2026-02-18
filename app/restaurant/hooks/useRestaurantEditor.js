@@ -442,6 +442,95 @@ function buildMenuImages(restaurant) {
   return explicit;
 }
 
+function sanitizePersistedImageValue(value) {
+  const text = asText(value);
+  if (!text) return "";
+  if (text.toLowerCase().startsWith("data:image")) return "";
+  return text;
+}
+
+function normalizeBrandForWrite(brand) {
+  const safe = brand && typeof brand === "object" ? { ...brand } : {};
+  const name = asText(safe?.name || safe?.productName);
+  if (!name) return null;
+
+  const normalized = {
+    ...safe,
+    name,
+    allergens: dedupeTokenList(safe?.allergens),
+    diets: dedupeTokenList(safe?.diets),
+    crossContaminationAllergens: dedupeTokenList(safe?.crossContaminationAllergens),
+    crossContaminationDiets: dedupeTokenList(safe?.crossContaminationDiets),
+    ingredientsList: Array.isArray(safe?.ingredientsList)
+      ? safe.ingredientsList.map((entry) => asText(entry)).filter(Boolean)
+      : [],
+  };
+
+  const brandImage = sanitizePersistedImageValue(safe?.brandImage);
+  if (brandImage) normalized.brandImage = brandImage;
+  else delete normalized.brandImage;
+
+  const ingredientsImage = sanitizePersistedImageValue(safe?.ingredientsImage);
+  if (ingredientsImage) normalized.ingredientsImage = ingredientsImage;
+  else delete normalized.ingredientsImage;
+
+  const image = sanitizePersistedImageValue(safe?.image);
+  if (image) normalized.image = image;
+  else delete normalized.image;
+
+  return normalized;
+}
+
+function readFirstBrandForWrite(values) {
+  for (const value of Array.isArray(values) ? values : []) {
+    const normalized = normalizeBrandForWrite(value);
+    if (normalized) return normalized;
+  }
+  return null;
+}
+
+function normalizeIngredientForWrite(ingredient, index) {
+  const safe = ingredient && typeof ingredient === "object" ? { ...ingredient } : {};
+  const firstBrand = readFirstBrandForWrite(safe?.brands);
+  const brandImage = sanitizePersistedImageValue(safe?.brandImage);
+  const ingredientsImage = sanitizePersistedImageValue(safe?.ingredientsImage);
+  const image = sanitizePersistedImageValue(safe?.image);
+
+  const normalized = {
+    ...safe,
+    rowIndex: Number.isFinite(Number(safe?.rowIndex))
+      ? Math.max(Math.floor(Number(safe.rowIndex)), 0)
+      : index,
+    name: asText(safe?.name) || `Ingredient ${index + 1}`,
+    allergens: dedupeTokenList(safe?.allergens),
+    diets: dedupeTokenList(safe?.diets),
+    crossContaminationAllergens: dedupeTokenList(safe?.crossContaminationAllergens),
+    crossContaminationDiets: dedupeTokenList(safe?.crossContaminationDiets),
+    aiDetectedAllergens: dedupeTokenList(safe?.aiDetectedAllergens || safe?.allergens),
+    aiDetectedDiets: dedupeTokenList(safe?.aiDetectedDiets || safe?.diets),
+    aiDetectedCrossContaminationAllergens: dedupeTokenList(
+      safe?.aiDetectedCrossContaminationAllergens || safe?.crossContaminationAllergens,
+    ),
+    aiDetectedCrossContaminationDiets: dedupeTokenList(
+      safe?.aiDetectedCrossContaminationDiets || safe?.crossContaminationDiets,
+    ),
+    removable: Boolean(safe?.removable),
+    confirmed: safe?.confirmed === true,
+    brands: firstBrand ? [firstBrand] : [],
+  };
+
+  if (brandImage) normalized.brandImage = brandImage;
+  else delete normalized.brandImage;
+
+  if (ingredientsImage) normalized.ingredientsImage = ingredientsImage;
+  else delete normalized.ingredientsImage;
+
+  if (image) normalized.image = image;
+  else delete normalized.image;
+
+  return normalized;
+}
+
 function stripEditorOverlay(overlay) {
   const next = { ...overlay };
   delete next._editorKey;
@@ -454,6 +543,9 @@ function stripEditorOverlay(overlay) {
   next.y = normalizeRectValue(next.y, 0);
   next.w = clamp(normalizeRectValue(next.w, 1), 0.5, 100);
   next.h = clamp(normalizeRectValue(next.h, 1), 0.5, 100);
+  next.ingredients = (Array.isArray(next.ingredients) ? next.ingredients : []).map(
+    (ingredient, index) => normalizeIngredientForWrite(ingredient, index),
+  );
 
   return next;
 }
