@@ -329,11 +329,60 @@ function ReviewRowDiffDetails({ beforeValue, afterValue }) {
   );
 }
 
+function readReviewRowMenuImagePages(entry) {
+  const rawValues = Array.isArray(entry?.menuImagePages)
+    ? entry.menuImagePages
+    : entry?.menuImagePage != null
+      ? [entry.menuImagePage]
+      : [];
+  const seen = new Set();
+  return rawValues
+    .map((value) => Number(value))
+    .filter((value) => Number.isFinite(value) && value >= 0)
+    .map((value) => Math.floor(value))
+    .filter((value) => {
+      if (seen.has(value)) return false;
+      seen.add(value);
+      return true;
+    });
+}
+
+function inferImageExtension(imageSource) {
+  const source = asText(imageSource).toLowerCase();
+  if (!source) return ".jpg";
+  if (source.startsWith("data:image/png")) return ".png";
+  if (source.startsWith("data:image/webp")) return ".webp";
+  if (source.startsWith("data:image/gif")) return ".gif";
+  if (source.startsWith("data:image/heic")) return ".heic";
+  if (source.startsWith("data:image/heif")) return ".heif";
+  if (source.includes(".png")) return ".png";
+  if (source.includes(".webp")) return ".webp";
+  if (source.includes(".gif")) return ".gif";
+  return ".jpg";
+}
+
+function resolveReviewRowMenuImagePreviews(entry, menuImages) {
+  const imageList = Array.isArray(menuImages) ? menuImages : [];
+  return readReviewRowMenuImagePages(entry)
+    .map((pageIndex) => {
+      const source = asText(imageList[pageIndex]);
+      if (!source) return null;
+      const pageNumber = pageIndex + 1;
+      return {
+        source,
+        pageNumber,
+        downloadName: `menu-page-${pageNumber}${inferImageExtension(source)}`,
+      };
+    })
+    .filter(Boolean);
+}
+
 function ReviewRowGroupedList({
   rows,
   expandedRows,
   onToggleRow,
   rowKeyPrefix = "",
+  menuImages = [],
 }) {
   const groupedChanges = groupReviewRowsByDish(rows);
 
@@ -351,6 +400,7 @@ function ReviewRowGroupedList({
               const hasDiff = entry.beforeValue != null || entry.afterValue != null;
               const summary =
                 stripDishPrefixFromSummary(entry.summary, group.dishName) || "Change recorded";
+              const menuImagePreviews = resolveReviewRowMenuImagePreviews(entry, menuImages);
               return (
                 <li key={rowKey}>
                   <div className="flex items-center justify-between gap-2">
@@ -365,6 +415,34 @@ function ReviewRowGroupedList({
                       </Button>
                     ) : null}
                   </div>
+                  {menuImagePreviews.length ? (
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {menuImagePreviews.map((preview, previewIndex) => (
+                        <div
+                          key={`${rowKey}-menu-image-${preview.pageNumber}-${previewIndex}`}
+                          className="rounded-md border border-[#2a3261] bg-[rgba(10,18,50,0.72)] p-2"
+                        >
+                          <img
+                            src={preview.source}
+                            alt={`Menu page ${preview.pageNumber} thumbnail`}
+                            className="h-[64px] w-[96px] rounded border border-[#2a3261] object-cover"
+                          />
+                          <div className="mt-1 flex items-center justify-between gap-2">
+                            <span className="text-[11px] text-[#a7b2d1]">
+                              Page {preview.pageNumber}
+                            </span>
+                            <a
+                              href={preview.source}
+                              download={preview.downloadName}
+                              className="rounded-md border border-[#344078] bg-transparent px-2 py-1 text-[11px] font-medium text-[#dce4ff] no-underline hover:border-[#4b5fbb] hover:text-[#ffffff]"
+                            >
+                              Download full image
+                            </a>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
                   {expandedRows[rowKey] ? (
                     <ReviewRowDiffDetails
                       beforeValue={entry.beforeValue}

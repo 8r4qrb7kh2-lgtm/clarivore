@@ -19,9 +19,23 @@ import {
 } from "./editorUtils";
 import { compareConfirmInfoImages } from "./editorServices";
 
+function getReviewModalMenuImages(editor) {
+  return Array.isArray(editor?.draftMenuImages) ? editor.draftMenuImages : [];
+}
+
+function hasReviewRowMenuImageRefs(row) {
+  const pageList = Array.isArray(row?.menuImagePages)
+    ? row.menuImagePages
+    : row?.menuImagePage != null
+      ? [row.menuImagePage]
+      : [];
+  return pageList.some((value) => Number.isFinite(Number(value)) && Number(value) >= 0);
+}
+
 // Change log modal focuses on human-readable change history + review row drill-down.
 function ChangeLogModal({ editor }) {
   const [expandedRowsByLog, setExpandedRowsByLog] = useState({});
+  const menuImages = useMemo(() => getReviewModalMenuImages(editor), [editor]);
 
   useEffect(() => {
     if (editor.changeLogOpen) return;
@@ -59,6 +73,9 @@ function ChangeLogModal({ editor }) {
             const reviewRows = (Array.isArray(parsed?.reviewRows) ? parsed.reviewRows : [])
               .filter((row) => row && typeof row === "object")
               .filter((row) => {
+                if (hasReviewRowMenuImageRefs(row)) {
+                  return true;
+                }
                 const summary = asText(row?.summary);
                 if (!summary) return false;
                 const token = normalizeToken(summary);
@@ -108,6 +125,7 @@ function ChangeLogModal({ editor }) {
                     <div className="mt-1">
                       <ReviewRowGroupedList
                         rows={reviewRows}
+                        menuImages={menuImages}
                         expandedRows={expandedRowsByLog}
                         rowKeyPrefix={`log-${asText(log.id || log.timestamp || "entry")}-`}
                         onToggleRow={(rowKey) =>
@@ -163,6 +181,7 @@ function ChangeLogModal({ editor }) {
 // Save review modal is the final checkpoint before committing write operations.
 function SaveReviewModal({ editor, open, onOpenChange, onConfirmSave }) {
   const [expandedRows, setExpandedRows] = useState({});
+  const menuImages = useMemo(() => getReviewModalMenuImages(editor), [editor]);
   const changes = useMemo(
     () => (Array.isArray(editor.pendingSaveRows) ? editor.pendingSaveRows : []),
     [editor.pendingSaveRows],
@@ -194,6 +213,7 @@ function SaveReviewModal({ editor, open, onOpenChange, onConfirmSave }) {
           <div className="max-h-[52vh] space-y-2 overflow-auto pr-1">
             <ReviewRowGroupedList
               rows={changes}
+              menuImages={menuImages}
               expandedRows={expandedRows}
               rowKeyPrefix="pending-change-"
               onToggleRow={(rowKey) =>

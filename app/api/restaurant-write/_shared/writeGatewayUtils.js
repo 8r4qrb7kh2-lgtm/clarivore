@@ -823,6 +823,95 @@ function buildMenuChangedFieldFallbackRows(changedFields) {
   return rows;
 }
 
+function normalizeMenuImagePageList(values, pageCount = Number.POSITIVE_INFINITY) {
+  const safePageCount = Number.isFinite(Number(pageCount)) ? Math.max(Math.floor(Number(pageCount)), 0) : Number.POSITIVE_INFINITY;
+  const output = [];
+  const seen = new Set();
+
+  (Array.isArray(values) ? values : []).forEach((value) => {
+    const numeric = Number(value);
+    if (!Number.isFinite(numeric)) return;
+    const safeIndex = Math.max(0, Math.floor(numeric));
+    if (safePageCount !== Number.POSITIVE_INFINITY && safeIndex >= safePageCount) return;
+    if (seen.has(safeIndex)) return;
+    seen.add(safeIndex);
+    output.push(safeIndex);
+  });
+
+  return output;
+}
+
+function readMenuImagePageRefsFromSummary(summary, pageCount) {
+  const safeSummary = asText(summary);
+  const safePageCount = Math.max(Number(pageCount) || 0, 0);
+  if (!safeSummary || !safePageCount) return [];
+
+  const replacementMatch = safeSummary.match(
+    /menu images:\s*uploaded replacement image for page\s+(\d+)/i,
+  );
+  if (replacementMatch) {
+    const pageNumber = Math.max(Number(replacementMatch[1]) || 0, 1);
+    return normalizeMenuImagePageList([pageNumber - 1], safePageCount);
+  }
+
+  const newImagesMatch = safeSummary.match(
+    /menu images:\s*uploaded\s+(\d+)\s+new image(?:s)?/i,
+  );
+  if (newImagesMatch) {
+    const count = Math.max(Number(newImagesMatch[1]) || 0, 0);
+    if (!count) return [];
+    const startIndex = Math.max(safePageCount - count, 0);
+    return normalizeMenuImagePageList(
+      Array.from({ length: safePageCount - startIndex }, (_, offset) => startIndex + offset),
+      safePageCount,
+    );
+  }
+
+  return [];
+}
+
+function attachMenuImagePageRefsToSummaryRows(summaryRows, menuImages, changedFields) {
+  const safeRows = Array.isArray(summaryRows) ? summaryRows : [];
+  const safePageCount = (Array.isArray(menuImages) ? menuImages : [])
+    .map((value) => asText(value))
+    .filter(Boolean).length;
+  if (!safeRows.length || !safePageCount) return safeRows;
+
+  let attachedAny = false;
+  const withDetectedRefs = safeRows.map((row) => {
+    const refs = readMenuImagePageRefsFromSummary(row?.summary, safePageCount);
+    if (!refs.length) return row;
+    attachedAny = true;
+    return {
+      ...row,
+      changeType: asText(row?.changeType) || "menu_images_changed",
+      fieldKey: asText(row?.fieldKey) || "menu_images",
+      menuImagePages: refs,
+    };
+  });
+
+  if (attachedAny) return withDetectedRefs;
+
+  const changedFieldSet = new Set(normalizeMenuStateChangedFields(changedFields));
+  if (!changedFieldSet.has(MENU_STATE_CHANGED_FIELD_KEYS.MENU_IMAGES)) {
+    return withDetectedRefs;
+  }
+
+  // Fallback for generic "Menu images updated" rows when upload-specific text is unavailable.
+  const fallbackIndex = safePageCount - 1;
+  return withDetectedRefs.map((row) => {
+    if (normalizeToken(row?.summary) !== normalizeToken("Menu images updated")) {
+      return row;
+    }
+    return {
+      ...row,
+      changeType: asText(row?.changeType) || "menu_images_changed",
+      fieldKey: asText(row?.fieldKey) || "menu_images",
+      menuImagePages: [fallbackIndex],
+    };
+  });
+}
+
 function toReviewRowDedupeKey(row) {
   const explicit = asText(row?.key);
   if (explicit) {
@@ -854,6 +943,14 @@ function finalizeMenuReviewRows(rows) {
       seen.add(dedupeKey);
     }
 
+    const menuImagePages = normalizeMenuImagePageList(
+      Array.isArray(row?.menuImagePages)
+        ? row.menuImagePages
+        : row?.menuImagePage != null
+          ? [row.menuImagePage]
+          : [],
+    );
+
     output.push({
       id: asText(row?.id) || `row:${output.length}`,
       sortOrder: output.length,
@@ -868,6 +965,7 @@ function finalizeMenuReviewRows(rows) {
       beforeValue: hasOwnPropertyValue(row, "beforeValue") ? row.beforeValue : null,
       afterValue: hasOwnPropertyValue(row, "afterValue") ? row.afterValue : null,
       summary: summary || "Updated",
+      menuImagePages,
     });
   });
   return output;
@@ -877,12 +975,18 @@ function buildMenuReviewRows({
   changePayload,
   changedFields,
   ingredientRows,
+  menuImages,
 }) {
   const summaryRows = [];
   appendSummaryRowsFromChangePayload(summaryRows, changePayload);
   if (!summaryRows.length) {
     summaryRows.push(...buildMenuChangedFieldFallbackRows(changedFields));
   }
+  const summaryRowsWithMenuRefs = attachMenuImagePageRefsToSummaryRows(
+    summaryRows,
+    menuImages,
+    changedFields,
+  );
 
   const ingredientReviewRows = (Array.isArray(ingredientRows) ? ingredientRows : []).map(
     (row, index) => ({
@@ -898,7 +1002,7 @@ function buildMenuReviewRows({
     }),
   );
 
-  return finalizeMenuReviewRows([...summaryRows, ...ingredientReviewRows]);
+  return finalizeMenuReviewRows([...summaryRowsWithMenuRefs, ...ingredientReviewRows]);
 }
 
 function buildIngredientRowsFromOverlays(overlays) {
@@ -1243,6 +1347,7 @@ function normalizeMenuStatePayload(operationPayload) {
     changePayload,
     changedFields,
     ingredientRows,
+    menuImages,
   });
 
   return {
