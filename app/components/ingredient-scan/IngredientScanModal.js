@@ -655,6 +655,7 @@ export default function IngredientScanModal({
   ingredientName,
   supportedDiets,
   backgroundMode = false,
+  scanProfile = "default",
   onCancel,
   onRequestHide,
   onPhaseChange,
@@ -677,6 +678,8 @@ export default function IngredientScanModal({
   const videoRef = useRef(null);
   const streamRef = useRef(null);
   const analysisRunIdRef = useRef(0);
+  const resolvedScanProfile = asText(scanProfile).toLowerCase() || "default";
+  const useDishEditorBrandProfile = resolvedScanProfile === "dish_editor_brand";
 
   useEffect(() => {
     return () => {
@@ -889,7 +892,7 @@ export default function IngredientScanModal({
       const result = await analyzeIngredientLabelImage(capturedPhoto, {
         onStatus: (message) => setStatusText(message),
         skipAllergenAnalysis: true,
-        skipSlantCorrection: backgroundMode,
+        skipSlantCorrection: useDishEditorBrandProfile,
       });
 
       const nextLines = (Array.isArray(result?.lines) ? result.lines : []).map((line) => ({

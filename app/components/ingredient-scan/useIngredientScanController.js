@@ -85,6 +85,7 @@ export function useIngredientScanController() {
     ingredientName,
     supportedDiets = [],
     onPhaseChange,
+    scanProfile = "default",
   }) => {
     const label = asText(ingredientName);
     if (!label) {
@@ -94,6 +95,7 @@ export function useIngredientScanController() {
     const sessionId = `ingredient-scan-${Date.now()}-${sessionCounterRef.current + 1}`;
     sessionCounterRef.current += 1;
     const backgroundMode = typeof onPhaseChange === "function";
+    const resolvedScanProfile = asText(scanProfile) || "default";
 
     return await new Promise((resolve, reject) => {
       deferredRef.current.set(sessionId, { resolve, reject });
@@ -104,6 +106,7 @@ export function useIngredientScanController() {
       }
       sessionMetaRef.current.set(sessionId, {
         ingredientName: label,
+        scanProfile: resolvedScanProfile,
         phase: "capture_open",
         message: "Capture ingredient label photo.",
         error: "",
@@ -116,6 +119,7 @@ export function useIngredientScanController() {
           ingredientName: label,
           supportedDiets: Array.isArray(supportedDiets) ? supportedDiets : [],
           backgroundMode,
+          scanProfile: resolvedScanProfile,
         },
       ]);
       setActiveSessionId(sessionId);
@@ -157,6 +161,7 @@ export function useIngredientScanController() {
           ingredientName={session.ingredientName}
           supportedDiets={session.supportedDiets}
           backgroundMode={session.backgroundMode}
+          scanProfile={session.scanProfile}
           onCancel={() => {
             emitPhase(sessionId, "cancelled");
             resolveSession(sessionId, null);

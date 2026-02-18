@@ -164,6 +164,7 @@ export function useIngredientServiceActions({
   const openIngredientLabelScan = useCallback(async ({
     ingredientName,
     onPhaseChange,
+    scanProfile = "default",
   }) => {
     if (!callbacks?.onOpenIngredientLabelScan) {
       return {
@@ -173,9 +174,11 @@ export function useIngredientServiceActions({
     }
 
     try {
+      const requestedScanProfile = asText(scanProfile) || "default";
       const result = await callbacks.onOpenIngredientLabelScan({
         ingredientName: asText(ingredientName),
         onPhaseChange: typeof onPhaseChange === "function" ? onPhaseChange : undefined,
+        scanProfile: requestedScanProfile,
       });
       if (!result) return { success: true, result: null };
 

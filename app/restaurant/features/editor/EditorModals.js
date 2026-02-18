@@ -423,6 +423,7 @@ function collectBrandVerificationItems(overlays) {
 function resolveConfirmStatusColor(status) {
   if (status === "matched") return "#22c55e";
   if (status === "mismatched") return "#f87171";
+  if (status === "replaced") return "#60a5fa";
   if (status === "removed") return "#fbbf24";
   if (status === "error" || status === "blocked") return "#fca5a5";
   if (status === "matching") return "#93c5fd";
@@ -441,6 +442,7 @@ function createMenuCard(image, index) {
       : "No baseline menu image was found for this page.",
     differences: [],
     confidence: "low",
+    selectedAction: "",
     removed: false,
   };
 }
@@ -459,6 +461,7 @@ function createBrandCard(item) {
       : "No baseline brand image was found for this item.",
     differences: [],
     confidence: "low",
+    selectedAction: "",
     dishes: Array.isArray(item?.dishes) ? item.dishes : [],
     ingredientNames: Array.isArray(item?.ingredientNames) ? item.ingredientNames : [],
   };
@@ -477,6 +480,10 @@ function ConfirmInfoCard({
   replaceWithFile = true,
 }) {
   const statusColor = resolveConfirmStatusColor(card.status);
+  const selectedAction = asText(card?.selectedAction).toLowerCase();
+  const removeSelected = selectedAction === "remove";
+  const replaceSelected = selectedAction === "replace";
+  const captureSelected = selectedAction === "capture";
   return (
     <div className="min-w-[300px] max-w-[300px] rounded-xl border border-[#2a3261] bg-[rgba(17,22,48,0.82)] p-3">
       <div className="text-xs font-semibold text-[#e6ecff]">{card.label}</div>
@@ -532,7 +539,8 @@ function ConfirmInfoCard({
         {showRemove ? (
           <Button
             size="compact"
-            variant="outline"
+            variant={removeSelected ? "solid" : "outline"}
+            tone={removeSelected ? "danger" : "neutral"}
             disabled={busy || card.status === "matching"}
             onClick={onRemove}
           >
@@ -541,7 +549,8 @@ function ConfirmInfoCard({
         ) : null}
         <Button
           size="compact"
-          variant="outline"
+          variant={replaceSelected ? "solid" : "outline"}
+          tone={replaceSelected ? "primary" : "neutral"}
           disabled={busy || card.status === "matching"}
           onClick={() => {
             if (replaceWithFile) {
@@ -555,7 +564,8 @@ function ConfirmInfoCard({
         </Button>
         <Button
           size="compact"
-          variant="outline"
+          variant={captureSelected ? "solid" : "outline"}
+          tone={captureSelected ? "success" : "neutral"}
           disabled={busy || card.status === "matching"}
           onClick={() => captureInputRef.current?.click()}
         >
@@ -686,8 +696,15 @@ function ConfirmInfoModal({ editor }) {
     editor.getBaselineSnapshot,
   ]);
 
-  const compareCard = useCallback(async ({ kind, card, candidateImage, updateCard }) => {
+  const compareCard = useCallback(async ({
+    kind,
+    card,
+    candidateImage,
+    updateCard,
+    selectedAction = "",
+  }) => {
     const baselineImage = asText(card?.baselineImage);
+    const nextSelectedAction = asText(selectedAction) || asText(card?.selectedAction);
     if (!baselineImage) {
       updateCard(card.id, {
         candidateImage: "",
@@ -695,6 +712,7 @@ function ConfirmInfoModal({ editor }) {
         confidence: "low",
         message: "No baseline image was found for this item.",
         differences: [],
+        selectedAction: nextSelectedAction,
       });
       return;
     }
@@ -705,6 +723,7 @@ function ConfirmInfoModal({ editor }) {
       confidence: "low",
       message: "Comparing images...",
       differences: [],
+      selectedAction: nextSelectedAction,
     });
 
     try {
@@ -723,6 +742,7 @@ function ConfirmInfoModal({ editor }) {
           confidence: result.confidence || "medium",
           message: summary || "Images were determined to match.",
           differences: [],
+          selectedAction: nextSelectedAction,
         });
         return;
       }
@@ -736,6 +756,7 @@ function ConfirmInfoModal({ editor }) {
         confidence: result.confidence || "low",
         message: mismatchSummary,
         differences,
+        selectedAction: nextSelectedAction,
       });
     } catch (error) {
       updateCard(card.id, {
@@ -744,6 +765,7 @@ function ConfirmInfoModal({ editor }) {
         confidence: "low",
         message: asText(error?.message) || "Failed to compare images. Please retry.",
         differences: [],
+        selectedAction: nextSelectedAction,
       });
     }
   }, []);
@@ -754,6 +776,9 @@ function ConfirmInfoModal({ editor }) {
     card,
     updateCard,
     autoCompare = true,
+    selectedAction = "",
+    pendingStatus = "pending",
+    pendingMessage = "Photo captured. Answer both questions to run comparison.",
   }) => {
     if (!file || !card) return;
     setFlowError("");
@@ -766,11 +791,12 @@ function ConfirmInfoModal({ editor }) {
       if (!autoCompare) {
         updateCard(card.id, {
           candidateImage: compressed,
-          status: "pending",
+          status: pendingStatus,
           confidence: "low",
           removed: false,
-          message: "Photo captured. Answer both questions to run comparison.",
+          message: pendingMessage,
           differences: [],
+          selectedAction: asText(selectedAction) || asText(card?.selectedAction),
         });
         return;
       }
@@ -779,6 +805,7 @@ function ConfirmInfoModal({ editor }) {
         card,
         candidateImage: compressed,
         updateCard,
+        selectedAction: asText(selectedAction) || asText(card?.selectedAction),
       });
     } catch (error) {
       setFlowError(asText(error?.message) || "Failed to process selected photo.");
@@ -888,10 +915,14 @@ function ConfirmInfoModal({ editor }) {
       }
 
       setFlowError("");
+      updateBrandCard(card.id, {
+        selectedAction: "replace",
+      });
       setBrandReplacementBusyCardId(card.id);
       try {
         const result = await editor.openIngredientLabelScan({
           ingredientName: seedIngredientName,
+          scanProfile: "dish_editor_brand",
         });
         if (!result?.success) {
           setFlowError(asText(result?.error?.message) || "Failed to replace brand item.");
@@ -945,6 +976,7 @@ function ConfirmInfoModal({ editor }) {
           confidence: "high",
           message: `Replaced and applied to ${applied.replacedRows} ingredient row${applied.replacedRows === 1 ? "" : "s"}.`,
           differences: [],
+          selectedAction: "replace",
           dishes: applied.dishes.length ? applied.dishes : card.dishes,
           ingredientNames: applied.ingredientNames.length
             ? applied.ingredientNames
@@ -966,6 +998,7 @@ function ConfirmInfoModal({ editor }) {
       status: baselineExists ? "idle" : "blocked",
       confidence: "low",
       removed: false,
+      selectedAction: "",
       message: baselineExists
         ? "Capture or replace with a current photo to run comparison."
         : "No baseline image was found for this item.",
@@ -982,7 +1015,9 @@ function ConfirmInfoModal({ editor }) {
   const menuComparableCards = menuSavedCards.filter((card) => card.removed !== true);
   const menuCardsAllMatched =
     menuComparableCards.length > 0 &&
-    menuComparableCards.every((card) => card.status === "matched");
+    menuComparableCards.every(
+      (card) => card.status === "matched" || card.status === "replaced",
+    );
   const menuAttestationsPassed = allDishesVisible === true && mostCurrent === true;
   const menuHasPendingComparison = menuComparableCards.some(
     (card) => Boolean(asText(card?.candidateImage)) && card.status === "pending",
@@ -1095,6 +1130,7 @@ function ConfirmInfoModal({ editor }) {
                       status: "removed",
                       confidence: "low",
                       removed: true,
+                      selectedAction: "remove",
                       message: "Marked as removed from your current menu.",
                       differences: [],
                     });
@@ -1110,6 +1146,10 @@ function ConfirmInfoModal({ editor }) {
                         card,
                         updateCard: updateMenuCard,
                         autoCompare: false,
+                        selectedAction: "replace",
+                        pendingStatus: "replaced",
+                        pendingMessage:
+                          "Replacement selected. Comparison skipped for this page.",
                       });
                     }
                     event.target.value = "";
@@ -1125,6 +1165,7 @@ function ConfirmInfoModal({ editor }) {
                         card,
                         updateCard: updateMenuCard,
                         autoCompare: false,
+                        selectedAction: "capture",
                       });
                     }
                     event.target.value = "";
@@ -1251,6 +1292,7 @@ function ConfirmInfoModal({ editor }) {
                         kind: "brand_item",
                         card,
                         updateCard: updateBrandCard,
+                        selectedAction: "capture",
                       });
                     }
                     event.target.value = "";

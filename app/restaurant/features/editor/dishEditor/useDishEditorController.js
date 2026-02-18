@@ -832,6 +832,7 @@ export function useDishEditorController({
       editor
         .openIngredientLabelScan({
           ingredientName,
+          scanProfile: "dish_editor_brand",
           onPhaseChange: (event) => {
             const phase = asText(event?.phase);
             const sessionId = asText(event?.sessionId);

@@ -162,7 +162,7 @@ export function createRestaurantEditorCallbacks({
     },
 
     // Ingredient label scanning is also gated by runtime config health.
-    onOpenIngredientLabelScan: async ({ ingredientName, onPhaseChange }) => {
+    onOpenIngredientLabelScan: async ({ ingredientName, onPhaseChange, scanProfile }) => {
       if (runtimeConfigBlocked) {
         throw new Error(runtimeConfigErrorMessage);
       }
@@ -170,6 +170,7 @@ export function createRestaurantEditorCallbacks({
         ingredientName,
         supportedDiets: boot?.config?.DIETS || [],
         onPhaseChange,
+        scanProfile,
       });
     },
     onResumeIngredientLabelScan: async ({ sessionId }) => {
