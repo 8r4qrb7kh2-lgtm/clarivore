@@ -4631,6 +4631,8 @@ export function useRestaurantEditor({
     confirmInfo,
     confirmBusy,
     confirmError,
+    confirmInfoOpen,
+    setConfirmInfoOpen,
 
     changeLogOpen,
     setChangeLogOpen,
