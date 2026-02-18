@@ -238,29 +238,140 @@ function SaveReviewModal({ editor, open, onOpenChange, onConfirmSave }) {
 }
 
 // Confirmation flow collects proof photos before manager attestation is submitted.
+const CONFIRM_INFO_MAX_PHOTOS = 6;
+const CONFIRM_INFO_TARGET_PHOTO_BYTES = 320 * 1024;
+const CONFIRM_INFO_MAX_PHOTO_EDGE = 1600;
+const CONFIRM_INFO_COMPRESSION_QUALITIES = [0.9, 0.82, 0.74, 0.66, 0.58];
+
+function estimateDataUrlBytes(dataUrl) {
+  const safe = asText(dataUrl);
+  if (!safe.startsWith("data:")) return safe.length;
+  const commaIndex = safe.indexOf(",");
+  if (commaIndex < 0) return safe.length;
+  const base64 = safe.slice(commaIndex + 1);
+  if (!base64) return 0;
+  const padding = base64.endsWith("==") ? 2 : base64.endsWith("=") ? 1 : 0;
+  return Math.max(0, Math.floor((base64.length * 3) / 4) - padding);
+}
+
+function loadDataUrlImage(dataUrl) {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error("Unable to load image for compression."));
+    image.src = dataUrl;
+  });
+}
+
+async function compressConfirmPhotoDataUrl(dataUrl) {
+  const safe = asText(dataUrl);
+  if (!safe) return "";
+  if (!safe.startsWith("data:image/")) return safe;
+  if (estimateDataUrlBytes(safe) <= CONFIRM_INFO_TARGET_PHOTO_BYTES) {
+    return safe;
+  }
+
+  try {
+    const image = await loadDataUrlImage(safe);
+    const naturalWidth = Number(image?.naturalWidth || image?.width) || 0;
+    const naturalHeight = Number(image?.naturalHeight || image?.height) || 0;
+    if (!naturalWidth || !naturalHeight) return safe;
+
+    const largestEdge = Math.max(naturalWidth, naturalHeight);
+    const scale = Math.min(1, CONFIRM_INFO_MAX_PHOTO_EDGE / largestEdge);
+    const width = Math.max(1, Math.round(naturalWidth * scale));
+    const height = Math.max(1, Math.round(naturalHeight * scale));
+
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+
+    const context = canvas.getContext("2d");
+    if (!context) return safe;
+    context.fillStyle = "#ffffff";
+    context.fillRect(0, 0, width, height);
+    context.drawImage(image, 0, 0, width, height);
+
+    let bestCandidate = "";
+    let bestSize = Number.POSITIVE_INFINITY;
+
+    for (const quality of CONFIRM_INFO_COMPRESSION_QUALITIES) {
+      const candidate = canvas.toDataURL("image/jpeg", quality);
+      const candidateSize = estimateDataUrlBytes(candidate);
+      if (candidateSize < bestSize) {
+        bestCandidate = candidate;
+        bestSize = candidateSize;
+      }
+      if (candidateSize <= CONFIRM_INFO_TARGET_PHOTO_BYTES) {
+        return candidate;
+      }
+    }
+
+    return bestCandidate || safe;
+  } catch {
+    return safe;
+  }
+}
+
 function ConfirmInfoModal({ editor }) {
   const [photos, setPhotos] = useState([]);
   const [step, setStep] = useState("capture");
+  const [uploadError, setUploadError] = useState("");
+  const hasPhotos = photos.length > 0;
 
   useEffect(() => {
     if (!editor.confirmInfoOpen) {
       setPhotos([]);
       setStep("capture");
+      setUploadError("");
     }
   }, [editor.confirmInfoOpen]);
+
+  useEffect(() => {
+    if (hasPhotos) return;
+    setStep("capture");
+  }, [hasPhotos]);
 
   const addFiles = async (files) => {
     const list = Array.from(files || []);
     if (!list.length) return;
+    setUploadError("");
+    const remainingSlots = Math.max(CONFIRM_INFO_MAX_PHOTOS - photos.length, 0);
+    if (!remainingSlots) {
+      setUploadError(`You can upload up to ${CONFIRM_INFO_MAX_PHOTOS} photos.`);
+      return;
+    }
+
+    const acceptedFiles = list.slice(0, remainingSlots);
     const values = [];
-    for (const file of list) {
+    let failedCount = 0;
+    for (const file of acceptedFiles) {
       // eslint-disable-next-line no-await-in-loop
-      const url = await fileToDataUrl(file);
-      if (url) values.push(url);
+      const url = await fileToDataUrl(file).catch(() => "");
+      if (!url) {
+        failedCount += 1;
+        continue;
+      }
+      // eslint-disable-next-line no-await-in-loop
+      const compressed = await compressConfirmPhotoDataUrl(url);
+      if (!compressed) {
+        failedCount += 1;
+        continue;
+      }
+      values.push(compressed);
     }
     if (values.length) {
       setPhotos((current) => [...current, ...values]);
     }
+
+    const issues = [];
+    if (list.length > acceptedFiles.length) {
+      issues.push(`Only ${CONFIRM_INFO_MAX_PHOTOS} photos can be attached.`);
+    }
+    if (failedCount > 0) {
+      issues.push(`Could not process ${failedCount} photo(s).`);
+    }
+    setUploadError(issues.join(" "));
   };
 
   return (
@@ -293,6 +404,12 @@ function ConfirmInfoModal({ editor }) {
           />
           <span className="text-xs text-[#a7b2d1]">{photos.length} photo(s)</span>
         </div>
+
+        {!hasPhotos ? (
+          <div className="rounded-lg border border-[#2a3261] bg-[rgba(6,10,28,0.55)] p-3 text-sm text-[#ced8f8]">
+            Upload at least one menu photo to continue.
+          </div>
+        ) : null}
 
         {photos.length ? (
           <div className="flex flex-wrap gap-2">
@@ -327,7 +444,7 @@ function ConfirmInfoModal({ editor }) {
           </div>
         ) : null}
 
-        {step === "capture" ? (
+        {hasPhotos && step === "capture" ? (
           <div className="rounded-lg border border-[#2a3261] bg-[rgba(6,10,28,0.55)] p-3 text-sm text-[#ced8f8]">
             Are all dishes clearly visible in these photos?
             <div className="mt-2 flex gap-2">
@@ -346,7 +463,7 @@ function ConfirmInfoModal({ editor }) {
           </div>
         ) : null}
 
-        {step === "current" ? (
+        {hasPhotos && step === "current" ? (
           <div className="rounded-lg border border-[#2a3261] bg-[rgba(6,10,28,0.55)] p-3 text-sm text-[#ced8f8]">
             Are these photos of your most current menu?
             <div className="mt-2 flex gap-2">
@@ -354,7 +471,13 @@ function ConfirmInfoModal({ editor }) {
                 size="compact"
                 tone="success"
                 loading={editor.confirmBusy}
+                disabled={!hasPhotos || editor.confirmBusy}
                 onClick={async () => {
+                  if (!hasPhotos) {
+                    setStep("capture");
+                    setUploadError("Upload at least one menu photo before confirming.");
+                    return;
+                  }
                   const result = await editor.confirmInfo(photos);
                   if (result?.success) {
                     editor.setConfirmInfoOpen(false);
@@ -372,6 +495,12 @@ function ConfirmInfoModal({ editor }) {
               </Button>
             </div>
           </div>
+        ) : null}
+
+        {uploadError ? (
+          <p className="m-0 rounded-lg border border-[#a12525] bg-[rgba(139,29,29,0.32)] px-3 py-2 text-sm text-[#ffd0d0]">
+            {uploadError}
+          </p>
         ) : null}
 
         {editor.confirmError ? (

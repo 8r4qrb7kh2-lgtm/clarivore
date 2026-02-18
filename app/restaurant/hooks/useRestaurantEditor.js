@@ -3765,6 +3765,14 @@ export function useRestaurantEditor({
       return { success: false };
     }
 
+    const safePhotos = (Array.isArray(photos) ? photos : [])
+      .map((value) => asText(value))
+      .filter(Boolean);
+    if (!safePhotos.length) {
+      setConfirmError("Upload at least one menu photo before confirming.");
+      return { success: false };
+    }
+
     setConfirmBusy(true);
     setConfirmError("");
 
@@ -3772,7 +3780,7 @@ export function useRestaurantEditor({
       const payload = {
         restaurantId: restaurant.id,
         timestamp: new Date().toISOString(),
-        photos: Array.isArray(photos) ? photos : [],
+        photos: safePhotos,
       };
       const result = await callbacks.onConfirmInfo(payload);
       return { success: true, result };

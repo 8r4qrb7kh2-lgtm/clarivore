@@ -7,6 +7,17 @@ import {
 } from "../../lib/restaurantWriteGatewayClient";
 import { queryKeys } from "../../lib/queryKeys";
 
+const CONFIRM_INFO_MAX_PHOTOS = 6;
+const CONFIRM_INFO_MAX_PHOTO_CHARS = 450000;
+
+function normalizeConfirmInfoPhotoList(values) {
+  const safePhotos = (Array.isArray(values) ? values : [])
+    .map((value) => String(value || "").trim())
+    .filter(Boolean)
+    .filter((value) => value.length <= CONFIRM_INFO_MAX_PHOTO_CHARS);
+  return safePhotos.slice(0, CONFIRM_INFO_MAX_PHOTOS);
+}
+
 // Centralize all restaurant writes and read-backs used by the editor/viewer shell.
 export function useRestaurantPersistence({
   supabaseClient,
@@ -119,13 +130,18 @@ export function useRestaurantPersistence({
       if (!supabaseClient) throw new Error("Supabase is not configured.");
       if (!boot?.restaurant?.id) throw new Error("Restaurant missing.");
 
+      const safePhotos = normalizeConfirmInfoPhotoList(photos);
+      if (!safePhotos.length) {
+        throw new Error("Upload at least one menu photo before confirming.");
+      }
+
       const confirmedAt = timestamp || new Date().toISOString();
       const stageResult = await stageRestaurantScopeWrite({
         operationType: "CONFIRM_INFO",
         summary: "Confirm allergen information",
         operationPayload: {
           confirmedAt,
-          photos: Array.isArray(photos) ? photos : [],
+          photos: safePhotos,
           changePayload:
             changePayload || {
               author: editorAuthorName,
