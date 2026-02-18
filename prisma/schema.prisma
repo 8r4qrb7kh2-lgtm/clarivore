@@ -999,6 +999,10 @@ model restaurants {
   manager_restaurant_access       manager_restaurant_access[]
   menu_snapshots                  menu_snapshots[]
   order_feedback                  order_feedback[]
+  restaurant_menu_dishes          restaurant_menu_dishes[]
+  restaurant_menu_ingredient_brand_items restaurant_menu_ingredient_brand_items[]
+  restaurant_menu_ingredient_rows restaurant_menu_ingredient_rows[]
+  restaurant_menu_pages           restaurant_menu_pages[]
   restaurant_direct_message_reads restaurant_direct_message_reads[]
   restaurant_direct_messages      restaurant_direct_messages[]
   restaurant_managers             restaurant_managers[]
@@ -1123,6 +1127,106 @@ model dish_ingredient_rows {
   @@unique([restaurant_id, dish_name, row_index])
   @@index([restaurant_id, dish_name], map: "dish_ingredient_rows_dish_idx")
   @@index([restaurant_id], map: "dish_ingredient_rows_restaurant_idx")
+  @@schema("public")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model restaurant_menu_pages {
+  id         String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  restaurant_id String    @db.Uuid
+  page_index Int
+  image_url  String?
+  created_at DateTime    @default(now()) @db.Timestamptz(6)
+  updated_at DateTime    @default(now()) @db.Timestamptz(6)
+  restaurants restaurants @relation(fields: [restaurant_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([restaurant_id, page_index])
+  @@index([restaurant_id], map: "restaurant_menu_pages_restaurant_idx")
+  @@schema("public")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model restaurant_menu_dishes {
+  id                            String                           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  restaurant_id                 String                           @db.Uuid
+  dish_key                      String
+  dish_name                     String
+  page_index                    Int                              @default(0)
+  x                             Float                            @default(0) @db.DoublePrecision
+  y                             Float                            @default(0) @db.DoublePrecision
+  w                             Float                            @default(0) @db.DoublePrecision
+  h                             Float                            @default(0) @db.DoublePrecision
+  dish_text                     String?
+  description                   String?
+  details_json                  Json                             @default("{}")
+  allergens                     String[]                         @default([])
+  diets                         String[]                         @default([])
+  cross_contamination_allergens String[]                         @default([])
+  cross_contamination_diets     String[]                         @default([])
+  removable_json                Json                             @default("[]")
+  ingredients_blocking_diets_json Json                           @default("{}")
+  payload_json                  Json                             @default("{}")
+  created_at                    DateTime                         @default(now()) @db.Timestamptz(6)
+  updated_at                    DateTime                         @default(now()) @db.Timestamptz(6)
+  restaurant_menu_ingredient_rows restaurant_menu_ingredient_rows[]
+  restaurants                   restaurants                      @relation(fields: [restaurant_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([restaurant_id, dish_key])
+  @@index([restaurant_id], map: "restaurant_menu_dishes_restaurant_idx")
+  @@index([restaurant_id, dish_name], map: "restaurant_menu_dishes_restaurant_name_idx")
+  @@index([restaurant_id, page_index], map: "restaurant_menu_dishes_restaurant_page_idx")
+  @@schema("public")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model restaurant_menu_ingredient_rows {
+  id                                 String                                     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  restaurant_id                      String                                     @db.Uuid
+  dish_id                            String?                                    @db.Uuid
+  dish_name                          String
+  row_index                          Int
+  row_text                           String?
+  applied_brand_item                 String?
+  ingredient_payload                 Json                                       @default("{}")
+  created_at                         DateTime                                   @default(now()) @db.Timestamptz(6)
+  updated_at                         DateTime                                   @default(now()) @db.Timestamptz(6)
+  restaurant_menu_dishes             restaurant_menu_dishes?                    @relation(fields: [dish_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  restaurant_menu_ingredient_brand_items restaurant_menu_ingredient_brand_items?
+  restaurants                        restaurants                                @relation(fields: [restaurant_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([restaurant_id, dish_name, row_index])
+  @@index([dish_id], map: "restaurant_menu_ingredient_rows_dish_idx")
+  @@index([restaurant_id], map: "restaurant_menu_ingredient_rows_restaurant_idx")
+  @@index([restaurant_id, dish_name], map: "restaurant_menu_ingredient_rows_restaurant_dish_idx")
+  @@schema("public")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model restaurant_menu_ingredient_brand_items {
+  id                             String                         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  restaurant_id                  String                         @db.Uuid
+  ingredient_row_id              String                         @unique @db.Uuid
+  dish_name                      String
+  row_index                      Int
+  brand_name                     String
+  barcode                        String?
+  brand_image                    String?
+  ingredients_image              String?
+  image                          String?
+  ingredient_list                String?
+  ingredients_list               String[]                       @default([])
+  allergens                      String[]                       @default([])
+  cross_contamination_allergens  String[]                       @default([])
+  diets                          String[]                       @default([])
+  cross_contamination_diets      String[]                       @default([])
+  brand_payload                  Json                           @default("{}")
+  created_at                     DateTime                       @default(now()) @db.Timestamptz(6)
+  updated_at                     DateTime                       @default(now()) @db.Timestamptz(6)
+  restaurant_menu_ingredient_rows restaurant_menu_ingredient_rows @relation(fields: [ingredient_row_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  restaurants                    restaurants                    @relation(fields: [restaurant_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([restaurant_id], map: "restaurant_menu_ingredient_brand_items_restaurant_idx")
+  @@index([restaurant_id, dish_name], map: "restaurant_menu_ingredient_brand_items_restaurant_dish_idx")
   @@schema("public")
 }
 

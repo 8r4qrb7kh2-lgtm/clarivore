@@ -1049,14 +1049,18 @@ function buildIngredientRowsFromOverlays(overlays) {
 
   (Array.isArray(overlays) ? overlays : []).forEach((overlay) => {
     const dishName = readOverlayDishName(overlay);
-    if (!dishName) return;
+    const dishKey = toDishKey(dishName);
+    if (!dishName || !dishKey) return;
 
     const ingredients = readOverlayIngredients(overlay).map((row, index) =>
-      normalizeIngredientRow(row, index),
+      normalizeIngredientForStorage(row, index),
     );
 
     ingredients.forEach((ingredient, index) => {
+      const appliedBrandItem = readIngredientRowAppliedBrandItem(ingredient);
+      const appliedBrand = resolveAppliedBrandFromIngredient(ingredient, appliedBrandItem);
       output.push({
+        dishKey,
         dishName,
         rowIndex: index,
         rowText: asText(ingredient.name) || `Ingredient ${index + 1}`,
@@ -1081,12 +1085,143 @@ function buildIngredientRowsFromOverlays(overlays) {
         aiDetectedCrossContaminationDiets: Array.isArray(ingredient.aiDetectedCrossContaminationDiets)
           ? ingredient.aiDetectedCrossContaminationDiets
           : [],
-        appliedBrandItem: readIngredientRowAppliedBrandItem(ingredient),
+        appliedBrandItem,
+        ingredientPayload: toJsonSafe(ingredient, {}),
+        appliedBrand,
       });
     });
   });
 
   return output;
+}
+
+function toSafeNumber(value, fallback = 0) {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? numeric : fallback;
+}
+
+function toSafeOverlayPageIndex(value) {
+  return Math.max(Math.floor(toSafeNumber(value, 0)), 0);
+}
+
+function buildMenuPageRowsFromState(menuImages, overlays) {
+  const explicitImages = (Array.isArray(menuImages) ? menuImages : [])
+    .map((value) => asText(value))
+    .filter(Boolean);
+
+  const maxOverlayPageIndex = (Array.isArray(overlays) ? overlays : []).reduce((max, overlay) => {
+    return Math.max(max, toSafeOverlayPageIndex(overlay?.pageIndex));
+  }, 0);
+
+  const requiredLength = Math.max(explicitImages.length, maxOverlayPageIndex + 1, 1);
+  const fallbackImage = explicitImages[0] || "";
+  const rows = [];
+
+  for (let pageIndex = 0; pageIndex < requiredLength; pageIndex += 1) {
+    const imageUrl = asText(explicitImages[pageIndex] || fallbackImage);
+    rows.push({
+      pageIndex,
+      imageUrl: imageUrl || null,
+    });
+  }
+
+  return rows;
+}
+
+function buildMenuDishRowsFromOverlays(overlays) {
+  const rows = [];
+
+  (Array.isArray(overlays) ? overlays : []).forEach((overlay) => {
+    const dishName = readOverlayDishName(overlay);
+    const dishKey = toDishKey(dishName);
+    if (!dishName || !dishKey) return;
+
+    rows.push({
+      dishKey,
+      dishName,
+      pageIndex: toSafeOverlayPageIndex(overlay?.pageIndex),
+      x: toSafeNumber(overlay?.x, 0),
+      y: toSafeNumber(overlay?.y, 0),
+      w: toSafeNumber(overlay?.w, 0),
+      h: toSafeNumber(overlay?.h, 0),
+      dishText: asText(overlay?.text) || null,
+      description: asText(overlay?.description) || null,
+      detailsJson: toJsonSafe(overlay?.details, {}),
+      allergens: normalizeStringList(overlay?.allergens),
+      diets: normalizeStringList(overlay?.diets),
+      crossContaminationAllergens: normalizeStringList(overlay?.crossContaminationAllergens),
+      crossContaminationDiets: normalizeStringList(overlay?.crossContaminationDiets),
+      removableJson: toJsonSafe(overlay?.removable, []),
+      ingredientsBlockingDietsJson: toJsonSafe(
+        overlay?.ingredientsBlockingDiets || overlay?.ingredients_blocking_diets,
+        {},
+      ),
+      payloadJson: toJsonSafe(overlay, {}),
+    });
+  });
+
+  return rows;
+}
+
+function resolveAppliedBrandFromIngredient(ingredient, appliedBrandItem) {
+  const brands = (Array.isArray(ingredient?.brands) ? ingredient.brands : [])
+    .map((brand) => normalizeBrandEntryForStorage(brand))
+    .filter(Boolean);
+  const appliedToken = normalizeToken(appliedBrandItem);
+
+  let brand = null;
+  if (appliedToken) {
+    brand = brands.find((entry) => normalizeToken(entry?.name) === appliedToken) || null;
+  }
+  if (!brand) {
+    brand = brands[0] || null;
+  }
+
+  const brandName = asText(brand?.name || appliedBrandItem);
+  if (!brandName) return null;
+
+  const brandImage = sanitizePersistedImageValue(
+    brand?.brandImage || ingredient?.brandImage,
+  );
+  const ingredientsImage = sanitizePersistedImageValue(
+    brand?.ingredientsImage || ingredient?.ingredientsImage,
+  );
+  const image = sanitizePersistedImageValue(brand?.image || ingredient?.image);
+
+  return {
+    brandName,
+    barcode: asText(brand?.barcode || ingredient?.barcode) || null,
+    brandImage: brandImage || null,
+    ingredientsImage: ingredientsImage || null,
+    image: image || null,
+    ingredientList: asText(brand?.ingredientList || ingredient?.ingredientList) || null,
+    ingredientsList: normalizeStringList(
+      Array.isArray(brand?.ingredientsList) && brand.ingredientsList.length
+        ? brand.ingredientsList
+        : ingredient?.ingredientsList,
+    ),
+    allergens: normalizeStringList(
+      Array.isArray(brand?.allergens) && brand.allergens.length
+        ? brand.allergens
+        : ingredient?.allergens,
+    ),
+    crossContaminationAllergens: normalizeStringList(
+      Array.isArray(brand?.crossContaminationAllergens) && brand.crossContaminationAllergens.length
+        ? brand.crossContaminationAllergens
+        : ingredient?.crossContaminationAllergens,
+    ),
+    diets: normalizeStringList(
+      Array.isArray(brand?.diets) && brand.diets.length
+        ? brand.diets
+        : ingredient?.diets,
+    ),
+    crossContaminationDiets: normalizeStringList(
+      Array.isArray(brand?.crossContaminationDiets) && brand.crossContaminationDiets.length
+        ? brand.crossContaminationDiets
+        : ingredient?.crossContaminationDiets,
+    ),
+    brandPayload: toJsonSafe(brand || { name: brandName }, {}),
+  };
 }
 
 function buildTokenMap(items, labelSelector) {
@@ -1162,6 +1297,125 @@ export async function ensureRestaurantWriteInfrastructure(client = prisma) {
   `);
 
   await client.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS public.restaurant_menu_pages (
+      id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+      restaurant_id uuid NOT NULL REFERENCES public.restaurants(id) ON DELETE CASCADE,
+      page_index integer NOT NULL,
+      image_url text,
+      created_at timestamptz NOT NULL DEFAULT now(),
+      updated_at timestamptz NOT NULL DEFAULT now(),
+      UNIQUE (restaurant_id, page_index)
+    )
+  `);
+
+  await client.$executeRawUnsafe(`
+    CREATE INDEX IF NOT EXISTS restaurant_menu_pages_restaurant_idx
+    ON public.restaurant_menu_pages (restaurant_id)
+  `);
+
+  await client.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS public.restaurant_menu_dishes (
+      id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+      restaurant_id uuid NOT NULL REFERENCES public.restaurants(id) ON DELETE CASCADE,
+      dish_key text NOT NULL,
+      dish_name text NOT NULL,
+      page_index integer NOT NULL DEFAULT 0,
+      x double precision NOT NULL DEFAULT 0,
+      y double precision NOT NULL DEFAULT 0,
+      w double precision NOT NULL DEFAULT 0,
+      h double precision NOT NULL DEFAULT 0,
+      dish_text text,
+      description text,
+      details_json jsonb NOT NULL DEFAULT '{}'::jsonb,
+      allergens text[] NOT NULL DEFAULT '{}'::text[],
+      diets text[] NOT NULL DEFAULT '{}'::text[],
+      cross_contamination_allergens text[] NOT NULL DEFAULT '{}'::text[],
+      cross_contamination_diets text[] NOT NULL DEFAULT '{}'::text[],
+      removable_json jsonb NOT NULL DEFAULT '[]'::jsonb,
+      ingredients_blocking_diets_json jsonb NOT NULL DEFAULT '{}'::jsonb,
+      payload_json jsonb NOT NULL DEFAULT '{}'::jsonb,
+      created_at timestamptz NOT NULL DEFAULT now(),
+      updated_at timestamptz NOT NULL DEFAULT now(),
+      UNIQUE (restaurant_id, dish_key)
+    )
+  `);
+
+  await client.$executeRawUnsafe(`
+    CREATE INDEX IF NOT EXISTS restaurant_menu_dishes_restaurant_idx
+    ON public.restaurant_menu_dishes (restaurant_id)
+  `);
+  await client.$executeRawUnsafe(`
+    CREATE INDEX IF NOT EXISTS restaurant_menu_dishes_restaurant_page_idx
+    ON public.restaurant_menu_dishes (restaurant_id, page_index)
+  `);
+  await client.$executeRawUnsafe(`
+    CREATE INDEX IF NOT EXISTS restaurant_menu_dishes_restaurant_name_idx
+    ON public.restaurant_menu_dishes (restaurant_id, dish_name)
+  `);
+
+  await client.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS public.restaurant_menu_ingredient_rows (
+      id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+      restaurant_id uuid NOT NULL REFERENCES public.restaurants(id) ON DELETE CASCADE,
+      dish_id uuid REFERENCES public.restaurant_menu_dishes(id) ON DELETE SET NULL,
+      dish_name text NOT NULL,
+      row_index integer NOT NULL,
+      row_text text,
+      applied_brand_item text,
+      ingredient_payload jsonb NOT NULL DEFAULT '{}'::jsonb,
+      created_at timestamptz NOT NULL DEFAULT now(),
+      updated_at timestamptz NOT NULL DEFAULT now(),
+      UNIQUE (restaurant_id, dish_name, row_index)
+    )
+  `);
+
+  await client.$executeRawUnsafe(`
+    CREATE INDEX IF NOT EXISTS restaurant_menu_ingredient_rows_restaurant_idx
+    ON public.restaurant_menu_ingredient_rows (restaurant_id)
+  `);
+  await client.$executeRawUnsafe(`
+    CREATE INDEX IF NOT EXISTS restaurant_menu_ingredient_rows_dish_idx
+    ON public.restaurant_menu_ingredient_rows (dish_id)
+  `);
+  await client.$executeRawUnsafe(`
+    CREATE INDEX IF NOT EXISTS restaurant_menu_ingredient_rows_restaurant_dish_idx
+    ON public.restaurant_menu_ingredient_rows (restaurant_id, dish_name)
+  `);
+
+  await client.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS public.restaurant_menu_ingredient_brand_items (
+      id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+      restaurant_id uuid NOT NULL REFERENCES public.restaurants(id) ON DELETE CASCADE,
+      ingredient_row_id uuid NOT NULL UNIQUE REFERENCES public.restaurant_menu_ingredient_rows(id) ON DELETE CASCADE,
+      dish_name text NOT NULL,
+      row_index integer NOT NULL,
+      brand_name text NOT NULL,
+      barcode text,
+      brand_image text,
+      ingredients_image text,
+      image text,
+      ingredient_list text,
+      ingredients_list text[] NOT NULL DEFAULT '{}'::text[],
+      allergens text[] NOT NULL DEFAULT '{}'::text[],
+      cross_contamination_allergens text[] NOT NULL DEFAULT '{}'::text[],
+      diets text[] NOT NULL DEFAULT '{}'::text[],
+      cross_contamination_diets text[] NOT NULL DEFAULT '{}'::text[],
+      brand_payload jsonb NOT NULL DEFAULT '{}'::jsonb,
+      created_at timestamptz NOT NULL DEFAULT now(),
+      updated_at timestamptz NOT NULL DEFAULT now()
+    )
+  `);
+
+  await client.$executeRawUnsafe(`
+    CREATE INDEX IF NOT EXISTS restaurant_menu_ingredient_brand_items_restaurant_idx
+    ON public.restaurant_menu_ingredient_brand_items (restaurant_id)
+  `);
+  await client.$executeRawUnsafe(`
+    CREATE INDEX IF NOT EXISTS restaurant_menu_ingredient_brand_items_restaurant_dish_idx
+    ON public.restaurant_menu_ingredient_brand_items (restaurant_id, dish_name)
+  `);
+
+  await client.$executeRawUnsafe(`
     DO $$
     BEGIN
       IF EXISTS (
@@ -1187,6 +1441,46 @@ export async function ensureRestaurantWriteInfrastructure(client = prisma) {
         ) THEN
           CREATE TRIGGER set_restaurant_write_ops_updated_at
           BEFORE UPDATE ON ${RESTAURANT_WRITE_OP_TABLE}
+          FOR EACH ROW
+          EXECUTE FUNCTION public.set_updated_at();
+        END IF;
+
+        IF NOT EXISTS (
+          SELECT 1 FROM pg_trigger
+          WHERE tgname = 'set_restaurant_menu_pages_updated_at'
+        ) THEN
+          CREATE TRIGGER set_restaurant_menu_pages_updated_at
+          BEFORE UPDATE ON public.restaurant_menu_pages
+          FOR EACH ROW
+          EXECUTE FUNCTION public.set_updated_at();
+        END IF;
+
+        IF NOT EXISTS (
+          SELECT 1 FROM pg_trigger
+          WHERE tgname = 'set_restaurant_menu_dishes_updated_at'
+        ) THEN
+          CREATE TRIGGER set_restaurant_menu_dishes_updated_at
+          BEFORE UPDATE ON public.restaurant_menu_dishes
+          FOR EACH ROW
+          EXECUTE FUNCTION public.set_updated_at();
+        END IF;
+
+        IF NOT EXISTS (
+          SELECT 1 FROM pg_trigger
+          WHERE tgname = 'set_restaurant_menu_ingredient_rows_updated_at'
+        ) THEN
+          CREATE TRIGGER set_restaurant_menu_ingredient_rows_updated_at
+          BEFORE UPDATE ON public.restaurant_menu_ingredient_rows
+          FOR EACH ROW
+          EXECUTE FUNCTION public.set_updated_at();
+        END IF;
+
+        IF NOT EXISTS (
+          SELECT 1 FROM pg_trigger
+          WHERE tgname = 'set_restaurant_menu_ingredient_brand_items_updated_at'
+        ) THEN
+          CREATE TRIGGER set_restaurant_menu_ingredient_brand_items_updated_at
+          BEFORE UPDATE ON public.restaurant_menu_ingredient_brand_items
           FOR EACH ROW
           EXECUTE FUNCTION public.set_updated_at();
         END IF;
@@ -1738,10 +2032,153 @@ export async function loadPendingBatchForScope({
   };
 }
 
-export async function syncIngredientStatusFromOverlays(tx, restaurantId, overlays) {
+export async function syncIngredientStatusFromOverlays(tx, restaurantId, overlays, options = {}) {
+  const safeRestaurantId = asText(restaurantId);
+  if (!safeRestaurantId) {
+    return {
+      rows: 0,
+      allergens: 0,
+      diets: 0,
+      menuPages: 0,
+      menuDishes: 0,
+      menuIngredientRows: 0,
+      menuBrandItems: 0,
+    };
+  }
+
+  const normalizedOverlays = normalizeOverlayListForStorage(overlays);
+  const menuImages = (Array.isArray(options?.menuImages) ? options.menuImages : [])
+    .map((value) => asText(value))
+    .filter(Boolean);
+  const ingredientRows = buildIngredientRowsFromOverlays(normalizedOverlays);
+
+  // Dual-write target tables: pages, dishes, ingredient rows, and selected brand assignments.
+  await tx.restaurant_menu_ingredient_brand_items.deleteMany({
+    where: { restaurant_id: safeRestaurantId },
+  });
+  await tx.restaurant_menu_ingredient_rows.deleteMany({
+    where: { restaurant_id: safeRestaurantId },
+  });
+  await tx.restaurant_menu_dishes.deleteMany({
+    where: { restaurant_id: safeRestaurantId },
+  });
+  await tx.restaurant_menu_pages.deleteMany({
+    where: { restaurant_id: safeRestaurantId },
+  });
+
+  const menuPageRows = buildMenuPageRowsFromState(menuImages, normalizedOverlays);
+  if (menuPageRows.length) {
+    await tx.restaurant_menu_pages.createMany({
+      data: menuPageRows.map((row) => ({
+        restaurant_id: safeRestaurantId,
+        page_index: row.pageIndex,
+        image_url: row.imageUrl,
+      })),
+    });
+  }
+
+  const menuDishRows = buildMenuDishRowsFromOverlays(normalizedOverlays);
+  if (menuDishRows.length) {
+    await tx.restaurant_menu_dishes.createMany({
+      data: menuDishRows.map((row) => ({
+        restaurant_id: safeRestaurantId,
+        dish_key: row.dishKey,
+        dish_name: row.dishName,
+        page_index: row.pageIndex,
+        x: row.x,
+        y: row.y,
+        w: row.w,
+        h: row.h,
+        dish_text: row.dishText,
+        description: row.description,
+        details_json: row.detailsJson,
+        allergens: row.allergens,
+        diets: row.diets,
+        cross_contamination_allergens: row.crossContaminationAllergens,
+        cross_contamination_diets: row.crossContaminationDiets,
+        removable_json: row.removableJson,
+        ingredients_blocking_diets_json: row.ingredientsBlockingDietsJson,
+        payload_json: row.payloadJson,
+      })),
+    });
+  }
+
+  const insertedMenuDishes = await tx.restaurant_menu_dishes.findMany({
+    where: { restaurant_id: safeRestaurantId },
+    select: { id: true, dish_key: true },
+  });
+  const menuDishIdByKey = new Map();
+  insertedMenuDishes.forEach((row) => {
+    const key = asText(row.dish_key);
+    if (!key) return;
+    menuDishIdByKey.set(key, row.id);
+  });
+
+  const menuIngredientRows = ingredientRows.map((row) => ({
+    restaurant_id: safeRestaurantId,
+    dish_id: menuDishIdByKey.get(asText(row.dishKey)) || null,
+    dish_name: row.dishName,
+    row_index: row.rowIndex,
+    row_text: row.rowText || null,
+    applied_brand_item: row.appliedBrandItem || null,
+    ingredient_payload: toJsonSafe(row.ingredientPayload, {}),
+  }));
+
+  if (menuIngredientRows.length) {
+    await tx.restaurant_menu_ingredient_rows.createMany({
+      data: menuIngredientRows,
+    });
+  }
+
+  const insertedMenuIngredientRows = await tx.restaurant_menu_ingredient_rows.findMany({
+    where: { restaurant_id: safeRestaurantId },
+    select: { id: true, dish_name: true, row_index: true },
+  });
+  const menuIngredientRowIdByDishAndIndex = new Map();
+  insertedMenuIngredientRows.forEach((row) => {
+    menuIngredientRowIdByDishAndIndex.set(
+      `${asText(row.dish_name)}::${Number(row.row_index)}`,
+      row.id,
+    );
+  });
+
+  const menuBrandRows = [];
+  ingredientRows.forEach((row) => {
+    const menuIngredientRowId = menuIngredientRowIdByDishAndIndex.get(
+      `${asText(row.dishName)}::${Number(row.rowIndex)}`,
+    );
+    if (!menuIngredientRowId) return;
+    if (!row.appliedBrand?.brandName) return;
+
+    menuBrandRows.push({
+      restaurant_id: safeRestaurantId,
+      ingredient_row_id: menuIngredientRowId,
+      dish_name: row.dishName,
+      row_index: row.rowIndex,
+      brand_name: row.appliedBrand.brandName,
+      barcode: row.appliedBrand.barcode,
+      brand_image: row.appliedBrand.brandImage,
+      ingredients_image: row.appliedBrand.ingredientsImage,
+      image: row.appliedBrand.image,
+      ingredient_list: row.appliedBrand.ingredientList,
+      ingredients_list: row.appliedBrand.ingredientsList,
+      allergens: row.appliedBrand.allergens,
+      cross_contamination_allergens: row.appliedBrand.crossContaminationAllergens,
+      diets: row.appliedBrand.diets,
+      cross_contamination_diets: row.appliedBrand.crossContaminationDiets,
+      brand_payload: toJsonSafe(row.appliedBrand.brandPayload, {}),
+    });
+  });
+
+  if (menuBrandRows.length) {
+    await tx.restaurant_menu_ingredient_brand_items.createMany({
+      data: menuBrandRows,
+    });
+  }
+
   await tx.dish_ingredient_rows.deleteMany({
     where: {
-      restaurant_id: restaurantId,
+      restaurant_id: safeRestaurantId,
     },
   });
 
@@ -1759,11 +2196,10 @@ export async function syncIngredientStatusFromOverlays(tx, restaurantId, overlay
   const dietIdByToken = buildTokenMap(dietRows, (item) => item.label);
   const supportedDietLabels = dietRows.map((row) => row.label);
 
-  const ingredientRows = buildIngredientRowsFromOverlays(overlays);
   if (ingredientRows.length) {
     await tx.dish_ingredient_rows.createMany({
       data: ingredientRows.map((row) => ({
-        restaurant_id: restaurantId,
+        restaurant_id: safeRestaurantId,
         dish_name: row.dishName,
         row_index: row.rowIndex,
         row_text: row.rowText || null,
@@ -1772,7 +2208,7 @@ export async function syncIngredientStatusFromOverlays(tx, restaurantId, overlay
   }
 
   const insertedRows = await tx.dish_ingredient_rows.findMany({
-    where: { restaurant_id: restaurantId },
+    where: { restaurant_id: safeRestaurantId },
     select: { id: true, dish_name: true, row_index: true },
   });
 
@@ -1927,6 +2363,10 @@ export async function syncIngredientStatusFromOverlays(tx, restaurantId, overlay
     rows: ingredientRows.length,
     allergens: allergenEntries.length,
     diets: dietEntries.length,
+    menuPages: menuPageRows.length,
+    menuDishes: menuDishRows.length,
+    menuIngredientRows: menuIngredientRows.length,
+    menuBrandItems: menuBrandRows.length,
   };
 }
 
@@ -2075,10 +2515,11 @@ export async function applyWriteOperations({
             menu_images: true,
           },
         });
+        const persistedMenuImages = readMenuImagesFromRestaurantRecord(restaurantSnapshot);
         const persistedChangePayload = buildPersistedMenuChangePayload({
           inputChangePayload: payload?.changePayload,
           overlays,
-          menuImages: readMenuImagesFromRestaurantRecord(restaurantSnapshot),
+          menuImages: persistedMenuImages,
           reviewRows: Array.isArray(payload?.rows) ? payload.rows : [],
         });
 
@@ -2087,8 +2528,17 @@ export async function applyWriteOperations({
               tx,
               restaurantId,
               overlays,
+              { menuImages: persistedMenuImages },
             )
-          : { rows: 0, allergens: 0, diets: 0 };
+          : {
+              rows: 0,
+              allergens: 0,
+              diets: 0,
+              menuPages: 0,
+              menuDishes: 0,
+              menuIngredientRows: 0,
+              menuBrandItems: 0,
+            };
 
         await tx.change_logs.create({
           data: {
@@ -2156,10 +2606,11 @@ export async function applyWriteOperations({
             menu_images: true,
           },
         });
+        const persistedMenuImages = readMenuImagesFromRestaurantRecord(restaurantSnapshot);
         const persistedChangePayload = buildPersistedMenuChangePayload({
           inputChangePayload: payload?.changePayload,
           overlays,
-          menuImages: readMenuImagesFromRestaurantRecord(restaurantSnapshot),
+          menuImages: persistedMenuImages,
           reviewRows: Array.isArray(payload?.rows) ? payload.rows : [],
         });
 
@@ -2167,6 +2618,7 @@ export async function applyWriteOperations({
           tx,
           restaurantId,
           overlays,
+          { menuImages: persistedMenuImages },
         );
 
         await tx.change_logs.create({
@@ -2262,21 +2714,25 @@ export async function applyWriteOperations({
       }
 
       case RESTAURANT_WRITE_OPERATION_TYPES.RESTAURANT_CREATE: {
+        const createMenuImages = (Array.isArray(payload?.menuImages) ? payload.menuImages : [])
+          .map((value) => asText(value))
+          .filter(Boolean);
+        const createMenuImage = asText(payload?.menuImage);
+        if (!createMenuImages.length && createMenuImage) {
+          createMenuImages.push(createMenuImage);
+        }
+        const createOverlays = normalizeOverlayListForStorage(payload?.overlays);
+
         const created = await tx.restaurants.create({
           data: {
             name: asText(payload?.name),
             slug: asText(payload?.slug),
             menu_image: asText(payload?.menuImage) || null,
             menu_images: toJsonSafe(
-              (Array.isArray(payload?.menuImages) ? payload.menuImages : [])
-                .map((value) => asText(value))
-                .filter(Boolean),
+              createMenuImages,
               [],
             ),
-            overlays: toJsonSafe(
-              Array.isArray(payload?.overlays) ? payload.overlays : [],
-              [],
-            ),
+            overlays: toJsonSafe(createOverlays, []),
             website: asText(payload?.website) || null,
             phone: asText(payload?.phone) || null,
             delivery_url: asText(payload?.delivery_url) || null,
@@ -2298,6 +2754,13 @@ export async function applyWriteOperations({
           created.id,
         );
 
+        const syncResult = await syncIngredientStatusFromOverlays(
+          tx,
+          created.id,
+          createOverlays,
+          { menuImages: createMenuImages },
+        );
+
         createdRestaurants.push({
           id: asText(created.id),
           slug: asText(created.slug),
@@ -2309,6 +2772,7 @@ export async function applyWriteOperations({
           summary,
           restaurantId: asText(created.id),
           slug: asText(created.slug),
+          ...syncResult,
         });
         break;
       }

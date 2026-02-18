@@ -8,6 +8,88 @@ export function normalizeBrandKey(value) {
   return String(value || "").trim().toLowerCase();
 }
 
+function asText(value) {
+  return String(value || "").trim();
+}
+
+function readBrandName(brand) {
+  return asText(brand?.name || brand?.productName);
+}
+
+function readIngredientBrandImage(ingredient, brand) {
+  return asText(
+    brand?.brandImage ||
+      brand?.image ||
+      brand?.ingredientsImage ||
+      ingredient?.brandImage ||
+      ingredient?.image ||
+      ingredient?.ingredientsImage,
+  );
+}
+
+function readIngredientBrandList(ingredient) {
+  return Array.isArray(ingredient?.brands) ? ingredient.brands : [];
+}
+
+function readFirstNamedBrand(ingredient) {
+  const brands = readIngredientBrandList(ingredient);
+  for (const brand of brands) {
+    if (readBrandName(brand)) return brand;
+  }
+  return null;
+}
+
+function readAppliedBrandName(ingredient) {
+  return asText(ingredient?.appliedBrandItem || ingredient?.appliedBrand || ingredient?.brandName);
+}
+
+function resolveIngredientAppliedBrand(ingredient) {
+  const appliedBrandName = readAppliedBrandName(ingredient);
+  const appliedBrandKey = normalizeBrandKey(appliedBrandName);
+
+  if (appliedBrandKey) {
+    const brands = readIngredientBrandList(ingredient);
+    const matched = brands.find(
+      (brand) => normalizeBrandKey(readBrandName(brand)) === appliedBrandKey,
+    );
+    if (matched) return matched;
+
+    const firstNamedBrand = readFirstNamedBrand(ingredient);
+    if (firstNamedBrand) return firstNamedBrand;
+
+    if (appliedBrandName) {
+      return {
+        name: appliedBrandName,
+        barcode: asText(ingredient?.barcode),
+        brandImage: readIngredientBrandImage(ingredient, null),
+        ingredientsList: Array.isArray(ingredient?.ingredientsList) ? ingredient.ingredientsList : [],
+        ingredientList: asText(ingredient?.ingredientList),
+        allergens: Array.isArray(ingredient?.allergens) ? ingredient.allergens : [],
+        diets: Array.isArray(ingredient?.diets) ? ingredient.diets : [],
+      };
+    }
+  }
+
+  return readFirstNamedBrand(ingredient);
+}
+
+function collectIngredientTextLines(ingredient, brand) {
+  const lines = [];
+  if (Array.isArray(brand?.ingredientsList)) {
+    lines.push(...brand.ingredientsList);
+  } else if (brand?.ingredientList) {
+    lines.push(brand.ingredientList);
+  }
+
+  if (Array.isArray(ingredient?.ingredientsList)) {
+    lines.push(...ingredient.ingredientsList);
+  } else if (ingredient?.ingredientList) {
+    lines.push(ingredient.ingredientList);
+  }
+
+  return lines.map((entry) => asText(entry)).filter(Boolean);
+}
+
 export function normalizeTagList(list, normalizer) {
   const seen = new Set();
 
@@ -46,71 +128,87 @@ export function collectBrandItemsFromOverlays(overlays) {
     }
 
     ingredients.forEach((ingredient) => {
-      if (!ingredient?.name || !Array.isArray(ingredient.brands)) return;
+      const ingredientName = asText(ingredient?.name);
+      if (!ingredientName) return;
 
-      ingredient.brands.forEach((brand) => {
-        if (!brand?.name) return;
+      // Brand items "in use" should be sourced from the applied/selected brand
+      // for each ingredient row (not from all candidate brands).
+      const appliedBrand = resolveIngredientAppliedBrand(ingredient);
+      const brandName = readBrandName(appliedBrand);
+      if (!brandName) return;
 
-        const barcodeKey = normalizeBrandKey(brand.barcode);
-        const nameKey = normalizeBrandKey(brand.name);
-        const key = barcodeKey ? `barcode:${barcodeKey}` : `name:${nameKey}`;
-        if (!key) return;
+      const barcodeKey = normalizeBrandKey(appliedBrand?.barcode || ingredient?.barcode);
+      const nameKey = normalizeBrandKey(brandName);
+      const key = barcodeKey ? `barcode:${barcodeKey}` : `name:${nameKey}`;
+      if (!key) return;
 
-        if (!items.has(key)) {
-          items.set(key, {
-            key,
-            brandName: brand.name,
-            barcode: brand.barcode || "",
-            brandImage: brand.brandImage || brand.image || "",
-            ingredientsList: Array.isArray(brand.ingredientsList)
-              ? [...brand.ingredientsList]
-              : brand.ingredientList
-                ? [brand.ingredientList]
+      if (!items.has(key)) {
+        items.set(key, {
+          key,
+          brandName,
+          barcode: asText(appliedBrand?.barcode || ingredient?.barcode),
+          brandImage: readIngredientBrandImage(ingredient, appliedBrand),
+          ingredientsList: collectIngredientTextLines(ingredient, appliedBrand),
+          allergens: new Set(
+            Array.isArray(appliedBrand?.allergens) && appliedBrand.allergens.length
+              ? appliedBrand.allergens
+              : Array.isArray(ingredient?.allergens)
+                ? ingredient.allergens
                 : [],
-            allergens: new Set(Array.isArray(brand.allergens) ? brand.allergens : []),
-            diets: new Set(Array.isArray(brand.diets) ? brand.diets : []),
-            ingredientNames: new Set(),
-            dishIngredients: new Map(),
-            dishes: new Set(),
-            overlayIndices: new Set(),
-          });
-        }
+          ),
+          diets: new Set(
+            Array.isArray(appliedBrand?.diets) && appliedBrand.diets.length
+              ? appliedBrand.diets
+              : Array.isArray(ingredient?.diets)
+                ? ingredient.diets
+                : [],
+          ),
+          ingredientNames: new Set(),
+          dishIngredients: new Map(),
+          dishes: new Set(),
+          overlayIndices: new Set(),
+        });
+      }
 
-        const item = items.get(key);
+      const item = items.get(key);
 
-        // Build reverse lookups used by the UI (ingredient names, dish list, and mapping).
-        item.ingredientNames.add(ingredient.name);
-        if (dishName) item.dishes.add(dishName);
-        if (dishName && ingredient.name) {
-          if (!item.dishIngredients.has(dishName)) {
-            item.dishIngredients.set(dishName, new Set());
-          }
-          item.dishIngredients.get(dishName).add(ingredient.name);
+      // Build reverse lookups used by the UI (ingredient names, dish list, and mapping).
+      item.ingredientNames.add(ingredientName);
+      if (dishName) item.dishes.add(dishName);
+      if (dishName) {
+        if (!item.dishIngredients.has(dishName)) {
+          item.dishIngredients.set(dishName, new Set());
         }
-        item.overlayIndices.add(overlayIndex);
+        item.dishIngredients.get(dishName).add(ingredientName);
+      }
+      item.overlayIndices.add(overlayIndex);
 
-        // Prefer first image, but upgrade if initial value was empty.
-        if (!item.brandImage && (brand.brandImage || brand.image)) {
-          item.brandImage = brand.brandImage || brand.image;
-        }
+      // Prefer first image, but upgrade if initial value was empty.
+      if (!item.brandImage) {
+        item.brandImage = readIngredientBrandImage(ingredient, appliedBrand);
+      }
 
-        // Merge allergen and diet labels across all appearances of this brand.
-        if (Array.isArray(brand.allergens)) {
-          brand.allergens.forEach((entry) => item.allergens.add(entry));
-        }
-        if (Array.isArray(brand.diets)) {
-          brand.diets.forEach((entry) => item.diets.add(entry));
-        }
+      // Merge allergen and diet labels across all appearances of this brand.
+      const allergenValues =
+        Array.isArray(appliedBrand?.allergens) && appliedBrand.allergens.length
+          ? appliedBrand.allergens
+          : Array.isArray(ingredient?.allergens)
+            ? ingredient.allergens
+            : [];
+      allergenValues.forEach((entry) => item.allergens.add(entry));
 
-        // Merge ingredient text list while preventing duplicates.
-        if (Array.isArray(brand.ingredientsList)) {
-          brand.ingredientsList.forEach((entry) => {
-            if (entry && !item.ingredientsList.includes(entry)) {
-              item.ingredientsList.push(entry);
-            }
-          });
-        } else if (brand.ingredientList && !item.ingredientsList.includes(brand.ingredientList)) {
-          item.ingredientsList.push(brand.ingredientList);
+      const dietValues =
+        Array.isArray(appliedBrand?.diets) && appliedBrand.diets.length
+          ? appliedBrand.diets
+          : Array.isArray(ingredient?.diets)
+            ? ingredient.diets
+            : [];
+      dietValues.forEach((entry) => item.diets.add(entry));
+
+      // Merge ingredient text list while preventing duplicates.
+      collectIngredientTextLines(ingredient, appliedBrand).forEach((entry) => {
+        if (!item.ingredientsList.includes(entry)) {
+          item.ingredientsList.push(entry);
         }
       });
     });
@@ -193,27 +291,28 @@ export function replaceBrandInOverlays(
 
     let changed = false;
     ingredients.forEach((ingredient) => {
-      if (!Array.isArray(ingredient.brands)) return;
+      const appliedBrand = resolveIngredientAppliedBrand(ingredient);
+      const appliedBrandBarcode = normalizeBrandKey(appliedBrand?.barcode || ingredient?.barcode);
+      const appliedBrandName = normalizeBrandKey(readBrandName(appliedBrand));
+      const matches = oldBarcode
+        ? appliedBrandBarcode === oldBarcode
+        : Boolean(appliedBrandName && appliedBrandName === oldName);
 
-      let ingredientChanged = false;
-      ingredient.brands = ingredient.brands.map((brand) => {
-        const brandBarcode = normalizeBrandKey(brand?.barcode);
-        const brandName = normalizeBrandKey(brand?.name);
-        const matches = oldBarcode
-          ? brandBarcode === oldBarcode
-          : Boolean(brandName && brandName === oldName);
+      if (!matches) return;
 
-        if (matches) {
-          changed = true;
-          ingredientChanged = true;
-          return { ...newBrand };
-        }
-        return brand;
-      });
-
-      if (ingredientChanged) {
-        applyBrandDetections(ingredient, newBrand, normalizeAllergen, normalizeDietLabel);
+      changed = true;
+      ingredient.brands = [{ ...newBrand }];
+      const replacementName = readBrandName(newBrand);
+      if (replacementName) {
+        ingredient.appliedBrandItem = replacementName;
+        ingredient.appliedBrand = replacementName;
+        ingredient.brandName = replacementName;
       }
+      const replacementImage = readIngredientBrandImage(ingredient, newBrand);
+      if (replacementImage) {
+        ingredient.brandImage = replacementImage;
+      }
+      applyBrandDetections(ingredient, newBrand, normalizeAllergen, normalizeDietLabel);
     });
 
     if (!changed) return;
