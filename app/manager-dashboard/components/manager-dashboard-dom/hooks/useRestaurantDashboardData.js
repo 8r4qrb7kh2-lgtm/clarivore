@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { supabaseClient as supabase } from "../../../../lib/supabase";
 import { normalizeDishKey } from "../utils/menuUtils";
 
@@ -11,6 +11,12 @@ export function useRestaurantDashboardData({
   clearChatState,
   onRestaurantDataLoaded,
 }) {
+  const onRestaurantDataLoadedRef = useRef(onRestaurantDataLoaded);
+
+  useEffect(() => {
+    onRestaurantDataLoadedRef.current = onRestaurantDataLoaded;
+  }, [onRestaurantDataLoaded]);
+
   const [isLoadingDashboard, setIsLoadingDashboard] = useState(false);
   const [dashboardError, setDashboardError] = useState("");
 
@@ -122,8 +128,8 @@ export function useRestaurantDashboardData({
         setRawLoves(loves);
         setDishOrders(nextDishOrders);
 
-        if (typeof onRestaurantDataLoaded === "function") {
-          onRestaurantDataLoaded(restaurant);
+        if (typeof onRestaurantDataLoadedRef.current === "function") {
+          onRestaurantDataLoadedRef.current(restaurant);
         }
 
         await loadChatState(restaurantId);
@@ -142,7 +148,7 @@ export function useRestaurantDashboardData({
         setIsLoadingDashboard(false);
       }
     },
-    [clearChatState, loadChatState, onRestaurantDataLoaded],
+    [clearChatState, loadChatState],
   );
 
   useEffect(() => {
