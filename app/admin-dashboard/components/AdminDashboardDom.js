@@ -1408,7 +1408,7 @@ export default function AdminDashboardDom({
                           type="text"
                           id="restaurant-name"
                           required
-                          placeholder="e.g., Falafel Café"
+                          placeholder="e.g., Green Leaf Bistro"
                           value={restaurantName}
                           onChange={(event) => setRestaurantName(event.target.value)}
                         />

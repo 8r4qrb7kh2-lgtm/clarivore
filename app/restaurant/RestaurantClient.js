@@ -22,7 +22,6 @@ import {
 } from "../lib/restaurantWriteGatewayClient";
 import { queryKeys } from "../lib/queryKeys";
 import { supabaseClient as supabase } from "../lib/supabase";
-import { buildTrainingRestaurantPayload, HOW_IT_WORKS_SLUG } from "./boot/trainingRestaurant";
 import RestaurantEditor from "./features/editor/RestaurantEditor";
 import RestaurantViewer from "./features/viewer/RestaurantViewer";
 import {
@@ -155,29 +154,6 @@ async function loadRestaurantBoot({ slug, isQrVisit, inviteToken }) {
   const config = await loadAllergenDietConfig(supabase);
   const sessionSavedPreferences = readSessionSavedPreferences(config);
 
-  if (slug === HOW_IT_WORKS_SLUG) {
-    const managerRestaurants = [];
-    const payload = await buildTrainingRestaurantPayload({
-      supabaseClient: supabase,
-      isQrVisit,
-      managerRestaurants,
-    });
-
-    return {
-      config,
-      restaurant: payload.restaurant,
-      user: payload.user,
-      allergies: payload.allergies || [],
-      diets: payload.diets || [],
-      canEdit: false,
-      managerRestaurants,
-      lovedDishNames: [],
-      redirect: "",
-      inviteToken,
-      isHowItWorks: true,
-    };
-  }
-
   const { data: userData, error: userError } = await supabase.auth.getUser();
   let user = userData?.user || null;
   if (userError) {
@@ -189,7 +165,6 @@ async function loadRestaurantBoot({ slug, isQrVisit, inviteToken }) {
   }
 
   // Primary restaurant source: this row is loaded directly from the `restaurants` database table.
-  // (The only intentional non-DB path is the HOW_IT_WORKS training slug handled above.)
   const { data: restaurant, error: restaurantError } = await supabase
     .from("restaurants")
     .select("*")
@@ -240,8 +215,7 @@ async function loadRestaurantBoot({ slug, isQrVisit, inviteToken }) {
       diets = dbDiets;
     }
 
-    canEdit =
-      isOwner || Boolean(managerRecord) || restaurant.name === "Falafel Café";
+    canEdit = isOwner || Boolean(managerRecord);
 
     if (isManager || isOwner) {
       managerRestaurants = await fetchManagerRestaurants(supabase, user);
@@ -259,7 +233,6 @@ async function loadRestaurantBoot({ slug, isQrVisit, inviteToken }) {
         lovedDishNames: [],
         redirect: "/restaurants",
         inviteToken,
-        isHowItWorks: false,
       };
     }
 
@@ -292,7 +265,6 @@ async function loadRestaurantBoot({ slug, isQrVisit, inviteToken }) {
     lovedDishNames,
     redirect: "",
     inviteToken,
-    isHowItWorks: false,
   };
 }
 

@@ -93,7 +93,6 @@ export function initGuestFilterControls(options = {}) {
     if (!chipsHost || !dietChipsHost) return;
 
     const allowInteractiveFilters =
-      state.isHowItWorks ||
       (!state.ack && isGuest) ||
       (isGuest && state.guestFilterEditing);
 
@@ -113,7 +112,7 @@ export function initGuestFilterControls(options = {}) {
       btn.textContent = state.guestFilterEditing ? "Save" : "Edit";
       btn.classList.toggle("save", state.guestFilterEditing);
       btn.style.display =
-        isGuest && state.ack && !state.isHowItWorks ? "inline-flex" : "none";
+        isGuest && state.ack ? "inline-flex" : "none";
     });
   };
 

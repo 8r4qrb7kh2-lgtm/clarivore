@@ -3843,9 +3843,7 @@ Each block covers up to 10 lines of code and includes a short explanation of wha
 - Lines 271-280: Continues openReportIssueModal. Sets inline styles: display=none. Branches on conditions. Returns values from this block. Purpose: update UI state and presentation.
 - Lines 281-282: Continues openReportIssueModal. Purpose: implement module logic.
 
-## public/js/restaurant/how-it-works-tour.js
 
-- Lines 1-10: Declares HOW_IT_WORKS_TOUR_STEPS. Purpose: implement module logic.
 - Lines 11-20: Iterates collections. Purpose: implement module logic.
 - Lines 21-30: Runs general logic. Purpose: implement module logic.
 - Lines 31-40: Defines function createHowItWorksTour. Exports module members. Purpose: expose helpers to other modules.
@@ -3872,7 +3870,6 @@ Each block covers up to 10 lines of code and includes a short explanation of wha
 - Lines 241-250: Defines function runHowItWorksTourAction. Branches on conditions. Returns values from this block. Purpose: implement module logic.
 - Lines 251-260: Continues runHowItWorksTourAction. Branches on conditions. Purpose: implement module logic.
 - Lines 261-270: Defines function renderHowItWorksTourStep. Declares ctrl, step. Branches on conditions. Returns values from this block. Purpose: implement module logic.
-- Lines 271-280: Continues renderHowItWorksTourStep. Sets element properties: textContent=step.title, textContent=step.body, textContent=`Step ${ctrl.index + 1} of ${HOW_IT_WORKS_TOUR_STEPS.leng..., textContent=ctrl.index === HOW_IT_WORKS_TOUR_STEPS.length - 1 ? "Fini..., disabled=ctrl.index === 0. Purpose: update UI state and presentation.
 - Lines 281-290: Defines function hideHowItWorksTour. Declares ctrl. Updates classes (add: hidden). Branches on conditions. Purpose: update UI state and presentation.
 - Lines 291-300: Continues hideHowItWorksTour. Updates classes (add: show; remove: show). Branches on conditions. Purpose: update UI state and presentation.
 - Lines 301-310: Defines function maybeInitHowItWorksTour. Declares ctrl. Branches on conditions. Returns values from this block. Purpose: implement module logic.
@@ -4882,15 +4879,12 @@ Each block covers up to 10 lines of code and includes a short explanation of wha
 - Lines 261-270: Continues hideEditorLockModal. Declares managerInviteSignupBtn. Selects elements: managerInviteSignupBtn. Updates classes (add: managerInviteBannerVisible). Sets inline styles: display=flex. Branches on conditions. Purpose: update UI state and presentation.
 - Lines 271-280: Continues hideEditorLockModal. Sets element properties: href=`account.html?invite=${encodeURIComponent(inviteToken)}`. Branches on conditions. Purpose: update UI state and presentation.
 - Lines 281-290: Continues hideEditorLockModal. Declares recentlyViewed, filtered. Uses storage keys: getItem:recentlyViewedRestaurants, setItem:recentlyViewedRestaurants. Serializes or parses JSON. Iterates collections. Branches on conditions. Purpose: implement module logic.
-- Lines 291-300: Continues hideEditorLockModal. Declares HOW_IT_WORKS_SLUG, HOW_IT_WORKS_MENU_IMAGE, HOW_IT_WORKS_OVERLAYS. Serializes or parses JSON. Purpose: implement module logic.
 - Lines 301-310: Continues hideEditorLockModal. Purpose: implement module logic.
 - Lines 311-320: Continues hideEditorLockModal. Iterates collections. Purpose: implement module logic.
 - Lines 321-330: Continues hideEditorLockModal. Purpose: implement module logic.
 - Lines 331-340: Continues hideEditorLockModal. Purpose: implement module logic.
 - Lines 341-350: Continues hideEditorLockModal. Purpose: implement module logic.
 - Lines 351-360: Continues hideEditorLockModal. Purpose: implement module logic.
-- Lines 361-370: Continues hideEditorLockModal. Declares HOW_IT_WORKS_RESTAURANT. Purpose: implement module logic.
-- Lines 371-380: Continues hideEditorLockModal. Declares isHowItWorksSlug, editParam, hasExplicitModeParam, shouldStartInEditor. Iterates collections. Branches on conditions. Purpose: implement module logic.
 - Lines 381-390: Continues hideEditorLockModal. Declares storedMode. Uses storage keys: getItem:clarivoreManagerMode. Branches on conditions. Purpose: implement module logic.
 - Lines 391-400: Continues hideEditorLockModal. Declares openLogParam. Iterates collections. Branches on conditions. Purpose: implement module logic.
 - Lines 401-410: Continues hideEditorLockModal. Declares openConfirmParam. Iterates collections. Branches on conditions. Purpose: implement module logic.
@@ -4914,12 +4908,6 @@ Each block covers up to 10 lines of code and includes a short explanation of wha
 - Lines 581-590: Continues loadRestaurant. Declares bootPayload. Branches on conditions. Purpose: implement module logic.
 - Lines 591-600: Continues loadRestaurant. Purpose: implement module logic.
 - Lines 601-610: Continues loadRestaurant. Purpose: implement module logic.
-- Lines 611-620: Defines function loadTrainingRestaurant. Declares allergies, diets, userPayload. Purpose: implement module logic.
-- Lines 621-630: Continues loadTrainingRestaurant. Branches on conditions. Purpose: implement module logic.
-- Lines 631-640: Continues loadTrainingRestaurant. Declares data. Supabase tables: user_allergies (select). Purpose: load or persist data for the page.
-- Lines 641-650: Continues loadTrainingRestaurant. Declares restaurantClone, bootPayload. Serializes or parses JSON. Purpose: implement module logic.
-- Lines 651-660: Continues loadTrainingRestaurant. Purpose: implement module logic.
-- Lines 661-661: Continues loadTrainingRestaurant. Purpose: implement module logic.
 
 ## public/js/restaurant-page.js
 
@@ -5335,7 +5323,6 @@ Each block covers up to 10 lines of code and includes a short explanation of wha
 - Lines 4091-4100: Continues renderRestaurant. Purpose: implement module logic.
 - Lines 4101-4110: Defines function renderFilterChips. Declares chipsHost, dietChipsHost, allowInteractiveFilters. Selects elements: savedChips, dietChips. Branches on conditions. Purpose: connect logic to DOM elements.
 - Lines 4111-4120: Defines function syncGuestFilterToggleButtons. Declares buttons. Selects elements: [data-guest-filter-toggle]. Branches on conditions. Returns values from this block. Purpose: connect logic to DOM elements.
-- Lines 4121-4130: Defines function bindGuestFilterToggleButtons. Declares buttons. Selects elements: [data-guest-filter-toggle]. Updates classes (toggle: save). Sets inline styles: display=isGuest && state.ack && !state.isHowItWorks ? "inline-fle.... Sets element properties: textContent=state.guestFilterEditing ? "Save" : "Edit". Iterates collections. Purpose: update UI state and presentation.
 - Lines 4131-4140: Continues bindGuestFilterToggleButtons. Binds events: click. Iterates collections. Branches on conditions. Returns values from this block. Purpose: respond to user actions.
 - Lines 4141-4150: Continues bindGuestFilterToggleButtons. Declares menu. Selects elements: menu. Updates classes (remove: show). Sets inline styles: display=none. Purpose: update UI state and presentation.
 - Lines 4151-4160: Continues bindGuestFilterToggleButtons. Declares menuShouldShow. Selects elements: actionButtonsRow. Updates classes (add: show). Sets inline styles: display=flex. Sets element properties: innerHTML=. Branches on conditions. Purpose: update UI state and presentation.

@@ -532,11 +532,16 @@ async function sendNotification(params: {
       .eq('id', params.restaurantId)
       .single()
 
-    // Use slug from database, but fallback to URL-friendly version of restaurant name
+    // Use slug from database first, then derive a stable fallback from the restaurant name.
     let restaurantSlug = restaurant?.slug
-    if (!restaurantSlug || restaurantSlug === 'falafel-cafe-cleveland') {
-      // Override for Falafel Cafe Cleveland -> falafel-cafe
-      restaurantSlug = 'falafel-cafe'
+    if (!restaurantSlug) {
+      restaurantSlug = String(params.restaurantName || '')
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '')
+    }
+    if (!restaurantSlug) {
+      restaurantSlug = String(params.restaurantId || '')
     }
 
     // Create Clarivore editor link with dish name and AI assistant if available
