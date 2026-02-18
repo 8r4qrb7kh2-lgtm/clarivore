@@ -29,6 +29,7 @@ export function useMenuPageAnalysis({
     baselineMenuImages,
     baselineOverlays,
   } = {}) => {
+    // Analysis requires the host callback implementation; without it we fail early.
     if (!callbacks?.onAnalyzeMenuImage) {
       return {
         success: false,
@@ -40,6 +41,7 @@ export function useMenuPageAnalysis({
       };
     }
 
+    // Resolve/normalize selected page indexes before processing.
     const pageCount = Math.max(menuImagesRef.current.length, 1);
     const candidatePages =
       Array.isArray(pageIndices) && pageIndices.length
@@ -65,6 +67,7 @@ export function useMenuPageAnalysis({
       };
     }
 
+    // Flags that control per-page cleanup and strict detection requirements.
     const removeUnmatchedPages = new Set(
       (Array.isArray(removeUnmatchedPageIndices) ? removeUnmatchedPageIndices : [])
         .map((index) => Number(index))
@@ -78,6 +81,7 @@ export function useMenuPageAnalysis({
         .map((index) => clamp(Math.floor(index), 0, pageCount - 1)),
     );
 
+    // Remap mode is enabled only when we have a baseline image list + source index mapping.
     const sourceIndexMap = Array.isArray(pageSourceIndexMap) ? pageSourceIndexMap : [];
     const baselineImageList = Array.isArray(baselineMenuImages) ? baselineMenuImages : [];
     const baselineOverlayList = Array.isArray(baselineOverlays) ? baselineOverlays : [];
@@ -87,6 +91,7 @@ export function useMenuPageAnalysis({
     const pageResults = [];
     const errors = [];
 
+    // Helper keeps page result shape consistent for success and failure paths.
     const addPageResult = ({
       pageIndex,
       success,
@@ -110,6 +115,7 @@ export function useMenuPageAnalysis({
     };
 
     for (const pageIndex of targetPages) {
+      // Every page analysis starts by ensuring a readable source image exists.
       const imageSource = asText(menuImagesRef.current[pageIndex]);
       if (!imageSource) {
         const message = "No menu image available.";
@@ -119,6 +125,7 @@ export function useMenuPageAnalysis({
       }
 
       if (useRemapMode) {
+        // Remap mode compares new page vs old baseline page to preserve dish identity.
         // eslint-disable-next-line no-await-in-loop
         const newNormalized = await normalizeImageToLetterboxedSquare(imageSource, 1000);
         if (!newNormalized?.dataUrl || !newNormalized?.metrics) {
@@ -128,6 +135,7 @@ export function useMenuPageAnalysis({
           continue;
         }
 
+        // Source index tells us which baseline page this new page originated from.
         const sourceIndexRaw = Number(sourceIndexMap[pageIndex]);
         const sourceIndex = Number.isFinite(sourceIndexRaw) &&
           sourceIndexRaw >= 0 &&
@@ -135,6 +143,7 @@ export function useMenuPageAnalysis({
           ? Math.floor(sourceIndexRaw)
           : null;
 
+        // Old-image normalization can fail (CORS, decode issues); remap can still continue.
         let oldNormalized = null;
         if (sourceIndex !== null) {
           const oldImageSource = asText(baselineImageList[sourceIndex]);
@@ -153,6 +162,7 @@ export function useMenuPageAnalysis({
           }
         }
 
+        // Convert existing overlays into legacy hints expected by remap callback.
         const sourcePageOverlays = getSourcePageOverlays(sourceIndex, baselineOverlayList);
         const transformedOverlays = oldNormalized?.metrics
           ? sourcePageOverlays
@@ -161,6 +171,7 @@ export function useMenuPageAnalysis({
           : [];
 
         try {
+          // Ask backend to remap boxes from old image onto the new image.
           // eslint-disable-next-line no-await-in-loop
           const result = await callbacks.onAnalyzeMenuImage({
             mode: "remap",
@@ -185,6 +196,7 @@ export function useMenuPageAnalysis({
             continue;
           }
 
+          // Normalize remap result arrays and dedupe by dish token.
           const rawUpdated = Array.isArray(result?.updatedOverlays)
             ? result.updatedOverlays
             : [];
@@ -236,6 +248,7 @@ export function useMenuPageAnalysis({
           const validDishCount = updatedDishes.length + newDishes.length;
           const remapQuality = scoreRemapDishQuality([...updatedDishes, ...newDishes]);
 
+          // If remap quality is poor, retry with pure detect mode on the new image.
           if (remapQuality.isLowQuality) {
             // Low-quality remaps are replaced by a clean detect pass on the new image.
             // eslint-disable-next-line no-await-in-loop
@@ -264,6 +277,7 @@ export function useMenuPageAnalysis({
               continue;
             }
 
+            // Detect fallback still returns remap-normalized percent boxes.
             const fallbackRawDishCount = Number.isFinite(Number(fallbackResult?.rawDishCount))
               ? Number(fallbackResult.rawDishCount)
               : Array.isArray(fallbackResult?.dishes)
@@ -287,6 +301,7 @@ export function useMenuPageAnalysis({
               });
             const fallbackValidDishCount = fallbackDishes.length;
 
+            // Some workflows require at least one detection for specific pages.
             if (requiredDetectionPages.has(pageIndex) && fallbackValidDishCount === 0) {
               const pageError =
                 `Page ${pageIndex + 1}: Low-quality remap fallback detected no valid dish overlays. Try a clearer image or retry analysis.`;
@@ -323,6 +338,7 @@ export function useMenuPageAnalysis({
             continue;
           }
 
+          // Strict mode can fail page if no valid dish boxes are detected.
           if (requiredDetectionPages.has(pageIndex) && validDishCount === 0) {
             const pageError =
               `Page ${pageIndex + 1}: No valid dish overlays detected. Try a clearer image or retry analysis.`;
@@ -369,6 +385,7 @@ export function useMenuPageAnalysis({
         }
       }
 
+      // Detect mode path: run analysis from current image only (no baseline remap).
       // eslint-disable-next-line no-await-in-loop
       const imageData = await toDataUrlFromImage(imageSource);
       if (!imageData) {
@@ -381,6 +398,7 @@ export function useMenuPageAnalysis({
       const imageDimensions = await readImageDimensions(imageData);
 
       try {
+        // Request dish detection from callback and normalize output.
         // eslint-disable-next-line no-await-in-loop
         const result = await callbacks.onAnalyzeMenuImage({
           imageData,
@@ -408,6 +426,7 @@ export function useMenuPageAnalysis({
         const dishes = normalizeDetectedDishes(result?.dishes, imageDimensions);
         const validDishCount = dishes.length;
 
+        // Strict mode can fail page if no valid dish boxes are detected.
         if (requiredDetectionPages.has(pageIndex) && validDishCount === 0) {
           const pageError =
             `Page ${pageIndex + 1}: No valid dish overlays detected. Try a clearer image or retry analysis.`;
@@ -445,6 +464,7 @@ export function useMenuPageAnalysis({
       }
     }
 
+    // If any page failed, caller gets full page-level diagnostics and no merge is applied.
     if (errors.length) {
       return {
         success: false,
@@ -457,6 +477,7 @@ export function useMenuPageAnalysis({
     }
 
     // Merge is isolated in a pure helper so this callback stays focused on analysis flow.
+    // The helper returns updated/added/removed counters for change-log messaging.
     const mergeSummary = { updatedCount: 0, addedCount: 0, removedCount: 0 };
     applyOverlayList((current) => {
       const result = mergePageDetectionsIntoOverlays({
@@ -473,6 +494,7 @@ export function useMenuPageAnalysis({
 
     const { updatedCount, addedCount, removedCount } = mergeSummary;
 
+    // Persist one summarized pending-change line for this multi-page analysis run.
     if (updatedCount || addedCount) {
       appendPendingChange(
         `Menu analysis: Updated ${updatedCount} overlay${updatedCount === 1 ? "" : "s"}, added ${addedCount} overlay${addedCount === 1 ? "" : "s"}, removed ${removedCount} overlay${removedCount === 1 ? "" : "s"}.`,

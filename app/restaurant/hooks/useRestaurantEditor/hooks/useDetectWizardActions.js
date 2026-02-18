@@ -23,6 +23,7 @@ export function useDetectWizardActions({
   appendPendingChange,
   pushHistory,
 }) {
+  // Run detector for current page and open wizard with ordered dish names to map.
   const runDetectDishes = useCallback(async () => {
     if (!callbacks?.onDetectMenuDishes) return { success: false };
 
@@ -80,6 +81,7 @@ export function useDetectWizardActions({
     }
   }, [activePageIndex, callbacks, draftMenuImages, setDetectWizardOpen, setDetectWizardState]);
 
+  // Convert user-drawn rectangle into new overlay for current wizard dish.
   const mapDetectedDish = useCallback((rect) => {
     const dishes = Array.isArray(detectWizardState.dishes) ? detectWizardState.dishes : [];
     if (!dishes.length) return null;
@@ -118,6 +120,7 @@ export function useDetectWizardActions({
 
     appendPendingChange(`${nextOverlay.id}: Added overlay manually`);
 
+    // After mapping one dish, advance to the next unmapped item when possible.
     setDetectWizardState((current) => {
       const nextDishes = current.dishes.map((dish, index) =>
         index === current.currentIndex ? { ...dish, mapped: true } : dish,
@@ -154,6 +157,7 @@ export function useDetectWizardActions({
     setSelectedOverlayKey,
   ]);
 
+  // Manually set active wizard dish index.
   const setDetectWizardIndex = useCallback((nextIndex) => {
     setDetectWizardState((current) => ({
       ...current,
@@ -165,6 +169,7 @@ export function useDetectWizardActions({
     }));
   }, [setDetectWizardState]);
 
+  // Close and fully reset wizard state.
   const closeDetectWizard = useCallback(() => {
     setDetectWizardOpen(false);
     setDetectWizardState({

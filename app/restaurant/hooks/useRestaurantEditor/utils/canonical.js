@@ -4,6 +4,8 @@ import { asText, dedupeTokenList, normalizeToken } from "./text";
 // The goal is to map many text variants to one predictable value.
 
 export function buildCanonicalTokenLookup(values) {
+  // Build a token -> original label map for fast canonical lookups.
+  // First value wins so the UI label stays stable.
   const map = new Map();
 
   (Array.isArray(values) ? values : []).forEach((value) => {
@@ -20,6 +22,7 @@ export function buildCanonicalTokenLookup(values) {
 }
 
 export function findDietAlias(token, lookup) {
+  // Support common shorthand/typo aliases that are not exact token matches.
   if (!token || !(lookup instanceof Map) || !lookup.size) return "";
   const entries = Array.from(lookup.entries());
 
@@ -44,6 +47,8 @@ export function findDietAlias(token, lookup) {
 }
 
 export function resolveCanonicalValue(value, options = {}) {
+  // Resolve a user-facing value into a known canonical label.
+  // Resolution order: strict normalizer -> direct token lookup -> alias resolver.
   const text = asText(value);
   if (!text) return "";
 
@@ -76,6 +81,7 @@ export function resolveCanonicalValue(value, options = {}) {
 }
 
 export function normalizeCanonicalList(values, resolveValue) {
+  // Normalize each entry, drop unknown values, then deduplicate.
   const list = (Array.isArray(values) ? values : [])
     .map((value) => resolveValue(value))
     .filter(Boolean);

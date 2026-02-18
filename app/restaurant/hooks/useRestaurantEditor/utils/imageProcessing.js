@@ -5,6 +5,8 @@ import { clamp } from "./text";
 // These are async because they rely on network/image decode APIs.
 
 export async function toDataUrlFromImage(source) {
+  // Convert either remote URLs or existing data URLs into a data URL.
+  // Downstream image pipelines only operate on data URLs.
   const text = asText(source);
   if (!text) return "";
   if (text.startsWith("data:")) return text;
@@ -26,6 +28,7 @@ export async function toDataUrlFromImage(source) {
 }
 
 export async function readImageDimensions(dataUrl) {
+  // Decode image dimensions in the browser without mutating the source.
   const source = asText(dataUrl);
   if (!source) return null;
 
@@ -46,6 +49,8 @@ export async function readImageDimensions(dataUrl) {
 }
 
 export async function normalizeImageToLetterboxedSquare(source, targetSize = 1000) {
+  // Normalize arbitrary image dimensions to a square canvas with letterboxing.
+  // We return placement metrics so remap geometry can be projected correctly.
   const dataUrl = await toDataUrlFromImage(source);
   if (!dataUrl) return null;
 
@@ -99,10 +104,13 @@ export async function normalizeImageToLetterboxedSquare(source, targetSize = 100
 }
 
 export function cloneSnapshotList(value) {
+  // Deep clone via JSON for snapshot payloads that contain plain data.
   return JSON.parse(JSON.stringify(Array.isArray(value) ? value : []));
 }
 
 export function buildPageMoveIndexMap(pageCount, fromIndex, toIndex) {
+  // Build a page index remap table for reorder operations.
+  // mapping[oldIndex] -> newIndex after the move.
   const safeCount = Math.max(Number(pageCount) || 0, 1);
   const safeFrom = clamp(Number(fromIndex) || 0, 0, safeCount - 1);
   const safeTo = clamp(Number(toIndex) || 0, 0, safeCount - 1);
@@ -129,6 +137,7 @@ export function buildPageMoveIndexMap(pageCount, fromIndex, toIndex) {
 }
 
 export function matchOverlayByDishName(overlays, dishName) {
+  // Route query helper: find an overlay by flexible dish-name matching.
   const target = asText(dishName).toLowerCase();
   if (!target) return null;
 

@@ -22,6 +22,7 @@ export function useOverlayActions({
   appendPendingChange,
   pushHistory,
 }) {
+  // Generic overlay patch helper used by all overlay editing interactions.
   const updateOverlay = useCallback((overlayKey, patch, options = {}) => {
     if (!overlayKey) return;
 
@@ -62,6 +63,7 @@ export function useOverlayActions({
     }
   }, [appendPendingChange, applyOverlayList, menuImagesRef, pushHistory]);
 
+  // Create a new default overlay on the active page.
   const addOverlay = useCallback(() => {
     const nextKey = `ov-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
@@ -111,6 +113,7 @@ export function useOverlayActions({
     setSelectedOverlayKey,
   ]);
 
+  // Remove an overlay and choose a safe fallback selection.
   const removeOverlay = useCallback((overlayKey) => {
     const overlay = overlaysRef.current.find((item) => item._editorKey === overlayKey);
     const overlayName = asText(overlay?.id || overlay?.name || "Dish");
@@ -126,16 +129,19 @@ export function useOverlayActions({
     queueMicrotask(() => pushHistory());
   }, [appendPendingChange, applyOverlayList, overlaysRef, pushHistory, setSelectedOverlayKey]);
 
+  // Select overlay by editor key.
   const selectOverlay = useCallback((overlayKey) => {
     setSelectedOverlayKey(asText(overlayKey));
   }, [setSelectedOverlayKey]);
 
+  // Open dish editor for a specific overlay.
   const openDishEditor = useCallback((overlayKey) => {
     if (!overlayKey) return;
     setSelectedOverlayKey(overlayKey);
     setDishEditorOpen(true);
   }, [setDishEditorOpen, setSelectedOverlayKey]);
 
+  // Closing the dish editor also resets AI-assist draft state.
   const closeDishEditor = useCallback(() => {
     setDishEditorOpen(false);
     setDishAiAssistOpen(false);
@@ -148,11 +154,13 @@ export function useOverlayActions({
     });
   }, [setAiAssistDraft, setDishAiAssistOpen, setDishEditorOpen]);
 
+  // Convenience wrapper that patches whichever overlay is currently selected.
   const updateSelectedOverlay = useCallback((patch, options = {}) => {
     if (!selectedOverlay?._editorKey) return;
     updateOverlay(selectedOverlay._editorKey, patch, options);
   }, [selectedOverlay?._editorKey, updateOverlay]);
 
+  // Toggle allergen membership and clean dependent fields when removed.
   const toggleSelectedAllergen = useCallback((allergenKey) => {
     const key = asText(allergenKey);
     if (!key || !selectedOverlay?._editorKey) return;
@@ -189,6 +197,7 @@ export function useOverlayActions({
     });
   }, [selectedOverlay?._editorKey, updateOverlay]);
 
+  // Update free-form allergen detail text.
   const setSelectedAllergenDetail = useCallback((allergenKey, value) => {
     const key = asText(allergenKey);
     if (!key || !selectedOverlay?._editorKey) return;
@@ -201,6 +210,7 @@ export function useOverlayActions({
     }));
   }, [selectedOverlay?._editorKey, updateOverlay]);
 
+  // Mark/unmark whether a named allergen can be removed from the dish.
   const setSelectedAllergenRemovable = useCallback((allergenKey, checked) => {
     const key = asText(allergenKey);
     if (!key || !selectedOverlay?._editorKey) return;
@@ -220,6 +230,7 @@ export function useOverlayActions({
     });
   }, [selectedOverlay?._editorKey, updateOverlay]);
 
+  // Mark/unmark allergen as cross-contamination risk.
   const setSelectedAllergenCrossContamination = useCallback((allergenKey, checked) => {
     const key = asText(allergenKey);
     if (!key || !selectedOverlay?._editorKey) return;
@@ -237,6 +248,7 @@ export function useOverlayActions({
     });
   }, [selectedOverlay?._editorKey, updateOverlay]);
 
+  // Toggle diet tag membership on selected overlay.
   const toggleSelectedDiet = useCallback((dietLabel) => {
     const diet = asText(dietLabel);
     if (!diet || !selectedOverlay?._editorKey) return;

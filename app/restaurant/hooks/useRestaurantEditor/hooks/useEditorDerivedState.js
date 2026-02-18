@@ -72,6 +72,7 @@ export function useEditorDerivedState({
   setInitialDishResolved,
   setHistoryIndex,
 }) {
+  // Central overlay list setter that keeps `overlaysRef` synchronized.
   const applyOverlayList = useCallback((updater) => {
     setDraftOverlays((current) => {
       const next = typeof updater === "function" ? updater(current) : updater;
@@ -80,6 +81,7 @@ export function useEditorDerivedState({
     });
   }, [overlaysRef, setDraftOverlays]);
 
+  // Reinitialize editor state when upstream restaurant payload identity changes.
   useEffect(() => {
     const nextOverlaysRaw = Array.isArray(overlays)
       ? overlays
@@ -111,12 +113,14 @@ export function useEditorDerivedState({
       nextSettingsBaseline !== settingsBaselineRef.current ||
       nextRestaurantId !== hydratedRestaurantIdRef.current;
 
+    // Skip full reinit when baseline/settings identity did not change.
     if (!shouldReinitialize) {
       setChangeLogOpen(Boolean(params?.openLog));
       setConfirmInfoOpen(Boolean(params?.openConfirm));
       return;
     }
 
+    // Fresh baseline means this is the new source-of-truth snapshot.
     baselineRef.current = nextBaseline;
     settingsBaselineRef.current = nextSettingsBaseline;
     hydratedRestaurantIdRef.current = nextRestaurantId;
@@ -210,11 +214,13 @@ export function useEditorDerivedState({
     historyRef,
   ]);
 
+  // Canonical serialized state is used for dirty checks and pending-save hash checks.
   const editorStateSerialized = useMemo(
     () => serializeEditorState(draftOverlays, draftMenuImages),
     [draftMenuImages, draftOverlays],
   );
 
+  // If user edited after staging pending save, drop stale staged payload.
   useEffect(() => {
     if (!pendingSaveBatchId || !pendingSaveStateHash) return;
     if (editorStateSerialized === pendingSaveStateHash) return;
@@ -230,10 +236,12 @@ export function useEditorDerivedState({
   const settingsDirty =
     serializeSettingsDraft(restaurantSettingsDraft) !== settingsBaselineRef.current;
 
+  // Baseline snapshot parser exposed to callers that need "last saved" state.
   const getBaselineSnapshot = useCallback(() => {
     return parseSerializedEditorState(baselineRef.current);
   }, [baselineRef]);
 
+  // Any edit while status is "saved"/"error" resets badge back to idle.
   useEffect(() => {
     if (!isDirty) return;
     if (saveStatus === "saving") return;
@@ -243,6 +251,7 @@ export function useEditorDerivedState({
     }
   }, [clearSaveStatusTimer, isDirty, saveStatus, setSaveStatus]);
 
+  // Selected overlay follows selected key with safe fallback to first overlay.
   const selectedOverlay = useMemo(() => {
     if (!selectedOverlayKey) return draftOverlays[0] || null;
     return (
@@ -252,6 +261,7 @@ export function useEditorDerivedState({
     );
   }, [draftOverlays, selectedOverlayKey]);
 
+  // Token lookups make canonicalization O(1) and deterministic.
   const allergenTokenLookup = useMemo(
     () => buildCanonicalTokenLookup(config?.ALLERGENS),
     [config?.ALLERGENS],
@@ -261,6 +271,7 @@ export function useEditorDerivedState({
     [config?.DIETS],
   );
 
+  // Normalize one allergen value into configured canonical label.
   const normalizeAllergenValue = useCallback(
     (value) =>
       resolveCanonicalValue(value, {
@@ -270,6 +281,7 @@ export function useEditorDerivedState({
     [allergenTokenLookup, config?.normalizeAllergen],
   );
 
+  // Normalize one diet value into configured canonical label with alias fallback.
   const normalizeDietValue = useCallback(
     (value) =>
       resolveCanonicalValue(value, {
@@ -280,11 +292,13 @@ export function useEditorDerivedState({
     [config?.normalizeDietLabel, dietTokenLookup],
   );
 
+  // Normalize entire allergen list and dedupe.
   const normalizeAllergenList = useCallback(
     (values) => normalizeCanonicalList(values, normalizeAllergenValue),
     [normalizeAllergenValue],
   );
 
+  // Normalize entire diet list and dedupe.
   const normalizeDietList = useCallback(
     (values) => normalizeCanonicalList(values, normalizeDietValue),
     [normalizeDietValue],
@@ -307,6 +321,7 @@ export function useEditorDerivedState({
       )
     : activePageIndex;
 
+  // Pre-group overlays by page to avoid repeated filtering during render.
   const overlaysByPage = useMemo(() => {
     const pages = Array.from({ length: Math.max(draftMenuImages.length, 1) }, (_, index) => ({
       pageIndex: index,

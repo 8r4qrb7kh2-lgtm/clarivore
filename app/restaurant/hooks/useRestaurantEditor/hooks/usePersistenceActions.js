@@ -62,6 +62,8 @@ export function usePersistenceActions({
   setSettingsSaveError,
   setHistoryIndex,
 }) {
+  // Commit a previously staged pending-save batch to the write gateway.
+  // This flow validates ingredient confirmation and synchronizes local baselines on success.
   const save = useCallback(async () => {
     if (!canEdit || !restaurant?.id) {
       setSaveError("You do not have permission to edit this restaurant.");
@@ -81,6 +83,7 @@ export function usePersistenceActions({
     setIsSaving(true);
 
     try {
+      // The editor enforces explicit confirmation on each ingredient row.
       const ingredientConfirmationIssues = buildIngredientConfirmationIssues(
         overlaysRef.current,
       );
@@ -94,6 +97,7 @@ export function usePersistenceActions({
         return { success: false };
       }
 
+      // Normalize current and baseline images to decide whether image payload must be sent.
       const cleanedOverlays = (overlaysRef.current || []).map(stripEditorOverlay);
       const cleanedMenuImages = normalizeMenuImageList(menuImagesRef.current);
       const baselineSnapshot = parseSerializedEditorState(baselineRef.current);
@@ -113,6 +117,7 @@ export function usePersistenceActions({
       }
       const menuImage = optimizedMenuImages[0] || "";
 
+      // Build human-readable grouped change payload for audit/change-log records.
       const author =
         asText(callbacks?.getAuthorName?.()) || asText(callbacks?.authorName) || "Manager";
 
@@ -126,12 +131,14 @@ export function usePersistenceActions({
         },
       });
 
+      // Save requires a staged batch id to avoid accidental direct writes.
       if (!pendingSaveBatchId) {
         setSaveError("No pending save batch found. Review changes before confirming save.");
         setSaveStatus("error");
         return { success: false };
       }
 
+      // State-hash mismatch means user edited after opening save review.
       if (pendingSaveStateHash && pendingSaveStateHash !== stateHash) {
         setSaveError("Changes were edited after review. Please re-open save review.");
         setSaveStatus("error");
@@ -148,6 +155,7 @@ export function usePersistenceActions({
         stateHash,
       });
 
+      // On success, promote current state to new baseline and reset history to one snapshot.
       baselineRef.current = serializeEditorState(cleanedOverlays, optimizedMenuImages);
       setPendingChanges([]);
       clearPendingSaveBatch();
@@ -198,6 +206,7 @@ export function usePersistenceActions({
     saveStatusTimerRef,
   ]);
 
+  // Stage current edits into a pending-save batch for review/approval.
   const preparePendingSave = useCallback(async () => {
     if (!canEdit || !restaurant?.id) {
       setPendingSaveError("You do not have permission to edit this restaurant.");
@@ -218,6 +227,7 @@ export function usePersistenceActions({
     }
 
     try {
+      // Delta payload avoids sending unchanged overlays when only specific rows changed.
       const cleanedOverlays = (overlaysRef.current || []).map(stripEditorOverlay);
       const cleanedMenuImages = normalizeMenuImageList(menuImagesRef.current);
       const baselineSnapshot = parseSerializedEditorState(baselineRef.current);
@@ -263,6 +273,7 @@ export function usePersistenceActions({
         changedFields.push("menuImages");
       }
 
+      // If an identical state is already staged, reuse the existing staged batch.
       if (pendingSaveBatchId && pendingSaveStateHash === stateHash) {
         return {
           success: true,
@@ -275,6 +286,7 @@ export function usePersistenceActions({
       setPendingSaveError("");
       setSaveError("");
 
+      // Ask write gateway to stage the change set and return preview rows.
       const result = await callbacks.onPreparePendingSave({
         overlays: cleanedOverlays,
         baselineOverlays,
@@ -338,6 +350,7 @@ export function usePersistenceActions({
     pendingChangesRef,
   ]);
 
+  // Keep staged payload in sync while user continues editing, using a short debounce.
   useEffect(() => {
     if (!canEdit) return;
     if (!callbacks?.onPreparePendingSave) return;
@@ -374,6 +387,7 @@ export function usePersistenceActions({
     preparePendingSave,
   ]);
 
+  // Revert to baseline snapshot and clear all staged metadata.
   const discardUnsavedChanges = useCallback(() => {
     clearSaveStatusTimer();
 
@@ -404,6 +418,7 @@ export function usePersistenceActions({
     setSaveStatus,
   ]);
 
+  // Confirm-info flow sends manager confirmation payload + uploaded photos.
   const confirmInfo = useCallback(async (photos) => {
     if (!callbacks?.onConfirmInfo || !restaurant?.id) {
       setConfirmError("Confirm callback is not configured.");
@@ -437,6 +452,7 @@ export function usePersistenceActions({
     }
   }, [callbacks, restaurant?.id, setConfirmBusy, setConfirmError]);
 
+  // Persist restaurant settings (website, phone, delivery/menu URLs).
   const saveRestaurantSettings = useCallback(async () => {
     if (!callbacks?.onSaveRestaurantSettings || !restaurant?.id) {
       setSettingsSaveError("Restaurant settings callback is not configured.");

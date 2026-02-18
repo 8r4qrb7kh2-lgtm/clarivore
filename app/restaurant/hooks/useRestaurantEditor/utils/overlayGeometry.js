@@ -5,12 +5,14 @@ import { clamp } from "./text";
 // The editor always works in percent space, so we convert incoming values to that space.
 
 export function normalizeNumber(value, fallback = 0) {
+  // Parse any value to number and fall back when parsing fails.
   const parsed = Number(value);
   if (!Number.isFinite(parsed)) return fallback;
   return parsed;
 }
 
 export function firstFiniteNumber(...values) {
+  // Return the first finite numeric candidate from a fallback chain.
   for (const value of values) {
     const parsed = Number(value);
     if (Number.isFinite(parsed)) return parsed;
@@ -19,10 +21,13 @@ export function firstFiniteNumber(...values) {
 }
 
 export function normalizeRectValue(value, fallback = 0) {
+  // Rectangle percentages must always stay in 0..100.
   return clamp(normalizeNumber(value, fallback), 0, 100);
 }
 
 export function resolveOverlayScale(overlays) {
+  // Heuristically infer coordinate scale from incoming numeric ranges.
+  // This keeps old data formats readable without requiring migration.
   const values = [];
 
   (Array.isArray(overlays) ? overlays : []).forEach((overlay) => {
@@ -77,6 +82,8 @@ export function resolvePageOffset(overlays, pageCount) {
 }
 
 function buildOverlayBoundsByPage(overlays, pageOffset = 0) {
+  // Track the farthest right/bottom coordinates per page.
+  // We use this to detect pixel-like payloads that were stored as "percent".
   const byPage = new Map();
 
   (Array.isArray(overlays) ? overlays : []).forEach((overlay) => {
@@ -121,6 +128,7 @@ function buildOverlayBoundsByPage(overlays, pageOffset = 0) {
 }
 
 export function buildOverlayNormalizationContext(overlays, pageCount) {
+  // Precompute expensive normalization clues once and reuse for each overlay.
   const pageOffset = resolvePageOffset(overlays, pageCount);
   return {
     scale: resolveOverlayScale(overlays),
@@ -130,6 +138,8 @@ export function buildOverlayNormalizationContext(overlays, pageCount) {
 }
 
 export function normalizeOverlay(overlay, index, fallbackKey, context = {}) {
+  // Normalize one raw overlay into the editor's expected shape.
+  // The output always uses percent coordinates and stable collection fields.
   const fallbackName = `Dish ${index + 1}`;
   const rawName = asText(overlay?.id || overlay?.name || fallbackName);
   const name = rawName || fallbackName;
@@ -208,6 +218,8 @@ export function normalizeOverlay(overlay, index, fallbackKey, context = {}) {
 }
 
 export function ensureOverlayVisibility(overlay, pageCount = 1) {
+  // Enforce geometry safety so an overlay is always selectable/renderable.
+  // This is called after normalization and after edit operations.
   const maxPageIndex = Math.max(Number(pageCount) - 1, 0);
   const next = { ...overlay };
 

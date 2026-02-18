@@ -19,11 +19,14 @@ export function useAiDishActions({
   pushHistory,
   setAiAssistDraft,
 }) {
+  // Apply AI analysis payload onto currently selected overlay fields.
+  // This includes ingredient-level normalization, derived dish-level tags, and blocker metadata.
   const applyAiResultToSelectedOverlay = useCallback(async (result) => {
     if (!selectedOverlay?._editorKey || !result) {
       return { success: false };
     }
 
+    // Normalize each ingredient row into editor schema and seed AI-detected fields.
     const baseIngredients = (Array.isArray(result.ingredients) ? result.ingredients : []).map(
       (ingredient, index) => {
         const rowName = asText(ingredient?.name) || `Ingredient ${index + 1}`;
@@ -60,6 +63,7 @@ export function useAiDishActions({
       },
     );
 
+    // Analyze per-ingredient scan requirement; default to "required" on failure for safety.
     const scanRequirementFallbackReason =
       "Automatic scan-requirement analysis failed; assign a brand item.";
     const dishName = asText(selectedOverlay.id || selectedOverlay.name);
@@ -99,6 +103,7 @@ export function useAiDishActions({
       }),
     );
 
+    // Merge requirement decisions back into each ingredient row.
     const ingredients = baseIngredients.map((ingredient) => {
       const token = normalizeToken(ingredient?.name);
       const requirement = token ? requirementByToken.get(token) : null;
@@ -116,6 +121,7 @@ export function useAiDishActions({
       };
     });
 
+    // Dish-level allergen summary is union of ingredient allergens.
     const allergens = Array.from(
       new Set(
         ingredients
@@ -126,6 +132,7 @@ export function useAiDishActions({
       ),
     );
 
+    // Candidate diets are reduced to diets all ingredient rows satisfy.
     const candidateDiets = dedupeTokenList([
       ...(Array.isArray(config?.DIETS) ? config.DIETS : []),
       ...normalizeDietList(result?.dietaryOptions),
@@ -144,6 +151,7 @@ export function useAiDishActions({
         )
       : [];
 
+    // Build allergen detail text by listing ingredient rows that contain each allergen.
     const details = {};
     allergens.forEach((allergen) => {
       const matched = ingredients
@@ -163,6 +171,7 @@ export function useAiDishActions({
       ingredients,
       candidateDiets,
     );
+    // Cross-contamination summary is union across ingredient rows.
     const crossContaminationAllergens = Array.from(
       new Set(
         ingredients
@@ -186,6 +195,7 @@ export function useAiDishActions({
       ),
     );
 
+    // Persist computed AI result into selected overlay.
     updateOverlay(selectedOverlay._editorKey, {
       allergens,
       diets,
@@ -220,6 +230,7 @@ export function useAiDishActions({
     updateOverlay,
   ]);
 
+  // Run AI analysis request using current AI-assist draft text/image for selected dish.
   const runAiDishAnalysis = useCallback(async ({ overrideText } = {}) => {
     if (!selectedOverlay || !callbacks?.onAnalyzeDish) return { success: false };
 

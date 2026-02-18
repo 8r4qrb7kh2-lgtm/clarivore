@@ -75,6 +75,8 @@ export function buildEditorApi({
   config,
   previewPreferences,
 }) {
+  // Keep return shape stable for existing UI consumers.
+  // This builder is intentionally a plain mapping layer (no side effects).
   return {
     canEdit,
     overlays: draftOverlays,
@@ -199,6 +201,7 @@ export function buildEditorApi({
     getBrandRequirementIssues,
     getIngredientConfirmationIssues,
 
+    // Expose normalized config helpers and persisted preference labels for UI rendering.
     config: {
       allergens: Array.isArray(config?.ALLERGENS) ? config.ALLERGENS : [],
       diets: Array.isArray(config?.DIETS) ? config.DIETS : [],

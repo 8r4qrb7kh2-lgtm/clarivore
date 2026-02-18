@@ -40,6 +40,7 @@ export function useEditorHistory({
   setPendingSavePreparing,
   setAiAssistDraftState,
 }) {
+  // Keep refs synchronized with latest state so async callbacks always read current values.
   useEffect(() => {
     overlaysRef.current = draftOverlays;
   }, [draftOverlays, overlaysRef]);
@@ -56,6 +57,7 @@ export function useEditorHistory({
     aiAssistDraftRef.current = aiAssistDraft;
   }, [aiAssistDraft, aiAssistDraftRef]);
 
+  // Wrapper setter that updates both state and ref in one place.
   const setAiAssistDraft = useCallback((nextValue) => {
     const current = aiAssistDraftRef.current;
     const nextDraft =
@@ -64,6 +66,7 @@ export function useEditorHistory({
     setAiAssistDraftState(nextDraft);
   }, [aiAssistDraftRef, setAiAssistDraftState]);
 
+  // Prevent overlapping save-status timers when save state changes quickly.
   const clearSaveStatusTimer = useCallback(() => {
     if (saveStatusTimerRef.current) {
       window.clearTimeout(saveStatusTimerRef.current);
@@ -71,10 +74,12 @@ export function useEditorHistory({
     }
   }, [saveStatusTimerRef]);
 
+  // Ensure timer cleanup on unmount.
   useEffect(() => {
     return () => clearSaveStatusTimer();
   }, [clearSaveStatusTimer]);
 
+  // Ensure pending-save debounce timer cleanup on unmount.
   useEffect(() => {
     return () => {
       if (pendingSaveSyncTimerRef.current) {
@@ -84,6 +89,7 @@ export function useEditorHistory({
     };
   }, [pendingSaveSyncTimerRef]);
 
+  // Append one pending-change line with optional key-based dedupe.
   const appendPendingChange = useCallback((line, options = {}) => {
     const text = asText(line);
     const key = asText(options?.key);
@@ -100,6 +106,7 @@ export function useEditorHistory({
     });
   }, [setPendingChanges]);
 
+  // Reset staged pending-save metadata after save/discard/reinitialize flows.
   const clearPendingSaveBatch = useCallback(() => {
     setPendingSaveBatchId("");
     setPendingSaveRows([]);
@@ -114,6 +121,7 @@ export function useEditorHistory({
     setPendingSavePreparing,
   ]);
 
+  // Capture current editor state for history stack entries.
   const captureSnapshot = useCallback(() => {
     return {
       overlays: cloneSnapshotList(overlaysRef.current),
@@ -122,6 +130,7 @@ export function useEditorHistory({
     };
   }, [menuImagesRef, overlaysRef, pendingChangesRef]);
 
+  // Capture full draft snapshot for temporary export/import flows.
   const createDraftSnapshot = useCallback(() => {
     return {
       overlays: cloneSnapshotList(overlaysRef.current),
@@ -142,6 +151,7 @@ export function useEditorHistory({
     selectedOverlayKey,
   ]);
 
+  // Push a new undo snapshot only when serialized state actually changed.
   const pushHistory = useCallback(() => {
     const snapshot = captureSnapshot();
     const serialized = serializeEditorState(snapshot.overlays, snapshot.menuImages);
@@ -161,6 +171,7 @@ export function useEditorHistory({
     setHistoryIndex(currentList.length - 1);
   }, [captureSnapshot, historyIndex, historyRef, setHistoryIndex]);
 
+  // Restore overlays/menu/pending changes from a history snapshot.
   const restoreHistorySnapshot = useCallback((snapshot) => {
     if (!snapshot) return;
 
@@ -212,6 +223,7 @@ export function useEditorHistory({
     setSelectedOverlayKey,
   ]);
 
+  // Restore a full draft export, including selection and custom history list.
   const restoreDraftSnapshot = useCallback((snapshot) => {
     if (!snapshot || typeof snapshot !== "object") return { success: false };
 
@@ -274,6 +286,7 @@ export function useEditorHistory({
     setSelectedOverlayKey,
   ]);
 
+  // Undo moves to previous history entry.
   const undo = useCallback(() => {
     if (historyIndex <= 0) return;
     const nextIndex = historyIndex - 1;
@@ -283,6 +296,7 @@ export function useEditorHistory({
     setHistoryIndex(nextIndex);
   }, [historyIndex, historyRef, restoreHistorySnapshot, setHistoryIndex]);
 
+  // Undo to the state before a selected pending-change index.
   const undoPendingChange = useCallback((changeIndex) => {
     const safeIndex = Math.floor(Number(changeIndex));
     if (!Number.isFinite(safeIndex) || safeIndex < 0) {
@@ -327,6 +341,7 @@ export function useEditorHistory({
     };
   }, [historyIndex, historyRef, pendingChangesRef, restoreHistorySnapshot, setHistoryIndex]);
 
+  // Redo moves to next history entry.
   const redo = useCallback(() => {
     if (historyIndex >= historyRef.current.length - 1) return;
     const nextIndex = historyIndex + 1;

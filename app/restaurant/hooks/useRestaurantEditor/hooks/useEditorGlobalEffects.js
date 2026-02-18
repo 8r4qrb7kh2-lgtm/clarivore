@@ -21,6 +21,7 @@ export function useEditorGlobalEffects({
   redo,
   isDirty,
 }) {
+  // One-time route parameter resolver that can auto-open a dish and AI panel.
   useEffect(() => {
     if (initialDishResolved) return;
     if (!params?.dishName || !draftOverlays.length) return;
@@ -54,6 +55,7 @@ export function useEditorGlobalEffects({
     setSelectedOverlayKey,
   ]);
 
+  // Global keyboard shortcuts for undo/redo while editor is editable.
   useEffect(() => {
     if (!canEdit) return undefined;
 
@@ -81,6 +83,7 @@ export function useEditorGlobalEffects({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [canEdit, redo, undo]);
 
+  // Native tab-close guard while there are unsaved changes.
   useEffect(() => {
     if (!isDirty) return undefined;
 

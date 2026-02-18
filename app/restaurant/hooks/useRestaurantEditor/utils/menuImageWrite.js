@@ -6,6 +6,8 @@ import { normalizeNumber, normalizeRectValue } from "./overlayGeometry";
 // These helpers sanitize client-side editor state into API-safe payloads.
 
 export function buildMenuImages(restaurant) {
+  // Collect menu images from all supported restaurant field variants.
+  // We always return at least one entry so page-based UI has a stable shape.
   const explicit = Array.isArray(restaurant?.menu_images)
     ? restaurant.menu_images.filter(Boolean)
     : Array.isArray(restaurant?.menuImages)
@@ -27,6 +29,7 @@ export function buildMenuImages(restaurant) {
 }
 
 function sanitizePersistedImageValue(value) {
+  // Persisted brand/ingredient image fields should store URLs, not data URLs.
   const text = asText(value);
   if (!text) return "";
   if (text.toLowerCase().startsWith("data:image")) return "";
@@ -34,6 +37,7 @@ function sanitizePersistedImageValue(value) {
 }
 
 function normalizeBrandForWrite(brand) {
+  // Reduce brand payload to a safe, write-ready structure.
   const safe = brand && typeof brand === "object" ? { ...brand } : {};
   const name = asText(safe?.name || safe?.productName);
   if (!name) return null;
@@ -66,6 +70,7 @@ function normalizeBrandForWrite(brand) {
 }
 
 function readFirstBrandForWrite(values) {
+  // API currently expects one normalized brand row per ingredient.
   for (const value of Array.isArray(values) ? values : []) {
     const normalized = normalizeBrandForWrite(value);
     if (normalized) return normalized;
@@ -74,6 +79,7 @@ function readFirstBrandForWrite(values) {
 }
 
 function normalizeIngredientForWrite(ingredient, index) {
+  // Normalize one ingredient row before writing overlays back to server.
   const safe = ingredient && typeof ingredient === "object" ? { ...ingredient } : {};
   const firstBrand = readFirstBrandForWrite(safe?.brands);
   const brandImage = sanitizePersistedImageValue(safe?.brandImage);
@@ -116,6 +122,7 @@ function normalizeIngredientForWrite(ingredient, index) {
 }
 
 export function stripEditorOverlay(overlay) {
+  // Remove editor-only fields and normalize geometry/ingredients for API writes.
   const next = { ...overlay };
   delete next._editorKey;
 
@@ -135,6 +142,7 @@ export function stripEditorOverlay(overlay) {
 }
 
 function toOverlayDishKey(overlay) {
+  // Generate a stable comparison key for overlay identity checks.
   const name = asText(overlay?.id || overlay?.name || overlay?.dishName);
   if (!name) return "";
   const token = name.toLowerCase().replace(/[^a-z0-9]/g, "");
@@ -142,6 +150,7 @@ function toOverlayDishKey(overlay) {
 }
 
 function buildOverlayOrderAndMap(overlays) {
+  // Build keyed lookup + order list used for delta generation.
   const byKey = new Map();
   const order = [];
   const seen = new Set();
@@ -163,10 +172,12 @@ function buildOverlayOrderAndMap(overlays) {
 }
 
 function overlaysEqual(left, right) {
+  // Deep compare plain overlay objects via deterministic JSON representation.
   return JSON.stringify(left) === JSON.stringify(right);
 }
 
 export function buildOverlayDeltaPayload({ baselineOverlays, overlays }) {
+  // Compute upserts/deletes/order changes between baseline and current overlays.
   const baselineIndex = buildOverlayOrderAndMap(baselineOverlays);
   const currentIndex = buildOverlayOrderAndMap(overlays);
   const overlayUpserts = [];
@@ -209,6 +220,7 @@ export function buildOverlayDeltaPayload({ baselineOverlays, overlays }) {
 }
 
 export function serializeEditorState(overlays, menuImages) {
+  // Canonical serialization used for dirty-state and pending-save hash checks.
   return JSON.stringify({
     overlays: (Array.isArray(overlays) ? overlays : []).map(stripEditorOverlay),
     menuImages: Array.isArray(menuImages) ? menuImages.filter(Boolean) : [],
@@ -216,16 +228,19 @@ export function serializeEditorState(overlays, menuImages) {
 }
 
 export function normalizeMenuImageList(menuImages) {
+  // Keep only non-empty image strings for write payloads.
   return (Array.isArray(menuImages) ? menuImages : [])
     .map((value) => asText(value))
     .filter(Boolean);
 }
 
 export function serializeMenuImageList(menuImages) {
+  // Stable serialization wrapper for menu image list equality checks.
   return JSON.stringify(normalizeMenuImageList(menuImages));
 }
 
 function getUtf8ByteLength(value) {
+  // Measure serialized payload size in UTF-8 bytes.
   const text = asText(value);
   if (!text) return 0;
 
@@ -240,6 +255,7 @@ async function compressMenuImageDataUrl(
   source,
   { targetMaxBytes = 220_000, maxDimension = 1600 } = {},
 ) {
+  // Adaptive JPEG compression loop used to keep menu image writes under gateway limits.
   const input = asText(source);
   if (!input || !input.startsWith("data:image")) return input;
   if (getUtf8ByteLength(input) <= targetMaxBytes) return input;
@@ -322,6 +338,7 @@ export async function optimizeMenuImagesForWrite(
   menuImages,
   { perImageMaxBytes = 220_000, totalMaxBytes = 850_000 } = {},
 ) {
+  // First compress per image, then tighten further if the total batch is still too large.
   const normalized = normalizeMenuImageList(menuImages);
   if (!normalized.length) return [];
 
@@ -353,6 +370,7 @@ export async function optimizeMenuImagesForWrite(
 }
 
 export function parseSerializedEditorState(serialized) {
+  // Safe parser for editor state snapshots stored in refs.
   const text = asText(serialized);
   if (!text) {
     return {

@@ -4,12 +4,14 @@ import { asText } from "./text";
 // Each helper returns plain issue records so callers can format UI messages consistently.
 
 function hasAssignedBrand(ingredient) {
+  // A row is considered assigned when at least one brand has a non-empty name.
   return (Array.isArray(ingredient?.brands) ? ingredient.brands : []).some(
     (brand) => asText(brand?.name),
   );
 }
 
 export function buildOverlayBrandRequirementIssues(overlay) {
+  // Collect missing-brand issues for a single dish overlay.
   const issues = [];
   const overlayName = asText(overlay?.id || overlay?.name) || "Dish";
   const rows = Array.isArray(overlay?.ingredients) ? overlay.ingredients : [];
@@ -34,12 +36,14 @@ export function buildOverlayBrandRequirementIssues(overlay) {
 }
 
 export function buildBrandRequirementIssues(overlays) {
+  // Flatten per-overlay brand requirement issues into one list.
   return (Array.isArray(overlays) ? overlays : []).flatMap((overlay) =>
     buildOverlayBrandRequirementIssues(overlay),
   );
 }
 
 export function buildOverlayIngredientConfirmationIssues(overlay) {
+  // Collect ingredient rows that are still unconfirmed in a single overlay.
   const issues = [];
   const overlayName = asText(overlay?.id || overlay?.name) || "Dish";
   const rows = Array.isArray(overlay?.ingredients) ? overlay.ingredients : [];
@@ -59,6 +63,7 @@ export function buildOverlayIngredientConfirmationIssues(overlay) {
 }
 
 export function buildIngredientConfirmationIssues(overlays) {
+  // Flatten per-overlay confirmation issues into one list.
   return (Array.isArray(overlays) ? overlays : []).flatMap((overlay) =>
     buildOverlayIngredientConfirmationIssues(overlay),
   );

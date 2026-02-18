@@ -5,6 +5,7 @@ import { asText } from "./text";
 // These are shared by save flows and restore flows.
 
 export function createEmptySettingsDraft(restaurant) {
+  // Settings draft always starts from trimmed string values.
   return {
     website: asText(restaurant?.website),
     phone: asText(restaurant?.phone),
@@ -14,6 +15,7 @@ export function createEmptySettingsDraft(restaurant) {
 }
 
 export function serializeSettingsDraft(value) {
+  // Serialize only fields relevant to settings dirty-state checks.
   return JSON.stringify({
     website: asText(value?.website),
     phone: asText(value?.phone),
@@ -23,6 +25,7 @@ export function serializeSettingsDraft(value) {
 }
 
 export function parseChangeLogPayload(log) {
+  // Support both object and JSON-string log payloads from historical records.
   const raw = log?.changes;
   if (!raw) return null;
   if (typeof raw === "object") return raw;
@@ -36,6 +39,7 @@ export function parseChangeLogPayload(log) {
 }
 
 export function decodePendingChangeLine(line) {
+  // Decode "__pc__:<key>::<message>" format into a structured object.
   const text = asText(line);
   if (!text.startsWith(PENDING_CHANGE_KEY_PREFIX)) {
     return {
@@ -61,6 +65,7 @@ export function decodePendingChangeLine(line) {
 }
 
 export function encodePendingChangeLine(text, key) {
+  // Encode a pending-change line with an optional stable key for dedupe/replace.
   const safeText = asText(text);
   const safeKey = asText(key);
   if (!safeText) return "";
@@ -69,6 +74,8 @@ export function encodePendingChangeLine(text, key) {
 }
 
 export function buildDefaultChangeLogPayload({ author, pendingChanges, snapshot }) {
+  // Group pending-change lines into general messages and item-specific messages.
+  // The grouped format keeps change-log cards readable in UI.
   const grouped = {};
   const general = [];
 
@@ -110,6 +117,8 @@ export function buildDefaultChangeLogPayload({ author, pendingChanges, snapshot 
 }
 
 export function computeDietBlockers(ingredients, diets) {
+  // For each diet, list ingredient rows that block diet compliance.
+  // The UI uses this to explain why a dish cannot claim a diet tag.
   const rows = Array.isArray(ingredients) ? ingredients : [];
   const dietList = Array.isArray(diets) ? diets : [];
   const output = {};

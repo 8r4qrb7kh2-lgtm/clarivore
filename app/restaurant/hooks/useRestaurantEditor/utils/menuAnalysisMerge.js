@@ -10,6 +10,7 @@ export function mergePageDetectionsIntoOverlays({
   removeUnmatchedPages,
   pageCount,
 }) {
+  // Work on a copy so callers can use this helper in immutable state updates.
   const next = [...current];
   let updatedCount = 0;
   let addedCount = 0;
@@ -19,6 +20,7 @@ export function mergePageDetectionsIntoOverlays({
     const pageIndex = Number(detection?.pageIndex) || 0;
 
     const removeUnmatchedOnPage = (detectedTokens) => {
+      // Optional cleanup mode: remove overlays on this page that are no longer detected.
       if (!removeUnmatchedPages.has(pageIndex)) return;
       for (let index = next.length - 1; index >= 0; index -= 1) {
         const overlay = next[index];
@@ -35,6 +37,7 @@ export function mergePageDetectionsIntoOverlays({
     };
 
     const mergeDish = (dish, usedMatchIndexes) => {
+      // Try to match by normalized name before creating a new overlay.
       const token = normalizeToken(dish?.name);
       if (!token) return;
       const dishMatchKey = normalizeLegacyMatchKey(dish?.name);
@@ -54,6 +57,7 @@ export function mergePageDetectionsIntoOverlays({
       });
 
       if (matchedIndex >= 0) {
+        // Matched existing overlay: update geometry in place.
         usedMatchIndexes.add(matchedIndex);
         const existing = next[matchedIndex];
         next[matchedIndex] = ensureOverlayVisibility(
@@ -74,6 +78,7 @@ export function mergePageDetectionsIntoOverlays({
       }
 
       const nextOverlayKey = `ov-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      // No match found: create a brand-new overlay for this detected dish.
       const nextOverlay = ensureOverlayVisibility(
         normalizeOverlay(
           {
@@ -105,6 +110,7 @@ export function mergePageDetectionsIntoOverlays({
     };
 
     if (detection?.mode === "remap") {
+      // Remap mode may provide separate updated vs new sets.
       const detectedTokens = detection?.detectedTokens instanceof Set
         ? detection.detectedTokens
         : new Set();

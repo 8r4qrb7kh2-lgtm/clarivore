@@ -20,6 +20,8 @@ export function useMenuPageActions({
   appendPendingChange,
   pushHistory,
 }) {
+  // Insert one or many pages, optionally at a specific index.
+  // Overlay page indices are shifted when insertion happens in the middle.
   const addMenuPages = useCallback((images, options = {}) => {
     const values = (Array.isArray(images) ? images : [])
       .map((value) => asText(value))
@@ -80,12 +82,15 @@ export function useMenuPageActions({
     };
   }, [appendPendingChange, applyOverlayList, menuImagesRef, pushHistory, setActivePageIndex, setDraftMenuImages]);
 
+  // Single-page convenience wrapper.
   const addMenuPage = useCallback((imageDataUrl) => {
     const value = asText(imageDataUrl);
     if (!value) return;
     addMenuPages([value]);
   }, [addMenuPages]);
 
+  // Replace a page with one or many segmented image sections.
+  // Overlay boxes from the source page are remapped to the best target section.
   const replaceMenuPageWithSections = useCallback((index, sections) => {
     const entries = (Array.isArray(sections) ? sections : [])
       .map((section) => {
@@ -110,6 +115,7 @@ export function useMenuPageActions({
 
     if (!entries.length) return { replaced: false, sectionCount: 0 };
 
+    // Normalize incoming section descriptors into clamped 0..100 Y bounds.
     const normalizedEntries = entries.map((entry, entryIndex) => {
       const defaultStart = (entryIndex * 100) / entries.length;
       const defaultEnd = ((entryIndex + 1) * 100) / entries.length;
@@ -132,6 +138,7 @@ export function useMenuPageActions({
     const delta = normalizedEntries.length - 1;
     const nextPageCount = Math.max(menuImagesRef.current.length + delta, 1);
 
+    // Apply image list replacement first so page count is known for overlay remaps.
     setDraftMenuImages((current) => {
       const next = [...current];
       next.splice(
@@ -143,6 +150,7 @@ export function useMenuPageActions({
       return menuImagesRef.current;
     });
 
+    // Move/clip overlays so each one remains visible in its mapped section.
     applyOverlayList((current) =>
       current.map((overlay) => {
         const page = Number.isFinite(Number(overlay.pageIndex))
@@ -243,12 +251,14 @@ export function useMenuPageActions({
     return { replaced: true, sectionCount: normalizedEntries.length };
   }, [appendPendingChange, applyOverlayList, menuImagesRef, pushHistory, setActivePageIndex, setDraftMenuImages]);
 
+  // Single-section convenience wrapper around replace-by-sections.
   const replaceMenuPage = useCallback((index, imageDataUrl) => {
     const value = asText(imageDataUrl);
     if (!value) return;
     replaceMenuPageWithSections(index, [value]);
   }, [replaceMenuPageWithSections]);
 
+  // Remove a page and collapse overlay indices above the removed page.
   const removeMenuPage = useCallback((index) => {
     const targetIndex = clamp(Number(index) || 0, 0, Math.max(draftMenuImages.length - 1, 0));
 
@@ -286,6 +296,7 @@ export function useMenuPageActions({
     queueMicrotask(() => pushHistory());
   }, [appendPendingChange, applyOverlayList, draftMenuImages.length, menuImagesRef, pushHistory, setActivePageIndex, setDraftMenuImages]);
 
+  // Move one page to a new index and remap all overlay page indices accordingly.
   const moveMenuPage = useCallback((fromIndex, toIndex) => {
     const pageCount = Math.max(menuImagesRef.current.length, 1);
     const safeFrom = clamp(Number(fromIndex) || 0, 0, pageCount - 1);
@@ -336,12 +347,14 @@ export function useMenuPageActions({
     return { moved: true, fromIndex: safeFrom, toIndex: safeTo };
   }, [appendPendingChange, applyOverlayList, menuImagesRef, pushHistory, setActivePageIndex, setDraftMenuImages]);
 
+  // Jump active page index with bounds safety.
   const jumpToPage = useCallback((index) => {
     setActivePageIndex((current) =>
       clamp(Number(index) || current, 0, Math.max(menuImagesRef.current.length - 1, 0)),
     );
   }, [menuImagesRef, setActivePageIndex]);
 
+  // Increment/decrement zoom in fixed steps.
   const zoomIn = useCallback(() => {
     setZoomScale((current) => clamp(Number((current + 0.25).toFixed(2)), 0.5, 3));
   }, [setZoomScale]);
@@ -350,6 +363,7 @@ export function useMenuPageActions({
     setZoomScale((current) => clamp(Number((current - 0.25).toFixed(2)), 0.5, 3));
   }, [setZoomScale]);
 
+  // Reset zoom to default.
   const zoomReset = useCallback(() => {
     setZoomScale(1);
   }, [setZoomScale]);

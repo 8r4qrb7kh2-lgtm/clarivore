@@ -5,6 +5,8 @@ import { asText, clamp, normalizeCoordSpace, normalizeToken } from "./text";
 // They are intentionally pure so the async analysis hook can stay focused on control flow.
 
 export function normalizeDetectedRect(dish, imageDimensions) {
+  // Normalize detector output into percent-space coordinates.
+  // Supports multiple coordinate systems because upstream models evolved over time.
   const name = asText(dish?.name || dish?.dishName);
   if (!name) return null;
 
@@ -23,6 +25,7 @@ export function normalizeDetectedRect(dish, imageDimensions) {
     return null;
   }
 
+  // Model payload may include explicit units; normalize those first.
   const explicitCoordSpace = normalizeCoordSpace(
     dish?.coordSpace ||
       dish?.coord_space ||
@@ -35,6 +38,7 @@ export function normalizeDetectedRect(dish, imageDimensions) {
   const maxAbsValue = Math.max(...values.map((value) => Math.abs(value)));
   const nonNegative = minValue >= 0;
 
+  // Heuristic checks for implicit coordinate units when explicit unit is missing.
   const looksRatio = nonNegative && maxAbsValue <= 1.2;
   const fitsPercent =
     nonNegative &&
@@ -69,6 +73,7 @@ export function normalizeDetectedRect(dish, imageDimensions) {
     xValue + wValue <= imageWidth * 1.1 &&
     yValue + hValue <= imageHeight * 1.1;
 
+  // Pick the best coordinate mode from explicit or inferred clues.
   let mode = explicitCoordSpace;
   if (!mode) {
     if (looksRatio) {
@@ -82,6 +87,7 @@ export function normalizeDetectedRect(dish, imageDimensions) {
     }
   }
 
+  // Convert into percent units expected by editor overlay geometry.
   let x = xValue;
   let y = yValue;
   let w = wValue;
@@ -129,6 +135,7 @@ export function normalizeDetectedRect(dish, imageDimensions) {
 }
 
 function resolveRemapRectToThousand(dish, imageDimensions) {
+  // Remap responses are easier to merge when normalized to 1000-space first.
   const name = asText(dish?.name || dish?.dishName);
   if (!name) return null;
 
@@ -147,6 +154,7 @@ function resolveRemapRectToThousand(dish, imageDimensions) {
     return null;
   }
 
+  // Normalize optional explicit coord-space label from remap payload.
   const explicitCoordSpace = normalizeCoordSpace(
     dish?.coordSpace ||
       dish?.coord_space ||
@@ -190,6 +198,7 @@ function resolveRemapRectToThousand(dish, imageDimensions) {
     xValue + wValue <= imageWidth * 1.1 &&
     yValue + hValue <= imageHeight * 1.1;
 
+  // Pick conversion mode using explicit unit first, heuristics second.
   let mode = explicitCoordSpace;
   if (!mode) {
     if (looksRatio) {
@@ -246,6 +255,7 @@ function resolveRemapRectToThousand(dish, imageDimensions) {
 }
 
 export function normalizeRemappedRect(dish, metrics, imageDimensions) {
+  // Project remap coordinates from letterboxed-square space back to percent overlay space.
   const normalized = resolveRemapRectToThousand(dish, imageDimensions);
   if (!normalized) return null;
 
@@ -289,6 +299,8 @@ export function normalizeRemappedRect(dish, metrics, imageDimensions) {
 }
 
 export function toLegacyOverlayHint(overlay, metrics) {
+  // Convert current overlay percent box into legacy thousand-space hint box.
+  // Remap mode uses these hints as anchors for matching across image versions.
   const name = asText(overlay?.id || overlay?.name);
   if (!name) return null;
 
@@ -337,6 +349,7 @@ export function toLegacyOverlayHint(overlay, metrics) {
 }
 
 export function normalizeDetectedDishes(rawDishes, imageDimensions) {
+  // Normalize and dedupe dishes by tokenized name.
   const seenDishTokens = new Set();
   return (Array.isArray(rawDishes) ? rawDishes : [])
     .map((dish) => normalizeDetectedRect(dish, imageDimensions))
@@ -350,6 +363,7 @@ export function normalizeDetectedDishes(rawDishes, imageDimensions) {
 }
 
 export function scoreRemapDishQuality(dishes) {
+  // Assign a coarse quality score used to decide whether detect-fallback is needed.
   const normalized = Array.isArray(dishes) ? dishes.filter(Boolean) : [];
   const dishCount = normalized.length;
   if (!dishCount) {
@@ -396,6 +410,7 @@ export function scoreRemapDishQuality(dishes) {
 }
 
 export function getSourcePageOverlays(sourceIndex, baselineOverlayList) {
+  // Pull overlays that came from the baseline source page during remap flows.
   if (sourceIndex === null) return [];
 
   return baselineOverlayList.filter((overlay) => {

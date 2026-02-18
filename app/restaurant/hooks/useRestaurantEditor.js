@@ -34,6 +34,7 @@ export function useRestaurantEditor({
   params,
   callbacks,
 }) {
+  // Permission gate used by save/prepare/edit UI flows.
   const canEdit = Boolean(permissions?.canEdit);
 
   // Core editor state.
@@ -117,6 +118,7 @@ export function useRestaurantEditor({
   const pendingChangesRef = useRef(pendingChanges);
   const aiAssistDraftRef = useRef(aiAssistDraft);
 
+  // History module owns snapshot/undo/redo and mirrored refs for async safety.
   const historyApi = useEditorHistory({
     draftOverlays,
     draftMenuImages,
@@ -148,6 +150,7 @@ export function useRestaurantEditor({
     setAiAssistDraftState,
   });
 
+  // Derived-state module owns baseline hydration, dirty checks, and canonical normalizers.
   const derivedApi = useEditorDerivedState({
     overlays,
     restaurant,
@@ -196,6 +199,7 @@ export function useRestaurantEditor({
     setHistoryIndex,
   });
 
+  // Overlay action handlers (add/remove/update/select/tags).
   const overlayActions = useOverlayActions({
     selectedOverlay: derivedApi.selectedOverlay,
     activePageIndex,
@@ -213,6 +217,7 @@ export function useRestaurantEditor({
     pushHistory: historyApi.pushHistory,
   });
 
+  // Menu page action handlers (add/replace/remove/reorder/zoom/page-nav).
   const menuPageActions = useMenuPageActions({
     activePageIndex,
     draftMenuImages,
@@ -227,6 +232,7 @@ export function useRestaurantEditor({
     pushHistory: historyApi.pushHistory,
   });
 
+  // Bulk page analysis handler (detect/remap + merge).
   const analyzeMenuPagesAndMergeOverlays = useMenuPageAnalysis({
     callbacks,
     menuImagesRef,
@@ -235,6 +241,7 @@ export function useRestaurantEditor({
     pushHistory: historyApi.pushHistory,
   });
 
+  // Lazy-load modal data for change logs and pending-save table previews.
   const changeLogAndPendingTableActions = useChangeLogAndPendingTable({
     callbacks,
     restaurant,
@@ -258,6 +265,7 @@ export function useRestaurantEditor({
     pushHistory: historyApi.pushHistory,
   });
 
+  // Save/stage/confirm/settings write actions.
   const persistenceActions = usePersistenceActions({
     canEdit,
     restaurant,
@@ -302,6 +310,7 @@ export function useRestaurantEditor({
     setHistoryIndex,
   });
 
+  // AI dish analysis + apply-to-overlay actions.
   const aiDishActions = useAiDishActions({
     selectedOverlay: derivedApi.selectedOverlay,
     callbacks,
@@ -316,6 +325,7 @@ export function useRestaurantEditor({
     setAiAssistDraft: historyApi.setAiAssistDraft,
   });
 
+  // Ingredient-level callback wrappers (analysis, scan flows, appeals).
   const ingredientServiceActions = useIngredientServiceActions({
     callbacks,
     restaurant,
@@ -324,6 +334,7 @@ export function useRestaurantEditor({
     normalizeDietList: derivedApi.normalizeDietList,
   });
 
+  // Manual detect wizard action handlers.
   const detectWizardActions = useDetectWizardActions({
     callbacks,
     draftMenuImages,
@@ -341,6 +352,7 @@ export function useRestaurantEditor({
     pushHistory: historyApi.pushHistory,
   });
 
+  // Global effects for route-driven selection, keyboard shortcuts, and unload guard.
   useEditorGlobalEffects({
     initialDishResolved,
     setInitialDishResolved,
@@ -357,6 +369,7 @@ export function useRestaurantEditor({
     isDirty: derivedApi.isDirty,
   });
 
+  // Expose brand requirement issues for one overlay or all overlays.
   const getBrandRequirementIssues = useCallback((overlay) => {
     if (overlay) {
       return buildOverlayBrandRequirementIssues(overlay);
@@ -364,6 +377,7 @@ export function useRestaurantEditor({
     return buildBrandRequirementIssues(overlaysRef.current);
   }, [overlaysRef]);
 
+  // Expose ingredient confirmation issues for one overlay or all overlays.
   const getIngredientConfirmationIssues = useCallback((overlay) => {
     if (overlay) {
       return buildOverlayIngredientConfirmationIssues(overlay);
@@ -371,6 +385,7 @@ export function useRestaurantEditor({
     return buildIngredientConfirmationIssues(overlaysRef.current);
   }, [overlaysRef]);
 
+  // Final stable API shape consumed by editor UI components.
   return buildEditorApi({
     canEdit,
     draftOverlays,

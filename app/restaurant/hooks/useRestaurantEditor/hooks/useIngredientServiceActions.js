@@ -12,6 +12,7 @@ export function useIngredientServiceActions({
   normalizeAllergenList,
   normalizeDietList,
 }) {
+  // Analyze one ingredient name and normalize all returned allergen/diet fields.
   const analyzeIngredientName = useCallback(async ({
     ingredientName,
     dishName,
@@ -79,6 +80,7 @@ export function useIngredientServiceActions({
     selectedOverlay?.name,
   ]);
 
+  // Ask callback whether a given ingredient row requires label scan / brand assignment.
   const analyzeIngredientScanRequirement = useCallback(async ({
     ingredientName,
     dishName,
@@ -117,6 +119,7 @@ export function useIngredientServiceActions({
     }
   }, [callbacks, selectedOverlay?.id, selectedOverlay?.name]);
 
+  // Submit manager appeal with required dish/ingredient/message/photo payload.
   const submitIngredientAppeal = useCallback(async ({
     dishName,
     ingredientName,
@@ -157,6 +160,7 @@ export function useIngredientServiceActions({
     }
   }, [callbacks, restaurant?.id, selectedOverlay?.id, selectedOverlay?.name]);
 
+  // Start a new ingredient label scan flow and normalize structured result for editor.
   const openIngredientLabelScan = useCallback(async ({
     ingredientName,
     onPhaseChange,
@@ -211,6 +215,7 @@ export function useIngredientServiceActions({
     }
   }, [callbacks, normalizeAllergenList, normalizeDietList]);
 
+  // Resume an existing ingredient label scan session by id.
   const resumeIngredientLabelScan = useCallback(async ({ sessionId }) => {
     if (!callbacks?.onResumeIngredientLabelScan) {
       return {
@@ -240,6 +245,7 @@ export function useIngredientServiceActions({
     }
   }, [callbacks]);
 
+  // Run corner detection on supplied image data.
   const detectMenuCorners = useCallback(async ({ imageData, width, height }) => {
     if (!callbacks?.onDetectMenuCorners) {
       return {
