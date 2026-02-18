@@ -31,21 +31,21 @@ export function RestaurantEditor({ editor, onNavigate, runtimeConfigHealth }) {
   const [saveIssueJumpRequest, setSaveIssueJumpRequest] = useState(null);
   const [confirmationGuide, setConfirmationGuide] = useState(null);
 
-  // Legacy save button states are preserved for parity with existing manager workflows.
-  const legacySaveButtonVisible = Boolean(
+  // Save button state is tied to dirty/saving/result markers from the shared editor state.
+  const saveButtonVisible = Boolean(
     editor.isDirty ||
       editor.isSaving ||
       editor.saveStatus === "saved" ||
       editor.saveStatus === "error",
   );
-  const legacySaveButtonLabel = editor.isSaving
+  const saveButtonLabel = editor.isSaving
     ? "Saving..."
     : editor.saveStatus === "saved"
       ? "Saved"
       : editor.saveStatus === "error"
         ? "Retry save"
         : "Save to site";
-  const legacySaveButtonClass =
+  const saveButtonClass =
     editor.saveStatus === "error"
       ? "btnDanger"
       : editor.saveStatus === "saved"
@@ -798,19 +798,19 @@ export function RestaurantEditor({ editor, onNavigate, runtimeConfigHealth }) {
   }
 
   return (
-    <section className="restaurant-legacy-editor">
-      <div className="editorLayout restaurant-legacy-editor-layout">
-        <div className="editorHeaderStack restaurant-legacy-editor-header">
+    <section className="restaurant-editor">
+      <div className="editorLayout restaurant-editor-layout">
+        <div className="editorHeaderStack restaurant-editor-header">
           <div className="flex flex-wrap items-center gap-2">
             <h1 className="m-0 text-[2.6rem] leading-none text-[#eaf0ff]">Webpage editor</h1>
           </div>
 
           <div className="editorHeaderRow hasMiniMap">
             <div className="editorMiniMapSlot">
-              <div className="restaurant-legacy-page-card">
+              <div className="restaurant-page-card">
                 <button
                   type="button"
-                  className="restaurant-legacy-page-thumb"
+                  className="restaurant-page-thumb"
                   onPointerDown={jumpFromMinimap}
                   onClick={jumpFromMinimap}
                   title="Jump to menu area"
@@ -824,14 +824,14 @@ export function RestaurantEditor({ editor, onNavigate, runtimeConfigHealth }) {
                     <span>No page</span>
                   )}
                   <span
-                    className="restaurant-legacy-page-thumb-viewport"
+                    className="restaurant-page-thumb-viewport"
                     style={{
                       top: `${minimapViewport.topRatio * 100}%`,
                       height: `${minimapViewport.heightRatio * 100}%`,
                     }}
                   />
                 </button>
-                <div className="restaurant-legacy-page-footer">
+                <div className="restaurant-page-footer">
                   Page {minimapActivePageIndex + 1} of {editor.draftMenuImages.length}
                 </div>
               </div>
@@ -864,13 +864,13 @@ export function RestaurantEditor({ editor, onNavigate, runtimeConfigHealth }) {
                           ↷ Redo
                         </button>
                       </div>
-                      {legacySaveButtonVisible ? (
+                      {saveButtonVisible ? (
                         <button
-                          className={`btn ${legacySaveButtonClass}`}
+                          className={`btn ${saveButtonClass}`}
                           onClick={triggerSave}
                           disabled={editor.isSaving}
                         >
-                          {legacySaveButtonLabel}
+                          {saveButtonLabel}
                         </button>
                       ) : null}
                       {saveIssueAlert ? (
@@ -992,12 +992,12 @@ export function RestaurantEditor({ editor, onNavigate, runtimeConfigHealth }) {
 
         <div
           ref={menuScrollRef}
-          className="restaurant-legacy-editor-stage restaurant-legacy-editor-scroll"
+          className="restaurant-editor-stage restaurant-editor-scroll"
           style={{ cursor: mappingEnabled ? "crosshair" : "default" }}
         >
           {/* Page canvas renders source images plus absolute-positioned editable overlays. */}
           <div
-            className="restaurant-legacy-editor-canvas"
+            className="restaurant-editor-canvas"
             style={{
               zoom: editor.zoomScale,
             }}
@@ -1008,7 +1008,7 @@ export function RestaurantEditor({ editor, onNavigate, runtimeConfigHealth }) {
                 ref={(node) => {
                   pageRefs.current[page.pageIndex] = node;
                 }}
-                className="restaurant-legacy-editor-page"
+                className="restaurant-editor-page"
                 style={{ position: "relative", width: "100%" }}
                 onPointerDown={(event) => onPagePointerDown(event, page.pageIndex)}
               >
@@ -1016,13 +1016,13 @@ export function RestaurantEditor({ editor, onNavigate, runtimeConfigHealth }) {
                   <img
                     src={page.image}
                     alt={`Menu page ${page.pageIndex + 1}`}
-                    className="restaurant-legacy-editor-image"
+                    className="restaurant-editor-image"
                     ref={(node) => {
                       pageImageRefs.current[page.pageIndex] = node;
                     }}
                   />
                 ) : (
-                  <div className="restaurant-legacy-no-image">No menu image available.</div>
+                  <div className="restaurant-no-image">No menu image available.</div>
                 )}
 
                 {page.overlays.map((overlay) => {
@@ -1098,7 +1098,7 @@ export function RestaurantEditor({ editor, onNavigate, runtimeConfigHealth }) {
         </div>
       </div>
 
-      <footer className="restaurant-legacy-help-fab">
+      <footer className="restaurant-help-fab">
         {typeof onNavigate === "function" ? (
           <a
             href="/help-contact"

@@ -188,6 +188,8 @@ async function loadRestaurantBoot({ slug, isQrVisit, inviteToken }) {
     }
   }
 
+  // Primary restaurant source: this row is loaded directly from the `restaurants` database table.
+  // (The only intentional non-DB path is the HOW_IT_WORKS training slug handled above.)
   const { data: restaurant, error: restaurantError } = await supabase
     .from("restaurants")
     .select("*")
@@ -387,6 +389,7 @@ export default function RestaurantClient() {
     };
   }, []);
 
+  // Single runtime source for restaurant/menu state in this page: bootQuery -> loadRestaurantBoot -> database.
   const bootQuery = useQuery({
     queryKey: queryKeys.restaurant.boot(slug, inviteToken, isQrVisit),
     enabled: Boolean(supabase) && Boolean(slug),
@@ -400,6 +403,8 @@ export default function RestaurantClient() {
   });
 
   const boot = bootQuery.data;
+  // Every viewer/editor path below reads restaurant data from this single object.
+  const restaurantFromDatabase = boot?.restaurant || null;
   const runtimeMissingKeys =
     runtimeConfigChecked && runtimeConfigHealth.ok === false
       ? runtimeConfigHealth.missing
@@ -438,15 +443,15 @@ export default function RestaurantClient() {
 
   const restaurantWriteVersionRef = useRef(0);
   useEffect(() => {
-    const nextVersion = Number(boot?.restaurant?.write_version);
+    const nextVersion = Number(restaurantFromDatabase?.write_version);
     restaurantWriteVersionRef.current = Number.isFinite(nextVersion)
       ? Math.max(Math.floor(nextVersion), 0)
       : 0;
-  }, [boot?.restaurant?.id, boot?.restaurant?.write_version]);
+  }, [restaurantFromDatabase?.id, restaurantFromDatabase?.write_version]);
 
   const applyWriteVersionsFromCommit = useCallback(
     (payload, targetRestaurantId = "") => {
-      const restaurantId = String(targetRestaurantId || boot?.restaurant?.id || "").trim();
+      const restaurantId = String(targetRestaurantId || restaurantFromDatabase?.id || "").trim();
       if (!restaurantId) return;
       const rows = Array.isArray(payload?.nextWriteVersions)
         ? payload.nextWriteVersions
@@ -458,7 +463,7 @@ export default function RestaurantClient() {
       if (!Number.isFinite(nextVersion)) return;
       restaurantWriteVersionRef.current = Math.max(Math.floor(nextVersion), 0);
     },
-    [boot?.restaurant?.id],
+    [restaurantFromDatabase?.id],
   );
 
   const stageRestaurantScopeWrite = useCallback(
@@ -673,9 +678,9 @@ export default function RestaurantClient() {
   });
 
   const orderFlow = useOrderFlow({
-    restaurantId: boot?.restaurant?.id,
+    restaurantId: restaurantFromDatabase?.id,
     user: boot?.user,
-    overlays: boot?.restaurant?.overlays || [],
+    overlays: restaurantFromDatabase?.overlays || [],
     preferences: {
       allergies: boot?.allergies || [],
       diets: boot?.diets || [],
@@ -683,8 +688,9 @@ export default function RestaurantClient() {
   });
 
   const viewer = useRestaurantViewer({
-    restaurant: boot?.restaurant,
-    overlays: boot?.restaurant?.overlays || [],
+    // Viewer reads directly from the same database-backed restaurant object.
+    restaurant: restaurantFromDatabase,
+    overlays: restaurantFromDatabase?.overlays || [],
     initialDishName: dishNameParam,
     preferences: {
       allergies: boot?.allergies || [],
@@ -725,8 +731,9 @@ export default function RestaurantClient() {
   });
 
   const editor = useRestaurantEditor({
-    restaurant: boot?.restaurant,
-    overlays: boot?.restaurant?.overlays || [],
+    // Editor also receives only this database-backed restaurant object (no alternate restaurant source).
+    restaurant: restaurantFromDatabase,
+    overlays: restaurantFromDatabase?.overlays || [],
     permissions: {
       canEdit: boot?.canEdit,
     },
@@ -1245,12 +1252,12 @@ export default function RestaurantClient() {
   return (
     <PageShell
       shellClassName={
-        useRestaurantViewportShell ? "page-shell restaurant-legacy-shell" : "page-shell"
+        useRestaurantViewportShell ? "page-shell restaurant-shell" : "page-shell"
       }
       mainClassName={
-        useRestaurantViewportShell ? "page-main restaurant-legacy-main" : "page-main"
+        useRestaurantViewportShell ? "page-main restaurant-main" : "page-main"
       }
-      contentClassName={useRestaurantViewportShell ? "restaurant-legacy-content" : ""}
+      contentClassName={useRestaurantViewportShell ? "restaurant-content" : ""}
       topbar={topbar}
     >
       {inviteToken && !boot?.user?.id ? (

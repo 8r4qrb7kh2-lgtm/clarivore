@@ -2,12 +2,12 @@
 
 export function DishPreviewPanel({ previewAllergenRows, previewDietRows }) {
   return (
-    <div className="restaurant-legacy-editor-dish-preview">
+    <div className="restaurant-editor-dish-preview">
       <h3>Preview: What customers will see</h3>
-      <div className="restaurant-legacy-editor-dish-preview-panel">
+      <div className="restaurant-editor-dish-preview-panel">
         {/* Allergen rows reflect saved contains + cross-contamination state. */}
         <h4>Allergens:</h4>
-        <div className="restaurant-legacy-dish-popover-section">
+        <div className="restaurant-dish-popover-section">
           {previewAllergenRows.length ? (
             previewAllergenRows.map((row) => (
               <div key={row.key} className={`dish-row ${row.tone}`}>
@@ -26,7 +26,7 @@ export function DishPreviewPanel({ previewAllergenRows, previewDietRows }) {
 
         {/* Diet rows use the same rendering contract as allergens. */}
         <h4>Diets:</h4>
-        <div className="restaurant-legacy-dish-popover-section">
+        <div className="restaurant-dish-popover-section">
           {previewDietRows.length ? (
             previewDietRows.map((row) => (
               <div key={row.key} className={`dish-row ${row.tone}`}>

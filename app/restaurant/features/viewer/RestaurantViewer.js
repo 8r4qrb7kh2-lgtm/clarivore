@@ -343,15 +343,15 @@ export function RestaurantViewer({
   ]);
 
   return (
-    <section className="restaurant-legacy-viewer">
-      <div className="restaurant-legacy-header">
-        <h1 className="restaurant-legacy-title">{restaurant?.name || "Restaurant"}</h1>
+    <section className="restaurant-viewer">
+      <div className="restaurant-header">
+        <h1 className="restaurant-title">{restaurant?.name || "Restaurant"}</h1>
 
-        <div className="restaurant-legacy-meta-row">
-          <div className="restaurant-legacy-page-card">
+        <div className="restaurant-meta-row">
+          <div className="restaurant-page-card">
             <button
               type="button"
-              className="restaurant-legacy-page-thumb"
+              className="restaurant-page-thumb"
               onClick={jumpFromMinimap}
               title="Jump to area on menu page"
             >
@@ -364,19 +364,19 @@ export function RestaurantViewer({
                 <span>No page</span>
               )}
               <span
-                className="restaurant-legacy-page-thumb-viewport"
+                className="restaurant-page-thumb-viewport"
                 style={{
                   top: `${minimapViewport.topRatio * 100}%`,
                   height: `${minimapViewport.heightRatio * 100}%`,
                 }}
               />
             </button>
-            <div className="restaurant-legacy-page-footer">
+            <div className="restaurant-page-footer">
               Page {activePageIndex + 1} of {viewer.pageCount}
             </div>
           </div>
 
-          <div className="restaurant-legacy-preference-wrap">
+          <div className="restaurant-preference-wrap">
             <div className="preference-row">
               <div className="preference-panel pill">
                 <div className="preference-header">
@@ -419,13 +419,13 @@ export function RestaurantViewer({
               </div>
             </div>
 
-            <div className="restaurant-legacy-actions-row">
+            <div className="restaurant-actions-row">
               {actionButtons.map((action) =>
                 action.disabled ? (
                   <button
                     key={action.key}
                     type="button"
-                    className={`restaurant-legacy-action-btn ${action.tone === "danger" ? "danger" : ""}`}
+                    className={`restaurant-action-btn ${action.tone === "danger" ? "danger" : ""}`}
                     disabled
                   >
                     {action.label}
@@ -434,7 +434,7 @@ export function RestaurantViewer({
                   <a
                     key={action.key}
                     href={action.href}
-                    className={`restaurant-legacy-action-btn ${action.tone === "danger" ? "danger" : ""}`}
+                    className={`restaurant-action-btn ${action.tone === "danger" ? "danger" : ""}`}
                     target={action.href.startsWith("http") ? "_blank" : undefined}
                     rel={action.href.startsWith("http") ? "noopener noreferrer" : undefined}
                   >
@@ -444,7 +444,7 @@ export function RestaurantViewer({
                   <Link
                     key={action.key}
                     href={action.href}
-                    className={`restaurant-legacy-action-btn ${action.tone === "danger" ? "danger" : ""}`}
+                    className={`restaurant-action-btn ${action.tone === "danger" ? "danger" : ""}`}
                   >
                     {action.label}
                   </Link>
@@ -452,13 +452,13 @@ export function RestaurantViewer({
               )}
             </div>
 
-            <p className="restaurant-legacy-confirmed-text">
+            <p className="restaurant-confirmed-text">
               Last confirmed by restaurant staff: {lastConfirmedLabel}
             </p>
           </div>
         </div>
 
-        <div className="restaurant-legacy-legend">
+        <div className="restaurant-legend">
           <p>
             <span className="legend-box safe" /> Complies ·{" "}
             <span className="legend-box removable" /> Can be modified to comply ·{" "}
@@ -469,20 +469,20 @@ export function RestaurantViewer({
       </div>
 
       <div
-        className={`restaurant-legacy-menu-stage ${
+        className={`restaurant-menu-stage ${
           acknowledgedReferenceNote ? "" : "is-locked"
         }`}
       >
         <div
           ref={menuScrollRef}
-          className={`restaurant-legacy-menu-scroll ${
+          className={`restaurant-menu-scroll ${
             acknowledgedReferenceNote ? "" : "is-blurred"
           }`}
         >
           {viewer.menuPages.map((page) => (
             <div
               key={`page-${page.pageIndex}`}
-              className="restaurant-legacy-menu-page"
+              className="restaurant-menu-page"
               ref={(node) => {
                 pageRefs.current[page.pageIndex] = node;
               }}
@@ -491,13 +491,13 @@ export function RestaurantViewer({
                 <img
                   src={page.image}
                   alt={`${restaurant?.name || "Restaurant"} menu page ${page.pageIndex + 1}`}
-                  className="restaurant-legacy-menu-image"
+                  className="restaurant-menu-image"
                   ref={(node) => {
                     pageImageRefs.current[page.pageIndex] = node;
                   }}
                 />
               ) : (
-                <div className="restaurant-legacy-no-image">No menu image available.</div>
+                <div className="restaurant-no-image">No menu image available.</div>
               )}
 
               {page.overlays.map((overlay, index) => (
@@ -515,7 +515,7 @@ export function RestaurantViewer({
                       centerOverlayInView(overlay, "auto");
                     });
                   }}
-                  className={`restaurant-legacy-overlay ${
+                  className={`restaurant-overlay ${
                     selectedOverlaySignature &&
                     overlaySignature(overlay) === selectedOverlaySignature
                       ? "is-selected"
@@ -530,10 +530,10 @@ export function RestaurantViewer({
                     "--overlay-pulse-color": statusPulseColor(overlay.compatibilityStatus),
                   }}
                 >
-                  <span className="restaurant-legacy-overlay-warning">
+                  <span className="restaurant-overlay-warning">
                     {overlay.hasCrossContamination ? "⚠" : ""}
                   </span>
-                  <span className="restaurant-legacy-overlay-info">i</span>
+                  <span className="restaurant-overlay-info">i</span>
                 </button>
               ))}
             </div>
@@ -541,10 +541,10 @@ export function RestaurantViewer({
         </div>
 
         {acknowledgedReferenceNote && selectedDish ? (
-          <aside className="restaurant-legacy-dish-popover" style={selectedDishPopupStyle}>
-            <header className="restaurant-legacy-dish-popover-header">
+          <aside className="restaurant-dish-popover" style={selectedDishPopupStyle}>
+            <header className="restaurant-dish-popover-header">
               <h2>{selectedDish.name || "Dish details"}</h2>
-              <div className="restaurant-legacy-dish-popover-actions">
+              <div className="restaurant-dish-popover-actions">
                 <button
                   type="button"
                   aria-label="Toggle favorite dish"
@@ -563,8 +563,8 @@ export function RestaurantViewer({
               </div>
             </header>
 
-            <div className="restaurant-legacy-dish-popover-body">
-              <section className="restaurant-legacy-dish-popover-section">
+            <div className="restaurant-dish-popover-body">
+              <section className="restaurant-dish-popover-section">
                 <h3>Allergens:</h3>
                 {selectedDishAllergenRows.length ? (
                   selectedDishAllergenRows.map((row) => (
@@ -582,7 +582,7 @@ export function RestaurantViewer({
                 )}
               </section>
 
-              <section className="restaurant-legacy-dish-popover-section">
+              <section className="restaurant-dish-popover-section">
                 <h3>Diets:</h3>
                 {selectedDishDietRows.length ? (
                   selectedDishDietRows.map((row) => (
@@ -604,7 +604,7 @@ export function RestaurantViewer({
             <Button
               size="compact"
               tone="primary"
-              className="restaurant-legacy-dish-order-btn"
+              className="restaurant-dish-order-btn"
               onClick={() => {
                 viewer.addDishToOrder(selectedDish);
                 orderFlow.addDish(selectedDish);
@@ -617,13 +617,13 @@ export function RestaurantViewer({
 
         {!acknowledgedReferenceNote ? (
           <div
-            className="restaurant-legacy-reference-modal"
+            className="restaurant-reference-modal"
             role="dialog"
             aria-modal="true"
             aria-label="Reference notice"
           >
-            <div className="restaurant-legacy-reference-modal-card">
-              <p className="restaurant-legacy-reference-modal-text">
+            <div className="restaurant-reference-modal-card">
+              <p className="restaurant-reference-modal-text">
                 Reference only. Always inform staff about your allergens.
               </p>
               <button type="button" onClick={dismissReferenceNote}>
@@ -634,7 +634,7 @@ export function RestaurantViewer({
         ) : null}
       </div>
 
-      <footer className="restaurant-legacy-help-fab">
+      <footer className="restaurant-help-fab">
         <Link href="/help-contact">Help</Link>
       </footer>
     </section>

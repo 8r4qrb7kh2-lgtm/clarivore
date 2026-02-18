@@ -128,16 +128,16 @@ export function DishIngredientCard({
 
   return (
     <div
-      className="restaurant-legacy-editor-dish-ingredient-card"
+      className="restaurant-editor-dish-ingredient-card"
       ref={(node) => {
         onRowRef(index, node);
       }}
     >
-      <div className="restaurant-legacy-editor-dish-ingredient-main">
-        <div className="restaurant-legacy-editor-dish-ingredient-name-col">
-          <div className="restaurant-legacy-editor-dish-ingredient-name-row">
+      <div className="restaurant-editor-dish-ingredient-main">
+        <div className="restaurant-editor-dish-ingredient-name-col">
+          <div className="restaurant-editor-dish-ingredient-name-row">
             <input
-              className="restaurant-legacy-editor-dish-ingredient-name-input"
+              className="restaurant-editor-dish-ingredient-name-input"
               value={ingredient.name}
               onChange={(event) => onIngredientNameChange(index, event.target.value)}
             />
@@ -154,10 +154,10 @@ export function DishIngredientCard({
           </div>
 
           <div
-            className={`restaurant-legacy-editor-dish-ingredient-brand ${ingredient.brandRequired && !hasAssignedBrand ? "is-required" : ""}`}
+            className={`restaurant-editor-dish-ingredient-brand ${ingredient.brandRequired && !hasAssignedBrand ? "is-required" : ""}`}
           >
             {hasAssignedBrand ? (
-              <span className="restaurant-legacy-editor-dish-ingredient-brand-selected">
+              <span className="restaurant-editor-dish-ingredient-brand-selected">
                 Selected: {selectedBrandName}
               </span>
             ) : null}
@@ -165,11 +165,11 @@ export function DishIngredientCard({
               <img
                 src={selectedBrandImage}
                 alt={`${selectedBrandName} thumbnail`}
-                className="restaurant-legacy-editor-dish-ingredient-brand-thumb"
+                className="restaurant-editor-dish-ingredient-brand-thumb"
               />
             ) : null}
             {hasAssignedBrand ? (
-              <div className="restaurant-legacy-editor-dish-ingredient-brand-actions">
+              <div className="restaurant-editor-dish-ingredient-brand-actions">
                 <button
                   type="button"
                   className="btn btnDanger btnSmall"
@@ -187,11 +187,11 @@ export function DishIngredientCard({
                     : "✓ Brand assignment optional"}
                 </span>
                 {ingredient.brandRequirementReason ? (
-                  <span className="restaurant-legacy-editor-dish-ingredient-brand-reason">
+                  <span className="restaurant-editor-dish-ingredient-brand-reason">
                     {ingredient.brandRequirementReason}
                   </span>
                 ) : null}
-                <div className="restaurant-legacy-editor-dish-ingredient-brand-actions">
+                <div className="restaurant-editor-dish-ingredient-brand-actions">
                   <button
                     type="button"
                     className="btn btnSmall"
@@ -249,27 +249,27 @@ export function DishIngredientCard({
                   </span>
                 ) : null}
                 {searchOpen ? (
-                  <div className="restaurant-legacy-editor-dish-brand-search">
+                  <div className="restaurant-editor-dish-brand-search">
                     <input
-                      className="restaurant-legacy-editor-dish-brand-search-input"
+                      className="restaurant-editor-dish-brand-search-input"
                       value={searchQuery || ""}
                       placeholder="Search brand item names"
                       onChange={(event) => onSearchQueryChange(index, event.target.value)}
                     />
-                    <div className="restaurant-legacy-editor-dish-brand-search-results">
+                    <div className="restaurant-editor-dish-brand-search-results">
                       {matchingBrands.length ? (
                         matchingBrands.map((brand) => (
                           <button
                             key={`${index}-${brand.name}`}
                             type="button"
-                            className="restaurant-legacy-editor-dish-brand-search-result"
+                            className="restaurant-editor-dish-brand-search-result"
                             onClick={() => onApplyExistingBrandItem(index, brand)}
                           >
                             {brand.name}
                           </button>
                         ))
                       ) : (
-                        <p className="restaurant-legacy-editor-dish-brand-search-empty">
+                        <p className="restaurant-editor-dish-brand-search-empty">
                           No matching brand items in this menu.
                         </p>
                       )}
@@ -277,14 +277,14 @@ export function DishIngredientCard({
                   </div>
                 ) : null}
                 {ingredient.brandRequired && appealOpen ? (
-                  <div className="restaurant-legacy-editor-dish-appeal-wrap">
+                  <div className="restaurant-editor-dish-appeal-wrap">
                     <textarea
-                      className="restaurant-legacy-editor-dish-appeal-input"
+                      className="restaurant-editor-dish-appeal-input"
                       placeholder="Briefly explain why this ingredient should not require brand assignment."
                       value={appealMessage}
                       onChange={(event) => onAppealMessageChange(index, event.target.value)}
                     />
-                    <div className="restaurant-legacy-editor-dish-appeal-photo-row">
+                    <div className="restaurant-editor-dish-appeal-photo-row">
                       <label className="btn btnSmall" htmlFor={`appeal-photo-${index}`}>
                         {appealPhotoDataUrl ? "Replace photo" : "Take/upload photo"}
                       </label>
@@ -293,7 +293,7 @@ export function DishIngredientCard({
                         type="file"
                         accept="image/*"
                         capture="environment"
-                        className="restaurant-legacy-editor-dish-appeal-photo-input"
+                        className="restaurant-editor-dish-appeal-photo-input"
                         onChange={(event) => onAppealPhotoChange(index, event.target.files?.[0] || null)}
                       />
                       {appealPhotoDataUrl ? (
@@ -308,23 +308,23 @@ export function DishIngredientCard({
                       ) : null}
                     </div>
                     {appealPhotoDataUrl ? (
-                      <div className="restaurant-legacy-editor-dish-appeal-photo-preview-wrap">
+                      <div className="restaurant-editor-dish-appeal-photo-preview-wrap">
                         <img
                           src={appealPhotoDataUrl}
                           alt="Appeal evidence"
-                          className="restaurant-legacy-editor-dish-appeal-photo-preview"
+                          className="restaurant-editor-dish-appeal-photo-preview"
                         />
-                        <span className="restaurant-legacy-editor-dish-appeal-photo-name">
+                        <span className="restaurant-editor-dish-appeal-photo-name">
                           {appealPhotoFileName || "Selected photo"}
                         </span>
                       </div>
                     ) : null}
                     {appealPhotoError ? (
-                      <span className="restaurant-legacy-editor-dish-appeal-feedback is-error">
+                      <span className="restaurant-editor-dish-appeal-feedback is-error">
                         {appealPhotoError}
                       </span>
                     ) : null}
-                    <div className="restaurant-legacy-editor-dish-appeal-actions">
+                    <div className="restaurant-editor-dish-appeal-actions">
                       <button
                         type="button"
                         className="btn btnSmall btnDanger"
@@ -346,7 +346,7 @@ export function DishIngredientCard({
                 ) : null}
                 {appealFeedback?.message ? (
                   <span
-                    className={`restaurant-legacy-editor-dish-appeal-feedback ${appealFeedback.tone === "success" ? "is-success" : "is-error"}`}
+                    className={`restaurant-editor-dish-appeal-feedback ${appealFeedback.tone === "success" ? "is-success" : "is-error"}`}
                   >
                     {appealFeedback.message}
                   </span>
@@ -355,7 +355,7 @@ export function DishIngredientCard({
             )}
           </div>
 
-          <label className="restaurant-legacy-editor-dish-inline-check">
+          <label className="restaurant-editor-dish-inline-check">
             <input
               type="checkbox"
               checked={Boolean(ingredient.removable)}
@@ -366,25 +366,25 @@ export function DishIngredientCard({
         </div>
 
         {/* Detection key keeps tone/line style semantics discoverable while editing. */}
-        <div className="restaurant-legacy-editor-dish-ingredient-flags">
-          <div className="restaurant-legacy-editor-dish-detection-note">
-            <div className="restaurant-legacy-editor-dish-detection-key-row">
-              <span className="restaurant-legacy-editor-dish-key-box restaurant-legacy-editor-dish-key-box-solid" />
+        <div className="restaurant-editor-dish-ingredient-flags">
+          <div className="restaurant-editor-dish-detection-note">
+            <div className="restaurant-editor-dish-detection-key-row">
+              <span className="restaurant-editor-dish-key-box restaurant-editor-dish-key-box-solid" />
               <span>Contains</span>
-              <span className="restaurant-legacy-editor-dish-key-box restaurant-legacy-editor-dish-key-box-dashed" />
+              <span className="restaurant-editor-dish-key-box restaurant-editor-dish-key-box-dashed" />
               <span>Cross-contamination risk</span>
             </div>
-            <div className="restaurant-legacy-editor-dish-detection-key-row">
-              <span className="restaurant-legacy-editor-dish-key-dot restaurant-legacy-editor-dish-key-dot-smart" />
+            <div className="restaurant-editor-dish-detection-key-row">
+              <span className="restaurant-editor-dish-key-dot restaurant-editor-dish-key-dot-smart" />
               <span>Smart detection</span>
-              <span className="restaurant-legacy-editor-dish-key-dot restaurant-legacy-editor-dish-key-dot-manual" />
+              <span className="restaurant-editor-dish-key-dot restaurant-editor-dish-key-dot-manual" />
               <span>Manual override</span>
             </div>
           </div>
         </div>
 
-        <div className="restaurant-legacy-editor-dish-ingredient-pills">
-          <div className="restaurant-legacy-editor-dish-pill-column">
+        <div className="restaurant-editor-dish-ingredient-pills">
+          <div className="restaurant-editor-dish-pill-column">
             {allergens.map((allergen) => {
               const selectedState = readTokenState({
                 containsValues: ingredient.allergens,
@@ -405,7 +405,7 @@ export function DishIngredientCard({
                 <button
                   key={`${index}-allergen-${allergen}`}
                   type="button"
-                  className={`restaurant-legacy-editor-dish-chip ${toneClass} ${borderClass}`}
+                  className={`restaurant-editor-dish-chip ${toneClass} ${borderClass}`}
                   onClick={() => onCycleTokenState(index, "allergen", allergen)}
                 >
                   {formatAllergenLabel(allergen)}
@@ -413,7 +413,7 @@ export function DishIngredientCard({
               );
             })}
           </div>
-          <div className="restaurant-legacy-editor-dish-pill-column">
+          <div className="restaurant-editor-dish-pill-column">
             {diets.map((diet) => {
               const selectedState = readTokenState({
                 containsValues: ingredient.diets,
@@ -434,7 +434,7 @@ export function DishIngredientCard({
                 <button
                   key={`${index}-diet-${diet}`}
                   type="button"
-                  className={`restaurant-legacy-editor-dish-chip ${toneClass} ${borderClass}`}
+                  className={`restaurant-editor-dish-chip ${toneClass} ${borderClass}`}
                   onClick={() => onCycleTokenState(index, "diet", diet)}
                 >
                   {formatDietLabel(diet)}
@@ -444,7 +444,7 @@ export function DishIngredientCard({
           </div>
         </div>
 
-        <div className="restaurant-legacy-editor-dish-ingredient-status-col">
+        <div className="restaurant-editor-dish-ingredient-status-col">
           <ConfirmToggleButton
             confirmed={ingredient.confirmed === true}
             pendingLabel="Mark confirmed"
@@ -455,20 +455,20 @@ export function DishIngredientCard({
         </div>
       </div>
 
-      <div className="restaurant-legacy-editor-dish-ingredient-footer">
-        <div className="restaurant-legacy-editor-dish-ingredient-meta">
+      <div className="restaurant-editor-dish-ingredient-footer">
+        <div className="restaurant-editor-dish-ingredient-meta">
           {manualOverrideText ? (
-            <span className="restaurant-legacy-editor-dish-manual-warning">
+            <span className="restaurant-editor-dish-manual-warning">
               {manualOverrideText}
             </span>
           ) : null}
           {conflictWarningText ? (
-            <span className="restaurant-legacy-editor-dish-conflict-warning">
+            <span className="restaurant-editor-dish-conflict-warning">
               {conflictWarningText}
             </span>
           ) : null}
           {ingredient.brandRequired && !hasAssignedBrand ? (
-            <span className="restaurant-legacy-editor-dish-brand-warning">
+            <span className="restaurant-editor-dish-brand-warning">
               Assign a brand item before marking this ingredient confirmed.
             </span>
           ) : null}
