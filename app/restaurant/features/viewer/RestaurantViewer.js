@@ -123,6 +123,35 @@ function parseOverlayNumber(value) {
   return clamp(numeric, 0, 100);
 }
 
+function normalizeWebsiteHref(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  if (/^https?:\/\//i.test(raw)) return raw;
+  if (raw.startsWith("//")) return `https:${raw}`;
+
+  const compact = raw.replace(/\s+/g, "");
+  if (!compact) return "";
+
+  const hasDot = compact.includes(".");
+  const isLocalhost = /^localhost(?::\d+)?$/i.test(compact);
+  const isIpv4 = /^\d{1,3}(?:\.\d{1,3}){3}(?::\d+)?$/.test(compact);
+  const isIpv6 = /^\[[0-9a-f:]+\](?::\d+)?$/i.test(compact);
+  const withHostGuess =
+    hasDot || isLocalhost || isIpv4 || isIpv6 || compact.includes(":")
+      ? compact
+      : `www.${compact}.com`;
+
+  return `https://${withHostGuess}`;
+}
+
+function normalizePhoneHref(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  const compact = raw.replace(/[^0-9+*#,;]/g, "");
+  if (!compact || !/\d/.test(compact)) return "";
+  return `tel:${compact}`;
+}
+
 function toggleSelection(values, target) {
   const targetValue = String(target || "").trim();
   if (!targetValue) return Array.isArray(values) ? values : [];
@@ -250,27 +279,32 @@ export function RestaurantViewer({
     [activePageIndex],
   );
 
+  const websiteHref = normalizeWebsiteHref(restaurant?.website);
+  const phoneHref = normalizePhoneHref(restaurant?.phone);
+  const feedbackHref = allowGuestPreferenceEditing
+    ? "/report-issue?mode=feedback"
+    : "/help-contact";
   const actionButtons = [
     {
       key: "website",
       label: "Restaurant website",
-      href: restaurant?.website || "",
-      disabled: !restaurant?.website,
+      href: websiteHref,
+      disabled: !websiteHref,
       tone: "primary",
       external: true,
     },
     {
       key: "call",
       label: "Call restaurant",
-      href: restaurant?.phone ? `tel:${restaurant.phone}` : "",
-      disabled: !restaurant?.phone,
+      href: phoneHref,
+      disabled: !phoneHref,
       tone: "primary",
       external: true,
     },
     {
       key: "feedback",
       label: "Send feedback",
-      href: "/help-contact",
+      href: feedbackHref,
       disabled: false,
       tone: "primary",
       external: false,
@@ -278,7 +312,7 @@ export function RestaurantViewer({
     {
       key: "report",
       label: "Report issue",
-      href: "/report-issue",
+      href: "/report-issue?mode=issue",
       disabled: false,
       tone: "danger",
       external: false,
@@ -831,7 +865,9 @@ export function RestaurantViewer({
 
       {showGuestSignupBanner ? (
         <div className="restaurant-guest-signup-banner">
-          <span>Create a free account to save your preferences and favorites.</span>
+          <span>
+            Create a free account to save your preferences and browse other restaurants
+          </span>
           <Link href={guestSignupHref}>Create a free account</Link>
         </div>
       ) : null}

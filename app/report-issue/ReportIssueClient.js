@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import AppTopbar from "../components/AppTopbar";
 import PageShell from "../components/PageShell";
@@ -13,6 +13,7 @@ import { resolveAccountName } from "../lib/userIdentity";
 
 export default function ReportIssueClient() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [user, setUser] = useState(null);
   const [bootError, setBootError] = useState("");
   const [isOpen, setIsOpen] = useState(true);
@@ -21,6 +22,16 @@ export default function ReportIssueClient() {
   const [message, setMessage] = useState("");
   const [status, setStatus] = useState("");
   const [statusTone, setStatusTone] = useState("idle");
+  const issueMode = String(searchParams?.get("mode") || "").trim().toLowerCase();
+  const isFeedbackMode = issueMode === "feedback";
+  const pageTitle = isFeedbackMode ? "Send feedback" : "Report an issue";
+  const modalDescription = isFeedbackMode
+    ? "Share feedback about your Clarivore experience and suggestions."
+    : "Tell us what needs attention and we will follow up quickly.";
+  const messagePlaceholder = isFeedbackMode ? "Share your feedback" : "Describe the issue";
+  const successMessage = isFeedbackMode
+    ? "Thanks. We received your feedback."
+    : "Thanks. We received your report.";
   const authQuery = useQuery({
     queryKey: queryKeys.auth.user("report-issue"),
     enabled: Boolean(supabase),
@@ -54,8 +65,13 @@ export default function ReportIssueClient() {
   });
 
   const submitLabel = useMemo(
-    () => (submitMutation.isPending ? "Sending..." : "Send"),
-    [submitMutation.isPending],
+    () =>
+      submitMutation.isPending
+        ? "Sending..."
+        : isFeedbackMode
+          ? "Send feedback"
+          : "Send",
+    [isFeedbackMode, submitMutation.isPending],
   );
 
   useEffect(() => {
@@ -118,7 +134,7 @@ export default function ReportIssueClient() {
         return;
       }
       if (!trimmedMessage) {
-        setStatus("Please describe the issue.");
+        setStatus(isFeedbackMode ? "Please share your feedback." : "Please describe the issue.");
         setStatusTone("error");
         return;
       }
@@ -129,7 +145,7 @@ export default function ReportIssueClient() {
       try {
         const payload = {
           message: trimmedMessage,
-          context: "site_issue",
+          context: isFeedbackMode ? "website_feedback" : "site_issue",
           pageUrl: window.location.href,
           userEmail: trimmedEmail,
           reporterName: trimmedName || null,
@@ -139,7 +155,7 @@ export default function ReportIssueClient() {
 
         await submitMutation.mutateAsync(payload);
 
-        setStatus("Thanks. We received your report.");
+        setStatus(successMessage);
         setStatusTone("success");
         setMessage("");
         window.setTimeout(() => {
@@ -153,7 +169,7 @@ export default function ReportIssueClient() {
         setStatusTone("error");
       }
     },
-    [email, message, name, submitMutation, user],
+    [email, isFeedbackMode, message, name, submitMutation, successMessage, user],
   );
 
   return (
@@ -173,7 +189,7 @@ export default function ReportIssueClient() {
               id="reportIssueButton"
               onClick={() => setIsOpen(true)}
             >
-              Report an issue
+              {pageTitle}
             </button>
           </footer>
 
@@ -196,12 +212,12 @@ export default function ReportIssueClient() {
               <button
                 className="reportClose"
                 type="button"
-                aria-label="Close report form"
+                aria-label={`Close ${isFeedbackMode ? "feedback" : "report"} form`}
                 onClick={() => setIsOpen(false)}
               >
                 ×
               </button>
-              <h2 id="reportIssueTitle">Report an issue</h2>
+              <h2 id="reportIssueTitle">{pageTitle}</h2>
               <p
                 style={{
                   margin: 0,
@@ -210,7 +226,7 @@ export default function ReportIssueClient() {
                   fontSize: "0.95rem",
                 }}
               >
-                Tell us what needs attention and we will follow up quickly.
+                {modalDescription}
               </p>
 
               <form onSubmit={onSubmit}>
@@ -238,7 +254,7 @@ export default function ReportIssueClient() {
                 <Textarea
                   id="reportMessage"
                   name="message"
-                  placeholder="Describe the issue"
+                  placeholder={messagePlaceholder}
                   required
                   value={message}
                   onChange={(event) => setMessage(event.target.value)}
@@ -283,8 +299,12 @@ export default function ReportIssueClient() {
     >
       <PageHeading
         centered
-        title="Report an issue"
-        subtitle="The report form opens in a popup. Tap the button below to continue."
+        title={pageTitle}
+        subtitle={
+          isFeedbackMode
+            ? "The feedback form opens in a popup. Tap the button below to continue."
+            : "The report form opens in a popup. Tap the button below to continue."
+        }
       />
     </PageShell>
   );

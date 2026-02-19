@@ -30,6 +30,7 @@ function shouldBypassGuestGate(pathname) {
 
   if (normalizedRoute.startsWith("/account")) return true;
   if (normalizedRoute.startsWith("/guest")) return true;
+  if (normalizedRoute.startsWith("/report-issue")) return true;
   // Let the restaurant route settle first to avoid query-param race conditions
   // during guest navigation from /guest -> /restaurant.
   if (normalizedRoute === "/restaurant") return true;
