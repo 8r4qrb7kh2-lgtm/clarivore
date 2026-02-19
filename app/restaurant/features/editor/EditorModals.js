@@ -882,7 +882,7 @@ function ConfirmInfoModal({ editor }) {
               replacementBrand.crossContaminationAllergens,
             aiDetectedCrossContaminationDiets: replacementBrand.crossContaminationDiets,
             brands: [replacementBrand],
-            confirmed: true,
+            confirmed: false,
           };
         });
 
@@ -1143,7 +1143,7 @@ function ConfirmInfoModal({ editor }) {
           candidateImage: asText(replacementBrand.ingredientsImage || replacementImage),
           status: "matched",
           confidence: "high",
-          message: `Replaced and applied to ${applied.replacedRows} ingredient row${applied.replacedRows === 1 ? "" : "s"}.`,
+          message: `Replaced and applied to ${applied.replacedRows} ingredient row${applied.replacedRows === 1 ? "" : "s"}. Reconfirm each affected row before saving.`,
           differences: [],
           selectedAction: "replace",
           scanSessionId: "",

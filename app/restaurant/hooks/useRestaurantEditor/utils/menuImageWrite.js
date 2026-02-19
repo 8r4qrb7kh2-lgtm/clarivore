@@ -24,10 +24,10 @@ export function buildMenuImages(restaurant) {
 }
 
 function sanitizePersistedImageValue(value) {
-  // Persisted brand/ingredient image fields should store URLs, not data URLs.
+  // Persisted brand/ingredient image fields keep either URLs or data URLs.
+  // Brand scans currently emit data URLs; stripping them would drop thumbnails.
   const text = asText(value);
   if (!text) return "";
-  if (text.toLowerCase().startsWith("data:image")) return "";
   return text;
 }
 

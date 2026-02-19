@@ -312,6 +312,7 @@ export function replaceBrandInOverlays(
       if (replacementImage) {
         ingredient.brandImage = replacementImage;
       }
+      ingredient.confirmed = false;
       applyBrandDetections(ingredient, newBrand, normalizeAllergen, normalizeDietLabel);
     });
 

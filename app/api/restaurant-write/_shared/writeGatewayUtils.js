@@ -232,7 +232,6 @@ function toOverlayDishKey(overlay) {
 function sanitizePersistedImageValue(value) {
   const text = asText(value);
   if (!text) return "";
-  if (text.toLowerCase().startsWith("data:image")) return "";
   return text;
 }
 

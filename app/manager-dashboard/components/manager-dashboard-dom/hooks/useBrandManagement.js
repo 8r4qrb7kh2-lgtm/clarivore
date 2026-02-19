@@ -152,7 +152,7 @@ export function useBrandManagement({
         });
 
         const shouldCommit = window.confirm(
-          `Review brand replacement:\n\nFrom: ${brandItem.brandName || "Unknown brand"}\nTo: ${newBrandName}\n\nCommit this change to site?`,
+          `Review brand replacement:\n\nFrom: ${brandItem.brandName || "Unknown brand"}\nTo: ${newBrandName}\n\nApply this replacement now? Affected ingredient rows will be marked unconfirmed so each row can be reviewed again.`,
         );
         if (!shouldCommit) {
           await discardRestaurantWrite({
@@ -189,7 +189,10 @@ export function useBrandManagement({
             : current,
         );
 
-        setStatus("Brand item replaced successfully.", "success");
+        setStatus(
+          "Brand item replaced. Affected ingredient rows were marked unconfirmed for re-review.",
+          "success",
+        );
       } catch (error) {
         console.error("[manager-dashboard-next] failed to replace brand", error);
         setStatus("Failed to replace brand item. Please try again.", "error");
