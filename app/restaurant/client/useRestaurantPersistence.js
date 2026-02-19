@@ -26,6 +26,7 @@ export function useRestaurantPersistence({
   slug,
   inviteToken,
   isQrVisit,
+  isGuestVisit,
   editorAuthorName,
   pushToast,
 }) {
@@ -41,8 +42,8 @@ export function useRestaurantPersistence({
   }, [boot?.restaurant?.id, boot?.restaurant?.write_version]);
 
   const bootQueryKey = useMemo(
-    () => queryKeys.restaurant.boot(slug, inviteToken, isQrVisit),
-    [inviteToken, isQrVisit, slug],
+    () => queryKeys.restaurant.boot(slug, inviteToken, isQrVisit, isGuestVisit),
+    [inviteToken, isGuestVisit, isQrVisit, slug],
   );
 
   // After commit, update our local expected version to avoid stale-version conflicts.

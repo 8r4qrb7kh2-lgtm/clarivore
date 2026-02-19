@@ -394,7 +394,12 @@ export default function RestaurantClient() {
   // Single runtime source for restaurant/menu state in this page:
   // bootQuery -> loadRestaurantBoot -> database `restaurants` table.
   const bootQuery = useQuery({
-    queryKey: queryKeys.restaurant.boot(slug, inviteToken, isQrVisit),
+    queryKey: queryKeys.restaurant.boot(
+      slug,
+      inviteToken,
+      isQrVisit,
+      isGuestVisit,
+    ),
     enabled: Boolean(supabase) && Boolean(slug),
     queryFn: async () =>
       loadRestaurantBoot({
@@ -445,6 +450,7 @@ export default function RestaurantClient() {
       return;
     }
 
+    if (!boot) return;
     if (guestSelectionsInitializedRef.current) return;
     guestSelectionsInitializedRef.current = true;
 
@@ -603,6 +609,7 @@ export default function RestaurantClient() {
     slug,
     inviteToken,
     isQrVisit,
+    isGuestVisit,
     editorAuthorName,
     pushToast,
   });
