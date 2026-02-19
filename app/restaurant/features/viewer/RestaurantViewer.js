@@ -126,7 +126,6 @@ function parseOverlayNumber(value) {
 export function RestaurantViewer({
   restaurant,
   viewer,
-  orderFlow,
   lovedDishes,
   favoriteBusyDish,
 }) {
@@ -466,6 +465,15 @@ export function RestaurantViewer({
           </p>
           <p>⚠ Cross-contamination risk · Tap dishes for details · Pinch menu to zoom in/out</p>
         </div>
+
+        {!acknowledgedReferenceNote ? (
+          <div className="restaurant-reference-banner">
+            <span>Reference only. Always inform staff about your allergens.</span>
+            <button type="button" onClick={dismissReferenceNote}>
+              I understand
+            </button>
+          </div>
+        ) : null}
       </div>
 
       <div
@@ -607,7 +615,6 @@ export function RestaurantViewer({
               className="restaurant-dish-order-btn"
               onClick={() => {
                 viewer.addDishToOrder(selectedDish);
-                orderFlow.addDish(selectedDish);
               }}
             >
               Add to order
@@ -615,23 +622,6 @@ export function RestaurantViewer({
           </aside>
         ) : null}
 
-        {!acknowledgedReferenceNote ? (
-          <div
-            className="restaurant-reference-modal"
-            role="dialog"
-            aria-modal="true"
-            aria-label="Reference notice"
-          >
-            <div className="restaurant-reference-modal-card">
-              <p className="restaurant-reference-modal-text">
-                Reference only. Always inform staff about your allergens.
-              </p>
-              <button type="button" onClick={dismissReferenceNote}>
-                I understand
-              </button>
-            </div>
-          </div>
-        ) : null}
       </div>
 
       <footer className="restaurant-help-fab">

@@ -29,6 +29,7 @@ import {
   normalizeIngredientEntry,
 } from "./features/editor/editorUtils";
 import RestaurantEditor from "./features/editor/RestaurantEditor";
+import RestaurantOrderSidebar from "./features/order/RestaurantOrderSidebar";
 import RestaurantViewer from "./features/viewer/RestaurantViewer";
 import { useOrderFlow } from "./hooks/useOrderFlow";
 import { useRestaurantEditor } from "./hooks/useRestaurantEditor";
@@ -361,6 +362,7 @@ export default function RestaurantClient() {
     readManagerModeDefault({ editParam, isQrVisit }),
   );
   const [favoriteBusyDish, setFavoriteBusyDish] = useState("");
+  const [orderSidebarOpen, setOrderSidebarOpen] = useState(false);
   const autoReplaceBrandRunRef = useRef(false);
   const isMountedRef = useRef(true);
 
@@ -471,6 +473,23 @@ export default function RestaurantClient() {
     [lovedDishesSet, pushToast, toggleFavorite],
   );
 
+  const onAddDishToOrder = useCallback(
+    (dish) => {
+      const dishName = String(dish?.id || dish?.name || "").trim();
+      if (!dishName) return;
+
+      const alreadySelected = orderFlow.selectedDishNames.includes(dishName);
+      orderFlow.addDish(dishName);
+      setOrderSidebarOpen(true);
+      pushToast({
+        tone: alreadySelected ? "neutral" : "success",
+        title: alreadySelected ? "Dish already in order" : "Dish added to order",
+        description: dishName,
+      });
+    },
+    [orderFlow.addDish, orderFlow.selectedDishNames, pushToast],
+  );
+
   const viewer = useRestaurantViewer({
     // Viewer reads from the same DB-backed restaurant object as editor.
     restaurant: restaurantFromDatabase,
@@ -489,9 +508,7 @@ export default function RestaurantClient() {
     },
     mode: activeView,
     callbacks: {
-      onAddDishToOrder: (dish) => {
-        orderFlow.addDish(dish);
-      },
+      onAddDishToOrder,
       onToggleFavoriteDish,
     },
   });
@@ -570,6 +587,7 @@ export default function RestaurantClient() {
   });
 
   const isEditorMode = activeView === "editor" && boot?.canEdit;
+  const orderSidebarBadgeCount = orderFlow.selectedDishNames.length;
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -777,13 +795,21 @@ export default function RestaurantClient() {
           />
         </>
       ) : (
-        <RestaurantViewer
-          restaurant={boot.restaurant}
-          viewer={viewer}
-          orderFlow={orderFlow}
-          lovedDishes={lovedDishesSet}
-          favoriteBusyDish={favoriteBusyDish}
-        />
+        <>
+          <RestaurantViewer
+            restaurant={boot.restaurant}
+            viewer={viewer}
+            lovedDishes={lovedDishesSet}
+            favoriteBusyDish={favoriteBusyDish}
+          />
+          <RestaurantOrderSidebar
+            orderFlow={orderFlow}
+            user={boot.user}
+            isOpen={orderSidebarOpen}
+            onToggleOpen={() => setOrderSidebarOpen((current) => !current)}
+            badgeCount={orderSidebarBadgeCount}
+          />
+        </>
       )}
 
       <UnsavedChangesModal modalState={navigationGuard.modal} />
