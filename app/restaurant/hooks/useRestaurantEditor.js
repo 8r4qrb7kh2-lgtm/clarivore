@@ -455,7 +455,6 @@ export function useRestaurantEditor({
     getBrandRequirementIssues,
     getIngredientConfirmationIssues,
 
-    routeParams: params,
     config,
     previewPreferences,
   });

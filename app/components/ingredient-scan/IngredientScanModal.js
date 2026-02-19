@@ -8,6 +8,7 @@ import {
   analyzeIngredientLabelImage,
   analyzeTranscriptFlags,
   buildWordLayout,
+  prepareAnalysisImage,
   rebuildLineWordBoxes,
 } from "./analysisClient";
 
@@ -1013,6 +1014,27 @@ export default function IngredientScanModal({
         ),
       );
 
+      let persistedBrandImage = asText(front?.frontImageData);
+      if (persistedBrandImage) {
+        try {
+          const compressed = await prepareAnalysisImage(persistedBrandImage, 640, 0.62);
+          persistedBrandImage = asText(compressed?.imageData) || persistedBrandImage;
+        } catch {
+          // Keep original capture if compression fails.
+        }
+      }
+
+      let persistedIngredientsImage = asText(analysisResult?.correctedImage);
+      if (persistedIngredientsImage) {
+        try {
+          const compressed = await prepareAnalysisImage(persistedIngredientsImage, 900, 0.72);
+          persistedIngredientsImage =
+            asText(compressed?.imageData) || persistedIngredientsImage;
+        } catch {
+          // Keep original corrected image if compression fails.
+        }
+      }
+
       await onApply?.({
         ingredientName: asText(ingredientName),
         ingredientText,
@@ -1020,8 +1042,8 @@ export default function IngredientScanModal({
         crossContaminationAllergens: Array.from(crossAllergens),
         diets,
         crossContaminationDiets: Array.from(crossDiets),
-        brandImage: asText(front?.frontImageData),
-        ingredientsImage: asText(analysisResult?.correctedImage),
+        brandImage: persistedBrandImage,
+        ingredientsImage: persistedIngredientsImage,
         ingredientsList: finalLines,
         productName: asText(front?.productName),
       });

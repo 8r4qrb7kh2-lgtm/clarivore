@@ -72,7 +72,6 @@ export function buildEditorApi({
   getBrandRequirementIssues,
   getIngredientConfirmationIssues,
 
-  routeParams,
   config,
   previewPreferences,
 }) {
@@ -90,7 +89,6 @@ export function buildEditorApi({
     selectedPageIndex: derivedApi.selectedPageIndex,
     activePageIndex,
     zoomScale,
-    routeParams,
 
     pendingChanges,
     pendingSaveBatchId,

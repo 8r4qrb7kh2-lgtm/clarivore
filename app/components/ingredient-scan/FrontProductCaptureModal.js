@@ -8,10 +8,10 @@ function asText(value) {
   return String(value ?? "").trim();
 }
 
-const FRONT_PRIMARY_MAX_EDGE = 1200;
-const FRONT_PRIMARY_QUALITY = 0.86;
-const FRONT_RETRY_MAX_EDGE = 900;
-const FRONT_RETRY_QUALITY = 0.72;
+const FRONT_PRIMARY_MAX_EDGE = 840;
+const FRONT_PRIMARY_QUALITY = 0.76;
+const FRONT_RETRY_MAX_EDGE = 640;
+const FRONT_RETRY_QUALITY = 0.62;
 
 async function readFileAsDataUrl(file) {
   return await new Promise((resolve, reject) => {
@@ -235,7 +235,11 @@ export default function FrontProductCaptureModal({
     setError("");
 
     try {
-      const compressed = await prepareAnalysisImage(photoDataUrl, 1200, 0.92);
+      const compressed = await prepareAnalysisImage(
+        photoDataUrl,
+        FRONT_RETRY_MAX_EDGE,
+        FRONT_RETRY_QUALITY,
+      );
       await onApply?.({
         frontImageData: compressed.imageData,
         productName: asText(productName),

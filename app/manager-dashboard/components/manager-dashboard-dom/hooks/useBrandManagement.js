@@ -71,7 +71,6 @@ export function useBrandManagement({
         const params = new URLSearchParams({
           slug,
           edit: "1",
-          openConfirm: "1",
           autoReplaceBrand: "1",
         });
         const brandKey = String(brandItem?.key || "").trim();

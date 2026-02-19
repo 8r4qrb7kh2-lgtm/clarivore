@@ -132,6 +132,8 @@ export function stripEditorOverlay(overlay) {
   next.ingredients = (Array.isArray(next.ingredients) ? next.ingredients : []).map(
     (ingredient, index) => normalizeIngredientForWrite(ingredient, index),
   );
+  // Persist from normalized `ingredients` only; avoids stale/duplicated aiIngredients payload.
+  delete next.aiIngredients;
 
   return next;
 }

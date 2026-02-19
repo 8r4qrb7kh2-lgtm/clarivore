@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import AppTopbar from "../components/AppTopbar";
@@ -24,11 +24,221 @@ import { loadRestaurantBoot } from "./client/restaurantBootLoader";
 import { useRestaurantPersistence } from "./client/useRestaurantPersistence";
 import { useRuntimeConfigHealth } from "./client/useRuntimeConfigHealth";
 import { useUnsavedNavigationGuard } from "./client/useUnsavedNavigationGuard";
+import {
+  deriveDishStateFromIngredients,
+  normalizeIngredientEntry,
+} from "./features/editor/editorUtils";
 import RestaurantEditor from "./features/editor/RestaurantEditor";
 import RestaurantViewer from "./features/viewer/RestaurantViewer";
 import { useOrderFlow } from "./hooks/useOrderFlow";
 import { useRestaurantEditor } from "./hooks/useRestaurantEditor";
 import { useRestaurantViewer } from "./hooks/useRestaurantViewer";
+
+function asText(value) {
+  return String(value ?? "").trim();
+}
+
+function normalizeToken(value) {
+  return asText(value).toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+function normalizeBrandKey(value) {
+  return asText(value).toLowerCase();
+}
+
+function resolveBrandVerificationKey(brand) {
+  const barcodeKey = normalizeBrandKey(brand?.barcode);
+  if (barcodeKey) return `barcode:${barcodeKey}`;
+  const nameKey = normalizeBrandKey(brand?.name || brand?.productName);
+  if (nameKey) return `name:${nameKey}`;
+  return "";
+}
+
+function normalizeStringList(values, normalizer) {
+  const seen = new Set();
+  const output = [];
+  (Array.isArray(values) ? values : []).forEach((entry) => {
+    const raw = asText(entry);
+    if (!raw) return;
+    const normalized =
+      typeof normalizer === "function" ? asText(normalizer(raw)) || raw : raw;
+    const token = normalizeToken(normalized);
+    if (!token || seen.has(token)) return;
+    seen.add(token);
+    output.push(normalized);
+  });
+  return output;
+}
+
+function ingredientMatchesBrandTarget(ingredient, { targetBrandKey, targetBrandName }) {
+  const brands = Array.isArray(ingredient?.brands) ? ingredient.brands : [];
+
+  if (targetBrandKey) {
+    const hasKeyMatch = brands.some(
+      (brand) => normalizeBrandKey(resolveBrandVerificationKey(brand)) === targetBrandKey,
+    );
+    if (hasKeyMatch) return true;
+  }
+
+  if (targetBrandName) {
+    const hasNameMatch = brands.some(
+      (brand) => normalizeBrandKey(brand?.name || brand?.productName) === targetBrandName,
+    );
+    if (hasNameMatch) return true;
+
+    const appliedBrandName = normalizeBrandKey(
+      ingredient?.appliedBrandItem || ingredient?.appliedBrand || ingredient?.brandName,
+    );
+    if (appliedBrandName && appliedBrandName === targetBrandName) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+function findSeedIngredientName(overlays, { targetBrandKey, targetBrandName, fallbackBrandName }) {
+  for (const overlay of Array.isArray(overlays) ? overlays : []) {
+    const ingredients = Array.isArray(overlay?.ingredients) ? overlay.ingredients : [];
+    for (const ingredient of ingredients) {
+      if (!ingredientMatchesBrandTarget(ingredient, { targetBrandKey, targetBrandName })) continue;
+      const ingredientName = asText(ingredient?.name);
+      if (ingredientName) return ingredientName;
+    }
+  }
+  return asText(fallbackBrandName) || "Brand item";
+}
+
+function buildReplacementBrandFromScan(result, fallbackName, config) {
+  const ingredientText = asText(result?.ingredientText);
+  const ingredientLines = normalizeStringList(
+    Array.isArray(result?.ingredientsList) && result.ingredientsList.length
+      ? result.ingredientsList
+      : ingredientText
+        ? [ingredientText]
+        : [],
+  );
+
+  return {
+    name: asText(result?.productName) || asText(fallbackName) || "Brand item",
+    barcode: "",
+    brandImage: asText(result?.brandImage),
+    image: "",
+    ingredientsImage: asText(result?.ingredientsImage),
+    ingredientsList: ingredientLines,
+    ingredientList: ingredientText || ingredientLines.join(" "),
+    allergens: normalizeStringList(result?.allergens, config?.normalizeAllergen),
+    crossContaminationAllergens: normalizeStringList(
+      result?.crossContaminationAllergens,
+      config?.normalizeAllergen,
+    ),
+    diets: normalizeStringList(result?.diets, config?.normalizeDietLabel),
+    crossContaminationDiets: normalizeStringList(
+      result?.crossContaminationDiets,
+      config?.normalizeDietLabel,
+    ),
+  };
+}
+
+function applyBrandReplacementToOverlays({
+  overlays,
+  replacementBrand,
+  targetBrandKey,
+  targetBrandName,
+  configuredDiets,
+}) {
+  const matchedOverlayKeys = [];
+  const matchedDishNames = new Set();
+  const matchedIngredientNames = new Set();
+  let replacedRows = 0;
+
+  const nextOverlays = (Array.isArray(overlays) ? overlays : []).map((overlay, overlayIndex) => {
+    const ingredients = Array.isArray(overlay?.ingredients) ? overlay.ingredients : [];
+    let changed = false;
+
+    const nextIngredients = ingredients.map((ingredient) => {
+      if (!ingredientMatchesBrandTarget(ingredient, { targetBrandKey, targetBrandName })) {
+        return ingredient;
+      }
+
+      changed = true;
+      replacedRows += 1;
+      const dishName = asText(overlay?.id || overlay?.name || `Dish ${overlayIndex + 1}`);
+      const ingredientName = asText(ingredient?.name);
+      if (dishName) matchedDishNames.add(dishName);
+      if (ingredientName) matchedIngredientNames.add(ingredientName);
+
+      return {
+        ...ingredient,
+        allergens: replacementBrand.allergens,
+        diets: replacementBrand.diets,
+        crossContaminationAllergens: replacementBrand.crossContaminationAllergens,
+        crossContaminationDiets: replacementBrand.crossContaminationDiets,
+        aiDetectedAllergens: replacementBrand.allergens,
+        aiDetectedDiets: replacementBrand.diets,
+        aiDetectedCrossContaminationAllergens: replacementBrand.crossContaminationAllergens,
+        aiDetectedCrossContaminationDiets: replacementBrand.crossContaminationDiets,
+        brands: [{ ...replacementBrand }],
+        appliedBrandItem: replacementBrand.name,
+        appliedBrand: replacementBrand.name,
+        brandName: replacementBrand.name,
+        confirmed: false,
+      };
+    });
+
+    if (!changed) return overlay;
+
+    const normalizedIngredients = nextIngredients.map((row, rowIndex) =>
+      normalizeIngredientEntry(row, rowIndex),
+    );
+    const derived = deriveDishStateFromIngredients({
+      ingredients: normalizedIngredients,
+      existingDetails: overlay?.details,
+      configuredDiets: Array.isArray(configuredDiets) ? configuredDiets : [],
+    });
+
+    if (asText(overlay?._editorKey)) {
+      matchedOverlayKeys.push(asText(overlay._editorKey));
+    }
+
+    return {
+      ...overlay,
+      ingredients: derived.ingredients,
+      aiIngredients: JSON.stringify(derived.ingredients),
+      allergens: derived.allergens,
+      diets: derived.diets,
+      details: derived.details,
+      removable: derived.removable,
+      crossContaminationAllergens: derived.crossContaminationAllergens,
+      crossContaminationDiets: derived.crossContaminationDiets,
+      ingredientsBlockingDiets: derived.ingredientsBlockingDiets,
+    };
+  });
+
+  return {
+    overlays: nextOverlays,
+    replacedRows,
+    firstOverlayKey: matchedOverlayKeys[0] || "",
+    dishNames: Array.from(matchedDishNames),
+    ingredientNames: Array.from(matchedIngredientNames),
+  };
+}
+
+function stripAutoReplaceParamsFromUrl() {
+  if (typeof window === "undefined") return;
+  const url = new URL(window.location.href);
+  const keys = ["autoReplaceBrand", "replaceBrandKey", "replaceBrandName"];
+  let changed = false;
+  keys.forEach((key) => {
+    if (!url.searchParams.has(key)) return;
+    url.searchParams.delete(key);
+    changed = true;
+  });
+  if (!changed) return;
+  const query = url.searchParams.toString();
+  const nextUrl = `${url.pathname}${query ? `?${query}` : ""}${url.hash || ""}`;
+  window.history.replaceState({}, document.title, nextUrl);
+}
 
 export default function RestaurantClient() {
   const router = useRouter();
@@ -59,6 +269,7 @@ export default function RestaurantClient() {
     readManagerModeDefault({ editParam, isQrVisit }),
   );
   const [favoriteBusyDish, setFavoriteBusyDish] = useState("");
+  const autoReplaceBrandRunRef = useRef(false);
 
   const {
     runtimeConfigChecked,
@@ -245,9 +456,6 @@ export default function RestaurantClient() {
       dishName: dishNameParam,
       openAI: shouldOpenAi,
       ingredientName: ingredientNameParam,
-      autoReplaceBrand: shouldAutoReplaceBrand,
-      replaceBrandKey: replaceBrandKeyParam,
-      replaceBrandName: replaceBrandNameParam,
     },
     callbacks: editorCallbacks,
   });
@@ -267,6 +475,100 @@ export default function RestaurantClient() {
     slug,
     restaurantSlug: boot?.restaurant?.slug || slug,
   });
+
+  const isEditorMode = activeView === "editor" && boot?.canEdit;
+
+  // Dashboard-driven brand replacement flow:
+  // route to editor -> open scan modal -> apply replacements in draft only.
+  useEffect(() => {
+    if (!isEditorMode) return;
+    if (!shouldAutoReplaceBrand) return;
+    if (autoReplaceBrandRunRef.current) return;
+    if (!Array.isArray(editor?.draftOverlays) || !editor.draftOverlays.length) return;
+
+    autoReplaceBrandRunRef.current = true;
+    stripAutoReplaceParamsFromUrl();
+
+    let cancelled = false;
+    const targetBrandKey = normalizeBrandKey(replaceBrandKeyParam);
+    const targetBrandName = normalizeBrandKey(replaceBrandNameParam);
+
+    const run = async () => {
+      try {
+        const seedIngredientName = findSeedIngredientName(editor.draftOverlays, {
+          targetBrandKey,
+          targetBrandName,
+          fallbackBrandName: replaceBrandNameParam,
+        });
+
+        const scanResult = await ingredientScan.openScan({
+          ingredientName: seedIngredientName,
+          supportedDiets: Array.isArray(boot?.config?.DIETS) ? boot.config.DIETS : [],
+          scanProfile: "dish_editor_brand",
+        });
+        if (cancelled || !scanResult) return;
+
+        const replacementBrand = buildReplacementBrandFromScan(
+          scanResult,
+          replaceBrandNameParam || seedIngredientName,
+          boot?.config,
+        );
+
+        const replacement = applyBrandReplacementToOverlays({
+          overlays: editor.draftOverlays,
+          replacementBrand,
+          targetBrandKey,
+          targetBrandName,
+          configuredDiets: Array.isArray(boot?.config?.DIETS) ? boot.config.DIETS : [],
+        });
+
+        if (!replacement.replacedRows) {
+          pushToast({
+            tone: "danger",
+            title: "No rows updated",
+            description: "No ingredient rows matched the selected brand item.",
+          });
+          return;
+        }
+
+        editor.applyOverlayList(replacement.overlays);
+        queueMicrotask(() => {
+          editor.pushHistory();
+          if (replacement.firstOverlayKey) {
+            editor.openDishEditor(replacement.firstOverlayKey);
+          }
+        });
+
+        pushToast({
+          tone: "success",
+          title: "Brand replacement staged",
+          description: `Updated ${replacement.replacedRows} ingredient row${replacement.replacedRows === 1 ? "" : "s"}. Reconfirm each affected row, then click Save to site.`,
+        });
+      } catch (error) {
+        if (cancelled) return;
+        pushToast({
+          tone: "danger",
+          title: "Brand replacement failed",
+          description: error?.message || "Unable to start brand replacement flow.",
+        });
+      }
+    };
+
+    run();
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    autoReplaceBrandRunRef,
+    boot?.config,
+    editor,
+    ingredientScan,
+    isEditorMode,
+    pushToast,
+    replaceBrandKeyParam,
+    replaceBrandNameParam,
+    shouldAutoReplaceBrand,
+  ]);
 
   // Lock body scrolling so the restaurant surface controls the viewport.
   useEffect(() => {
@@ -311,7 +613,6 @@ export default function RestaurantClient() {
     );
   }
 
-  const isEditorMode = activeView === "editor" && boot?.canEdit;
   const isOwner = isOwnerUser(boot?.user);
   const isManager = isManagerUser(boot?.user);
   const currentRestaurantSlug = boot?.restaurant?.slug || slug;
