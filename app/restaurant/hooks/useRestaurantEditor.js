@@ -320,7 +320,6 @@ export function useRestaurantEditor({
     normalizeAllergenList: derivedApi.normalizeAllergenList,
     normalizeDietList: derivedApi.normalizeDietList,
     updateOverlay: overlayActions.updateOverlay,
-    appendPendingChange: historyApi.appendPendingChange,
     pushHistory: historyApi.pushHistory,
     setAiAssistDraft: historyApi.setAiAssistDraft,
   });

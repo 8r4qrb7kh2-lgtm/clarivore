@@ -345,30 +345,11 @@ export function useDishEditorController({
     (ingredientIndex, type, token) => {
       const value = asText(token);
       if (!value) return;
-      const ingredientName =
-        asText(ingredients[ingredientIndex]?.name) || `Ingredient ${ingredientIndex + 1}`;
-      const dishName = asText(overlay?.id || "Dish");
       const containsField = type === "diet" ? "diets" : "allergens";
       const crossField =
         type === "diet"
           ? "crossContaminationDiets"
           : "crossContaminationAllergens";
-
-      const currentIngredient = ingredients[ingredientIndex];
-      const currentState = readTokenState({
-        containsValues: currentIngredient?.[containsField],
-        crossValues: currentIngredient?.[crossField],
-        token: value,
-      });
-      const nextState = nextTokenState(currentState);
-      const categoryLabel = type === "diet" ? "diet" : "allergen";
-      const changeText =
-        nextState === "contains"
-          ? `${dishName}: ${ingredientName}: added ${value} ${categoryLabel} (contains)`
-          : nextState === "cross"
-            ? `${dishName}: ${ingredientName}: ${value} ${categoryLabel} marked cross-contamination risk`
-            : `${dishName}: ${ingredientName}: removed ${value} ${categoryLabel}`;
-      const changeKey = `ingredient-flag:${normalizeToken(dishName)}:${ingredientIndex}:${type}:${normalizeToken(value)}`;
 
       applyIngredientChanges((current) =>
         current.map((ingredient, index) => {
@@ -403,13 +384,11 @@ export function useDishEditorController({
           };
         }),
         {
-          changeText,
-          changeKey,
           recordHistory: true,
         },
       );
     },
-    [applyIngredientChanges, ingredients, overlay?.id],
+    [applyIngredientChanges],
   );
 
   const toggleIngredientRemovable = useCallback(

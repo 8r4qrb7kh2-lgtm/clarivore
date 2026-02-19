@@ -15,7 +15,6 @@ export function useAiDishActions({
   normalizeAllergenList,
   normalizeDietList,
   updateOverlay,
-  appendPendingChange,
   pushHistory,
   setAiAssistDraft,
 }) {
@@ -207,20 +206,9 @@ export function useAiDishActions({
       ingredientsBlockingDiets,
     });
 
-    const selectedDishName = asText(selectedOverlay.id || selectedOverlay.name || "Dish");
-    const firstIngredientRowName = asText(
-      ingredients.find((ingredient) => asText(ingredient?.name))?.name || "Ingredient row",
-    );
-    appendPendingChange(
-      `${selectedDishName}: ${firstIngredientRowName}: Applied AI ingredient analysis`,
-      {
-        key: `ai-analysis:${normalizeToken(selectedDishName)}:${normalizeToken(firstIngredientRowName)}`,
-      },
-    );
     queueMicrotask(() => pushHistory());
     return { success: true };
   }, [
-    appendPendingChange,
     callbacks?.onAnalyzeIngredientScanRequirement,
     config?.DIETS,
     normalizeAllergenList,
