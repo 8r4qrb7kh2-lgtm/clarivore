@@ -2229,7 +2229,7 @@ h2 {
 
 .restaurant-meta-row {
   display: grid;
-  grid-template-columns: 82px minmax(0, 1fr);
+  grid-template-columns: 92px minmax(0, 1fr);
   gap: 10px;
   align-items: start;
 }
@@ -2279,7 +2279,7 @@ h2 {
 .restaurant-preference-wrap {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 5px;
 }
 
 .restaurant-reference-modal {
@@ -2435,28 +2435,59 @@ h2 {
 .restaurant-confirmed-text {
   margin: 0;
   color: #bac5e5;
-  font-size: 0.95rem;
+  font-size: 0.86rem;
 }
 
 .restaurant-legend {
-  margin: 14px 0 12px;
-  text-align: center;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  text-align: left;
   color: #d8e0fa;
-  font-size: 1.02rem;
+  font-size: 0.78rem;
+  line-height: 1.2;
 }
 
-.restaurant-legend p {
-  margin: 2px 0;
+.restaurant-legend-keys {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.restaurant-legend-keys::-webkit-scrollbar {
+  display: none;
+}
+
+.restaurant-legend-item {
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+}
+
+.restaurant-legend-note {
+  margin: 0;
+  color: #b7c4e8;
+  white-space: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.restaurant-legend-note::-webkit-scrollbar {
+  display: none;
 }
 
 .legend-box {
   display: inline-block;
-  width: 14px;
-  height: 14px;
+  width: 11px;
+  height: 11px;
   border: 2px solid;
   border-radius: 4px;
   vertical-align: -2px;
-  margin-right: 6px;
+  margin-right: 5px;
 }
 
 .legend-box.safe {
@@ -2782,16 +2813,26 @@ h2 {
     width: 100%;
   }
   .restaurant-meta-row {
-    grid-template-columns: 1fr;
+    grid-template-columns: 88px minmax(0, 1fr);
+    gap: 8px;
   }
   .restaurant-page-card {
-    max-width: 150px;
+    max-width: 100%;
   }
   .restaurant-actions-row {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .restaurant-title {
     font-size: 2rem;
+  }
+  .restaurant-confirmed-text {
+    font-size: 0.8rem;
+  }
+  .restaurant-legend {
+    font-size: 0.72rem;
+  }
+  .restaurant-legend-keys {
+    gap: 6px;
   }
   .restaurant-reference-modal {
     padding: 12px;

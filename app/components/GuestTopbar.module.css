@@ -2,6 +2,7 @@
   position: sticky;
   top: 0;
   width: 100%;
+  padding-top: env(safe-area-inset-top, 0px);
   background: linear-gradient(180deg, #0f1530, #0b1020);
   border-bottom: 1px solid #1c2347;
   box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
@@ -12,7 +13,8 @@
   max-width: 1200px;
   margin: 0 auto;
   width: 100%;
-  padding: 12px 20px;
+  padding: 12px max(20px, env(safe-area-inset-right, 0px)) 12px
+    max(20px, env(safe-area-inset-left, 0px));
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
@@ -60,7 +62,8 @@
 
 @media (max-width: 960px) {
   .inner {
-    padding: 10px 14px;
+    padding: 10px max(12px, env(safe-area-inset-right, 0px)) 10px
+      max(12px, env(safe-area-inset-left, 0px));
     grid-template-columns: minmax(0, 0.65fr) auto minmax(0, 0.65fr);
   }
 

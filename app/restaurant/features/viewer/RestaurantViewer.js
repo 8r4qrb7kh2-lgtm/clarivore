@@ -693,16 +693,24 @@ export function RestaurantViewer({
             <p className="restaurant-confirmed-text">
               Last confirmed by restaurant staff: {lastConfirmedLabel}
             </p>
-          </div>
-        </div>
 
-        <div className="restaurant-legend">
-          <p>
-            <span className="legend-box safe" /> Complies ·{" "}
-            <span className="legend-box removable" /> Can be modified to comply ·{" "}
-            <span className="legend-box unsafe" /> Cannot be modified to comply
-          </p>
-          <p>⚠ Cross-contamination risk · Tap dishes for details · Pinch menu to zoom in/out</p>
+            <div className="restaurant-legend" aria-label="Menu symbol keys">
+              <div className="restaurant-legend-keys">
+                <span className="restaurant-legend-item">
+                  <span className="legend-box safe" /> Complies
+                </span>
+                <span className="restaurant-legend-item">
+                  <span className="legend-box removable" /> Can be modified
+                </span>
+                <span className="restaurant-legend-item">
+                  <span className="legend-box unsafe" /> Cannot be modified
+                </span>
+              </div>
+              <p className="restaurant-legend-note">
+                ⚠ Cross-contamination risk · Tap dishes for details · Pinch menu to zoom in/out
+              </p>
+            </div>
+          </div>
         </div>
 
         {!acknowledgedReferenceNote ? (
