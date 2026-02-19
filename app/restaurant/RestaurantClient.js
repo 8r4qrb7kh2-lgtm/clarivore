@@ -634,26 +634,6 @@ export default function RestaurantClient() {
         }
 
         editor.applyOverlayList(replacement.overlays);
-        if (typeof editor.appendPendingChange === "function") {
-          const previousBrandLabel = asText(replaceBrandNameParam) || "selected brand item";
-          const replacementBrandLabel = asText(replacementBrand?.name) || "new brand item";
-          const replacementKeySeed =
-            normalizeToken(targetBrandKey || targetBrandName || previousBrandLabel) || "item";
-          editor.appendPendingChange(
-            `Brand item replacement - replaced "${previousBrandLabel}" with "${replacementBrandLabel}" in ${replacement.replacedRows} ingredient row${replacement.replacedRows === 1 ? "" : "s"}.`,
-            { key: `brand-replacement:${replacementKeySeed}` },
-          );
-          replacement.dishCounts.forEach(({ dishName, count }) => {
-            const safeDishName = asText(dishName);
-            if (!safeDishName || !count) return;
-            editor.appendPendingChange(
-              `${safeDishName}: Replaced brand item "${previousBrandLabel}" with "${replacementBrandLabel}" on ${count} ingredient row${count === 1 ? "" : "s"}.`,
-              {
-                key: `brand-replacement-dish:${replacementKeySeed}:${normalizeToken(safeDishName) || safeDishName.toLowerCase()}`,
-              },
-            );
-          });
-        }
         queueMicrotask(() => {
           editor.pushHistory();
           if (replacement.firstOverlayKey) {

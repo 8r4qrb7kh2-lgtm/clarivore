@@ -1217,27 +1217,6 @@ function ConfirmInfoModal({ editor }) {
           }));
           return;
         }
-        if (typeof editor.appendPendingChange === "function") {
-          const previousBrandLabel = previousBrandName || "selected brand item";
-          const replacementBrandLabel = asText(replacementBrand?.name) || "new brand item";
-          const replacementKeySeed =
-            normalizeToken(previousBrandKey || previousBrandLabel) || "item";
-          editor.appendPendingChange(
-            `Brand item replacement - replaced "${previousBrandLabel}" with "${replacementBrandLabel}" in ${applied.replacedRows} ingredient row${applied.replacedRows === 1 ? "" : "s"}.`,
-            { key: `brand-replacement:${replacementKeySeed}` },
-          );
-          applied.dishCounts.forEach(({ dishName, count }) => {
-            const safeDishName = asText(dishName);
-            if (!safeDishName || !count) return;
-            editor.appendPendingChange(
-              `${safeDishName}: Replaced brand item "${previousBrandLabel}" with "${replacementBrandLabel}" on ${count} ingredient row${count === 1 ? "" : "s"}.`,
-              {
-                key: `brand-replacement-dish:${replacementKeySeed}:${normalizeToken(safeDishName) || safeDishName.toLowerCase()}`,
-              },
-            );
-          });
-        }
-
         const replacementImage = asText(
           replacementBrand.brandImage ||
             replacementBrand.image ||
