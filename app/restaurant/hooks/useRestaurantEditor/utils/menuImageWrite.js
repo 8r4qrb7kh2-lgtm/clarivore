@@ -4,6 +4,7 @@ import { normalizeNumber, normalizeRectValue } from "./overlayGeometry";
 
 // Write-time normalization helpers.
 // These helpers sanitize client-side editor state into API-safe payloads.
+const MAX_INLINE_INGREDIENT_IMAGE_CHARS = 24_000;
 
 export function buildMenuImages(restaurant) {
   // Collect menu images from canonical restaurant fields.
@@ -28,6 +29,9 @@ function sanitizePersistedImageValue(value) {
   // Brand scans currently emit data URLs; stripping them would drop thumbnails.
   const text = asText(value);
   if (!text) return "";
+  if (text.startsWith("data:image/") && text.length > MAX_INLINE_INGREDIENT_IMAGE_CHARS) {
+    return "";
+  }
   return text;
 }
 

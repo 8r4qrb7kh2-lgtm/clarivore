@@ -105,6 +105,7 @@ export function buildEditorApi({
     canRedo: historyApi.canRedo,
     undo: historyApi.undo,
     undoPendingChange: historyApi.undoPendingChange,
+    appendPendingChange: historyApi.appendPendingChange,
     redo: historyApi.redo,
     pushHistory: historyApi.pushHistory,
 
