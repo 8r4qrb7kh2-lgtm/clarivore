@@ -4,7 +4,9 @@ import { normalizeNumber, normalizeRectValue } from "./overlayGeometry";
 
 // Write-time normalization helpers.
 // These helpers sanitize client-side editor state into API-safe payloads.
-const MAX_INLINE_INGREDIENT_IMAGE_CHARS = 24_000;
+// Scanned brand thumbnails are data URLs and can legitimately exceed tiny payloads.
+// Keep a practical ceiling to avoid pathological payloads, but do not drop normal captures.
+const MAX_INLINE_INGREDIENT_IMAGE_CHARS = 220_000;
 
 export function buildMenuImages(restaurant) {
   // Collect menu images from canonical restaurant fields.

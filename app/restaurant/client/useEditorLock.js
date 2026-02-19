@@ -8,7 +8,6 @@ import {
 const HEARTBEAT_INTERVAL_MS = 20 * 1000;
 const DEFAULT_BLOCKED_MESSAGE = "Someone is currently in web page editor.";
 const DEFAULT_ERROR_MESSAGE = "Unable to verify editor availability.";
-const SESSION_STORAGE_KEY = "clarivoreEditorInstanceSessionKey";
 
 function asText(value) {
   return String(value || "").trim();
@@ -19,19 +18,6 @@ function generateSessionKey() {
     return crypto.randomUUID();
   }
   return `session-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
-}
-
-function resolveSessionKey() {
-  if (typeof window === "undefined") return "";
-  try {
-    const existing = asText(window.sessionStorage.getItem(SESSION_STORAGE_KEY));
-    if (existing) return existing;
-    const created = generateSessionKey();
-    window.sessionStorage.setItem(SESSION_STORAGE_KEY, created);
-    return created;
-  } catch {
-    return generateSessionKey();
-  }
 }
 
 function resolveHolderInstance() {
@@ -62,11 +48,24 @@ export function useEditorLock({
   const heldRestaurantIdRef = useRef("");
   const holdingLockRef = useRef(false);
   const shouldHoldLockRef = useRef(false);
+  const sessionKeyRef = useRef("");
+
+  if (!sessionKeyRef.current) {
+    // Keep one key for this tab instance only; do not persist across tabs.
+    sessionKeyRef.current = generateSessionKey();
+  }
 
   const [status, setStatus] = useState("idle");
   const [lock, setLock] = useState(null);
   const [message, setMessage] = useState("");
   const [refreshBusy, setRefreshBusy] = useState(false);
+
+  const readSessionKey = useCallback(() => {
+    if (!sessionKeyRef.current) {
+      sessionKeyRef.current = generateSessionKey();
+    }
+    return sessionKeyRef.current;
+  }, []);
 
   const clearHeartbeat = useCallback(() => {
     if (!heartbeatTimerRef.current) return;
@@ -78,7 +77,7 @@ export function useEditorLock({
     async ({ restaurantId: targetRestaurantId, keepalive = false }) => {
       const safeRestaurantId = asText(targetRestaurantId);
       if (!safeRestaurantId || !supabaseClient || !userId) return;
-      const sessionKey = resolveSessionKey();
+      const sessionKey = readSessionKey();
       if (!sessionKey) return;
 
       try {
@@ -97,7 +96,7 @@ export function useEditorLock({
         }
       }
     },
-    [supabaseClient, userId],
+    [readSessionKey, supabaseClient, userId],
   );
 
   const applyAcquirePayload = useCallback(
@@ -127,7 +126,7 @@ export function useEditorLock({
     async ({ useRefreshAction = false } = {}) => {
       if (!supabaseClient || !restaurantId || !userId) return false;
 
-      const sessionKey = resolveSessionKey();
+      const sessionKey = readSessionKey();
       if (!sessionKey) {
         throw new Error(DEFAULT_ERROR_MESSAGE);
       }
@@ -148,7 +147,7 @@ export function useEditorLock({
 
       return applyAcquirePayload(payload);
     },
-    [applyAcquirePayload, restaurantId, supabaseClient, userId],
+    [applyAcquirePayload, readSessionKey, restaurantId, supabaseClient, userId],
   );
 
   const startHeartbeat = useCallback(() => {
@@ -225,6 +224,26 @@ export function useEditorLock({
       }
     };
   }, [clearHeartbeat, releaseLockForRestaurant]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+
+    const releaseOnPageExit = () => {
+      const heldRestaurantId = asText(heldRestaurantIdRef.current);
+      if (!heldRestaurantId) return;
+      void releaseLockForRestaurant({
+        restaurantId: heldRestaurantId,
+        keepalive: true,
+      });
+    };
+
+    window.addEventListener("pagehide", releaseOnPageExit);
+    window.addEventListener("beforeunload", releaseOnPageExit);
+    return () => {
+      window.removeEventListener("pagehide", releaseOnPageExit);
+      window.removeEventListener("beforeunload", releaseOnPageExit);
+    };
+  }, [releaseLockForRestaurant]);
 
   useEffect(() => {
     shouldHoldLockRef.current = Boolean(
