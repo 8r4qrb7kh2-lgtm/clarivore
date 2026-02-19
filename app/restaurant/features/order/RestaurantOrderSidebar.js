@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Badge, Button, Input, Textarea } from "../../../components/ui";
 
 function trim(value) {
@@ -51,6 +51,17 @@ function statusTone(status) {
   return "neutral";
 }
 
+const SIDEBAR_COLLAPSED_HEIGHT = 72;
+const SIDEBAR_MIN_OPEN_HEIGHT = 92;
+const SIDEBAR_RESIZE_STEP = 28;
+const SIDEBAR_MAX_HEIGHT = 560;
+const SIDEBAR_DEFAULT_VIEWPORT_RATIO = 0.5;
+
+function getViewportHeight() {
+  if (typeof window === "undefined") return 900;
+  return Math.round(window.visualViewport?.height || window.innerHeight || 900);
+}
+
 export function RestaurantOrderSidebar({
   orderFlow,
   user,
@@ -61,6 +72,18 @@ export function RestaurantOrderSidebar({
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [submitError, setSubmitError] = useState("");
   const [confirmDishNames, setConfirmDishNames] = useState([]);
+  const [viewportHeight, setViewportHeight] = useState(getViewportHeight);
+  const [drawerHeight, setDrawerHeight] = useState(() =>
+    isOpen
+      ? Math.max(SIDEBAR_MIN_OPEN_HEIGHT + 120, Math.round(getViewportHeight() * SIDEBAR_DEFAULT_VIEWPORT_RATIO))
+      : SIDEBAR_COLLAPSED_HEIGHT,
+  );
+  const [isResizing, setIsResizing] = useState(false);
+  const dragStateRef = useRef({
+    active: false,
+    startY: 0,
+    startHeight: SIDEBAR_COLLAPSED_HEIGHT,
+  });
 
   useEffect(() => {
     if (!isOpen) {
@@ -82,6 +105,26 @@ export function RestaurantOrderSidebar({
   const activeNotices = Array.isArray(orderFlow.activeNotices)
     ? orderFlow.activeNotices
     : [];
+  const hasPinnedNotices =
+    activeNotices.length > 0 || orderFlow.selectedDishNames.length > 0;
+  const minOpenHeight = hasPinnedNotices
+    ? SIDEBAR_MIN_OPEN_HEIGHT
+    : SIDEBAR_COLLAPSED_HEIGHT;
+  const maxDrawerHeight = useMemo(() => {
+    const viewportBound = Math.round(viewportHeight * 0.78);
+    return Math.max(minOpenHeight + 140, Math.min(SIDEBAR_MAX_HEIGHT, viewportBound));
+  }, [minOpenHeight, viewportHeight]);
+  const defaultDrawerHeight = useMemo(() => {
+    const viewportDefault = Math.round(viewportHeight * SIDEBAR_DEFAULT_VIEWPORT_RATIO);
+    return Math.min(maxDrawerHeight, Math.max(minOpenHeight + 120, viewportDefault));
+  }, [maxDrawerHeight, minOpenHeight, viewportHeight]);
+  const clampDrawerHeight = useCallback(
+    (nextHeight) => Math.min(maxDrawerHeight, Math.max(minOpenHeight, Math.round(nextHeight))),
+    [maxDrawerHeight, minOpenHeight],
+  );
+  const drawerDisplayHeight = isOpen
+    ? clampDrawerHeight(drawerHeight)
+    : SIDEBAR_COLLAPSED_HEIGHT;
   const confirmRows = useMemo(
     () =>
       confirmDishNames.map((dishName) => ({
@@ -91,6 +134,79 @@ export function RestaurantOrderSidebar({
     [confirmDishNames, orderFlow],
   );
   const serverCodeRequired = isDineInMode(orderFlow.formState.diningMode);
+  const submitErrorMessage = submitError || orderFlow.submitError || "";
+  const statusErrorMessage =
+    orderFlow.statusError && orderFlow.statusError !== submitErrorMessage
+      ? orderFlow.statusError
+      : "";
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const syncViewportHeight = () => {
+      setViewportHeight(getViewportHeight());
+    };
+
+    syncViewportHeight();
+    window.addEventListener("resize", syncViewportHeight);
+    window.visualViewport?.addEventListener("resize", syncViewportHeight);
+    return () => {
+      window.removeEventListener("resize", syncViewportHeight);
+      window.visualViewport?.removeEventListener("resize", syncViewportHeight);
+    };
+  }, []);
+
+  useEffect(() => {
+    setDrawerHeight((current) => {
+      if (!isOpen) return SIDEBAR_COLLAPSED_HEIGHT;
+      if (!Number.isFinite(current) || current <= SIDEBAR_COLLAPSED_HEIGHT + 2) {
+        return clampDrawerHeight(defaultDrawerHeight);
+      }
+      return clampDrawerHeight(current);
+    });
+  }, [isOpen, clampDrawerHeight, defaultDrawerHeight]);
+
+  const stopResizing = useCallback(() => {
+    dragStateRef.current.active = false;
+    setIsResizing(false);
+  }, []);
+
+  const onResizeMove = useCallback(
+    (event) => {
+      if (!dragStateRef.current.active) return;
+      const deltaY = dragStateRef.current.startY - event.clientY;
+      setDrawerHeight(clampDrawerHeight(dragStateRef.current.startHeight + deltaY));
+    },
+    [clampDrawerHeight],
+  );
+
+  useEffect(() => {
+    if (!isResizing) return;
+
+    const handlePointerMove = (event) => {
+      onResizeMove(event);
+    };
+    const handlePointerUp = () => {
+      stopResizing();
+    };
+
+    window.addEventListener("pointermove", handlePointerMove);
+    window.addEventListener("pointerup", handlePointerUp);
+    window.addEventListener("pointercancel", handlePointerUp);
+
+    const previousUserSelect = document.body.style.userSelect;
+    const previousCursor = document.body.style.cursor;
+    document.body.style.userSelect = "none";
+    document.body.style.cursor = "ns-resize";
+
+    return () => {
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerup", handlePointerUp);
+      window.removeEventListener("pointercancel", handlePointerUp);
+      document.body.style.userSelect = previousUserSelect;
+      document.body.style.cursor = previousCursor;
+    };
+  }, [isResizing, onResizeMove, stopResizing]);
 
   const removeDish = useCallback(
     (dishName) => {
@@ -114,12 +230,6 @@ export function RestaurantOrderSidebar({
     setSubmitError("");
     setConfirmDishNames([]);
   }, []);
-
-  const onReset = useCallback(() => {
-    orderFlow.reset();
-    setSubmitError("");
-    setConfirmDishNames([]);
-  }, [orderFlow]);
 
   const onSubmit = useCallback(
     async (event) => {
@@ -150,16 +260,97 @@ export function RestaurantOrderSidebar({
     [confirmDishNames, orderFlow, serverCodeRequired],
   );
 
+  const onStartResize = useCallback(
+    (event) => {
+      if (event.button !== undefined && event.button !== 0) return;
+
+      if (!isOpen) {
+        onToggleOpen?.();
+        setDrawerHeight(defaultDrawerHeight);
+        return;
+      }
+
+      event.preventDefault();
+      dragStateRef.current = {
+        active: true,
+        startY: event.clientY,
+        startHeight: drawerDisplayHeight,
+      };
+      setIsResizing(true);
+    },
+    [defaultDrawerHeight, drawerDisplayHeight, isOpen, onToggleOpen],
+  );
+
+  const onResizeHandleKeyDown = useCallback(
+    (event) => {
+      if (!isOpen) {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onToggleOpen?.();
+        }
+        return;
+      }
+
+      if (event.key === "ArrowUp") {
+        event.preventDefault();
+        setDrawerHeight((current) => clampDrawerHeight(current + SIDEBAR_RESIZE_STEP));
+        return;
+      }
+
+      if (event.key === "ArrowDown") {
+        event.preventDefault();
+        setDrawerHeight((current) => clampDrawerHeight(current - SIDEBAR_RESIZE_STEP));
+        return;
+      }
+
+      if (event.key === "Home") {
+        event.preventDefault();
+        setDrawerHeight(minOpenHeight);
+        return;
+      }
+
+      if (event.key === "End") {
+        event.preventDefault();
+        setDrawerHeight(maxDrawerHeight);
+      }
+    },
+    [clampDrawerHeight, isOpen, maxDrawerHeight, minOpenHeight, onToggleOpen],
+  );
+
   return (
     <>
-      <aside className={`restaurant-order-sidebar ${isOpen ? "open" : "minimized"}`}>
+      <aside
+        className={`restaurant-order-sidebar ${isOpen ? "open" : "minimized"} ${isResizing ? "resizing" : ""}`}
+        style={{ height: `${drawerDisplayHeight}px` }}
+      >
         <div className="restaurant-order-sidebar-header">
-          <button type="button" className="restaurant-order-sidebar-toggle" onClick={onToggleOpen}>
-            <span className="restaurant-order-sidebar-toggle-label">
-              {isOpen ? "Hide notice dashboard" : "My notice dashboard"}
-            </span>
-            <span className="restaurant-order-sidebar-badge">{badgeCount}</span>
-          </button>
+          <div
+            className="restaurant-order-sidebar-resize-handle"
+            role="separator"
+            aria-label="Resize notice dashboard"
+            aria-orientation="horizontal"
+            aria-valuemin={minOpenHeight}
+            aria-valuemax={maxDrawerHeight}
+            aria-valuenow={Math.round(drawerDisplayHeight)}
+            tabIndex={0}
+            onPointerDown={onStartResize}
+            onKeyDown={onResizeHandleKeyDown}
+          >
+            <span />
+          </div>
+          <div className="restaurant-order-sidebar-title-row">
+            <h2 className="restaurant-order-sidebar-title">Notice dashboard</h2>
+            <div className="restaurant-order-sidebar-header-actions">
+              <button
+                type="button"
+                className="restaurant-order-sidebar-collapse"
+                onClick={onToggleOpen}
+              >
+                {isOpen ? "Collapse" : "Expand"}
+              </button>
+              <span className="restaurant-order-sidebar-badge">{badgeCount}</span>
+            </div>
+          </div>
         </div>
 
         {isOpen ? (
@@ -352,22 +543,13 @@ export function RestaurantOrderSidebar({
                 >
                   Submit notice
                 </Button>
-                <Button type="button" variant="outline" onClick={() => orderFlow.refreshStatus()}>
-                  Refresh status
-                </Button>
-                <Button type="button" variant="outline" onClick={onReset}>
-                  Reset
-                </Button>
               </div>
 
-              {submitError ? (
-                <p className="restaurant-order-confirm-error">{submitError}</p>
+              {submitErrorMessage ? (
+                <p className="restaurant-order-confirm-error">{submitErrorMessage}</p>
               ) : null}
-              {orderFlow.submitError ? (
-                <p className="restaurant-order-confirm-error">{orderFlow.submitError}</p>
-              ) : null}
-              {orderFlow.statusError ? (
-                <p className="restaurant-order-confirm-error">{orderFlow.statusError}</p>
+              {statusErrorMessage ? (
+                <p className="restaurant-order-confirm-error">{statusErrorMessage}</p>
               ) : null}
             </form>
           </div>

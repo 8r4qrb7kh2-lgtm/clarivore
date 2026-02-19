@@ -1026,46 +1026,83 @@ h2 {
   background: rgba(15, 21, 52, 0.98);
   border-top: 1px solid #2a3466;
   box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.35);
+  min-height: 72px;
   transition: height 0.2s ease;
 }
 
-.restaurant-order-sidebar.minimized {
-  height: 72px;
-}
-
-.restaurant-order-sidebar.open {
-  height: min(62vh, 520px);
+.restaurant-order-sidebar.resizing {
+  transition: none;
 }
 
 .restaurant-order-sidebar-header {
-  padding: 10px 14px 8px;
+  padding: 8px 14px 10px;
   border-bottom: 1px solid #2a3466;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .restaurant-order-sidebar.minimized .restaurant-order-sidebar-header {
   border-bottom: none;
 }
 
-.restaurant-order-sidebar-toggle {
+.restaurant-order-sidebar-resize-handle {
   width: 100%;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  padding: 5px 0;
+  cursor: ns-resize;
+  touch-action: none;
+}
+
+.restaurant-order-sidebar-resize-handle span {
+  width: 58px;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(156, 173, 255, 0.6);
+}
+
+.restaurant-order-sidebar-resize-handle:focus-visible {
+  outline: 2px solid #6b7ce6;
+  outline-offset: 2px;
+}
+
+.restaurant-order-sidebar-title-row {
+  display: flex;
+  align-items: center;
   justify-content: space-between;
   gap: 10px;
+}
+
+.restaurant-order-sidebar-title {
+  margin: 0;
+  color: #f1f5ff;
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.restaurant-order-sidebar-header-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.restaurant-order-sidebar-collapse {
   border: 1px solid #6b7ce6;
-  background: #4c5ad4;
-  color: #fff;
-  border-radius: 10px;
-  padding: 10px 12px;
-  font-size: 0.9rem;
+  background: rgba(76, 90, 212, 0.26);
+  color: #dce5ff;
+  border-radius: 999px;
+  padding: 4px 11px;
+  font-size: 0.78rem;
   font-weight: 600;
   cursor: pointer;
 }
 
-.restaurant-order-sidebar-toggle-label {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
+.restaurant-order-sidebar-collapse:hover {
+  background: rgba(76, 90, 212, 0.45);
 }
 
 .restaurant-order-sidebar-badge {
@@ -1083,7 +1120,7 @@ h2 {
 }
 
 .restaurant-order-sidebar-content {
-  height: calc(100% - 56px);
+  height: calc(100% - 90px);
   overflow-y: auto;
   padding: 12px;
   display: flex;
@@ -2242,9 +2279,6 @@ h2 {
 }
 
 @media (max-width: 900px) {
-  .restaurant-order-sidebar.open {
-    height: min(68vh, 560px);
-  }
   .restaurant-order-confirm-body {
     grid-template-columns: 1fr;
   }
