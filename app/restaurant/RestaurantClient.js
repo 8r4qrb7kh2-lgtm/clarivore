@@ -46,10 +46,14 @@ export default function RestaurantClient() {
   const openLogParam = searchParams?.get("openLog");
   const openConfirmParam = searchParams?.get("openConfirm");
   const openAiParam = searchParams?.get("openAI");
+  const autoReplaceBrandParam = searchParams?.get("autoReplaceBrand");
+  const replaceBrandKeyParam = searchParams?.get("replaceBrandKey") || "";
+  const replaceBrandNameParam = searchParams?.get("replaceBrandName") || "";
   const isQrVisit = isTruthyFlag(qrParam);
   const shouldOpenLog = isTruthyFlag(openLogParam);
   const shouldOpenConfirm = isTruthyFlag(openConfirmParam);
   const shouldOpenAi = isTruthyFlag(openAiParam);
+  const shouldAutoReplaceBrand = isTruthyFlag(autoReplaceBrandParam);
 
   const [activeView, setActiveView] = useState(() =>
     readManagerModeDefault({ editParam, isQrVisit }),
@@ -241,6 +245,9 @@ export default function RestaurantClient() {
       dishName: dishNameParam,
       openAI: shouldOpenAi,
       ingredientName: ingredientNameParam,
+      autoReplaceBrand: shouldAutoReplaceBrand,
+      replaceBrandKey: replaceBrandKeyParam,
+      replaceBrandName: replaceBrandNameParam,
     },
     callbacks: editorCallbacks,
   });

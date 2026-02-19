@@ -244,14 +244,7 @@ export default function ManagerDashboardDomRoot({
     onReplaceBrand,
   } = useBrandManagement({
     currentRestaurantData,
-    setCurrentRestaurantData,
-    selectedRestaurantId,
-    normalizeAllergen,
-    normalizeDietLabel,
-    managerDisplayName,
     setStatus,
-    ingredientScan,
-    DIETS,
   });
 
   const showRestaurantSelector = isOwner;

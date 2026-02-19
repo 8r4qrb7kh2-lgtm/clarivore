@@ -642,6 +642,7 @@ function ConfirmInfoModal({ editor }) {
   const [mostCurrent, setMostCurrent] = useState(null);
   const [flowError, setFlowError] = useState("");
   const [menuComparisonBusy, setMenuComparisonBusy] = useState(false);
+  const autoReplaceTriggeredRef = useRef(false);
 
   const menuReplaceInputRefs = useRef({});
   const menuCaptureInputRefs = useRef({});
@@ -687,6 +688,7 @@ function ConfirmInfoModal({ editor }) {
       menuCaptureInputRefs.current = {};
       brandReplaceInputRefs.current = {};
       brandCaptureInputRefs.current = {};
+      autoReplaceTriggeredRef.current = false;
       return;
     }
 
@@ -1171,6 +1173,42 @@ function ConfirmInfoModal({ editor }) {
     },
     [applyBrandReplacementToOverlays, editor, updateBrandCard],
   );
+
+  useEffect(() => {
+    if (!editor.confirmInfoOpen) return;
+    if (editor?.routeParams?.autoReplaceBrand !== true) return;
+    if (autoReplaceTriggeredRef.current) return;
+    if (!brandCards.length) return;
+
+    const targetKey = normalizeBrandKey(editor?.routeParams?.replaceBrandKey);
+    const targetName = normalizeBrandKey(editor?.routeParams?.replaceBrandName);
+    let targetCard = null;
+
+    if (targetKey) {
+      targetCard =
+        brandCards.find((card) => normalizeBrandKey(card?.brandKey) === targetKey) || null;
+    }
+    if (!targetCard && targetName) {
+      targetCard = brandCards.find((card) => normalizeBrandKey(card?.label) === targetName) || null;
+    }
+    if (!targetCard) {
+      targetCard = brandCards.find((card) => Boolean(asText(card?.baselineImage))) || brandCards[0] || null;
+    }
+    if (!targetCard) return;
+
+    autoReplaceTriggeredRef.current = true;
+    setStep("brand");
+    queueMicrotask(() => {
+      handleReplaceBrandCard(targetCard);
+    });
+  }, [
+    brandCards,
+    editor.confirmInfoOpen,
+    editor?.routeParams?.autoReplaceBrand,
+    editor?.routeParams?.replaceBrandKey,
+    editor?.routeParams?.replaceBrandName,
+    handleReplaceBrandCard,
+  ]);
 
   const clearCard = useCallback((card, updateCard) => {
     const baselineExists = Boolean(asText(card?.baselineImage));
