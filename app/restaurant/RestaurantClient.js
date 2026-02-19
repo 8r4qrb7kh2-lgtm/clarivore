@@ -74,6 +74,19 @@ function normalizeStringList(values, normalizer) {
   return output;
 }
 
+const QR_ALLERGIES_KEY = "qrAllergies";
+const QR_DIETS_KEY = "qrDiets";
+
+function saveGuestSessionPreferences({ allergies, diets }) {
+  if (typeof window === "undefined") return;
+  try {
+    sessionStorage.setItem(QR_ALLERGIES_KEY, JSON.stringify(allergies));
+    sessionStorage.setItem(QR_DIETS_KEY, JSON.stringify(diets));
+  } catch {
+    // Ignore storage errors so viewer interactions are not blocked.
+  }
+}
+
 function brandNameMatchesTarget(candidateName, { targetBrandName, targetBrandNameToken }) {
   const normalizedName = normalizeBrandKey(candidateName);
   if (targetBrandName && normalizedName === targetBrandName) {
@@ -396,6 +409,132 @@ export default function RestaurantClient() {
   const boot = bootQuery.data;
   // Viewer/editor consume this same object, so all dish/menu data comes from one place.
   const restaurantFromDatabase = boot?.restaurant || null;
+  const isGuestViewerSession =
+    Boolean(isGuestVisit) && !inviteToken && !boot?.user?.id;
+  const [guestSelections, setGuestSelections] = useState({
+    allergies: [],
+    diets: [],
+  });
+  const guestSelectionsInitializedRef = useRef(false);
+
+  const guestReturnToPath = useMemo(() => {
+    const query = searchParams?.toString();
+    return `/restaurant${query ? `?${query}` : ""}`;
+  }, [searchParams]);
+
+  const guestAccountSigninHref = useMemo(() => {
+    const params = new URLSearchParams();
+    params.set("mode", "signin");
+    params.set("guest", "1");
+    params.set("returnTo", guestReturnToPath);
+    return `/account?${params.toString()}`;
+  }, [guestReturnToPath]);
+
+  const guestAccountSignupHref = useMemo(() => {
+    const params = new URLSearchParams();
+    params.set("mode", "signup");
+    params.set("guest", "1");
+    params.set("returnTo", guestReturnToPath);
+    return `/account?${params.toString()}`;
+  }, [guestReturnToPath]);
+
+  useEffect(() => {
+    if (!isGuestViewerSession) {
+      guestSelectionsInitializedRef.current = false;
+      setGuestSelections({ allergies: [], diets: [] });
+      return;
+    }
+
+    if (guestSelectionsInitializedRef.current) return;
+    guestSelectionsInitializedRef.current = true;
+
+    setGuestSelections({
+      allergies: normalizeStringList(
+        boot?.allergies || [],
+        boot?.config?.normalizeAllergen,
+      ),
+      diets: normalizeStringList(boot?.diets || [], boot?.config?.normalizeDietLabel),
+    });
+  }, [
+    boot?.allergies,
+    boot?.config?.normalizeAllergen,
+    boot?.config?.normalizeDietLabel,
+    boot?.diets,
+    isGuestViewerSession,
+  ]);
+
+  const effectiveAllergies = isGuestViewerSession
+    ? guestSelections.allergies
+    : boot?.allergies || [];
+  const effectiveDiets = isGuestViewerSession ? guestSelections.diets : boot?.diets || [];
+
+  const guestPreferenceOptions = useMemo(() => {
+    const allergenValues = normalizeStringList(
+      boot?.config?.ALLERGENS,
+      boot?.config?.normalizeAllergen,
+    );
+    const dietValues = normalizeStringList(
+      boot?.config?.DIETS,
+      boot?.config?.normalizeDietLabel,
+    );
+
+    return {
+      allergens: allergenValues.map((value) => ({
+        key: value,
+        label: boot?.config?.formatAllergenLabel
+          ? boot.config.formatAllergenLabel(value)
+          : value,
+        emoji: boot?.config?.getAllergenEmoji
+          ? boot.config.getAllergenEmoji(value)
+          : "",
+      })),
+      diets: dietValues.map((value) => ({
+        key: value,
+        label: boot?.config?.formatDietLabel
+          ? boot.config.formatDietLabel(value)
+          : value,
+        emoji: boot?.config?.getDietEmoji ? boot.config.getDietEmoji(value) : "",
+      })),
+    };
+  }, [
+    boot?.config?.ALLERGENS,
+    boot?.config?.DIETS,
+    boot?.config?.formatAllergenLabel,
+    boot?.config?.formatDietLabel,
+    boot?.config?.getAllergenEmoji,
+    boot?.config?.getDietEmoji,
+    boot?.config?.normalizeAllergen,
+    boot?.config?.normalizeDietLabel,
+  ]);
+
+  const onSaveGuestPreferences = useCallback(
+    ({ allergies, diets }) => {
+      if (!isGuestViewerSession) return;
+
+      const nextAllergies = normalizeStringList(
+        allergies,
+        boot?.config?.normalizeAllergen,
+      );
+      const nextDiets = normalizeStringList(
+        diets,
+        boot?.config?.normalizeDietLabel,
+      );
+
+      setGuestSelections({
+        allergies: nextAllergies,
+        diets: nextDiets,
+      });
+      saveGuestSessionPreferences({
+        allergies: nextAllergies,
+        diets: nextDiets,
+      });
+    },
+    [
+      boot?.config?.normalizeAllergen,
+      boot?.config?.normalizeDietLabel,
+      isGuestViewerSession,
+    ],
+  );
 
   // Respect redirect responses from boot loader (manager access checks).
   useEffect(() => {
@@ -473,8 +612,8 @@ export default function RestaurantClient() {
     user: boot?.user,
     overlays: restaurantFromDatabase?.overlays || [],
     preferences: {
-      allergies: boot?.allergies || [],
-      diets: boot?.diets || [],
+      allergies: effectiveAllergies,
+      diets: effectiveDiets,
       formatAllergenLabel: boot?.config?.formatAllergenLabel,
       formatDietLabel: boot?.config?.formatDietLabel,
       getAllergenEmoji: boot?.config?.getAllergenEmoji,
@@ -528,8 +667,8 @@ export default function RestaurantClient() {
     overlays: restaurantFromDatabase?.overlays || [],
     initialDishName: dishNameParam,
     preferences: {
-      allergies: boot?.allergies || [],
-      diets: boot?.diets || [],
+      allergies: effectiveAllergies,
+      diets: effectiveDiets,
       normalizeAllergen: boot?.config?.normalizeAllergen,
       normalizeDietLabel: boot?.config?.normalizeDietLabel,
       getDietAllergenConflicts: boot?.config?.getDietAllergenConflicts,
@@ -793,12 +932,10 @@ export default function RestaurantClient() {
   const currentRestaurantSlug = boot?.restaurant?.slug || slug;
   const shouldRenderEditor = isEditorMode;
   const shouldRenderViewer = !isEditorRequested || editorAccessBlocked;
-  const isGuestViewerSession =
-    Boolean(isGuestVisit) && !inviteToken && !boot?.user?.id;
 
   const topbar = isGuestViewerSession
     ? (
-      <GuestTopbar brandHref="/guest" signInHref="/account?mode=signin" />
+      <GuestTopbar brandHref="/guest" signInHref={guestAccountSigninHref} />
     )
     : (
       <AppTopbar
@@ -875,13 +1012,18 @@ export default function RestaurantClient() {
             favoriteBusyDish={favoriteBusyDish}
             preferenceTitlePrefix={isGuestViewerSession ? "Selected" : "Saved"}
             showPreferenceEdit={!isGuestViewerSession}
+            allowGuestPreferenceEditing={isGuestViewerSession}
+            guestPreferenceOptions={guestPreferenceOptions}
+            onSaveGuestPreferences={onSaveGuestPreferences}
             showGuestSignupPrompt={isGuestViewerSession}
-            guestSignupHref="/account?mode=signup"
+            guestSignupHref={guestAccountSignupHref}
           />
           {hasOrderSidebarContent ? (
             <RestaurantOrderSidebar
               orderFlow={orderFlow}
               user={boot.user}
+              isGuest={isGuestViewerSession}
+              guestSignupHref={guestAccountSignupHref}
               isOpen={orderSidebarOpen}
               onToggleOpen={() => setOrderSidebarOpen((current) => !current)}
               badgeCount={orderSidebarBadgeCount}

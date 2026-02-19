@@ -377,6 +377,9 @@ export function useOrderFlow({ restaurantId, user, overlays, preferences }) {
     mutationFn: async (dishNamesForNotice = []) => {
       if (!supabase) throw new Error("Supabase is not configured.");
       if (!restaurantId) throw new Error("Restaurant is not loaded yet.");
+      if (!user?.id) {
+        throw new Error("Create a free account to submit a notice.");
+      }
       const submittedDishNames = uniqueDishNames(
         dishNamesForNotice.length ? dishNamesForNotice : checkedDishNames,
       );

@@ -760,6 +760,12 @@ h2 {
   display: none;
 }
 
+.preference-chips.is-editing {
+  flex-wrap: wrap;
+  overflow: visible;
+  max-height: none;
+}
+
 .preference-chip {
   padding: 4px 8px;
   font-size: 0.75rem;
@@ -1504,6 +1510,35 @@ h2 {
   flex-wrap: wrap;
   gap: 8px;
   padding-top: 2px;
+}
+
+.restaurant-order-create-account-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 38px;
+  padding: 0 14px;
+  border-radius: 10px;
+  border: 1px solid #22c55e;
+  background: #17663a;
+  color: #ecfff2;
+  font-size: 0.86rem;
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.restaurant-order-create-account-btn:hover {
+  background: #1d7a46;
+  border-color: #29d368;
+}
+
+.restaurant-order-submit-disabled:disabled {
+  background: #4a5376;
+  border-color: #4a5376;
+  color: #d3daf2;
+  box-shadow: none;
+  opacity: 1;
 }
 
 .restaurant-order-confirm-error {

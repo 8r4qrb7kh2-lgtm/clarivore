@@ -123,6 +123,15 @@ function parseOverlayNumber(value) {
   return clamp(numeric, 0, 100);
 }
 
+function toggleSelection(values, target) {
+  const targetValue = String(target || "").trim();
+  if (!targetValue) return Array.isArray(values) ? values : [];
+  const list = Array.isArray(values) ? values : [];
+  return list.includes(targetValue)
+    ? list.filter((entry) => entry !== targetValue)
+    : [...list, targetValue];
+}
+
 export function RestaurantViewer({
   restaurant,
   viewer,
@@ -130,12 +139,19 @@ export function RestaurantViewer({
   favoriteBusyDish,
   preferenceTitlePrefix = "Saved",
   showPreferenceEdit = true,
+  allowGuestPreferenceEditing = false,
+  guestPreferenceOptions = { allergens: [], diets: [] },
+  onSaveGuestPreferences,
   showGuestSignupPrompt = false,
   guestSignupHref = "/account?mode=signup",
 }) {
   const [selectedOverlay, setSelectedOverlay] = useState(null);
   const [acknowledgedReferenceNote, setAcknowledgedReferenceNote] = useState(false);
   const [showGuestSignupBanner, setShowGuestSignupBanner] = useState(false);
+  const [isEditingGuestAllergens, setIsEditingGuestAllergens] = useState(false);
+  const [isEditingGuestDiets, setIsEditingGuestDiets] = useState(false);
+  const [draftGuestAllergenKeys, setDraftGuestAllergenKeys] = useState([]);
+  const [draftGuestDietKeys, setDraftGuestDietKeys] = useState([]);
 
   const menuScrollRef = useRef(null);
   const pageRefs = useRef([]);
@@ -364,6 +380,110 @@ export function RestaurantViewer({
     selectedDishPageNode,
   ]);
 
+  const savedAllergenKeys = useMemo(
+    () => (Array.isArray(viewer.savedAllergens) ? viewer.savedAllergens.map((item) => item.key) : []),
+    [viewer.savedAllergens],
+  );
+  const savedDietKeys = useMemo(
+    () => (Array.isArray(viewer.savedDiets) ? viewer.savedDiets.map((item) => item.key) : []),
+    [viewer.savedDiets],
+  );
+  const guestAllergenOptions = useMemo(
+    () => (Array.isArray(guestPreferenceOptions?.allergens) ? guestPreferenceOptions.allergens : []),
+    [guestPreferenceOptions?.allergens],
+  );
+  const guestDietOptions = useMemo(
+    () => (Array.isArray(guestPreferenceOptions?.diets) ? guestPreferenceOptions.diets : []),
+    [guestPreferenceOptions?.diets],
+  );
+
+  useEffect(() => {
+    if (!allowGuestPreferenceEditing) {
+      setIsEditingGuestAllergens(false);
+      setIsEditingGuestDiets(false);
+      setDraftGuestAllergenKeys([]);
+      setDraftGuestDietKeys([]);
+      return;
+    }
+
+    if (!isEditingGuestAllergens) {
+      setDraftGuestAllergenKeys(savedAllergenKeys);
+    }
+  }, [allowGuestPreferenceEditing, isEditingGuestAllergens, savedAllergenKeys]);
+
+  useEffect(() => {
+    if (!allowGuestPreferenceEditing) return;
+    if (!isEditingGuestDiets) {
+      setDraftGuestDietKeys(savedDietKeys);
+    }
+  }, [allowGuestPreferenceEditing, isEditingGuestDiets, savedDietKeys]);
+
+  const persistGuestSelections = useCallback(
+    ({ allergens, diets }) => {
+      if (typeof onSaveGuestPreferences !== "function") return;
+      onSaveGuestPreferences({
+        allergies: allergens,
+        diets,
+      });
+    },
+    [onSaveGuestPreferences],
+  );
+
+  const onGuestAllergenEditToggle = useCallback(() => {
+    if (!allowGuestPreferenceEditing) return;
+    if (!isEditingGuestAllergens) {
+      setDraftGuestAllergenKeys(savedAllergenKeys);
+      setIsEditingGuestAllergens(true);
+      return;
+    }
+
+    persistGuestSelections({
+      allergens: draftGuestAllergenKeys,
+      diets: isEditingGuestDiets ? draftGuestDietKeys : savedDietKeys,
+    });
+    setIsEditingGuestAllergens(false);
+  }, [
+    allowGuestPreferenceEditing,
+    draftGuestAllergenKeys,
+    draftGuestDietKeys,
+    isEditingGuestAllergens,
+    isEditingGuestDiets,
+    persistGuestSelections,
+    savedAllergenKeys,
+    savedDietKeys,
+  ]);
+
+  const onGuestDietEditToggle = useCallback(() => {
+    if (!allowGuestPreferenceEditing) return;
+    if (!isEditingGuestDiets) {
+      setDraftGuestDietKeys(savedDietKeys);
+      setIsEditingGuestDiets(true);
+      return;
+    }
+
+    persistGuestSelections({
+      allergens: isEditingGuestAllergens ? draftGuestAllergenKeys : savedAllergenKeys,
+      diets: draftGuestDietKeys,
+    });
+    setIsEditingGuestDiets(false);
+  }, [
+    allowGuestPreferenceEditing,
+    draftGuestAllergenKeys,
+    draftGuestDietKeys,
+    isEditingGuestAllergens,
+    isEditingGuestDiets,
+    persistGuestSelections,
+    savedAllergenKeys,
+    savedDietKeys,
+  ]);
+
+  const showingGuestAllergenEditor = allowGuestPreferenceEditing && isEditingGuestAllergens;
+  const showingGuestDietEditor = allowGuestPreferenceEditing && isEditingGuestDiets;
+  const visibleAllergenChips = showingGuestAllergenEditor
+    ? guestAllergenOptions
+    : viewer.savedAllergens;
+  const visibleDietChips = showingGuestDietEditor ? guestDietOptions : viewer.savedDiets;
+
   return (
     <section className="restaurant-viewer">
       <div className="restaurant-header">
@@ -403,19 +523,48 @@ export function RestaurantViewer({
               <div className="preference-panel pill">
                 <div className="preference-header">
                   <div className="preference-title">{preferencePrefix} allergens</div>
-                  {showPreferenceEdit ? (
+                  {allowGuestPreferenceEditing ? (
+                    <button
+                      type="button"
+                      className="btnLink preference-edit"
+                      onClick={onGuestAllergenEditToggle}
+                    >
+                      {showingGuestAllergenEditor ? "Save" : "Edit"}
+                    </button>
+                  ) : showPreferenceEdit ? (
                     <Link href="/account" className="btnLink preference-edit">
                       Edit
                     </Link>
                   ) : null}
                 </div>
-                <div className="preference-chips chips">
-                  {viewer.savedAllergens.length ? (
-                    viewer.savedAllergens.map((item) => (
-                      <span key={item.key} className="chip active preference-chip">
-                        {item.emoji || "⚠"} {item.label}
-                      </span>
-                    ))
+                <div
+                  className={`preference-chips chips ${
+                    showingGuestAllergenEditor ? "is-editing" : ""
+                  }`}
+                >
+                  {visibleAllergenChips.length ? (
+                    visibleAllergenChips.map((item) =>
+                      showingGuestAllergenEditor ? (
+                        <button
+                          key={item.key}
+                          type="button"
+                          className={`chip preference-chip ${
+                            draftGuestAllergenKeys.includes(item.key) ? "active" : ""
+                          }`}
+                          onClick={() =>
+                            setDraftGuestAllergenKeys((current) =>
+                              toggleSelection(current, item.key),
+                            )
+                          }
+                        >
+                          {item.emoji || "⚠"} {item.label}
+                        </button>
+                      ) : (
+                        <span key={item.key} className="chip active preference-chip">
+                          {item.emoji || "⚠"} {item.label}
+                        </span>
+                      ),
+                    )
                   ) : (
                     <span className="note">{`No ${preferencePrefixLower} allergens`}</span>
                   )}
@@ -425,19 +574,48 @@ export function RestaurantViewer({
               <div className="preference-panel pill">
                 <div className="preference-header">
                   <div className="preference-title">{preferencePrefix} diets</div>
-                  {showPreferenceEdit ? (
+                  {allowGuestPreferenceEditing ? (
+                    <button
+                      type="button"
+                      className="btnLink preference-edit"
+                      onClick={onGuestDietEditToggle}
+                    >
+                      {showingGuestDietEditor ? "Save" : "Edit"}
+                    </button>
+                  ) : showPreferenceEdit ? (
                     <Link href="/account" className="btnLink preference-edit">
                       Edit
                     </Link>
                   ) : null}
                 </div>
-                <div className="preference-chips chips">
-                  {viewer.savedDiets.length ? (
-                    viewer.savedDiets.map((item) => (
-                      <span key={item.key} className="chip active preference-chip">
-                        {item.emoji || "✓"} {item.label}
-                      </span>
-                    ))
+                <div
+                  className={`preference-chips chips ${
+                    showingGuestDietEditor ? "is-editing" : ""
+                  }`}
+                >
+                  {visibleDietChips.length ? (
+                    visibleDietChips.map((item) =>
+                      showingGuestDietEditor ? (
+                        <button
+                          key={item.key}
+                          type="button"
+                          className={`chip preference-chip ${
+                            draftGuestDietKeys.includes(item.key) ? "active" : ""
+                          }`}
+                          onClick={() =>
+                            setDraftGuestDietKeys((current) =>
+                              toggleSelection(current, item.key),
+                            )
+                          }
+                        >
+                          {item.emoji || "✓"} {item.label}
+                        </button>
+                      ) : (
+                        <span key={item.key} className="chip active preference-chip">
+                          {item.emoji || "✓"} {item.label}
+                        </span>
+                      ),
+                    )
                   ) : (
                     <span className="note">{`No ${preferencePrefixLower} diets`}</span>
                   )}

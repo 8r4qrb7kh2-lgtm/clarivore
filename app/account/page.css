@@ -9,6 +9,10 @@
   margin: 0 auto;
 }
 
+.route-account .account-guest-back-btn {
+  justify-self: start;
+}
+
 .route-account .auth-card {
   border-radius: 18px;
   display: flex;

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import AppTopbar from "../components/AppTopbar";
 import AppLoadingScreen from "../components/AppLoadingScreen";
+import GuestTopbar from "../components/GuestTopbar";
 import PageShell from "../components/PageShell";
 import FormSectionCard from "../components/forms/FormSectionCard";
 import ActionRow from "../components/forms/ActionRow";
@@ -58,6 +59,8 @@ export default function AccountClient() {
   const redirectParam = searchParams?.get("redirect") || "";
   const inviteToken = searchParams?.get("invite") || "";
   const modeParam = searchParams?.get("mode") || "";
+  const guestParam = searchParams?.get("guest") || "";
+  const returnToParam = searchParams?.get("returnTo") || "";
 
   const [config, setConfig] = useState(() => buildAllergenDietConfig());
   const [loading, setLoading] = useState(true);
@@ -116,6 +119,20 @@ export default function AccountClient() {
   const isOwner = isOwnerUser(user);
   const isManager = isManagerUser(user);
   const isManagerOrOwner = isOwner || isManager;
+  const isGuestAccountMode = guestParam === "1" || guestParam === "true";
+  const guestReturnPath = useMemo(() => {
+    const value = String(returnToParam || "").trim();
+    if (!value || !value.startsWith("/")) return "/guest";
+    if (value.startsWith("//")) return "/guest";
+    return value;
+  }, [returnToParam]);
+  const guestSignInHref = useMemo(() => {
+    const params = new URLSearchParams();
+    params.set("mode", "signin");
+    params.set("guest", "1");
+    params.set("returnTo", guestReturnPath);
+    return `/account?${params.toString()}`;
+  }, [guestReturnPath]);
 
   const detailsChanged =
     profileForm.firstName !== savedProfile.firstName ||
@@ -389,6 +406,10 @@ export default function AccountClient() {
       const qs = new URLSearchParams();
       if (redirectParam) qs.set("redirect", redirectParam);
       if (inviteToken) qs.set("invite", inviteToken);
+      if (isGuestAccountMode) {
+        qs.set("guest", "1");
+        qs.set("returnTo", guestReturnPath);
+      }
 
       const redirectTo = native
         ? `${NATIVE_AUTH_SCHEME}://${NATIVE_AUTH_CALLBACK}`
@@ -743,6 +764,10 @@ export default function AccountClient() {
     router.replace(`/account?mode=signup&invite=${encodeURIComponent(inviteToken)}`);
   };
 
+  const handleBackToGuestRestaurant = useCallback(() => {
+    router.push(guestReturnPath);
+  }, [guestReturnPath, router]);
+
   const renderChips = (items, selected, setSelected, formatter, emojiGetter) => (
     <div className="allergen-select">
       {items.map((item) => {
@@ -775,11 +800,15 @@ export default function AccountClient() {
     <PageShell
       shellClassName="page-shell route-account"
       topbar={
-        <AppTopbar
-          mode="customer"
-          user={user || null}
-          signedIn={Boolean(user)}
-        />
+        isGuestAccountMode ? (
+          <GuestTopbar brandHref="/guest" signInHref={guestSignInHref} />
+        ) : (
+          <AppTopbar
+            mode="customer"
+            user={user || null}
+            signedIn={Boolean(user)}
+          />
+        )
       }
       afterMain={
         invitePrompt ? (
@@ -834,6 +863,15 @@ export default function AccountClient() {
       }
     >
       <div className="account-layout">
+            {isGuestAccountMode ? (
+              <button
+                className="secondary-btn account-guest-back-btn"
+                type="button"
+                onClick={handleBackToGuestRestaurant}
+              >
+                Back to restaurant
+              </button>
+            ) : null}
             {inviteBannerVisible ? (
               <div className="auth-card" style={{ background: "linear-gradient(135deg,#4c5ad4,#6366f1)", border: "none" }}>
                 <h3 style={{ margin: "0 0 8px", color: "white" }}>

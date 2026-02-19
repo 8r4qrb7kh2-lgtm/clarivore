@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { Badge, Button, Input, Textarea } from "../../../components/ui";
 
 function trim(value) {
@@ -66,6 +67,8 @@ function getViewportHeight() {
 export function RestaurantOrderSidebar({
   orderFlow,
   user,
+  isGuest = false,
+  guestSignupHref = "/account?mode=signup",
   isOpen,
   onToggleOpen,
   badgeCount = 0,
@@ -152,6 +155,7 @@ export function RestaurantOrderSidebar({
   const noticeActionErrorMessage = trim(orderFlow.noticeActionError);
   const actionTargetNoticeId = trim(orderFlow.noticeActionTargetId);
   const isNoticeActionPending = Boolean(orderFlow.isNoticeActionPending);
+  const submitDisabled = !confirmDishNames.length || isGuest;
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -317,6 +321,11 @@ export function RestaurantOrderSidebar({
         return;
       }
 
+      if (isGuest) {
+        setSubmitError("Create a free account to submit a notice.");
+        return;
+      }
+
       if (serverCodeRequired && !trim(orderFlow.formState.serverCode)) {
         setSubmitError("Server code is required for dine-in notices.");
         return;
@@ -330,7 +339,7 @@ export function RestaurantOrderSidebar({
         setSubmitError(error?.message || "Unable to submit notice right now.");
       }
     },
-    [confirmDishNames, orderFlow, serverCodeRequired],
+    [confirmDishNames, isGuest, orderFlow, serverCodeRequired],
   );
 
   const onStartResize = useCallback(
@@ -743,11 +752,20 @@ export function RestaurantOrderSidebar({
               </label>
 
               <div className="restaurant-order-confirm-actions">
+                {isGuest ? (
+                  <Link
+                    href={guestSignupHref}
+                    className="restaurant-order-create-account-btn"
+                  >
+                    Create a free account to submit notice
+                  </Link>
+                ) : null}
                 <Button
                   type="submit"
                   tone="primary"
                   loading={orderFlow.isSubmitting}
-                  disabled={!confirmDishNames.length}
+                  disabled={submitDisabled}
+                  className={isGuest ? "restaurant-order-submit-disabled" : ""}
                 >
                   Submit notice
                 </Button>
