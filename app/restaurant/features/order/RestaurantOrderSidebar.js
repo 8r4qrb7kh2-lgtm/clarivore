@@ -114,6 +114,8 @@ export function RestaurantOrderSidebar({
     : [];
   const pendingNoticeCount = orderFlow.selectedDishNames.length;
   const activeNoticeCount = activeNotices.length;
+  const hasActiveNotices = activeNotices.length > 0;
+  const hasCompletedNotices = completedNotices.length > 0;
   const computedBadgeCount = pendingNoticeCount + activeNoticeCount;
   const minOpenHeight = SIDEBAR_MIN_OPEN_HEIGHT;
   const maxDrawerHeight = useMemo(() => {
@@ -447,11 +449,11 @@ export function RestaurantOrderSidebar({
 
         {showDrawerContent ? (
           <div className="restaurant-order-sidebar-content">
-            <section className="restaurant-order-sidebar-section">
-              <div className="restaurant-order-sidebar-section-head">
-                <h3 className="restaurant-order-sidebar-section-title">Active notices</h3>
-              </div>
-              {activeNotices.length ? (
+            {hasActiveNotices ? (
+              <section className="restaurant-order-sidebar-section">
+                <div className="restaurant-order-sidebar-section-head">
+                  <h3 className="restaurant-order-sidebar-section-title">Active notices</h3>
+                </div>
                 <div className="restaurant-order-active-notices">
                   {activeNotices.map((notice) => (
                     <article
@@ -556,15 +558,11 @@ export function RestaurantOrderSidebar({
                     </article>
                   ))}
                 </div>
-              ) : (
-                <p className="restaurant-order-sidebar-empty">
-                  No active notices submitted yet.
-                </p>
-              )}
-              {noticeActionErrorMessage ? (
-                <p className="restaurant-order-confirm-error">{noticeActionErrorMessage}</p>
-              ) : null}
-            </section>
+                {noticeActionErrorMessage ? (
+                  <p className="restaurant-order-confirm-error">{noticeActionErrorMessage}</p>
+                ) : null}
+              </section>
+            ) : null}
 
             <section className="restaurant-order-sidebar-section">
               <h3 className="restaurant-order-sidebar-section-title">Pending notices</h3>
@@ -591,9 +589,9 @@ export function RestaurantOrderSidebar({
               </div>
             </section>
 
-            <section className="restaurant-order-sidebar-section">
-              <h3 className="restaurant-order-sidebar-section-title">Completed notices</h3>
-              {completedNotices.length ? (
+            {hasCompletedNotices ? (
+              <section className="restaurant-order-sidebar-section">
+                <h3 className="restaurant-order-sidebar-section-title">Completed notices</h3>
                 <div className="restaurant-order-active-notices">
                   {completedNotices.map((notice) => (
                     <article
@@ -630,12 +628,8 @@ export function RestaurantOrderSidebar({
                     </article>
                   ))}
                 </div>
-              ) : (
-                <p className="restaurant-order-sidebar-empty">
-                  No completed notices yet.
-                </p>
-              )}
-            </section>
+              </section>
+            ) : null}
 
             <div className="restaurant-order-sidebar-actions">
               <Button tone="primary" onClick={openConfirm} disabled={!canProceed}>
@@ -740,7 +734,7 @@ export function RestaurantOrderSidebar({
               ) : null}
 
               <label>
-                Additional notes for the kitchen
+                Additional notices for the kitchen (optional)
                 <Textarea
                   rows={3}
                   value={orderFlow.formState.notes}
