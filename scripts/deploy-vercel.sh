@@ -11,10 +11,19 @@ if [ -f ".git" ]; then
   trap cleanup EXIT
 fi
 
-PRIMARY_DOMAIN="${VERCEL_PRIMARY_DOMAIN:-clarivore.org}"
+PRIMARY_DOMAIN="clarivore.org"
 DOMAIN_SCOPE="${VERCEL_DOMAIN_SCOPE:-}"
 
-deploy_url="$(vercel --prod --yes --archive=tgz)"
+if [ -z "$DOMAIN_SCOPE" ] && [ -f ".vercel/project.json" ]; then
+  DOMAIN_SCOPE="$(node -e 'const fs=require("fs");try{const v=JSON.parse(fs.readFileSync(".vercel/project.json","utf8"));if(v&&v.orgId)process.stdout.write(String(v.orgId));}catch(_){ }')"
+fi
+
+deploy_cmd=(vercel --prod --yes --archive=tgz)
+if [ -n "$DOMAIN_SCOPE" ]; then
+  deploy_cmd+=(--scope "$DOMAIN_SCOPE")
+fi
+
+deploy_url="$("${deploy_cmd[@]}")"
 deploy_host="$(printf '%s' "$deploy_url" | sed -E 's#^https?://##; s#/.*$##')"
 
 if [ -z "$deploy_host" ]; then

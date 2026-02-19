@@ -1084,27 +1084,6 @@ h2 {
   font-weight: 700;
 }
 
-.restaurant-order-sidebar-header-actions {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.restaurant-order-sidebar-collapse {
-  border: 1px solid #6b7ce6;
-  background: rgba(76, 90, 212, 0.26);
-  color: #dce5ff;
-  border-radius: 999px;
-  padding: 4px 11px;
-  font-size: 0.78rem;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.restaurant-order-sidebar-collapse:hover {
-  background: rgba(76, 90, 212, 0.45);
-}
-
 .restaurant-order-sidebar-badge {
   min-width: 20px;
   height: 20px;

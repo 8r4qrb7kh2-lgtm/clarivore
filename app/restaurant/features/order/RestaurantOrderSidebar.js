@@ -56,6 +56,7 @@ const SIDEBAR_MIN_OPEN_HEIGHT = 92;
 const SIDEBAR_RESIZE_STEP = 28;
 const SIDEBAR_MAX_HEIGHT = 560;
 const SIDEBAR_DEFAULT_VIEWPORT_RATIO = 0.5;
+const SIDEBAR_COLLAPSE_THRESHOLD = SIDEBAR_COLLAPSED_HEIGHT + 10;
 
 function getViewportHeight() {
   if (typeof window === "undefined") return 900;
@@ -83,6 +84,7 @@ export function RestaurantOrderSidebar({
     active: false,
     startY: 0,
     startHeight: SIDEBAR_COLLAPSED_HEIGHT,
+    lastHeight: SIDEBAR_COLLAPSED_HEIGHT,
   });
 
   useEffect(() => {
@@ -175,7 +177,9 @@ export function RestaurantOrderSidebar({
     (event) => {
       if (!dragStateRef.current.active) return;
       const deltaY = dragStateRef.current.startY - event.clientY;
-      setDrawerHeight(clampDrawerHeight(dragStateRef.current.startHeight + deltaY));
+      const nextHeight = clampDrawerHeight(dragStateRef.current.startHeight + deltaY);
+      dragStateRef.current.lastHeight = nextHeight;
+      setDrawerHeight(nextHeight);
     },
     [clampDrawerHeight],
   );
@@ -187,6 +191,13 @@ export function RestaurantOrderSidebar({
       onResizeMove(event);
     };
     const handlePointerUp = () => {
+      if (
+        !hasPinnedNotices &&
+        dragStateRef.current.lastHeight <= SIDEBAR_COLLAPSE_THRESHOLD
+      ) {
+        onToggleOpen?.();
+        setDrawerHeight(SIDEBAR_COLLAPSED_HEIGHT);
+      }
       stopResizing();
     };
 
@@ -206,7 +217,7 @@ export function RestaurantOrderSidebar({
       document.body.style.userSelect = previousUserSelect;
       document.body.style.cursor = previousCursor;
     };
-  }, [isResizing, onResizeMove, stopResizing]);
+  }, [hasPinnedNotices, isResizing, onResizeMove, onToggleOpen, stopResizing]);
 
   const removeDish = useCallback(
     (dishName) => {
@@ -264,29 +275,33 @@ export function RestaurantOrderSidebar({
     (event) => {
       if (event.button !== undefined && event.button !== 0) return;
 
-      if (!isOpen) {
-        onToggleOpen?.();
-        setDrawerHeight(defaultDrawerHeight);
-        return;
-      }
-
       event.preventDefault();
       dragStateRef.current = {
         active: true,
         startY: event.clientY,
         startHeight: drawerDisplayHeight,
+        lastHeight: drawerDisplayHeight,
       };
       setIsResizing(true);
+
+      if (!isOpen) {
+        onToggleOpen?.();
+        setDrawerHeight(SIDEBAR_COLLAPSED_HEIGHT);
+      }
     },
-    [defaultDrawerHeight, drawerDisplayHeight, isOpen, onToggleOpen],
+    [drawerDisplayHeight, isOpen, onToggleOpen],
   );
 
   const onResizeHandleKeyDown = useCallback(
     (event) => {
       if (!isOpen) {
-        if (event.key === "Enter" || event.key === " ") {
+        if (event.key === "ArrowUp" || event.key === "End") {
           event.preventDefault();
           onToggleOpen?.();
+          setDrawerHeight(defaultDrawerHeight);
+        }
+        if (event.key === "ArrowDown" || event.key === "Home") {
+          event.preventDefault();
         }
         return;
       }
@@ -305,7 +320,12 @@ export function RestaurantOrderSidebar({
 
       if (event.key === "Home") {
         event.preventDefault();
-        setDrawerHeight(minOpenHeight);
+        if (!hasPinnedNotices) {
+          onToggleOpen?.();
+          setDrawerHeight(SIDEBAR_COLLAPSED_HEIGHT);
+        } else {
+          setDrawerHeight(minOpenHeight);
+        }
         return;
       }
 
@@ -314,7 +334,15 @@ export function RestaurantOrderSidebar({
         setDrawerHeight(maxDrawerHeight);
       }
     },
-    [clampDrawerHeight, isOpen, maxDrawerHeight, minOpenHeight, onToggleOpen],
+    [
+      clampDrawerHeight,
+      defaultDrawerHeight,
+      hasPinnedNotices,
+      isOpen,
+      maxDrawerHeight,
+      minOpenHeight,
+      onToggleOpen,
+    ],
   );
 
   return (
@@ -327,7 +355,11 @@ export function RestaurantOrderSidebar({
           <div
             className="restaurant-order-sidebar-resize-handle"
             role="separator"
-            aria-label="Resize notice dashboard"
+            aria-label={
+              isOpen
+                ? "Drag to resize notice dashboard"
+                : "Drag up to open notice dashboard"
+            }
             aria-orientation="horizontal"
             aria-valuemin={minOpenHeight}
             aria-valuemax={maxDrawerHeight}
@@ -340,16 +372,7 @@ export function RestaurantOrderSidebar({
           </div>
           <div className="restaurant-order-sidebar-title-row">
             <h2 className="restaurant-order-sidebar-title">Notice dashboard</h2>
-            <div className="restaurant-order-sidebar-header-actions">
-              <button
-                type="button"
-                className="restaurant-order-sidebar-collapse"
-                onClick={onToggleOpen}
-              >
-                {isOpen ? "Collapse" : "Expand"}
-              </button>
-              <span className="restaurant-order-sidebar-badge">{badgeCount}</span>
-            </div>
+            <span className="restaurant-order-sidebar-badge">{badgeCount}</span>
           </div>
         </div>
 
