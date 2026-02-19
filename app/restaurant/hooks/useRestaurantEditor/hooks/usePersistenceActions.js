@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useRef } from "react";
 
 import {
   buildOverlayDeltaPayload,
@@ -62,6 +62,8 @@ export function usePersistenceActions({
   setSettingsSaveError,
   setHistoryIndex,
 }) {
+  const pendingSaveRequestRef = useRef(null);
+
   // Commit a previously staged pending-save batch to the write gateway.
   // This flow validates ingredient confirmation and synchronizes local baselines on success.
   const save = useCallback(async () => {
@@ -208,131 +210,138 @@ export function usePersistenceActions({
 
   // Stage current edits into a pending-save batch for review/approval.
   const preparePendingSave = useCallback(async () => {
-    if (!canEdit || !restaurant?.id) {
-      setPendingSaveError("You do not have permission to edit this restaurant.");
-      return { success: false };
+    if (pendingSaveRequestRef.current) {
+      return await pendingSaveRequestRef.current;
     }
 
-    if (!callbacks?.onPreparePendingSave) {
-      setPendingSaveError("Pending-save preparation callback is not configured.");
-      return { success: false };
-    }
-
-    if (pendingSavePreparing) {
-      return {
-        success: Boolean(pendingSaveBatchId),
-        batchId: pendingSaveBatchId,
-        rows: Array.isArray(pendingSaveRows) ? pendingSaveRows : [],
-      };
-    }
-
-    try {
-      // Delta payload avoids sending unchanged overlays when only specific rows changed.
-      const cleanedOverlays = (overlaysRef.current || []).map(stripEditorOverlay);
-      const cleanedMenuImages = normalizeMenuImageList(menuImagesRef.current);
-      const baselineSnapshot = parseSerializedEditorState(baselineRef.current);
-      const baselineOverlays = Array.isArray(baselineSnapshot?.overlays)
-        ? baselineSnapshot.overlays
-        : [];
-      const overlayDelta = buildOverlayDeltaPayload({
-        baselineOverlays,
-        overlays: cleanedOverlays,
-      });
-      const baselineMenuImages = normalizeMenuImageList(baselineSnapshot?.menuImages);
-      const menuImagesChanged =
-        serializeMenuImageList(cleanedMenuImages) !==
-        serializeMenuImageList(baselineMenuImages);
-      const optimizedMenuImages = menuImagesChanged
-        ? await optimizeMenuImagesForWrite(cleanedMenuImages)
-        : cleanedMenuImages;
-      const optimizedChanged =
-        serializeMenuImageList(optimizedMenuImages) !==
-        serializeMenuImageList(cleanedMenuImages);
-      if (optimizedChanged) {
-        menuImagesRef.current = optimizedMenuImages;
-        setDraftMenuImages(optimizedMenuImages);
+    const runPrepare = async () => {
+      if (!canEdit || !restaurant?.id) {
+        setPendingSaveError("You do not have permission to edit this restaurant.");
+        return { success: false };
       }
 
-      const author =
-        asText(callbacks?.getAuthorName?.()) || asText(callbacks?.authorName) || "Manager";
-
-      const changePayload = buildDefaultChangeLogPayload({
-        author,
-        pendingChanges: pendingChangesRef.current,
-        snapshot: {
-          mode: "server_generated",
-        },
-      });
-
-      const stateHash = serializeEditorState(cleanedOverlays, optimizedMenuImages);
-      const changedFields = [];
-      if (overlayDelta.hasOverlayChanges) {
-        changedFields.push("overlays");
-      }
-      if (menuImagesChanged) {
-        changedFields.push("menuImages");
+      if (!callbacks?.onPreparePendingSave) {
+        setPendingSaveError("Pending-save preparation callback is not configured.");
+        return { success: false };
       }
 
-      // If an identical state is already staged, reuse the existing staged batch.
-      if (pendingSaveBatchId && pendingSaveStateHash === stateHash) {
+      try {
+        // Delta payload avoids sending unchanged overlays when only specific rows changed.
+        const cleanedOverlays = (overlaysRef.current || []).map(stripEditorOverlay);
+        const cleanedMenuImages = normalizeMenuImageList(menuImagesRef.current);
+        const baselineSnapshot = parseSerializedEditorState(baselineRef.current);
+        const baselineOverlays = Array.isArray(baselineSnapshot?.overlays)
+          ? baselineSnapshot.overlays
+          : [];
+        const overlayDelta = buildOverlayDeltaPayload({
+          baselineOverlays,
+          overlays: cleanedOverlays,
+        });
+        const baselineMenuImages = normalizeMenuImageList(baselineSnapshot?.menuImages);
+        const menuImagesChanged =
+          serializeMenuImageList(cleanedMenuImages) !==
+          serializeMenuImageList(baselineMenuImages);
+        const optimizedMenuImages = menuImagesChanged
+          ? await optimizeMenuImagesForWrite(cleanedMenuImages)
+          : cleanedMenuImages;
+        const optimizedChanged =
+          serializeMenuImageList(optimizedMenuImages) !==
+          serializeMenuImageList(cleanedMenuImages);
+        if (optimizedChanged) {
+          menuImagesRef.current = optimizedMenuImages;
+          setDraftMenuImages(optimizedMenuImages);
+        }
+
+        const author =
+          asText(callbacks?.getAuthorName?.()) || asText(callbacks?.authorName) || "Manager";
+
+        const changePayload = buildDefaultChangeLogPayload({
+          author,
+          pendingChanges: pendingChangesRef.current,
+          snapshot: {
+            mode: "server_generated",
+          },
+        });
+
+        const stateHash = serializeEditorState(cleanedOverlays, optimizedMenuImages);
+        const changedFields = [];
+        if (overlayDelta.hasOverlayChanges) {
+          changedFields.push("overlays");
+        }
+        if (menuImagesChanged) {
+          changedFields.push("menuImages");
+        }
+
+        // If an identical state is already staged, reuse the existing staged batch.
+        if (pendingSaveBatchId && pendingSaveStateHash === stateHash) {
+          return {
+            success: true,
+            batchId: pendingSaveBatchId,
+            rows: Array.isArray(pendingSaveRows) ? pendingSaveRows : [],
+          };
+        }
+
+        setPendingSavePreparing(true);
+        setPendingSaveError("");
+        setSaveError("");
+
+        // Ask write gateway to stage the change set and return preview rows.
+        const result = await callbacks.onPreparePendingSave({
+          overlays: cleanedOverlays,
+          baselineOverlays,
+          overlayUpserts: overlayDelta.overlayUpserts,
+          overlayDeletes: overlayDelta.overlayDeletes,
+          overlayBaselines: overlayDelta.overlayBaselines,
+          overlayOrder: overlayDelta.overlayOrder,
+          overlayOrderProvided: overlayDelta.overlayOrderProvided,
+          hasOverlayChanges: overlayDelta.hasOverlayChanges,
+          changedFields,
+          menuImage: menuImagesChanged ? optimizedMenuImages[0] || "" : "",
+          menuImages: menuImagesChanged ? optimizedMenuImages : [],
+          menuImagesProvided: menuImagesChanged,
+          changePayload,
+          stateHash,
+        });
+
+        const nextBatchId = asText(result?.batchId);
+        if (!nextBatchId) {
+          throw new Error("Failed to stage pending save batch.");
+        }
+
+        setPendingSaveBatchId(nextBatchId);
+        setPendingSaveRows(Array.isArray(result?.rows) ? result.rows : []);
+        setPendingSaveStateHash(asText(result?.stateHash) || stateHash);
+        setPendingSaveError("");
+
         return {
           success: true,
-          batchId: pendingSaveBatchId,
-          rows: Array.isArray(pendingSaveRows) ? pendingSaveRows : [],
+          batchId: nextBatchId,
+          rows: Array.isArray(result?.rows) ? result.rows : [],
         };
+      } catch (error) {
+        const message = error?.message || "Failed to prepare pending save.";
+        setPendingSaveError(message);
+        setSaveError(message);
+        setSaveStatus("error");
+        return { success: false, error };
+      } finally {
+        setPendingSavePreparing(false);
       }
+    };
 
-      setPendingSavePreparing(true);
-      setPendingSaveError("");
-      setSaveError("");
-
-      // Ask write gateway to stage the change set and return preview rows.
-      const result = await callbacks.onPreparePendingSave({
-        overlays: cleanedOverlays,
-        baselineOverlays,
-        overlayUpserts: overlayDelta.overlayUpserts,
-        overlayDeletes: overlayDelta.overlayDeletes,
-        overlayBaselines: overlayDelta.overlayBaselines,
-        overlayOrder: overlayDelta.overlayOrder,
-        overlayOrderProvided: overlayDelta.overlayOrderProvided,
-        hasOverlayChanges: overlayDelta.hasOverlayChanges,
-        changedFields,
-        menuImage: menuImagesChanged ? optimizedMenuImages[0] || "" : "",
-        menuImages: menuImagesChanged ? optimizedMenuImages : [],
-        menuImagesProvided: menuImagesChanged,
-        changePayload,
-        stateHash,
-      });
-
-      const nextBatchId = asText(result?.batchId);
-      if (!nextBatchId) {
-        throw new Error("Failed to stage pending save batch.");
-      }
-
-      setPendingSaveBatchId(nextBatchId);
-      setPendingSaveRows(Array.isArray(result?.rows) ? result.rows : []);
-      setPendingSaveStateHash(asText(result?.stateHash) || stateHash);
-      setPendingSaveError("");
-
-      return {
-        success: true,
-        batchId: nextBatchId,
-        rows: Array.isArray(result?.rows) ? result.rows : [],
-      };
-    } catch (error) {
-      const message = error?.message || "Failed to prepare pending save.";
-      setPendingSaveError(message);
-      setSaveError(message);
-      setSaveStatus("error");
-      return { success: false, error };
+    const request = runPrepare();
+    pendingSaveRequestRef.current = request;
+    try {
+      return await request;
     } finally {
-      setPendingSavePreparing(false);
+      if (pendingSaveRequestRef.current === request) {
+        pendingSaveRequestRef.current = null;
+      }
     }
   }, [
     callbacks,
     canEdit,
     pendingSaveBatchId,
-    pendingSavePreparing,
     pendingSaveRows,
     pendingSaveStateHash,
     restaurant?.id,
