@@ -384,8 +384,10 @@ export default function ManagerDashboardDomRoot({
         ALLERGEN_EMOJI={ALLERGEN_EMOJI}
         DIET_EMOJI={DIET_EMOJI}
         formatAllergenLabel={formatAllergenLabel}
-        ingredientScanModalNode={ingredientScan.modalNode}
       />
+
+      {/* Keep ingredient scan modal mounted at root so any dashboard action can open it. */}
+      {ingredientScan.modalNode}
     </PageShell>
   );
 }

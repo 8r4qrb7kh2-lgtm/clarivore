@@ -10,7 +10,6 @@ export function DishAnalyticsModal({
   ALLERGEN_EMOJI,
   DIET_EMOJI,
   formatAllergenLabel,
-  ingredientScanModalNode,
 }) {
   return (
     <div
@@ -197,8 +196,6 @@ export function DishAnalyticsModal({
         </div>
       ) : null}
 
-      {/* Keep shared ingredient-scan modal mounted here so it overlays above dashboard content when invoked. */}
-      {ingredientScanModalNode}
     </div>
   );
 }
