@@ -447,6 +447,10 @@ export default function RestaurantClient() {
     preferences: {
       allergies: boot?.allergies || [],
       diets: boot?.diets || [],
+      formatAllergenLabel: boot?.config?.formatAllergenLabel,
+      formatDietLabel: boot?.config?.formatDietLabel,
+      getAllergenEmoji: boot?.config?.getAllergenEmoji,
+      getDietEmoji: boot?.config?.getDietEmoji,
     },
   });
 
