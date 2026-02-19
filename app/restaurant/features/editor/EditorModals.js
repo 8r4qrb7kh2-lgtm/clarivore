@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import AppLoadingScreen from "../../../components/AppLoadingScreen";
 import { Button, Input, Modal } from "../../../components/ui";
+import ChangeLogEntriesList from "./ChangeLogEntriesList";
 import {
   asText,
   normalizeToken,
@@ -10,11 +11,6 @@ import {
   normalizePageIndexList,
   remapPageIndexListForMove,
   remapPageIndexListForRemove,
-  parseChangePayload,
-  collectRenderedChangeSummaryTokens,
-  formatChangeText,
-  renderChangeLine,
-  formatLogTimestamp,
   ReviewRowGroupedList,
   normalizeBrandEntry,
   normalizeIngredientEntry,
@@ -26,24 +22,9 @@ function getReviewModalMenuImages(editor) {
   return Array.isArray(editor?.draftMenuImages) ? editor.draftMenuImages : [];
 }
 
-function hasReviewRowMenuImageRefs(row) {
-  const pageList = Array.isArray(row?.menuImagePages)
-    ? row.menuImagePages
-    : row?.menuImagePage != null
-      ? [row.menuImagePage]
-      : [];
-  return pageList.some((value) => Number.isFinite(Number(value)) && Number(value) >= 0);
-}
-
 // Change log modal focuses on human-readable change history + review row drill-down.
 function ChangeLogModal({ editor }) {
-  const [expandedRowsByLog, setExpandedRowsByLog] = useState({});
   const menuImages = useMemo(() => getReviewModalMenuImages(editor), [editor]);
-
-  useEffect(() => {
-    if (editor.changeLogOpen) return;
-    setExpandedRowsByLog({});
-  }, [editor.changeLogOpen]);
 
   return (
     <Modal
@@ -62,109 +43,20 @@ function ChangeLogModal({ editor }) {
         <p className="note">No changes recorded yet.</p>
       ) : (
         <div className="space-y-3 max-h-[65vh] overflow-auto pr-1">
-          {editor.changeLogs.map((log) => {
-            // Parse both legacy and structured payloads so old entries still render correctly.
-            const parsed = parseChangePayload(log);
-            const items = parsed?.items && typeof parsed.items === "object" ? parsed.items : {};
-            const general = Array.isArray(parsed?.general)
-              ? parsed.general
-              : parsed?.general != null
-                ? [parsed.general]
-                : [];
-            const renderedSummaryTokens = collectRenderedChangeSummaryTokens(general, items);
-            const seenReviewTokens = new Set();
-            const reviewRows = (Array.isArray(parsed?.reviewRows) ? parsed.reviewRows : [])
-              .filter((row) => row && typeof row === "object")
-              .filter((row) => {
-                if (hasReviewRowMenuImageRefs(row)) {
-                  return true;
-                }
-                const summary = asText(row?.summary);
-                if (!summary) return false;
-                const token = normalizeToken(summary);
-                if (!token) return true;
-                if (renderedSummaryTokens.has(token) || seenReviewTokens.has(token)) {
-                  return false;
-                }
-                seenReviewTokens.add(token);
-                return true;
-              });
-            const author = formatChangeText(parsed?.author || log.description || "Manager");
-            const photos = Array.isArray(log?.photos)
-              ? log.photos
-                  .map((photo) => (typeof photo === "string" ? photo.trim() : ""))
-                  .filter(Boolean)
-              : [];
-
-            return (
-              <div key={log.id || `${log.timestamp}-${log.type}`} className="rounded-xl border border-[#2a3261] bg-[rgba(17,22,48,0.75)] p-3">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-sm font-semibold text-[#e9eefc]">
-                    {author || "Manager"}
-                  </span>
-                  <span className="text-xs text-[#a7b2d1]">{formatLogTimestamp(log.timestamp)}</span>
-                </div>
-
-                {general.length ? (
-                  <ul className="mt-2 mb-0 list-disc pl-5 text-sm text-[#cfd8f7]">
-                    {general.map((line, index) => renderChangeLine(line, `${log.id}-general-${index}`))}
-                  </ul>
-                ) : null}
-
-                {Object.entries(items).map(([dishName, changes]) => (
-                  <div key={`${log.id}-${dishName}`} className="mt-2">
-                    <div className="text-sm font-medium text-[#dbe3ff]">{dishName}</div>
-                    <ul className="mb-0 mt-1 list-disc pl-5 text-sm text-[#c7d2f4]">
-                      {(Array.isArray(changes) ? changes : [changes])
-                        .filter((line) => line != null)
-                        .map((line, idx) => renderChangeLine(line, `${log.id}-${dishName}-${idx}`))}
-                    </ul>
-                  </div>
-                ))}
-
-                {reviewRows.length ? (
-                  <div className="mt-2">
-                    <div className="text-sm font-medium text-[#dbe3ff]">Review rows</div>
-                    <div className="mt-1">
-                      <ReviewRowGroupedList
-                        rows={reviewRows}
-                        menuImages={menuImages}
-                        expandedRows={expandedRowsByLog}
-                        rowKeyPrefix={`log-${asText(log.id || log.timestamp || "entry")}-`}
-                        onToggleRow={(rowKey) =>
-                          setExpandedRowsByLog((current) => ({
-                            ...current,
-                            [rowKey]: !current[rowKey],
-                          }))
-                        }
-                      />
-                    </div>
-                  </div>
-                ) : null}
-
-                {photos.length ? (
-                  // Evidence photos are kept as raw links, then rendered as compact thumbnails.
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {photos.map((photo, index) => (
-                      <a
-                        key={`${log.id}-photo-${index}`}
-                        href={photo}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        <img
-                          src={photo}
-                          alt={`Change log photo ${index + 1}`}
-                          className="h-[64px] w-[96px] rounded border border-[#2a3261] object-cover"
-                        />
-                      </a>
-                    ))}
-                  </div>
-                ) : null}
-
-              </div>
-            );
-          })}
+          <ChangeLogEntriesList logs={editor.changeLogs} menuImages={menuImages} />
+          {editor.changeLogHasMore ? (
+            <div className="pt-1">
+              <Button
+                size="compact"
+                variant="outline"
+                loading={editor.loadingMoreChangeLogs}
+                disabled={editor.loadingMoreChangeLogs}
+                onClick={() => editor.loadMoreChangeLogs?.()}
+              >
+                {editor.loadingMoreChangeLogs ? "Loading..." : "Show more"}
+              </Button>
+            </div>
+          ) : null}
         </div>
       )}
 

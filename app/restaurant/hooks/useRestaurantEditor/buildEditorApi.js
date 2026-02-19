@@ -33,6 +33,8 @@ export function buildEditorApi({
   setChangeLogOpen,
   changeLogs,
   loadingChangeLogs,
+  loadingMoreChangeLogs,
+  changeLogHasMore,
   changeLogError,
 
   pendingTableOpen,
@@ -160,8 +162,11 @@ export function buildEditorApi({
     setChangeLogOpen,
     changeLogs,
     loadingChangeLogs,
+    loadingMoreChangeLogs,
+    changeLogHasMore,
     changeLogError,
     loadChangeLogs: changeLogAndPendingTableActions.loadChangeLogs,
+    loadMoreChangeLogs: changeLogAndPendingTableActions.loadMoreChangeLogs,
     restoreFromChangeLog: changeLogAndPendingTableActions.restoreFromChangeLog,
 
     pendingTableOpen,

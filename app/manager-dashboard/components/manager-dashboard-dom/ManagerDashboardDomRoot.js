@@ -125,7 +125,6 @@ export default function ManagerDashboardDomRoot({
     setRequestFilter,
     pendingRequestCount,
     filteredRequests,
-    requestSuggestions,
     activeRequestAction,
     activeRequestActionConfig,
     requestResponseText,
@@ -218,7 +217,7 @@ export default function ManagerDashboardDomRoot({
 
   const {
     onViewFullLog,
-    parsedChangeLogs,
+    previewChangeLogs,
     recentChangesLoading,
   } = useRecentChanges({
     currentRestaurantData,
@@ -303,8 +302,6 @@ export default function ManagerDashboardDomRoot({
             chatSending={chatSending}
             managerDisplayName={managerDisplayName}
             chatListRef={chatListRef}
-            confirmationInfo={confirmationInfo}
-            onConfirmNow={onConfirmNow}
           />
 
           <RequestsAndSuggestionsSection
@@ -313,7 +310,8 @@ export default function ManagerDashboardDomRoot({
             setRequestFilter={setRequestFilter}
             filteredRequests={filteredRequests}
             openRequestActionModal={openRequestActionModal}
-            requestSuggestions={requestSuggestions}
+            confirmationInfo={confirmationInfo}
+            onConfirmNow={onConfirmNow}
             normalizeAllergen={normalizeAllergen}
             normalizeDietLabel={normalizeDietLabel}
             ALLERGEN_EMOJI={ALLERGEN_EMOJI}
@@ -323,7 +321,7 @@ export default function ManagerDashboardDomRoot({
 
           <ChangesAndBrandsSection
             recentChangesLoading={recentChangesLoading}
-            parsedChangeLogs={parsedChangeLogs}
+            previewChangeLogs={previewChangeLogs}
             onViewFullLog={onViewFullLog}
             currentRestaurantData={currentRestaurantData}
             brandSearchQuery={brandSearchQuery}

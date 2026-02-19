@@ -76,8 +76,8 @@ export function createRestaurantEditorCallbacks({
     },
 
     // Read helpers used by log/review modals inside the editor.
-    onLoadChangeLogs: async () => {
-      return await persistence.loadChangeLogs();
+    onLoadChangeLogs: async (_restaurantId, options = {}) => {
+      return await persistence.loadChangeLogs(options);
     },
     onLoadPendingSaveTable: async (restaurantId) => {
       return await persistence.loadPendingSaveTable(restaurantId);

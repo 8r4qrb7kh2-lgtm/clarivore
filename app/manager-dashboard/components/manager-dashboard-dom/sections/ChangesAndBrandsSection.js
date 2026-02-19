@@ -1,9 +1,10 @@
 import { BRAND_IMAGE_FALLBACK } from "../constants/dashboardConstants";
+import ChangeLogEntriesList from "../../../../restaurant/features/editor/ChangeLogEntriesList";
 
 // Two-column area with recent change logs and brand item management list.
 export function ChangesAndBrandsSection({
   recentChangesLoading,
-  parsedChangeLogs,
+  previewChangeLogs,
   onViewFullLog,
   currentRestaurantData,
   brandSearchQuery,
@@ -33,48 +34,14 @@ export function ChangesAndBrandsSection({
                 <div className="spinner" style={{ width: 24, height: 24, margin: "0 auto 8px" }} />
                 <p style={{ color: "var(--muted)", fontSize: "0.85rem", margin: 0 }}>Loading...</p>
               </div>
-            ) : parsedChangeLogs.length === 0 ? (
+            ) : previewChangeLogs.length === 0 ? (
               <div className="no-changes-message">No changes recorded yet</div>
             ) : (
-              parsedChangeLogs.map((entry) => (
-                <div className="recent-change-item" key={entry.id}>
-                  <div className="recent-change-header">
-                    <span className="recent-change-author">{entry.author}</span>
-                    <span className="recent-change-time">{entry.timestamp}</span>
-                  </div>
-
-                  <div className="recent-change-details">
-                    {entry.hasDetails ? (
-                      <>
-                        {entry.dishChanges.map((dish) => (
-                          <div key={`${entry.id}-${dish.dishName}`}>
-                            <div className="recent-change-dish">{dish.dishName}</div>
-                            {dish.lines.length ? (
-                              <ul className="recent-change-list">
-                                {dish.lines.map((line, index) => (
-                                  <li key={`${entry.id}-${dish.dishName}-${index}`}>{line}</li>
-                                ))}
-                              </ul>
-                            ) : null}
-                          </div>
-                        ))}
-
-                        {entry.generalChanges.length ? (
-                          <div className="recent-change-general">
-                            <ul className="recent-change-list">
-                              {entry.generalChanges.map((line, index) => (
-                                <li key={`${entry.id}-general-${index}`}>{line}</li>
-                              ))}
-                            </ul>
-                          </div>
-                        ) : null}
-                      </>
-                    ) : (
-                      <span style={{ color: "var(--muted)" }}>Menu updated</span>
-                    )}
-                  </div>
-                </div>
-              ))
+              <ChangeLogEntriesList
+                logs={previewChangeLogs}
+                limit={3}
+                className="space-y-2"
+              />
             )}
           </div>
 
@@ -84,7 +51,7 @@ export function ChangesAndBrandsSection({
             style={{ width: "100%", marginTop: 16 }}
             onClick={onViewFullLog}
           >
-            View full change log
+            View full changelog
           </button>
         </div>
 

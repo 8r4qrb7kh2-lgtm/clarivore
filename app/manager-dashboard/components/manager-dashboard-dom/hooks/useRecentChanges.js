@@ -1,5 +1,4 @@
 import { useCallback, useMemo } from "react";
-import { parseChangeLogEntry } from "../utils/changeLogUtils";
 
 // Prepares change-log data for rendering and exposes navigation to full log screen.
 export function useRecentChanges({ currentRestaurantData, recentChangeLogs, isLoadingDashboard, dashboardError }) {
@@ -9,8 +8,8 @@ export function useRecentChanges({ currentRestaurantData, recentChangeLogs, isLo
     window.location.href = `/restaurant?slug=${encodeURIComponent(slug)}&edit=1&openLog=1`;
   }, [currentRestaurantData]);
 
-  const parsedChangeLogs = useMemo(
-    () => recentChangeLogs.map(parseChangeLogEntry),
+  const previewChangeLogs = useMemo(
+    () => (Array.isArray(recentChangeLogs) ? recentChangeLogs.slice(0, 3) : []),
     [recentChangeLogs],
   );
 
@@ -18,7 +17,7 @@ export function useRecentChanges({ currentRestaurantData, recentChangeLogs, isLo
 
   return {
     onViewFullLog,
-    parsedChangeLogs,
+    previewChangeLogs,
     recentChangesLoading,
   };
 }

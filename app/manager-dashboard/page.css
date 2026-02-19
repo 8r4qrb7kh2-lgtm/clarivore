@@ -646,7 +646,8 @@
       margin-top: auto;
     }
 
-    .route-manager-dashboard .quick-actions-panel .btnPrimary {
+    .route-manager-dashboard .quick-actions-panel .btnPrimary,
+    .route-manager-dashboard .confirmation-status .btnPrimary {
       width: 100%;
       padding: 12px 24px;
       font-weight: 600;

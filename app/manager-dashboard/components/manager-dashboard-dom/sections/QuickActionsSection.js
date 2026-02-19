@@ -3,7 +3,7 @@ import SurfaceCard from "../../../../components/surfaces/SurfaceCard";
 import { ADMIN_DISPLAY_NAME } from "../constants/dashboardConstants";
 import { resolveManagerChatLink } from "../utils/displayUtils";
 
-// Top card with direct messages and monthly confirmation controls.
+// Top card focused on direct messages.
 export function QuickActionsSection({
   chatUnreadCount,
   chatMessages,
@@ -15,8 +15,6 @@ export function QuickActionsSection({
   chatSending,
   managerDisplayName,
   chatListRef,
-  confirmationInfo,
-  onConfirmNow,
 }) {
   return (
     <SurfaceCard className="section quick-actions-section">
@@ -53,22 +51,6 @@ export function QuickActionsSection({
           }}
           isOutgoingResolver={(message) => message.sender_role === "restaurant"}
         />
-
-        <div className="quick-actions-panel">
-          <h3 className="quick-actions-title">Menu Confirmation</h3>
-          <div id="confirmation-status" className="confirmation-status">
-            <div className="confirmation-info">
-              <div className="confirmation-due-label">Next confirmation due</div>
-              <div className={`confirmation-due-date ${confirmationInfo.dueDateClass}`}>
-                {confirmationInfo.dueText}
-              </div>
-              <div className="confirmation-last">{confirmationInfo.lastConfirmedText}</div>
-              <button className="btn btnPrimary" id="confirmNowBtn" onClick={onConfirmNow}>
-                Confirm information is up-to-date
-              </button>
-            </div>
-          </div>
-        </div>
       </div>
     </SurfaceCard>
   );

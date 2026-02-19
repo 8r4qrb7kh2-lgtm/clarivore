@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { supabaseClient as supabase } from "../../../../lib/supabase";
+import { fetchRestaurantChangeLogs } from "../../../../lib/changeLogs";
 import { hydrateRestaurantWithTableMenuState } from "../../../../lib/restaurantMenuStateClient";
 import { normalizeDishKey } from "../utils/menuUtils";
 
@@ -52,12 +53,9 @@ export function useRestaurantDashboardData({
             .select("id, name, slug, last_confirmed, write_version")
             .eq("id", restaurantId)
             .single(),
-          supabase
-            .from("change_logs")
-            .select("id, timestamp, changes")
-            .eq("restaurant_id", restaurantId)
-            .order("timestamp", { ascending: false })
-            .limit(3),
+          fetchRestaurantChangeLogs(supabase, restaurantId, { limit: 3, offset: 0 }).then(
+            (data) => ({ data, error: null }),
+          ),
           supabase.from("dish_analytics").select("*").eq("restaurant_id", restaurantId),
           supabase
             .from("accommodation_requests")

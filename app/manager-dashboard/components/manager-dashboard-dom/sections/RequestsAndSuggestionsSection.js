@@ -1,13 +1,15 @@
 import { toRequestDateLabel } from "../utils/displayUtils";
+import { MenuConfirmationPanel } from "./MenuConfirmationPanel";
 
-// Two-column area with accommodation request workflow and generated improvement suggestions.
+// Two-column area with accommodation requests and menu-confirmation controls.
 export function RequestsAndSuggestionsSection({
   pendingRequestCount,
   requestFilter,
   setRequestFilter,
   filteredRequests,
   openRequestActionModal,
-  requestSuggestions,
+  confirmationInfo,
+  onConfirmNow,
   normalizeAllergen,
   normalizeDietLabel,
   ALLERGEN_EMOJI,
@@ -151,68 +153,10 @@ export function RequestsAndSuggestionsSection({
           </div>
         </div>
 
-        <div className="dashboard-panel">
-          <div className="section-header">
-            <h2 className="section-title">Improvement Suggestions</h2>
-          </div>
-
-          <div id="suggestions-list">
-            {requestSuggestions.length === 0 ? (
-              <div className="empty-state">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <circle cx="12" cy="12" r="10" />
-                  <path d="M12 16v-4" />
-                  <path d="M12 8h.01" />
-                </svg>
-                <p>More request and interaction data is needed to generate suggestions.</p>
-              </div>
-            ) : (
-              requestSuggestions.map((suggestion, index) => (
-                <div className="suggestion-card" key={`${suggestion.title}-${index}`}>
-                  <div className="suggestion-icon">
-                    <svg
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      width="24"
-                      height="24"
-                    >
-                      <path d="M12 2L2 7l10 5 10-5-10-5z" />
-                      <path d="M2 17l10 5 10-5" />
-                      <path d="M2 12l10 5 10-5" />
-                    </svg>
-                  </div>
-
-                  <div className="suggestion-title">{suggestion.title}</div>
-                  <div className="suggestion-description">{suggestion.description}</div>
-
-                  <div className="suggestion-impact">
-                    <div className="impact-item">
-                      <span className="positive">+{suggestion.potentialUsers}</span>
-                      <span style={{ color: "var(--muted)" }}>potential users</span>
-                    </div>
-                    <div className="impact-item">
-                      <span style={{ color: "var(--muted)" }}>Priority:</span>
-                      <span
-                        style={{
-                          color:
-                            suggestion.priority === "high"
-                              ? "#ef4444"
-                              : suggestion.priority === "medium"
-                                ? "#facc15"
-                                : "var(--muted)",
-                        }}
-                      >
-                        {suggestion.priority}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
+        <MenuConfirmationPanel
+          confirmationInfo={confirmationInfo}
+          onConfirmNow={onConfirmNow}
+        />
       </div>
     </div>
   );

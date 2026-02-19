@@ -5,17 +5,47 @@ import { parseChangeLogPayload } from "../utils/settingsAndChangelog";
 // Handles lazy loading for historical logs and pending-save review rows.
 // These actions are isolated because they share modal-open trigger behavior.
 
+function toChangeLogKey(log, index) {
+  const id = String(log?.id || "").trim();
+  if (id) return id;
+  const timestamp = String(log?.timestamp || "").trim();
+  const type = String(log?.type || "").trim();
+  return `${timestamp}-${type}-${index}`;
+}
+
+function appendUniqueChangeLogs(existing, incoming) {
+  const base = Array.isArray(existing) ? existing : [];
+  const next = Array.isArray(incoming) ? incoming : [];
+  if (!base.length) return [...next];
+  if (!next.length) return base;
+
+  const seen = new Set(base.map((entry, index) => toChangeLogKey(entry, index)));
+  const output = [...base];
+  next.forEach((entry, index) => {
+    const key = toChangeLogKey(entry, index);
+    if (seen.has(key)) return;
+    seen.add(key);
+    output.push(entry);
+  });
+  return output;
+}
+
 export function useChangeLogAndPendingTable({
   callbacks,
   restaurant,
   changeLogOpen,
   pendingTableOpen,
 
+  changeLogs,
+  changeLogPageSize,
   changeLogLoadedForOpenRef,
+  changeLogLoadPromiseRef,
   pendingTableLoadedForOpenRef,
   pendingTableLoadPromiseRef,
 
   setLoadingChangeLogs,
+  setLoadingMoreChangeLogs,
+  setChangeLogHasMore,
   setChangeLogError,
   setChangeLogs,
   setLoadingPendingTable,
@@ -28,21 +58,64 @@ export function useChangeLogAndPendingTable({
   pushHistory,
 }) {
   // Load change-log history rows for the current restaurant.
-  const loadChangeLogs = useCallback(async () => {
+  const loadChangeLogs = useCallback(async ({ append = false } = {}) => {
     const onLoadChangeLogs = callbacks?.onLoadChangeLogs;
     if (!onLoadChangeLogs || !restaurant?.id) return;
-    setLoadingChangeLogs(true);
+    if (changeLogLoadPromiseRef.current) {
+      return changeLogLoadPromiseRef.current;
+    }
+
+    const safePageSize = Number.isFinite(Number(changeLogPageSize))
+      ? Math.max(1, Math.floor(Number(changeLogPageSize)))
+      : 10;
+    const offset = append ? changeLogs.length : 0;
+
+    if (append) {
+      setLoadingMoreChangeLogs(true);
+    } else {
+      setLoadingChangeLogs(true);
+      setLoadingMoreChangeLogs(false);
+    }
     setChangeLogError("");
 
-    try {
-      const logs = await onLoadChangeLogs(restaurant.id);
-      setChangeLogs(Array.isArray(logs) ? logs : []);
-    } catch (error) {
-      setChangeLogError(error?.message || "Failed to load change log.");
-    } finally {
-      setLoadingChangeLogs(false);
-    }
-  }, [callbacks?.onLoadChangeLogs, restaurant?.id, setChangeLogError, setChangeLogs, setLoadingChangeLogs]);
+    const request = (async () => {
+      try {
+        const logs = await onLoadChangeLogs(restaurant.id, {
+          limit: safePageSize + 1,
+          offset,
+        });
+        const safeLogs = (Array.isArray(logs) ? logs : []).slice(0, safePageSize);
+        setChangeLogs((current) =>
+          append ? appendUniqueChangeLogs(current, safeLogs) : safeLogs,
+        );
+        setChangeLogHasMore((Array.isArray(logs) ? logs : []).length > safePageSize);
+      } catch (error) {
+        setChangeLogError(error?.message || "Failed to load change log.");
+      } finally {
+        setLoadingChangeLogs(false);
+        setLoadingMoreChangeLogs(false);
+        changeLogLoadPromiseRef.current = null;
+      }
+    })();
+
+    changeLogLoadPromiseRef.current = request;
+    return request;
+  }, [
+    callbacks?.onLoadChangeLogs,
+    changeLogLoadPromiseRef,
+    changeLogPageSize,
+    changeLogs.length,
+    restaurant?.id,
+    setChangeLogError,
+    setChangeLogHasMore,
+    setChangeLogs,
+    setLoadingChangeLogs,
+    setLoadingMoreChangeLogs,
+  ]);
+
+  const loadMoreChangeLogs = useCallback(async () => {
+    return await loadChangeLogs({ append: true });
+  }, [loadChangeLogs]);
 
   // Load staged pending-save table (batch metadata + row previews).
   // Promise memoization avoids duplicate requests while one is already in flight.
@@ -81,12 +154,24 @@ export function useChangeLogAndPendingTable({
   useEffect(() => {
     if (!changeLogOpen) {
       changeLogLoadedForOpenRef.current = false;
+      changeLogLoadPromiseRef.current = null;
+      setLoadingChangeLogs(false);
+      setLoadingMoreChangeLogs(false);
       return;
     }
+    if (!restaurant?.id) return;
     if (changeLogLoadedForOpenRef.current) return;
     changeLogLoadedForOpenRef.current = true;
-    loadChangeLogs();
-  }, [changeLogLoadedForOpenRef, changeLogOpen, loadChangeLogs]);
+    loadChangeLogs({ append: false });
+  }, [
+    changeLogLoadedForOpenRef,
+    changeLogLoadPromiseRef,
+    changeLogOpen,
+    loadChangeLogs,
+    restaurant?.id,
+    setLoadingChangeLogs,
+    setLoadingMoreChangeLogs,
+  ]);
 
   // Lazily load pending table only when the pending modal first opens.
   useEffect(() => {
@@ -94,10 +179,11 @@ export function useChangeLogAndPendingTable({
       pendingTableLoadedForOpenRef.current = false;
       return;
     }
+    if (!restaurant?.id) return;
     if (pendingTableLoadedForOpenRef.current) return;
     pendingTableLoadedForOpenRef.current = true;
     loadPendingTable();
-  }, [loadPendingTable, pendingTableLoadedForOpenRef, pendingTableOpen]);
+  }, [loadPendingTable, pendingTableLoadedForOpenRef, pendingTableOpen, restaurant?.id]);
 
   // Restore overlays/menu snapshot from one historical change-log entry.
   const restoreFromChangeLog = useCallback((log) => {
@@ -125,6 +211,7 @@ export function useChangeLogAndPendingTable({
 
   return {
     loadChangeLogs,
+    loadMoreChangeLogs,
     loadPendingTable,
     restoreFromChangeLog,
   };

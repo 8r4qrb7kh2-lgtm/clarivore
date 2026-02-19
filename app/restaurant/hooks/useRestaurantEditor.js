@@ -22,6 +22,8 @@ import {
   buildOverlayIngredientConfirmationIssues,
 } from "./useRestaurantEditor/utils/overlayIssues";
 
+const CHANGE_LOG_PAGE_SIZE = 10;
+
 // Main restaurant editor orchestrator.
 // This file now focuses on state wiring and public API shape, while feature logic lives in focused hooks.
 
@@ -68,8 +70,11 @@ export function useRestaurantEditor({
   // Change-log/pending-table data state.
   const [changeLogs, setChangeLogs] = useState([]);
   const [loadingChangeLogs, setLoadingChangeLogs] = useState(false);
+  const [loadingMoreChangeLogs, setLoadingMoreChangeLogs] = useState(false);
+  const [changeLogHasMore, setChangeLogHasMore] = useState(false);
   const [changeLogError, setChangeLogError] = useState("");
   const changeLogLoadedForOpenRef = useRef(false);
+  const changeLogLoadPromiseRef = useRef(null);
   const [pendingTableRows, setPendingTableRows] = useState([]);
   const [pendingTableBatch, setPendingTableBatch] = useState(null);
   const [loadingPendingTable, setLoadingPendingTable] = useState(false);
@@ -248,11 +253,16 @@ export function useRestaurantEditor({
     changeLogOpen,
     pendingTableOpen,
 
+    changeLogs,
+    changeLogPageSize: CHANGE_LOG_PAGE_SIZE,
     changeLogLoadedForOpenRef,
+    changeLogLoadPromiseRef,
     pendingTableLoadedForOpenRef,
     pendingTableLoadPromiseRef,
 
     setLoadingChangeLogs,
+    setLoadingMoreChangeLogs,
+    setChangeLogHasMore,
     setChangeLogError,
     setChangeLogs,
     setLoadingPendingTable,
@@ -415,6 +425,8 @@ export function useRestaurantEditor({
     setChangeLogOpen,
     changeLogs,
     loadingChangeLogs,
+    loadingMoreChangeLogs,
+    changeLogHasMore,
     changeLogError,
 
     pendingTableOpen,

@@ -5,6 +5,7 @@ import {
   loadCurrentRestaurantWrite,
   stageRestaurantWrite,
 } from "../../lib/restaurantWriteGatewayClient";
+import { fetchRestaurantChangeLogs } from "../../lib/changeLogs";
 import { queryKeys } from "../../lib/queryKeys";
 
 const CONFIRM_INFO_MAX_PHOTOS = 6;
@@ -354,20 +355,16 @@ export function useRestaurantPersistence({
   );
 
   // Read recent change logs for the editor history panel.
-  const loadChangeLogs = useCallback(async () => {
-    if (!supabaseClient) throw new Error("Supabase is not configured.");
-    if (!boot?.restaurant?.id) return [];
-
-    const { data, error } = await supabaseClient
-      .from("change_logs")
-      .select("*")
-      .eq("restaurant_id", boot.restaurant.id)
-      .order("timestamp", { ascending: false })
-      .limit(80);
-
-    if (error) throw error;
-    return Array.isArray(data) ? data : [];
-  }, [boot?.restaurant?.id, supabaseClient]);
+  const loadChangeLogs = useCallback(
+    async (options = {}) => {
+      return await fetchRestaurantChangeLogs(
+        supabaseClient,
+        boot?.restaurant?.id,
+        options,
+      );
+    },
+    [boot?.restaurant?.id, supabaseClient],
+  );
 
   // Read the current staged pending-save snapshot and convert it into table rows.
   const loadPendingSaveTable = useCallback(
