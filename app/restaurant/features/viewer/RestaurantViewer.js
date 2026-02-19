@@ -128,19 +128,42 @@ export function RestaurantViewer({
   viewer,
   lovedDishes,
   favoriteBusyDish,
+  preferenceTitlePrefix = "Saved",
+  showPreferenceEdit = true,
+  showGuestSignupPrompt = false,
+  guestSignupHref = "/account?mode=signup",
 }) {
   const [selectedOverlay, setSelectedOverlay] = useState(null);
   const [acknowledgedReferenceNote, setAcknowledgedReferenceNote] = useState(false);
+  const [showGuestSignupBanner, setShowGuestSignupBanner] = useState(false);
 
   const menuScrollRef = useRef(null);
   const pageRefs = useRef([]);
   const pageImageRefs = useRef([]);
   const selectedDish = selectedOverlay;
   const selectedOverlaySignature = selectedDish ? overlaySignature(selectedDish) : "";
+  const preferencePrefix = String(preferenceTitlePrefix || "Saved").trim() || "Saved";
+  const preferencePrefixLower = preferencePrefix.toLowerCase();
 
   const dismissReferenceNote = useCallback(() => {
     setAcknowledgedReferenceNote(true);
   }, []);
+
+  useEffect(() => {
+    if (!showGuestSignupPrompt || !acknowledgedReferenceNote) {
+      setShowGuestSignupBanner(false);
+      return undefined;
+    }
+
+    setShowGuestSignupBanner(false);
+    const timer = window.setTimeout(() => {
+      setShowGuestSignupBanner(true);
+    }, 10000);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [acknowledgedReferenceNote, showGuestSignupPrompt]);
 
   const lastConfirmedLabel = useMemo(
     () => parseLastConfirmed(restaurant?.last_confirmed),
@@ -379,10 +402,12 @@ export function RestaurantViewer({
             <div className="preference-row">
               <div className="preference-panel pill">
                 <div className="preference-header">
-                  <div className="preference-title">Saved allergens</div>
-                  <Link href="/account" className="btnLink preference-edit">
-                    Edit
-                  </Link>
+                  <div className="preference-title">{preferencePrefix} allergens</div>
+                  {showPreferenceEdit ? (
+                    <Link href="/account" className="btnLink preference-edit">
+                      Edit
+                    </Link>
+                  ) : null}
                 </div>
                 <div className="preference-chips chips">
                   {viewer.savedAllergens.length ? (
@@ -392,17 +417,19 @@ export function RestaurantViewer({
                       </span>
                     ))
                   ) : (
-                    <span className="note">No saved allergens</span>
+                    <span className="note">{`No ${preferencePrefixLower} allergens`}</span>
                   )}
                 </div>
               </div>
 
               <div className="preference-panel pill">
                 <div className="preference-header">
-                  <div className="preference-title">Saved diets</div>
-                  <Link href="/account" className="btnLink preference-edit">
-                    Edit
-                  </Link>
+                  <div className="preference-title">{preferencePrefix} diets</div>
+                  {showPreferenceEdit ? (
+                    <Link href="/account" className="btnLink preference-edit">
+                      Edit
+                    </Link>
+                  ) : null}
                 </div>
                 <div className="preference-chips chips">
                   {viewer.savedDiets.length ? (
@@ -412,7 +439,7 @@ export function RestaurantViewer({
                       </span>
                     ))
                   ) : (
-                    <span className="note">No saved diets</span>
+                    <span className="note">{`No ${preferencePrefixLower} diets`}</span>
                   )}
                 </div>
               </div>
@@ -586,7 +613,7 @@ export function RestaurantViewer({
                     </div>
                   ))
                 ) : (
-                  <p className="dish-row-empty">No saved allergens.</p>
+                  <p className="dish-row-empty">{`No ${preferencePrefixLower} allergens.`}</p>
                 )}
               </section>
 
@@ -604,7 +631,7 @@ export function RestaurantViewer({
                     </div>
                   ))
                 ) : (
-                  <p className="dish-row-empty">No saved diets.</p>
+                  <p className="dish-row-empty">{`No ${preferencePrefixLower} diets.`}</p>
                 )}
               </section>
             </div>
@@ -623,6 +650,13 @@ export function RestaurantViewer({
         ) : null}
 
       </div>
+
+      {showGuestSignupBanner ? (
+        <div className="restaurant-guest-signup-banner">
+          <span>Create a free account to save your preferences and favorites.</span>
+          <Link href={guestSignupHref}>Create a free account</Link>
+        </div>
+      ) : null}
 
       <footer className="restaurant-help-fab">
         <Link href="/help-contact">Help</Link>

@@ -1,0 +1,81 @@
+.topbar {
+  position: sticky;
+  top: 0;
+  width: 100%;
+  background: linear-gradient(180deg, #0f1530, #0b1020);
+  border-bottom: 1px solid #1c2347;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
+  z-index: 40;
+}
+
+.inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
+  padding: 12px 20px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+}
+
+.leftSlot {
+  min-height: 1px;
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  text-decoration: none;
+  color: var(--ink);
+  font-weight: 700;
+  font-size: 1.4rem;
+  line-height: 1;
+  justify-self: center;
+}
+
+.brand img {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  object-fit: cover;
+}
+
+.signInLink {
+  justify-self: end;
+  background: transparent;
+  border: none;
+  color: #8ca1ff;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  font-size: 0.95rem;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+
+.signInLink:hover {
+  color: #a9b7ff;
+}
+
+@media (max-width: 960px) {
+  .inner {
+    padding: 10px 14px;
+    grid-template-columns: minmax(0, 0.65fr) auto minmax(0, 0.65fr);
+  }
+
+  .brand {
+    font-size: 1.15rem;
+    gap: 8px;
+  }
+
+  .brand img {
+    width: 42px;
+    height: 42px;
+    border-radius: 10px;
+  }
+
+  .signInLink {
+    font-size: 0.88rem;
+  }
+}

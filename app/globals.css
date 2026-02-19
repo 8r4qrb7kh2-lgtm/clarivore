@@ -2324,6 +2324,41 @@ h2 {
   white-space: nowrap;
 }
 
+.restaurant-guest-signup-banner {
+  position: fixed;
+  left: 50%;
+  bottom: 22px;
+  transform: translateX(-50%);
+  width: min(820px, calc(100vw - 28px));
+  border: 1px solid rgba(76, 90, 212, 0.65);
+  border-radius: 14px;
+  background: rgba(9, 13, 34, 0.96);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.42);
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: #e6ecff;
+  z-index: 132;
+}
+
+.restaurant-guest-signup-banner a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid #4e65ff;
+  background: #4e65ff;
+  color: #fff;
+  text-decoration: none;
+  font-size: 0.84rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
 @media (max-width: 900px) {
   .restaurant-order-confirm-body {
     grid-template-columns: 1fr;
@@ -2739,6 +2774,16 @@ h2 {
   .restaurant-reference-banner {
     flex-direction: column;
     align-items: flex-start;
+  }
+  .restaurant-guest-signup-banner {
+    bottom: 16px;
+    padding: 10px 12px;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .restaurant-guest-signup-banner a {
+    width: 100%;
+    justify-content: center;
   }
   .restaurant-editor-stage {
     min-height: 260px;

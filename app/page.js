@@ -22,11 +22,11 @@ export default function Home() {
 
       try {
         const { data } = await supabase.auth.getUser();
-        const destination = data?.user ? "/home" : "/account?mode=signin";
+        const destination = data?.user ? "/home" : "/guest";
         router.replace(destination);
       } catch (error) {
         console.error("Failed to check session", error);
-        router.replace("/account?mode=signin");
+        router.replace("/guest");
       }
     }
 

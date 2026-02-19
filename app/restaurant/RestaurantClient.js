@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import AppTopbar from "../components/AppTopbar";
 import AppLoadingScreen from "../components/AppLoadingScreen";
+import GuestTopbar from "../components/GuestTopbar";
 import PageShell from "../components/PageShell";
 import { useToast } from "../components/ui";
 import { useIngredientScanController } from "../components/ingredient-scan/useIngredientScanController";
@@ -344,6 +345,7 @@ export default function RestaurantClient() {
   // Read all route/query inputs once so downstream hooks can use plain values.
   const slug = searchParams?.get("slug") || "";
   const qrParam = searchParams?.get("qr");
+  const guestParam = searchParams?.get("guest");
   const inviteToken = searchParams?.get("invite") || "";
   const dishNameParam = searchParams?.get("dishName") || "";
   const ingredientNameParam = searchParams?.get("ingredientName") || "";
@@ -355,6 +357,7 @@ export default function RestaurantClient() {
   const replaceBrandKeyParam = searchParams?.get("replaceBrandKey") || "";
   const replaceBrandNameParam = searchParams?.get("replaceBrandName") || "";
   const isQrVisit = isTruthyFlag(qrParam);
+  const isGuestVisit = isTruthyFlag(guestParam);
   const shouldOpenLog = isTruthyFlag(openLogParam);
   const shouldOpenConfirm = isTruthyFlag(openConfirmParam);
   const shouldOpenAi = isTruthyFlag(openAiParam);
@@ -767,21 +770,27 @@ export default function RestaurantClient() {
   const currentRestaurantSlug = boot?.restaurant?.slug || slug;
   const shouldRenderEditor = isEditorMode;
   const shouldRenderViewer = !isEditorRequested || editorAccessBlocked;
+  const isGuestViewerSession =
+    Boolean(isGuestVisit) && !inviteToken && !boot?.user?.id;
 
-  const topbar = (
-    <AppTopbar
-      mode={isEditorRequested ? "editor" : "customer"}
-      user={boot?.user || null}
-      managerRestaurants={isOwner || isManager ? boot?.managerRestaurants || [] : []}
-      currentRestaurantSlug={currentRestaurantSlug}
-      showModeToggle={Boolean(boot?.canEdit)}
-      onModeChange={(nextMode) =>
-        navigationGuard.setMode(nextMode === "editor" ? "editor" : "viewer")
-      }
-      onSignOut={onSignOut}
-      onNavigate={navigationGuard.onRestaurantNavigate}
-    />
-  );
+  const topbar = isGuestViewerSession
+    ? (
+      <GuestTopbar brandHref="/guest" signInHref="/account?mode=signin" />
+    )
+    : (
+      <AppTopbar
+        mode={isEditorRequested ? "editor" : "customer"}
+        user={boot?.user || null}
+        managerRestaurants={isOwner || isManager ? boot?.managerRestaurants || [] : []}
+        currentRestaurantSlug={currentRestaurantSlug}
+        showModeToggle={Boolean(boot?.canEdit)}
+        onModeChange={(nextMode) =>
+          navigationGuard.setMode(nextMode === "editor" ? "editor" : "viewer")
+        }
+        onSignOut={onSignOut}
+        onNavigate={navigationGuard.onRestaurantNavigate}
+      />
+    );
 
   const useRestaurantViewportShell = Boolean(boot?.restaurant);
 
@@ -841,6 +850,10 @@ export default function RestaurantClient() {
             viewer={viewer}
             lovedDishes={lovedDishesSet}
             favoriteBusyDish={favoriteBusyDish}
+            preferenceTitlePrefix={isGuestViewerSession ? "Selected" : "Saved"}
+            showPreferenceEdit={!isGuestViewerSession}
+            showGuestSignupPrompt={isGuestViewerSession}
+            guestSignupHref="/account?mode=signup"
           />
           {hasOrderSidebarContent ? (
             <RestaurantOrderSidebar
