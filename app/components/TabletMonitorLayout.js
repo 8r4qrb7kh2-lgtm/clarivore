@@ -1,4 +1,5 @@
 import AppTopbar from "./AppTopbar";
+import { Button } from "./ui";
 
 const HEADER_ROW_STYLE = {
   display: "flex",
@@ -48,15 +49,15 @@ export function TabletMonitorHeader({
           <h1>{title}</h1>
           <p className="muted-text">{subtitle}</p>
         </div>
-        <button
-          type="button"
-          className="secondary-btn"
+        <Button
+          variant="outline"
+          size="compact"
           style={{ whiteSpace: "nowrap" }}
           onClick={onRefresh}
           disabled={refreshDisabled}
         >
           {refreshing ? "Refreshing..." : "Refresh orders"}
-        </button>
+        </Button>
       </div>
 
       {statusContent}

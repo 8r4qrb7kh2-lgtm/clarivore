@@ -591,7 +591,18 @@ export default function RestaurantClient() {
   });
 
   const isEditorMode = activeView === "editor" && boot?.canEdit;
-  const orderSidebarBadgeCount = orderFlow.selectedDishNames.length;
+  const activeNoticeCount = Array.isArray(orderFlow.activeNotices)
+    ? orderFlow.activeNotices.length
+    : 0;
+  const hasOrderSidebarContent =
+    orderFlow.selectedDishNames.length > 0 || activeNoticeCount > 0;
+  const orderSidebarBadgeCount = orderFlow.selectedDishNames.length + activeNoticeCount;
+
+  useEffect(() => {
+    if (!hasOrderSidebarContent && orderSidebarOpen) {
+      setOrderSidebarOpen(false);
+    }
+  }, [hasOrderSidebarContent, orderSidebarOpen]);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -806,13 +817,15 @@ export default function RestaurantClient() {
             lovedDishes={lovedDishesSet}
             favoriteBusyDish={favoriteBusyDish}
           />
-          <RestaurantOrderSidebar
-            orderFlow={orderFlow}
-            user={boot.user}
-            isOpen={orderSidebarOpen}
-            onToggleOpen={() => setOrderSidebarOpen((current) => !current)}
-            badgeCount={orderSidebarBadgeCount}
-          />
+          {hasOrderSidebarContent ? (
+            <RestaurantOrderSidebar
+              orderFlow={orderFlow}
+              user={boot.user}
+              isOpen={orderSidebarOpen}
+              onToggleOpen={() => setOrderSidebarOpen((current) => !current)}
+              badgeCount={orderSidebarBadgeCount}
+            />
+          ) : null}
         </>
       )}
 

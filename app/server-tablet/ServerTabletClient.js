@@ -7,6 +7,7 @@ import {
   TabletMonitorHeader,
   TabletMonitorPage,
 } from "../components/TabletMonitorLayout";
+import { Button } from "../components/ui";
 import { supabaseClient as supabase } from "../lib/supabase";
 import { resolveManagerRestaurantAccess } from "../lib/managerRestaurants";
 import { showOrderNotification } from "../lib/orderNotifications";
@@ -684,45 +685,8 @@ export default function ServerTabletClient() {
           margin-top: 16px;
         }
 
-        .server-order-actions button {
-          border-radius: 10px;
-          padding: 12px 20px;
-          font-size: 0.95rem;
-          font-weight: 600;
-          cursor: pointer;
-          transition: all 0.2s ease;
-        }
-
-        .server-order-actions button.primary-btn {
-          background: linear-gradient(135deg, #5c6cd2, #4a5bc7);
-          border: none;
-          color: #fff;
-          box-shadow: 0 4px 16px rgba(92, 108, 210, 0.35);
-        }
-
-        .server-order-actions button.primary-btn:hover:not(:disabled) {
-          background: linear-gradient(135deg, #6b7bd9, #5565cf);
-          transform: translateY(-1px);
-          box-shadow: 0 6px 20px rgba(92, 108, 210, 0.45);
-        }
-
-        .server-order-actions button.danger-btn {
-          background: linear-gradient(135deg, rgba(239, 68, 68, 0.85), rgba(220, 38, 38, 0.85));
-          border: 1px solid rgba(239, 68, 68, 0.6);
-          color: #fff;
-          box-shadow: 0 4px 14px rgba(239, 68, 68, 0.35);
-        }
-
-        .server-order-actions button.danger-btn:hover:not(:disabled) {
-          background: linear-gradient(135deg, rgba(248, 113, 113, 0.9), rgba(239, 68, 68, 0.9));
-          border-color: rgba(248, 113, 113, 0.8);
-          transform: translateY(-1px);
-          box-shadow: 0 6px 18px rgba(239, 68, 68, 0.45);
-        }
-
-        .server-order-actions button:disabled {
-          opacity: 0.55;
-          cursor: not-allowed;
+        .server-order-actions .btn {
+          min-height: 42px;
         }
 
         .empty-tablet-state {
@@ -1037,47 +1001,47 @@ export default function ServerTabletClient() {
 
                       {order.status === ORDER_STATUSES.SUBMITTED_TO_SERVER ? (
                         <div className="server-order-actions">
-                          <button
+                          <Button
                             type="button"
-                            className="primary-btn"
+                            tone="primary"
                             disabled={isOrderBusy}
                             onClick={() =>
                               runAction({ action: "approve", orderId: order.id })
                             }
                           >
                             {isOrderBusy ? "Updating..." : "Approve & stage for kitchen"}
-                          </button>
-                          <button
+                          </Button>
+                          <Button
                             type="button"
-                            className="danger-btn"
+                            tone="danger"
                             disabled={isOrderBusy}
                             onClick={() => onRejectClick(order)}
                           >
                             Reject notice
-                          </button>
+                          </Button>
                         </div>
                       ) : null}
 
                       {order.status === ORDER_STATUSES.QUEUED_FOR_KITCHEN ? (
                         <div className="server-order-actions">
-                          <button
+                          <Button
                             type="button"
-                            className="primary-btn"
+                            tone="primary"
                             disabled={isOrderBusy}
                             onClick={() =>
                               runAction({ action: "dispatch", orderId: order.id })
                             }
                           >
                             {isOrderBusy ? "Updating..." : "Send to kitchen"}
-                          </button>
-                          <button
+                          </Button>
+                          <Button
                             type="button"
-                            className="danger-btn"
+                            tone="danger"
                             disabled={isOrderBusy}
                             onClick={() => onRejectClick(order)}
                           >
                             Reject notice
-                          </button>
+                          </Button>
                         </div>
                       ) : null}
                     </article>

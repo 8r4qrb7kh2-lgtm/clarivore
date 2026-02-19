@@ -58,9 +58,54 @@ function ensureObject(value) {
   return value && typeof value === "object" ? value : {};
 }
 
+function trim(value) {
+  return String(value ?? "").trim();
+}
+
+export function parseServerCodeParts(code) {
+  const normalized = trim(code).replace(/\s+/g, " ").trim();
+  if (!normalized) {
+    return {
+      serverCode: "",
+      serverId: "",
+      tableNumber: "",
+    };
+  }
+
+  const serverIdMatch = normalized.match(/\d{4}/);
+  const serverId = serverIdMatch ? trim(serverIdMatch[0]) : "";
+  let tableNumber = "";
+
+  if (serverId) {
+    const serverIndex = normalized.indexOf(serverId);
+    const afterServerId = normalized
+      .slice(serverIndex + serverId.length)
+      .replace(/^[\s:|,+#-]+/, "");
+    const tableMatch = afterServerId.match(/(?:table\s*)?([a-z0-9][a-z0-9-]*)/i);
+    tableNumber = tableMatch ? trim(tableMatch[1]).toUpperCase() : "";
+  }
+
+  return {
+    serverCode: normalized,
+    serverId,
+    tableNumber,
+  };
+}
+
+export function parseServerId(code) {
+  return parseServerCodeParts(code).serverId || "0000";
+}
+
 export function deserializeTabletOrder(row) {
   if (!row) return null;
   const payload = ensureObject(row.payload);
+  const parsedServerCode = parseServerCodeParts(payload.serverCode || "");
+  const serverCode = trim(payload.serverCode || parsedServerCode.serverCode);
+  const tableNumberFromPayload = trim(payload.tableNumber || payload.table || "");
+  const serverIdFromPayload = trim(payload.serverId);
+  const kitchenQuestionPayload = ensureObject(payload.kitchenQuestion);
+  const kitchenQuestionText = trim(kitchenQuestionPayload.text);
+
   return {
     ...payload,
     id: row.id || payload.id,
@@ -73,12 +118,18 @@ export function deserializeTabletOrder(row) {
     items: ensureArray(payload.items),
     allergies: ensureArray(payload.allergies),
     diets: ensureArray(payload.diets),
+    serverCode: serverCode || null,
+    serverId: serverIdFromPayload || parsedServerCode.serverId || parseServerId(serverCode),
+    tableNumber: tableNumberFromPayload || parsedServerCode.tableNumber || null,
+    kitchenQuestion: kitchenQuestionText
+      ? {
+          text: kitchenQuestionText,
+          response: trim(kitchenQuestionPayload.response) || null,
+          askedAt: trim(kitchenQuestionPayload.askedAt) || null,
+          respondedAt: trim(kitchenQuestionPayload.respondedAt) || null,
+        }
+      : null,
   };
-}
-
-export function parseServerId(code) {
-  const value = String(code || "");
-  return value.slice(0, 4) || "0000";
 }
 
 export function getFirstName(name) {

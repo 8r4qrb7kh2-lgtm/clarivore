@@ -7,6 +7,7 @@ import {
   TabletMonitorHeader,
   TabletMonitorPage,
 } from "../components/TabletMonitorLayout";
+import { Button } from "../components/ui";
 import { supabaseClient as supabase } from "../lib/supabase";
 import { resolveManagerRestaurantAccess } from "../lib/managerRestaurants";
 import { showOrderNotification } from "../lib/orderNotifications";
@@ -540,56 +541,8 @@ export default function KitchenTabletClient() {
           50% { opacity: 0.5; transform: scale(0.85); }
         }
 
-        .kitchen-action-row button {
-          border-radius: 10px;
-          padding: 12px 20px;
-          font-size: 0.95rem;
-          font-weight: 600;
-          cursor: pointer;
-          transition: all 0.2s ease;
-        }
-
-        .kitchen-action-row .primary-btn {
-          background: linear-gradient(135deg, #5c6cd2, #4a5bc7);
-          border: none;
-          color: #fff;
-          box-shadow: 0 4px 16px rgba(92, 108, 210, 0.35);
-        }
-
-        .kitchen-action-row .primary-btn:hover:not(:disabled) {
-          background: linear-gradient(135deg, #6b7bd9, #5565cf);
-          transform: translateY(-1px);
-          box-shadow: 0 6px 20px rgba(92, 108, 210, 0.45);
-        }
-
-        .kitchen-action-row .secondary-btn {
-          background: rgba(92, 108, 210, 0.12);
-          border: 1px solid rgba(92, 108, 210, 0.3);
-          color: rgba(255, 255, 255, 0.8);
-        }
-
-        .kitchen-action-row .secondary-btn:hover:not(:disabled) {
-          background: rgba(92, 108, 210, 0.2);
-          border-color: rgba(92, 108, 210, 0.4);
-        }
-
-        .kitchen-action-row .danger-btn {
-          background: linear-gradient(135deg, rgba(239, 68, 68, 0.85), rgba(220, 38, 38, 0.85));
-          border: 1px solid rgba(239, 68, 68, 0.6);
-          color: #fff;
-          box-shadow: 0 4px 14px rgba(239, 68, 68, 0.35);
-        }
-
-        .kitchen-action-row .danger-btn:hover:not(:disabled) {
-          background: linear-gradient(135deg, rgba(248, 113, 113, 0.9), rgba(239, 68, 68, 0.9));
-          border-color: rgba(248, 113, 113, 0.8);
-          transform: translateY(-1px);
-          box-shadow: 0 6px 18px rgba(239, 68, 68, 0.45);
-        }
-
-        .kitchen-action-row button:disabled {
-          opacity: 0.5;
-          cursor: not-allowed;
+        .kitchen-action-row .btn {
+          min-height: 42px;
         }
 
         .question-card,
@@ -806,55 +759,55 @@ export default function KitchenTabletClient() {
 
                       <div className="kitchen-action-row">
                         {order.status === ORDER_STATUSES.RESCINDED_BY_DINER ? (
-                          <button type="button" className="secondary-btn" disabled>
+                          <Button type="button" variant="outline" disabled>
                             Rescinded by diner
-                          </button>
+                          </Button>
                         ) : order.status === ORDER_STATUSES.REJECTED_BY_KITCHEN ? (
-                          <button type="button" className="secondary-btn" disabled>
+                          <Button type="button" variant="outline" disabled>
                             Rejected by kitchen
-                          </button>
+                          </Button>
                         ) : [
                             ORDER_STATUSES.WITH_KITCHEN,
                             ORDER_STATUSES.QUESTION_ANSWERED,
                           ].includes(order.status) ? (
-                          <button
+                          <Button
                             type="button"
-                            className="primary-btn"
+                            tone="primary"
                             disabled={isBusy}
                             onClick={() => onActionClick("acknowledge", order)}
                           >
                             {isBusy ? "Updating..." : "Acknowledge notice"}
-                          </button>
+                          </Button>
                         ) : order.status === ORDER_STATUSES.ACKNOWLEDGED ? (
-                          <button type="button" className="secondary-btn" disabled>
+                          <Button type="button" variant="outline" disabled>
                             Acknowledged
-                          </button>
+                          </Button>
                         ) : (
-                          <button type="button" className="secondary-btn" disabled>
+                          <Button type="button" variant="outline" disabled>
                             Waiting on diner
-                          </button>
+                          </Button>
                         )}
 
                         {canAskQuestion ? (
-                          <button
+                          <Button
                             type="button"
-                            className="secondary-btn"
+                            variant="outline"
                             disabled={isBusy}
                             onClick={() => onActionClick("question", order)}
                           >
                             Send follow-up question
-                          </button>
+                          </Button>
                         ) : null}
 
                         {canReject ? (
-                          <button
+                          <Button
                             type="button"
-                            className="danger-btn"
+                            tone="danger"
                             disabled={isBusy}
                             onClick={() => onActionClick("reject", order)}
                           >
                             Reject order
-                          </button>
+                          </Button>
                         ) : null}
                       </div>
 
@@ -936,23 +889,19 @@ export default function KitchenTabletClient() {
               }
             />
             <div className="kitchen-prompt-actions">
-              <button
-                type="button"
-                className="secondary-btn"
-                onClick={() => setPromptDraft(null)}
-              >
+              <Button type="button" variant="outline" onClick={() => setPromptDraft(null)}>
                 Cancel
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
-                className="primary-btn"
+                tone="primary"
                 disabled={actionOrderId === promptDraft.orderId}
                 onClick={onConfirmPrompt}
               >
                 {actionOrderId === promptDraft.orderId
                   ? "Saving..."
                   : promptDraft.confirmText}
-              </button>
+              </Button>
             </div>
           </div>
         </div>

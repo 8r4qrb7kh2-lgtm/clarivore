@@ -76,6 +76,35 @@ function readPayload(value) {
   return {};
 }
 
+function clonePayload(value) {
+  if (typeof structuredClone === "function") {
+    try {
+      return structuredClone(value);
+    } catch {
+      // fall through
+    }
+  }
+  try {
+    return JSON.parse(JSON.stringify(value));
+  } catch {
+    return {};
+  }
+}
+
+function ensureArray(value) {
+  return Array.isArray(value) ? value : [];
+}
+
+function pushOrderHistory(payload, actor, message) {
+  const history = ensureArray(payload?.history);
+  history.push({
+    at: new Date().toISOString(),
+    actor,
+    message,
+  });
+  payload.history = history;
+}
+
 function uniqueDishNames(values) {
   const seen = new Set();
   const output = [];
@@ -117,6 +146,36 @@ function formatDiningModeLabel(value) {
   return trim(value) || "Unknown";
 }
 
+function parseServerCodeParts(value) {
+  const normalized = trim(value).replace(/\s+/g, " ").trim();
+  if (!normalized) {
+    return {
+      serverCode: "",
+      serverId: "",
+      tableNumber: "",
+    };
+  }
+
+  const serverIdMatch = normalized.match(/\d{4}/);
+  const serverId = serverIdMatch ? trim(serverIdMatch[0]) : "";
+  let tableNumber = "";
+
+  if (serverId) {
+    const serverIndex = normalized.indexOf(serverId);
+    const afterServerId = normalized
+      .slice(serverIndex + serverId.length)
+      .replace(/^[\s:|,+#-]+/, "");
+    const tableMatch = afterServerId.match(/(?:table\s*)?([a-z0-9][a-z0-9-]*)/i);
+    tableNumber = tableMatch ? trim(tableMatch[1]).toUpperCase() : "";
+  }
+
+  return {
+    serverCode: normalized,
+    serverId,
+    tableNumber,
+  };
+}
+
 function normalizeNoticeDishes(payload) {
   const selectedDishes = Array.isArray(payload?.selectedDishes)
     ? payload.selectedDishes
@@ -156,7 +215,7 @@ export function useOrderFlow({ restaurantId, user, overlays, preferences }) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("tablet_orders")
-        .select("id,status,payload,updated_at")
+        .select("id,restaurant_id,status,payload,created_at,updated_at")
         .eq("restaurant_id", restaurantId)
         .order("updated_at", { ascending: false })
         .limit(20);
@@ -191,6 +250,12 @@ export function useOrderFlow({ restaurantId, user, overlays, preferences }) {
         const payload = readPayload(row?.payload);
         const status = trim(row?.status || payload?.status);
         const selectedDishes = normalizeNoticeDishes(payload);
+        const kitchenQuestionPayload =
+          payload?.kitchenQuestion && typeof payload.kitchenQuestion === "object"
+            ? payload.kitchenQuestion
+            : null;
+        const kitchenQuestionText = trim(kitchenQuestionPayload?.text);
+        const kitchenQuestionResponse = trim(kitchenQuestionPayload?.response);
         if (!status || !selectedDishes.length) return null;
 
         return {
@@ -205,6 +270,14 @@ export function useOrderFlow({ restaurantId, user, overlays, preferences }) {
           customNotes: trim(payload?.customNotes),
           createdAt: trim(row?.created_at || payload?.createdAt),
           updatedAt: trim(row?.updated_at || payload?.updatedAt),
+          kitchenQuestion: kitchenQuestionText
+            ? {
+                text: kitchenQuestionText,
+                response: kitchenQuestionResponse,
+                askedAt: trim(kitchenQuestionPayload?.askedAt),
+                respondedAt: trim(kitchenQuestionPayload?.respondedAt),
+              }
+            : null,
         };
       })
       .filter(Boolean);
@@ -299,6 +372,7 @@ export function useOrderFlow({ restaurantId, user, overlays, preferences }) {
       const customerName = trim(formState.customerName) || trim(user?.user_metadata?.first_name) || "Guest";
       const diningMode = trim(formState.diningMode) || "dine-in";
       const serverCode = trim(formState.serverCode);
+      const parsedServerCode = parseServerCodeParts(serverCode);
 
       if (diningMode === "dine-in" && !serverCode) {
         throw new Error("Server code is required for dine-in notices.");
@@ -314,7 +388,9 @@ export function useOrderFlow({ restaurantId, user, overlays, preferences }) {
         userId: user?.id || null,
         customerName,
         diningMode,
-        serverCode: serverCode || null,
+        serverCode: parsedServerCode.serverCode || null,
+        serverId: parsedServerCode.serverId || null,
+        tableNumber: parsedServerCode.tableNumber || null,
         customNotes: trim(formState.notes),
         allergies: Array.isArray(preferences?.allergies) ? preferences.allergies : [],
         diets: Array.isArray(preferences?.diets) ? preferences.diets : [],
@@ -350,6 +426,110 @@ export function useOrderFlow({ restaurantId, user, overlays, preferences }) {
         serverCode: "",
         notes: "",
       }));
+      orderStatusQuery.refetch();
+    },
+  });
+
+  const noticeActionMutation = useMutation({
+    mutationFn: async ({ noticeId, action, response }) => {
+      const normalizedNoticeId = trim(noticeId);
+      if (!supabase) throw new Error("Supabase is not configured.");
+      if (!normalizedNoticeId) throw new Error("Notice id is missing.");
+
+      const { data: row, error: rowError } = await supabase
+        .from("tablet_orders")
+        .select("id,restaurant_id,status,payload")
+        .eq("id", normalizedNoticeId)
+        .maybeSingle();
+
+      if (rowError) throw rowError;
+      if (!row) throw new Error("Notice was not found.");
+
+      const payload = clonePayload(readPayload(row.payload));
+      const payloadUserId = trim(payload?.userId);
+      if (trim(user?.id) && payloadUserId && payloadUserId !== trim(user.id)) {
+        throw new Error("You can only update your own notices.");
+      }
+
+      const currentStatus = trim(row.status || payload.status);
+      const now = new Date().toISOString();
+      const normalizedAction = trim(action).toLowerCase();
+      let nextStatus = currentStatus;
+
+      payload.id = trim(payload.id || row.id || normalizedNoticeId);
+      payload.restaurantId = payload.restaurantId || row.restaurant_id || restaurantId || null;
+      payload.restaurant_id = payload.restaurantId;
+      payload.status = currentStatus || payload.status || ORDER_STATUSES.SUBMITTED_TO_SERVER;
+      payload.updatedAt = now;
+
+      if (normalizedAction === "respond") {
+        const normalizedResponse = trim(response).toLowerCase();
+        if (!["yes", "no"].includes(normalizedResponse)) {
+          throw new Error("Response must be yes or no.");
+        }
+        const kitchenQuestion =
+          payload?.kitchenQuestion && typeof payload.kitchenQuestion === "object"
+            ? payload.kitchenQuestion
+            : null;
+        if (!trim(kitchenQuestion?.text)) {
+          throw new Error("No kitchen follow-up question is available for this notice.");
+        }
+        if (currentStatus !== ORDER_STATUSES.AWAITING_USER_RESPONSE) {
+          throw new Error("This notice is not waiting on your follow-up response.");
+        }
+
+        payload.kitchenQuestion = {
+          ...kitchenQuestion,
+          response: normalizedResponse,
+          respondedAt: now,
+        };
+        nextStatus = ORDER_STATUSES.QUESTION_ANSWERED;
+        payload.status = nextStatus;
+        pushOrderHistory(
+          payload,
+          "Diner",
+          `Responded "${normalizedResponse.toUpperCase()}" to kitchen follow-up.`,
+        );
+      } else if (normalizedAction === "rescind") {
+        if (
+          [
+            ORDER_STATUSES.RESCINDED_BY_DINER,
+            ORDER_STATUSES.REJECTED_BY_SERVER,
+            ORDER_STATUSES.REJECTED_BY_KITCHEN,
+          ].includes(currentStatus)
+        ) {
+          throw new Error("This notice cannot be rescinded in its current status.");
+        }
+        nextStatus = ORDER_STATUSES.RESCINDED_BY_DINER;
+        payload.status = nextStatus;
+        pushOrderHistory(payload, "Diner", "Rescinded notice.");
+      } else {
+        throw new Error("Unsupported notice action.");
+      }
+
+      const { error: updateError } = await supabase.from("tablet_orders").upsert(
+        {
+          id: payload.id,
+          restaurant_id: payload.restaurantId,
+          status: nextStatus,
+          payload,
+        },
+        { onConflict: "id" },
+      );
+      if (updateError) throw updateError;
+
+      return {
+        noticeId: payload.id,
+        status: nextStatus,
+      };
+    },
+    onMutate: ({ noticeId }) => ({
+      noticeId: trim(noticeId),
+    }),
+    onSuccess: ({ noticeId, status }) => {
+      if (status === ORDER_STATUSES.RESCINDED_BY_DINER) {
+        setActiveOrderId((current) => (current === noticeId ? "" : current));
+      }
       orderStatusQuery.refetch();
     },
   });
@@ -427,6 +607,27 @@ export function useOrderFlow({ restaurantId, user, overlays, preferences }) {
     }));
   }, []);
 
+  const respondToKitchenQuestion = useCallback(
+    async (noticeId, response) => {
+      return noticeActionMutation.mutateAsync({
+        noticeId,
+        action: "respond",
+        response,
+      });
+    },
+    [noticeActionMutation],
+  );
+
+  const rescindNotice = useCallback(
+    async (noticeId) => {
+      return noticeActionMutation.mutateAsync({
+        noticeId,
+        action: "rescind",
+      });
+    },
+    [noticeActionMutation],
+  );
+
   const reset = useCallback(() => {
     setSelectedDishNames([]);
     setCheckedDishNames([]);
@@ -468,6 +669,12 @@ export function useOrderFlow({ restaurantId, user, overlays, preferences }) {
     statusError: orderStatusQuery.error?.message || "",
     refreshStatus: orderStatusQuery.refetch,
     isStatusLoading: orderStatusQuery.isLoading,
+    respondToKitchenQuestion,
+    rescindNotice,
+    isNoticeActionPending: noticeActionMutation.isPending,
+    noticeActionError: noticeActionMutation.error?.message || "",
+    noticeActionTargetId: noticeActionMutation.variables?.noticeId || "",
+    clearNoticeActionError: noticeActionMutation.reset,
     reset,
   };
 }

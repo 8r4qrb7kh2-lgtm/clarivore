@@ -52,7 +52,7 @@ function statusTone(status) {
 }
 
 const SIDEBAR_COLLAPSED_HEIGHT = 72;
-const SIDEBAR_MIN_OPEN_HEIGHT = 92;
+const SIDEBAR_MIN_OPEN_HEIGHT = SIDEBAR_COLLAPSED_HEIGHT;
 const SIDEBAR_RESIZE_STEP = 28;
 const SIDEBAR_MAX_HEIGHT = 560;
 const SIDEBAR_DEFAULT_VIEWPORT_RATIO = 0.5;
@@ -73,6 +73,7 @@ export function RestaurantOrderSidebar({
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [submitError, setSubmitError] = useState("");
   const [confirmDishNames, setConfirmDishNames] = useState([]);
+  const [rescindConfirmNoticeId, setRescindConfirmNoticeId] = useState("");
   const [viewportHeight, setViewportHeight] = useState(getViewportHeight);
   const [drawerHeight, setDrawerHeight] = useState(() =>
     isOpen
@@ -91,6 +92,7 @@ export function RestaurantOrderSidebar({
     if (!isOpen) {
       setConfirmOpen(false);
       setConfirmDishNames([]);
+      setRescindConfirmNoticeId("");
     }
   }, [isOpen]);
 
@@ -107,11 +109,10 @@ export function RestaurantOrderSidebar({
   const activeNotices = Array.isArray(orderFlow.activeNotices)
     ? orderFlow.activeNotices
     : [];
-  const hasPinnedNotices =
-    activeNotices.length > 0 || orderFlow.selectedDishNames.length > 0;
-  const minOpenHeight = hasPinnedNotices
-    ? SIDEBAR_MIN_OPEN_HEIGHT
-    : SIDEBAR_COLLAPSED_HEIGHT;
+  const pendingNoticeCount = orderFlow.selectedDishNames.length;
+  const activeNoticeCount = activeNotices.length;
+  const computedBadgeCount = pendingNoticeCount + activeNoticeCount;
+  const minOpenHeight = SIDEBAR_MIN_OPEN_HEIGHT;
   const maxDrawerHeight = useMemo(() => {
     const viewportBound = Math.round(viewportHeight * 0.78);
     return Math.max(minOpenHeight + 140, Math.min(SIDEBAR_MAX_HEIGHT, viewportBound));
@@ -127,6 +128,8 @@ export function RestaurantOrderSidebar({
   const drawerDisplayHeight = isOpen
     ? clampDrawerHeight(drawerHeight)
     : SIDEBAR_COLLAPSED_HEIGHT;
+  const isCollapsed = !isOpen || drawerDisplayHeight <= SIDEBAR_COLLAPSED_HEIGHT + 2;
+  const showDrawerContent = isOpen && !isCollapsed;
   const confirmRows = useMemo(
     () =>
       confirmDishNames.map((dishName) => ({
@@ -141,6 +144,9 @@ export function RestaurantOrderSidebar({
     orderFlow.statusError && orderFlow.statusError !== submitErrorMessage
       ? orderFlow.statusError
       : "";
+  const noticeActionErrorMessage = trim(orderFlow.noticeActionError);
+  const actionTargetNoticeId = trim(orderFlow.noticeActionTargetId);
+  const isNoticeActionPending = Boolean(orderFlow.isNoticeActionPending);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -159,8 +165,21 @@ export function RestaurantOrderSidebar({
   }, []);
 
   useEffect(() => {
+    if (!rescindConfirmNoticeId) return;
+    const stillVisible = activeNotices.some(
+      (notice) => trim(notice.id) === trim(rescindConfirmNoticeId),
+    );
+    if (!stillVisible) {
+      setRescindConfirmNoticeId("");
+    }
+  }, [activeNotices, rescindConfirmNoticeId]);
+
+  useEffect(() => {
     setDrawerHeight((current) => {
       if (!isOpen) return SIDEBAR_COLLAPSED_HEIGHT;
+      if (dragStateRef.current.active) {
+        return clampDrawerHeight(current);
+      }
       if (!Number.isFinite(current) || current <= SIDEBAR_COLLAPSED_HEIGHT + 2) {
         return clampDrawerHeight(defaultDrawerHeight);
       }
@@ -191,10 +210,7 @@ export function RestaurantOrderSidebar({
       onResizeMove(event);
     };
     const handlePointerUp = () => {
-      if (
-        !hasPinnedNotices &&
-        dragStateRef.current.lastHeight <= SIDEBAR_COLLAPSE_THRESHOLD
-      ) {
+      if (dragStateRef.current.lastHeight <= SIDEBAR_COLLAPSE_THRESHOLD) {
         onToggleOpen?.();
         setDrawerHeight(SIDEBAR_COLLAPSED_HEIGHT);
       }
@@ -217,7 +233,7 @@ export function RestaurantOrderSidebar({
       document.body.style.userSelect = previousUserSelect;
       document.body.style.cursor = previousCursor;
     };
-  }, [hasPinnedNotices, isResizing, onResizeMove, onToggleOpen, stopResizing]);
+  }, [isResizing, onResizeMove, onToggleOpen, stopResizing]);
 
   const removeDish = useCallback(
     (dishName) => {
@@ -241,6 +257,34 @@ export function RestaurantOrderSidebar({
     setSubmitError("");
     setConfirmDishNames([]);
   }, []);
+
+  const onAnswerFollowUp = useCallback(
+    async (noticeId, response) => {
+      if (typeof orderFlow.respondToKitchenQuestion !== "function") return;
+      orderFlow.clearNoticeActionError?.();
+      setRescindConfirmNoticeId("");
+      try {
+        await orderFlow.respondToKitchenQuestion(noticeId, response);
+      } catch {
+        // mutation state exposes error message in UI
+      }
+    },
+    [orderFlow],
+  );
+
+  const onRescindNotice = useCallback(
+    async (noticeId) => {
+      if (typeof orderFlow.rescindNotice !== "function") return;
+      orderFlow.clearNoticeActionError?.();
+      try {
+        await orderFlow.rescindNotice(noticeId);
+        setRescindConfirmNoticeId("");
+      } catch {
+        // mutation state exposes error message in UI
+      }
+    },
+    [orderFlow],
+  );
 
   const onSubmit = useCallback(
     async (event) => {
@@ -320,12 +364,8 @@ export function RestaurantOrderSidebar({
 
       if (event.key === "Home") {
         event.preventDefault();
-        if (!hasPinnedNotices) {
-          onToggleOpen?.();
-          setDrawerHeight(SIDEBAR_COLLAPSED_HEIGHT);
-        } else {
-          setDrawerHeight(minOpenHeight);
-        }
+        onToggleOpen?.();
+        setDrawerHeight(SIDEBAR_COLLAPSED_HEIGHT);
         return;
       }
 
@@ -337,10 +377,8 @@ export function RestaurantOrderSidebar({
     [
       clampDrawerHeight,
       defaultDrawerHeight,
-      hasPinnedNotices,
       isOpen,
       maxDrawerHeight,
-      minOpenHeight,
       onToggleOpen,
     ],
   );
@@ -348,7 +386,7 @@ export function RestaurantOrderSidebar({
   return (
     <>
       <aside
-        className={`restaurant-order-sidebar ${isOpen ? "open" : "minimized"} ${isResizing ? "resizing" : ""}`}
+        className={`restaurant-order-sidebar ${isCollapsed ? "minimized" : "open"} ${isResizing ? "resizing" : ""}`}
         style={{ height: `${drawerDisplayHeight}px` }}
       >
         <div className="restaurant-order-sidebar-header">
@@ -357,8 +395,8 @@ export function RestaurantOrderSidebar({
             role="separator"
             aria-label={
               isOpen
-                ? "Drag to resize notice dashboard"
-                : "Drag up to open notice dashboard"
+                ? "Drag to resize pending notices"
+                : "Drag up to open pending notices"
             }
             aria-orientation="horizontal"
             aria-valuemin={minOpenHeight}
@@ -371,19 +409,31 @@ export function RestaurantOrderSidebar({
             <span />
           </div>
           <div className="restaurant-order-sidebar-title-row">
-            <h2 className="restaurant-order-sidebar-title">Notice dashboard</h2>
-            <span className="restaurant-order-sidebar-badge">{badgeCount}</span>
+            <h2 className="restaurant-order-sidebar-title">Pending notices</h2>
+            <div className="restaurant-order-sidebar-title-actions">
+              <Button
+                size="compact"
+                variant="outline"
+                className="restaurant-order-sidebar-refresh-btn"
+                onClick={() => orderFlow.refreshStatus()}
+              >
+                Refresh status
+              </Button>
+              <span
+                className="restaurant-order-sidebar-badge"
+                aria-label={`${pendingNoticeCount} pending and ${activeNoticeCount} active notices`}
+              >
+                {Number.isFinite(badgeCount) ? badgeCount : computedBadgeCount}
+              </span>
+            </div>
           </div>
         </div>
 
-        {isOpen ? (
+        {showDrawerContent ? (
           <div className="restaurant-order-sidebar-content">
             <section className="restaurant-order-sidebar-section">
               <div className="restaurant-order-sidebar-section-head">
                 <h3 className="restaurant-order-sidebar-section-title">Active notices</h3>
-                <Button size="compact" variant="outline" onClick={() => orderFlow.refreshStatus()}>
-                  Refresh status
-                </Button>
               </div>
               {activeNotices.length ? (
                 <div className="restaurant-order-active-notices">
@@ -411,6 +461,82 @@ export function RestaurantOrderSidebar({
                           Note: {notice.customNotes}
                         </p>
                       ) : null}
+                      {trim(notice.kitchenQuestion?.text) ? (
+                        <p className="restaurant-order-active-notice-notes">
+                          Kitchen follow-up: {trim(notice.kitchenQuestion?.text)}
+                        </p>
+                      ) : null}
+                      {trim(notice.kitchenQuestion?.response) ? (
+                        <p className="restaurant-order-active-notice-notes">
+                          Your response: {String(notice.kitchenQuestion.response).toUpperCase()}
+                        </p>
+                      ) : null}
+                      <div className="restaurant-order-active-notice-actions">
+                        {notice.status === "awaiting_user_response" &&
+                        trim(notice.kitchenQuestion?.text) &&
+                        !trim(notice.kitchenQuestion?.response) ? (
+                          <>
+                            <Button
+                              size="compact"
+                              tone="success"
+                              disabled={isNoticeActionPending}
+                              loading={isNoticeActionPending && actionTargetNoticeId === notice.id}
+                              onClick={() => onAnswerFollowUp(notice.id, "yes")}
+                            >
+                              Yes
+                            </Button>
+                            <Button
+                              size="compact"
+                              tone="danger"
+                              disabled={isNoticeActionPending}
+                              loading={isNoticeActionPending && actionTargetNoticeId === notice.id}
+                              onClick={() => onAnswerFollowUp(notice.id, "no")}
+                            >
+                              No
+                            </Button>
+                          </>
+                        ) : null}
+
+                        {rescindConfirmNoticeId === notice.id ? (
+                          <div className="restaurant-order-active-notice-rescind-confirm">
+                            <p>Are you sure you want to rescind this notice?</p>
+                            <div className="restaurant-order-active-notice-rescind-actions">
+                              <Button
+                                size="compact"
+                                tone="danger"
+                                disabled={isNoticeActionPending}
+                                loading={isNoticeActionPending && actionTargetNoticeId === notice.id}
+                                onClick={() => onRescindNotice(notice.id)}
+                              >
+                                Yes, rescind
+                              </Button>
+                              <Button
+                                size="compact"
+                                variant="outline"
+                                disabled={isNoticeActionPending}
+                                onClick={() => {
+                                  orderFlow.clearNoticeActionError?.();
+                                  setRescindConfirmNoticeId("");
+                                }}
+                              >
+                                Cancel
+                              </Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <Button
+                            size="compact"
+                            variant="outline"
+                            disabled={isNoticeActionPending}
+                            onClick={() => {
+                              orderFlow.clearNoticeActionError?.();
+                              setRescindConfirmNoticeId(notice.id);
+                            }}
+                          >
+                            Rescind notice
+                          </Button>
+                        )}
+                      </div>
                     </article>
                   ))}
                 </div>
@@ -419,10 +545,13 @@ export function RestaurantOrderSidebar({
                   No active notices submitted yet.
                 </p>
               )}
+              {noticeActionErrorMessage ? (
+                <p className="restaurant-order-confirm-error">{noticeActionErrorMessage}</p>
+              ) : null}
             </section>
 
             <section className="restaurant-order-sidebar-section">
-              <h3 className="restaurant-order-sidebar-section-title">Pending dishes</h3>
+              <h3 className="restaurant-order-sidebar-section-title">Pending notices</h3>
               <div className="restaurant-order-sidebar-items">
                 {orderFlow.selectedDishNames.length ? (
                   orderFlow.selectedDishNames.map((dishName) => (
@@ -441,7 +570,7 @@ export function RestaurantOrderSidebar({
                     </div>
                   ))
                 ) : (
-                  <p className="restaurant-order-sidebar-empty">No dishes added yet.</p>
+                  <p className="restaurant-order-sidebar-empty">No pending notices yet.</p>
                 )}
               </div>
             </section>
