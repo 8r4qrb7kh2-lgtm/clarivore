@@ -26,12 +26,13 @@ function createQueryClient() {
 
 function shouldBypassGuestGate(pathname) {
   const route = String(pathname || "").trim() || "/";
+  const normalizedRoute = route.replace(/\/+$/, "") || "/";
 
-  if (route.startsWith("/account")) return true;
-  if (route.startsWith("/guest")) return true;
+  if (normalizedRoute.startsWith("/account")) return true;
+  if (normalizedRoute.startsWith("/guest")) return true;
   // Let the restaurant route settle first to avoid query-param race conditions
   // during guest navigation from /guest -> /restaurant.
-  if (route === "/restaurant") return true;
+  if (normalizedRoute === "/restaurant") return true;
 
   return false;
 }
