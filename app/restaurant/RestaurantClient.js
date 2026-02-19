@@ -14,6 +14,7 @@ import {
 } from "../lib/managerRestaurants";
 import { queryKeys } from "../lib/queryKeys";
 import { supabaseClient as supabase } from "../lib/supabase";
+import EditorLockBlockedModal from "./client/EditorLockBlockedModal";
 import UnsavedChangesModal from "./client/UnsavedChangesModal";
 import { createRestaurantEditorCallbacks } from "./client/editorCallbacks";
 import {
@@ -21,6 +22,7 @@ import {
   readManagerModeDefault,
 } from "./client/navigationModeUtils";
 import { loadRestaurantBoot } from "./client/restaurantBootLoader";
+import { useEditorLock } from "./client/useEditorLock";
 import { useRestaurantPersistence } from "./client/useRestaurantPersistence";
 import { useRuntimeConfigHealth } from "./client/useRuntimeConfigHealth";
 import { useUnsavedNavigationGuard } from "./client/useUnsavedNavigationGuard";
@@ -590,7 +592,17 @@ export default function RestaurantClient() {
     restaurantSlug: boot?.restaurant?.slug || slug,
   });
 
-  const isEditorMode = activeView === "editor" && boot?.canEdit;
+  const isEditorRequested = activeView === "editor" && Boolean(boot?.canEdit);
+  const editorLock = useEditorLock({
+    supabaseClient: supabase,
+    restaurantId: boot?.restaurant?.id || "",
+    isEditorRequested,
+    userId: boot?.user?.id || "",
+  });
+  const isEditorMode = isEditorRequested && editorLock.granted;
+  const editorAccessBlocked = isEditorRequested && editorLock.blocked;
+  const editorAccessChecking = isEditorRequested && editorLock.checking;
+
   const activeNoticeCount = Array.isArray(orderFlow.activeNotices)
     ? orderFlow.activeNotices.length
     : 0;
@@ -753,10 +765,12 @@ export default function RestaurantClient() {
   const isOwner = isOwnerUser(boot?.user);
   const isManager = isManagerUser(boot?.user);
   const currentRestaurantSlug = boot?.restaurant?.slug || slug;
+  const shouldRenderEditor = isEditorMode;
+  const shouldRenderViewer = !isEditorRequested || editorAccessBlocked;
 
   const topbar = (
     <AppTopbar
-      mode={isEditorMode ? "editor" : "customer"}
+      mode={isEditorRequested ? "editor" : "customer"}
       user={boot?.user || null}
       managerRestaurants={isOwner || isManager ? boot?.managerRestaurants || [] : []}
       currentRestaurantSlug={currentRestaurantSlug}
@@ -796,7 +810,13 @@ export default function RestaurantClient() {
         </div>
       ) : null}
 
-      {activeView === "editor" && boot.canEdit ? (
+      {editorAccessChecking ? (
+        <div className="mb-4 rounded-xl border border-[rgba(76,90,212,0.45)] bg-[rgba(17,22,48,0.88)] px-4 py-3 text-sm text-[#dce5ff]">
+          Checking editor availability...
+        </div>
+      ) : null}
+
+      {shouldRenderEditor ? (
         <>
           {runtimeConfigBlocked ? (
             <div className="mb-4 rounded-xl border border-[#a12525] bg-[rgba(139,29,29,0.32)] px-3 py-2 text-sm text-[#ffd0d0]">
@@ -814,7 +834,7 @@ export default function RestaurantClient() {
             }}
           />
         </>
-      ) : (
+      ) : shouldRenderViewer ? (
         <>
           <RestaurantViewer
             restaurant={boot.restaurant}
@@ -832,10 +852,24 @@ export default function RestaurantClient() {
             />
           ) : null}
         </>
-      )}
+      ) : null}
 
-      <UnsavedChangesModal modalState={navigationGuard.modal} />
-      {ingredientScan.modalNode}
+      <EditorLockBlockedModal
+        open={editorAccessBlocked}
+        message={editorLock.message}
+        refreshBusy={editorLock.refreshBusy || editorAccessChecking}
+        onRefresh={editorLock.refreshStatus}
+        onReturnDashboard={() => {
+          router.replace("/manager-dashboard");
+        }}
+      />
+
+      {editorAccessBlocked ? null : (
+        <>
+          <UnsavedChangesModal modalState={navigationGuard.modal} />
+          {ingredientScan.modalNode}
+        </>
+      )}
     </PageShell>
   );
 }
