@@ -87,6 +87,8 @@ function DishEditorModal({
         }
       }}
       className="restaurant-editor-dish-modal-shell"
+      closeOnOverlay={false}
+      closeOnEsc={false}
     >
       {!overlay ? (
         <p className="note">Select an overlay to edit.</p>

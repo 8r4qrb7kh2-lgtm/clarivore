@@ -14,6 +14,7 @@ export function buildOverlayBrandRequirementIssues(overlay) {
   // Collect missing-brand issues for a single dish overlay.
   const issues = [];
   const overlayName = asText(overlay?.id || overlay?.name) || "Dish";
+  const overlayKey = asText(overlay?._editorKey);
   const rows = Array.isArray(overlay?.ingredients) ? overlay.ingredients : [];
 
   rows.forEach((ingredient, index) => {
@@ -23,8 +24,10 @@ export function buildOverlayBrandRequirementIssues(overlay) {
     const ingredientName = asText(ingredient?.name) || `Ingredient ${index + 1}`;
     const reason = asText(ingredient?.brandRequirementReason);
     issues.push({
+      overlayKey,
       overlayName,
       ingredientName,
+      rowIndex: index,
       reason,
       message: reason
         ? `${overlayName}: ${ingredientName} requires brand assignment (${reason})`
@@ -46,6 +49,7 @@ export function buildOverlayIngredientConfirmationIssues(overlay) {
   // Collect ingredient rows that are still unconfirmed in a single overlay.
   const issues = [];
   const overlayName = asText(overlay?.id || overlay?.name) || "Dish";
+  const overlayKey = asText(overlay?._editorKey);
   const rows = Array.isArray(overlay?.ingredients) ? overlay.ingredients : [];
 
   rows.forEach((ingredient, index) => {
@@ -53,8 +57,10 @@ export function buildOverlayIngredientConfirmationIssues(overlay) {
 
     const ingredientName = asText(ingredient?.name) || `Ingredient ${index + 1}`;
     issues.push({
+      overlayKey,
       overlayName,
       ingredientName,
+      rowIndex: index,
       message: `${overlayName}: ${ingredientName} must be confirmed before saving`,
     });
   });

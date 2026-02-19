@@ -1211,15 +1211,19 @@ export function useDishEditorController({
       return;
     }
 
+    const requestedIndex = Number(saveIssueJumpRequest.ingredientIndex);
+    const hasRequestedIndex =
+      Number.isFinite(requestedIndex) &&
+      requestedIndex >= 0 &&
+      requestedIndex < ingredients.length;
     const targetToken = normalizeToken(saveIssueJumpRequest.ingredientName);
-    if (!targetToken) {
-      onSaveIssueJumpHandled?.();
-      return;
-    }
-
-    const targetIndex = ingredients.findIndex(
-      (ingredient) => normalizeToken(ingredient?.name) === targetToken,
-    );
+    const targetIndex = hasRequestedIndex
+      ? Math.floor(requestedIndex)
+      : targetToken
+        ? ingredients.findIndex(
+            (ingredient) => normalizeToken(ingredient?.name) === targetToken,
+          )
+        : -1;
     if (targetIndex < 0) return;
 
     const rowNode = ingredientRowRefs.current[targetIndex];

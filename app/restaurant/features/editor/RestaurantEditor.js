@@ -25,6 +25,7 @@ export function RestaurantEditor({ editor, onNavigate, runtimeConfigHealth }) {
   const overlayInteractionRef = useRef(null);
   const stopOverlayInteractionRef = useRef(() => {});
   const mappingDragRef = useRef(null);
+  const saveButtonRef = useRef(null);
   const [mappedRectPreview, setMappedRectPreview] = useState(null);
   const [saveReviewOpen, setSaveReviewOpen] = useState(false);
   const [saveIssueAlert, setSaveIssueAlert] = useState(null);
@@ -65,27 +66,57 @@ export function RestaurantEditor({ editor, onNavigate, runtimeConfigHealth }) {
   // Save issue helpers keep unresolved row confirmations navigable from toolbar and modal.
   const resolveIssueContext = useCallback(
     (issue) => {
+      const requestedOverlayKey = asText(issue?.overlayKey);
       const overlayToken = normalizeToken(issue?.overlayName);
-      const ingredientToken = normalizeToken(issue?.ingredientName);
-      const matchedOverlay = (Array.isArray(editor.overlays) ? editor.overlays : []).find(
-        (overlay) => normalizeToken(overlay?.id || overlay?.name) === overlayToken,
-      );
-      const ingredientName = asText(issue?.ingredientName);
+      const rowIndexRaw = Number(issue?.rowIndex);
+      const rowIndex =
+        Number.isFinite(rowIndexRaw) && rowIndexRaw >= 0
+          ? Math.floor(rowIndexRaw)
+          : -1;
+      const overlays = Array.isArray(editor.overlays) ? editor.overlays : [];
+      const matchedOverlay =
+        overlays.find((overlay) => asText(overlay?._editorKey) === requestedOverlayKey) ||
+        overlays.find((overlay) => normalizeToken(overlay?.id || overlay?.name) === overlayToken);
+      const matchedIngredients = Array.isArray(matchedOverlay?.ingredients)
+        ? matchedOverlay.ingredients
+        : [];
+      const rowIngredientName =
+        rowIndex >= 0 ? asText(matchedIngredients[rowIndex]?.name) : "";
+      const ingredientName =
+        asText(issue?.ingredientName || rowIngredientName) ||
+        (rowIndex >= 0 ? `Ingredient ${rowIndex + 1}` : "");
+      const overlayName =
+        asText(issue?.overlayName || matchedOverlay?.id || matchedOverlay?.name) || "Dish";
+      const overlayKey = asText(matchedOverlay?._editorKey || requestedOverlayKey);
+      const ingredientToken = normalizeToken(ingredientName);
+      const issueKey =
+        overlayKey && rowIndex >= 0
+          ? `${overlayKey}:${rowIndex}`
+          : `${normalizeToken(overlayName)}:${ingredientToken}`;
 
       return {
         ...issue,
-        overlayKey: matchedOverlay?._editorKey || "",
-        overlayName: asText(issue?.overlayName || matchedOverlay?.id || matchedOverlay?.name),
+        overlayKey,
+        overlayName,
         ingredientName,
+        rowIndex,
         message:
           asText(issue?.message) ||
-          `${asText(issue?.overlayName) || "Dish"}: ${ingredientName || "Ingredient"} must be confirmed before saving`,
-        issueKey: `${normalizeToken(issue?.overlayName)}:${normalizeToken(issue?.ingredientName)}`,
-        canJump: Boolean(matchedOverlay?._editorKey && ingredientToken),
+          `${overlayName}: ${ingredientName || "Ingredient"} must be confirmed before saving`,
+        issueKey,
+        canJump: Boolean(overlayKey && (rowIndex >= 0 || ingredientToken)),
       };
     },
     [editor.overlays],
   );
+
+  const buildActiveConfirmationIssueKeys = useCallback(() => {
+    return new Set(
+      editor
+        .getIngredientConfirmationIssues()
+        .map((issue) => resolveIssueContext(issue).issueKey),
+    );
+  }, [editor, resolveIssueContext]);
 
   const buildJumpableConfirmationIssues = useCallback(() => {
     return editor
@@ -93,6 +124,15 @@ export function RestaurantEditor({ editor, onNavigate, runtimeConfigHealth }) {
       .map((issue) => resolveIssueContext(issue))
       .filter((issue) => issue.canJump);
   }, [editor, resolveIssueContext]);
+
+  const returnToWebpageEditor = useCallback(() => {
+    if (!editor.dishEditorOpen) return;
+    editor.pushHistory();
+    editor.closeDishEditor();
+    window.setTimeout(() => {
+      saveButtonRef.current?.focus?.();
+    }, 0);
+  }, [editor]);
 
   const requestJumpToIssue = useCallback(
     (issue) => {
@@ -103,6 +143,10 @@ export function RestaurantEditor({ editor, onNavigate, runtimeConfigHealth }) {
         requestId: Date.now(),
         overlayKey: issue.overlayKey,
         ingredientName: issue.ingredientName,
+        ingredientIndex:
+          Number.isFinite(Number(issue?.rowIndex)) && Number(issue.rowIndex) >= 0
+            ? Math.floor(Number(issue.rowIndex))
+            : undefined,
       });
     },
     [editor],
@@ -110,10 +154,15 @@ export function RestaurantEditor({ editor, onNavigate, runtimeConfigHealth }) {
 
   const triggerSave = useCallback(async () => {
     if (editor.isSaving) return;
-    const confirmationIssues = editor.getIngredientConfirmationIssues();
-    if (confirmationIssues.length) {
+    const resolvedIssues = editor
+      .getIngredientConfirmationIssues()
+      .map((issue) => resolveIssueContext(issue));
+    if (resolvedIssues.length) {
       setConfirmationGuide(null);
-      setSaveIssueAlert(resolveIssueContext(confirmationIssues[0]));
+      setSaveIssueAlert({
+        ...resolvedIssues[0],
+        issueCount: resolvedIssues.length,
+      });
       return;
     }
 
@@ -171,14 +220,7 @@ export function RestaurantEditor({ editor, onNavigate, runtimeConfigHealth }) {
     setConfirmationGuide((current) => {
       if (!current?.issues?.length) return current;
 
-      const unresolvedKeys = new Set(
-        editor
-          .getIngredientConfirmationIssues()
-          .map(
-            (issue) =>
-              `${normalizeToken(issue?.overlayName)}:${normalizeToken(issue?.ingredientName)}`,
-          ),
-      );
+      const unresolvedKeys = buildActiveConfirmationIssueKeys();
       if (!unresolvedKeys.size) return current;
 
       const nextIndex = current.issues.findIndex(
@@ -197,7 +239,7 @@ export function RestaurantEditor({ editor, onNavigate, runtimeConfigHealth }) {
         currentIndex: targetIndex,
       };
     });
-  }, [editor, requestJumpToIssue]);
+  }, [buildActiveConfirmationIssueKeys, requestJumpToIssue]);
 
   const cancelConfirmationGuide = useCallback(() => {
     setConfirmationGuide(null);
@@ -219,31 +261,21 @@ export function RestaurantEditor({ editor, onNavigate, runtimeConfigHealth }) {
 
   useEffect(() => {
     if (!saveIssueAlert?.issueKey) return;
-    const activeIssueKeys = editor
-      .getIngredientConfirmationIssues()
-      .map(
-        (issue) =>
-          `${normalizeToken(issue?.overlayName)}:${normalizeToken(issue?.ingredientName)}`,
-      );
-    if (!activeIssueKeys.includes(saveIssueAlert.issueKey)) {
+    const activeIssueKeys = buildActiveConfirmationIssueKeys();
+    if (!activeIssueKeys.has(saveIssueAlert.issueKey)) {
       setSaveIssueAlert(null);
     }
-  }, [editor, saveIssueAlert]);
+  }, [buildActiveConfirmationIssueKeys, saveIssueAlert]);
 
   useEffect(() => {
     if (!confirmationGuide?.issues?.length) return;
 
-    const unresolvedKeys = new Set(
-      editor
-        .getIngredientConfirmationIssues()
-        .map(
-          (issue) =>
-            `${normalizeToken(issue?.overlayName)}:${normalizeToken(issue?.ingredientName)}`,
-        ),
-    );
+    const unresolvedKeys = buildActiveConfirmationIssueKeys();
 
     if (!unresolvedKeys.size) {
       setConfirmationGuide(null);
+      setSaveIssueAlert(null);
+      returnToWebpageEditor();
       return;
     }
 
@@ -300,7 +332,7 @@ export function RestaurantEditor({ editor, onNavigate, runtimeConfigHealth }) {
     }
 
     setConfirmationGuide(null);
-  }, [confirmationGuide, editor, requestJumpToIssue]);
+  }, [buildActiveConfirmationIssueKeys, confirmationGuide, requestJumpToIssue, returnToWebpageEditor]);
 
   const guideCanBack = useMemo(() => {
     if (!confirmationGuide?.issues?.length) return false;
@@ -318,14 +350,7 @@ export function RestaurantEditor({ editor, onNavigate, runtimeConfigHealth }) {
 
   const guideCanForward = useMemo(() => {
     if (!confirmationGuide?.issues?.length) return false;
-    const unresolvedKeys = new Set(
-      editor
-        .getIngredientConfirmationIssues()
-        .map(
-          (issue) =>
-            `${normalizeToken(issue?.overlayName)}:${normalizeToken(issue?.ingredientName)}`,
-        ),
-    );
+    const unresolvedKeys = buildActiveConfirmationIssueKeys();
     if (!unresolvedKeys.size) return false;
 
     const nextIndex = confirmationGuide.issues.findIndex(
@@ -338,7 +363,7 @@ export function RestaurantEditor({ editor, onNavigate, runtimeConfigHealth }) {
       unresolvedKeys.has(issue.issueKey),
     );
     return firstRemainingIndex >= 0 && firstRemainingIndex !== confirmationGuide.currentIndex;
-  }, [confirmationGuide, editor]);
+  }, [buildActiveConfirmationIssueKeys, confirmationGuide]);
 
   // Minimap sync keeps page and scroll position aligned while zooming/editing.
   const { activePageIndex: minimapActivePageIndex, scrollSnapshot } = useMinimapSync({
@@ -866,6 +891,7 @@ export function RestaurantEditor({ editor, onNavigate, runtimeConfigHealth }) {
                       </div>
                       {saveButtonVisible ? (
                         <button
+                          ref={saveButtonRef}
                           className={`btn ${saveButtonClass}`}
                           onClick={triggerSave}
                           disabled={editor.isSaving}
@@ -875,16 +901,24 @@ export function RestaurantEditor({ editor, onNavigate, runtimeConfigHealth }) {
                       ) : null}
                       {saveIssueAlert ? (
                         <div className="w-full mt-2 rounded-lg border border-[#a12525] bg-[rgba(139,29,29,0.32)] px-3 py-2 text-sm text-[#ffd0d0]">
-                          <div>Please review unconfirmed rows</div>
+                          <div>
+                            {Number(saveIssueAlert.issueCount) === 1
+                              ? "1 ingredient row is still unconfirmed."
+                              : `${Math.max(Number(saveIssueAlert.issueCount) || 0, 1)} ingredient rows are still unconfirmed.`}
+                          </div>
                           {saveIssueAlert.canJump ? (
                             <button
                               type="button"
                               className="btn btnDanger btnSmall mt-2"
                               onClick={startConfirmationGuide}
                             >
-                              Review unconfirmed rows
+                              Confirm unconfirmed rows
                             </button>
-                          ) : null}
+                          ) : (
+                            <div className="mt-2">
+                              Open each dish and mark every ingredient row as confirmed before saving.
+                            </div>
+                          )}
                         </div>
                       ) : null}
                     </div>
