@@ -403,6 +403,29 @@ export default function RestaurantClient() {
     router.replace(boot.redirect);
   }, [boot?.redirect, router]);
 
+  // Keep unauthenticated direct restaurant visits inside the guest onboarding flow.
+  useEffect(() => {
+    if (!boot?.restaurant) return;
+    if (boot?.user?.id) return;
+    if (inviteToken) return;
+    if (isGuestVisit || isQrVisit) return;
+
+    const safeSlug = asText(boot?.restaurant?.slug || slug);
+    const nextPath = safeSlug
+      ? `/restaurant?slug=${encodeURIComponent(safeSlug)}`
+      : "/restaurant";
+    router.replace(`/guest?next=${encodeURIComponent(nextPath)}`);
+  }, [
+    boot?.restaurant,
+    boot?.restaurant?.slug,
+    boot?.user?.id,
+    inviteToken,
+    isGuestVisit,
+    isQrVisit,
+    router,
+    slug,
+  ]);
+
   // Re-evaluate default mode whenever boot data or mode-related query params change.
   useEffect(() => {
     if (!boot) return;

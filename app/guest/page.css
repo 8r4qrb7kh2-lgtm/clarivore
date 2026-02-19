@@ -85,8 +85,9 @@
 
 .route-guest .guest-restaurant-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 150px));
+  gap: 10px;
+  justify-content: flex-start;
 }
 
 .route-guest .guest-restaurant-option {
@@ -113,7 +114,7 @@
 
 .route-guest .guest-restaurant-option-media {
   width: 100%;
-  aspect-ratio: 4 / 3;
+  aspect-ratio: 16 / 10;
   overflow: hidden;
   border-bottom: 1px solid rgba(124, 156, 255, 0.2);
 }
@@ -126,10 +127,11 @@
 
 .route-guest .guest-restaurant-option-name {
   display: block;
-  padding: 10px 12px;
+  padding: 8px 10px;
   font-weight: 600;
+  font-size: 0.84rem;
   line-height: 1.35;
-  min-height: 54px;
+  min-height: 42px;
 }
 
 .route-guest .guest-chip-list {
@@ -161,7 +163,8 @@
   }
 
   .route-guest .guest-restaurant-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(130px, 1fr));
+    justify-content: center;
   }
 
   .route-guest .guest-actions .btn {

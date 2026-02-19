@@ -24,24 +24,14 @@ function createQueryClient() {
   });
 }
 
-function shouldBypassGuestGate(pathname, searchParams) {
+function shouldBypassGuestGate(pathname) {
   const route = String(pathname || "").trim() || "/";
 
   if (route.startsWith("/account")) return true;
   if (route.startsWith("/guest")) return true;
-
-  if (route === "/restaurant") {
-    const guestVisit =
-      String(searchParams.get("guest") || "").trim() === "1" &&
-      String(searchParams.get("qr") || "").trim() === "1" &&
-      String(searchParams.get("slug") || "").trim();
-    const managerInviteVisit = Boolean(
-      String(searchParams.get("invite") || "").trim(),
-    );
-    if (guestVisit || managerInviteVisit) {
-      return true;
-    }
-  }
+  // Let the restaurant route settle first to avoid query-param race conditions
+  // during guest navigation from /guest -> /restaurant.
+  if (route === "/restaurant") return true;
 
   return false;
 }
@@ -54,10 +44,9 @@ function GuestAccessGate({ children }) {
   const [authState, setAuthState] = useState(() => (supabase ? "unknown" : "signedOut"));
 
   const searchKey = searchParams?.toString() || "";
-  const parsedSearchParams = useMemo(() => new URLSearchParams(searchKey), [searchKey]);
   const bypassGuestGate = useMemo(
-    () => shouldBypassGuestGate(pathname, parsedSearchParams),
-    [pathname, parsedSearchParams],
+    () => shouldBypassGuestGate(pathname),
+    [pathname],
   );
 
   useEffect(() => {
