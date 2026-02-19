@@ -594,8 +594,13 @@ export default function RestaurantClient() {
   const activeNoticeCount = Array.isArray(orderFlow.activeNotices)
     ? orderFlow.activeNotices.length
     : 0;
+  const completedNoticeCount = Array.isArray(orderFlow.completedNotices)
+    ? orderFlow.completedNotices.length
+    : 0;
   const hasOrderSidebarContent =
-    orderFlow.selectedDishNames.length > 0 || activeNoticeCount > 0;
+    orderFlow.selectedDishNames.length > 0 ||
+    activeNoticeCount > 0 ||
+    completedNoticeCount > 0;
   const orderSidebarBadgeCount = orderFlow.selectedDishNames.length + activeNoticeCount;
 
   useEffect(() => {

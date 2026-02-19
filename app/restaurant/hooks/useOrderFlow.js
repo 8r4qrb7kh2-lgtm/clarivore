@@ -35,6 +35,13 @@ const ACTIVE_NOTICE_STATUSES = new Set([
   ORDER_STATUSES.QUESTION_ANSWERED,
 ]);
 
+const COMPLETED_NOTICE_STATUSES = new Set([
+  ORDER_STATUSES.ACKNOWLEDGED,
+  ORDER_STATUSES.REJECTED_BY_SERVER,
+  ORDER_STATUSES.REJECTED_BY_KITCHEN,
+  ORDER_STATUSES.RESCINDED_BY_DINER,
+]);
+
 function makeOrderId() {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
     return crypto.randomUUID();
@@ -256,7 +263,11 @@ export function useOrderFlow({ restaurantId, user, overlays, preferences }) {
             : null;
         const kitchenQuestionText = trim(kitchenQuestionPayload?.text);
         const kitchenQuestionResponse = trim(kitchenQuestionPayload?.response);
+        const isClearedByDiner = Boolean(
+          payload?.clearedByDiner || trim(payload?.clearedByDinerAt),
+        );
         if (!status || !selectedDishes.length) return null;
+        if (isClearedByDiner) return null;
 
         return {
           id: trim(row?.id || payload?.id),
@@ -285,6 +296,10 @@ export function useOrderFlow({ restaurantId, user, overlays, preferences }) {
 
   const activeNotices = useMemo(() => {
     return notices.filter((notice) => ACTIVE_NOTICE_STATUSES.has(notice.status));
+  }, [notices]);
+
+  const completedNotices = useMemo(() => {
+    return notices.filter((notice) => COMPLETED_NOTICE_STATUSES.has(notice.status));
   }, [notices]);
 
   const normalizedOverlays = useMemo(() => {
@@ -503,6 +518,13 @@ export function useOrderFlow({ restaurantId, user, overlays, preferences }) {
         nextStatus = ORDER_STATUSES.RESCINDED_BY_DINER;
         payload.status = nextStatus;
         pushOrderHistory(payload, "Diner", "Rescinded notice.");
+      } else if (normalizedAction === "clear") {
+        if (!COMPLETED_NOTICE_STATUSES.has(currentStatus)) {
+          throw new Error("Only completed notices can be cleared.");
+        }
+        payload.clearedByDiner = true;
+        payload.clearedByDinerAt = now;
+        pushOrderHistory(payload, "Diner", "Cleared notice from dashboard.");
       } else {
         throw new Error("Unsupported notice action.");
       }
@@ -521,13 +543,17 @@ export function useOrderFlow({ restaurantId, user, overlays, preferences }) {
       return {
         noticeId: payload.id,
         status: nextStatus,
+        action: normalizedAction,
       };
     },
     onMutate: ({ noticeId }) => ({
       noticeId: trim(noticeId),
     }),
-    onSuccess: ({ noticeId, status }) => {
-      if (status === ORDER_STATUSES.RESCINDED_BY_DINER) {
+    onSuccess: ({ noticeId, status, action }) => {
+      if (
+        status === ORDER_STATUSES.RESCINDED_BY_DINER ||
+        action === "clear"
+      ) {
         setActiveOrderId((current) => (current === noticeId ? "" : current));
       }
       orderStatusQuery.refetch();
@@ -628,6 +654,16 @@ export function useOrderFlow({ restaurantId, user, overlays, preferences }) {
     [noticeActionMutation],
   );
 
+  const clearCompletedNotice = useCallback(
+    async (noticeId) => {
+      return noticeActionMutation.mutateAsync({
+        noticeId,
+        action: "clear",
+      });
+    },
+    [noticeActionMutation],
+  );
+
   const reset = useCallback(() => {
     setSelectedDishNames([]);
     setCheckedDishNames([]);
@@ -663,6 +699,7 @@ export function useOrderFlow({ restaurantId, user, overlays, preferences }) {
     statusLabel,
     notices,
     activeNotices,
+    completedNotices,
     getDishNoticeRows,
     savedAllergens,
     savedDiets,
@@ -671,6 +708,7 @@ export function useOrderFlow({ restaurantId, user, overlays, preferences }) {
     isStatusLoading: orderStatusQuery.isLoading,
     respondToKitchenQuestion,
     rescindNotice,
+    clearCompletedNotice,
     isNoticeActionPending: noticeActionMutation.isPending,
     noticeActionError: noticeActionMutation.error?.message || "",
     noticeActionTargetId: noticeActionMutation.variables?.noticeId || "",

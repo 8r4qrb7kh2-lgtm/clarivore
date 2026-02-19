@@ -109,6 +109,9 @@ export function RestaurantOrderSidebar({
   const activeNotices = Array.isArray(orderFlow.activeNotices)
     ? orderFlow.activeNotices
     : [];
+  const completedNotices = Array.isArray(orderFlow.completedNotices)
+    ? orderFlow.completedNotices
+    : [];
   const pendingNoticeCount = orderFlow.selectedDishNames.length;
   const activeNoticeCount = activeNotices.length;
   const computedBadgeCount = pendingNoticeCount + activeNoticeCount;
@@ -279,6 +282,19 @@ export function RestaurantOrderSidebar({
       try {
         await orderFlow.rescindNotice(noticeId);
         setRescindConfirmNoticeId("");
+      } catch {
+        // mutation state exposes error message in UI
+      }
+    },
+    [orderFlow],
+  );
+
+  const onClearCompletedNotice = useCallback(
+    async (noticeId) => {
+      if (typeof orderFlow.clearCompletedNotice !== "function") return;
+      orderFlow.clearNoticeActionError?.();
+      try {
+        await orderFlow.clearCompletedNotice(noticeId);
       } catch {
         // mutation state exposes error message in UI
       }
@@ -573,6 +589,52 @@ export function RestaurantOrderSidebar({
                   <p className="restaurant-order-sidebar-empty">No pending notices yet.</p>
                 )}
               </div>
+            </section>
+
+            <section className="restaurant-order-sidebar-section">
+              <h3 className="restaurant-order-sidebar-section-title">Completed notices</h3>
+              {completedNotices.length ? (
+                <div className="restaurant-order-active-notices">
+                  {completedNotices.map((notice) => (
+                    <article
+                      key={`completed-${notice.id || `${notice.status}-${notice.updatedAt}`}`}
+                      className="restaurant-order-active-notice"
+                    >
+                      <div className="restaurant-order-active-notice-head">
+                        <div className="restaurant-order-active-notice-meta">
+                          <span>{notice.diningModeLabel}</span>
+                          {notice.updatedAt ? (
+                            <span>Completed {formatNoticeTimestamp(notice.updatedAt)}</span>
+                          ) : null}
+                        </div>
+                        <Badge tone={statusTone(notice.status)}>{notice.statusLabel}</Badge>
+                      </div>
+                      <ul className="restaurant-order-active-notice-dishes">
+                        {notice.selectedDishes.map((dishName) => (
+                          <li key={`completed-${notice.id}-${dishName}`}>{dishName}</li>
+                        ))}
+                      </ul>
+                      <div className="restaurant-order-active-notice-actions">
+                        <Button
+                          size="compact"
+                          variant="outline"
+                          disabled={isNoticeActionPending}
+                          loading={
+                            isNoticeActionPending && actionTargetNoticeId === trim(notice.id)
+                          }
+                          onClick={() => onClearCompletedNotice(notice.id)}
+                        >
+                          Clear notice
+                        </Button>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              ) : (
+                <p className="restaurant-order-sidebar-empty">
+                  No completed notices yet.
+                </p>
+              )}
             </section>
 
             <div className="restaurant-order-sidebar-actions">
