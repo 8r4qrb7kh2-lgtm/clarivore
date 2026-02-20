@@ -114,8 +114,6 @@
   cursor: pointer;
   transition: border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .pill:hover {
@@ -282,7 +280,7 @@
 
   .nav > .pill,
   .nav > .navGroup {
-    flex: 1 1 0;
+    flex: var(--pill-flex-grow, 1) 1 0;
     min-width: 0;
   }
 
@@ -294,20 +292,13 @@
   .groupTrigger {
     width: 100%;
     min-width: 0;
-    padding: 8px 6px;
-    font-size: 0.68rem;
+    padding: 8px 5px;
+    font-size: 0.74rem;
     line-height: 1;
   }
 
   .groupTrigger {
     justify-content: center;
-  }
-
-  .groupTrigger > span:first-child {
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
   }
 
   .caret {
@@ -325,7 +316,7 @@
   }
 
   .authLink {
-    margin-left: 0;
+    margin-left: auto;
     flex: 0 0 auto;
     align-self: center;
     padding: 0 2px;
@@ -346,8 +337,8 @@
 
   .pill,
   .groupTrigger {
-    font-size: 0.62rem;
-    padding: 8px 4px;
+    font-size: 0.67rem;
+    padding: 8px 3px;
   }
 
   .authLink {

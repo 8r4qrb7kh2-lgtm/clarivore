@@ -27,7 +27,28 @@ function itemKey(item, fallback) {
   return String(item?.id || item?.key || fallback);
 }
 
-function NavLinkItem({ item, onNavigate, className }) {
+function computeMobilePillFlex(label) {
+  const text = String(label || "").trim();
+  if (!text) return 1;
+  const length = text.length;
+  return Math.min(Math.max(length / 6, 1), 3);
+}
+
+function isAccountNavItem(item) {
+  if (!item || item.visible === false) return false;
+  const id = String(item.id || item.key || "").toLowerCase();
+  const href = String(item.href || "").toLowerCase();
+  const label = String(item.label || "").toLowerCase();
+  if (id === "account") return true;
+  if (href.startsWith("/account")) return true;
+  if (label.includes("account")) return true;
+  if (item.type === "group" && Array.isArray(item.items)) {
+    return item.items.some((child) => isAccountNavItem(child));
+  }
+  return false;
+}
+
+function NavLinkItem({ item, onNavigate, className, style }) {
   const href = String(item?.href || "").trim();
   if (!href) return null;
 
@@ -36,6 +57,7 @@ function NavLinkItem({ item, onNavigate, className }) {
       <button
         type="button"
         className={className}
+        style={style}
         onClick={(event) => {
           event.preventDefault();
           onNavigate(href, item);
@@ -47,7 +69,7 @@ function NavLinkItem({ item, onNavigate, className }) {
   }
 
   return (
-    <Link href={href} className={className}>
+    <Link href={href} className={className} style={style}>
       {item.label}
     </Link>
   );
@@ -130,6 +152,10 @@ export default function SimpleTopbar({
     : null;
 
   const visibleItems = items.filter(isVisible);
+  const hasAccountNavItem = visibleItems.some((item) => isAccountNavItem(item));
+  const shouldShowAuthAction = Boolean(
+    authAction && !(authAction.type === "action" && hasAccountNavItem),
+  );
 
   return (
     <div
@@ -162,6 +188,9 @@ export default function SimpleTopbar({
           <nav className={styles.nav}>
             {visibleItems.map((item, index) => {
               const key = itemKey(item, `item-${index}`);
+              const pillStyle = {
+                "--pill-flex-grow": computeMobilePillFlex(item?.label),
+              };
               if (item.type === "group") {
                 const groupItems = Array.isArray(item.items) ? item.items.filter(isVisible) : [];
                 if (!groupItems.length) return null;
@@ -170,7 +199,7 @@ export default function SimpleTopbar({
                   Boolean(item.current) || groupItems.some((subItem) => Boolean(subItem.current));
 
                 return (
-                  <div key={key} className={styles.navGroup}>
+                  <div key={key} className={styles.navGroup} style={pillStyle}>
                     <button
                       type="button"
                       className={`${styles.pill} ${styles.groupTrigger} ${isCurrent ? styles.currentPage : ""}`}
@@ -209,12 +238,13 @@ export default function SimpleTopbar({
                   key={key}
                   item={item}
                   onNavigate={onNavigate}
+                  style={pillStyle}
                   className={`${styles.pill} ${item.current ? styles.currentPage : ""}`.trim()}
                 />
               );
             })}
 
-            {authAction ? (
+            {shouldShowAuthAction ? (
               authAction.type === "action" ? (
                 <button type="button" className={styles.authLink} onClick={authAction.onClick}>
                   {authAction.label}

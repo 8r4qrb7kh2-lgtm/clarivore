@@ -120,6 +120,7 @@ export default function AccountClient() {
   const isManager = isManagerUser(user);
   const isManagerOrOwner = isOwner || isManager;
   const isGuestAccountMode = guestParam === "1" || guestParam === "true";
+  const showGuestChrome = isGuestAccountMode && !user;
   const guestReturnPath = useMemo(() => {
     const value = String(returnToParam || "").trim();
     if (!value || !value.startsWith("/")) return "/guest";
@@ -800,7 +801,7 @@ export default function AccountClient() {
     <PageShell
       shellClassName="page-shell route-account"
       topbar={
-        isGuestAccountMode ? (
+        showGuestChrome ? (
           <GuestTopbar brandHref="/guest" signInHref={guestSignInHref} />
         ) : (
           <AppTopbar
@@ -863,7 +864,7 @@ export default function AccountClient() {
       }
     >
       <div className="account-layout">
-            {isGuestAccountMode ? (
+            {showGuestChrome ? (
               <button
                 className="secondary-btn account-guest-back-btn"
                 type="button"

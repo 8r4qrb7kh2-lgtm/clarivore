@@ -1010,6 +1010,9 @@ h2 {
   display: flex;
   flex-direction: column;
   min-height: 0;
+  width: 100%;
+  max-width: none;
+  margin: 0;
 }
 
 .restaurant-viewer {
@@ -2398,6 +2401,26 @@ h2 {
   .restaurant-order-confirm-body {
     grid-template-columns: 1fr;
   }
+
+  .restaurant-main {
+    padding: 0 0 env(safe-area-inset-bottom, 0px);
+  }
+
+  .restaurant-viewer {
+    max-width: none;
+    margin: 0;
+    gap: 6px;
+  }
+
+  .restaurant-header {
+    padding: 10px 10px 0;
+  }
+
+  .restaurant-menu-stage {
+    border-radius: 0;
+    border-left: 0;
+    border-right: 0;
+  }
 }
 
 .restaurant-actions-row {
@@ -2414,12 +2437,14 @@ h2 {
   background: #4e65ff;
   color: #fff;
   border-radius: 10px;
-  min-height: 28px;
-  padding: 0 10px;
+  min-height: 30px;
+  padding: 0 12px;
   text-decoration: none;
   font-size: 0.72rem;
   font-weight: 600;
-  line-height: 1;
+  line-height: 1.1;
+  text-align: center;
+  white-space: nowrap;
 }
 
 .restaurant-action-btn.danger {
@@ -2439,11 +2464,13 @@ h2 {
 }
 
 .restaurant-legend {
-  margin: 0;
+  margin: 4px 0 0;
+  width: 100%;
   display: flex;
   flex-direction: column;
   gap: 4px;
-  text-align: left;
+  align-items: center;
+  text-align: center;
   color: #d8e0fa;
   font-size: 0.78rem;
   line-height: 1.2;
@@ -2452,14 +2479,10 @@ h2 {
 .restaurant-legend-keys {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
-  flex-wrap: nowrap;
-  overflow-x: auto;
-  scrollbar-width: none;
-}
-
-.restaurant-legend-keys::-webkit-scrollbar {
-  display: none;
+  flex-wrap: wrap;
+  width: 100%;
 }
 
 .restaurant-legend-item {
@@ -2468,16 +2491,19 @@ h2 {
   white-space: nowrap;
 }
 
-.restaurant-legend-note {
+.restaurant-legend-risk {
   margin: 0;
-  color: #b7c4e8;
-  white-space: nowrap;
-  overflow-x: auto;
-  scrollbar-width: none;
+  color: #d9e4ff;
+  width: 100%;
+  text-align: center;
 }
 
-.restaurant-legend-note::-webkit-scrollbar {
-  display: none;
+.restaurant-legend-guidance {
+  margin: 0;
+  color: #b7c4e8;
+  white-space: normal;
+  width: 100%;
+  text-align: center;
 }
 
 .legend-box {
@@ -2523,7 +2549,7 @@ h2 {
 
 .restaurant-menu-scroll {
   height: 100%;
-  overflow-x: hidden;
+  overflow-x: auto;
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-width: thin;
@@ -2534,6 +2560,11 @@ h2 {
     filter 0.2s ease,
     opacity 0.2s ease,
     transform 0.2s ease;
+}
+
+.restaurant-menu-track {
+  width: calc(100% * var(--menu-zoom-scale, 1));
+  min-width: 100%;
 }
 
 .restaurant-menu-scroll.is-blurred {

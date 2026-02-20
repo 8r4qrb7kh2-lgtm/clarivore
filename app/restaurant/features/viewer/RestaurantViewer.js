@@ -161,6 +161,20 @@ function toggleSelection(values, target) {
     : [...list, targetValue];
 }
 
+function getTouchDistance(touchA, touchB) {
+  if (!touchA || !touchB) return 0;
+  const deltaX = Number(touchA.clientX || 0) - Number(touchB.clientX || 0);
+  const deltaY = Number(touchA.clientY || 0) - Number(touchB.clientY || 0);
+  return Math.hypot(deltaX, deltaY);
+}
+
+function getTouchMidpoint(touchA, touchB) {
+  return {
+    x: (Number(touchA?.clientX || 0) + Number(touchB?.clientX || 0)) / 2,
+    y: (Number(touchA?.clientY || 0) + Number(touchB?.clientY || 0)) / 2,
+  };
+}
+
 export function RestaurantViewer({
   restaurant,
   viewer,
@@ -181,10 +195,19 @@ export function RestaurantViewer({
   const [isEditingGuestDiets, setIsEditingGuestDiets] = useState(false);
   const [draftGuestAllergenKeys, setDraftGuestAllergenKeys] = useState([]);
   const [draftGuestDietKeys, setDraftGuestDietKeys] = useState([]);
+  const [menuZoomScale, setMenuZoomScale] = useState(1);
 
   const menuScrollRef = useRef(null);
   const pageRefs = useRef([]);
   const pageImageRefs = useRef([]);
+  const menuZoomScaleRef = useRef(1);
+  const pinchGestureRef = useRef({
+    active: false,
+    startDistance: 0,
+    startScale: 1,
+    anchorX: 0,
+    anchorY: 0,
+  });
   const selectedDish = selectedOverlay;
   const selectedOverlaySignature = selectedDish ? overlaySignature(selectedDish) : "";
   const preferencePrefix = String(preferenceTitlePrefix || "Saved").trim() || "Saved";
@@ -218,14 +241,121 @@ export function RestaurantViewer({
   const {
     activePageIndex,
     scrollSnapshot,
+    refreshScrollSnapshot,
   } = useMinimapSync({
     enabled: acknowledgedReferenceNote,
     menuScrollRef,
     pageRefs,
     pageImageRefs,
     pageCount: viewer.pageCount,
-    pageVersionKey: viewer.menuPages.length,
+    pageVersionKey: `${viewer.menuPages.length}:${menuZoomScale}`,
   });
+
+  useEffect(() => {
+    menuZoomScaleRef.current = menuZoomScale;
+    refreshScrollSnapshot();
+  }, [menuZoomScale, refreshScrollSnapshot]);
+
+  const endPinchGesture = useCallback(() => {
+    if (!pinchGestureRef.current.active) return;
+    pinchGestureRef.current.active = false;
+    refreshScrollSnapshot();
+  }, [refreshScrollSnapshot]);
+
+  const startPinchGesture = useCallback((touchA, touchB) => {
+    const scrollNode = menuScrollRef.current;
+    if (!scrollNode || !touchA || !touchB) return;
+
+    const startDistance = getTouchDistance(touchA, touchB);
+    if (startDistance <= 0) return;
+
+    const midpoint = getTouchMidpoint(touchA, touchB);
+    const bounds = scrollNode.getBoundingClientRect();
+
+    pinchGestureRef.current = {
+      active: true,
+      startDistance,
+      startScale: menuZoomScaleRef.current,
+      anchorX: scrollNode.scrollLeft + (midpoint.x - bounds.left),
+      anchorY: scrollNode.scrollTop + (midpoint.y - bounds.top),
+    };
+  }, []);
+
+  const continuePinchGesture = useCallback(
+    (touchA, touchB) => {
+      const scrollNode = menuScrollRef.current;
+      if (!scrollNode || !touchA || !touchB || !pinchGestureRef.current.active) {
+        return;
+      }
+
+      const pinch = pinchGestureRef.current;
+      const distance = getTouchDistance(touchA, touchB);
+      if (distance <= 0 || pinch.startDistance <= 0) return;
+
+      const nextScale = clamp((distance / pinch.startDistance) * pinch.startScale, 1, 3);
+      if (Math.abs(nextScale - menuZoomScaleRef.current) < 0.005) return;
+
+      const midpoint = getTouchMidpoint(touchA, touchB);
+      const bounds = scrollNode.getBoundingClientRect();
+      const pointerX = midpoint.x - bounds.left;
+      const pointerY = midpoint.y - bounds.top;
+      const scaleRatio = nextScale / pinch.startScale;
+      const targetLeft = pinch.anchorX * scaleRatio - pointerX;
+      const targetTop = pinch.anchorY * scaleRatio - pointerY;
+
+      setMenuZoomScale(nextScale);
+
+      window.requestAnimationFrame(() => {
+        const maxLeft = Math.max(scrollNode.scrollWidth - scrollNode.clientWidth, 0);
+        const maxTop = Math.max(scrollNode.scrollHeight - scrollNode.clientHeight, 0);
+        scrollNode.scrollLeft = clamp(targetLeft, 0, maxLeft);
+        scrollNode.scrollTop = clamp(targetTop, 0, maxTop);
+        refreshScrollSnapshot();
+      });
+    },
+    [refreshScrollSnapshot],
+  );
+
+  useEffect(() => {
+    const scrollNode = menuScrollRef.current;
+    if (!scrollNode || !acknowledgedReferenceNote) return undefined;
+
+    const onTouchStart = (event) => {
+      if (event.touches.length < 2) return;
+      startPinchGesture(event.touches[0], event.touches[1]);
+    };
+
+    const onTouchMove = (event) => {
+      if (event.touches.length < 2 || !pinchGestureRef.current.active) return;
+      event.preventDefault();
+      continuePinchGesture(event.touches[0], event.touches[1]);
+    };
+
+    const onTouchEnd = (event) => {
+      if (event.touches.length >= 2) {
+        startPinchGesture(event.touches[0], event.touches[1]);
+        return;
+      }
+      endPinchGesture();
+    };
+
+    scrollNode.addEventListener("touchstart", onTouchStart, { passive: true });
+    scrollNode.addEventListener("touchmove", onTouchMove, { passive: false });
+    scrollNode.addEventListener("touchend", onTouchEnd, { passive: true });
+    scrollNode.addEventListener("touchcancel", endPinchGesture, { passive: true });
+
+    return () => {
+      scrollNode.removeEventListener("touchstart", onTouchStart);
+      scrollNode.removeEventListener("touchmove", onTouchMove);
+      scrollNode.removeEventListener("touchend", onTouchEnd);
+      scrollNode.removeEventListener("touchcancel", endPinchGesture);
+    };
+  }, [
+    acknowledgedReferenceNote,
+    continuePinchGesture,
+    endPinchGesture,
+    startPinchGesture,
+  ]);
 
   const centerOverlayInView = useCallback(
     (overlay, behavior = "smooth") => {
@@ -693,24 +823,25 @@ export function RestaurantViewer({
             <p className="restaurant-confirmed-text">
               Last confirmed by restaurant staff: {lastConfirmedLabel}
             </p>
-
-            <div className="restaurant-legend" aria-label="Menu symbol keys">
-              <div className="restaurant-legend-keys">
-                <span className="restaurant-legend-item">
-                  <span className="legend-box safe" /> Complies
-                </span>
-                <span className="restaurant-legend-item">
-                  <span className="legend-box removable" /> Can be modified
-                </span>
-                <span className="restaurant-legend-item">
-                  <span className="legend-box unsafe" /> Cannot be modified
-                </span>
-              </div>
-              <p className="restaurant-legend-note">
-                ⚠ Cross-contamination risk · Tap dishes for details · Pinch menu to zoom in/out
-              </p>
-            </div>
           </div>
+        </div>
+
+        <div className="restaurant-legend" aria-label="Menu symbol keys">
+          <div className="restaurant-legend-keys">
+            <span className="restaurant-legend-item">
+              <span className="legend-box safe" /> Complies
+            </span>
+            <span className="restaurant-legend-item">
+              <span className="legend-box removable" /> Can be modified
+            </span>
+            <span className="restaurant-legend-item">
+              <span className="legend-box unsafe" /> Cannot be modified
+            </span>
+          </div>
+          <p className="restaurant-legend-risk">⚠ Cross-contamination risk</p>
+          <p className="restaurant-legend-guidance">
+            👆 Tap dishes for details · 🤏 Pinch menu to zoom in/out
+          </p>
         </div>
 
         {!acknowledgedReferenceNote ? (
@@ -734,65 +865,70 @@ export function RestaurantViewer({
             acknowledgedReferenceNote ? "" : "is-blurred"
           }`}
         >
-          {viewer.menuPages.map((page) => (
-            <div
-              key={`page-${page.pageIndex}`}
-              className="restaurant-menu-page"
-              ref={(node) => {
-                pageRefs.current[page.pageIndex] = node;
-              }}
-            >
-              {page.image ? (
-                <img
-                  src={page.image}
-                  alt={`${restaurant?.name || "Restaurant"} menu page ${page.pageIndex + 1}`}
-                  className="restaurant-menu-image"
-                  ref={(node) => {
-                    pageImageRefs.current[page.pageIndex] = node;
-                  }}
-                />
-              ) : (
-                <div className="restaurant-no-image">No menu image available.</div>
-              )}
+          <div
+            className="restaurant-menu-track"
+            style={{ "--menu-zoom-scale": menuZoomScale }}
+          >
+            {viewer.menuPages.map((page) => (
+              <div
+                key={`page-${page.pageIndex}`}
+                className="restaurant-menu-page"
+                ref={(node) => {
+                  pageRefs.current[page.pageIndex] = node;
+                }}
+              >
+                {page.image ? (
+                  <img
+                    src={page.image}
+                    alt={`${restaurant?.name || "Restaurant"} menu page ${page.pageIndex + 1}`}
+                    className="restaurant-menu-image"
+                    ref={(node) => {
+                      pageImageRefs.current[page.pageIndex] = node;
+                    }}
+                  />
+                ) : (
+                  <div className="restaurant-no-image">No menu image available.</div>
+                )}
 
-              {page.overlays.map((overlay, index) => (
-                <button
-                  key={overlayKey(overlay, index)}
-                  type="button"
-                  title={overlay.name || overlay.id || "Dish"}
-                  aria-label={overlay.name || overlay.id || "Dish"}
-                  onClick={() => {
-                    if (!acknowledgedReferenceNote) return;
-                    viewer.selectDish(overlay.id);
-                    setSelectedOverlay(overlay);
-                    centerOverlayInView(overlay, "smooth");
-                    window.requestAnimationFrame(() => {
-                      centerOverlayInView(overlay, "auto");
-                    });
-                  }}
-                  className={`restaurant-overlay ${
-                    selectedOverlaySignature &&
-                    overlaySignature(overlay) === selectedOverlaySignature
-                      ? "is-selected"
-                      : ""
-                  }`}
-                  style={{
-                    left: `${parseOverlayNumber(overlay.x)}%`,
-                    top: `${parseOverlayNumber(overlay.y)}%`,
-                    width: `${parseOverlayNumber(overlay.w)}%`,
-                    height: `${parseOverlayNumber(overlay.h)}%`,
-                    borderColor: statusBorderColor(overlay.compatibilityStatus),
-                    "--overlay-pulse-color": statusPulseColor(overlay.compatibilityStatus),
-                  }}
-                >
-                  <span className="restaurant-overlay-warning">
-                    {overlay.hasCrossContamination ? "⚠" : ""}
-                  </span>
-                  <span className="restaurant-overlay-info">i</span>
-                </button>
-              ))}
-            </div>
-          ))}
+                {page.overlays.map((overlay, index) => (
+                  <button
+                    key={overlayKey(overlay, index)}
+                    type="button"
+                    title={overlay.name || overlay.id || "Dish"}
+                    aria-label={overlay.name || overlay.id || "Dish"}
+                    onClick={() => {
+                      if (!acknowledgedReferenceNote) return;
+                      viewer.selectDish(overlay.id);
+                      setSelectedOverlay(overlay);
+                      centerOverlayInView(overlay, "smooth");
+                      window.requestAnimationFrame(() => {
+                        centerOverlayInView(overlay, "auto");
+                      });
+                    }}
+                    className={`restaurant-overlay ${
+                      selectedOverlaySignature &&
+                      overlaySignature(overlay) === selectedOverlaySignature
+                        ? "is-selected"
+                        : ""
+                    }`}
+                    style={{
+                      left: `${parseOverlayNumber(overlay.x)}%`,
+                      top: `${parseOverlayNumber(overlay.y)}%`,
+                      width: `${parseOverlayNumber(overlay.w)}%`,
+                      height: `${parseOverlayNumber(overlay.h)}%`,
+                      borderColor: statusBorderColor(overlay.compatibilityStatus),
+                      "--overlay-pulse-color": statusPulseColor(overlay.compatibilityStatus),
+                    }}
+                  >
+                    <span className="restaurant-overlay-warning">
+                      {overlay.hasCrossContamination ? "⚠" : ""}
+                    </span>
+                    <span className="restaurant-overlay-info">i</span>
+                  </button>
+                ))}
+              </div>
+            ))}
+          </div>
         </div>
 
         {acknowledgedReferenceNote && selectedDish ? (
