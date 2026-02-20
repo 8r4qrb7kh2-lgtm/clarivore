@@ -490,16 +490,16 @@ export default function DishSearchClient() {
             setStatus("Search complete.");
             setStatusType("success");
           } else {
-            setStatus("No dishes found matching your search.");
-            setStatusType("error");
+            setStatus("");
+            setStatusType("");
           }
           return;
         }
       }
 
       setSearchResults([]);
-      setStatus("No dishes found matching your search.");
-      setStatusType("error");
+      setStatus("");
+      setStatusType("");
     } catch (error) {
       console.error("Search failed", error);
       setSearchResults([]);
@@ -759,9 +759,11 @@ export default function DishSearchClient() {
             </div>
           </div>
 
-          <p className={`status-text ${statusType}`} style={{ textAlign: "center" }}>
-            {status}
-          </p>
+          {status ? (
+            <p className={`status-text ${statusType}`} style={{ textAlign: "center" }}>
+              {status}
+            </p>
+          ) : null}
 
           <div id="dish-results-container">
             {loading ? (
