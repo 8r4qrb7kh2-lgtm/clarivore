@@ -2444,7 +2444,7 @@ h2 {
   .restaurant-menu-stage {
     margin-left: calc(-1 * var(--restaurant-mobile-pad-left, 0px));
     margin-right: calc(-1 * var(--restaurant-mobile-pad-right, 0px));
-    border-radius: 0;
+    border-radius: 18px 18px 0 0;
     border-left: 0;
     border-right: 0;
   }
@@ -2452,7 +2452,7 @@ h2 {
   .restaurant-editor-stage {
     margin-left: calc(-1 * var(--restaurant-mobile-pad-left, 0px));
     margin-right: calc(-1 * var(--restaurant-mobile-pad-right, 0px));
-    border-radius: 0;
+    border-radius: 18px 18px 0 0;
     border-left: 0;
     border-right: 0;
   }

@@ -149,7 +149,13 @@
   max-width: 100%;
   text-align: center;
   white-space: normal;
-  overflow-wrap: anywhere;
+  overflow-wrap: normal;
+  word-break: normal;
+}
+
+.restaurant-content .editorToolbar .editorRestaurantSettingsBtn {
+  font-size: 0.62rem;
+  line-height: 1.04;
 }
 
 .restaurant-content .editorInlineDualButtons {

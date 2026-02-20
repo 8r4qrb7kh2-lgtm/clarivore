@@ -922,7 +922,7 @@ export function RestaurantEditor({ editor, onNavigate, runtimeConfigHealth }) {
                     <div className="editorGroupLabel">Restaurant</div>
                     <div className="editorGroupButtons">
                       <button
-                        className="btn"
+                        className="btn editorRestaurantSettingsBtn"
                         onClick={() => editor.setRestaurantSettingsOpen(true)}
                       >
                         ⚙ Restaurant settings
