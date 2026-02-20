@@ -354,7 +354,6 @@ async function callAnthropicText({
   const requestPayload = {
     model: asText(model) || PINNED_ANTHROPIC_MODEL,
     max_tokens: safeMaxTokens,
-    temperature: 0,
     system: systemPrompt,
     messages: [
       {
@@ -368,6 +367,9 @@ async function callAnthropicText({
       type: "enabled",
       budget_tokens: ANTHROPIC_THINKING_BUDGET_TOKENS,
     };
+  } else {
+    // Keep repair calls deterministic; Anthropic thinking mode enforces a fixed temperature behavior.
+    requestPayload.temperature = 0;
   }
 
   const response = await fetch("https://api.anthropic.com/v1/messages", {
