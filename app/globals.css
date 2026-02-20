@@ -2427,11 +2427,29 @@ h2 {
     gap: 6px;
   }
 
+  .restaurant-editor {
+    max-width: none;
+    margin: 0;
+    gap: 6px;
+  }
+
+  .restaurant-editor-layout {
+    overflow: visible;
+  }
+
   .restaurant-header {
     padding: 10px 0 0;
   }
 
   .restaurant-menu-stage {
+    margin-left: calc(-1 * var(--restaurant-mobile-pad-left, 0px));
+    margin-right: calc(-1 * var(--restaurant-mobile-pad-right, 0px));
+    border-radius: 0;
+    border-left: 0;
+    border-right: 0;
+  }
+
+  .restaurant-editor-stage {
     margin-left: calc(-1 * var(--restaurant-mobile-pad-left, 0px));
     margin-right: calc(-1 * var(--restaurant-mobile-pad-right, 0px));
     border-radius: 0;
