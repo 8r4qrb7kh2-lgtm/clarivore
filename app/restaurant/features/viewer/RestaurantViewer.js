@@ -180,7 +180,8 @@ const MOBILE_FOCUS_ZOOM = 1.65;
 const MOBILE_DISH_PANEL_FALLBACK_HEIGHT = 220;
 const MOBILE_DISH_PANEL_FOCUS_GUTTER = 36;
 const MOBILE_DISH_PANEL_STABLE_DELAY_MS = 80;
-const MOBILE_DISH_VERTICAL_ANCHOR_RATIO = 0.3;
+const MOBILE_DISH_VERTICAL_ANCHOR_RATIO = 0.5;
+const MOBILE_DISH_FOCUS_EDGE_PADDING = 14;
 const MENU_ZOOM_ANIMATION_MS = 260;
 
 export function RestaurantViewer({
@@ -478,6 +479,8 @@ export function RestaurantViewer({
         behavior = "smooth",
         viewportBottomInset = 0,
         verticalAnchorRatio = 0.5,
+        overlayEdgePadding = 12,
+        fitOverlayToViewport = false,
         targetScale = menuZoomScaleRef.current,
         returnTargetOnly = false,
       } = options;
@@ -503,19 +506,62 @@ export function RestaurantViewer({
       const overlayHeight =
         (parseOverlayNumber(overlay.h) / 100) * pageHeight;
       const currentScale = Math.max(menuZoomScaleRef.current, 0.001);
-      const safeTargetScale = clamp(Number(targetScale) || currentScale, 1, 3);
-      const scaleRatio = safeTargetScale / currentScale;
-      const overlayCenterX = (overlayLeft + overlayWidth / 2) * scaleRatio;
-      const overlayCenterY = (overlayTop + overlayHeight / 2) * scaleRatio;
       const clampedInset = clamp(
         Number(viewportBottomInset) || 0,
         0,
         Math.max(scrollNode.clientHeight - 40, 0),
       );
       const visibleHeight = Math.max(scrollNode.clientHeight - clampedInset, 1);
-      const anchorRatio = clamp(Number(verticalAnchorRatio) || 0.5, 0.2, 0.8);
-      const targetTop = overlayCenterY - visibleHeight * anchorRatio;
-      const targetLeft = overlayCenterX - scrollNode.clientWidth / 2;
+      const edgePadding = clamp(
+        Number(overlayEdgePadding) || 0,
+        0,
+        Math.max(Math.min(visibleHeight, scrollNode.clientWidth) * 0.45, 0),
+      );
+      let nextTargetScale = clamp(Number(targetScale) || currentScale, 1, 3);
+
+      if (fitOverlayToViewport) {
+        const verticalFitHeight = Math.max(visibleHeight - edgePadding * 2, 1);
+        if (overlayHeight > 0) {
+          const maxScaleByHeight = currentScale * (verticalFitHeight / overlayHeight);
+          nextTargetScale = Math.min(nextTargetScale, maxScaleByHeight);
+        }
+      }
+
+      const safeTargetScale = clamp(nextTargetScale, 1, 3);
+      const scaleRatio = safeTargetScale / currentScale;
+      const scaledOverlayLeft = overlayLeft * scaleRatio;
+      const scaledOverlayTop = overlayTop * scaleRatio;
+      const scaledOverlayWidth = overlayWidth * scaleRatio;
+      const scaledOverlayHeight = overlayHeight * scaleRatio;
+      const overlayCenterX = scaledOverlayLeft + scaledOverlayWidth / 2;
+      const overlayCenterY = scaledOverlayTop + scaledOverlayHeight / 2;
+
+      let targetTop;
+      let targetLeft;
+
+      if (fitOverlayToViewport) {
+        const centeredTop = overlayCenterY - visibleHeight / 2;
+        const centeredLeft = overlayCenterX - scrollNode.clientWidth / 2;
+        const minTopForContain = scaledOverlayTop + scaledOverlayHeight - (visibleHeight - edgePadding);
+        const maxTopForContain = scaledOverlayTop - edgePadding;
+        const minLeftForContain =
+          scaledOverlayLeft + scaledOverlayWidth - (scrollNode.clientWidth - edgePadding);
+        const maxLeftForContain = scaledOverlayLeft - edgePadding;
+        const canContainVertically = minTopForContain <= maxTopForContain;
+        const canContainHorizontally = minLeftForContain <= maxLeftForContain;
+
+        targetTop = canContainVertically
+          ? clamp(centeredTop, minTopForContain, maxTopForContain)
+          : centeredTop;
+        targetLeft = canContainHorizontally
+          ? clamp(centeredLeft, minLeftForContain, maxLeftForContain)
+          : centeredLeft;
+      } else {
+        const anchorRatio = clamp(Number(verticalAnchorRatio) || 0.5, 0.2, 0.8);
+        targetTop = overlayCenterY - visibleHeight * anchorRatio;
+        targetLeft = overlayCenterX - scrollNode.clientWidth / 2;
+      }
+
       const maxScrollTop = Math.max(
         scrollNode.scrollHeight * scaleRatio - scrollNode.clientHeight,
         0,
@@ -527,6 +573,7 @@ export function RestaurantViewer({
       const clampedTarget = {
         top: clamp(targetTop, 0, maxScrollTop),
         left: clamp(targetLeft, 0, maxScrollLeft),
+        scale: safeTargetScale,
       };
 
       if (returnTargetOnly) {
@@ -562,6 +609,8 @@ export function RestaurantViewer({
           behavior,
           viewportBottomInset,
           verticalAnchorRatio: isMobileViewport ? MOBILE_DISH_VERTICAL_ANCHOR_RATIO : 0.5,
+          overlayEdgePadding: isMobileViewport ? MOBILE_DISH_FOCUS_EDGE_PADDING : 0,
+          fitOverlayToViewport: isMobileViewport,
         });
       };
 
@@ -570,28 +619,39 @@ export function RestaurantViewer({
         return;
       }
 
-      const targetScale = clamp(
+      const requestedScale = clamp(
         Math.max(menuZoomScaleRef.current, MOBILE_FOCUS_ZOOM),
         1,
         3,
       );
 
-      if (Math.abs(targetScale - menuZoomScaleRef.current) > 0.02) {
-        const target = centerOverlayInView(overlay, {
-          behavior: "auto",
-          viewportBottomInset,
-          verticalAnchorRatio: MOBILE_DISH_VERTICAL_ANCHOR_RATIO,
-          targetScale,
-          returnTargetOnly: true,
-        });
-        if (!target) return;
+      const target = centerOverlayInView(overlay, {
+        behavior: "auto",
+        viewportBottomInset,
+        verticalAnchorRatio: MOBILE_DISH_VERTICAL_ANCHOR_RATIO,
+        overlayEdgePadding: MOBILE_DISH_FOCUS_EDGE_PADDING,
+        fitOverlayToViewport: true,
+        targetScale: requestedScale,
+        returnTargetOnly: true,
+      });
+      if (!target) return;
+      const nextScale = clamp(Number(target.scale) || requestedScale, 1, 3);
+
+      if (Math.abs(nextScale - menuZoomScaleRef.current) > 0.02) {
         startMenuZoomAnimation();
-        setMenuZoomScale(targetScale);
+        setMenuZoomScale(nextScale);
         animateMenuScrollTo(target, MENU_ZOOM_ANIMATION_MS);
         return;
       }
 
-      recenter(mobileBehavior);
+      centerOverlayInView(overlay, {
+        behavior: mobileBehavior,
+        viewportBottomInset,
+        verticalAnchorRatio: MOBILE_DISH_VERTICAL_ANCHOR_RATIO,
+        overlayEdgePadding: MOBILE_DISH_FOCUS_EDGE_PADDING,
+        fitOverlayToViewport: true,
+        targetScale: nextScale,
+      });
     },
     [
       animateMenuScrollTo,
