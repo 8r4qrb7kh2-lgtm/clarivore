@@ -490,16 +490,17 @@ export function RestaurantViewer({
         0,
         Math.max(viewer.pageCount - 1, 0),
       );
-      const pageNode = pageImageRefs.current[pageIndex] || pageRefs.current[pageIndex];
-      if (!pageNode) return;
+      const pageOffsetNode = pageRefs.current[pageIndex] || pageImageRefs.current[pageIndex];
+      const pageSizeNode = pageImageRefs.current[pageIndex] || pageOffsetNode;
+      if (!pageOffsetNode || !pageSizeNode) return;
 
-      const pageHeight = Math.max(pageNode.offsetHeight, 1);
-      const pageWidth = Math.max(pageNode.offsetWidth, 1);
+      const pageHeight = Math.max(pageSizeNode.offsetHeight, 1);
+      const pageWidth = Math.max(pageSizeNode.offsetWidth, 1);
       const overlayLeft =
-        pageNode.offsetLeft +
+        pageOffsetNode.offsetLeft +
         (parseOverlayNumber(overlay.x) / 100) * pageWidth;
       const overlayTop =
-        pageNode.offsetTop +
+        pageOffsetNode.offsetTop +
         (parseOverlayNumber(overlay.y) / 100) * pageHeight;
       const overlayWidth =
         (parseOverlayNumber(overlay.w) / 100) * pageWidth;
