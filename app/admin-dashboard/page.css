@@ -83,7 +83,6 @@
     }
 
     .route-admin-dashboard .image-preview {
-      margin-top: 12px;
       max-width: 100%;
       border-radius: 8px;
       display: none;
@@ -91,6 +90,41 @@
 
     .route-admin-dashboard .image-preview.show {
       display: block;
+    }
+
+    .route-admin-dashboard .menu-image-help {
+      margin: 10px 0 0;
+      color: #718096;
+      font-size: 0.85rem;
+    }
+
+    .route-admin-dashboard .menu-image-preview-grid {
+      margin-top: 12px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 10px;
+    }
+
+    .route-admin-dashboard .menu-image-preview-item {
+      margin: 0;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 8px;
+      background: #f8fafc;
+    }
+
+    .route-admin-dashboard .menu-image-preview-item img {
+      width: 100%;
+      max-height: 160px;
+      object-fit: cover;
+    }
+
+    .route-admin-dashboard .menu-image-preview-item figcaption {
+      margin-top: 6px;
+      font-size: 0.8rem;
+      color: #475569;
+      text-align: center;
+      font-weight: 600;
     }
 
     .route-admin-dashboard .btn-primary {

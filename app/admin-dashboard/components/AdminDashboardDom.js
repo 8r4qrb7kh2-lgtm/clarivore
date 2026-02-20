@@ -19,6 +19,7 @@ const CHAT_PREVIEW_LIMIT = 3;
 const CHAT_THREAD_LIMIT = 50;
 const APPEALS_CACHE_WINDOW_MS = 30_000;
 const ADMIN_DISPLAY_NAME = "Matt D (clarivore administrator)";
+const MAX_MENU_IMAGE_FILES = 10;
 
 const TAB_ROUTES = [
   { id: "restaurants", label: "Restaurants" },
@@ -301,11 +302,12 @@ export default function AdminDashboardDom({
 
   const [statusMessage, setStatusMessage] = useState({ text: "", tone: "" });
   const statusTimeoutRef = useRef(null);
+  const menuImageInputRef = useRef(null);
 
   const [restaurantName, setRestaurantName] = useState("");
   const [restaurantWebsite, setRestaurantWebsite] = useState("");
   const [restaurantDescription, setRestaurantDescription] = useState("");
-  const [menuImagePreview, setMenuImagePreview] = useState("");
+  const [menuImagePreviews, setMenuImagePreviews] = useState([]);
   const [imageProcessing, setImageProcessing] = useState(false);
   const [creatingRestaurant, setCreatingRestaurant] = useState(false);
 
@@ -407,9 +409,14 @@ export default function AdminDashboardDom({
   const ensureQrLibrary = useCallback(async () => {
     if (typeof window === "undefined") return false;
     if (window.QRCode?.toCanvas) return true;
-    await loadScript("https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js", {
-      defer: true,
-    });
+    try {
+      await loadScript("https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js", {
+        defer: true,
+        timeoutMs: 8_000,
+      });
+    } catch {
+      return false;
+    }
     return Boolean(window.QRCode?.toCanvas);
   }, []);
 
@@ -450,20 +457,39 @@ export default function AdminDashboardDom({
   }, [ensureQrLibrary]);
 
   const onMenuImageChange = useCallback(async (event) => {
-    const file = event.target.files?.[0] || null;
-    if (!file) {
-      setMenuImagePreview("");
+    const files = Array.from(event.target.files || []);
+    if (!files.length) {
+      setMenuImagePreviews([]);
       return;
     }
 
+    const limitedFiles = files.slice(0, MAX_MENU_IMAGE_FILES);
     setImageProcessing(true);
     try {
-      const compressed = await readAndCompressImage(file);
-      setMenuImagePreview(compressed);
+      const compressedImages = [];
+      for (const file of limitedFiles) {
+        const compressed = await readAndCompressImage(file);
+        if (compressed) {
+          compressedImages.push(compressed);
+        }
+      }
+
+      if (!compressedImages.length) {
+        throw new Error("Unable to process the selected menu images.");
+      }
+
+      setMenuImagePreviews(compressedImages);
+
+      if (files.length > limitedFiles.length) {
+        showStatus(`Only the first ${MAX_MENU_IMAGE_FILES} images were added.`, "success");
+      }
     } catch (error) {
       console.error("[admin-dashboard-next] image processing failed", error);
-      showStatus(error.message || "Unable to process this image.", "error");
-      setMenuImagePreview("");
+      showStatus(error.message || "Unable to process these images.", "error");
+      setMenuImagePreviews([]);
+      if (menuImageInputRef.current) {
+        menuImageInputRef.current.value = "";
+      }
     } finally {
       setImageProcessing(false);
     }
@@ -480,8 +506,8 @@ export default function AdminDashboardDom({
         return;
       }
 
-      if (!menuImagePreview) {
-        showStatus("Please select a menu image.", "error");
+      if (!menuImagePreviews.length) {
+        showStatus("Please select at least one menu image.", "error");
         return;
       }
 
@@ -496,8 +522,8 @@ export default function AdminDashboardDom({
             operationPayload: {
               name,
               slug,
-              menuImage: menuImagePreview,
-              menuImages: menuImagePreview ? [menuImagePreview] : [],
+              menuImage: menuImagePreviews[0] || "",
+              menuImages: menuImagePreviews,
               overlays: [],
               website: String(restaurantWebsite || "").trim() || null,
             },
@@ -527,16 +553,17 @@ export default function AdminDashboardDom({
         const createdSlug = String(created?.slug || slug).trim();
         showStatus(`Added ${name}. Downloading QR code...`, "success");
 
-        try {
-          await generateAndDownloadQRCode(createdSlug);
-        } catch (qrError) {
+        generateAndDownloadQRCode(createdSlug).catch((qrError) => {
           console.warn("[admin-dashboard-next] failed to generate QR code", qrError);
-        }
+        });
 
         setRestaurantName("");
         setRestaurantWebsite("");
         setRestaurantDescription("");
-        setMenuImagePreview("");
+        setMenuImagePreviews([]);
+        if (menuImageInputRef.current) {
+          menuImageInputRef.current.value = "";
+        }
         await loadRestaurants();
       } catch (error) {
         console.error("[admin-dashboard-next] create restaurant failed", error);
@@ -548,7 +575,7 @@ export default function AdminDashboardDom({
     [
       generateAndDownloadQRCode,
       loadRestaurants,
-      menuImagePreview,
+      menuImagePreviews,
       restaurantName,
       restaurantWebsite,
       showStatus,
@@ -1436,20 +1463,33 @@ export default function AdminDashboardDom({
                       </div>
 
                       <div className="form-group">
-                        <label htmlFor="menu-image">Menu Image *</label>
+                        <label htmlFor="menu-image">Menu Images *</label>
                         <input
                           type="file"
                           id="menu-image"
                           accept="image/*"
-                          required={!menuImagePreview}
+                          ref={menuImageInputRef}
+                          required={!menuImagePreviews.length}
+                          multiple
                           onChange={onMenuImageChange}
                         />
-                        <img
-                          id="image-preview"
-                          className={`image-preview${menuImagePreview ? " show" : ""}`}
-                          alt="Menu preview"
-                          src={menuImagePreview || ""}
-                        />
+                        <p className="menu-image-help">
+                          Select one or more pages from the restaurant menu.
+                        </p>
+                        {menuImagePreviews.length ? (
+                          <div className="menu-image-preview-grid">
+                            {menuImagePreviews.map((previewSrc, index) => (
+                              <figure key={`menu-preview-${index}`} className="menu-image-preview-item">
+                                <img
+                                  className="image-preview show"
+                                  alt={`Menu page ${index + 1} preview`}
+                                  src={previewSrc}
+                                />
+                                <figcaption>Page {index + 1}</figcaption>
+                              </figure>
+                            ))}
+                          </div>
+                        ) : null}
                       </div>
 
                       <button

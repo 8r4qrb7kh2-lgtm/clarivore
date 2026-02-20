@@ -1,5 +1,7 @@
 "use client";
 
+const DEFAULT_WRITE_GATEWAY_TIMEOUT_MS = 45_000;
+
 function asText(value) {
   return String(value || "").trim();
 }
@@ -23,9 +25,28 @@ async function readJsonResponse(response, fallbackMessage) {
   return payload;
 }
 
+async function fetchWithTimeout(url, options = {}, timeoutMs = DEFAULT_WRITE_GATEWAY_TIMEOUT_MS) {
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    return await fetch(url, {
+      ...(options || {}),
+      signal: controller.signal,
+    });
+  } catch (error) {
+    if (error?.name === "AbortError") {
+      throw new Error("Request timed out. Please try again.");
+    }
+    throw error;
+  } finally {
+    window.clearTimeout(timeoutId);
+  }
+}
+
 export async function stageRestaurantWrite({ supabase, payload }) {
   const accessToken = await getAccessToken(supabase);
-  const response = await fetch("/api/restaurant-write/stage", {
+  const response = await fetchWithTimeout("/api/restaurant-write/stage", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -38,7 +59,7 @@ export async function stageRestaurantWrite({ supabase, payload }) {
 
 export async function commitRestaurantWrite({ supabase, batchId }) {
   const accessToken = await getAccessToken(supabase);
-  const response = await fetch("/api/restaurant-write/commit", {
+  const response = await fetchWithTimeout("/api/restaurant-write/commit", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -53,7 +74,7 @@ export async function commitRestaurantWrite({ supabase, batchId }) {
 
 export async function discardRestaurantWrite({ supabase, batchId }) {
   const accessToken = await getAccessToken(supabase);
-  const response = await fetch("/api/restaurant-write/discard", {
+  const response = await fetchWithTimeout("/api/restaurant-write/discard", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -74,7 +95,7 @@ export async function loadCurrentRestaurantWrite({ supabase, scopeType, restaura
     params.set("restaurantId", asText(restaurantId));
   }
 
-  const response = await fetch(`/api/restaurant-write/current?${params.toString()}`, {
+  const response = await fetchWithTimeout(`/api/restaurant-write/current?${params.toString()}`, {
     method: "GET",
     headers: {
       Authorization: `Bearer ${accessToken}`,
@@ -82,4 +103,3 @@ export async function loadCurrentRestaurantWrite({ supabase, scopeType, restaura
   });
   return await readJsonResponse(response, "Failed to load staged write.");
 }
-

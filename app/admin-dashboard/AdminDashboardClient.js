@@ -38,7 +38,7 @@ export default function AdminDashboardClient() {
         try {
           await loadScript(
             "https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js",
-            { defer: true },
+            { defer: true, timeoutMs: 8_000 },
           );
         } catch (scriptError) {
           // QR generation should not block admin boot in offline/CDN-restricted environments.
