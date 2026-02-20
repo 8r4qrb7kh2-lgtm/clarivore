@@ -8,6 +8,19 @@ function asText(value) {
   return String(value ?? "").trim();
 }
 
+function isNativeIosCapacitor() {
+  if (typeof window === "undefined") return false;
+  const platform =
+    typeof window.Capacitor?.getPlatform === "function"
+      ? asText(window.Capacitor.getPlatform()).toLowerCase()
+      : "";
+  if (platform === "ios") return true;
+  return (
+    /iphone|ipad|ipod/i.test(window.navigator?.userAgent || "") &&
+    /capacitor/i.test(window.navigator?.userAgent || "")
+  );
+}
+
 const FRONT_PRIMARY_MAX_EDGE = 840;
 const FRONT_PRIMARY_QUALITY = 0.76;
 const FRONT_RETRY_MAX_EDGE = 640;
@@ -190,6 +203,12 @@ export default function FrontProductCaptureModal({
 
   async function startCamera() {
     setError("");
+    if (isNativeIosCapacitor()) {
+      setHint("Opening iOS camera picker...");
+      setHintTone("neutral");
+      fileInputRef.current?.click();
+      return;
+    }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
@@ -204,6 +223,19 @@ export default function FrontProductCaptureModal({
       }
       setCameraActive(true);
     } catch (cameraError) {
+      const errorName = asText(cameraError?.name).toLowerCase();
+      const shouldFallbackToPicker =
+        errorName === "notallowederror" ||
+        errorName === "notreadableerror" ||
+        errorName === "overconstrainederror" ||
+        errorName === "notfounderror" ||
+        errorName === "securityerror";
+      if (shouldFallbackToPicker) {
+        setHint("Live camera preview unavailable. Opening camera picker.");
+        setHintTone("warn");
+        fileInputRef.current?.click();
+        return;
+      }
       setError(cameraError?.message || "Camera access failed.");
     }
   }
@@ -257,7 +289,7 @@ export default function FrontProductCaptureModal({
         if (!nextOpen) onCancel?.();
       }}
       title="Capture Product Front"
-      className="max-w-[760px]"
+      className="w-[calc(100vw-1.5rem)] max-w-[760px] max-h-[calc(100dvh-1.5rem)] overflow-y-auto"
       closeOnEsc={!saving && !analyzing}
       closeOnOverlay={!saving && !analyzing}
     >

@@ -979,14 +979,14 @@ function normalizeIngredientEntry(ingredient, index) {
       : base.name == null
         ? ""
         : String(base.name);
-  const normalizedName = rawName.trim() ? rawName : `Ingredient ${index + 1}`;
   const normalizedBrands = (Array.isArray(base.brands) ? base.brands : [])
     .map((brand) => normalizeBrandEntry(brand))
     .filter(Boolean);
   const firstBrand = normalizedBrands[0] || null;
   return {
     ...base,
-    name: normalizedName,
+    // Preserve blank values while a manager edits the field.
+    name: rawName,
     allergens: dedupeTokenList(base.allergens),
     diets: dedupeTokenList(base.diets),
     crossContaminationAllergens: dedupeTokenList(base.crossContaminationAllergens),

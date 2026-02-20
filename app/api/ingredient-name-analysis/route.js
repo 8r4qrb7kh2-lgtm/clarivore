@@ -2,9 +2,9 @@ import { corsJson, corsOptions } from "../_shared/cors";
 
 export const runtime = "nodejs";
 
-const PINNED_ANTHROPIC_MODEL = "claude-sonnet-4-5";
+const PINNED_ANTHROPIC_MODEL = "claude-haiku-4-5-20251001";
 const ANTHROPIC_THINKING_BUDGET_TOKENS = 1024;
-const ANTHROPIC_MIN_OUTPUT_TOKENS = 1800;
+const ANTHROPIC_MIN_OUTPUT_TOKENS = 220;
 const MAX_ANALYSIS_ATTEMPTS = 3;
 const CONFIG_TTL_MS = 5 * 60 * 1000;
 
@@ -275,6 +275,23 @@ async function callAnthropicText({
     Number(maxTokens) || 0,
     ANTHROPIC_THINKING_BUDGET_TOKENS + ANTHROPIC_MIN_OUTPUT_TOKENS,
   );
+  const requestPayload = {
+    model: asText(model) || PINNED_ANTHROPIC_MODEL,
+    max_tokens: safeMaxTokens,
+    system: systemPrompt,
+    messages: [
+      {
+        role: "user",
+        content: userPrompt,
+      },
+    ],
+  };
+  if (ANTHROPIC_THINKING_BUDGET_TOKENS > 0) {
+    requestPayload.thinking = {
+      type: "enabled",
+      budget_tokens: ANTHROPIC_THINKING_BUDGET_TOKENS,
+    };
+  }
 
   const response = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
@@ -283,41 +300,27 @@ async function callAnthropicText({
       "anthropic-version": "2023-06-01",
       "content-type": "application/json",
     },
-    body: JSON.stringify({
-      model: asText(model) || PINNED_ANTHROPIC_MODEL,
-      max_tokens: safeMaxTokens,
-      thinking: {
-        type: "enabled",
-        budget_tokens: ANTHROPIC_THINKING_BUDGET_TOKENS,
-      },
-      system: systemPrompt,
-      messages: [
-        {
-          role: "user",
-          content: userPrompt,
-        },
-      ],
-    }),
+    body: JSON.stringify(requestPayload),
   });
 
   const payloadText = await response.text();
-  let payload = null;
+  let responsePayload = null;
   try {
-    payload = payloadText ? JSON.parse(payloadText) : null;
+    responsePayload = payloadText ? JSON.parse(payloadText) : null;
   } catch {
-    payload = null;
+    responsePayload = null;
   }
 
   if (!response.ok) {
     const message =
-      asText(payload?.error?.message) ||
-      asText(payload?.error) ||
+      asText(responsePayload?.error?.message) ||
+      asText(responsePayload?.error) ||
       asText(payloadText) ||
       "Anthropic API request failed.";
     throw new Error(message);
   }
 
-  const content = Array.isArray(payload?.content) ? payload.content : [];
+  const content = Array.isArray(responsePayload?.content) ? responsePayload.content : [];
   const text = content
     .filter(
       (block) =>
@@ -330,7 +333,7 @@ async function callAnthropicText({
     .join("\n")
     .trim();
 
-  return text || asText(payload?.content);
+  return text || asText(responsePayload?.content);
 }
 
 function buildDietAliasResolver({ glutenFreeLabel, pescatarianLabel }) {
@@ -389,7 +392,7 @@ ${rawOutput}`;
     model,
     systemPrompt: repairSystemPrompt,
     userPrompt: repairUserPrompt,
-    maxTokens: 800,
+    maxTokens: 320,
   });
 }
 
@@ -407,7 +410,7 @@ async function runNameAnalysis({
         model,
         systemPrompt,
         userPrompt,
-        maxTokens: 1400,
+        maxTokens: 520,
       });
       const parsed = parseClaudeJson(responseText);
       if (parsed && typeof parsed === "object") return parsed;

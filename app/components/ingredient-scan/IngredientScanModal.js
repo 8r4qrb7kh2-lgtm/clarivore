@@ -16,6 +16,19 @@ function asText(value) {
   return String(value ?? "").trim();
 }
 
+function isNativeIosCapacitor() {
+  if (typeof window === "undefined") return false;
+  const platform =
+    typeof window.Capacitor?.getPlatform === "function"
+      ? asText(window.Capacitor.getPlatform()).toLowerCase()
+      : "";
+  if (platform === "ios") return true;
+  return (
+    /iphone|ipad|ipod/i.test(window.navigator?.userAgent || "") &&
+    /capacitor/i.test(window.navigator?.userAgent || "")
+  );
+}
+
 async function readFileAsDataUrl(file) {
   return await new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -781,6 +794,11 @@ export default function IngredientScanModal({
 
   async function startCamera() {
     setErrorText("");
+    if (isNativeIosCapacitor()) {
+      setStatusText("Opening iOS camera picker...");
+      fileInputRef.current?.click();
+      return;
+    }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
@@ -795,6 +813,18 @@ export default function IngredientScanModal({
       }
       setCameraActive(true);
     } catch (error) {
+      const errorName = asText(error?.name).toLowerCase();
+      const shouldFallbackToPicker =
+        errorName === "notallowederror" ||
+        errorName === "notreadableerror" ||
+        errorName === "overconstrainederror" ||
+        errorName === "notfounderror" ||
+        errorName === "securityerror";
+      if (shouldFallbackToPicker) {
+        setStatusText("Live camera preview is unavailable. Opening camera picker instead.");
+        fileInputRef.current?.click();
+        return;
+      }
       setErrorText(error?.message || "Camera access failed.");
     }
   }
@@ -1074,7 +1104,7 @@ export default function IngredientScanModal({
           onCancel?.();
         }}
         title="Capture Ingredient List"
-        className="max-w-[860px] max-h-[90vh] overflow-y-auto"
+        className="w-[calc(100vw-1.5rem)] max-w-[860px] max-h-[calc(100dvh-1.5rem)] overflow-y-auto"
         closeOnEsc={!analysisBusy && !analysisPending && !applying}
         closeOnOverlay={!analysisBusy && !analysisPending && !applying}
       >
@@ -1123,7 +1153,16 @@ export default function IngredientScanModal({
             )}
           </div>
 
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+          <div
+            style={{
+              display: "flex",
+              flexWrap: "nowrap",
+              overflowX: "auto",
+              justifyContent: "center",
+              alignItems: "center",
+              gap: 8,
+            }}
+          >
             {captureActionState === "initial" ? (
               <>
                 <button
@@ -1384,7 +1423,16 @@ export default function IngredientScanModal({
             </div>
           ) : null}
 
-          <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              flexWrap: "nowrap",
+              overflowX: "auto",
+              gap: 10,
+            }}
+          >
             <button
               type="button"
               className="btn"
