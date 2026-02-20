@@ -170,7 +170,6 @@ async function attemptLockUpsert({
   holderName,
   holderEmail,
   holderInstance,
-  allowSameUserTakeover = false,
 }) {
   const rows = await prisma.$queryRawUnsafe(
     `
@@ -211,7 +210,6 @@ async function attemptLockUpsert({
     WHERE
       ${EDITOR_LOCK_TABLE}.session_key = EXCLUDED.session_key
       OR ${EDITOR_LOCK_TABLE}.expires_at <= now()
-      OR ($8::boolean AND ${EDITOR_LOCK_TABLE}.user_id = EXCLUDED.user_id)
     RETURNING
       restaurant_id,
       user_id,
@@ -230,7 +228,6 @@ async function attemptLockUpsert({
     holderEmail,
     holderInstance,
     LOCK_TTL_SECONDS,
-    allowSameUserTakeover,
   );
 
   return rows?.[0] || null;
@@ -241,7 +238,6 @@ async function acquireEditorLock({
   sessionKey,
   holderInstance,
   session,
-  allowSameUserTakeover = false,
 }) {
   const holderName = trimText(resolveHolderName(session?.user), MAX_NAME_CHARS) || "Manager";
   const holderEmail = trimText(session?.userEmail, MAX_EMAIL_CHARS);
@@ -254,7 +250,6 @@ async function acquireEditorLock({
     holderName,
     holderEmail,
     holderInstance: safeInstance,
-    allowSameUserTakeover,
   });
 
   if (lockRow) {
@@ -281,7 +276,6 @@ async function acquireEditorLock({
     holderName,
     holderEmail,
     holderInstance: safeInstance,
-    allowSameUserTakeover,
   });
   if (retryLock) {
     return buildAvailabilityPayload({
@@ -394,7 +388,6 @@ export async function POST(request) {
       sessionKey,
       holderInstance,
       session,
-      allowSameUserTakeover: action === "acquire",
     });
     return NextResponse.json(payload, { status: 200 });
   } catch (error) {
