@@ -3,16 +3,17 @@ import { corsJson, corsOptions } from "../_shared/cors";
 export const runtime = "nodejs";
 
 const PINNED_ANTHROPIC_MODEL = "claude-sonnet-4-5";
-// Anthropic enforces a minimum thinking budget of 1024 tokens.
-const ANTHROPIC_THINKING_BUDGET_TOKENS = 1024;
-// Keep enough response tokens available after thinking to avoid truncated JSON.
-const ANTHROPIC_MIN_OUTPUT_TOKENS = 3000;
-const MAX_ANALYSIS_ATTEMPTS = 3;
-const MAX_EMPTY_FLAG_RETRIES = 1;
+const MAX_ANALYSIS_ATTEMPTS = 2;
+const ANALYSIS_MAX_TOKENS = 1100;
+const REPAIR_MAX_TOKENS = 700;
 
-const CONFIG_TTL_MS = 5 * 60 * 1000;
+const CONFIG_TTL_MS = 60 * 60 * 1000;
+const ANALYSIS_CACHE_TTL_MS = 15 * 60 * 1000;
+const ANALYSIS_CACHE_MAX_ENTRIES = 128;
 let cachedConfig = null;
 let cachedConfigAt = 0;
+let cachedConfigPromise = null;
+const analysisCache = new Map();
 
 export function OPTIONS() {
   return corsOptions();
@@ -174,6 +175,61 @@ function parseClaudeJson(responseText) {
   return null;
 }
 
+function buildAnalysisCacheKey({
+  transcriptLines,
+  allergenEntries,
+  dietEntries,
+}) {
+  const normalizedLines = (Array.isArray(transcriptLines) ? transcriptLines : [])
+    .map((line) => asText(line))
+    .filter(Boolean)
+    .join("\n");
+  const allergenKey = (Array.isArray(allergenEntries) ? allergenEntries : [])
+    .map((entry) => asText(entry?.value || entry))
+    .filter(Boolean)
+    .join("|");
+  const dietKey = (Array.isArray(dietEntries) ? dietEntries : [])
+    .map((entry) => asText(entry?.value || entry))
+    .filter(Boolean)
+    .join("|");
+  return `${normalizedLines}::${allergenKey}::${dietKey}`;
+}
+
+function getCachedAnalysis(cacheKey) {
+  const entry = analysisCache.get(cacheKey);
+  if (!entry) return null;
+  if (Date.now() - entry.at > ANALYSIS_CACHE_TTL_MS) {
+    analysisCache.delete(cacheKey);
+    return null;
+  }
+  return Array.isArray(entry.flags) ? entry.flags : null;
+}
+
+function setCachedAnalysis(cacheKey, flags) {
+  analysisCache.set(cacheKey, {
+    at: Date.now(),
+    flags: Array.isArray(flags) ? flags : [],
+  });
+
+  if (analysisCache.size <= ANALYSIS_CACHE_MAX_ENTRIES) {
+    return;
+  }
+
+  let oldestKey = "";
+  let oldestAt = Number.POSITIVE_INFINITY;
+  analysisCache.forEach((entry, key) => {
+    const at = Number(entry?.at);
+    if (!Number.isFinite(at)) return;
+    if (at < oldestAt) {
+      oldestAt = at;
+      oldestKey = key;
+    }
+  });
+  if (oldestKey) {
+    analysisCache.delete(oldestKey);
+  }
+}
+
 function readSupabaseRuntime() {
   const url =
     asText(process.env.SUPABASE_URL) ||
@@ -205,68 +261,80 @@ async function fetchAllergenDietConfig() {
     return cachedConfig;
   }
 
-  const { url, key } = readSupabaseRuntime();
-  if (!url || !key) {
-    throw new Error(
-      "Supabase runtime config missing: SUPABASE_URL/NEXT_PUBLIC_SUPABASE_URL and SUPABASE_ANON_KEY/NEXT_PUBLIC_SUPABASE_ANON_KEY are required.",
-    );
+  if (cachedConfigPromise) {
+    return await cachedConfigPromise;
   }
 
-  const headers = {
-    apikey: key,
-    Authorization: `Bearer ${key}`,
-    Accept: "application/json",
-  };
-
-  const [allergens, diets, conflicts] = await Promise.all([
-    fetchJson(
-      `${url}/rest/v1/allergens?select=key,label,sort_order,is_active&is_active=eq.true&order=sort_order.asc`,
-      headers,
-    ),
-    fetchJson(
-      `${url}/rest/v1/diets?select=key,label,sort_order,is_active,is_supported,is_ai_enabled&is_active=eq.true&order=sort_order.asc`,
-      headers,
-    ),
-    fetchJson(
-      `${url}/rest/v1/diet_allergen_conflicts?select=diet:diet_id(label),allergen:allergen_id(key)`,
-      headers,
-    ),
-  ]);
-
-  const supportedDiets = dedupeStrings(
-    diets
-      .filter((diet) => diet?.is_supported !== false)
-      .map((diet) => diet?.label),
-  );
-
-  const aiDiets = dedupeStrings(
-    diets
-      .filter((diet) => diet?.is_ai_enabled !== false)
-      .map((diet) => diet?.label),
-  );
-
-  const dietAllergenConflicts = {};
-  (Array.isArray(conflicts) ? conflicts : []).forEach((row) => {
-    const dietLabel = asText(row?.diet?.label);
-    const allergenKey = asText(row?.allergen?.key);
-    if (!dietLabel || !allergenKey) return;
-    if (!dietAllergenConflicts[dietLabel]) {
-      dietAllergenConflicts[dietLabel] = [];
+  cachedConfigPromise = (async () => {
+    const { url, key } = readSupabaseRuntime();
+    if (!url || !key) {
+      throw new Error(
+        "Supabase runtime config missing: SUPABASE_URL/NEXT_PUBLIC_SUPABASE_URL and SUPABASE_ANON_KEY/NEXT_PUBLIC_SUPABASE_ANON_KEY are required.",
+      );
     }
-    if (!dietAllergenConflicts[dietLabel].includes(allergenKey)) {
-      dietAllergenConflicts[dietLabel].push(allergenKey);
-    }
-  });
 
-  cachedConfig = {
-    allergens: Array.isArray(allergens) ? allergens : [],
-    diets: Array.isArray(diets) ? diets : [],
-    dietAllergenConflicts,
-    supportedDiets,
-    aiDiets,
-  };
-  cachedConfigAt = now;
-  return cachedConfig;
+    const headers = {
+      apikey: key,
+      Authorization: `Bearer ${key}`,
+      Accept: "application/json",
+    };
+
+    const [allergens, diets, conflicts] = await Promise.all([
+      fetchJson(
+        `${url}/rest/v1/allergens?select=key,label,sort_order,is_active&is_active=eq.true&order=sort_order.asc`,
+        headers,
+      ),
+      fetchJson(
+        `${url}/rest/v1/diets?select=key,label,sort_order,is_active,is_supported,is_ai_enabled&is_active=eq.true&order=sort_order.asc`,
+        headers,
+      ),
+      fetchJson(
+        `${url}/rest/v1/diet_allergen_conflicts?select=diet:diet_id(label),allergen:allergen_id(key)`,
+        headers,
+      ),
+    ]);
+
+    const supportedDiets = dedupeStrings(
+      diets
+        .filter((diet) => diet?.is_supported !== false)
+        .map((diet) => diet?.label),
+    );
+
+    const aiDiets = dedupeStrings(
+      diets
+        .filter((diet) => diet?.is_ai_enabled !== false)
+        .map((diet) => diet?.label),
+    );
+
+    const dietAllergenConflicts = {};
+    (Array.isArray(conflicts) ? conflicts : []).forEach((row) => {
+      const dietLabel = asText(row?.diet?.label);
+      const allergenKey = asText(row?.allergen?.key);
+      if (!dietLabel || !allergenKey) return;
+      if (!dietAllergenConflicts[dietLabel]) {
+        dietAllergenConflicts[dietLabel] = [];
+      }
+      if (!dietAllergenConflicts[dietLabel].includes(allergenKey)) {
+        dietAllergenConflicts[dietLabel].push(allergenKey);
+      }
+    });
+
+    cachedConfig = {
+      allergens: Array.isArray(allergens) ? allergens : [],
+      diets: Array.isArray(diets) ? diets : [],
+      dietAllergenConflicts,
+      supportedDiets,
+      aiDiets,
+    };
+    cachedConfigAt = Date.now();
+    return cachedConfig;
+  })();
+
+  try {
+    return await cachedConfigPromise;
+  } finally {
+    cachedConfigPromise = null;
+  }
 }
 
 async function callAnthropicText({
@@ -274,20 +342,14 @@ async function callAnthropicText({
   model,
   systemPrompt,
   userPrompt,
-  maxTokens = 1200,
-  enableThinking = true,
+  maxTokens = ANALYSIS_MAX_TOKENS,
 }) {
-  const minTarget = enableThinking
-    ? ANTHROPIC_THINKING_BUDGET_TOKENS + ANTHROPIC_MIN_OUTPUT_TOKENS
-    : 600;
-  const safeMaxTokens = Math.max(
-    Number(maxTokens) || 0,
-    minTarget,
-  );
+  const safeMaxTokens = Math.max(Number(maxTokens) || 0, 400);
 
   const requestPayload = {
     model: asText(model) || PINNED_ANTHROPIC_MODEL,
     max_tokens: safeMaxTokens,
+    temperature: 0,
     system: systemPrompt,
     messages: [
       {
@@ -296,12 +358,6 @@ async function callAnthropicText({
       },
     ],
   };
-  if (enableThinking) {
-    requestPayload.thinking = {
-      type: "enabled",
-      budget_tokens: ANTHROPIC_THINKING_BUDGET_TOKENS,
-    };
-  }
 
   const response = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
@@ -388,8 +444,7 @@ ${rawOutput}`;
     model,
     systemPrompt: repairSystemPrompt,
     userPrompt: repairUserPrompt,
-    maxTokens: 1200,
-    enableThinking: false,
+    maxTokens: REPAIR_MAX_TOKENS,
   });
 }
 
@@ -400,31 +455,18 @@ async function runFlagAnalysis({
   userPrompt,
 }) {
   let lastError = null;
-  let emptyFlagRetries = 0;
-
-  for (
-    let attempt = 1;
-    attempt <= MAX_ANALYSIS_ATTEMPTS + MAX_EMPTY_FLAG_RETRIES;
-    attempt += 1
-  ) {
-    const maxAttemptsThisRun = MAX_ANALYSIS_ATTEMPTS + emptyFlagRetries;
+  for (let attempt = 1; attempt <= MAX_ANALYSIS_ATTEMPTS; attempt += 1) {
     try {
       const responseText = await callAnthropicText({
         apiKey,
         model,
         systemPrompt,
         userPrompt,
-        maxTokens: 1800,
-        enableThinking: true,
+        maxTokens: ANALYSIS_MAX_TOKENS,
       });
 
       const parsed = parseClaudeJson(responseText);
       if (parsed && typeof parsed === "object" && Array.isArray(parsed.flags)) {
-        if (!parsed.flags.length && emptyFlagRetries < MAX_EMPTY_FLAG_RETRIES) {
-          emptyFlagRetries += 1;
-          await sleep(220);
-          continue;
-        }
         return parsed;
       }
 
@@ -435,21 +477,16 @@ async function runFlagAnalysis({
       });
       const repaired = parseClaudeJson(repairedText);
       if (repaired && typeof repaired === "object" && Array.isArray(repaired.flags)) {
-        if (!repaired.flags.length && emptyFlagRetries < MAX_EMPTY_FLAG_RETRIES) {
-          emptyFlagRetries += 1;
-          await sleep(220);
-          continue;
-        }
         return repaired;
       }
 
       lastError = new Error("Ingredient allergen analyzer returned malformed JSON output.");
-      if (attempt >= maxAttemptsThisRun) {
+      if (attempt >= MAX_ANALYSIS_ATTEMPTS) {
         break;
       }
     } catch (error) {
       lastError = error;
-      if (!isTransientFailure(error) || attempt >= maxAttemptsThisRun) {
+      if (!isTransientFailure(error) || attempt >= MAX_ANALYSIS_ATTEMPTS) {
         break;
       }
       await sleep(attempt * 250);
@@ -500,7 +537,10 @@ export async function POST(request) {
   }
 
   const anthropicApiKey = asText(process.env.ANTHROPIC_API_KEY);
-  const anthropicModel = PINNED_ANTHROPIC_MODEL;
+  const anthropicModel =
+    asText(process.env.ANTHROPIC_MODEL_INGREDIENT_FLAGS) ||
+    asText(process.env.ANTHROPIC_MODEL) ||
+    PINNED_ANTHROPIC_MODEL;
 
   if (!anthropicApiKey) {
     return corsJson(
@@ -557,6 +597,22 @@ export async function POST(request) {
       pescatarianLabel,
     });
 
+    const analysisCacheKey = buildAnalysisCacheKey({
+      transcriptLines,
+      allergenEntries: allergenCodebook.entries,
+      dietEntries: dietCodebook.entries,
+    });
+    const cachedFlags = getCachedAnalysis(analysisCacheKey);
+    if (cachedFlags !== null) {
+      return corsJson(
+        {
+          success: true,
+          flags: cachedFlags,
+        },
+        { status: 200 },
+      );
+    }
+
     const allergenCodebookText = buildPromptCodebookLines(allergenCodebook.entries);
     const dietCodebookText = buildPromptCodebookLines(dietCodebook.entries);
 
@@ -573,7 +629,7 @@ export async function POST(request) {
       .join("\n");
 
     const systemPrompt = `You are an allergen and dietary preference analyzer for a restaurant allergen awareness system.
-Think carefully and step-by-step before answering, but only output valid JSON.
+Return only valid JSON.
 
 Analyze transcripted ingredient-label lines and return allergen/diet flags tied to word indices.
 Use ONLY numeric codes from these codebooks.
@@ -659,7 +715,7 @@ Use the numbered list above for word_indices. Do not compute your own indices ou
         ...parseLegacyList(raw?.diets, dietCodebook.tokenToValue, resolveDietAlias),
       ]);
 
-    const flags = parsed.flags
+    const flags = (Array.isArray(parsed?.flags) ? parsed.flags : [])
       .map((flag) => {
         const riskRaw = asText(flag?.risk_type).toLowerCase();
         const risk_type = riskRaw.includes("cross")
@@ -685,6 +741,8 @@ Use the numbered list above for word_indices. Do not compute your own indices ou
         flag.allergens.length ||
         flag.diets.length,
       );
+
+    setCachedAnalysis(analysisCacheKey, flags);
 
     return corsJson(
       {
