@@ -2,10 +2,11 @@ import { corsJson, corsOptions } from "../_shared/cors";
 
 export const runtime = "nodejs";
 
-const PINNED_ANTHROPIC_MODEL = "claude-sonnet-4-5";
+const PINNED_ANTHROPIC_MODEL = "claude-haiku-4-5-20251001";
 const MAX_ANALYSIS_ATTEMPTS = 2;
-const ANALYSIS_MAX_TOKENS = 1100;
+const ANALYSIS_MAX_TOKENS = 1800;
 const REPAIR_MAX_TOKENS = 700;
+const ANTHROPIC_THINKING_BUDGET_TOKENS = 1024;
 
 const CONFIG_TTL_MS = 60 * 60 * 1000;
 const ANALYSIS_CACHE_TTL_MS = 15 * 60 * 1000;
@@ -343,8 +344,12 @@ async function callAnthropicText({
   systemPrompt,
   userPrompt,
   maxTokens = ANALYSIS_MAX_TOKENS,
+  enableThinking = true,
 }) {
-  const safeMaxTokens = Math.max(Number(maxTokens) || 0, 400);
+  const minTokens = enableThinking
+    ? ANTHROPIC_THINKING_BUDGET_TOKENS + 300
+    : 400;
+  const safeMaxTokens = Math.max(Number(maxTokens) || 0, minTokens);
 
   const requestPayload = {
     model: asText(model) || PINNED_ANTHROPIC_MODEL,
@@ -358,6 +363,12 @@ async function callAnthropicText({
       },
     ],
   };
+  if (enableThinking) {
+    requestPayload.thinking = {
+      type: "enabled",
+      budget_tokens: ANTHROPIC_THINKING_BUDGET_TOKENS,
+    };
+  }
 
   const response = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
@@ -445,6 +456,7 @@ ${rawOutput}`;
     systemPrompt: repairSystemPrompt,
     userPrompt: repairUserPrompt,
     maxTokens: REPAIR_MAX_TOKENS,
+    enableThinking: false,
   });
 }
 
