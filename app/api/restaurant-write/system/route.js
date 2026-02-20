@@ -10,6 +10,8 @@ import {
 } from "../_shared/writeGatewayUtils";
 
 export const runtime = "nodejs";
+const SYSTEM_TRANSACTION_MAX_WAIT_MS = 10_000;
+const SYSTEM_TRANSACTION_TIMEOUT_MS = 30_000;
 
 const SYSTEM_HEADER_NAME = "x-clarivore-system-key";
 
@@ -85,17 +87,23 @@ export async function POST(request) {
     const operations = normalizeSystemOperations(body?.operations);
     await ensureRestaurantWriteInfrastructure(prisma);
 
-    const result = await prisma.$transaction(async (tx) => {
-      return await applyWriteOperations({
-        tx,
-        batch: {
-          author: "System",
-          restaurant_id: null,
-        },
-        operations,
-        userEmail: null,
-      });
-    });
+    const result = await prisma.$transaction(
+      async (tx) => {
+        return await applyWriteOperations({
+          tx,
+          batch: {
+            author: "System",
+            restaurant_id: null,
+          },
+          operations,
+          userEmail: null,
+        });
+      },
+      {
+        maxWait: SYSTEM_TRANSACTION_MAX_WAIT_MS,
+        timeout: SYSTEM_TRANSACTION_TIMEOUT_MS,
+      },
+    );
 
     return NextResponse.json({
       success: true,

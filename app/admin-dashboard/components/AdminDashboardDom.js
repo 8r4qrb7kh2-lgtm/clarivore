@@ -10,6 +10,7 @@ import { formatChatTimestamp } from "../../lib/chatMessage";
 import {
   commitRestaurantWrite,
   discardRestaurantWrite,
+  loadCurrentRestaurantWrite,
   stageRestaurantWrite,
 } from "../../lib/restaurantWriteGatewayClient";
 import { loadScript } from "../../runtime/scriptLoader";
@@ -20,6 +21,7 @@ const CHAT_THREAD_LIMIT = 50;
 const APPEALS_CACHE_WINDOW_MS = 30_000;
 const ADMIN_DISPLAY_NAME = "Matt D (clarivore administrator)";
 const MAX_MENU_IMAGE_FILES = 10;
+const STALE_STAGE_ERROR_MESSAGE = "Write scope is stale. Reload before staging changes.";
 
 const TAB_ROUTES = [
   { id: "restaurants", label: "Restaurants" },
@@ -34,6 +36,14 @@ function slugifyName(value) {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "");
+}
+
+function toSafeWriteVersion(value) {
+  if (value === null || value === undefined) return null;
+  if (typeof value === "string" && !value.trim()) return null;
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return null;
+  return Math.max(Math.floor(parsed), 0);
 }
 
 function toDateLabel(value) {
@@ -387,7 +397,7 @@ export default function AdminDashboardDom({
     try {
       const { data, error } = await supabase
         .from("restaurants")
-        .select("id, name, slug")
+        .select("id, name, slug, write_version")
         .order("name");
       if (error) throw error;
       const list = Array.isArray(data) ? data : [];
@@ -591,26 +601,61 @@ export default function AdminDashboardDom({
       if (!confirmed) return;
 
       try {
-        const expectedWriteVersion = Number(writeVersion);
-        const safeExpectedWriteVersion = Number.isFinite(expectedWriteVersion)
-          ? Math.max(Math.floor(expectedWriteVersion), 0)
-          : null;
+        const stageDeleteWrite = async (expectedVersionCandidate) => {
+          const safeExpectedWriteVersion = toSafeWriteVersion(expectedVersionCandidate);
+          return await stageRestaurantWrite({
+            supabase,
+            payload: {
+              scopeType: "RESTAURANT",
+              restaurantId,
+              operationType: "RESTAURANT_DELETE",
+              operationPayload: {
+                restaurantId,
+              },
+              summary: `Delete restaurant: ${restaurantNameValue}`,
+              ...(Number.isFinite(safeExpectedWriteVersion)
+                ? { expectedWriteVersion: safeExpectedWriteVersion }
+                : {}),
+            },
+          });
+        };
 
-        const stageResult = await stageRestaurantWrite({
-          supabase,
-          payload: {
+        let stageResult;
+        try {
+          stageResult = await stageDeleteWrite(writeVersion);
+        } catch (stageError) {
+          if (String(stageError?.message || "").trim() !== STALE_STAGE_ERROR_MESSAGE) {
+            throw stageError;
+          }
+
+          const pending = await loadCurrentRestaurantWrite({
+            supabase,
             scopeType: "RESTAURANT",
             restaurantId,
-            operationType: "RESTAURANT_DELETE",
-            operationPayload: {
-              restaurantId,
-            },
-            summary: `Delete restaurant: ${restaurantNameValue}`,
-            ...(Number.isFinite(safeExpectedWriteVersion)
-              ? { expectedWriteVersion: safeExpectedWriteVersion }
-              : {}),
-          },
-        });
+          });
+          const staleBatchId = String(pending?.batch?.id || "").trim();
+          if (staleBatchId) {
+            const discardConfirmed = window.confirm(
+              `An outdated staged draft exists for "${restaurantNameValue}". Clear it and continue deleting this restaurant?`,
+            );
+            if (!discardConfirmed) {
+              showStatus("Restaurant deletion was canceled.", "neutral");
+              return;
+            }
+            await discardRestaurantWrite({
+              supabase,
+              batchId: staleBatchId,
+            });
+          }
+
+          const { data: refreshedRestaurant, error: refreshError } = await supabase
+            .from("restaurants")
+            .select("write_version")
+            .eq("id", restaurantId)
+            .maybeSingle();
+          if (refreshError) throw refreshError;
+          stageResult = await stageDeleteWrite(refreshedRestaurant?.write_version);
+        }
 
         const shouldCommit = window.confirm(
           `Review staged delete:\n\nRestaurant: ${restaurantNameValue}\n\nCommit permanent delete?`,
