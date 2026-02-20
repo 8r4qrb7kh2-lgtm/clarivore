@@ -365,24 +365,13 @@ export default function DishSearchClient() {
       if (result.top_dishes && Array.isArray(result.top_dishes)) {
         result.top_dishes.forEach((dish) => {
           const overlay = findFullOverlayData(dish.name, result.restaurant_id);
-          const aiStatus = dish.status || "";
-          const doesNotMeetDiet = aiStatus === "does_not_meet_diet";
+          if (!overlay) return;
 
-          const localStatus = overlay ? computeStatus(overlay) : null;
-          let resolvedStatus = localStatus;
-          if (!resolvedStatus || resolvedStatus === "neutral") {
-            if (aiStatus === "meets_all_requirements") {
-              resolvedStatus = "safe";
-            } else if (aiStatus === "can_accommodate") {
-              resolvedStatus = "removable";
-            } else if (doesNotMeetDiet) {
-              resolvedStatus = "unsafe";
-            }
-          }
+          const resolvedStatus = computeStatus(overlay);
 
           const isSafe = resolvedStatus === "safe";
           const isAccommodated = resolvedStatus === "removable";
-          const isIncompatible = resolvedStatus === "unsafe" || doesNotMeetDiet;
+          const isIncompatible = resolvedStatus === "unsafe";
 
           if (!isSafe && !isAccommodated && !isIncompatible) return;
           if (isAccommodated && !includeAccommodated) return;
