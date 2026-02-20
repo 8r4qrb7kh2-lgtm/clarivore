@@ -99,10 +99,6 @@ export function buildDefaultChangeLogPayload({ author, pendingChanges, snapshot 
     general.push(text);
   });
 
-  if (!general.length && !Object.keys(grouped).length) {
-    general.push("Menu overlays updated");
-  }
-
   const payload = {
     author: author || "Manager",
     general,

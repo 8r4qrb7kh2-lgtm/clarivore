@@ -78,7 +78,17 @@ function SaveReviewModal({ editor, open, onOpenChange, onConfirmSave }) {
   const [expandedRows, setExpandedRows] = useState({});
   const menuImages = useMemo(() => getReviewModalMenuImages(editor), [editor]);
   const changes = useMemo(
-    () => (Array.isArray(editor.pendingSaveRows) ? editor.pendingSaveRows : []),
+    () => {
+      const rows = Array.isArray(editor.pendingSaveRows) ? editor.pendingSaveRows : [];
+      const hasDishSpecificRows = rows.some((row) => asText(row?.dishName));
+      if (!hasDishSpecificRows) return rows;
+
+      return rows.filter((row) => {
+        const summary = normalizeToken(asText(row?.summary));
+        if (!summary) return true;
+        return summary !== normalizeToken("Menu overlays updated");
+      });
+    },
     [editor.pendingSaveRows],
   );
 

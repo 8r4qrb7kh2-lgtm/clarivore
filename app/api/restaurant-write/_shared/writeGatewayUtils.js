@@ -804,16 +804,6 @@ function appendSummaryRowsFromChangePayload(output, changePayload) {
 function buildMenuChangedFieldFallbackRows(changedFields) {
   const changed = new Set(normalizeMenuStateChangedFields(changedFields));
   const rows = [];
-  if (changed.has(MENU_STATE_CHANGED_FIELD_KEYS.OVERLAYS)) {
-    rows.push({
-      id: "fallback:overlays",
-      changeType: "menu_overlays_changed",
-      fieldKey: "overlays",
-      summary: "Menu overlays updated",
-      beforeValue: null,
-      afterValue: null,
-    });
-  }
   if (changed.has(MENU_STATE_CHANGED_FIELD_KEYS.MENU_IMAGES)) {
     rows.push({
       id: "fallback:menu-images",
@@ -1022,7 +1012,8 @@ function buildMenuReviewRows({
 }) {
   const summaryRows = [];
   appendSummaryRowsFromChangePayload(summaryRows, changePayload);
-  if (!summaryRows.length) {
+  const hasIngredientRows = Array.isArray(ingredientRows) && ingredientRows.length > 0;
+  if (!summaryRows.length && !hasIngredientRows) {
     summaryRows.push(...buildMenuChangedFieldFallbackRows(changedFields));
   }
   const summaryRowsWithMenuRefs = attachMenuImagePageRefsToSummaryRows(

@@ -832,10 +832,6 @@ export function RestaurantEditor({ editor, onNavigate, runtimeConfigHealth }) {
     <section className="restaurant-editor">
       <div className="editorLayout restaurant-editor-layout">
         <div className="editorHeaderStack restaurant-editor-header">
-          <div className="flex flex-wrap items-center gap-2">
-            <h1 className="m-0 text-[2.6rem] leading-none text-[#eaf0ff]">Webpage editor</h1>
-          </div>
-
           <div className="editorHeaderRow hasMiniMap">
             <div className="editorMiniMapSlot">
               <div className="restaurant-page-card">
@@ -907,28 +903,6 @@ export function RestaurantEditor({ editor, onNavigate, runtimeConfigHealth }) {
                           {saveButtonLabel}
                         </button>
                       ) : null}
-                      {saveIssueAlert ? (
-                        <div className="w-full mt-2 rounded-lg border border-[#a12525] bg-[rgba(139,29,29,0.32)] px-3 py-2 text-sm text-[#ffd0d0]">
-                          <div>
-                            {Number(saveIssueAlert.issueCount) === 1
-                              ? "1 ingredient row is still unconfirmed."
-                              : `${Math.max(Number(saveIssueAlert.issueCount) || 0, 1)} ingredient rows are still unconfirmed.`}
-                          </div>
-                          {saveIssueAlert.canJump ? (
-                            <button
-                              type="button"
-                              className="btn btnDanger btnSmall mt-2"
-                              onClick={startConfirmationGuide}
-                            >
-                              Confirm unconfirmed rows
-                            </button>
-                          ) : (
-                            <div className="mt-2">
-                              Open each dish and mark every ingredient row as confirmed before saving.
-                            </div>
-                          )}
-                        </div>
-                      ) : null}
                     </div>
                   </div>
 
@@ -963,6 +937,29 @@ export function RestaurantEditor({ editor, onNavigate, runtimeConfigHealth }) {
                   </div>
                 </div>
               </div>
+
+              {saveIssueAlert ? (
+                <div className="rounded-lg border border-[#a12525] bg-[rgba(139,29,29,0.32)] px-3 py-2 text-sm text-[#ffd0d0]">
+                  <div>
+                    {Number(saveIssueAlert.issueCount) === 1
+                      ? "1 ingredient row is still unconfirmed."
+                      : `${Math.max(Number(saveIssueAlert.issueCount) || 0, 1)} ingredient rows are still unconfirmed.`}
+                  </div>
+                  {saveIssueAlert.canJump ? (
+                    <button
+                      type="button"
+                      className="btn btnDanger btnSmall mt-2"
+                      onClick={startConfirmationGuide}
+                    >
+                      Confirm unconfirmed rows
+                    </button>
+                  ) : (
+                    <div className="mt-2">
+                      Open each dish and mark every ingredient row as confirmed before saving.
+                    </div>
+                  )}
+                </div>
+              ) : null}
 
               <div className="editorNoteRow">
                 <div className="note" id="editorNote">
