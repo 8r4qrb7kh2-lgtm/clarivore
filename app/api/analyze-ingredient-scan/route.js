@@ -92,6 +92,13 @@ Ingredient: ${ingredientName}
 
 Does this ingredient likely contain multiple ingredients?`;
 
+    const requestPayload = {
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 300,
+      system: systemPrompt,
+      messages: [{ role: "user", content: userPrompt }],
+    };
+
     const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
@@ -99,13 +106,8 @@ Does this ingredient likely contain multiple ingredients?`;
         "anthropic-version": "2023-06-01",
         "content-type": "application/json",
       },
-      body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
-        max_tokens: 300,
-        temperature: 0.2,
-        system: systemPrompt,
-        messages: [{ role: "user", content: userPrompt }],
-      }),
+      // Leave temperature unset to use Anthropic defaults across thinking/non-thinking modes.
+      body: JSON.stringify(requestPayload),
     });
 
     if (!response.ok) {
