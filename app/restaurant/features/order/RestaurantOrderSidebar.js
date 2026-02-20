@@ -88,7 +88,8 @@ export function RestaurantOrderSidebar({
   const [isResizing, setIsResizing] = useState(false);
   const [contentPreferredHeight, setContentPreferredHeight] = useState(0);
   const headerRef = useRef(null);
-  const contentRef = useRef(null);
+  const contentScrollRef = useRef(null);
+  const contentBodyRef = useRef(null);
   const dragStateRef = useRef({
     active: false,
     startY: 0,
@@ -131,11 +132,22 @@ export function RestaurantOrderSidebar({
   const showDrawerContent = true;
   const measurePreferredHeight = useCallback(() => {
     const headerNode = headerRef.current;
-    const contentNode = contentRef.current;
-    if (!headerNode || !contentNode) return;
+    const contentScrollNode = contentScrollRef.current;
+    const contentBodyNode = contentBodyRef.current;
+    if (!headerNode || !contentBodyNode) return;
     const headerHeight = Math.round(headerNode.getBoundingClientRect().height || 0);
-    const contentHeight = Math.round(contentNode.scrollHeight || 0);
-    const nextPreferredHeight = headerHeight + contentHeight + SIDEBAR_BOTTOM_BREATHING_ROOM;
+    const contentHeight = Math.round(
+      contentBodyNode.scrollHeight || contentBodyNode.getBoundingClientRect().height || 0,
+    );
+    let contentPaddingHeight = 0;
+    if (contentScrollNode && typeof window !== "undefined") {
+      const contentStyles = window.getComputedStyle(contentScrollNode);
+      const paddingTop = parseFloat(contentStyles.paddingTop) || 0;
+      const paddingBottom = parseFloat(contentStyles.paddingBottom) || 0;
+      contentPaddingHeight = Math.round(paddingTop + paddingBottom);
+    }
+    const nextPreferredHeight =
+      headerHeight + contentHeight + contentPaddingHeight + SIDEBAR_BOTTOM_BREATHING_ROOM;
     if (nextPreferredHeight > 0) {
       setContentPreferredHeight(nextPreferredHeight);
     }
@@ -221,7 +233,9 @@ export function RestaurantOrderSidebar({
 
   useEffect(() => {
     if (!showDrawerContent || typeof ResizeObserver !== "function") return;
-    const nodes = [headerRef.current, contentRef.current].filter(Boolean);
+    const nodes = [headerRef.current, contentScrollRef.current, contentBodyRef.current].filter(
+      Boolean,
+    );
     if (!nodes.length) return;
     const observer = new ResizeObserver(() => {
       measurePreferredHeight();
@@ -531,197 +545,205 @@ export function RestaurantOrderSidebar({
         {showDrawerContent ? (
           <div
             className={`restaurant-order-sidebar-content ${isOpen ? "" : "is-hidden"}`.trim()}
-            ref={contentRef}
+            ref={contentScrollRef}
             aria-hidden={!isOpen}
           >
-            {hasActiveNotices ? (
-              <section className="restaurant-order-sidebar-section">
-                <div className="restaurant-order-sidebar-section-head">
-                  <h3 className="restaurant-order-sidebar-section-title">Active notices</h3>
-                </div>
-                <div className="restaurant-order-active-notices">
-                  {activeNotices.map((notice) => (
-                    <article
-                      key={notice.id || `${notice.status}-${notice.updatedAt}`}
-                      className="restaurant-order-active-notice"
-                    >
-                      <div className="restaurant-order-active-notice-head">
-                        <div className="restaurant-order-active-notice-meta">
-                          <span>{notice.diningModeLabel}</span>
-                          {notice.updatedAt ? (
-                            <span>Updated {formatNoticeTimestamp(notice.updatedAt)}</span>
-                          ) : null}
+            <div className="restaurant-order-sidebar-content-inner" ref={contentBodyRef}>
+              {hasActiveNotices ? (
+                <section className="restaurant-order-sidebar-section">
+                  <div className="restaurant-order-sidebar-section-head">
+                    <h3 className="restaurant-order-sidebar-section-title">Active notices</h3>
+                  </div>
+                  <div className="restaurant-order-active-notices">
+                    {activeNotices.map((notice) => (
+                      <article
+                        key={notice.id || `${notice.status}-${notice.updatedAt}`}
+                        className="restaurant-order-active-notice"
+                      >
+                        <div className="restaurant-order-active-notice-head">
+                          <div className="restaurant-order-active-notice-meta">
+                            <span>{notice.diningModeLabel}</span>
+                            {notice.updatedAt ? (
+                              <span>Updated {formatNoticeTimestamp(notice.updatedAt)}</span>
+                            ) : null}
+                          </div>
+                          <Badge tone={statusTone(notice.status)}>{notice.statusLabel}</Badge>
                         </div>
-                        <Badge tone={statusTone(notice.status)}>{notice.statusLabel}</Badge>
-                      </div>
-                      <ul className="restaurant-order-active-notice-dishes">
-                        {notice.selectedDishes.map((dishName) => (
-                          <li key={`${notice.id}-${dishName}`}>{dishName}</li>
-                        ))}
-                      </ul>
-                      {notice.customNotes ? (
-                        <p className="restaurant-order-active-notice-notes">
-                          Note: {notice.customNotes}
-                        </p>
-                      ) : null}
-                      {trim(notice.kitchenQuestion?.text) ? (
-                        <p className="restaurant-order-active-notice-notes">
-                          Kitchen follow-up: {trim(notice.kitchenQuestion?.text)}
-                        </p>
-                      ) : null}
-                      {trim(notice.kitchenQuestion?.response) ? (
-                        <p className="restaurant-order-active-notice-notes">
-                          Your response: {String(notice.kitchenQuestion.response).toUpperCase()}
-                        </p>
-                      ) : null}
-                      <div className="restaurant-order-active-notice-actions">
-                        {notice.status === "awaiting_user_response" &&
-                        trim(notice.kitchenQuestion?.text) &&
-                        !trim(notice.kitchenQuestion?.response) ? (
-                          <>
-                            <Button
-                              size="compact"
-                              tone="success"
-                              disabled={isNoticeActionPending}
-                              loading={isNoticeActionPending && actionTargetNoticeId === notice.id}
-                              onClick={() => onAnswerFollowUp(notice.id, "yes")}
-                            >
-                              Yes
-                            </Button>
-                            <Button
-                              size="compact"
-                              tone="danger"
-                              disabled={isNoticeActionPending}
-                              loading={isNoticeActionPending && actionTargetNoticeId === notice.id}
-                              onClick={() => onAnswerFollowUp(notice.id, "no")}
-                            >
-                              No
-                            </Button>
-                          </>
+                        <ul className="restaurant-order-active-notice-dishes">
+                          {notice.selectedDishes.map((dishName) => (
+                            <li key={`${notice.id}-${dishName}`}>{dishName}</li>
+                          ))}
+                        </ul>
+                        {notice.customNotes ? (
+                          <p className="restaurant-order-active-notice-notes">
+                            Note: {notice.customNotes}
+                          </p>
                         ) : null}
-
-                        {rescindConfirmNoticeId === notice.id ? (
-                          <div className="restaurant-order-active-notice-rescind-confirm">
-                            <p>Are you sure you want to rescind this notice?</p>
-                            <div className="restaurant-order-active-notice-rescind-actions">
+                        {trim(notice.kitchenQuestion?.text) ? (
+                          <p className="restaurant-order-active-notice-notes">
+                            Kitchen follow-up: {trim(notice.kitchenQuestion?.text)}
+                          </p>
+                        ) : null}
+                        {trim(notice.kitchenQuestion?.response) ? (
+                          <p className="restaurant-order-active-notice-notes">
+                            Your response: {String(notice.kitchenQuestion.response).toUpperCase()}
+                          </p>
+                        ) : null}
+                        <div className="restaurant-order-active-notice-actions">
+                          {notice.status === "awaiting_user_response" &&
+                          trim(notice.kitchenQuestion?.text) &&
+                          !trim(notice.kitchenQuestion?.response) ? (
+                            <>
+                              <Button
+                                size="compact"
+                                tone="success"
+                                disabled={isNoticeActionPending}
+                                loading={
+                                  isNoticeActionPending && actionTargetNoticeId === notice.id
+                                }
+                                onClick={() => onAnswerFollowUp(notice.id, "yes")}
+                              >
+                                Yes
+                              </Button>
                               <Button
                                 size="compact"
                                 tone="danger"
                                 disabled={isNoticeActionPending}
-                                loading={isNoticeActionPending && actionTargetNoticeId === notice.id}
-                                onClick={() => onRescindNotice(notice.id)}
+                                loading={
+                                  isNoticeActionPending && actionTargetNoticeId === notice.id
+                                }
+                                onClick={() => onAnswerFollowUp(notice.id, "no")}
                               >
-                                Yes, rescind
+                                No
                               </Button>
-                              <Button
-                                size="compact"
-                                variant="outline"
-                                disabled={isNoticeActionPending}
-                                onClick={() => {
-                                  orderFlow.clearNoticeActionError?.();
-                                  setRescindConfirmNoticeId("");
-                                }}
-                              >
-                                Cancel
-                              </Button>
+                            </>
+                          ) : null}
+
+                          {rescindConfirmNoticeId === notice.id ? (
+                            <div className="restaurant-order-active-notice-rescind-confirm">
+                              <p>Are you sure you want to rescind this notice?</p>
+                              <div className="restaurant-order-active-notice-rescind-actions">
+                                <Button
+                                  size="compact"
+                                  tone="danger"
+                                  disabled={isNoticeActionPending}
+                                  loading={
+                                    isNoticeActionPending && actionTargetNoticeId === notice.id
+                                  }
+                                  onClick={() => onRescindNotice(notice.id)}
+                                >
+                                  Yes, rescind
+                                </Button>
+                                <Button
+                                  size="compact"
+                                  variant="outline"
+                                  disabled={isNoticeActionPending}
+                                  onClick={() => {
+                                    orderFlow.clearNoticeActionError?.();
+                                    setRescindConfirmNoticeId("");
+                                  }}
+                                >
+                                  Cancel
+                                </Button>
+                              </div>
                             </div>
+                          ) : (
+                            <Button
+                              size="compact"
+                              variant="outline"
+                              disabled={isNoticeActionPending}
+                              onClick={() => {
+                                orderFlow.clearNoticeActionError?.();
+                                setRescindConfirmNoticeId(notice.id);
+                              }}
+                            >
+                              Rescind notice
+                            </Button>
+                          )}
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                  {noticeActionErrorMessage ? (
+                    <p className="restaurant-order-confirm-error">{noticeActionErrorMessage}</p>
+                  ) : null}
+                </section>
+              ) : null}
+
+              <section className="restaurant-order-sidebar-section">
+                <h3 className="restaurant-order-sidebar-section-title">Pending notices</h3>
+                <div className="restaurant-order-sidebar-items">
+                  {orderFlow.selectedDishNames.length ? (
+                    orderFlow.selectedDishNames.map((dishName) => (
+                      <div key={dishName} className="restaurant-order-sidebar-item">
+                        <label className="restaurant-order-sidebar-item-select">
+                          <input
+                            type="checkbox"
+                            checked={orderFlow.isDishSelectedForNotice(dishName)}
+                            onChange={() => orderFlow.toggleDishSelection(dishName)}
+                          />
+                          <span>{dishName}</span>
+                        </label>
+                        <button type="button" onClick={() => removeDish(dishName)}>
+                          Remove
+                        </button>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="restaurant-order-sidebar-empty">No pending notices yet.</p>
+                  )}
+                </div>
+              </section>
+
+              {hasCompletedNotices ? (
+                <section className="restaurant-order-sidebar-section">
+                  <h3 className="restaurant-order-sidebar-section-title">Completed notices</h3>
+                  <div className="restaurant-order-active-notices">
+                    {completedNotices.map((notice) => (
+                      <article
+                        key={`completed-${notice.id || `${notice.status}-${notice.updatedAt}`}`}
+                        className="restaurant-order-active-notice"
+                      >
+                        <div className="restaurant-order-active-notice-head">
+                          <div className="restaurant-order-active-notice-meta">
+                            <span>{notice.diningModeLabel}</span>
+                            {notice.updatedAt ? (
+                              <span>Completed {formatNoticeTimestamp(notice.updatedAt)}</span>
+                            ) : null}
                           </div>
-                        ) : (
+                          <Badge tone={statusTone(notice.status)}>{notice.statusLabel}</Badge>
+                        </div>
+                        <ul className="restaurant-order-active-notice-dishes">
+                          {notice.selectedDishes.map((dishName) => (
+                            <li key={`completed-${notice.id}-${dishName}`}>{dishName}</li>
+                          ))}
+                        </ul>
+                        <div className="restaurant-order-active-notice-actions">
                           <Button
                             size="compact"
                             variant="outline"
                             disabled={isNoticeActionPending}
-                            onClick={() => {
-                              orderFlow.clearNoticeActionError?.();
-                              setRescindConfirmNoticeId(notice.id);
-                            }}
+                            loading={
+                              isNoticeActionPending && actionTargetNoticeId === trim(notice.id)
+                            }
+                            onClick={() => onClearCompletedNotice(notice.id)}
                           >
-                            Rescind notice
+                            Clear notice
                           </Button>
-                        )}
-                      </div>
-                    </article>
-                  ))}
-                </div>
-                {noticeActionErrorMessage ? (
-                  <p className="restaurant-order-confirm-error">{noticeActionErrorMessage}</p>
-                ) : null}
-              </section>
-            ) : null}
-
-            <section className="restaurant-order-sidebar-section">
-              <h3 className="restaurant-order-sidebar-section-title">Pending notices</h3>
-              <div className="restaurant-order-sidebar-items">
-                {orderFlow.selectedDishNames.length ? (
-                  orderFlow.selectedDishNames.map((dishName) => (
-                    <div key={dishName} className="restaurant-order-sidebar-item">
-                      <label className="restaurant-order-sidebar-item-select">
-                        <input
-                          type="checkbox"
-                          checked={orderFlow.isDishSelectedForNotice(dishName)}
-                          onChange={() => orderFlow.toggleDishSelection(dishName)}
-                        />
-                        <span>{dishName}</span>
-                      </label>
-                      <button type="button" onClick={() => removeDish(dishName)}>
-                        Remove
-                      </button>
-                    </div>
-                  ))
-                ) : (
-                  <p className="restaurant-order-sidebar-empty">No pending notices yet.</p>
-                )}
-              </div>
-            </section>
-
-            {hasCompletedNotices ? (
-              <section className="restaurant-order-sidebar-section">
-                <h3 className="restaurant-order-sidebar-section-title">Completed notices</h3>
-                <div className="restaurant-order-active-notices">
-                  {completedNotices.map((notice) => (
-                    <article
-                      key={`completed-${notice.id || `${notice.status}-${notice.updatedAt}`}`}
-                      className="restaurant-order-active-notice"
-                    >
-                      <div className="restaurant-order-active-notice-head">
-                        <div className="restaurant-order-active-notice-meta">
-                          <span>{notice.diningModeLabel}</span>
-                          {notice.updatedAt ? (
-                            <span>Completed {formatNoticeTimestamp(notice.updatedAt)}</span>
-                          ) : null}
                         </div>
-                        <Badge tone={statusTone(notice.status)}>{notice.statusLabel}</Badge>
-                      </div>
-                      <ul className="restaurant-order-active-notice-dishes">
-                        {notice.selectedDishes.map((dishName) => (
-                          <li key={`completed-${notice.id}-${dishName}`}>{dishName}</li>
-                        ))}
-                      </ul>
-                      <div className="restaurant-order-active-notice-actions">
-                        <Button
-                          size="compact"
-                          variant="outline"
-                          disabled={isNoticeActionPending}
-                          loading={
-                            isNoticeActionPending && actionTargetNoticeId === trim(notice.id)
-                          }
-                          onClick={() => onClearCompletedNotice(notice.id)}
-                        >
-                          Clear notice
-                        </Button>
-                      </div>
-                    </article>
-                  ))}
-                </div>
-              </section>
-            ) : null}
+                      </article>
+                    ))}
+                  </div>
+                </section>
+              ) : null}
 
-            <div className="restaurant-order-sidebar-actions">
-              <Button tone="primary" onClick={openConfirm} disabled={!canProceed}>
-                {canProceed
-                  ? `Proceed to confirmation (${orderFlow.checkedDishNames.length})`
-                  : "Proceed to confirmation"}
-              </Button>
+              <div className="restaurant-order-sidebar-actions">
+                <Button tone="primary" onClick={openConfirm} disabled={!canProceed}>
+                  {canProceed
+                    ? `Proceed to confirmation (${orderFlow.checkedDishNames.length})`
+                    : "Proceed to confirmation"}
+                </Button>
+              </div>
             </div>
           </div>
         ) : null}
