@@ -183,13 +183,13 @@ export default function SimpleTopbar({
       <div className={`${styles.inner} ${innerClassName}`.trim()} id={innerId}>
         {modeToggle ? (
           <div className={styles.modeToggleContainer}>
-            <span className={styles.modeToggleLabel}>{modeToggle.label}</span>
             <button
               type="button"
               className={`${styles.modeToggle} ${modeToggle.active ? styles.modeToggleActive : ""}`}
               aria-label={modeToggle.ariaLabel || "Toggle mode"}
               onClick={modeToggle.onToggle}
             />
+            <span className={styles.modeToggleLabel}>{modeToggle.label}</span>
           </div>
         ) : null}
 

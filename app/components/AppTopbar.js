@@ -100,12 +100,12 @@ export default function AppTopbar({
       modeToggle={
         showModeToggle && isManagerOrOwner
           ? {
-              label: resolvedMode === "editor" ? "Editor mode" : "Customer mode",
+              label: resolvedMode === "editor" ? "Manager" : "Customer",
               active: resolvedMode === "editor",
               ariaLabel:
                 resolvedMode === "editor"
                   ? "Switch to customer mode"
-                  : "Switch to editor mode",
+                  : "Switch to manager mode",
               onToggle: handleModeToggle,
             }
           : null

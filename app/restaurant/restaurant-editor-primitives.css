@@ -128,16 +128,28 @@
   display: grid;
   gap: 6px;
   align-items: stretch;
-  padding-right: 4px;
+  padding: 0 2px;
+}
+
+.restaurant-content .editorGroupButtons > * {
+  width: 100%;
+  max-width: 100%;
+  margin: 0 auto;
 }
 
 .restaurant-content .editorToolbar .btn {
+  display: grid;
+  place-items: center;
   padding: 3px 8px;
   font-size: 0.68rem;
   border-radius: 10px;
   line-height: 1.1;
   width: 100%;
+  min-width: 0;
+  max-width: 100%;
   text-align: center;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .restaurant-content .editorInlineDualButtons {
