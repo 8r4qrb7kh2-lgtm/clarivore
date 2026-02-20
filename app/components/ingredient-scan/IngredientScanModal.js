@@ -62,6 +62,71 @@ function clampPercentage(value) {
   return value;
 }
 
+function measureTokenWidthsPx(tokens, fontSizePx) {
+  const safeTokens = Array.isArray(tokens) ? tokens : [];
+  const safeFontSize = Math.max(1, Number(fontSizePx) || 1);
+  if (!safeTokens.length) return [];
+
+  if (typeof document === "undefined") {
+    return safeTokens.map((token) => asText(token).length * safeFontSize * 0.58);
+  }
+
+  const canvas = document.createElement("canvas");
+  const context = canvas.getContext("2d");
+  if (!context) {
+    return safeTokens.map((token) => asText(token).length * safeFontSize * 0.58);
+  }
+  context.font = `600 ${safeFontSize}px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
+  return safeTokens.map((token) => context.measureText(asText(token)).width);
+}
+
+function resolveTokenFontSizePx(tokenLayout, displayTokens, tokenStripWidthPx) {
+  const safeTokens = Array.isArray(displayTokens) ? displayTokens : [];
+  const safeLayout = Array.isArray(tokenLayout) ? tokenLayout : [];
+  const width = Math.max(1, Number(tokenStripWidthPx) || 0);
+  if (!safeTokens.length || !width) return 10;
+
+  const totalChars = safeTokens.reduce((sum, token) => sum + asText(token).length, 0);
+  const maxFontPx = width < 360 ? 10 : 11;
+  const initialSize = Math.max(
+    6,
+    Math.min(maxFontPx, Math.floor((width / Math.max(totalChars, 1)) * 1.6)),
+  );
+
+  const widths = measureTokenWidthsPx(safeTokens, initialSize).map((value) =>
+    Math.max(1, Number(value) || 1),
+  );
+  let scale = 1;
+  const edgeInsetPx = 2;
+  const pairGapPx = 2;
+  const tokenPadPx = 4;
+
+  for (let index = 0; index < safeLayout.length; index += 1) {
+    const centerPct = clampPercentage(Number(safeLayout[index]?.centerPct));
+    const centerPx = (centerPct / 100) * width;
+    const tokenWidth = widths[index] + tokenPadPx;
+    if (tokenWidth <= 0) continue;
+    const leftScale = (2 * Math.max(centerPx - edgeInsetPx, 0)) / tokenWidth;
+    const rightScale = (2 * Math.max(width - centerPx - edgeInsetPx, 0)) / tokenWidth;
+    if (Number.isFinite(leftScale)) scale = Math.min(scale, leftScale);
+    if (Number.isFinite(rightScale)) scale = Math.min(scale, rightScale);
+  }
+
+  for (let index = 0; index < safeLayout.length - 1; index += 1) {
+    const leftCenter = (clampPercentage(Number(safeLayout[index]?.centerPct)) / 100) * width;
+    const rightCenter =
+      (clampPercentage(Number(safeLayout[index + 1]?.centerPct)) / 100) * width;
+    const gap = rightCenter - leftCenter;
+    const denom = widths[index] + widths[index + 1] + tokenPadPx * 2;
+    if (denom <= 0) continue;
+    const allowedScale = (2 * Math.max(gap - pairGapPx, 0)) / denom;
+    if (Number.isFinite(allowedScale)) scale = Math.min(scale, allowedScale);
+  }
+
+  const nextSize = initialSize * Math.max(0.45, Math.min(1, scale));
+  return Math.max(6, Math.min(maxFontPx, Number(nextSize.toFixed(2))));
+}
+
 function resolveLineTokenIndex(globalIndex, wordOffsets, tokenCounts) {
   const target = Number(globalIndex);
   if (!Number.isFinite(target) || target < 0) return null;
@@ -230,6 +295,14 @@ function CroppedLineCard({
     () => tokenLayout.map((token) => asText(token?.text)).filter(Boolean),
     [tokenLayout],
   );
+  const tokenFontSizePx = useMemo(
+    () => resolveTokenFontSizePx(tokenLayout, displayTokens, tokenStripWidthPx),
+    [tokenLayout, displayTokens, tokenStripWidthPx],
+  );
+  const tokenStripHeightPx = useMemo(
+    () => Math.max(22, Math.round(tokenFontSizePx * 1.7)),
+    [tokenFontSizePx],
+  );
 
   useEffect(() => {
     setEditorState(null);
@@ -366,7 +439,9 @@ function CroppedLineCard({
       style={{
         background: "#1a1f35",
         borderRadius: 8,
-        padding: 12,
+        padding: "10px clamp(4px, 1.2vw, 12px)",
+        width: "100%",
+        boxSizing: "border-box",
         border: line?.confirmed
           ? "2px solid rgba(34,197,94,0.8)"
           : "1px solid rgba(148,163,184,0.25)",
@@ -405,7 +480,7 @@ function CroppedLineCard({
             justifyContent: "center",
             background: "#000",
             minHeight: 88,
-            padding: "8px 10px",
+            padding: "6px clamp(2px, 0.8vw, 8px)",
           }}
         >
           <img
@@ -435,7 +510,7 @@ function CroppedLineCard({
           width: tokenStripWidthPx > 0 ? `${tokenStripWidthPx}px` : "100%",
           marginLeft: "auto",
           marginRight: "auto",
-          minHeight: 28,
+          minHeight: tokenStripHeightPx,
           cursor: editLocked || savingEdit ? "default" : "text",
         }}
       >
@@ -463,7 +538,7 @@ function CroppedLineCard({
                 top: 0,
                 color: "#e2e8f0",
                 fontWeight: 600,
-                fontSize: "0.8rem",
+                fontSize: `${tokenFontSizePx}px`,
                 whiteSpace: "nowrap",
                 textDecoration: risk ? "underline" : "none",
                 textDecorationColor: underlineColor,
@@ -473,7 +548,7 @@ function CroppedLineCard({
                   ? "1px solid rgba(124,156,255,0.75)"
                   : "1px solid transparent",
                 borderRadius: 4,
-                padding: "0 2px",
+                padding: "0 1px",
               }}
             >
               {token.text}
@@ -1104,11 +1179,11 @@ export default function IngredientScanModal({
           onCancel?.();
         }}
         title="Capture Ingredient List"
-        className="w-[calc(100vw-1.5rem)] max-w-[860px] max-h-[calc(100dvh-1.5rem)] overflow-y-auto"
+        className="w-[calc(100vw-1.5rem)] max-w-[860px] max-h-[calc(100dvh-1.5rem)] overflow-y-auto p-3 sm:p-5"
         closeOnEsc={!analysisBusy && !analysisPending && !applying}
         closeOnOverlay={!analysisBusy && !analysisPending && !applying}
       >
-        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 14, width: "100%" }}>
           <div style={{ color: "#a8b2d6", fontSize: "0.92rem" }}>
             Ingredient: <strong style={{ color: "#fff" }}>{ingredientName}</strong>
           </div>
@@ -1279,10 +1354,12 @@ export default function IngredientScanModal({
                 background: "rgba(76,90,212,0.08)",
                 border: "1px solid rgba(76,90,212,0.3)",
                 borderRadius: 12,
-                padding: 14,
+                padding: "12px clamp(6px, 1.5vw, 14px)",
                 display: "flex",
                 flexDirection: "column",
                 gap: 12,
+                width: "100%",
+                boxSizing: "border-box",
               }}
             >
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
