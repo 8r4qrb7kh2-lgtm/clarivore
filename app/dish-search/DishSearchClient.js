@@ -327,7 +327,6 @@ export default function DishSearchClient() {
         restaurant,
         safeDishes,
         accommodatedDishes: includeAccommodated ? accommodatedDishes : [],
-        searchMatchDishes: [],
         totalDishes: totalAvailable,
       });
     });
@@ -398,7 +397,6 @@ export default function DishSearchClient() {
               },
               safeDishes: [],
               accommodatedDishes: [],
-              searchMatchDishes: [],
             });
           }
 
@@ -410,14 +408,11 @@ export default function DishSearchClient() {
             relevance_score: dish.relevance_score || 0,
             views: viewCount,
             overlay,
-            doesNotMeetDiet,
           };
 
-          if (isIncompatible) {
-            group.searchMatchDishes.push(dishData);
-          } else if (isSafe) {
+          if (isSafe) {
             group.safeDishes.push(dishData);
-          } else if (isAccommodated) {
+          } else if (isAccommodated && !isIncompatible) {
             group.accommodatedDishes.push(dishData);
           }
         });
@@ -427,8 +422,7 @@ export default function DishSearchClient() {
     const sections = Array.from(restaurantMap.values()).filter(
       (group) =>
         group.safeDishes.length ||
-        group.accommodatedDishes.length ||
-        group.searchMatchDishes.length,
+        group.accommodatedDishes.length,
     );
 
     sections.forEach((section) => {
@@ -436,13 +430,9 @@ export default function DishSearchClient() {
       section.accommodatedDishes.sort(
         (a, b) => b.relevance_score - a.relevance_score,
       );
-      section.searchMatchDishes.sort(
-        (a, b) => b.relevance_score - a.relevance_score,
-      );
       section.totalDishes =
         section.safeDishes.length +
-        section.accommodatedDishes.length +
-        section.searchMatchDishes.length;
+        section.accommodatedDishes.length;
     });
 
     sections.sort((a, b) => b.totalDishes - a.totalDishes);
@@ -561,11 +551,12 @@ export default function DishSearchClient() {
 
   const emptyState = () => {
     if (searchActive) {
+      if (searchLoading) {
+        return null;
+      }
       return (
         <div className="empty-state" style={{ gridColumn: "1 / -1" }}>
-          <p style={{ margin: 0 }}>
-            {searchLoading ? "Searching menus..." : "No dishes found matching your search."}
-          </p>
+          <p style={{ margin: 0 }}>No dishes found matching your search.</p>
         </div>
       );
     }
@@ -807,8 +798,7 @@ export default function DishSearchClient() {
                     : 0;
                 const totalDishes =
                   section.safeDishes.length +
-                  section.accommodatedDishes.length +
-                  (section.searchMatchDishes?.length || 0);
+                  section.accommodatedDishes.length;
 
                 const dishItem = (dish, slug) => (
                   <div
@@ -904,18 +894,6 @@ export default function DishSearchClient() {
                               + {accommodatedOverflow} more
                             </p>
                           ) : null}
-                        </div>
-                      ) : null}
-
-                      {isSearchMode && section.searchMatchDishes?.length ? (
-                        <div className="restaurant-section-column">
-                          <div className="restaurant-section-column-title">
-                            <span className="search-match-dot" />
-                            Matches search ({section.searchMatchDishes.length})
-                          </div>
-                          {section.searchMatchDishes.map((dish) =>
-                            dishItem(dish, section.restaurant?.slug),
-                          )}
                         </div>
                       ) : null}
                     </div>
