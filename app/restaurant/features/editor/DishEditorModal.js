@@ -436,6 +436,17 @@ function DishEditorModal({
             </div>
           ) : null}
 
+          <div className="restaurant-editor-dish-footer-actions">
+            <button
+              type="button"
+              className="btn"
+              disabled={isApplyingIngredientName}
+              onClick={handleCloseDishEditor}
+            >
+              Done
+            </button>
+          </div>
+
         </div>
       )}
     </Modal>

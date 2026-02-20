@@ -1677,6 +1677,14 @@ h2 {
   font-weight: 700;
 }
 
+@media (hover: none) and (pointer: coarse) {
+  .restaurant-editor-dish-modal input,
+  .restaurant-editor-dish-modal textarea,
+  .restaurant-editor-dish-modal select {
+    font-size: 16px;
+  }
+}
+
 .restaurant-editor-dish-subcopy {
   margin: 0;
   color: #b7c3e6;
@@ -2216,6 +2224,17 @@ h2 {
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
+}
+
+.restaurant-editor-dish-footer-actions {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 8px;
+  border-top: 1px solid rgba(76, 90, 212, 0.3);
+}
+
+.restaurant-editor-dish-footer-actions .btn {
+  min-width: 110px;
 }
 
 .restaurant-editor-dish-preview {
@@ -3109,6 +3128,10 @@ h2 {
   }
   .restaurant-editor-dish-ingredient-actions .btn {
     width: 100%;
+  }
+  .restaurant-editor-dish-footer-actions .btn {
+    width: 100%;
+    justify-content: center;
   }
 }
 
