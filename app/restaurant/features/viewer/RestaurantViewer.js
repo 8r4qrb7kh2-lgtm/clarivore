@@ -178,7 +178,7 @@ function getTouchMidpoint(touchA, touchB) {
 const MOBILE_VIEWPORT_QUERY = "(max-width: 900px)";
 const MOBILE_FOCUS_ZOOM = 1.65;
 const MOBILE_DISH_PANEL_FALLBACK_HEIGHT = 220;
-const MOBILE_DISH_PANEL_FOCUS_GUTTER = 36;
+const MOBILE_DISH_PANEL_FOCUS_GUTTER = 0;
 const MOBILE_DISH_PANEL_STABLE_DELAY_MS = 80;
 const MOBILE_DISH_VERTICAL_ANCHOR_RATIO = 0.5;
 const MOBILE_DISH_FOCUS_EDGE_PADDING = 14;
@@ -591,18 +591,45 @@ export function RestaurantViewer({
     [refreshScrollSnapshot, viewer.pageCount],
   );
 
+  const resolveMobileViewportBottomInset = useCallback(
+    (overrideInset) => {
+      const overrideInsetRaw = Number(overrideInset);
+      if (Number.isFinite(overrideInsetRaw)) {
+        return Math.max(0, overrideInsetRaw);
+      }
+
+      const scrollNode = menuScrollRef.current;
+      if (!scrollNode) {
+        return MOBILE_DISH_PANEL_FALLBACK_HEIGHT + MOBILE_DISH_PANEL_FOCUS_GUTTER;
+      }
+
+      const panelNode = mobileDishPanelRef.current;
+      if (panelNode) {
+        const scrollRect = scrollNode.getBoundingClientRect();
+        const panelRect = panelNode.getBoundingClientRect();
+        const overlap = Math.max(
+          0,
+          Math.min(scrollRect.bottom, panelRect.bottom) - Math.max(scrollRect.top, panelRect.top),
+        );
+        return Math.max(0, overlap + MOBILE_DISH_PANEL_FOCUS_GUTTER);
+      }
+
+      const fallbackPanelHeight = Math.max(mobileDishPanelHeight, MOBILE_DISH_PANEL_FALLBACK_HEIGHT);
+      return Math.max(
+        0,
+        Math.min(fallbackPanelHeight, scrollNode.clientHeight) + MOBILE_DISH_PANEL_FOCUS_GUTTER,
+      );
+    },
+    [mobileDishPanelHeight],
+  );
+
   const focusOverlayForCurrentViewport = useCallback(
     (overlay, options = {}) => {
       if (!overlay) return;
       const desktopBehavior = options?.behavior === "auto" ? "auto" : "smooth";
       const mobileBehavior = options?.behavior === "smooth" ? "smooth" : "auto";
-      const overrideInsetRaw = Number(options?.viewportBottomInset);
-      const hasOverrideInset = Number.isFinite(overrideInsetRaw);
       const viewportBottomInset = isMobileViewport
-        ? hasOverrideInset
-          ? Math.max(0, overrideInsetRaw)
-          : Math.max(mobileDishPanelHeight, MOBILE_DISH_PANEL_FALLBACK_HEIGHT) +
-            MOBILE_DISH_PANEL_FOCUS_GUTTER
+        ? resolveMobileViewportBottomInset(options?.viewportBottomInset)
         : 0;
       const recenter = (behavior = isMobileViewport ? mobileBehavior : desktopBehavior) => {
         centerOverlayInView(overlay, {
@@ -657,7 +684,7 @@ export function RestaurantViewer({
       animateMenuScrollTo,
       centerOverlayInView,
       isMobileViewport,
-      mobileDishPanelHeight,
+      resolveMobileViewportBottomInset,
       startMenuZoomAnimation,
     ],
   );
@@ -959,11 +986,9 @@ export function RestaurantViewer({
       return undefined;
     }
 
-    const viewportBottomInset = mobileDishPanelHeight + MOBILE_DISH_PANEL_FOCUS_GUTTER;
     const timer = window.setTimeout(() => {
       focusOverlayForCurrentViewport(selectedDish, {
         behavior: "auto",
-        viewportBottomInset,
       });
     }, MOBILE_DISH_PANEL_STABLE_DELAY_MS);
 
