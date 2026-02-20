@@ -13,6 +13,34 @@ function resolveModeValue(mode) {
   return mode === "editor" ? "editor" : "customer";
 }
 
+function asText(value) {
+  return String(value ?? "").trim();
+}
+
+function firstManagedRestaurantSlug(restaurants) {
+  if (!Array.isArray(restaurants)) return "";
+  const match = restaurants.find((item) => asText(item?.slug));
+  return asText(match?.slug);
+}
+
+function readStoredRestaurantSlug() {
+  if (typeof window === "undefined") return "";
+
+  const helpSlug = asText(localStorage.getItem("helpAssistantRestaurantSlug"));
+  if (helpSlug) return helpSlug;
+
+  try {
+    const recent = JSON.parse(localStorage.getItem("recentlyViewedRestaurants") || "[]");
+    if (Array.isArray(recent) && recent.length) {
+      return asText(recent[0]);
+    }
+  } catch {
+    // Ignore storage parse errors.
+  }
+
+  return "";
+}
+
 export default function AppTopbar({
   mode = "customer",
   user = null,
@@ -35,6 +63,15 @@ export default function AppTopbar({
   const resolvedPath = currentPath || pathname || "";
   const resolvedSignedIn =
     typeof signedIn === "boolean" ? signedIn : Boolean(user?.id);
+  const resolvedRestaurantSlug = useMemo(() => {
+    const explicitSlug = asText(currentRestaurantSlug);
+    if (explicitSlug) return explicitSlug;
+
+    const managedSlug = firstManagedRestaurantSlug(managerRestaurants);
+    if (managedSlug) return managedSlug;
+
+    return readStoredRestaurantSlug();
+  }, [currentRestaurantSlug, managerRestaurants]);
 
   const navItems = useMemo(
     () =>
@@ -42,14 +79,14 @@ export default function AppTopbar({
         mode: resolvedMode,
         signedIn: resolvedSignedIn,
         managerRestaurants,
-        currentRestaurantSlug,
+        currentRestaurantSlug: resolvedRestaurantSlug,
         currentPath: resolvedPath,
       }),
     [
-      currentRestaurantSlug,
       managerRestaurants,
       resolvedMode,
       resolvedPath,
+      resolvedRestaurantSlug,
       resolvedSignedIn,
     ],
   );

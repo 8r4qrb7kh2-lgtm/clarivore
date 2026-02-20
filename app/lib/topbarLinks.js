@@ -25,7 +25,7 @@ function pathMatches(pathname, candidates) {
 
 function buildRestaurantEditorHref(slug) {
   const cleanSlug = asText(slug);
-  if (!cleanSlug) return "/restaurant?edit=1";
+  if (!cleanSlug) return "/manager-dashboard";
   return `/restaurant?slug=${encodeURIComponent(cleanSlug)}&edit=1`;
 }
 

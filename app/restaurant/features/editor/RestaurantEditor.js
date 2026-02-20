@@ -17,6 +17,23 @@ import {
   RestaurantSettingsModal,
 } from "./EditorModals";
 
+const EDITOR_MIN_ZOOM_SCALE = 0.5;
+const EDITOR_MAX_ZOOM_SCALE = 3;
+
+function getTouchDistance(touchA, touchB) {
+  if (!touchA || !touchB) return 0;
+  const deltaX = Number(touchA.clientX || 0) - Number(touchB.clientX || 0);
+  const deltaY = Number(touchA.clientY || 0) - Number(touchB.clientY || 0);
+  return Math.hypot(deltaX, deltaY);
+}
+
+function getTouchMidpoint(touchA, touchB) {
+  return {
+    x: (Number(touchA?.clientX || 0) + Number(touchB?.clientX || 0)) / 2,
+    y: (Number(touchA?.clientY || 0) + Number(touchB?.clientY || 0)) / 2,
+  };
+}
+
 export function RestaurantEditor({ editor, onNavigate, runtimeConfigHealth }) {
   // Canvas refs and interaction refs coordinate pointer-driven overlay editing.
   const menuScrollRef = useRef(null);
@@ -26,6 +43,14 @@ export function RestaurantEditor({ editor, onNavigate, runtimeConfigHealth }) {
   const stopOverlayInteractionRef = useRef(() => {});
   const mappingDragRef = useRef(null);
   const saveButtonRef = useRef(null);
+  const zoomScaleRef = useRef(1);
+  const pinchGestureRef = useRef({
+    active: false,
+    startDistance: 0,
+    startScale: 1,
+    anchorX: 0,
+    anchorY: 0,
+  });
   const [mappedRectPreview, setMappedRectPreview] = useState(null);
   const [saveReviewOpen, setSaveReviewOpen] = useState(false);
   const [saveIssueAlert, setSaveIssueAlert] = useState(null);
@@ -366,16 +391,29 @@ export function RestaurantEditor({ editor, onNavigate, runtimeConfigHealth }) {
   }, [buildActiveConfirmationIssueKeys, confirmationGuide]);
 
   // Minimap sync keeps page and scroll position aligned while zooming/editing.
-  const { activePageIndex: minimapActivePageIndex, scrollSnapshot } = useMinimapSync({
+  const {
+    activePageIndex: minimapActivePageIndex,
+    scrollSnapshot,
+    refreshScrollSnapshot,
+  } = useMinimapSync({
     enabled: true,
     menuScrollRef,
     pageRefs,
     pageImageRefs,
     pageCount: editor.overlaysByPage.length,
-    pageVersionKey: editor.overlaysByPage.length,
+    pageVersionKey: `${editor.overlaysByPage.length}:${editor.zoomScale}`,
     initialActivePageIndex: editor.activePageIndex,
     onActivePageChange: editor.jumpToPage,
   });
+
+  useEffect(() => {
+    zoomScaleRef.current = clamp(
+      Number(editor.zoomScale) || 1,
+      EDITOR_MIN_ZOOM_SCALE,
+      EDITOR_MAX_ZOOM_SCALE,
+    );
+    refreshScrollSnapshot();
+  }, [editor.zoomScale, refreshScrollSnapshot]);
 
   const minimapViewport = useMemo(() => {
     const scrollNode = menuScrollRef.current;
@@ -408,6 +446,114 @@ export function RestaurantEditor({ editor, onNavigate, runtimeConfigHealth }) {
     },
     [minimapActivePageIndex],
   );
+
+  const endPinchGesture = useCallback(() => {
+    if (!pinchGestureRef.current.active) return;
+    pinchGestureRef.current.active = false;
+    refreshScrollSnapshot();
+  }, [refreshScrollSnapshot]);
+
+  const startPinchGesture = useCallback((touchA, touchB) => {
+    const scrollNode = menuScrollRef.current;
+    if (!scrollNode || !touchA || !touchB) return;
+
+    const startDistance = getTouchDistance(touchA, touchB);
+    if (startDistance <= 0) return;
+
+    const midpoint = getTouchMidpoint(touchA, touchB);
+    const bounds = scrollNode.getBoundingClientRect();
+    const pointerX = midpoint.x - bounds.left;
+    const pointerY = midpoint.y - bounds.top;
+    const startScale = clamp(
+      Number(zoomScaleRef.current) || 1,
+      EDITOR_MIN_ZOOM_SCALE,
+      EDITOR_MAX_ZOOM_SCALE,
+    );
+
+    pinchGestureRef.current = {
+      active: true,
+      startDistance,
+      startScale,
+      anchorX: (scrollNode.scrollLeft + pointerX) / Math.max(startScale, 0.001),
+      anchorY: (scrollNode.scrollTop + pointerY) / Math.max(startScale, 0.001),
+    };
+  }, []);
+
+  const continuePinchGesture = useCallback(
+    (touchA, touchB) => {
+      const scrollNode = menuScrollRef.current;
+      if (!scrollNode || !touchA || !touchB || !pinchGestureRef.current.active) {
+        return;
+      }
+
+      const pinch = pinchGestureRef.current;
+      const distance = getTouchDistance(touchA, touchB);
+      if (distance <= 0 || pinch.startDistance <= 0) return;
+
+      const nextScale = clamp(
+        (distance / pinch.startDistance) * pinch.startScale,
+        EDITOR_MIN_ZOOM_SCALE,
+        EDITOR_MAX_ZOOM_SCALE,
+      );
+      if (Math.abs(nextScale - zoomScaleRef.current) < 0.005) return;
+
+      const midpoint = getTouchMidpoint(touchA, touchB);
+      const bounds = scrollNode.getBoundingClientRect();
+      const pointerX = midpoint.x - bounds.left;
+      const pointerY = midpoint.y - bounds.top;
+      const targetLeft = pinch.anchorX * nextScale - pointerX;
+      const targetTop = pinch.anchorY * nextScale - pointerY;
+
+      editor.setZoomScale(nextScale);
+
+      window.requestAnimationFrame(() => {
+        const liveScrollNode = menuScrollRef.current;
+        if (!liveScrollNode) return;
+        const maxLeft = Math.max(liveScrollNode.scrollWidth - liveScrollNode.clientWidth, 0);
+        const maxTop = Math.max(liveScrollNode.scrollHeight - liveScrollNode.clientHeight, 0);
+        liveScrollNode.scrollLeft = clamp(targetLeft, 0, maxLeft);
+        liveScrollNode.scrollTop = clamp(targetTop, 0, maxTop);
+        refreshScrollSnapshot();
+      });
+    },
+    [editor, refreshScrollSnapshot],
+  );
+
+  useEffect(() => {
+    const scrollNode = menuScrollRef.current;
+    if (!scrollNode) return undefined;
+
+    const onTouchStart = (event) => {
+      if (event.touches.length < 2) return;
+      startPinchGesture(event.touches[0], event.touches[1]);
+    };
+
+    const onTouchMove = (event) => {
+      if (event.touches.length < 2 || !pinchGestureRef.current.active) return;
+      event.preventDefault();
+      continuePinchGesture(event.touches[0], event.touches[1]);
+    };
+
+    const onTouchEnd = (event) => {
+      if (event.touches.length >= 2) {
+        startPinchGesture(event.touches[0], event.touches[1]);
+        return;
+      }
+      endPinchGesture();
+    };
+
+    scrollNode.addEventListener("touchstart", onTouchStart, { passive: true });
+    scrollNode.addEventListener("touchmove", onTouchMove, { passive: false });
+    scrollNode.addEventListener("touchend", onTouchEnd, { passive: true });
+    scrollNode.addEventListener("touchcancel", endPinchGesture, { passive: true });
+
+    return () => {
+      scrollNode.removeEventListener("touchstart", onTouchStart);
+      scrollNode.removeEventListener("touchmove", onTouchMove);
+      scrollNode.removeEventListener("touchend", onTouchEnd);
+      scrollNode.removeEventListener("touchcancel", endPinchGesture);
+    };
+  }, [continuePinchGesture, endPinchGesture, startPinchGesture]);
 
   const getOverlaySnapTargets = useCallback(
     (pageIndex, overlayKey) => {
@@ -491,7 +637,9 @@ export function RestaurantEditor({ editor, onNavigate, runtimeConfigHealth }) {
   const shouldIgnoreOverlayPointerStart = useCallback(
     (event, overlay) => {
       if (mappingEnabled) return true;
+      if (pinchGestureRef.current.active) return true;
       if (!overlay?._editorKey) return true;
+      if (event?.pointerType === "touch" && event?.isPrimary === false) return true;
       if (event?.type === "pointerdown" && event?.pointerType === "mouse") return true;
       if (event?.pointerType === "mouse" && event.button !== 0) return true;
       if (event?.type === "mousedown" && event.button !== 0) return true;
@@ -745,6 +893,8 @@ export function RestaurantEditor({ editor, onNavigate, runtimeConfigHealth }) {
     (event, pageIndex) => {
       if (!mappingEnabled) return;
       if (event.button !== 0) return;
+      if (pinchGestureRef.current.active) return;
+      if (event?.pointerType === "touch" && event?.isPrimary === false) return;
 
       const pageNode = pageRefs.current[pageIndex];
       if (!pageNode) return;
