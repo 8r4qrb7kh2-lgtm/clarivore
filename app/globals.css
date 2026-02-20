@@ -3042,7 +3042,7 @@ h2 {
     width: 100%;
   }
   .restaurant-editor-dish-ingredient-pills {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .restaurant-editor-dish-ingredient-status-col {
     justify-content: flex-start;
