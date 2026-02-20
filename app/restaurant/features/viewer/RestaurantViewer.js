@@ -175,6 +175,14 @@ function getTouchMidpoint(touchA, touchB) {
   };
 }
 
+const MOBILE_VIEWPORT_QUERY = "(max-width: 900px)";
+const MOBILE_FOCUS_ZOOM = 1.65;
+const MOBILE_DISH_PANEL_FALLBACK_HEIGHT = 220;
+const MOBILE_DISH_PANEL_FOCUS_GUTTER = 36;
+const MOBILE_DISH_PANEL_STABLE_DELAY_MS = 80;
+const MOBILE_DISH_VERTICAL_ANCHOR_RATIO = 0.3;
+const MENU_ZOOM_ANIMATION_MS = 260;
+
 export function RestaurantViewer({
   restaurant,
   viewer,
@@ -196,11 +204,18 @@ export function RestaurantViewer({
   const [draftGuestAllergenKeys, setDraftGuestAllergenKeys] = useState([]);
   const [draftGuestDietKeys, setDraftGuestDietKeys] = useState([]);
   const [menuZoomScale, setMenuZoomScale] = useState(1);
+  const [isMenuZoomAnimating, setIsMenuZoomAnimating] = useState(false);
+  const [isMobileViewport, setIsMobileViewport] = useState(false);
+  const [mobileDishPanelHeight, setMobileDishPanelHeight] = useState(0);
 
   const menuScrollRef = useRef(null);
   const pageRefs = useRef([]);
   const pageImageRefs = useRef([]);
+  const mobileDishPanelRef = useRef(null);
+  const mobileViewportRestoreRef = useRef(null);
   const menuZoomScaleRef = useRef(1);
+  const zoomAnimationTimerRef = useRef(null);
+  const scrollAnimationFrameRef = useRef(null);
   const pinchGestureRef = useRef({
     active: false,
     startDistance: 0,
@@ -238,6 +253,28 @@ export function RestaurantViewer({
     [restaurant?.last_confirmed],
   );
 
+  useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+    const mediaQuery = window.matchMedia(MOBILE_VIEWPORT_QUERY);
+    const syncViewportMode = () => {
+      setIsMobileViewport(mediaQuery.matches);
+    };
+
+    syncViewportMode();
+
+    if (typeof mediaQuery.addEventListener === "function") {
+      mediaQuery.addEventListener("change", syncViewportMode);
+      return () => {
+        mediaQuery.removeEventListener("change", syncViewportMode);
+      };
+    }
+
+    mediaQuery.addListener(syncViewportMode);
+    return () => {
+      mediaQuery.removeListener(syncViewportMode);
+    };
+  }, []);
+
   const {
     activePageIndex,
     scrollSnapshot,
@@ -255,6 +292,81 @@ export function RestaurantViewer({
     menuZoomScaleRef.current = menuZoomScale;
     refreshScrollSnapshot();
   }, [menuZoomScale, refreshScrollSnapshot]);
+
+  const startMenuZoomAnimation = useCallback(() => {
+    setIsMenuZoomAnimating(true);
+    if (zoomAnimationTimerRef.current) {
+      window.clearTimeout(zoomAnimationTimerRef.current);
+    }
+    zoomAnimationTimerRef.current = window.setTimeout(() => {
+      setIsMenuZoomAnimating(false);
+      zoomAnimationTimerRef.current = null;
+    }, MENU_ZOOM_ANIMATION_MS);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (!zoomAnimationTimerRef.current) return;
+      window.clearTimeout(zoomAnimationTimerRef.current);
+      zoomAnimationTimerRef.current = null;
+    };
+  }, []);
+
+  const stopScrollAnimation = useCallback(() => {
+    if (!scrollAnimationFrameRef.current) return;
+    window.cancelAnimationFrame(scrollAnimationFrameRef.current);
+    scrollAnimationFrameRef.current = null;
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      stopScrollAnimation();
+    };
+  }, [stopScrollAnimation]);
+
+  const animateMenuScrollTo = useCallback(
+    (target, durationMs = MENU_ZOOM_ANIMATION_MS) => {
+      const scrollNode = menuScrollRef.current;
+      if (!scrollNode || !target) return;
+
+      const endLeft = Number(target.left);
+      const endTop = Number(target.top);
+      if (!Number.isFinite(endLeft) || !Number.isFinite(endTop)) return;
+
+      const startLeft = scrollNode.scrollLeft;
+      const startTop = scrollNode.scrollTop;
+      const deltaLeft = endLeft - startLeft;
+      const deltaTop = endTop - startTop;
+
+      stopScrollAnimation();
+
+      if (
+        durationMs <= 0 ||
+        (Math.abs(deltaLeft) < 0.5 && Math.abs(deltaTop) < 0.5)
+      ) {
+        scrollNode.scrollTo({ left: endLeft, top: endTop, behavior: "auto" });
+        refreshScrollSnapshot();
+        return;
+      }
+
+      const startedAt = performance.now();
+      const step = (now) => {
+        const elapsed = now - startedAt;
+        const progress = clamp(elapsed / durationMs, 0, 1);
+        scrollNode.scrollLeft = startLeft + deltaLeft * progress;
+        scrollNode.scrollTop = startTop + deltaTop * progress;
+        refreshScrollSnapshot();
+        if (progress < 1) {
+          scrollAnimationFrameRef.current = window.requestAnimationFrame(step);
+          return;
+        }
+        scrollAnimationFrameRef.current = null;
+      };
+
+      scrollAnimationFrameRef.current = window.requestAnimationFrame(step);
+    },
+    [refreshScrollSnapshot, stopScrollAnimation],
+  );
 
   const endPinchGesture = useCallback(() => {
     if (!pinchGestureRef.current.active) return;
@@ -358,10 +470,17 @@ export function RestaurantViewer({
   ]);
 
   const centerOverlayInView = useCallback(
-    (overlay, behavior = "smooth") => {
+    (overlay, options = {}) => {
       if (!overlay) return;
       const scrollNode = menuScrollRef.current;
       if (!scrollNode) return;
+      const {
+        behavior = "smooth",
+        viewportBottomInset = 0,
+        verticalAnchorRatio = 0.5,
+        targetScale = menuZoomScaleRef.current,
+        returnTargetOnly = false,
+      } = options;
 
       const pageIndex = clamp(
         Number(overlay.pageIndex) || 0,
@@ -372,25 +491,177 @@ export function RestaurantViewer({
       if (!pageNode) return;
 
       const pageHeight = Math.max(pageNode.offsetHeight, 1);
+      const pageWidth = Math.max(pageNode.offsetWidth, 1);
+      const overlayLeft =
+        pageNode.offsetLeft +
+        (parseOverlayNumber(overlay.x) / 100) * pageWidth;
       const overlayTop =
         pageNode.offsetTop +
         (parseOverlayNumber(overlay.y) / 100) * pageHeight;
+      const overlayWidth =
+        (parseOverlayNumber(overlay.w) / 100) * pageWidth;
       const overlayHeight =
         (parseOverlayNumber(overlay.h) / 100) * pageHeight;
-      const overlayCenter = overlayTop + overlayHeight / 2;
-      const targetTop = overlayCenter - scrollNode.clientHeight / 2;
-      const maxScroll = Math.max(
-        scrollNode.scrollHeight - scrollNode.clientHeight,
+      const currentScale = Math.max(menuZoomScaleRef.current, 0.001);
+      const safeTargetScale = clamp(Number(targetScale) || currentScale, 1, 3);
+      const scaleRatio = safeTargetScale / currentScale;
+      const overlayCenterX = (overlayLeft + overlayWidth / 2) * scaleRatio;
+      const overlayCenterY = (overlayTop + overlayHeight / 2) * scaleRatio;
+      const clampedInset = clamp(
+        Number(viewportBottomInset) || 0,
+        0,
+        Math.max(scrollNode.clientHeight - 40, 0),
+      );
+      const visibleHeight = Math.max(scrollNode.clientHeight - clampedInset, 1);
+      const anchorRatio = clamp(Number(verticalAnchorRatio) || 0.5, 0.2, 0.8);
+      const targetTop = overlayCenterY - visibleHeight * anchorRatio;
+      const targetLeft = overlayCenterX - scrollNode.clientWidth / 2;
+      const maxScrollTop = Math.max(
+        scrollNode.scrollHeight * scaleRatio - scrollNode.clientHeight,
         0,
       );
+      const maxScrollLeft = Math.max(
+        scrollNode.scrollWidth * scaleRatio - scrollNode.clientWidth,
+        0,
+      );
+      const clampedTarget = {
+        top: clamp(targetTop, 0, maxScrollTop),
+        left: clamp(targetLeft, 0, maxScrollLeft),
+      };
+
+      if (returnTargetOnly) {
+        return clampedTarget;
+      }
 
       scrollNode.scrollTo({
-        top: clamp(targetTop, 0, maxScroll),
+        top: clampedTarget.top,
+        left: clampedTarget.left,
         behavior,
       });
+      refreshScrollSnapshot();
+      return clampedTarget;
     },
-    [viewer.pageCount],
+    [refreshScrollSnapshot, viewer.pageCount],
   );
+
+  const focusOverlayForCurrentViewport = useCallback(
+    (overlay, options = {}) => {
+      if (!overlay) return;
+      const desktopBehavior = options?.behavior === "auto" ? "auto" : "smooth";
+      const mobileBehavior = options?.behavior === "smooth" ? "smooth" : "auto";
+      const overrideInsetRaw = Number(options?.viewportBottomInset);
+      const hasOverrideInset = Number.isFinite(overrideInsetRaw);
+      const viewportBottomInset = isMobileViewport
+        ? hasOverrideInset
+          ? Math.max(0, overrideInsetRaw)
+          : Math.max(mobileDishPanelHeight, MOBILE_DISH_PANEL_FALLBACK_HEIGHT) +
+            MOBILE_DISH_PANEL_FOCUS_GUTTER
+        : 0;
+      const recenter = (behavior = isMobileViewport ? mobileBehavior : desktopBehavior) => {
+        centerOverlayInView(overlay, {
+          behavior,
+          viewportBottomInset,
+          verticalAnchorRatio: isMobileViewport ? MOBILE_DISH_VERTICAL_ANCHOR_RATIO : 0.5,
+        });
+      };
+
+      if (!isMobileViewport) {
+        recenter(desktopBehavior);
+        return;
+      }
+
+      const targetScale = clamp(
+        Math.max(menuZoomScaleRef.current, MOBILE_FOCUS_ZOOM),
+        1,
+        3,
+      );
+
+      if (Math.abs(targetScale - menuZoomScaleRef.current) > 0.02) {
+        const target = centerOverlayInView(overlay, {
+          behavior: "auto",
+          viewportBottomInset,
+          verticalAnchorRatio: MOBILE_DISH_VERTICAL_ANCHOR_RATIO,
+          targetScale,
+          returnTargetOnly: true,
+        });
+        if (!target) return;
+        startMenuZoomAnimation();
+        setMenuZoomScale(targetScale);
+        animateMenuScrollTo(target, MENU_ZOOM_ANIMATION_MS);
+        return;
+      }
+
+      recenter(mobileBehavior);
+    },
+    [
+      animateMenuScrollTo,
+      centerOverlayInView,
+      isMobileViewport,
+      mobileDishPanelHeight,
+      startMenuZoomAnimation,
+    ],
+  );
+
+  const captureViewportForMobileDishFocus = useCallback(() => {
+    const scrollNode = menuScrollRef.current;
+    if (!scrollNode) return;
+    mobileViewportRestoreRef.current = {
+      scale: menuZoomScaleRef.current,
+      left: scrollNode.scrollLeft,
+      top: scrollNode.scrollTop,
+    };
+  }, []);
+
+  const restoreViewportAfterMobileDishClose = useCallback(() => {
+    const scrollNode = menuScrollRef.current;
+    const snapshot = mobileViewportRestoreRef.current;
+    if (!scrollNode || !snapshot) return;
+    mobileViewportRestoreRef.current = null;
+
+    const applySnapshot = (behavior = "auto") => {
+      const maxLeft = Math.max(scrollNode.scrollWidth - scrollNode.clientWidth, 0);
+      const maxTop = Math.max(scrollNode.scrollHeight - scrollNode.clientHeight, 0);
+      scrollNode.scrollTo({
+        left: clamp(Number(snapshot.left) || 0, 0, maxLeft),
+        top: clamp(Number(snapshot.top) || 0, 0, maxTop),
+        behavior,
+      });
+      refreshScrollSnapshot();
+    };
+
+    const targetScale = clamp(Number(snapshot.scale) || 1, 1, 3);
+    if (Math.abs(targetScale - menuZoomScaleRef.current) > 0.02) {
+      const currentScale = Math.max(menuZoomScaleRef.current, 0.001);
+      const scaleRatio = targetScale / currentScale;
+      const maxLeftAtTarget = Math.max(
+        scrollNode.scrollWidth * scaleRatio - scrollNode.clientWidth,
+        0,
+      );
+      const maxTopAtTarget = Math.max(
+        scrollNode.scrollHeight * scaleRatio - scrollNode.clientHeight,
+        0,
+      );
+      const target = {
+        left: clamp(Number(snapshot.left) || 0, 0, maxLeftAtTarget),
+        top: clamp(Number(snapshot.top) || 0, 0, maxTopAtTarget),
+      };
+      startMenuZoomAnimation();
+      setMenuZoomScale(targetScale);
+      animateMenuScrollTo(target, MENU_ZOOM_ANIMATION_MS);
+      return;
+    }
+
+    window.requestAnimationFrame(() => {
+      applySnapshot("auto");
+    });
+  }, [animateMenuScrollTo, refreshScrollSnapshot, startMenuZoomAnimation]);
+
+  const closeDishDetails = useCallback(() => {
+    setSelectedOverlay(null);
+    if (isMobileViewport) {
+      restoreViewportAfterMobileDishClose();
+    }
+  }, [isMobileViewport, restoreViewportAfterMobileDishClose]);
 
   const jumpFromMinimap = useCallback(
     (event) => {
@@ -457,7 +728,10 @@ export function RestaurantViewer({
     acknowledgedReferenceNote,
     activePageIndex,
     scrollSnapshot.clientHeight,
+    scrollSnapshot.clientWidth,
     scrollSnapshot.scrollHeight,
+    scrollSnapshot.scrollLeft,
+    scrollSnapshot.scrollWidth,
     scrollSnapshot.scrollTop,
     viewer.menuPages.length,
   ]);
@@ -486,6 +760,9 @@ export function RestaurantViewer({
     pageImageRefs.current[selectedDishPageIndex] ||
     pageRefs.current[selectedDishPageIndex];
   const selectedDishPopupStyle = useMemo(() => {
+    if (isMobileViewport) {
+      return undefined;
+    }
     const scrollNode = menuScrollRef.current;
     if (!selectedDish || !selectedDishPageNode || !scrollNode) {
       return {
@@ -538,6 +815,7 @@ export function RestaurantViewer({
       left: `${safeLeft}px`,
     };
   }, [
+    isMobileViewport,
     scrollSnapshot.scrollTop,
     scrollSnapshot.clientHeight,
     selectedDish,
@@ -581,6 +859,65 @@ export function RestaurantViewer({
       setDraftGuestDietKeys(savedDietKeys);
     }
   }, [allowGuestPreferenceEditing, isEditingGuestDiets, savedDietKeys]);
+
+  useEffect(() => {
+    if (!isMobileViewport || !selectedDish) {
+      setMobileDishPanelHeight(0);
+      return undefined;
+    }
+
+    const panelNode = mobileDishPanelRef.current;
+    if (!panelNode) return undefined;
+
+    const syncPanelHeight = () => {
+      const next = panelNode.getBoundingClientRect().height || 0;
+      setMobileDishPanelHeight(next);
+    };
+
+    syncPanelHeight();
+
+    if (typeof ResizeObserver === "function") {
+      const observer = new ResizeObserver(syncPanelHeight);
+      observer.observe(panelNode);
+      return () => {
+        observer.disconnect();
+      };
+    }
+
+    window.addEventListener("resize", syncPanelHeight);
+    return () => {
+      window.removeEventListener("resize", syncPanelHeight);
+    };
+  }, [isMobileViewport, selectedDish, selectedOverlaySignature]);
+
+  useEffect(() => {
+    if (!acknowledgedReferenceNote || !isMobileViewport || !selectedDish) {
+      return undefined;
+    }
+
+    if (mobileDishPanelHeight <= 0) {
+      return undefined;
+    }
+
+    const viewportBottomInset = mobileDishPanelHeight + MOBILE_DISH_PANEL_FOCUS_GUTTER;
+    const timer = window.setTimeout(() => {
+      focusOverlayForCurrentViewport(selectedDish, {
+        behavior: "auto",
+        viewportBottomInset,
+      });
+    }, MOBILE_DISH_PANEL_STABLE_DELAY_MS);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [
+    acknowledgedReferenceNote,
+    focusOverlayForCurrentViewport,
+    isMobileViewport,
+    mobileDishPanelHeight,
+    selectedDish,
+    selectedOverlaySignature,
+  ]);
 
   const persistGuestSelections = useCallback(
     ({ allergens, diets }) => {
@@ -672,7 +1009,9 @@ export function RestaurantViewer({
               <span
                 className="restaurant-page-thumb-viewport"
                 style={{
+                  left: `${minimapViewport.leftRatio * 100}%`,
                   top: `${minimapViewport.topRatio * 100}%`,
+                  width: `${minimapViewport.widthRatio * 100}%`,
                   height: `${minimapViewport.heightRatio * 100}%`,
                 }}
               />
@@ -866,7 +1205,7 @@ export function RestaurantViewer({
           }`}
         >
           <div
-            className="restaurant-menu-track"
+            className={`restaurant-menu-track ${isMenuZoomAnimating ? "is-zoom-animating" : ""}`}
             style={{ "--menu-zoom-scale": menuZoomScale }}
           >
             {viewer.menuPages.map((page) => (
@@ -898,12 +1237,14 @@ export function RestaurantViewer({
                     aria-label={overlay.name || overlay.id || "Dish"}
                     onClick={() => {
                       if (!acknowledgedReferenceNote) return;
+                      if (isMobileViewport && !selectedOverlay) {
+                        captureViewportForMobileDishFocus();
+                      }
                       viewer.selectDish(overlay.id);
                       setSelectedOverlay(overlay);
-                      centerOverlayInView(overlay, "smooth");
-                      window.requestAnimationFrame(() => {
-                        centerOverlayInView(overlay, "auto");
-                      });
+                      if (!isMobileViewport) {
+                        focusOverlayForCurrentViewport(overlay);
+                      }
                     }}
                     className={`restaurant-overlay ${
                       selectedOverlaySignature &&
@@ -932,26 +1273,32 @@ export function RestaurantViewer({
         </div>
 
         {acknowledgedReferenceNote && selectedDish ? (
-          <aside className="restaurant-dish-popover" style={selectedDishPopupStyle}>
+          <aside
+            ref={isMobileViewport ? mobileDishPanelRef : null}
+            className={`restaurant-dish-popover ${isMobileViewport ? "is-mobile" : ""}`}
+            style={isMobileViewport ? undefined : selectedDishPopupStyle}
+          >
             <header className="restaurant-dish-popover-header">
-              <h2>{selectedDish.name || "Dish details"}</h2>
-              <div className="restaurant-dish-popover-actions">
+              <div className="restaurant-dish-popover-title-wrap">
+                <h2>{selectedDish.name || "Dish details"}</h2>
                 <button
                   type="button"
+                  className="restaurant-dish-popover-favorite-btn"
                   aria-label="Toggle favorite dish"
                   onClick={() => viewer.toggleFavoriteDish(selectedDish)}
                   disabled={favoriteBusyDish === selectedDish.id}
                 >
                   {lovedDishes.has(selectedDish.id) ? "♥" : "♡"}
                 </button>
-                <button
-                  type="button"
-                  aria-label="Close dish details"
-                  onClick={() => setSelectedOverlay(null)}
-                >
-                  ×
-                </button>
               </div>
+              <button
+                type="button"
+                className="restaurant-dish-popover-close-btn"
+                aria-label="Close dish details"
+                onClick={closeDishDetails}
+              >
+                ×
+              </button>
             </header>
 
             <div className="restaurant-dish-popover-body">
@@ -998,6 +1345,7 @@ export function RestaurantViewer({
               className="restaurant-dish-order-btn"
               onClick={() => {
                 viewer.addDishToOrder(selectedDish);
+                closeDishDetails();
               }}
             >
               Add to order

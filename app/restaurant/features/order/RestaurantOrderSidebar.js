@@ -55,9 +55,11 @@ function statusTone(status) {
 const SIDEBAR_COLLAPSED_HEIGHT = 72;
 const SIDEBAR_MIN_OPEN_HEIGHT = SIDEBAR_COLLAPSED_HEIGHT;
 const SIDEBAR_RESIZE_STEP = 28;
-const SIDEBAR_MAX_HEIGHT = 560;
+const SIDEBAR_MAX_HEIGHT = 620;
 const SIDEBAR_DEFAULT_VIEWPORT_RATIO = 0.5;
 const SIDEBAR_COLLAPSE_THRESHOLD = SIDEBAR_COLLAPSED_HEIGHT + 10;
+const SIDEBAR_MIN_EXPANDED_HEIGHT = SIDEBAR_COLLAPSED_HEIGHT + 28;
+const SIDEBAR_BOTTOM_BREATHING_ROOM = 14;
 
 function getViewportHeight() {
   if (typeof window === "undefined") return 900;
@@ -84,11 +86,16 @@ export function RestaurantOrderSidebar({
       : SIDEBAR_COLLAPSED_HEIGHT,
   );
   const [isResizing, setIsResizing] = useState(false);
+  const [contentPreferredHeight, setContentPreferredHeight] = useState(0);
+  const headerRef = useRef(null);
+  const contentRef = useRef(null);
   const dragStateRef = useRef({
     active: false,
     startY: 0,
     startHeight: SIDEBAR_COLLAPSED_HEIGHT,
     lastHeight: SIDEBAR_COLLAPSED_HEIGHT,
+    startedCollapsed: false,
+    dragDistance: 0,
   });
 
   useEffect(() => {
@@ -121,10 +128,27 @@ export function RestaurantOrderSidebar({
   const hasCompletedNotices = completedNotices.length > 0;
   const computedBadgeCount = pendingNoticeCount + activeNoticeCount;
   const minOpenHeight = SIDEBAR_MIN_OPEN_HEIGHT;
+  const showDrawerContent = isOpen;
+  const measurePreferredHeight = useCallback(() => {
+    const headerNode = headerRef.current;
+    const contentNode = contentRef.current;
+    if (!headerNode || !contentNode) return;
+    const headerHeight = Math.round(headerNode.getBoundingClientRect().height || 0);
+    const contentHeight = Math.round(contentNode.scrollHeight || 0);
+    const nextPreferredHeight = headerHeight + contentHeight + SIDEBAR_BOTTOM_BREATHING_ROOM;
+    if (nextPreferredHeight > 0) {
+      setContentPreferredHeight(nextPreferredHeight);
+    }
+  }, []);
+
   const maxDrawerHeight = useMemo(() => {
-    const viewportBound = Math.round(viewportHeight * 0.78);
-    return Math.max(minOpenHeight + 140, Math.min(SIDEBAR_MAX_HEIGHT, viewportBound));
-  }, [minOpenHeight, viewportHeight]);
+    const viewportBound = Math.round(viewportHeight * 0.82);
+    const hardLimit = Math.min(SIDEBAR_MAX_HEIGHT, viewportBound);
+    const contentLimit = contentPreferredHeight > 0
+      ? Math.min(contentPreferredHeight, hardLimit)
+      : hardLimit;
+    return Math.max(SIDEBAR_MIN_EXPANDED_HEIGHT, contentLimit);
+  }, [contentPreferredHeight, viewportHeight]);
   const defaultDrawerHeight = useMemo(() => {
     const viewportDefault = Math.round(viewportHeight * SIDEBAR_DEFAULT_VIEWPORT_RATIO);
     return Math.min(maxDrawerHeight, Math.max(minOpenHeight + 120, viewportDefault));
@@ -137,7 +161,6 @@ export function RestaurantOrderSidebar({
     ? clampDrawerHeight(drawerHeight)
     : SIDEBAR_COLLAPSED_HEIGHT;
   const isCollapsed = !isOpen || drawerDisplayHeight <= SIDEBAR_COLLAPSED_HEIGHT + 2;
-  const showDrawerContent = isOpen && !isCollapsed;
   const confirmRows = useMemo(
     () =>
       confirmDishNames.map((dishName) => ({
@@ -174,6 +197,35 @@ export function RestaurantOrderSidebar({
   }, []);
 
   useEffect(() => {
+    if (!showDrawerContent) return;
+    measurePreferredHeight();
+    const frame = window.requestAnimationFrame(measurePreferredHeight);
+    return () => {
+      window.cancelAnimationFrame(frame);
+    };
+  }, [
+    measurePreferredHeight,
+    noticeActionErrorMessage,
+    orderFlow.checkedDishNames.length,
+    orderFlow.selectedDishNames.length,
+    rescindConfirmNoticeId,
+    showDrawerContent,
+  ]);
+
+  useEffect(() => {
+    if (!showDrawerContent || typeof ResizeObserver !== "function") return;
+    const nodes = [headerRef.current, contentRef.current].filter(Boolean);
+    if (!nodes.length) return;
+    const observer = new ResizeObserver(() => {
+      measurePreferredHeight();
+    });
+    nodes.forEach((node) => observer.observe(node));
+    return () => {
+      observer.disconnect();
+    };
+  }, [measurePreferredHeight, showDrawerContent]);
+
+  useEffect(() => {
     if (!rescindConfirmNoticeId) return;
     const stillVisible = activeNotices.some(
       (notice) => trim(notice.id) === trim(rescindConfirmNoticeId),
@@ -206,6 +258,10 @@ export function RestaurantOrderSidebar({
       if (!dragStateRef.current.active) return;
       const deltaY = dragStateRef.current.startY - event.clientY;
       const nextHeight = clampDrawerHeight(dragStateRef.current.startHeight + deltaY);
+      dragStateRef.current.dragDistance = Math.max(
+        dragStateRef.current.dragDistance,
+        Math.abs(deltaY),
+      );
       dragStateRef.current.lastHeight = nextHeight;
       setDrawerHeight(nextHeight);
     },
@@ -219,9 +275,14 @@ export function RestaurantOrderSidebar({
       onResizeMove(event);
     };
     const handlePointerUp = () => {
-      if (dragStateRef.current.lastHeight <= SIDEBAR_COLLAPSE_THRESHOLD) {
+      const shouldCollapse =
+        dragStateRef.current.lastHeight <= SIDEBAR_COLLAPSE_THRESHOLD &&
+        (!dragStateRef.current.startedCollapsed || dragStateRef.current.dragDistance > 24);
+      if (shouldCollapse) {
         onToggleOpen?.();
         setDrawerHeight(SIDEBAR_COLLAPSED_HEIGHT);
+      } else {
+        setDrawerHeight(clampDrawerHeight(dragStateRef.current.lastHeight));
       }
       stopResizing();
     };
@@ -242,7 +303,7 @@ export function RestaurantOrderSidebar({
       document.body.style.userSelect = previousUserSelect;
       document.body.style.cursor = previousCursor;
     };
-  }, [isResizing, onResizeMove, onToggleOpen, stopResizing]);
+  }, [clampDrawerHeight, isResizing, onResizeMove, onToggleOpen, stopResizing]);
 
   const removeDish = useCallback(
     (dishName) => {
@@ -347,17 +408,21 @@ export function RestaurantOrderSidebar({
       if (event.button !== undefined && event.button !== 0) return;
 
       event.preventDefault();
+      const startedCollapsed = !isOpen;
+      const startHeight = drawerDisplayHeight;
       dragStateRef.current = {
         active: true,
         startY: event.clientY,
-        startHeight: drawerDisplayHeight,
-        lastHeight: drawerDisplayHeight,
+        startHeight,
+        lastHeight: startHeight,
+        startedCollapsed,
+        dragDistance: 0,
       };
       setIsResizing(true);
 
-      if (!isOpen) {
+      if (startedCollapsed) {
         onToggleOpen?.();
-        setDrawerHeight(SIDEBAR_COLLAPSED_HEIGHT);
+        setDrawerHeight(startHeight);
       }
     },
     [drawerDisplayHeight, isOpen, onToggleOpen],
@@ -416,14 +481,14 @@ export function RestaurantOrderSidebar({
         className={`restaurant-order-sidebar ${isCollapsed ? "minimized" : "open"} ${isResizing ? "resizing" : ""}`}
         style={{ height: `${drawerDisplayHeight}px` }}
       >
-        <div className="restaurant-order-sidebar-header">
+        <div className="restaurant-order-sidebar-header" ref={headerRef}>
           <div
             className="restaurant-order-sidebar-resize-handle"
             role="separator"
             aria-label={
               isOpen
-                ? "Drag to resize pending notices"
-                : "Drag up to open pending notices"
+                ? "Drag to resize notice dashboard"
+                : "Drag up to open notice dashboard"
             }
             aria-orientation="horizontal"
             aria-valuemin={minOpenHeight}
@@ -436,7 +501,7 @@ export function RestaurantOrderSidebar({
             <span />
           </div>
           <div className="restaurant-order-sidebar-title-row">
-            <h2 className="restaurant-order-sidebar-title">Pending notices</h2>
+            <h2 className="restaurant-order-sidebar-title">Notice dashboard</h2>
             <div className="restaurant-order-sidebar-title-actions">
               <Button
                 size="compact"
@@ -457,7 +522,7 @@ export function RestaurantOrderSidebar({
         </div>
 
         {showDrawerContent ? (
-          <div className="restaurant-order-sidebar-content">
+          <div className="restaurant-order-sidebar-content" ref={contentRef}>
             {hasActiveNotices ? (
               <section className="restaurant-order-sidebar-section">
                 <div className="restaurant-order-sidebar-section-head">

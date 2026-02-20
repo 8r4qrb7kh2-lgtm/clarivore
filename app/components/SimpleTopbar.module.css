@@ -99,6 +99,10 @@
   overflow-y: visible;
 }
 
+.editorNav {
+  /* Marker class for editor-mode specific compact sizing on mobile. */
+}
+
 .pill {
   display: inline-flex;
   align-items: center;
@@ -297,8 +301,16 @@
     line-height: 1;
   }
 
+  .editorNav .pill,
+  .editorNav .groupTrigger {
+    padding: 8px 4px;
+    font-size: 0.68rem;
+    line-height: 0.98;
+  }
+
   .groupTrigger {
     justify-content: center;
+    gap: 3px;
   }
 
   .caret {
@@ -339,6 +351,16 @@
   .groupTrigger {
     font-size: 0.67rem;
     padding: 8px 3px;
+  }
+
+  .editorNav .pill,
+  .editorNav .groupTrigger {
+    font-size: 0.62rem;
+    padding: 7px 2px;
+  }
+
+  .editorNav .groupTrigger {
+    gap: 2px;
   }
 
   .authLink {

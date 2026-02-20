@@ -27,11 +27,23 @@ function itemKey(item, fallback) {
   return String(item?.id || item?.key || fallback);
 }
 
-function computeMobilePillFlex(label) {
-  const text = String(label || "").trim();
+function computeMobilePillFlex(item) {
+  const text = String(item?.label || "").trim();
   if (!text) return 1;
+
   const length = text.length;
-  return Math.min(Math.max(length / 6, 1), 3);
+  let flex = 1 + Math.min(length, 20) / 10;
+
+  if (item?.type === "group") {
+    // Group pills include a caret and need a bit more room on mobile.
+    flex += 0.35;
+  }
+
+  if (length <= 4) {
+    flex -= 0.15;
+  }
+
+  return Math.min(Math.max(flex, 1), 2.7);
 }
 
 function isAccountNavItem(item) {
@@ -152,6 +164,10 @@ export default function SimpleTopbar({
     : null;
 
   const visibleItems = items.filter(isVisible);
+  const isEditorNavigation = visibleItems.some((item) => {
+    const itemId = String(item?.id || item?.key || "").toLowerCase();
+    return itemId === "dashboard" || itemId === "webpage-editor" || itemId === "tablet-pages";
+  });
   const hasAccountNavItem = visibleItems.some((item) => isAccountNavItem(item));
   const shouldShowAuthAction = Boolean(
     authAction && !(authAction.type === "action" && hasAccountNavItem),
@@ -185,11 +201,11 @@ export default function SimpleTopbar({
         ) : null}
 
         {showNav ? (
-          <nav className={styles.nav}>
+          <nav className={`${styles.nav} ${isEditorNavigation ? styles.editorNav : ""}`.trim()}>
             {visibleItems.map((item, index) => {
               const key = itemKey(item, `item-${index}`);
               const pillStyle = {
-                "--pill-flex-grow": computeMobilePillFlex(item?.label),
+                "--pill-flex-grow": computeMobilePillFlex(item),
               };
               if (item.type === "group") {
                 const groupItems = Array.isArray(item.items) ? item.items.filter(isVisible) : [];

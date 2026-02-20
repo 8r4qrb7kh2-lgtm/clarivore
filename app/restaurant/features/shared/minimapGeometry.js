@@ -5,15 +5,23 @@ function clamp(value, min, max) {
 function getPageMetrics(scrollNode, pageNode) {
   if (!scrollNode || !pageNode) return null;
 
+  const viewportLeft = Math.max(Number(scrollNode.scrollLeft) || 0, 0);
   const viewportTop = Math.max(Number(scrollNode.scrollTop) || 0, 0);
+  const viewportWidth = Math.max(Number(scrollNode.clientWidth) || 0, 1);
   const viewportHeight = Math.max(Number(scrollNode.clientHeight) || 0, 1);
+  const pageLeft = Math.max(Number(pageNode.offsetLeft) || 0, 0);
   const pageTop = Math.max(Number(pageNode.offsetTop) || 0, 0);
+  const pageWidth = Math.max(Number(pageNode.offsetWidth) || 0, 1);
   const pageHeight = Math.max(Number(pageNode.offsetHeight) || 0, 1);
 
   return {
+    viewportLeft,
     viewportTop,
+    viewportWidth,
     viewportHeight,
+    pageLeft,
     pageTop,
+    pageWidth,
     pageHeight,
   };
 }
@@ -22,24 +30,40 @@ export function computeVisibleSliceForPage(scrollNode, pageNode) {
   const metrics = getPageMetrics(scrollNode, pageNode);
   if (!metrics) return null;
 
+  const viewportRight = metrics.viewportLeft + metrics.viewportWidth;
   const viewportBottom = metrics.viewportTop + metrics.viewportHeight;
+  const pageRight = metrics.pageLeft + metrics.pageWidth;
   const pageBottom = metrics.pageTop + metrics.pageHeight;
 
+  const visibleLeft = clamp(
+    Math.max(metrics.viewportLeft, metrics.pageLeft) - metrics.pageLeft,
+    0,
+    metrics.pageWidth,
+  );
   const visibleTop = clamp(
     Math.max(metrics.viewportTop, metrics.pageTop) - metrics.pageTop,
     0,
     metrics.pageHeight,
+  );
+  const visibleRight = clamp(
+    Math.min(viewportRight, pageRight) - metrics.pageLeft,
+    0,
+    metrics.pageWidth,
   );
   const visibleBottom = clamp(
     Math.min(viewportBottom, pageBottom) - metrics.pageTop,
     0,
     metrics.pageHeight,
   );
+  const visibleWidth = Math.max(visibleRight - visibleLeft, 0);
   const visibleHeight = Math.max(visibleBottom - visibleTop, 0);
 
   return {
+    offsetLeft: visibleLeft,
     offsetTop: visibleTop,
+    visibleWidth,
     visibleHeight,
+    pageWidth: metrics.pageWidth,
     pageHeight: metrics.pageHeight,
   };
 }
@@ -130,15 +154,20 @@ export function resolveMostVisiblePageIndex(scrollNode, pageNodes, fallbackIndex
 export function buildMinimapViewport(scrollNode, pageNode) {
   const slice = computeVisibleSliceForPage(scrollNode, pageNode);
   if (!slice) {
-    return { topRatio: 0, heightRatio: 0.2 };
+    return { leftRatio: 0, topRatio: 0, widthRatio: 1, heightRatio: 0.2 };
   }
 
+  const pageWidth = Math.max(slice.pageWidth, 1);
   const pageHeight = Math.max(slice.pageHeight, 1);
+  const leftRatio = clamp(slice.offsetLeft / pageWidth, 0, 1);
   const topRatio = clamp(slice.offsetTop / pageHeight, 0, 1);
+  const widthRatio = clamp(slice.visibleWidth / pageWidth, 0.03, 1);
   const heightRatio = clamp(slice.visibleHeight / pageHeight, 0.03, 1);
 
   return {
+    leftRatio: clamp(leftRatio, 0, Math.max(1 - widthRatio, 0)),
     topRatio: clamp(topRatio, 0, Math.max(1 - heightRatio, 0)),
+    widthRatio,
     heightRatio,
   };
 }

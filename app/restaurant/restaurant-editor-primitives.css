@@ -140,6 +140,19 @@
   text-align: center;
 }
 
+.restaurant-content .editorInlineDualButtons {
+  display: flex;
+  gap: 8px;
+  min-width: 0;
+}
+
+.restaurant-content .editorActionCompact {
+  font-size: 0.62rem !important;
+  line-height: 1.05 !important;
+  padding: 2px 6px !important;
+  min-height: 26px;
+}
+
 .restaurant-content .editorNoteRow {
   display: flex;
   justify-content: space-between;
@@ -275,6 +288,12 @@
 
   .restaurant-content .editorToolbar {
     width: 100%;
+  }
+
+  .restaurant-content .editorActionCompact {
+    font-size: 0.58rem !important;
+    padding: 2px 5px !important;
+    min-height: 24px;
   }
 
   .restaurant-content .editorNoteRow {

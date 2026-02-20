@@ -18,8 +18,11 @@ export function useMinimapSync({
   onActivePageChange,
 }) {
   const [scrollSnapshot, setScrollSnapshot] = useState({
+    scrollLeft: 0,
     scrollTop: 0,
+    scrollWidth: 1,
     scrollHeight: 1,
+    clientWidth: 1,
     clientHeight: 1,
   });
   const [activePageIndex, setActivePageIndex] = useState(() =>
@@ -44,15 +47,21 @@ export function useMinimapSync({
     if (!scrollNode) return;
 
     const next = {
+      scrollLeft: scrollNode.scrollLeft,
       scrollTop: scrollNode.scrollTop,
+      scrollWidth: Math.max(scrollNode.scrollWidth, 1),
       scrollHeight: Math.max(scrollNode.scrollHeight, 1),
+      clientWidth: Math.max(scrollNode.clientWidth, 1),
       clientHeight: Math.max(scrollNode.clientHeight, 1),
     };
 
     setScrollSnapshot((current) => {
       if (
+        current.scrollLeft === next.scrollLeft &&
         current.scrollTop === next.scrollTop &&
+        current.scrollWidth === next.scrollWidth &&
         current.scrollHeight === next.scrollHeight &&
+        current.clientWidth === next.clientWidth &&
         current.clientHeight === next.clientHeight
       ) {
         return current;

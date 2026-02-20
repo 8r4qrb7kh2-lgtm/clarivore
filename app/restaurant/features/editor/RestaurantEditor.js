@@ -383,7 +383,13 @@ export function RestaurantEditor({ editor, onNavigate, runtimeConfigHealth }) {
       pageRefs.current[minimapActivePageIndex] ||
       pageImageRefs.current[minimapActivePageIndex];
     return buildMinimapViewport(scrollNode, pageNode);
-  }, [minimapActivePageIndex, scrollSnapshot.clientHeight, scrollSnapshot.scrollTop]);
+  }, [
+    minimapActivePageIndex,
+    scrollSnapshot.clientHeight,
+    scrollSnapshot.clientWidth,
+    scrollSnapshot.scrollLeft,
+    scrollSnapshot.scrollTop,
+  ]);
 
   const jumpFromMinimap = useCallback(
     (event) => {
@@ -851,7 +857,9 @@ export function RestaurantEditor({ editor, onNavigate, runtimeConfigHealth }) {
                   <span
                     className="restaurant-page-thumb-viewport"
                     style={{
+                      left: `${minimapViewport.leftRatio * 100}%`,
                       top: `${minimapViewport.topRatio * 100}%`,
+                      width: `${minimapViewport.widthRatio * 100}%`,
                       height: `${minimapViewport.heightRatio * 100}%`,
                     }}
                   />
@@ -868,23 +876,23 @@ export function RestaurantEditor({ editor, onNavigate, runtimeConfigHealth }) {
                   <div className="editorGroup">
                     <div className="editorGroupLabel">Editing</div>
                     <div className="editorGroupButtons">
-                      <button className="btn btnPrimary" onClick={editor.addOverlay}>
+                      <button className="btn btnPrimary editorActionCompact" onClick={editor.addOverlay}>
                         + Add overlay
                       </button>
-                      <div style={{ display: "flex", gap: 8 }}>
+                      <div className="editorInlineDualButtons">
                         <button
-                          className="btn"
+                          className="btn editorActionCompact"
                           onClick={editor.undo}
                           disabled={!editor.canUndo}
-                          style={{ flex: 1, width: "auto", opacity: editor.canUndo ? 1 : 0.5 }}
+                          style={{ flex: 1, width: "auto", minWidth: 0, opacity: editor.canUndo ? 1 : 0.5 }}
                         >
                           ↶ Undo
                         </button>
                         <button
-                          className="btn"
+                          className="btn editorActionCompact"
                           onClick={editor.redo}
                           disabled={!editor.canRedo}
-                          style={{ flex: 1, width: "auto", opacity: editor.canRedo ? 1 : 0.5 }}
+                          style={{ flex: 1, width: "auto", minWidth: 0, opacity: editor.canRedo ? 1 : 0.5 }}
                         >
                           ↷ Redo
                         </button>
