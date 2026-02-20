@@ -144,15 +144,19 @@ export function RestaurantOrderSidebar({
   const maxDrawerHeight = useMemo(() => {
     const viewportBound = Math.round(viewportHeight * 0.82);
     const hardLimit = Math.min(SIDEBAR_MAX_HEIGHT, viewportBound);
-    const contentLimit = contentPreferredHeight > 0
-      ? Math.min(contentPreferredHeight, hardLimit)
-      : hardLimit;
-    return Math.max(SIDEBAR_MIN_EXPANDED_HEIGHT, contentLimit);
-  }, [contentPreferredHeight, viewportHeight]);
+    return Math.max(SIDEBAR_MIN_EXPANDED_HEIGHT, hardLimit);
+  }, [viewportHeight]);
   const defaultDrawerHeight = useMemo(() => {
     const viewportDefault = Math.round(viewportHeight * SIDEBAR_DEFAULT_VIEWPORT_RATIO);
+    const contentDefault =
+      contentPreferredHeight > 0
+        ? Math.min(contentPreferredHeight, maxDrawerHeight)
+        : 0;
+    if (contentDefault > 0) {
+      return Math.max(SIDEBAR_MIN_EXPANDED_HEIGHT, contentDefault);
+    }
     return Math.min(maxDrawerHeight, Math.max(minOpenHeight + 120, viewportDefault));
-  }, [maxDrawerHeight, minOpenHeight, viewportHeight]);
+  }, [contentPreferredHeight, maxDrawerHeight, minOpenHeight, viewportHeight]);
   const clampDrawerHeight = useCallback(
     (nextHeight) => Math.min(maxDrawerHeight, Math.max(minOpenHeight, Math.round(nextHeight))),
     [maxDrawerHeight, minOpenHeight],
