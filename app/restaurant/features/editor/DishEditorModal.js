@@ -45,6 +45,7 @@ function DishEditorModal({
     modalError,
     dictateActive,
     isIngredientGenerationBusy,
+    isApplyingIngredientName,
     showPostProcessSections,
     handleCloseDishEditor,
     handleDictate,
@@ -82,8 +83,7 @@ function DishEditorModal({
       open={editor.dishEditorOpen}
       onOpenChange={(open) => {
         if (!open) {
-          editor.pushHistory();
-          editor.closeDishEditor();
+          handleCloseDishEditor();
         }
       }}
       className="restaurant-editor-dish-modal-shell"
@@ -154,6 +154,7 @@ function DishEditorModal({
               <button
                 type="button"
                 className="btn btnDanger"
+                disabled={isApplyingIngredientName}
                 onClick={() => setShowDeleteWarning(true)}
               >
                 🗑 Delete
@@ -161,6 +162,7 @@ function DishEditorModal({
               <button
                 type="button"
                 className="btn"
+                disabled={isApplyingIngredientName}
                 onClick={handleCloseDishEditor}
               >
                 Done
@@ -412,8 +414,10 @@ function DishEditorModal({
                 <button
                   type="button"
                   className="btn btnDanger"
+                  disabled={isApplyingIngredientName}
                   style={{ flex: 1, padding: 12, fontSize: "1rem", background: "#dc2626", borderColor: "#b91c1c" }}
                   onClick={() => {
+                    if (isApplyingIngredientName) return;
                     editor.removeOverlay(overlay._editorKey);
                     editor.closeDishEditor();
                   }}

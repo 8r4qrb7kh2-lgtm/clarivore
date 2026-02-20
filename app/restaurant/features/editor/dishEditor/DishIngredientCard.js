@@ -130,14 +130,17 @@ export function DishIngredientCard({
       return brand.name.toLowerCase().includes(searchTerm);
     })
     .slice(0, 8);
+  const isRowApplying = Boolean(applyBusy);
 
   return (
     <div
-      className="restaurant-editor-dish-ingredient-card"
+      className={`restaurant-editor-dish-ingredient-card ${isRowApplying ? "is-applying" : ""}`}
+      aria-busy={isRowApplying || undefined}
       ref={(node) => {
         onRowRef(index, node);
       }}
     >
+      <fieldset className="restaurant-editor-dish-ingredient-fieldset" disabled={isRowApplying}>
       <div className="restaurant-editor-dish-ingredient-main">
         <div className="restaurant-editor-dish-ingredient-name-col">
           <div className="restaurant-editor-dish-ingredient-name-row">
@@ -486,6 +489,20 @@ export function DishIngredientCard({
           Delete
         </button>
       </div>
+      </fieldset>
+      {isRowApplying ? (
+        <div
+          className="restaurant-editor-dish-ingredient-apply-overlay"
+          role="status"
+          aria-live="polite"
+        >
+          <span
+            className="restaurant-editor-dish-generation-overlay-spinner restaurant-editor-dish-ingredient-apply-spinner"
+            aria-hidden="true"
+          />
+          <span className="restaurant-editor-dish-ingredient-apply-text">Applying...</span>
+        </div>
+      ) : null}
     </div>
   );
 }

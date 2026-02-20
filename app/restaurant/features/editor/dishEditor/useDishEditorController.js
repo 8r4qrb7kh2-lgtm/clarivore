@@ -1085,10 +1085,14 @@ export function useDishEditorController({
   }, []);
 
   const handleCloseDishEditor = useCallback(() => {
+    if (Object.values(applyBusyByRow).some((value) => Boolean(value))) {
+      setModalError("Please wait for Apply to finish before leaving this dish editor.");
+      return;
+    }
     setModalError("");
     editor.pushHistory();
     editor.closeDishEditor();
-  }, [editor]);
+  }, [applyBusyByRow, editor]);
 
   const handleDictate = useCallback(() => {
     if (typeof window === "undefined") return;
@@ -1197,8 +1201,26 @@ export function useDishEditorController({
 
   const isIngredientGenerationBusy =
     processInputBusy || editor.aiAssistDraft.loading;
+  const isApplyingIngredientName = useMemo(
+    () => Object.values(applyBusyByRow).some((value) => Boolean(value)),
+    [applyBusyByRow],
+  );
   const hasIngredientRows = ingredients.length > 0;
   const showPostProcessSections = hasIngredientRows;
+
+  useEffect(() => {
+    if (!editor.dishEditorOpen || !isApplyingIngredientName) return undefined;
+
+    const leaveMessage = "are you sure you wanna leave?";
+    const handleBeforeUnload = (event) => {
+      event.preventDefault();
+      event.returnValue = leaveMessage;
+      return leaveMessage;
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [editor.dishEditorOpen, isApplyingIngredientName]);
 
   // Save-review jump requests scroll directly to the relevant ingredient row in this modal.
   useEffect(() => {
@@ -1279,6 +1301,7 @@ export function useDishEditorController({
     modalError,
     dictateActive,
     isIngredientGenerationBusy,
+    isApplyingIngredientName,
     showPostProcessSections,
     handleCloseDishEditor,
     handleDictate,

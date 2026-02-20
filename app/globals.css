@@ -1816,10 +1816,48 @@ h2 {
 }
 
 .restaurant-editor-dish-ingredient-card {
+  position: relative;
   border: 1px solid rgba(76, 90, 212, 0.35);
   border-radius: 10px;
   padding: 10px;
   background: rgba(7, 11, 28, 0.72);
+}
+
+.restaurant-editor-dish-ingredient-fieldset {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+
+.restaurant-editor-dish-ingredient-card.is-applying .restaurant-editor-dish-ingredient-fieldset {
+  opacity: 0.42;
+  filter: grayscale(0.78);
+}
+
+.restaurant-editor-dish-ingredient-apply-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  border-radius: inherit;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: rgba(12, 18, 45, 0.58);
+  pointer-events: auto;
+}
+
+.restaurant-editor-dish-ingredient-apply-spinner {
+  width: 22px;
+  height: 22px;
+  border-width: 3px;
+}
+
+.restaurant-editor-dish-ingredient-apply-text {
+  color: #dbe6ff;
+  font-size: 0.84rem;
+  font-weight: 700;
 }
 
 .restaurant-editor-dish-ingredient-main {
