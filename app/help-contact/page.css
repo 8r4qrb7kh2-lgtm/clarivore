@@ -59,6 +59,10 @@
 
     .route-help-contact .help-search-row textarea {
       flex: 1 1 260px;
+      min-width: 0;
+      width: 100%;
+      max-width: 100%;
+      box-sizing: border-box;
       padding: 4px 10px;
       border-radius: 12px;
       border: 1px solid var(--border);
@@ -66,8 +70,9 @@
       color: var(--ink);
       font-size: 0.92rem;
       resize: none;
-      overflow: hidden;
+      overflow-y: auto;
       min-height: 28px;
+      max-height: 180px;
       line-height: 1.1;
     }
 
@@ -131,8 +136,8 @@
       flex-direction: column;
       gap: 12px;
       min-height: 160px;
-      max-height: 360px;
-      overflow: hidden;
+      max-height: none;
+      overflow: visible;
     }
 
     .route-help-contact .help-card h3 {
@@ -150,6 +155,9 @@
       flex: 1 1 auto;
       min-height: 48px;
       max-height: 140px;
+      width: 100%;
+      max-width: 100%;
+      box-sizing: border-box;
       border-radius: 12px;
       border: 1px solid var(--border);
       background: #0b1020;
@@ -276,6 +284,12 @@
       box-shadow: 0 0 0 3px rgba(124, 156, 255, 0.2);
     }
 
+    @media (max-width: 980px) {
+      .route-help-contact .help-grid {
+        grid-template-columns: minmax(0, 1fr);
+      }
+    }
+
     @media (max-width: 640px) {
       .route-help-contact .help-main {
         padding: 20px 14px 60px;
@@ -288,5 +302,13 @@
       .route-help-contact .help-search-row {
         flex-direction: column;
         align-items: stretch;
+      }
+
+      .route-help-contact .help-search-row textarea {
+        max-height: 140px;
+      }
+
+      .route-help-contact .help-card textarea {
+        max-height: 200px;
       }
     }

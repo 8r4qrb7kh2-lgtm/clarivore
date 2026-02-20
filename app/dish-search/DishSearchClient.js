@@ -21,6 +21,7 @@ import {
   supabaseClient as supabase,
 } from "../lib/supabase";
 import { queryKeys } from "../lib/queryKeys";
+import { createCompatibilityEngine } from "../restaurant/features/shared/compatibility";
 
 export default function DishSearchClient() {
   const router = useRouter();
@@ -41,6 +42,7 @@ export default function DishSearchClient() {
   const [searchInput, setSearchInput] = useState("");
   const [searchResults, setSearchResults] = useState(null);
   const [searchActive, setSearchActive] = useState(false);
+  const [searchLoading, setSearchLoading] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
   const dropdownRef = useRef(null);
@@ -245,57 +247,31 @@ export default function DishSearchClient() {
 
   const normalize = (value) => String(value || "").toLowerCase().trim();
 
-  const hasCrossContamination = (item) => {
-    if (!userAllergies.length) return false;
-    if (item.noCrossContamination) return false;
-    const cross = item.crossContaminationAllergens || [];
-    return cross.some((allergen) => {
-      const normalized = normalizeAllergen(allergen);
-      return normalized && userAllergies.includes(normalized);
-    });
-  };
+  const compatibilityEngine = useMemo(
+    () =>
+      createCompatibilityEngine({
+        normalizeAllergen,
+        normalizeDietLabel,
+        getDietAllergenConflicts,
+      }),
+    [getDietAllergenConflicts, normalizeAllergen, normalizeDietLabel],
+  );
 
   const computeStatus = (item) => {
-    const allergens = (item.allergens || [])
-      .map(normalizeAllergen)
-      .filter(Boolean);
-    const removable = new Set(
-      (item.removable || [])
-        .map((row) => normalizeAllergen(row.allergen))
-        .filter(Boolean),
+    const status = compatibilityEngine.computeStatus(
+      item,
+      userAllergies,
+      userDiets,
     );
-
-    const hits = allergens.filter((allergen) => userAllergies.includes(allergen));
-    const unsafeHits = hits.filter((allergen) => !removable.has(allergen));
-
-    if (unsafeHits.length > 0 || hasCrossContamination(item)) {
+    const hasCrossContamination = compatibilityEngine.hasCrossContamination(
+      item,
+      userAllergies,
+      userDiets,
+    );
+    if (hasCrossContamination) {
       return "unsafe";
     }
-
-    if (hits.length > 0) {
-      return "removable";
-    }
-
-    if (userDiets.length > 0) {
-      const itemDiets = new Set(
-        (item.diets || []).map(normalizeDietLabel).filter(Boolean),
-      );
-      for (const diet of userDiets) {
-        const conflicts = getDietAllergenConflicts(diet);
-        const conflictingAllergens = conflicts.filter((allergen) =>
-          allergens.includes(allergen),
-        );
-        const canBeMade =
-          conflictingAllergens.length > 0 &&
-          conflictingAllergens.every((allergen) => removable.has(allergen));
-        const isMet = itemDiets.has(diet);
-        if (!isMet && !canBeMade) {
-          return "unsafe";
-        }
-      }
-    }
-
-    return "safe";
+    return status;
   };
 
   const buildAllSections = () => {
@@ -391,18 +367,26 @@ export default function DishSearchClient() {
         result.top_dishes.forEach((dish) => {
           const overlay = findFullOverlayData(dish.name, result.restaurant_id);
           const aiStatus = dish.status || "";
-          const isSafeByAI = aiStatus === "meets_all_requirements";
-          const isAccommodatedByAI = aiStatus === "can_accommodate";
           const doesNotMeetDiet = aiStatus === "does_not_meet_diet";
 
           const localStatus = overlay ? computeStatus(overlay) : null;
-          const isSafe =
-            isSafeByAI || (localStatus === "safe" && !doesNotMeetDiet);
-          const isAccommodated =
-            isAccommodatedByAI || (localStatus === "removable" && !doesNotMeetDiet);
+          let resolvedStatus = localStatus;
+          if (!resolvedStatus || resolvedStatus === "neutral") {
+            if (aiStatus === "meets_all_requirements") {
+              resolvedStatus = "safe";
+            } else if (aiStatus === "can_accommodate") {
+              resolvedStatus = "removable";
+            } else if (doesNotMeetDiet) {
+              resolvedStatus = "unsafe";
+            }
+          }
 
-          if (!isSafe && !isAccommodated && !doesNotMeetDiet) return;
-          if (isAccommodated && !includeAccommodated && !doesNotMeetDiet) return;
+          const isSafe = resolvedStatus === "safe";
+          const isAccommodated = resolvedStatus === "removable";
+          const isIncompatible = resolvedStatus === "unsafe" || doesNotMeetDiet;
+
+          if (!isSafe && !isAccommodated && !isIncompatible) return;
+          if (isAccommodated && !includeAccommodated) return;
 
           const restaurantKey = String(result.restaurant_id);
           if (!restaurantMap.has(restaurantKey)) {
@@ -429,7 +413,7 @@ export default function DishSearchClient() {
             doesNotMeetDiet,
           };
 
-          if (doesNotMeetDiet) {
+          if (isIncompatible) {
             group.searchMatchDishes.push(dishData);
           } else if (isSafe) {
             group.safeDishes.push(dishData);
@@ -487,6 +471,7 @@ export default function DishSearchClient() {
     if (!trimmed) {
       setSearchResults(null);
       setSearchActive(false);
+      setSearchLoading(false);
       setStatus("");
       setStatusType("");
       return;
@@ -495,7 +480,8 @@ export default function DishSearchClient() {
     setStatus("Searching menus...");
     setStatusType("");
     setSearchActive(true);
-    setSearchResults([]);
+    setSearchLoading(true);
+    setSearchResults(null);
 
     const payload = {
       userQuery: trimmed,
@@ -537,8 +523,11 @@ export default function DishSearchClient() {
       setStatusType("error");
     } catch (error) {
       console.error("Search failed", error);
+      setSearchResults([]);
       setStatus("Search failed. Please try again.");
       setStatusType("error");
+    } finally {
+      setSearchLoading(false);
     }
   };
 
@@ -574,7 +563,9 @@ export default function DishSearchClient() {
     if (searchActive) {
       return (
         <div className="empty-state" style={{ gridColumn: "1 / -1" }}>
-          <p style={{ margin: 0 }}>No dishes found matching your search.</p>
+          <p style={{ margin: 0 }}>
+            {searchLoading ? "Searching menus..." : "No dishes found matching your search."}
+          </p>
         </div>
       );
     }
@@ -707,8 +698,13 @@ export default function DishSearchClient() {
                 if (event.key === "Enter") runSearch();
               }}
             />
-            <button type="button" className="cta-button" onClick={runSearch}>
-              Search
+            <button
+              type="button"
+              className="cta-button"
+              onClick={runSearch}
+              disabled={searchLoading}
+            >
+              {searchLoading ? "Searching..." : "Search"}
             </button>
           </div>
 
@@ -725,7 +721,7 @@ export default function DishSearchClient() {
                 }
               }}
             >
-              <span>Include dishes that can be made to comply</span>
+              <span>Include dishes that can be modified to comply</span>
               <div
                 className={`mode-toggle ${includeAccommodated ? "active" : ""}`}
                 role="switch"
@@ -878,14 +874,14 @@ export default function DishSearchClient() {
                       <div className="restaurant-section-column">
                         <div className="restaurant-section-column-title">
                           <span className="safe-dot" />
-                          Safe ({section.safeDishes.length})
+                          Complies ({section.safeDishes.length})
                         </div>
                         {safeDishes.length ? (
                           safeDishes.map((dish) =>
                             dishItem(dish, section.restaurant?.slug),
                           )
                         ) : (
-                          <p className="no-dishes-message">No safe dishes found</p>
+                          <p className="no-dishes-message">No compliant dishes found</p>
                         )}
                         {safeOverflow ? (
                           <p className="section-overflow">
@@ -898,7 +894,7 @@ export default function DishSearchClient() {
                         <div className="restaurant-section-column">
                           <div className="restaurant-section-column-title">
                             <span className="accommodated-dot" />
-                            Can be accommodated ({section.accommodatedDishes.length})
+                            Can be modified to comply ({section.accommodatedDishes.length})
                           </div>
                           {accommodatedDishes.map((dish) =>
                             dishItem(dish, section.restaurant?.slug),

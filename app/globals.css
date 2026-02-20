@@ -3058,21 +3058,32 @@ h2 {
 
 @media (max-width: 640px) {
   #search-filters {
-    gap: 12px;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
   }
   #search-filters > .filter-toggle,
   #search-filters > .restaurant-dropdown {
-    flex: 1;
+    flex: 0 0 auto;
+    width: 100%;
     min-width: 0;
   }
   #search-filters > .filter-toggle {
     justify-content: space-between;
-    font-size: 0.85rem;
+    align-items: center;
+    font-size: 0.9rem;
+    gap: 10px;
+  }
+  #search-filters > .filter-toggle .mode-toggle {
+    flex-shrink: 0;
+  }
+  #search-filters > .filter-toggle span {
+    min-width: 0;
   }
   #restaurant-dropdown-btn {
     min-width: 0;
     width: 100%;
-    font-size: 0.85rem;
+    font-size: 0.9rem;
   }
   .preference-row {
     gap: 6px;

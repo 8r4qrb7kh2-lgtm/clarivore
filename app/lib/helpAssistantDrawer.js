@@ -578,6 +578,8 @@ export function initHelpAssistantPanel({ mode, input, sendBtn, newBtn, statusEl,
       messages = [];
       clearConversation(currentMode);
       renderConversation(conversationEl, messages);
+      input.value = '';
+      autoGrowInput(input);
       if (statusEl) statusEl.textContent = '';
     });
   }
@@ -622,6 +624,7 @@ export function initHelpAssistantPanel({ mode, input, sendBtn, newBtn, statusEl,
     sendBtn.disabled = false;
     input.disabled = false;
     input.value = '';
+    autoGrowInput(input);
     input.focus();
   };
 
