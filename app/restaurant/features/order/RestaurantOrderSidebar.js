@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { Badge, Button, Input, Textarea } from "../../../components/ui";
 
@@ -128,7 +128,7 @@ export function RestaurantOrderSidebar({
   const hasCompletedNotices = completedNotices.length > 0;
   const computedBadgeCount = pendingNoticeCount + activeNoticeCount;
   const minOpenHeight = SIDEBAR_MIN_OPEN_HEIGHT;
-  const showDrawerContent = isOpen;
+  const showDrawerContent = true;
   const measurePreferredHeight = useCallback(() => {
     const headerNode = headerRef.current;
     const contentNode = contentRef.current;
@@ -144,8 +144,11 @@ export function RestaurantOrderSidebar({
   const maxDrawerHeight = useMemo(() => {
     const viewportBound = Math.round(viewportHeight * 0.82);
     const hardLimit = Math.min(SIDEBAR_MAX_HEIGHT, viewportBound);
-    return Math.max(SIDEBAR_MIN_EXPANDED_HEIGHT, hardLimit);
-  }, [viewportHeight]);
+    const contentLimit = contentPreferredHeight > 0
+      ? Math.min(contentPreferredHeight, hardLimit)
+      : hardLimit;
+    return Math.max(SIDEBAR_MIN_EXPANDED_HEIGHT, contentLimit);
+  }, [contentPreferredHeight, viewportHeight]);
   const defaultDrawerHeight = useMemo(() => {
     const viewportDefault = Math.round(viewportHeight * SIDEBAR_DEFAULT_VIEWPORT_RATIO);
     const contentDefault =
@@ -200,7 +203,7 @@ export function RestaurantOrderSidebar({
     };
   }, []);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!showDrawerContent) return;
     measurePreferredHeight();
     const frame = window.requestAnimationFrame(measurePreferredHeight);
@@ -526,7 +529,11 @@ export function RestaurantOrderSidebar({
         </div>
 
         {showDrawerContent ? (
-          <div className="restaurant-order-sidebar-content" ref={contentRef}>
+          <div
+            className={`restaurant-order-sidebar-content ${isOpen ? "" : "is-hidden"}`.trim()}
+            ref={contentRef}
+            aria-hidden={!isOpen}
+          >
             {hasActiveNotices ? (
               <section className="restaurant-order-sidebar-section">
                 <div className="restaurant-order-sidebar-section-head">
