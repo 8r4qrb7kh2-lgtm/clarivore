@@ -262,10 +262,15 @@
 }
 
 @media (max-width: 768px) {
+  .restaurant-content .editorLayout {
+    gap: 8px;
+  }
+
   .restaurant-content .editorHeaderStack {
     max-height: 40vh;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
+    padding-bottom: 4px;
   }
 
   .restaurant-content .editorHeaderRow {

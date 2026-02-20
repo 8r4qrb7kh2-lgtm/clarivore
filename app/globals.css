@@ -2429,7 +2429,7 @@ h2 {
 
   .restaurant-editor {
     max-width: none;
-    margin: 0;
+    margin: 8px 0 0;
     gap: 6px;
   }
 
