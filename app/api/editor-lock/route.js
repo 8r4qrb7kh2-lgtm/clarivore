@@ -9,6 +9,7 @@ export const runtime = "nodejs";
 
 const EDITOR_LOCK_TABLE = "public.restaurant_editor_locks";
 const LOCK_TTL_SECONDS = 75;
+const LOCK_STALE_SECONDS = 35;
 const MAX_SESSION_KEY_CHARS = 160;
 const MAX_INSTANCE_CHARS = 160;
 const MAX_NAME_CHARS = 120;
@@ -155,9 +156,11 @@ async function readActiveLockForRestaurant(restaurantId) {
     FROM ${EDITOR_LOCK_TABLE}
     WHERE restaurant_id = $1::uuid
       AND expires_at > now()
+      AND last_heartbeat_at > now() - make_interval(secs => $2::int)
     LIMIT 1
   `,
     restaurantId,
+    LOCK_STALE_SECONDS,
   );
 
   return rows?.[0] || null;
@@ -210,6 +213,7 @@ async function attemptLockUpsert({
     WHERE
       ${EDITOR_LOCK_TABLE}.session_key = EXCLUDED.session_key
       OR ${EDITOR_LOCK_TABLE}.expires_at <= now()
+      OR ${EDITOR_LOCK_TABLE}.last_heartbeat_at <= now() - make_interval(secs => $8::int)
     RETURNING
       restaurant_id,
       user_id,
@@ -228,6 +232,7 @@ async function attemptLockUpsert({
     holderEmail,
     holderInstance,
     LOCK_TTL_SECONDS,
+    LOCK_STALE_SECONDS,
   );
 
   return rows?.[0] || null;
