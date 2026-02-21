@@ -982,7 +982,7 @@ function ConfirmInfoModal({ editor }) {
         selectedAction: "replace",
         scanSessionId: "",
         scanPhase: "capture_open",
-        scanMessage: "Capture ingredient label photo.",
+        scanMessage: "Capture product front photo.",
         scanError: "",
         scanBaseStatus: asText(card?.scanBaseStatus) || asText(card?.status) || "idle",
       });

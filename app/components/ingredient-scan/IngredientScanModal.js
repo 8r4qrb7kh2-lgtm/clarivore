@@ -760,6 +760,7 @@ export default function IngredientScanModal({
   const [allergenFlags, setAllergenFlags] = useState([]);
   const [analysisPending, setAnalysisPending] = useState(false);
   const [annotatedImage, setAnnotatedImage] = useState("");
+  const [frontCaptureResult, setFrontCaptureResult] = useState(null);
   const [frontModalOpen, setFrontModalOpen] = useState(false);
   const [applying, setApplying] = useState(false);
 
@@ -769,6 +770,9 @@ export default function IngredientScanModal({
   const analysisRunIdRef = useRef(0);
   const resolvedScanProfile = asText(scanProfile).toLowerCase() || "default";
   const useDishEditorBrandProfile = resolvedScanProfile === "dish_editor_brand";
+  const requiresFrontCaptureFirst = useDishEditorBrandProfile;
+  const hasFrontCapture = Boolean(asText(frontCaptureResult?.frontImageData));
+  const ingredientCaptureLocked = requiresFrontCaptureFirst && !hasFrontCapture;
 
   useEffect(() => {
     return () => {
@@ -788,7 +792,16 @@ export default function IngredientScanModal({
     }
     setCameraActive(false);
     setAnalysisPending(false);
+    setFrontModalOpen(false);
   }, [open]);
+
+  useEffect(() => {
+    if (!open || !requiresFrontCaptureFirst || hasFrontCapture) return;
+    setFrontModalOpen(true);
+    setStatusText((current) =>
+      current || "Capture the product front first, then capture the ingredient label.",
+    );
+  }, [open, requiresFrontCaptureFirst, hasFrontCapture]);
 
   useEffect(() => {
     if (!analysisResult?.correctedImage || !lines.length) {
@@ -1223,7 +1236,9 @@ export default function IngredientScanModal({
               />
             ) : (
               <div style={{ color: "#94a3b8", fontSize: "0.9rem" }}>
-                Capture or upload an ingredient label photo.
+                {ingredientCaptureLocked
+                  ? "Capture the product front first to continue."
+                  : "Capture or upload an ingredient label photo."}
               </div>
             )}
           </div>
@@ -1238,86 +1253,100 @@ export default function IngredientScanModal({
               gap: 8,
             }}
           >
-            {captureActionState === "initial" ? (
-              <>
-                <button
-                  type="button"
-                  className="btn"
-                  style={{ background: "#4c5ad4" }}
-                  disabled={analysisBusy || analysisPending || applying}
-                  onClick={startCamera}
-                >
-                  Use Camera
-                </button>
-                <button
-                  type="button"
-                  className="btn"
-                  style={{ background: "#4c5ad4" }}
-                  disabled={analysisBusy || analysisPending || applying}
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  Upload Photo
-                </button>
-              </>
-            ) : null}
-
-            {captureActionState === "camera_live" ? (
-              <>
-                <button
-                  type="button"
-                  className="btn"
-                  style={{ background: "#17663a" }}
-                  disabled={analysisBusy || analysisPending || applying}
-                  onClick={captureFrame}
-                >
-                  Capture
-                </button>
-                <button
-                  type="button"
-                  className="btn"
-                  style={{ background: "#6b7280" }}
-                  disabled={analysisBusy || analysisPending || applying}
-                  onClick={cancelLiveCamera}
-                >
-                  Cancel Camera
-                </button>
-              </>
-            ) : null}
-
-            {captureActionState === "photo_ready" ? (
-              <>
-                <button
-                  type="button"
-                  className="btn"
-                  style={{ background: "#17663a" }}
-                  disabled={!capturedPhoto || analysisBusy || analysisPending || applying}
-                  onClick={analyzePhoto}
-                >
-                  {analysisBusy ? "Analyzing..." : "Analyze"}
-                </button>
-                <button
-                  type="button"
-                  className="btn"
-                  style={{ background: "#6b7280" }}
-                  disabled={analysisBusy || analysisPending || applying}
-                  onClick={resetCaptureState}
-                >
-                  Retake
-                </button>
-              </>
-            ) : null}
-
-            {captureActionState === "review_ready" ? (
+            {ingredientCaptureLocked ? (
               <button
                 type="button"
                 className="btn"
-                style={{ background: "#6b7280" }}
+                style={{ background: "#4c5ad4" }}
                 disabled={analysisBusy || analysisPending || applying}
-                onClick={resetCaptureState}
+                onClick={() => setFrontModalOpen(true)}
               >
-                Retake
+                Capture image of item front
               </button>
-            ) : null}
+            ) : (
+              <>
+                {captureActionState === "initial" ? (
+                  <>
+                    <button
+                      type="button"
+                      className="btn"
+                      style={{ background: "#4c5ad4" }}
+                      disabled={analysisBusy || analysisPending || applying}
+                      onClick={startCamera}
+                    >
+                      Use Camera
+                    </button>
+                    <button
+                      type="button"
+                      className="btn"
+                      style={{ background: "#4c5ad4" }}
+                      disabled={analysisBusy || analysisPending || applying}
+                      onClick={() => fileInputRef.current?.click()}
+                    >
+                      Upload Photo
+                    </button>
+                  </>
+                ) : null}
+
+                {captureActionState === "camera_live" ? (
+                  <>
+                    <button
+                      type="button"
+                      className="btn"
+                      style={{ background: "#17663a" }}
+                      disabled={analysisBusy || analysisPending || applying}
+                      onClick={captureFrame}
+                    >
+                      Capture
+                    </button>
+                    <button
+                      type="button"
+                      className="btn"
+                      style={{ background: "#6b7280" }}
+                      disabled={analysisBusy || analysisPending || applying}
+                      onClick={cancelLiveCamera}
+                    >
+                      Cancel Camera
+                    </button>
+                  </>
+                ) : null}
+
+                {captureActionState === "photo_ready" ? (
+                  <>
+                    <button
+                      type="button"
+                      className="btn"
+                      style={{ background: "#17663a" }}
+                      disabled={!capturedPhoto || analysisBusy || analysisPending || applying}
+                      onClick={analyzePhoto}
+                    >
+                      {analysisBusy ? "Analyzing..." : "Analyze"}
+                    </button>
+                    <button
+                      type="button"
+                      className="btn"
+                      style={{ background: "#6b7280" }}
+                      disabled={analysisBusy || analysisPending || applying}
+                      onClick={resetCaptureState}
+                    >
+                      Retake
+                    </button>
+                  </>
+                ) : null}
+
+                {captureActionState === "review_ready" ? (
+                  <button
+                    type="button"
+                    className="btn"
+                    style={{ background: "#6b7280" }}
+                    disabled={analysisBusy || analysisPending || applying}
+                    onClick={resetCaptureState}
+                  >
+                    Retake
+                  </button>
+                ) : null}
+              </>
+            )}
 
             <input
               ref={fileInputRef}
@@ -1531,24 +1560,58 @@ export default function IngredientScanModal({
             >
               Cancel
             </button>
-            <button
-              type="button"
-              className="btn"
-              style={{ background: "#17663a" }}
-              disabled={!allConfirmed || analysisPending || applying}
-              onClick={() => setFrontModalOpen(true)}
-            >
-              Capture image of item front
-            </button>
+            {requiresFrontCaptureFirst ? (
+              <>
+                <button
+                  type="button"
+                  className="btn"
+                  style={{ background: "#6b7280" }}
+                  disabled={analysisBusy || analysisPending || applying}
+                  onClick={() => setFrontModalOpen(true)}
+                >
+                  {hasFrontCapture ? "Retake item front image" : "Capture image of item front"}
+                </button>
+                <button
+                  type="button"
+                  className="btn"
+                  style={{ background: "#17663a" }}
+                  disabled={!hasFrontCapture || !allConfirmed || analysisPending || applying}
+                  onClick={() => applyResults(frontCaptureResult)}
+                >
+                  {applying ? "Applying..." : "Save & Apply Results"}
+                </button>
+              </>
+            ) : (
+              <button
+                type="button"
+                className="btn"
+                style={{ background: "#17663a" }}
+                disabled={!allConfirmed || analysisPending || applying}
+                onClick={() => setFrontModalOpen(true)}
+              >
+                Capture image of item front
+              </button>
+            )}
           </div>
         </div>
       </Modal>
 
       <FrontProductCaptureModal
         open={frontModalOpen}
-        onCancel={() => setFrontModalOpen(false)}
-        onApply={async (frontResult) => {
+        onCancel={() => {
           setFrontModalOpen(false);
+          if (requiresFrontCaptureFirst && !hasFrontCapture) {
+            onCancel?.();
+          }
+        }}
+        onApply={async (frontResult) => {
+          setFrontCaptureResult(frontResult || null);
+          setFrontModalOpen(false);
+          setErrorText("");
+          if (requiresFrontCaptureFirst) {
+            setStatusText("Product front captured. Now capture the ingredient label.");
+            return;
+          }
           await applyResults(frontResult);
         }}
       />

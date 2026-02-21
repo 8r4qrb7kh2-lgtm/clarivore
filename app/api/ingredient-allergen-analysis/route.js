@@ -664,7 +664,9 @@ export async function POST(request) {
           ? "cross-contamination"
           : "contained";
 
-        const word_indices = (Array.isArray(flag?.word_indices) ? flag.word_indices : [])
+        const word_indices = (
+          Array.isArray(flag?.word_indices) ? flag.word_indices : [flag?.word_indices]
+        )
           .map((value) => Number(value))
           .filter((value) => Number.isFinite(value) && value >= 0)
           .map((value) => Math.trunc(value));

@@ -865,7 +865,7 @@ export function useDishEditorController({
         [ingredientIndex]: {
           sessionId: "",
           phase: "capture_open",
-          message: "Capture ingredient label photo.",
+          message: "Capture product front photo.",
           error: "",
         },
       }));

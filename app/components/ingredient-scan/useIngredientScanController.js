@@ -96,6 +96,10 @@ export function useIngredientScanController() {
     sessionCounterRef.current += 1;
     const backgroundMode = typeof onPhaseChange === "function";
     const resolvedScanProfile = asText(scanProfile) || "default";
+    const initialCaptureMessage =
+      asText(resolvedScanProfile).toLowerCase() === "dish_editor_brand"
+        ? "Capture product front photo."
+        : "Capture ingredient label photo.";
 
     return await new Promise((resolve, reject) => {
       deferredRef.current.set(sessionId, { resolve, reject });
@@ -108,7 +112,7 @@ export function useIngredientScanController() {
         ingredientName: label,
         scanProfile: resolvedScanProfile,
         phase: "capture_open",
-        message: "Capture ingredient label photo.",
+        message: initialCaptureMessage,
         error: "",
       });
 
@@ -123,7 +127,7 @@ export function useIngredientScanController() {
         },
       ]);
       setActiveSessionId(sessionId);
-      emitPhase(sessionId, "capture_open");
+      emitPhase(sessionId, "capture_open", { message: initialCaptureMessage });
     });
   }, [emitPhase]);
 

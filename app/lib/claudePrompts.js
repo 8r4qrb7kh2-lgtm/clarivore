@@ -272,14 +272,16 @@ RISK TYPES:
 - "cross-contamination" for may contain/shared facility style risk.
 
 PHRASE + WORD INDEX RULES:
-- Define each flagged ingredient phrase strictly by delimiter boundaries.
-- Start at the first word immediately after the nearest previous comma (or semicolon), or line start if none.
-- End at the last word immediately before the next comma (or semicolon), or line end if none.
-- "ingredient" must be exactly that bounded phrase and must not be a parent/group phrase.
+- For ingredient-list clauses, define each flagged ingredient phrase by delimiter boundaries.
+- Ingredient-list phrase start: first word immediately after nearest previous comma/semicolon, or line start.
+- Ingredient-list phrase end: last word immediately before next comma/semicolon, or line end.
+- For explicit allergen statements ("CONTAINS ...", "MAY CONTAIN ...", "PROCESSED IN A FACILITY ...", "MANUFACTURED ON SHARED EQUIPMENT ..."), use the smallest allergen phrase (usually the allergen word itself), not the full sentence.
+- "ingredient" must be exactly that phrase and must not be a parent/group phrase.
 - "word_indices" must include ALL and ONLY words from that exact bounded phrase.
 - "word_indices" must be unique and sorted ascending.
 - For a single-word ingredient phrase, return exactly one index.
-- Do NOT include section-heading/context tokens (e.g. "INGREDIENTS:", "CONTAINS") unless they are part of that exact bounded ingredient phrase.
+- Every flag MUST include at least one matching allergen/diet word index from the transcript.
+- Do NOT include section-heading/context tokens (e.g. "INGREDIENTS:", "CONTAINS", "MAY", "FACILITY") unless they are part of the allergen phrase itself.
 - If an allergen is in a sub-ingredient phrase, do NOT return the broader parent phrase name.
 - Always use 0-based word indices from the provided numbered transcript list.
 
@@ -289,10 +291,12 @@ DIET PRECISION RULES:
 - If one phrase indicates a Vegan violation, do not auto-add Vegetarian/Pescatarian unless separately justified.
 - For wheat/gluten evidence, prefer Gluten-free only (unless additional direct evidence supports other diet violations).
 
-EXPLICIT STATEMENT PRIORITY:
-- Treat "contains" statements as direct/contained risk for listed allergens.
-- Treat "may contain" and shared-facility statements as cross-contamination risk.
-- When explicit statements appear, prioritize those signals over weaker contextual inference.
+EXPLICIT STATEMENT PRIORITY (MANDATORY):
+- Parse and flag explicit statements even if that allergen already appears elsewhere in ingredients.
+- Treat "contains"/"contains:" statements as direct/contained risk for listed allergens.
+- Treat "may contain", "may contain traces of", "processed in a facility", "manufactured in a facility", "shared equipment", and "shared line" statements as cross-contamination risk.
+- For explicit statements, map each listed allergen to its own flag with the allergen word index included.
+- Example requirement: if transcript includes "CONTAINS SOY INGREDIENTS." you must return a soy flag with risk_type "contained" and the index for the word "SOY".
 
 EXAMPLES:
 - Positive: "Wheat flour" -> include allergen wheat, include Gluten-free diet violation.

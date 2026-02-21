@@ -330,7 +330,16 @@ export default function FrontProductCaptureModal({
           )}
         </div>
 
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+        <div
+          style={{
+            display: "flex",
+            flexWrap: "nowrap",
+            overflowX: "auto",
+            justifyContent: "center",
+            alignItems: "center",
+            gap: 8,
+          }}
+        >
           {captureActionState === "initial" ? (
             <>
               <button
@@ -443,7 +452,16 @@ export default function FrontProductCaptureModal({
           </div>
         ) : null}
 
-        <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+        <div
+          style={{
+            display: "flex",
+            flexWrap: "nowrap",
+            overflowX: "auto",
+            justifyContent: "center",
+            alignItems: "center",
+            gap: 10,
+          }}
+        >
           <button
             type="button"
             className="btn"
