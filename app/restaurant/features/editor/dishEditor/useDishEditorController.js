@@ -30,6 +30,12 @@ function coerceIngredientNameForApply(value) {
   return String(value.name);
 }
 
+function sleep(ms) {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+}
+
 export function useDishEditorController({
   editor,
   runtimeConfigHealth,
@@ -507,7 +513,10 @@ export function useDishEditorController({
   // Smart detection pipeline: name analysis + scan requirement + row mutation.
   const analyzeIngredientForSmartDetection = useCallback(
     async (ingredientIndex) => {
-      const ingredient = ingredients[ingredientIndex];
+      const currentRows = Array.isArray(latestIngredientsRef.current)
+        ? latestIngredientsRef.current
+        : [];
+      const ingredient = currentRows[ingredientIndex];
       const ingredientName = asText(ingredient?.name);
       if (!ingredientName) {
         return {
@@ -549,7 +558,7 @@ export function useDishEditorController({
         };
       }
     },
-    [editor, ingredients, overlay?.id, overlay?.name],
+    [editor, overlay?.id, overlay?.name],
   );
 
   // Apply a normalized analysis payload to a single row while preserving editor invariants.
@@ -624,8 +633,11 @@ export function useDishEditorController({
   );
 
   const applyIngredientSmartDetection = useCallback(
-    async (ingredientIndex) => {
-      const ingredient = ingredients[ingredientIndex];
+    async (ingredientIndex, { suppressModalError = false } = {}) => {
+      const currentRows = Array.isArray(latestIngredientsRef.current)
+        ? latestIngredientsRef.current
+        : [];
+      const ingredient = currentRows[ingredientIndex];
       const ingredientNameAtApply = coerceIngredientNameForApply(ingredient);
       const hasAssignedBrand = (Array.isArray(ingredient?.brands) ? ingredient.brands : []).some(
         (brand) => asText(brand?.name),
@@ -638,20 +650,25 @@ export function useDishEditorController({
           ...current,
           [ingredientIndex]: ingredientNameAtApply,
         }));
-        setModalError("");
-        return;
+        if (!suppressModalError) setModalError("");
+        return { success: true };
       }
 
       setApplyBusyByRow((current) => ({ ...current, [ingredientIndex]: true }));
-      setModalError("");
+      if (!suppressModalError) setModalError("");
       const detection = await analyzeIngredientForSmartDetection(ingredientIndex);
       setApplyBusyByRow((current) => ({ ...current, [ingredientIndex]: false }));
 
       if (!detection?.success) {
-        setModalError(
-          detection?.errorMessage || "Failed to analyze ingredient name.",
-        );
-        return;
+        const errorMessage =
+          detection?.errorMessage || "Failed to analyze ingredient name.";
+        if (!suppressModalError) {
+          setModalError(errorMessage);
+        }
+        return {
+          success: false,
+          errorMessage,
+        };
       }
 
       applyIngredientDetectionResult({
@@ -664,13 +681,58 @@ export function useDishEditorController({
         ...current,
         [ingredientIndex]: ingredientNameAtApply,
       }));
+      return { success: true };
     },
     [
       analyzeIngredientForSmartDetection,
       applyIngredientDetectionResult,
-      ingredients,
     ],
   );
+
+  // Wait for freshly generated rows to land in local editor state before auto-applying row analysis.
+  const waitForGeneratedRows = useCallback(async (expectedNames) => {
+    const safeNames = (Array.isArray(expectedNames) ? expectedNames : []).map((name) =>
+      asText(name),
+    );
+    if (!safeNames.length) return;
+
+    const targetTokens = safeNames.map((name) => normalizeToken(name));
+    const timeoutAt = Date.now() + 3000;
+
+    while (Date.now() < timeoutAt) {
+      const currentRows = Array.isArray(latestIngredientsRef.current)
+        ? latestIngredientsRef.current
+        : [];
+      if (currentRows.length >= safeNames.length) {
+        const hasExpectedOrder = targetTokens.every((token, index) => {
+          if (!token) return true;
+          return normalizeToken(currentRows[index]?.name) === token;
+        });
+        if (hasExpectedOrder) return;
+      }
+      await sleep(25);
+    }
+  }, []);
+
+  const runAutoApplyForAllRows = useCallback(async (expectedNames) => {
+    const safeNames = (Array.isArray(expectedNames) ? expectedNames : []).map((name) =>
+      asText(name),
+    );
+    if (!safeNames.length) return { failedRows: [] };
+
+    await waitForGeneratedRows(safeNames);
+
+    const failedRows = [];
+    for (let index = 0; index < safeNames.length; index += 1) {
+      const applied = await applyIngredientSmartDetection(index, {
+        suppressModalError: true,
+      });
+      if (applied?.success) continue;
+      failedRows.push(safeNames[index] || `Ingredient ${index + 1}`);
+    }
+
+    return { failedRows };
+  }, [applyIngredientSmartDetection, waitForGeneratedRows]);
 
   const removeIngredientBrandItem = useCallback(
     async (ingredientIndex) => {
@@ -1183,6 +1245,19 @@ export function useDishEditorController({
       const result = await editor.runAiDishAnalysis({ overrideText: liveText });
       if (result?.success && result?.result) {
         await editor.applyAiResultToSelectedOverlay(result.result);
+        const createdNames = (Array.isArray(result.result.ingredients)
+          ? result.result.ingredients
+          : []
+        ).map((ingredient, index) => asText(ingredient?.name) || `Ingredient ${index + 1}`);
+
+        const autoApplyResult = await runAutoApplyForAllRows(createdNames);
+        if (autoApplyResult.failedRows.length) {
+          setModalError(
+            `Automatic Apply failed for: ${autoApplyResult.failedRows.join(", ")}. Run Apply on those rows.`,
+          );
+        } else {
+          setModalError("");
+        }
         return;
       }
 

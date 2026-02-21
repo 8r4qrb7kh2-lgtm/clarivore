@@ -1,7 +1,6 @@
 import { useCallback } from "react";
 
-import { computeDietBlockers } from "../utils/settingsAndChangelog";
-import { asText, dedupeTokenList, normalizeToken } from "../utils/text";
+import { asText } from "../utils/text";
 
 // AI dish actions that either run analysis or apply analysis results to the selected overlay.
 // This keeps AI-specific mutation logic isolated from core editor state wiring.
@@ -9,210 +8,56 @@ import { asText, dedupeTokenList, normalizeToken } from "../utils/text";
 export function useAiDishActions({
   selectedOverlay,
   callbacks,
-  config,
   aiAssistDraftRef,
-
-  normalizeAllergenList,
-  normalizeDietList,
   updateOverlay,
   pushHistory,
   setAiAssistDraft,
 }) {
   // Apply AI analysis payload onto currently selected overlay fields.
-  // This includes ingredient-level normalization, derived dish-level tags, and blocker metadata.
+  // This stage now seeds ingredient rows only; row-level smart detection runs via Apply flow.
   const applyAiResultToSelectedOverlay = useCallback(async (result) => {
     if (!selectedOverlay?._editorKey || !result) {
       return { success: false };
     }
 
-    // Normalize each ingredient row into editor schema and seed AI-detected fields.
-    const baseIngredients = (Array.isArray(result.ingredients) ? result.ingredients : []).map(
+    // Build row shells only. Allergens/diets/scan requirement are resolved by row Apply logic.
+    const ingredients = (Array.isArray(result.ingredients) ? result.ingredients : []).map(
       (ingredient, index) => {
         const rowName = asText(ingredient?.name) || `Ingredient ${index + 1}`;
-        const containsAllergens = normalizeAllergenList(ingredient?.allergens);
-        const containsDiets = normalizeDietList(ingredient?.diets);
-        const crossAllergens = normalizeAllergenList(
-          ingredient?.crossContaminationAllergens,
-        );
-        const crossDiets = normalizeDietList(ingredient?.crossContaminationDiets);
         return {
           ...ingredient,
           name: rowName,
-          allergens: containsAllergens,
-          diets: containsDiets,
-          crossContaminationAllergens: crossAllergens,
-          crossContaminationDiets: crossDiets,
-          aiDetectedAllergens: normalizeAllergenList(
-            ingredient?.aiDetectedAllergens || containsAllergens,
-          ),
-          aiDetectedDiets: normalizeDietList(
-            ingredient?.aiDetectedDiets || containsDiets,
-          ),
-          aiDetectedCrossContaminationAllergens: normalizeAllergenList(
-            ingredient?.aiDetectedCrossContaminationAllergens || crossAllergens,
-          ),
-          aiDetectedCrossContaminationDiets: normalizeDietList(
-            ingredient?.aiDetectedCrossContaminationDiets || crossDiets,
-          ),
-          brands: Array.isArray(ingredient?.brands) ? ingredient.brands : [],
-          brandRequired: Boolean(ingredient?.brandRequired),
-          brandRequirementReason: asText(ingredient?.brandRequirementReason),
+          allergens: [],
+          diets: [],
+          crossContaminationAllergens: [],
+          crossContaminationDiets: [],
+          aiDetectedAllergens: [],
+          aiDetectedDiets: [],
+          aiDetectedCrossContaminationAllergens: [],
+          aiDetectedCrossContaminationDiets: [],
+          brands: [],
+          brandRequired: false,
+          brandRequirementReason: "",
           confirmed: false,
         };
       },
     );
 
-    // Analyze per-ingredient scan requirement; default to "required" on failure for safety.
-    const scanRequirementFallbackReason =
-      "Automatic scan-requirement analysis failed; assign a brand item.";
-    const dishName = asText(selectedOverlay.id || selectedOverlay.name);
-    const uniqueByToken = new Map();
-    baseIngredients.forEach((ingredient) => {
-      const name = asText(ingredient?.name);
-      const token = normalizeToken(name);
-      if (!token || uniqueByToken.has(token)) return;
-      uniqueByToken.set(token, name);
-    });
-
-    const requirementByToken = new Map();
-    await Promise.all(
-      Array.from(uniqueByToken.entries()).map(async ([token, ingredientName]) => {
-        try {
-          if (!callbacks?.onAnalyzeIngredientScanRequirement) {
-            throw new Error("Ingredient scan requirement callback is not configured.");
-          }
-          const scanResult = await callbacks.onAnalyzeIngredientScanRequirement({
-            ingredientName,
-            dishName,
-          });
-          if (typeof scanResult?.needsScan !== "boolean") {
-            throw new Error("Invalid scan requirement result.");
-          }
-          const needsScan = Boolean(scanResult.needsScan);
-          requirementByToken.set(token, {
-            brandRequired: needsScan,
-            brandRequirementReason: needsScan ? asText(scanResult.reasoning) : "",
-          });
-        } catch (_error) {
-          requirementByToken.set(token, {
-            brandRequired: true,
-            brandRequirementReason: scanRequirementFallbackReason,
-          });
-        }
-      }),
-    );
-
-    // Merge requirement decisions back into each ingredient row.
-    const ingredients = baseIngredients.map((ingredient) => {
-      const token = normalizeToken(ingredient?.name);
-      const requirement = token ? requirementByToken.get(token) : null;
-      if (!requirement) {
-        return {
-          ...ingredient,
-          brandRequired: true,
-          brandRequirementReason: scanRequirementFallbackReason,
-        };
-      }
-      return {
-        ...ingredient,
-        brandRequired: Boolean(requirement.brandRequired),
-        brandRequirementReason: asText(requirement.brandRequirementReason),
-      };
-    });
-
-    // Dish-level allergen summary is union of ingredient allergens.
-    const allergens = Array.from(
-      new Set(
-        ingredients
-          .flatMap((ingredient) =>
-            Array.isArray(ingredient?.allergens) ? ingredient.allergens : [],
-          )
-          .filter(Boolean),
-      ),
-    );
-
-    // Candidate diets are reduced to diets all ingredient rows satisfy.
-    const candidateDiets = dedupeTokenList([
-      ...(Array.isArray(config?.DIETS) ? config.DIETS : []),
-      ...normalizeDietList(result?.dietaryOptions),
-      ...ingredients.flatMap((ingredient) =>
-        Array.isArray(ingredient?.diets) ? ingredient.diets : [],
-      ),
-    ]);
-    const diets = ingredients.length
-      ? candidateDiets.filter((diet) =>
-          ingredients.every((ingredient) => {
-            if (!Array.isArray(ingredient?.diets)) return false;
-            return ingredient.diets.some(
-              (value) => normalizeToken(value) === normalizeToken(diet),
-            );
-          }),
-        )
-      : [];
-
-    // Build allergen detail text by listing ingredient rows that contain each allergen.
-    const details = {};
-    allergens.forEach((allergen) => {
-      const matched = ingredients
-        .filter((ingredient) =>
-          Array.isArray(ingredient?.allergens)
-            ? ingredient.allergens.includes(allergen)
-            : false,
-        )
-        .map((ingredient) => asText(ingredient?.name))
-        .filter(Boolean);
-      if (matched.length) {
-        details[allergen] = `Contains ${Array.from(new Set(matched)).join(", ")}`;
-      }
-    });
-
-    const ingredientsBlockingDiets = computeDietBlockers(
-      ingredients,
-      candidateDiets,
-    );
-    // Cross-contamination summary is union across ingredient rows.
-    const crossContaminationAllergens = Array.from(
-      new Set(
-        ingredients
-          .flatMap((ingredient) =>
-            Array.isArray(ingredient?.crossContaminationAllergens)
-              ? ingredient.crossContaminationAllergens
-              : [],
-          )
-          .filter(Boolean),
-      ),
-    );
-    const crossContaminationDiets = Array.from(
-      new Set(
-        ingredients
-          .flatMap((ingredient) =>
-            Array.isArray(ingredient?.crossContaminationDiets)
-              ? ingredient.crossContaminationDiets
-              : [],
-          )
-          .filter(Boolean),
-      ),
-    );
-
     // Persist computed AI result into selected overlay.
     updateOverlay(selectedOverlay._editorKey, {
-      allergens,
-      diets,
-      details,
+      allergens: [],
+      diets: [],
+      details: {},
       ingredients,
       removable: [],
-      crossContaminationAllergens,
-      crossContaminationDiets,
-      ingredientsBlockingDiets,
+      crossContaminationAllergens: [],
+      crossContaminationDiets: [],
+      ingredientsBlockingDiets: {},
     });
 
     queueMicrotask(() => pushHistory());
     return { success: true };
   }, [
-    callbacks?.onAnalyzeIngredientScanRequirement,
-    config?.DIETS,
-    normalizeAllergenList,
-    normalizeDietList,
     pushHistory,
     selectedOverlay,
     updateOverlay,
