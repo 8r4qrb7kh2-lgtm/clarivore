@@ -1251,6 +1251,16 @@ export function useDishEditorController({
         ).map((ingredient, index) => asText(ingredient?.name) || `Ingredient ${index + 1}`);
 
         const autoApplyResult = await runAutoApplyForAllRows(createdNames);
+        const currentRows = Array.isArray(latestIngredientsRef.current)
+          ? latestIngredientsRef.current
+          : [];
+        setLastAppliedIngredientNameByRow(() => {
+          const next = {};
+          currentRows.forEach((ingredient, index) => {
+            next[index] = coerceIngredientNameForApply(ingredient);
+          });
+          return next;
+        });
         if (autoApplyResult.failedRows.length) {
           setModalError(
             `Automatic Apply failed for: ${autoApplyResult.failedRows.join(", ")}. Run Apply on those rows.`,
