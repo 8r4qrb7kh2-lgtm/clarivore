@@ -67,6 +67,7 @@ export default function AccountClient() {
   const [mode, setMode] = useState("signin");
   const [user, setUser] = useState(null);
   const [managerRestaurants, setManagerRestaurants] = useState([]);
+  const [topbarMode, setTopbarMode] = useState("customer");
   const [showPreferences, setShowPreferences] = useState(true);
   const [inviteBannerVisible, setInviteBannerVisible] = useState(false);
   const [invitePrompt, setInvitePrompt] = useState(null);
@@ -116,9 +117,6 @@ export default function AccountClient() {
     getDietEmoji,
   } = config;
 
-  const isOwner = isOwnerUser(user);
-  const isManager = isManagerUser(user);
-  const isManagerOrOwner = isOwner || isManager;
   const isGuestAccountMode = guestParam === "1" || guestParam === "true";
   const showGuestChrome = isGuestAccountMode && !user;
   const guestReturnPath = useMemo(() => {
@@ -170,6 +168,7 @@ export default function AccountClient() {
 
     if (!currentUser) {
       setManagerRestaurants([]);
+      setTopbarMode("customer");
       setInviteBannerVisible(Boolean(inviteToken));
       setShowDeleteWarning(false);
       setMode(modeParam === "signup" ? "signup" : isRecoveryMode ? "recovery" : "signin");
@@ -244,9 +243,14 @@ export default function AccountClient() {
     const isEditorMode =
       typeof window !== "undefined" &&
       localStorage.getItem("clarivoreManagerMode") === "editor";
-    setShowPreferences(!(isManagerOrOwner && isEditorMode));
+    const hasManagerAccess =
+      isOwnerUser(currentUser) ||
+      isManagerUser(currentUser) ||
+      managerList.length > 0;
+    setTopbarMode(hasManagerAccess && isEditorMode ? "editor" : "customer");
+    setShowPreferences(!(hasManagerAccess && isEditorMode));
 
-    if (!(isManagerOrOwner && isEditorMode)) {
+    if (!(hasManagerAccess && isEditorMode)) {
       const { allergies, diets, hadFilteredAllergies } = await loadUserPreferences(
         supabase,
         currentUser,
@@ -277,7 +281,6 @@ export default function AccountClient() {
     ALLERGENS,
     DIETS,
     inviteToken,
-    isManagerOrOwner,
     modeParam,
     normalizeAllergen,
     normalizeDietLabel,
@@ -805,7 +808,7 @@ export default function AccountClient() {
           <GuestTopbar brandHref="/guest" signInHref={guestSignInHref} />
         ) : (
           <AppTopbar
-            mode="customer"
+            mode={topbarMode}
             user={user || null}
             signedIn={Boolean(user)}
           />

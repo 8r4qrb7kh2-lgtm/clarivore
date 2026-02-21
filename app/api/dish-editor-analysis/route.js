@@ -1,4 +1,8 @@
 import { corsJson, corsOptions } from "../_shared/cors";
+import {
+  buildDishEditorAnalysisSystemPrompt,
+  buildDishEditorAnalysisUserPrompt,
+} from "../../lib/claudePrompts";
 
 export const runtime = "nodejs";
 
@@ -436,97 +440,26 @@ export async function POST(request) {
 
     const allergenCodebookText = buildPromptCodebookLines(allergenCodebook.entries);
     const dietCodebookText = buildPromptCodebookLines(dietCodebook.entries);
+    const milkCode = allergenCodebook.entries.find((entry) => entry.value === "milk")?.code;
+    const eggCode = allergenCodebook.entries.find((entry) => entry.value === "egg")?.code;
+    const wheatCode = allergenCodebook.entries.find((entry) => entry.value === "wheat")?.code;
+    const systemPrompt = buildDishEditorAnalysisSystemPrompt({
+      parsedImage,
+      allergenCodebookText,
+      dietCodebookText,
+      allDietCodesExample,
+      milkCode,
+      eggCode,
+      wheatCode,
+      vegetarianDietCodesExample,
+      vegetarianGlutenFreeCodesExample,
+    });
 
-    const systemPrompt = parsedImage
-      ? `You are an ingredient analysis assistant for a restaurant allergen awareness system.
-
-CRITICAL: respond with ONLY valid JSON.
-
-Use ONLY numeric codes in output.
-Allergen codebook:
-${allergenCodebookText}
-
-Diet codebook:
-${dietCodebookText}
-
-INSTRUCTIONS:
-1. Read all ingredient-related text from the image.
-2. Create separate ingredient entries for distinct ingredients.
-3. Include optional ingredients and garnishes.
-4. For each ingredient, return allergen_codes and diet_codes using the codebooks.
-5. Return dish-level dietary_option_codes.
-6. You MUST explicitly evaluate gluten-free for each ingredient and the overall dish.
-7. Gluten-free is allowed only when no gluten-containing grains/derivatives are indicated (wheat, barley, rye, malt, brewer's yeast, triticale).
-8. Do NOT output a separate "gluten" allergen.
-
-Return this exact JSON shape:
-{
-  "ingredients": [
-    {
-      "name": "ingredient name",
-      "brand": "brand name or empty string",
-      "allergen_codes": [1],
-      "diet_codes": ${allDietCodesExample},
-      "ingredientsList": ["sub-ingredient line"],
-      "imageQuality": "good|poor|unreadable"
-    }
-  ],
-  "dietary_option_codes": ${allDietCodesExample},
-  "verifiedFromImage": true
-}
-
-EXAMPLES:
-- "spinach" -> allergen_codes: [], diet_codes: ${allDietCodesExample}
-- "cottage cheese" -> allergen_codes: [${allergenCodebook.entries.find((entry) => entry.value === "milk")?.code || 0}], diet_codes: ${vegetarianDietCodesExample}
-- "egg" -> allergen_codes: [${allergenCodebook.entries.find((entry) => entry.value === "egg")?.code || 0}], diet_codes: ${vegetarianDietCodesExample}
-- "wheat flour" -> allergen_codes: [${allergenCodebook.entries.find((entry) => entry.value === "wheat")?.code || 0}], diet_codes: []
-- A dish with milk/egg but no gluten grains should include dietary_option_codes: ${vegetarianGlutenFreeCodesExample}`
-      : `You are an ingredient analysis assistant for a restaurant allergen awareness system.
-
-CRITICAL: respond with ONLY valid JSON.
-
-Use ONLY numeric codes in output.
-Allergen codebook:
-${allergenCodebookText}
-
-Diet codebook:
-${dietCodebookText}
-
-SOURCE PRIORITY RULES:
-1. Description is the PRIMARY ingredient source.
-2. Dish Name is CONTEXT ONLY and must not replace explicit Description ingredients.
-3. Extract explicit ingredients listed in Description, including comma-, newline-, and semicolon-separated lists.
-4. Do NOT substitute a generic dish-name-only ingredient guess when Description provides explicit ingredients.
-5. Use Dish Name only to disambiguate unclear Description terms.
-
-Analyze the dish description and extract ingredients, with allergen_codes and diet_codes for each ingredient.
-Return dish-level dietary_option_codes.
-You MUST explicitly evaluate gluten-free at ingredient and dish level.
-
-Return this exact JSON shape:
-{
-  "ingredients": [
-    {
-      "name": "ingredient name",
-      "brand": "brand name or empty string",
-      "allergen_codes": [1],
-      "diet_codes": ${allDietCodesExample},
-      "ingredientsList": ["sub-ingredient line"]
-    }
-  ],
-  "dietary_option_codes": ${allDietCodesExample},
-  "verifiedFromImage": false
-}`;
-
-    const userPrompt = parsedImage
-      ? `${dishName ? `Dish Name (context only): ${dishName}` : ""}
-${text ? `Description context: ${text}` : ""}
-
-Analyze this ingredient image.`
-      : `Dish Name (context only): ${dishName || "Unknown"}
-Description (primary source): ${text || "No description provided."}
-
-Analyze this dish description. Use the Description as the primary ingredient source and extract explicit listed ingredients.`;
+    const userPrompt = buildDishEditorAnalysisUserPrompt({
+      parsedImage,
+      dishName,
+      text,
+    });
 
     const content = [];
     if (parsedImage) {

@@ -1,15 +1,8 @@
 import { corsJson, corsOptions } from "../_shared/cors";
 import { asText, prisma } from "../editor-pending-save/_shared/pendingSaveUtils";
+import { buildHelpAssistantSystemPrompt } from "../../lib/claudePrompts";
 
 export const runtime = "nodejs";
-
-const CUSTOMER_GUIDE = `You are Clarivore's customer help assistant.
-Answer questions about finding restaurants, dish search, favorites, and account basics.
-Keep answers concise, factual, and step-based when describing actions.`;
-
-const MANAGER_GUIDE = `You are Clarivore's manager help assistant.
-Answer questions about the restaurant editor, ingredient workflows, confirmations, and dashboard tools.
-Keep answers concise, factual, and step-based when describing actions.`;
 
 function tokenize(value) {
   return asText(value)
@@ -172,10 +165,11 @@ export async function POST(request) {
     });
 
     const canonicalFacts = await fetchCanonicalFacts();
-    const basePrompt = requestedMode === "manager" ? MANAGER_GUIDE : CUSTOMER_GUIDE;
-    const evidenceBlock = context ? `Evidence snippets:\n${context}` : "Evidence snippets: (none)";
-
-    const systemPrompt = `${basePrompt}\n\n${canonicalFacts}\n\n${evidenceBlock}\n\nUse the evidence when available. If evidence is thin, make a best-effort inference and state uncertainty briefly.`;
+    const systemPrompt = buildHelpAssistantSystemPrompt({
+      requestedMode,
+      canonicalFacts,
+      evidence: context,
+    });
     const messages = sanitizeHistory(body?.messages, query);
 
     const claudeResponse = await fetch("https://api.anthropic.com/v1/messages", {

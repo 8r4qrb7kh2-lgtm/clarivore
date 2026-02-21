@@ -7,8 +7,6 @@ export function useTransientStatus() {
   const statusTimerRef = useRef(null);
 
   const setStatus = useCallback((text, tone = "success") => {
-    setStatusMessage({ text, tone });
-
     // Cancel any previous clear timer so newer status messages are not removed early.
     if (statusTimerRef.current) {
       window.clearTimeout(statusTimerRef.current);
@@ -16,7 +14,16 @@ export function useTransientStatus() {
     }
 
     // Empty text means caller intentionally cleared the banner.
-    if (!text) return;
+    if (!text) {
+      setStatusMessage({ text: "", tone: "" });
+      return;
+    }
+    if (tone !== "error") {
+      setStatusMessage({ text: "", tone: "" });
+      return;
+    }
+
+    setStatusMessage({ text, tone: "error" });
 
     statusTimerRef.current = window.setTimeout(() => {
       setStatusMessage((current) =>

@@ -1,4 +1,5 @@
 import { corsJson, corsOptions } from "../_shared/cors";
+import { buildDetectMenuDishesPrompts } from "../../lib/claudePrompts";
 
 export const runtime = "nodejs";
 
@@ -99,28 +100,7 @@ export async function POST(request) {
   }
 
   try {
-    const systemPrompt = `You are a menu analysis assistant. Your job is to identify all dishes on a restaurant menu image.
-
-Simply list all the menu items you can see. Don't worry about coordinates - just extract the dish names.
-
-Return ONLY a JSON object in this exact format:
-{
-  "dishes": [
-    {"name": "Dish Name 1"},
-    {"name": "Dish Name 2"},
-    {"name": "Dish Name 3"}
-  ]
-}
-
-Rules:
-- Include EVERY menu item you can see
-- Use the exact name as it appears on the menu
-- Don't include section headers (like "Appetizers", "Entrees")
-- Don't include prices or descriptions, just the dish name
-- Return ONLY the JSON, no other text`;
-
-    const userPrompt =
-      "Analyze this restaurant menu image and list ALL menu items you can see. Return only a JSON object with a dishes array containing objects with name properties.";
+    const { systemPrompt, userPrompt } = buildDetectMenuDishesPrompts();
 
     const claudeResponse = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",

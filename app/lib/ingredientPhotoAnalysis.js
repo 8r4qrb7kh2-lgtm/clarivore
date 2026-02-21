@@ -1,5 +1,10 @@
 import { analyzeAllergensWithLabelCropper } from "./ingredientAllergenAnalysis.js";
 import { createIngredientNormalizer } from "./ingredientNormalizer.js";
+import {
+  buildIngredientPhotoLineMatchingPrompts,
+  buildIngredientPhotoQualityPrompts,
+  buildIngredientPhotoTranscriptionPrompts,
+} from "./claudePrompts.js";
 
 export function initIngredientPhotoAnalysis(deps = {}) {
   const esc =
@@ -306,22 +311,7 @@ export function initIngredientPhotoAnalysis(deps = {}) {
 
   // Step 1: Get Claude's transcription of the image
   async function getClaudeTranscription(imageBase64, mediaType) {
-    const systemPrompt = `You are an OCR assistant. Your job is to accurately transcribe text from images of ingredient lists or food labels.
-
-  Output ONLY a JSON array where each element represents one visual line of text as it appears in the image.
-  Each line should be the exact text content, preserving the original line breaks as they appear visually.
-
-  Example output format:
-  ["INGREDIENTS: Almonds, Dark Chocolate", "(chocolate liquor, cane sugar, cocoa butter,", "vanilla). Organic Coconut.", "CONTAINS: Tree nuts"]
-
-  Rules:
-  - Each array element = one visual line from the image
-  - Preserve exact spelling and punctuation
-  - Include ONLY text related to: ingredients, allergen information, allergy warnings, dietary claims
-  - EXCLUDE: company names, addresses, phone numbers, websites, UPC codes, weight/volume, nutrition facts, logos, brand names, origin info, or anything else like that
-  - Do not combine multiple visual lines into one
-  - Do not split one visual line into multiple entries
-  - Output ONLY the JSON array, no other text`;
+    const { systemPrompt, userPrompt } = buildIngredientPhotoTranscriptionPrompts();
 
     const response = await callClaudeForAnalysis(
       [
@@ -338,7 +328,7 @@ export function initIngredientPhotoAnalysis(deps = {}) {
             },
             {
               type: "text",
-              text: "Transcribe each line of text from this ingredient label. Return as a JSON array with one element per visual line.",
+              text: userPrompt,
             },
           ],
         },
@@ -412,37 +402,11 @@ export function initIngredientPhotoAnalysis(deps = {}) {
     mediaType,
     claudeLines,
   ) {
-    const systemPrompt = `You are a quality-control assistant for ingredient-label photos.
-
-Your job is to decide whether the image is readable enough to confidently extract the COMPLETE ingredient list.
-
-Decide "accept": false if any of these are true:
-- The ingredient list is cut off or missing parts
-- Text is blurry, out of focus, or too small to read
-- Glare, shadows, or distortion makes parts unreadable
-- The image does not clearly show an ingredient list
-- Any portion of the ingredient list is obscured, scribbled over, or partially blocked
-
-Be strict. Accept only if you can read the full ingredient list end-to-end with high confidence.
-If you are not highly confident the list is complete and legible, set "accept": false.
-Only set "accept": true when "confidence" is "high".
-
-Return ONLY valid JSON with this schema:
-{
-  "accept": true|false,
-  "confidence": "low"|"medium"|"high",
-  "reasons": ["short reason phrases if reject"],
-  "warnings": ["short warning phrases if accept but imperfect"],
-  "message": "short user-facing sentence if reject"
-}
-
-Notes:
-- Use the IMAGE as the source of truth.
-- The transcript may be incomplete or inaccurate; use it only as a hint.`;
-
     const transcriptText = Array.isArray(claudeLines)
       ? claudeLines.join("\n")
       : "";
+    const { systemPrompt, userPrompt } =
+      buildIngredientPhotoQualityPrompts(transcriptText);
 
     const response = await callClaudeForAnalysis(
       [
@@ -459,7 +423,7 @@ Notes:
             },
             {
               type: "text",
-              text: `Assess photo quality for ingredient-list readability.\n\nTranscript (may be inaccurate):\n${transcriptText}`,
+              text: userPrompt,
             },
           ],
         },
@@ -484,39 +448,22 @@ Notes:
 
   // Step 3: Use Claude to match transcript lines to visual lines
   async function matchLinesToVisualLines(claudeLines, visualLines) {
-    const systemPrompt = `You are a text matching assistant. You will receive:
-  1. Transcript lines - accurate text from Claude's reading of the image
-  2. Visual lines - OCR-detected text grouped by position (may have errors/typos)
-
-  Your job is to match each transcript line to the visual line that represents the same text.
-
-  Output a JSON object where:
-  - Keys are transcript line indices (0, 1, 2, etc.)
-  - Values are the corresponding visual line index
-
-  Rules:
-  - Match based on text similarity (the visual line text may have OCR errors)
-  - Each transcript line should match to exactly ONE visual line
-  - If a transcript line has no good match, use -1
-  - Visual lines may be unused (they might be addresses, nutrition info, etc.)
-
-  Example output:
-  {"0": 5, "1": 6, "2": 7, "3": 8, "4": -1}
-
-  Output ONLY the JSON object, nothing else.`;
-
     const transcriptDesc = claudeLines
       .map((line, i) => `Transcript ${i}: "${line}"`)
       .join("\n");
     const visualDesc = visualLines
       .map((vl, i) => `Visual ${i}: "${vl.text}"`)
       .join("\n");
+    const { systemPrompt, userPrompt } = buildIngredientPhotoLineMatchingPrompts({
+      transcriptDesc,
+      visualDesc,
+    });
 
     const response = await callClaudeForAnalysis(
       [
         {
           role: "user",
-          content: `Match each transcript line to its corresponding visual line.\n\nTRANSCRIPT LINES:\n${transcriptDesc}\n\nVISUAL LINES:\n${visualDesc}\n\nReturn a JSON object mapping transcript indices to visual line indices.`,
+          content: userPrompt,
         },
       ],
       systemPrompt,

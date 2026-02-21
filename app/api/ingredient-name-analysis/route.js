@@ -1,4 +1,8 @@
 import { corsJson, corsOptions } from "../_shared/cors";
+import {
+  buildIngredientNameAnalysisPrompts,
+  buildIngredientNameRepairPrompts,
+} from "../../lib/claudePrompts";
 
 export const runtime = "nodejs";
 
@@ -377,16 +381,8 @@ function sleep(ms) {
 }
 
 async function repairJsonResponse({ apiKey, model, rawOutput }) {
-  const repairSystemPrompt = `You repair malformed JSON.
-Return ONLY valid JSON with this exact shape:
-{
-  "allergen_codes": [1, 2],
-  "diet_codes": [1, 2],
-  "reasoning": "brief explanation"
-}`;
-  const repairUserPrompt = `Repair this model output into valid JSON only. Do not add markdown.
-
-${rawOutput}`;
+  const { systemPrompt: repairSystemPrompt, userPrompt: repairUserPrompt } =
+    buildIngredientNameRepairPrompts(rawOutput);
   return await callAnthropicText({
     apiKey,
     model,
@@ -541,35 +537,12 @@ export async function POST(request) {
 
     const allergenCodebookText = buildPromptCodebookLines(allergenCodebook.entries);
     const dietCodebookText = buildPromptCodebookLines(dietCodebook.entries);
-    const systemPrompt = `You are an allergen and dietary preference analyzer for a restaurant allergen awareness system.
-Think carefully and step-by-step before answering, but output ONLY valid JSON.
-
-Analyze a SINGLE ingredient or product name.
-Use ONLY numeric codes from these codebooks.
-
-Allergen codebook:
-${allergenCodebookText}
-
-Diet codebook:
-${dietCodebookText}
-
-CRITICAL RULES:
-- ONLY use allergens from the codebook.
-- Do NOT flag "gluten" as a separate allergen.
-- Oats alone are NOT wheat unless explicitly wheat.
-- Treat coconut as tree nut for allergen purposes.
-- You MUST evaluate gluten-free explicitly.
-
-Return ONLY:
-{
-  "allergen_codes": [1, 2],
-  "diet_codes": [1, 2],
-  "reasoning": "brief explanation"
-}`;
-    const userPrompt = `Ingredient name: ${ingredientName}
-Dish context: ${dishName || "Unknown dish"}
-
-Infer allergen and diet compatibility from typical formulation.`;
+    const { systemPrompt, userPrompt } = buildIngredientNameAnalysisPrompts({
+      allergenCodebookText,
+      dietCodebookText,
+      ingredientName,
+      dishName,
+    });
 
     const parsed = await runNameAnalysis({
       apiKey: anthropicApiKey,

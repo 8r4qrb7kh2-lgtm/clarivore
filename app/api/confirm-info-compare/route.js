@@ -1,4 +1,5 @@
 import { corsJson, corsOptions } from "../_shared/cors";
+import { buildConfirmInfoComparisonPrompts } from "../../lib/claudePrompts";
 
 export const runtime = "nodejs";
 
@@ -137,41 +138,7 @@ function extractTextFromAnthropicPayload(payload) {
 }
 
 function buildComparisonPrompts(kind, label) {
-  if (kind === "menu_page") {
-    return {
-      systemPrompt: `You compare two photos of the same restaurant menu page.
-Return ONLY valid JSON with this exact schema:
-{
-  "match": true,
-  "confidence": "low"|"medium"|"high",
-  "summary": "short explanation",
-  "differences": ["difference one"]
-}
-Rules:
-- Treat differences in dish names and dish descriptions/ingredient wording as meaningful.
-- Ignore price differences, layout differences, typography, blur/noise, and lighting.
-- If uncertain, set confidence to "low".
-- If confidence is low, set match to false.`,
-      userPrompt: `Compare these two menu page images${label ? ` for "${label}"` : ""}. The first image is the database baseline. The second image is the current photo. Determine if dishes and dish description content are effectively the same.`,
-    };
-  }
-
-  return {
-    systemPrompt: `You compare two front-of-package product photos.
-Return ONLY valid JSON with this exact schema:
-{
-  "match": true,
-  "confidence": "low"|"medium"|"high",
-  "summary": "short explanation",
-  "differences": ["difference one"]
-}
-Rules:
-- Fail the comparison when product identity differs in brand/product/variant/flavor/size family cues.
-- Ignore only minor framing, glare, rotation, and camera quality differences.
-- If uncertain, set confidence to "low".
-- If confidence is low, set match to false.`,
-    userPrompt: `Compare these two product-front images${label ? ` for "${label}"` : ""}. The first image is the database baseline. The second image is the current photo. Determine whether they are the same product front.`,
-  };
+  return buildConfirmInfoComparisonPrompts(kind, label);
 }
 
 async function compareWithClaude({

@@ -1,4 +1,5 @@
 import { corsJson, corsOptions } from "../_shared/cors";
+import { buildDetectCornersPrompts } from "../../lib/claudePrompts";
 
 export const runtime = "nodejs";
 
@@ -174,25 +175,10 @@ export async function POST(request) {
 
   try {
     const { base64Data, mediaType } = extractBase64ImageData(image);
-
-    const systemPrompt = `You detect the exact four corners of a single menu page in an image.
-Respond ONLY with valid JSON, no markdown.
-Coordinates must be in image pixel space:
-- x from 0 to ${width}
-- y from 0 to ${height}
-Return this exact shape:
-{
-  "corners": {
-    "topLeft": {"x": 0, "y": 0},
-    "topRight": {"x": ${width}, "y": 0},
-    "bottomRight": {"x": ${width}, "y": ${height}},
-    "bottomLeft": {"x": 0, "y": ${height}}
-  },
-  "description": "short note"
-}`;
-
-    const userPrompt =
-      "Detect the four page corners for perspective correction. Prefer the physical sheet/page boundaries, not text blocks.";
+    const { systemPrompt, userPrompt } = buildDetectCornersPrompts({
+      width,
+      height,
+    });
 
     const claudeResponse = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",

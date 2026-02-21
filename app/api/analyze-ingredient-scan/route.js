@@ -1,4 +1,5 @@
 import { corsJson, corsOptions } from "../_shared/cors";
+import { buildAnalyzeIngredientScanPrompts } from "../../lib/claudePrompts";
 
 export const runtime = "nodejs";
 
@@ -72,25 +73,10 @@ export async function POST(request) {
   }
 
   try {
-    const systemPrompt = `You classify whether a menu ingredient name likely represents a multi-ingredient product that requires scanning the ingredient label.
-
-CRITICAL: Respond with JSON only. Do not include markdown or extra text.
-
-Return JSON with this structure:
-{
-  "needsScan": true,
-  "reasoning": "Short reason"
-}
-
-Guidelines:
-- needsScan = true for packaged or compound foods that usually contain multiple ingredients (bread, buns, wraps, tortillas, pasta, sauces, dressings, condiments, marinades, spice blends, seasoning mixes, sausages, deli meats, cheeses, yogurt, plant-based milks, packaged desserts, etc.).
-- needsScan = false for single-ingredient raw items (whole fruits/vegetables, whole cuts of meat, fish, eggs, water, salt, pepper, olive oil, rice, plain beans, etc.).
-- If ambiguous, lean true.`;
-
-    const userPrompt = `Dish: ${dishName || "Unknown"}
-Ingredient: ${ingredientName}
-
-Does this ingredient likely contain multiple ingredients?`;
+    const { systemPrompt, userPrompt } = buildAnalyzeIngredientScanPrompts({
+      dishName,
+      ingredientName,
+    });
 
     const requestPayload = {
       model: "claude-sonnet-4-20250514",

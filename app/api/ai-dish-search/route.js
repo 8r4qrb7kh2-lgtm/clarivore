@@ -1,6 +1,7 @@
 import { corsJson, corsOptions } from "../_shared/cors";
 import { asText, prisma } from "../editor-pending-save/_shared/pendingSaveUtils";
 import { fetchRestaurantMenuStateMapFromTablesWithPrisma } from "../../lib/server/restaurantMenuStateServer.js";
+import { buildAiDishSearchPrompt } from "../../lib/claudePrompts";
 
 export const runtime = "nodejs";
 
@@ -203,28 +204,13 @@ function summarizeBasic(candidates) {
 }
 
 function buildPrompt({ userQuery, userAllergens, userDiets, candidates }) {
-  const guidance = `You rank dish relevance for a restaurant search feature.
-User query: "${userQuery}"
-User allergies (context only): ${JSON.stringify(userAllergens || [])}
-User diets (context only): ${JSON.stringify(userDiets || [])}
-
-Tasks:
-1) Infer the likely intended query, including misspellings/typos.
-2) Select only candidate dishes relevant to that intended query.
-3) Assign an integer relevance_score (0-100).
-4) Sort by relevance_score descending.
-5) Use only provided candidate_id values. Do not invent IDs.
-6) Do not classify compatibility status or dietary safety.
-
-Return JSON only in this exact shape:
-{
-  "matches": [
-    {"candidate_id": "", "restaurant_id": "", "relevance_score": 0}
-  ]
-}
-Limit to at most ${MAX_AI_MATCHES} matches total.`;
-
-  return `${guidance}\n\nCandidate dishes JSON:\n${JSON.stringify(candidates)}`;
+  return buildAiDishSearchPrompt({
+    userQuery,
+    userAllergens,
+    userDiets,
+    candidates,
+    maxMatches: MAX_AI_MATCHES,
+  });
 }
 
 function mapAiMatchesToResults(matches, candidateById) {

@@ -25,6 +25,10 @@ export function ToastProvider({ children, maxToasts = 5 }) {
 
   const push = useCallback(
     ({ title, description = "", tone = "neutral", duration = 3200 }) => {
+      if (tone === "success") {
+        return "";
+      }
+
       const id = createToastId();
       setToasts((current) => {
         const next = [...current, { id, title, description, tone }];

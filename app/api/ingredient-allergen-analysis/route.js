@@ -1,4 +1,8 @@
 import { corsJson, corsOptions } from "../_shared/cors";
+import {
+  buildIngredientAllergenAnalysisPrompts,
+  buildIngredientAllergenRepairPrompts,
+} from "../../lib/claudePrompts";
 
 export const runtime = "nodejs";
 
@@ -435,22 +439,8 @@ function sleep(ms) {
 }
 
 async function repairJsonResponse({ apiKey, model, rawOutput }) {
-  const repairSystemPrompt = `You repair malformed JSON.
-Return ONLY valid JSON with this exact shape:
-{
-  "flags": [
-    {
-      "ingredient": "name",
-      "word_indices": [0],
-      "allergen_codes": [1],
-      "diet_codes": [1],
-      "risk_type": "contained"
-    }
-  ]
-}`;
-  const repairUserPrompt = `Repair this output into valid JSON only. Do not add markdown.
-
-${rawOutput}`;
+  const { systemPrompt: repairSystemPrompt, userPrompt: repairUserPrompt } =
+    buildIngredientAllergenRepairPrompts(rawOutput);
 
   return await callAnthropicText({
     apiKey,
@@ -642,73 +632,11 @@ export async function POST(request) {
       .map((word, index) => `${index}: "${word}"`)
       .join("\n");
 
-    const systemPrompt = `You are an allergen and dietary preference analyzer for a restaurant allergen awareness system.
-Return only valid JSON.
-
-Analyze transcripted ingredient-label lines and return allergen/diet flags tied to word indices.
-Use ONLY numeric codes from these codebooks.
-
-Allergen codebook:
-${allergenCodebookText}
-
-Diet codebook:
-${dietCodebookText}
-
-CRITICAL ALLERGEN RULES:
-- ONLY flag allergens from the codebook list.
-- Do NOT flag "gluten" as a separate allergen.
-- Oats by themselves are NOT wheat unless wheat is explicitly present.
-
-RISK TYPES:
-- "contained" for direct ingredients or explicit contains statements.
-- "cross-contamination" for may contain/shared facility style risk.
-
-PHRASE + WORD INDEX RULES:
-- Define each flagged ingredient phrase strictly by delimiter boundaries.
-- Start at the first word immediately after the nearest previous comma (or semicolon), or line start if none.
-- End at the last word immediately before the next comma (or semicolon), or line end if none.
-- "ingredient" must be exactly that bounded phrase and must not be a parent/group phrase.
-- "word_indices" must include ALL and ONLY words from that exact bounded phrase.
-- "word_indices" must be unique and sorted ascending.
-- For a single-word ingredient phrase, return exactly one index.
-- Do NOT include section-heading/context tokens (e.g. "INGREDIENTS:", "CONTAINS") unless they are part of that exact bounded ingredient phrase.
-- If an allergen is in a sub-ingredient phrase, do NOT return the broader parent phrase name.
-- Always use 0-based word indices from the provided numbered transcript list.
-
-DIET PRECISION RULES:
-- Add diet codes only when directly justified by ingredient evidence in that phrase.
-- Do NOT infer broader diet failures from stricter diets.
-- If one phrase indicates a Vegan violation, do not auto-add Vegetarian/Pescatarian unless separately justified.
-- For wheat/gluten evidence, prefer Gluten-free only (unless additional direct evidence supports other diet violations).
-
-EXPLICIT STATEMENT PRIORITY:
-- Treat "contains" statements as direct/contained risk for listed allergens.
-- Treat "may contain" and shared-facility statements as cross-contamination risk.
-- When explicit statements appear, prioritize those signals over weaker contextual inference.
-
-EXAMPLES:
-- Positive: "Wheat flour" -> include allergen wheat, include Gluten-free diet violation.
-- Negative: "Wheat flour" -> do NOT include Vegan, Vegetarian, or Pescatarian diet violations from that phrase alone.
-- Delimiter-boundary positive: "Confectionery Coating (Allulose, Sustainable Palm Kernel And Palm Oil, Whole Milk Powder, Tapioca Fiber, Cocoa Processed With Alkali, Sunflower Lecithin)" with milk evidence -> ingredient must be exactly "Whole Milk Powder".
-- Delimiter-boundary negative: For the same line, do NOT return "Confectionery Coating (Allulose, Sustainable Palm Kernel And Palm Oil, Whole Milk Powder, Tapioca Fiber, Cocoa Processed With Alkali, Sunflower Lecithin)" as the milk ingredient phrase.
-
-Return ONLY JSON:
-{
-  "flags": [
-    {
-      "ingredient": "Wheat flour",
-      "word_indices": [45, 46],
-      "allergen_codes": [1],
-      "diet_codes": [2],
-      "risk_type": "contained"
-    }
-  ]
-}`;
-
-    const userPrompt = `Here is the transcript with each word numbered (0-based):
-${indexedWordList}
-
-Use the numbered list above for word_indices. Do not compute your own indices outside this list.`;
+    const { systemPrompt, userPrompt } = buildIngredientAllergenAnalysisPrompts({
+      allergenCodebookText,
+      dietCodebookText,
+      indexedWordList,
+    });
 
     const parsed = await runFlagAnalysis({
       apiKey: anthropicApiKey,

@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import fsp from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { buildMenuImageAnalysisPrompt } from "../../lib/claudePrompts.js";
 
 const DEFAULT_ANTHROPIC_MODEL = "claude-sonnet-4-5-20250929";
 const GOOGLE_VISION_ENDPOINT = "https://vision.googleapis.com/v1/images:annotate";
@@ -674,55 +675,12 @@ function buildSpatialRepresentation(elements) {
 }
 
 function buildPrompt(spatialMap, fullText, existingNames) {
-  const truncatedFullText = fullText.length > MAX_FULL_TEXT_CHARS
-    ? `${fullText.slice(0, MAX_FULL_TEXT_CHARS)}\n[TRUNCATED]`
-    : fullText;
-
-  const existingSection = existingNames.length
-    ? `## Existing Dish Names (from previous overlays)\nIf you see a dish that matches one of these, use the exact string in the "name" field so we can preserve IDs.\n${existingNames.map((name) => `- ${name}`).join("\n")}\n\n`
-    : "";
-
-  return `You are a menu analysis system. Your task is to identify individual menu items (dishes) and specify which OCR text elements belong to each item.
-
-## Input
-I've extracted text elements from a menu image using OCR. Each element has:
-- **id**: Unique integer identifier
-- **text**: The word/text content
-- **bounds**: Pixel coordinates (x_min, y_min, x_max, y_max)
-
-${existingSection}## Your Task
-Identify each menu item (dish, soup, salad, appetizer, entree, etc.) and list the element IDs that belong to it.
-
-## What Constitutes a Menu Item
-A menu item typically includes:
-- **Name/Title** (often larger, bolder, or different font)
-- **Description** (ingredients, preparation method, accompaniments)
-- **Price(s)** (may have multiple for different sizes)
-- **Size options** (Small/Large, Cup/Bowl, etc.)
-- **Add-on options** (e.g., "Add chicken $3" or "With grilled shrimp 14")
-
-## Rules
-1. **EXCLUDE** section headers like "SALADS", "APPETIZERS", "ENTREES" - these are NOT dishes
-2. **EXCLUDE** standalone dressing lists, sauce lists, or side option menus that aren't part of a specific dish
-3. **INCLUDE** all text that describes a single dish: name + description + all prices + size options + add-ons
-4. **Be comprehensive** - don't miss any menu items
-5. **Be precise** - only include element IDs that actually belong to each dish
-6. If an add-on option clearly belongs to a specific dish (spatially close, logically connected), include it with that dish
-
-## OCR Data
-${spatialMap}
-
-## Full Text (for context)
-${truncatedFullText}
-
-## Required Output Format
-Return a JSON array. Each dish object must have:
-- "name": string - The dish name
-- "description": string - Brief description of the dish
-- "prices": string - All price information
-- "element_ids": array of integers - IDs of text elements belonging to this dish
-
-Output ONLY the JSON array. No markdown, no explanation, no code blocks.`;
+  return buildMenuImageAnalysisPrompt({
+    spatialMap,
+    fullText,
+    existingNames,
+    maxFullTextChars: MAX_FULL_TEXT_CHARS,
+  });
 }
 
 function extractBalancedJsonObjects(value) {
