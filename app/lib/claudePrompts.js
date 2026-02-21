@@ -571,11 +571,10 @@ A menu item typically includes:
 
 ## Rules
 1. **EXCLUDE** section headers like "SALADS", "APPETIZERS", "ENTREES" - these are NOT dishes
-2. **EXCLUDE** standalone dressing lists, sauce lists, or side option menus that aren't part of a specific dish
-3. **INCLUDE** all text that describes a single dish: name + description + all prices + size options + add-ons
-4. **Be comprehensive** - don't miss any menu items
-5. **Be precise** - only include element IDs that actually belong to each dish
-6. If an add-on option clearly belongs to a specific dish (spatially close, logically connected), include it with that dish
+2. **INCLUDE** all text that describes a single dish: name + description + all prices + size options + add-ons
+3. **Be comprehensive** - don't miss any menu items
+4. **Be precise** - only include element IDs that actually belong to each dish
+5. If an add-on option clearly belongs to a specific dish (spatially close, logically connected), include it with that dish
 
 ## OCR Data
 ${asText(spatialMap)}
