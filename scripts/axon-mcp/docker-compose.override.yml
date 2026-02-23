@@ -1,0 +1,27 @@
+services:
+  postgres:
+    ports:
+      - "${AXON_POSTGRES_PORT:-55432}:5432"
+
+  redis:
+    ports:
+      - "${AXON_REDIS_PORT:-56379}:6379"
+
+  api:
+    ports:
+      - "${AXON_API_PORT:-58080}:8080"
+    volumes:
+      - ../src:/app/src
+      - ../cache:/app/cache
+
+  mcp-server:
+    ports:
+      - "${AXON_MCP_PORT:-58001}:8001"
+    volumes:
+      - ../src:/app/src
+      - ../cache:/app/cache
+
+  worker:
+    volumes:
+      - ../src:/app/src
+      - ../cache:/app/cache
