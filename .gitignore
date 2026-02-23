@@ -10,3 +10,5 @@ supabase/.temp/
 .next/
 out/
 .axon/
+scripts/axon-mcp/local.env
+.cursor/mcp.json

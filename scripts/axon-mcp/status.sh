@@ -12,6 +12,8 @@ api_health_url="http://127.0.0.1:${AXON_API_PORT}/api/v1/health"
 mcp_health_url="http://127.0.0.1:${AXON_MCP_PORT}/api/v1/health"
 api_base_url="http://127.0.0.1:${AXON_API_PORT}/api/v1"
 
+log "Ports: API=$AXON_API_PORT MCP=$AXON_MCP_PORT POSTGRES=$AXON_POSTGRES_PORT REDIS=$AXON_REDIS_PORT"
+
 if curl -fsS "$api_health_url" >/dev/null 2>&1; then
   log "API healthy at $api_health_url"
 else

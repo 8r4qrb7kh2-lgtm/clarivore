@@ -21,6 +21,8 @@ Published host ports (defaults):
 - Axon Postgres: `55432`
 - Axon Redis: `56379`
 
+If one of those ports is busy, scripts automatically fall back to alternates.
+
 ## Start and index
 
 1. Bootstrap + start Axon:
@@ -31,6 +33,14 @@ Published host ports (defaults):
    - `npm run axon:status`
 4. Stop services:
    - `npm run axon:down`
+
+One-command full setup:
+
+- `npm run axon:setup`
+  - auto-picks/persists ports
+  - starts Axon
+  - indexes this worktree
+  - writes Cursor MCP config
 
 ## Cursor MCP config
 
@@ -47,6 +57,12 @@ Add this to your Cursor MCP settings:
 }
 ```
 
+Automatic writer command:
+
+- `npm run axon:cursor`
+
+By default this writes to `.cursor/mcp.json`.
+
 ## Optional overrides
 
 Set these before running scripts if you need different host ports or locations:
@@ -58,6 +74,12 @@ Set these before running scripts if you need different host ports or locations:
 - `AXON_POSTGRES_PORT`
 - `AXON_REDIS_PORT`
 - `AXON_SYNC_TIMEOUT_SECS`
+
+Persist local machine ports:
+
+- `npm run axon:ports`
+- This writes `scripts/axon-mcp/local.env` (machine-local override file).
+- Starter template: `scripts/axon-mcp/local.env.example`
 
 ## Notes
 

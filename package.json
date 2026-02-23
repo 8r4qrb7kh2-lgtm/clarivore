@@ -24,7 +24,10 @@
     "axon:up": "bash scripts/axon-mcp/up.sh",
     "axon:down": "bash scripts/axon-mcp/down.sh",
     "axon:index": "bash scripts/axon-mcp/index-worktree.sh",
-    "axon:status": "bash scripts/axon-mcp/status.sh"
+    "axon:status": "bash scripts/axon-mcp/status.sh",
+    "axon:ports": "bash scripts/axon-mcp/configure-ports.sh",
+    "axon:cursor": "bash scripts/axon-mcp/configure-cursor-mcp.sh",
+    "axon:setup": "bash scripts/axon-mcp/setup-all.sh"
   },
   "engines": {
     "node": "20.x"
