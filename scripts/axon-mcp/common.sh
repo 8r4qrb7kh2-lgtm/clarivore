@@ -100,7 +100,7 @@ resolve_port() {
   local chosen
   chosen="$(select_available_port "$preferred" "$@")"
   if [[ "$chosen" != "$preferred" ]]; then
-    log "$label port $preferred is busy; using $chosen."
+    printf '%s\n' "[axon-mcp] $label port $preferred is busy; using $chosen." >&2
   fi
   printf '%s' "$chosen"
 }
@@ -121,6 +121,7 @@ compose() {
   [[ -d "$AXON_DIR" ]] || fail "Axon directory not found: $AXON_DIR"
   [[ -f "$AXON_COMPOSE_BASE_FILE" ]] || fail "Compose file not found: $AXON_COMPOSE_BASE_FILE"
   [[ -f "$AXON_COMPOSE_OVERRIDE_FILE" ]] || fail "Compose override file not found: $AXON_COMPOSE_OVERRIDE_FILE"
+  [[ -f "$AXON_ENV_FILE" ]] || fail "Axon env file not found: $AXON_ENV_FILE"
 
   (
     cd "$AXON_DIR"
@@ -128,7 +129,11 @@ compose() {
     AXON_MCP_PORT="$AXON_MCP_PORT" \
     AXON_POSTGRES_PORT="$AXON_POSTGRES_PORT" \
     AXON_REDIS_PORT="$AXON_REDIS_PORT" \
-    docker compose -f "$AXON_COMPOSE_BASE_FILE" -f "$AXON_COMPOSE_OVERRIDE_FILE" "$@"
+    docker compose \
+      --env-file "$AXON_ENV_FILE" \
+      -f "$AXON_COMPOSE_BASE_FILE" \
+      -f "$AXON_COMPOSE_OVERRIDE_FILE" \
+      "$@"
   )
 }
 

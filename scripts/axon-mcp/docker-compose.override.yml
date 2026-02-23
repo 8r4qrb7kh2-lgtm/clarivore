@@ -25,3 +25,5 @@ services:
     volumes:
       - ../src:/app/src
       - ../cache:/app/cache
+    healthcheck:
+      disable: true

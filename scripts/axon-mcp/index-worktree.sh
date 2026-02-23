@@ -24,6 +24,24 @@ fi
 repo_name="$(basename "$TARGET_REPO")"
 repo_namespace_prefix="${AXON_REPO_NAMESPACE_PREFIX:-local}"
 repo_namespace="${repo_namespace_prefix}/${repo_name}"
+mirror_root_host="${AXON_LOCAL_MIRROR_DIR:-$AXON_DIR/cache/local-sources}"
+
+mkdir -p "$mirror_root_host"
+mirror_slug="$(printf '%s' "$repo_namespace" | tr '/:@' '___' | tr -c 'A-Za-z0-9._-' '_')"
+mirror_repo_host="${mirror_root_host}/${mirror_slug}.git"
+mirror_repo_container="/app/cache/local-sources/$(basename "$mirror_repo_host")"
+
+if [[ -d "$mirror_repo_host" ]]; then
+  log "Updating local mirror for repository indexing: $mirror_repo_host"
+  if ! git --git-dir "$mirror_repo_host" remote set-url origin "$TARGET_REPO" >/dev/null 2>&1 \
+    || ! git --git-dir "$mirror_repo_host" fetch --prune origin '+refs/*:refs/*' >/dev/null 2>&1; then
+    rm -rf "$mirror_repo_host"
+    git clone --mirror "$TARGET_REPO" "$mirror_repo_host" >/dev/null
+  fi
+else
+  log "Creating local mirror for repository indexing: $mirror_repo_host"
+  git clone --mirror "$TARGET_REPO" "$mirror_repo_host" >/dev/null
+fi
 
 tmp_payload="$(mktemp)"
 tmp_response="$(mktemp)"
@@ -42,23 +60,12 @@ node -e '
     default_branch: process.argv[5]
   };
   fs.writeFileSync(process.argv[1], JSON.stringify(payload));
-' "$tmp_payload" "$repo_name" "$repo_namespace" "$TARGET_REPO" "$default_branch"
+' "$tmp_payload" "$repo_name" "$repo_namespace" "$mirror_repo_container" "$default_branch"
 
 log "Registering repository with Axon: $TARGET_REPO"
-create_status="$(
-  curl -sS -o "$tmp_response" -w "%{http_code}" \
-    -H "Content-Type: application/json" \
-    -X POST "$api_base_url/repositories" \
-    --data-binary "@$tmp_payload"
-)"
-
 repo_id=""
-if [[ "$create_status" == "201" || "$create_status" == "200" ]]; then
-  repo_id="$(node -e 'const fs=require("fs"); const r=JSON.parse(fs.readFileSync(process.argv[1],"utf8")); process.stdout.write(String(r.id || ""));' "$tmp_response")"
-  [[ -n "$repo_id" ]] || fail "Repository created but response did not include repository ID."
-elif [[ "$create_status" == "409" ]]; then
-  log "Repository already tracked, looking up existing ID."
-  curl -sS "$api_base_url/repositories?skip=0&limit=200" >"$tmp_list"
+
+if curl -sS "$api_base_url/repositories?skip=0&limit=100" >"$tmp_list" 2>/dev/null; then
   repo_id="$(node -e '
     const fs=require("fs");
     const namespace=process.argv[2];
@@ -67,10 +74,38 @@ elif [[ "$create_status" == "409" ]]; then
     const existing=items.find((item) => item.path_with_namespace === namespace);
     process.stdout.write(existing ? String(existing.id) : "");
   ' "$tmp_list" "$repo_namespace")"
-  [[ -n "$repo_id" ]] || fail "Repository exists but could not find ID for namespace: $repo_namespace"
+fi
+
+if [[ -n "$repo_id" ]]; then
+  log "Repository already tracked as id=$repo_id; triggering sync."
   curl -sS -X POST "$api_base_url/repositories/$repo_id/sync" >/dev/null
 else
-  fail "Repository registration failed (HTTP $create_status): $(cat "$tmp_response")"
+  create_status="$(
+    curl -sS -o "$tmp_response" -w "%{http_code}" \
+      -H "Content-Type: application/json" \
+      -X POST "$api_base_url/repositories" \
+      --data-binary "@$tmp_payload"
+  )"
+
+  if [[ "$create_status" == "201" || "$create_status" == "200" ]]; then
+    repo_id="$(node -e 'const fs=require("fs"); const r=JSON.parse(fs.readFileSync(process.argv[1],"utf8")); process.stdout.write(String(r.id || ""));' "$tmp_response")"
+    [[ -n "$repo_id" ]] || fail "Repository created but response did not include repository ID."
+  elif [[ "$create_status" == "409" ]]; then
+    log "Repository already tracked, looking up existing ID."
+    curl -sS "$api_base_url/repositories?skip=0&limit=100" >"$tmp_list"
+    repo_id="$(node -e '
+      const fs=require("fs");
+      const namespace=process.argv[2];
+      const list=JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
+      const items=Array.isArray(list.items) ? list.items : [];
+      const existing=items.find((item) => item.path_with_namespace === namespace);
+      process.stdout.write(existing ? String(existing.id) : "");
+    ' "$tmp_list" "$repo_namespace")"
+    [[ -n "$repo_id" ]] || fail "Repository exists but could not find ID for namespace: $repo_namespace"
+    curl -sS -X POST "$api_base_url/repositories/$repo_id/sync" >/dev/null
+  else
+    fail "Repository registration failed (HTTP $create_status): $(cat "$tmp_response")"
+  fi
 fi
 
 log "Tracking repository id=$repo_id; waiting for sync completion."

@@ -26,6 +26,7 @@
     "axon:index": "bash scripts/axon-mcp/index-worktree.sh",
     "axon:status": "bash scripts/axon-mcp/status.sh",
     "axon:ports": "bash scripts/axon-mcp/configure-ports.sh",
+    "axon:codex": "bash scripts/axon-mcp/configure-codex-mcp.sh",
     "axon:cursor": "bash scripts/axon-mcp/configure-cursor-mcp.sh",
     "axon:setup": "bash scripts/axon-mcp/setup-all.sh"
   },

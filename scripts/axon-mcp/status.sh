@@ -29,7 +29,7 @@ fi
 tmp_list="$(mktemp)"
 trap 'rm -f "$tmp_list"' EXIT
 
-if curl -fsS "$api_base_url/repositories?skip=0&limit=200" >"$tmp_list" 2>/dev/null; then
+if curl -fsS "$api_base_url/repositories?skip=0&limit=100" >"$tmp_list" 2>/dev/null; then
   node -e '
     const fs=require("fs");
     const payload=JSON.parse(fs.readFileSync(process.argv[1], "utf8"));

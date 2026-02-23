@@ -14,7 +14,7 @@ compose up -d postgres redis api worker mcp-server
 
 log "Running database migrations"
 attempt=0
-until compose exec -T api alembic upgrade head >/dev/null 2>&1; do
+until compose exec -T api /opt/venv/bin/python scripts/run_migrations.py >/dev/null 2>&1; do
   ((attempt += 1))
   if ((attempt >= 30)); then
     fail "Migrations failed after multiple retries. Check logs with: docker compose -f \"$AXON_COMPOSE_BASE_FILE\" -f \"$AXON_COMPOSE_OVERRIDE_FILE\" logs api"

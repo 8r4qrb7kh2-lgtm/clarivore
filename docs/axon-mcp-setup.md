@@ -40,7 +40,18 @@ One-command full setup:
   - auto-picks/persists ports
   - starts Axon
   - indexes this worktree
+  - configures Codex MCP server
   - writes Cursor MCP config
+
+## Codex MCP config
+
+Automatic Codex writer command:
+
+- `npm run axon:codex`
+
+This configures a global Codex MCP server entry named `axon-clarivore` pointing to:
+
+- `http://127.0.0.1:58001/mcp` (or the current `AXON_MCP_PORT` override)
 
 ## Cursor MCP config
 
@@ -80,6 +91,7 @@ Persist local machine ports:
 - `npm run axon:ports`
 - This writes `scripts/axon-mcp/local.env` (machine-local override file).
 - Starter template: `scripts/axon-mcp/local.env.example`
+- That file pins ports (`AXON_DISABLE_PORT_AUTOSELECT=1`) so future commands stay consistent.
 
 ## Notes
 
