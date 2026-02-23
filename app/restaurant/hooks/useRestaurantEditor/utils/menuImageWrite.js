@@ -153,7 +153,9 @@ export function stripOverlayImagesForReview(overlays) {
 export function stripEditorOverlay(overlay) {
   // Remove editor-only fields and normalize geometry/ingredients for API writes.
   const next = { ...overlay };
+  const stableOverlayKey = asText(next.overlayKey || next._editorKey);
   delete next._editorKey;
+  next.overlayKey = stableOverlayKey || asText(next.overlayKey);
 
   const name = asText(next.name || next.id || "Dish");
   next.id = name;
@@ -174,6 +176,12 @@ export function stripEditorOverlay(overlay) {
 
 function toOverlayDishKey(overlay) {
   // Generate a stable comparison key for overlay identity checks.
+  const overlayKey = asText(overlay?.overlayKey || overlay?._editorKey);
+  if (overlayKey) {
+    const overlayToken = overlayKey.toLowerCase().replace(/[^a-z0-9]/g, "");
+    if (overlayToken) return overlayToken;
+    return overlayKey;
+  }
   const name = asText(overlay?.id || overlay?.name || overlay?.dishName);
   if (!name) return "";
   const token = name.toLowerCase().replace(/[^a-z0-9]/g, "");

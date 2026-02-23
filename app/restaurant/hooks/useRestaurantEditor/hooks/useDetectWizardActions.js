@@ -118,7 +118,9 @@ export function useDetectWizardActions({
     applyOverlayList((current) => [...current, nextOverlay]);
     setSelectedOverlayKey(nextOverlayKey);
 
-    appendPendingChange(`${nextOverlay.id}: Added overlay manually`);
+    appendPendingChange("Added overlay manually", {
+      key: `overlay:${nextOverlayKey}:added-manual`,
+    });
 
     // After mapping one dish, advance to the next unmapped item when possible.
     setDetectWizardState((current) => {

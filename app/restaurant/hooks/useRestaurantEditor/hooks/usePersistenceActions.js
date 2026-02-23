@@ -128,6 +128,7 @@ export function usePersistenceActions({
       const changePayload = buildDefaultChangeLogPayload({
         author,
         pendingChanges: pendingChangesRef.current,
+        overlays: overlaysRef.current,
         snapshot: {
           mode: "server_generated",
           stateHash,
@@ -262,6 +263,7 @@ export function usePersistenceActions({
         const changePayload = buildDefaultChangeLogPayload({
           author,
           pendingChanges: pendingChangesRef.current,
+          overlays: overlaysRef.current,
           snapshot: {
             mode: "server_generated",
           },

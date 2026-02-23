@@ -616,14 +616,13 @@ export function RestaurantEditor({ editor, onNavigate, runtimeConfigHealth }) {
 
     overlayInteractionRef.current = null;
 
-    if (interaction.overlayName) {
+    if (interaction.overlayKey) {
       editor.updateOverlay(
         interaction.overlayKey,
         (overlay) => overlay,
         {
-          changeText:
-            changeLabel || `${interaction.overlayName}: Adjusted overlay position`,
-          changeKey: `overlay-position:${normalizeToken(interaction.overlayName)}`,
+          changeText: changeLabel || "Adjusted overlay position",
+          changeKey: `overlay-position:${interaction.overlayKey}`,
           recordHistory: true,
         },
       );
@@ -734,7 +733,7 @@ export function RestaurantEditor({ editor, onNavigate, runtimeConfigHealth }) {
       };
 
       const onUp = () => {
-        stopOverlayInteraction(`${overlay.id || "Dish"}: Adjusted overlay position`);
+        stopOverlayInteraction("Adjusted overlay position");
       };
 
       beginOverlayInteraction(overlay, interactionMeta, onMove, onUp);
@@ -868,7 +867,7 @@ export function RestaurantEditor({ editor, onNavigate, runtimeConfigHealth }) {
       };
 
       const onUp = () => {
-        stopOverlayInteraction(`${overlay.id || "Dish"}: Adjusted overlay position`);
+        stopOverlayInteraction("Adjusted overlay position");
       };
 
       beginOverlayInteraction(overlay, interactionMeta, onMove, onUp);

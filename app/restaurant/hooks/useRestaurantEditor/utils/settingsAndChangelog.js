@@ -1,5 +1,5 @@
 import { PENDING_CHANGE_KEY_PREFIX } from "../constants";
-import { asText } from "./text";
+import { asText, normalizeToken } from "./text";
 
 // Settings and change-log formatting helpers.
 // These are shared by save flows and restore flows.
@@ -73,15 +73,92 @@ export function encodePendingChangeLine(text, key) {
   return `${PENDING_CHANGE_KEY_PREFIX}${encodeURIComponent(safeKey)}::${safeText}`;
 }
 
-export function buildDefaultChangeLogPayload({ author, pendingChanges, snapshot }) {
+function buildOverlayNameByKey(overlays) {
+  const output = new Map();
+  (Array.isArray(overlays) ? overlays : []).forEach((overlay) => {
+    const name = asText(overlay?.id || overlay?.name || overlay?.dishName);
+    if (!name) return;
+
+    const keyCandidates = [
+      overlay?.overlayKey,
+      overlay?._editorKey,
+      overlay?.id,
+      overlay?.name,
+      overlay?.dishName,
+    ];
+    keyCandidates.forEach((value) => {
+      const token = normalizeToken(value);
+      if (!token || output.has(token)) return;
+      output.set(token, name);
+    });
+  });
+  return output;
+}
+
+function parseOverlayTokenFromPendingKey(key) {
+  const safeKey = asText(key);
+  if (!safeKey) return "";
+
+  if (safeKey.startsWith("overlay-position:")) {
+    return normalizeToken(safeKey.slice("overlay-position:".length));
+  }
+  if (safeKey.startsWith("overlay:")) {
+    const parts = safeKey.split(":");
+    return normalizeToken(parts[1]);
+  }
+  if (safeKey.startsWith("ingredient-row:")) {
+    const parts = safeKey.split(":");
+    return normalizeToken(parts[1]);
+  }
+  if (safeKey.startsWith("ingredient-flag:")) {
+    const parts = safeKey.split(":");
+    return normalizeToken(parts[1]);
+  }
+  return "";
+}
+
+function stripLeadingDishPrefix(text) {
+  const safeText = asText(text);
+  const splitIndex = safeText.indexOf(":");
+  if (splitIndex <= 0) return safeText;
+
+  const maybePrefix = asText(safeText.slice(0, splitIndex));
+  const remainder = asText(safeText.slice(splitIndex + 1));
+  if (!maybePrefix || !remainder) return safeText;
+
+  const skipPrefixes = new Set([
+    "menupages",
+    "menuimages",
+    "menuanalysis",
+    "ingredientrowadded",
+    "ingredientrowremoved",
+    "changesto",
+  ]);
+  if (skipPrefixes.has(normalizeToken(maybePrefix))) {
+    return safeText;
+  }
+  return remainder;
+}
+
+export function buildDefaultChangeLogPayload({ author, pendingChanges, snapshot, overlays }) {
   // Group pending-change lines into general messages and item-specific messages.
   // The grouped format keeps change-log cards readable in UI.
   const grouped = {};
   const general = [];
+  const overlayNameByKey = buildOverlayNameByKey(overlays);
 
   (Array.isArray(pendingChanges) ? pendingChanges : []).forEach((line) => {
-    const text = decodePendingChangeLine(line).text;
+    const decoded = decodePendingChangeLine(line);
+    const text = decoded.text;
     if (!text) return;
+
+    const keyedOverlayToken = parseOverlayTokenFromPendingKey(decoded.key);
+    const keyedOverlayName = keyedOverlayToken ? overlayNameByKey.get(keyedOverlayToken) : "";
+    if (keyedOverlayName) {
+      if (!grouped[keyedOverlayName]) grouped[keyedOverlayName] = [];
+      grouped[keyedOverlayName].push(stripLeadingDishPrefix(text) || text);
+      return;
+    }
 
     const splitIndex = text.indexOf(":");
     if (splitIndex > 0) {

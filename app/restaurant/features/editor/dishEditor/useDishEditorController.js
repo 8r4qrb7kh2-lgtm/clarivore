@@ -58,11 +58,15 @@ export function useDishEditorController({
   const [appealBusyByRow, setAppealBusyByRow] = useState({});
   const [appealFeedbackByRow, setAppealFeedbackByRow] = useState({});
   const [processInputBusy, setProcessInputBusy] = useState(false);
+  const [autoApplyBusy, setAutoApplyBusy] = useState(false);
   const [dictateActive, setDictateActive] = useState(false);
   const [modalError, setModalError] = useState("");
   const recipeTextareaRef = useRef(null);
   const dictationRecognitionRef = useRef(null);
   const ingredientRowRefs = useRef({});
+  const autoApplyRunIdRef = useRef(0);
+  const activeOverlayKeyRef = useRef(asText(overlay?._editorKey));
+  const dishEditorOpenRef = useRef(Boolean(editor.dishEditorOpen));
 
   // Runtime configuration gates AI-powered actions and displays user-safe messaging.
   const runtimeMissingKeys = Array.isArray(runtimeConfigHealth?.missing)
@@ -152,6 +156,7 @@ export function useDishEditorController({
   // Modal close/reset keeps transient row-level UI state out of future editing sessions.
   useEffect(() => {
     if (!editor.dishEditorOpen) {
+      autoApplyRunIdRef.current += 1;
       if (dictationRecognitionRef.current) {
         dictationRecognitionRef.current.stop();
         dictationRecognitionRef.current = null;
@@ -169,9 +174,20 @@ export function useDishEditorController({
       setAppealBusyByRow({});
       setAppealFeedbackByRow({});
       setProcessInputBusy(false);
+      setAutoApplyBusy(false);
       setDictateActive(false);
       setModalError("");
     }
+  }, [editor.dishEditorOpen]);
+
+  useEffect(() => {
+    activeOverlayKeyRef.current = asText(overlay?._editorKey);
+    autoApplyRunIdRef.current += 1;
+    setAutoApplyBusy(false);
+  }, [overlay?._editorKey]);
+
+  useEffect(() => {
+    dishEditorOpenRef.current = Boolean(editor.dishEditorOpen);
   }, [editor.dishEditorOpen]);
 
   useEffect(() => {
@@ -442,9 +458,9 @@ export function useDishEditorController({
   );
 
   const addIngredientRow = useCallback(() => {
-    const dishName = asText(overlay?.id || "Dish");
     const nextIngredientName = `Ingredient ${ingredients.length + 1}`;
     const nextIndex = ingredients.length;
+    const stableOverlayKey = asText(overlay?._editorKey || overlay?.overlayKey);
     applyIngredientChanges(
       (current) => [
         ...current,
@@ -469,7 +485,10 @@ export function useDishEditorController({
         ),
       ],
       {
-        changeText: `${dishName}: Ingredient row added: ${nextIngredientName}`,
+        changeText: `Ingredient row added: ${nextIngredientName}`,
+        changeKey: stableOverlayKey
+          ? `ingredient-row:${stableOverlayKey}:added:${nextIndex}`
+          : "",
         recordHistory: true,
       },
     );
@@ -478,15 +497,19 @@ export function useDishEditorController({
       ...current,
       [nextIndex]: nextIngredientName,
     }));
-  }, [applyIngredientChanges, ingredients.length, overlay?.id]);
+  }, [applyIngredientChanges, ingredients.length, overlay?._editorKey, overlay?.overlayKey]);
 
   const removeIngredientRow = useCallback(
     (ingredientIndex) => {
       const removedName = asText(ingredients[ingredientIndex]?.name) || "Ingredient";
+      const stableOverlayKey = asText(overlay?._editorKey || overlay?.overlayKey);
       applyIngredientChanges(
         (current) => current.filter((_, index) => index !== ingredientIndex),
         {
-          changeText: `${overlay?.id || "Dish"}: Ingredient row removed: ${removedName}`,
+          changeText: `Ingredient row removed: ${removedName}`,
+          changeKey: stableOverlayKey
+            ? `ingredient-row:${stableOverlayKey}:removed:${ingredientIndex}`
+            : "",
           recordHistory: true,
         },
       );
@@ -507,7 +530,7 @@ export function useDishEditorController({
         return next;
       });
     },
-    [applyIngredientChanges, ingredients, overlay?.id],
+    [applyIngredientChanges, ingredients, overlay?._editorKey, overlay?.overlayKey],
   );
 
   // Smart detection pipeline: name analysis + scan requirement + row mutation.
@@ -690,16 +713,19 @@ export function useDishEditorController({
   );
 
   // Wait for freshly generated rows to land in local editor state before auto-applying row analysis.
-  const waitForGeneratedRows = useCallback(async (expectedNames) => {
+  const waitForGeneratedRows = useCallback(async (expectedNames, { shouldContinue } = {}) => {
     const safeNames = (Array.isArray(expectedNames) ? expectedNames : []).map((name) =>
       asText(name),
     );
-    if (!safeNames.length) return;
+    if (!safeNames.length) return true;
 
     const targetTokens = safeNames.map((name) => normalizeToken(name));
     const timeoutAt = Date.now() + 3000;
 
     while (Date.now() < timeoutAt) {
+      if (typeof shouldContinue === "function" && !shouldContinue()) {
+        return false;
+      }
       const currentRows = Array.isArray(latestIngredientsRef.current)
         ? latestIngredientsRef.current
         : [];
@@ -708,22 +734,29 @@ export function useDishEditorController({
           if (!token) return true;
           return normalizeToken(currentRows[index]?.name) === token;
         });
-        if (hasExpectedOrder) return;
+        if (hasExpectedOrder) return true;
       }
       await sleep(25);
     }
+    return true;
   }, []);
 
-  const runAutoApplyForAllRows = useCallback(async (expectedNames) => {
+  const runAutoApplyForAllRows = useCallback(async (expectedNames, { shouldContinue } = {}) => {
     const safeNames = (Array.isArray(expectedNames) ? expectedNames : []).map((name) =>
       asText(name),
     );
-    if (!safeNames.length) return { failedRows: [] };
+    if (!safeNames.length) return { failedRows: [], cancelled: false };
 
-    await waitForGeneratedRows(safeNames);
+    const generated = await waitForGeneratedRows(safeNames, { shouldContinue });
+    if (!generated) {
+      return { failedRows: [], cancelled: true };
+    }
 
     const failedRows = [];
     for (let index = 0; index < safeNames.length; index += 1) {
+      if (typeof shouldContinue === "function" && !shouldContinue()) {
+        return { failedRows, cancelled: true };
+      }
       const applied = await applyIngredientSmartDetection(index, {
         suppressModalError: true,
       });
@@ -731,7 +764,7 @@ export function useDishEditorController({
       failedRows.push(safeNames[index] || `Ingredient ${index + 1}`);
     }
 
-    return { failedRows };
+    return { failedRows, cancelled: false };
   }, [applyIngredientSmartDetection, waitForGeneratedRows]);
 
   const removeIngredientBrandItem = useCallback(
@@ -1226,7 +1259,8 @@ export function useDishEditorController({
   }, [editor]);
 
   const onProcessInput = async () => {
-    if (processInputBusy) return;
+    if (processInputBusy || autoApplyBusy) return;
+    autoApplyRunIdRef.current += 1;
     setProcessInputBusy(true);
     if (aiActionsBlocked) {
       editor.setAiAssistDraft((current) => ({
@@ -1241,6 +1275,8 @@ export function useDishEditorController({
     const liveText = asText(
       recipeTextareaRef.current?.value || editor.aiAssistDraft.text,
     );
+    const overlayKeyAtStart = asText(overlay?._editorKey);
+    let startedBackgroundApply = false;
     try {
       const result = await editor.runAiDishAnalysis({ overrideText: liveText });
       if (result?.success && result?.result) {
@@ -1249,25 +1285,48 @@ export function useDishEditorController({
           ? result.result.ingredients
           : []
         ).map((ingredient, index) => asText(ingredient?.name) || `Ingredient ${index + 1}`);
+        const runId = autoApplyRunIdRef.current + 1;
+        autoApplyRunIdRef.current = runId;
+        startedBackgroundApply = true;
+        setAutoApplyBusy(createdNames.length > 0);
+        setProcessInputBusy(false);
 
-        const autoApplyResult = await runAutoApplyForAllRows(createdNames);
-        const currentRows = Array.isArray(latestIngredientsRef.current)
-          ? latestIngredientsRef.current
-          : [];
-        setLastAppliedIngredientNameByRow(() => {
-          const next = {};
-          currentRows.forEach((ingredient, index) => {
-            next[index] = coerceIngredientNameForApply(ingredient);
+        void (async () => {
+          const shouldContinue = () =>
+            autoApplyRunIdRef.current === runId &&
+            dishEditorOpenRef.current &&
+            normalizeToken(activeOverlayKeyRef.current) === normalizeToken(overlayKeyAtStart);
+          const autoApplyResult = await runAutoApplyForAllRows(createdNames, {
+            shouldContinue,
           });
-          return next;
-        });
-        if (autoApplyResult.failedRows.length) {
-          setModalError(
-            `Automatic Apply failed for: ${autoApplyResult.failedRows.join(", ")}. Run Apply on those rows.`,
-          );
-        } else {
-          setModalError("");
-        }
+
+          if (autoApplyRunIdRef.current !== runId) {
+            return;
+          }
+
+          setAutoApplyBusy(false);
+
+          const currentRows = Array.isArray(latestIngredientsRef.current)
+            ? latestIngredientsRef.current
+            : [];
+          setLastAppliedIngredientNameByRow(() => {
+            const next = {};
+            currentRows.forEach((ingredient, index) => {
+              next[index] = coerceIngredientNameForApply(ingredient);
+            });
+            return next;
+          });
+          if (autoApplyResult.cancelled) {
+            return;
+          }
+          if (autoApplyResult.failedRows.length) {
+            setModalError(
+              `Automatic Apply failed for: ${autoApplyResult.failedRows.join(", ")}. Run Apply on those rows.`,
+            );
+          } else {
+            setModalError("");
+          }
+        })();
         return;
       }
 
@@ -1280,15 +1339,17 @@ export function useDishEditorController({
           : "AI processing failed; existing ingredient rows were not changed.",
       }));
     } finally {
-      setProcessInputBusy(false);
+      if (!startedBackgroundApply) {
+        setProcessInputBusy(false);
+      }
     }
   };
 
   const isIngredientGenerationBusy =
     processInputBusy || editor.aiAssistDraft.loading;
   const isApplyingIngredientName = useMemo(
-    () => Object.values(applyBusyByRow).some((value) => Boolean(value)),
-    [applyBusyByRow],
+    () => autoApplyBusy || Object.values(applyBusyByRow).some((value) => Boolean(value)),
+    [applyBusyByRow, autoApplyBusy],
   );
   const hasIngredientRows = ingredients.length > 0;
   const showPostProcessSections = hasIngredientRows;
@@ -1386,6 +1447,7 @@ export function useDishEditorController({
     modalError,
     dictateActive,
     isIngredientGenerationBusy,
+    autoApplyBusy,
     isApplyingIngredientName,
     showPostProcessSections,
     handleCloseDishEditor,

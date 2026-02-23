@@ -45,6 +45,7 @@ function DishEditorModal({
     modalError,
     dictateActive,
     isIngredientGenerationBusy,
+    autoApplyBusy,
     isApplyingIngredientName,
     showPostProcessSections,
     handleCloseDishEditor,
@@ -278,13 +279,19 @@ function DishEditorModal({
             <Button
               tone="success"
               loading={isIngredientGenerationBusy}
-              disabled={aiActionsBlocked || isIngredientGenerationBusy}
+              disabled={aiActionsBlocked || isIngredientGenerationBusy || autoApplyBusy}
               title={aiActionsBlocked ? runtimeBlockedTitle : ""}
               onClick={onProcessInput}
               className="restaurant-editor-dish-process-btn"
             >
               ✓ Process Input
             </Button>
+
+            {autoApplyBusy ? (
+              <p className="note m-0 mt-2 text-sm">
+                Ingredient rows are ready. AI is analyzing each row in the background.
+              </p>
+            ) : null}
 
             {!showPostProcessSections ? (
               <p className="note m-0 mt-2 text-sm">

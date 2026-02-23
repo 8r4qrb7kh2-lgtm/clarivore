@@ -225,6 +225,10 @@ function normalizeMenuImageValues(operationPayload) {
 }
 
 function toOverlayDishKey(overlay) {
+  const overlayKey = asText(overlay?.overlayKey || overlay?._editorKey);
+  if (overlayKey) {
+    return toDishKey(overlayKey);
+  }
   const name = readOverlayDishName(overlay);
   return toDishKey(name);
 }
@@ -429,7 +433,8 @@ function buildDishRowMap(overlays) {
     const dishName = readOverlayDishName(overlay);
     if (!dishName) return;
 
-    const dishKey = toDishKey(dishName);
+    const dishKey = toOverlayDishKey(overlay);
+    if (!dishKey) return;
     const normalizedRows = readOverlayIngredients(overlay).map((row, index) =>
       normalizeIngredientRow(row, index),
     );

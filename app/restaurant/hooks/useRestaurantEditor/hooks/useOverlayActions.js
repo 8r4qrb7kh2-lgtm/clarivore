@@ -101,7 +101,9 @@ export function useOverlayActions({
     });
 
     setSelectedOverlayKey(nextKey);
-    appendPendingChange(`Dish ${draftOverlaysLength + 1}: Added overlay`);
+    appendPendingChange("Added overlay", {
+      key: `overlay:${nextKey}:added`,
+    });
     queueMicrotask(() => pushHistory());
   }, [
     activePageIndex,
@@ -116,7 +118,7 @@ export function useOverlayActions({
   // Remove an overlay and choose a safe fallback selection.
   const removeOverlay = useCallback((overlayKey) => {
     const overlay = overlaysRef.current.find((item) => item._editorKey === overlayKey);
-    const overlayName = asText(overlay?.id || overlay?.name || "Dish");
+    const stableOverlayKey = asText(overlay?._editorKey || overlay?.overlayKey || overlayKey);
 
     applyOverlayList((current) => current.filter((item) => item._editorKey !== overlayKey));
     setSelectedOverlayKey((current) => {
@@ -125,7 +127,9 @@ export function useOverlayActions({
       return fallback?._editorKey || "";
     });
 
-    appendPendingChange(`${overlayName}: Removed overlay`);
+    appendPendingChange("Removed overlay", {
+      key: stableOverlayKey ? `overlay:${stableOverlayKey}:removed` : "",
+    });
     queueMicrotask(() => pushHistory());
   }, [appendPendingChange, applyOverlayList, overlaysRef, pushHistory, setSelectedOverlayKey]);
 

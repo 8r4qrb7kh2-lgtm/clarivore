@@ -141,7 +141,8 @@ export function normalizeOverlay(overlay, index, fallbackKey, context = {}) {
   // Normalize one raw overlay into the editor's expected shape.
   // The output always uses percent coordinates and stable collection fields.
   const fallbackName = `Dish ${index + 1}`;
-  const rawName = asText(overlay?.id || overlay?.name || fallbackName);
+  const providedName = overlay?.id ?? overlay?.name;
+  const rawName = providedName == null ? "" : String(providedName);
   const name = rawName || fallbackName;
 
   const scale =
