@@ -39,6 +39,8 @@ export default function FrontProductCaptureModal({
   open,
   onCancel,
   onApply,
+  applyButtonLabel = "Save & Apply Results",
+  applyingButtonLabel = "Applying...",
 }) {
   const [photoDataUrl, setPhotoDataUrl] = useState("");
   const [productName, setProductName] = useState("");
@@ -478,7 +480,7 @@ export default function FrontProductCaptureModal({
             disabled={!photoDataUrl || saving || analyzing}
             onClick={applyAndClose}
           >
-            {saving ? "Applying..." : "Save & Apply Results"}
+            {saving ? applyingButtonLabel : applyButtonLabel}
           </button>
         </div>
       </div>

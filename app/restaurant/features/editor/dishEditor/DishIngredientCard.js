@@ -209,7 +209,7 @@ export function DishIngredientCard({
                   </button>
                   <button
                     type="button"
-                    className="btn btnSuccess btnSmall"
+                    className={`btn ${hasReviewReady ? "btnWarning" : "btnSuccess"} btnSmall`}
                     disabled={scanButtonDisabled}
                     title={aiActionsBlocked ? runtimeBlockedTitle : ""}
                     onClick={() => {

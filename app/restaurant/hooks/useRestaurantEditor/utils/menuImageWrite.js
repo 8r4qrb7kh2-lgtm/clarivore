@@ -6,7 +6,7 @@ import { normalizeNumber, normalizeRectValue } from "./overlayGeometry";
 // These helpers sanitize client-side editor state into API-safe payloads.
 // Scanned brand thumbnails are data URLs and can legitimately exceed tiny payloads.
 // Keep a practical ceiling to avoid pathological payloads, but do not drop normal captures.
-const MAX_INLINE_INGREDIENT_IMAGE_CHARS = 900_000;
+const MAX_INLINE_INGREDIENT_IMAGE_CHARS = 120_000;
 
 export function buildMenuImages(restaurant) {
   // Collect menu images from canonical restaurant fields.
@@ -55,17 +55,16 @@ function normalizeBrandForWrite(brand) {
       : [],
   };
 
-  const brandImage = sanitizePersistedImageValue(safe?.brandImage);
+  // Persist one compact thumbnail field only; large ingredient-label captures
+  // are intentionally dropped here to keep write-gateway payloads under limits.
+  const brandImage = sanitizePersistedImageValue(
+    safe?.brandImage || safe?.image || safe?.ingredientsImage,
+  );
   if (brandImage) normalized.brandImage = brandImage;
   else delete normalized.brandImage;
 
-  const ingredientsImage = sanitizePersistedImageValue(safe?.ingredientsImage);
-  if (ingredientsImage) normalized.ingredientsImage = ingredientsImage;
-  else delete normalized.ingredientsImage;
-
-  const image = sanitizePersistedImageValue(safe?.image);
-  if (image) normalized.image = image;
-  else delete normalized.image;
+  delete normalized.ingredientsImage;
+  delete normalized.image;
 
   return normalized;
 }
@@ -83,9 +82,9 @@ function normalizeIngredientForWrite(ingredient, index) {
   // Normalize one ingredient row before writing overlays back to server.
   const safe = ingredient && typeof ingredient === "object" ? { ...ingredient } : {};
   const firstBrand = readFirstBrandForWrite(safe?.brands);
-  const brandImage = sanitizePersistedImageValue(safe?.brandImage);
-  const ingredientsImage = sanitizePersistedImageValue(safe?.ingredientsImage);
-  const image = sanitizePersistedImageValue(safe?.image);
+  const brandImage = sanitizePersistedImageValue(
+    safe?.brandImage || safe?.image || safe?.ingredientsImage,
+  );
 
   const normalized = {
     ...safe,
@@ -113,13 +112,42 @@ function normalizeIngredientForWrite(ingredient, index) {
   if (brandImage) normalized.brandImage = brandImage;
   else delete normalized.brandImage;
 
-  if (ingredientsImage) normalized.ingredientsImage = ingredientsImage;
-  else delete normalized.ingredientsImage;
-
-  if (image) normalized.image = image;
-  else delete normalized.image;
+  delete normalized.ingredientsImage;
+  delete normalized.image;
 
   return normalized;
+}
+
+function stripIngredientImagesForReview(ingredient) {
+  const safe = ingredient && typeof ingredient === "object" ? { ...ingredient } : ingredient;
+  if (!safe || typeof safe !== "object") return safe;
+
+  delete safe.brandImage;
+  delete safe.ingredientsImage;
+  delete safe.image;
+
+  safe.brands = (Array.isArray(safe.brands) ? safe.brands : []).map((brand) => {
+    if (!brand || typeof brand !== "object") return brand;
+    const nextBrand = { ...brand };
+    delete nextBrand.brandImage;
+    delete nextBrand.ingredientsImage;
+    delete nextBrand.image;
+    return nextBrand;
+  });
+
+  return safe;
+}
+
+export function stripOverlayImagesForReview(overlays) {
+  return (Array.isArray(overlays) ? overlays : []).map((overlay) => {
+    if (!overlay || typeof overlay !== "object") return overlay;
+    const nextOverlay = { ...overlay };
+    nextOverlay.ingredients = (Array.isArray(nextOverlay.ingredients)
+      ? nextOverlay.ingredients
+      : []
+    ).map(stripIngredientImagesForReview);
+    return nextOverlay;
+  });
 }
 
 export function stripEditorOverlay(overlay) {

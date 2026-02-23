@@ -7,6 +7,7 @@ import {
   parseSerializedEditorState,
   serializeEditorState,
   serializeMenuImageList,
+  stripOverlayImagesForReview,
   stripEditorOverlay,
 } from "../utils/menuImageWrite";
 import { buildIngredientConfirmationIssues } from "../utils/overlayIssues";
@@ -237,6 +238,9 @@ export function usePersistenceActions({
           baselineOverlays,
           overlays: cleanedOverlays,
         });
+        const reviewOverlayBaselines = stripOverlayImagesForReview(
+          overlayDelta.overlayBaselines,
+        );
         const baselineMenuImages = normalizeMenuImageList(baselineSnapshot?.menuImages);
         const menuImagesChanged =
           serializeMenuImageList(cleanedMenuImages) !==
@@ -286,12 +290,12 @@ export function usePersistenceActions({
         setSaveError("");
 
         // Ask write gateway to stage the change set and return preview rows.
-        const result = await callbacks.onPreparePendingSave({
+        const stagePayload = {
           overlays: cleanedOverlays,
           baselineOverlays,
           overlayUpserts: overlayDelta.overlayUpserts,
           overlayDeletes: overlayDelta.overlayDeletes,
-          overlayBaselines: overlayDelta.overlayBaselines,
+          overlayBaselines: reviewOverlayBaselines,
           overlayOrder: overlayDelta.overlayOrder,
           overlayOrderProvided: overlayDelta.overlayOrderProvided,
           hasOverlayChanges: overlayDelta.hasOverlayChanges,
@@ -301,7 +305,30 @@ export function usePersistenceActions({
           menuImagesProvided: menuImagesChanged,
           changePayload,
           stateHash,
-        });
+        };
+
+        let result;
+        try {
+          result = await callbacks.onPreparePendingSave(stagePayload);
+        } catch (stageError) {
+          const stageMessage = asText(stageError?.message).toLowerCase();
+          const shouldRetryWithoutInlineImages =
+            stageMessage.includes("413") ||
+            stageMessage.includes("content too large") ||
+            stageMessage.includes("payload is too large") ||
+            stageMessage.includes("request entity too large");
+
+          if (!shouldRetryWithoutInlineImages) {
+            throw stageError;
+          }
+
+          // If gateway payload is too large, retry with image-stripped row payloads.
+          // This preserves the edit changes while reducing body size for staging.
+          result = await callbacks.onPreparePendingSave({
+            ...stagePayload,
+            overlayUpserts: stripOverlayImagesForReview(overlayDelta.overlayUpserts),
+          });
+        }
 
         const nextBatchId = asText(result?.batchId);
         if (!nextBatchId) {

@@ -1604,6 +1604,12 @@ export default function IngredientScanModal({
             onCancel?.();
           }
         }}
+        applyButtonLabel={
+          requiresFrontCaptureFirst
+            ? "Capture ingredient label image"
+            : "Save & Apply Results"
+        }
+        applyingButtonLabel={requiresFrontCaptureFirst ? "Continuing..." : "Applying..."}
         onApply={async (frontResult) => {
           setFrontCaptureResult(frontResult || null);
           setFrontModalOpen(false);

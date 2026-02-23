@@ -20,6 +20,11 @@ async function getAccessToken(supabase) {
 async function readJsonResponse(response, fallbackMessage) {
   const payload = await response.json().catch(() => ({}));
   if (!response.ok || !payload?.success) {
+    if (Number(response?.status) === 413) {
+      throw new Error(
+        "Save payload is too large (413). Capture tighter photos or remove large brand images, then try again.",
+      );
+    }
     throw new Error(asText(payload?.error) || fallbackMessage);
   }
   return payload;
