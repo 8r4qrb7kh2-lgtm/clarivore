@@ -29,7 +29,6 @@ import {
 } from "./googleMapsLocation";
 
 const ZIP_STORAGE_KEY = "clarivore:restaurants:zip";
-const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
 
 function normalizeOverlays(value) {
   if (Array.isArray(value)) return value;
@@ -66,16 +65,17 @@ function computeRestaurantFriendlyScore(restaurant, allergies, diets, engine) {
   return (safeCount + removableCount * 0.5) / totalCount;
 }
 
-export default function RestaurantsClient() {
+export default function RestaurantsClient({ googleMapsApiKey = "" }) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const searchParams = useSearchParams();
   const isQR = searchParams?.get("qr") === "1";
-  const [sortMode, setSortMode] = useState("name");
+  const [sortMode, setSortMode] = useState("distance");
   const [status, setStatus] = useState("");
   const [statusTone, setStatusTone] = useState("");
   const [busyFavoriteId, setBusyFavoriteId] = useState("");
   const [zipCodeInput, setZipCodeInput] = useState("");
+  const mapsApiKey = String(googleMapsApiKey || "").trim();
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -345,13 +345,13 @@ export default function RestaurantsClient() {
     enabled:
       distanceSortActive &&
       zipCodeValid &&
-      Boolean(GOOGLE_MAPS_API_KEY) &&
+      Boolean(mapsApiKey) &&
       restaurants.length > 0,
     queryFn: async () =>
       resolveRestaurantDistanceData({
         restaurants,
         zipCode: normalizedZipCode,
-        apiKey: GOOGLE_MAPS_API_KEY,
+        apiKey: mapsApiKey,
       }),
     staleTime: 15 * 60 * 1000,
     retry: 1,
@@ -439,10 +439,10 @@ export default function RestaurantsClient() {
       : "";
 
   const distanceSortStatus =
-    !distanceSortActive
+      !distanceSortActive
       ? ""
-      : !GOOGLE_MAPS_API_KEY
-        ? "Location sort needs Google Maps. Add NEXT_PUBLIC_GOOGLE_MAPS_API_KEY."
+      : !mapsApiKey
+        ? "Location sort needs a Google Maps API key."
         : !normalizedZipCode
           ? "Enter your ZIP code to sort restaurants by distance."
           : !zipCodeValid
@@ -519,15 +519,17 @@ export default function RestaurantsClient() {
         statusMarginBottom={16}
         betweenContent={
           <div className="restaurants-toolbar">
-            {distanceSortActive && zipCodeValid && GOOGLE_MAPS_API_KEY ? (
+            {distanceSortActive && zipCodeValid && mapsApiKey ? (
               <RestaurantsMapPreview
-                apiKey={GOOGLE_MAPS_API_KEY}
+                apiKey={mapsApiKey}
                 zipCode={normalizedZipCode}
                 locations={mapPreviewLocations}
                 isLoading={distanceLookupQuery.isPending}
               />
             ) : null}
-            <div className="restaurants-toolbar-controls">
+            <div
+              className={`restaurants-toolbar-controls${distanceSortActive ? "" : " is-single"}`}
+            >
               <label className="restaurants-control" htmlFor="sort-select">
                 <span>Sort</span>
                 <select
@@ -536,30 +538,29 @@ export default function RestaurantsClient() {
                   onChange={(event) => setSortMode(event.target.value)}
                 >
                   <option value="name">Sort: Name (A-Z)</option>
-                  <option value="distance">Sort: Nearest to ZIP</option>
+                  <option value="distance">Sort: Nearest to me</option>
                   <option value="last_confirmed">Sort: Allergens last confirmed</option>
                   <option value="friendly">Sort: Most allergy/diet friendly</option>
                 </select>
               </label>
 
-              <label className="restaurants-control" htmlFor="location-zip-input">
-                <span>ZIP code</span>
-                <input
-                  id="location-zip-input"
-                  type="text"
-                  inputMode="numeric"
-                  autoComplete="postal-code"
-                  placeholder="Enter ZIP code"
-                  value={zipCodeInput}
-                  onChange={(event) =>
-                    setZipCodeInput(sanitizeUsZipInput(event.target.value))
-                  }
-                  maxLength={10}
-                />
-                <small className="restaurants-zip-help">
-                  Used for location sort and map preview.
-                </small>
-              </label>
+              {distanceSortActive ? (
+                <label className="restaurants-control" htmlFor="location-zip-input">
+                  <span>ZIP code</span>
+                  <input
+                    id="location-zip-input"
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="postal-code"
+                    placeholder="Enter ZIP code"
+                    value={zipCodeInput}
+                    onChange={(event) =>
+                      setZipCodeInput(sanitizeUsZipInput(event.target.value))
+                    }
+                    maxLength={10}
+                  />
+                </label>
+              ) : null}
             </div>
           </div>
         }

@@ -12,3 +12,12 @@ out/
 .axon/
 scripts/axon-mcp/local.env
 .cursor/mcp.json
+ml/artifacts/
+ml/data/raw/
+ml/data/processed/all_examples.jsonl
+ml/data/processed/train.jsonl
+ml/data/processed/val.jsonl
+ml/data/processed/label_space.json
+ml/data/processed/dataset_summary.json
+ml/data/processed/openfoodfacts_examples.jsonl
+ml/data/processed/openfoodfacts_summary.json

@@ -1,0 +1,46 @@
+{"id":"seed-001","text":"Ingredients: cultured skim milk, cream, salt.","allergens":["milk"],"diets":["Vegan"],"source":"manual_hidden_seed"}
+{"id":"seed-002","text":"Ingredients: casein, whey protein concentrate, natural flavors.","allergens":["milk"],"diets":["Vegan"],"source":"manual_hidden_seed"}
+{"id":"seed-003","text":"Ingredients: sodium caseinate, maltodextrin, cocoa powder.","allergens":["milk"],"diets":["Vegan"],"source":"manual_hidden_seed"}
+{"id":"seed-004","text":"Ingredients: lactalbumin, cane sugar, vanilla.","allergens":["milk"],"diets":["Vegan"],"source":"manual_hidden_seed"}
+{"id":"seed-005","text":"Ingredients: albumin (egg white), citric acid.","allergens":["egg"],"diets":["Vegan"],"source":"manual_hidden_seed"}
+{"id":"seed-006","text":"Ingredients: lysozyme (from egg), sea salt.","allergens":["egg"],"diets":["Vegan"],"source":"manual_hidden_seed"}
+{"id":"seed-007","text":"Ingredients: ovalbumin powder, spice blend.","allergens":["egg"],"diets":["Vegan"],"source":"manual_hidden_seed"}
+{"id":"seed-008","text":"Ingredients: semolina, water.","allergens":["wheat"],"diets":["Gluten-free"],"source":"manual_hidden_seed"}
+{"id":"seed-009","text":"Ingredients: durum wheat flour, niacin, riboflavin.","allergens":["wheat"],"diets":["Gluten-free"],"source":"manual_hidden_seed"}
+{"id":"seed-010","text":"Ingredients: farina, iron, folic acid.","allergens":["wheat"],"diets":["Gluten-free"],"source":"manual_hidden_seed"}
+{"id":"seed-011","text":"Ingredients: bulgur wheat, parsley, mint.","allergens":["wheat"],"diets":["Gluten-free"],"source":"manual_hidden_seed"}
+{"id":"seed-012","text":"Ingredients: tahini, lemon juice, garlic.","allergens":["sesame"],"diets":[],"source":"manual_hidden_seed"}
+{"id":"seed-013","text":"Ingredients: sesame paste, chickpeas, olive oil.","allergens":["sesame"],"diets":[],"source":"manual_hidden_seed"}
+{"id":"seed-014","text":"Ingredients: toasted sesame oil, chili flakes.","allergens":["sesame"],"diets":[],"source":"manual_hidden_seed"}
+{"id":"seed-015","text":"Ingredients: soy lecithin, cocoa butter.","allergens":["soy"],"diets":[],"source":"manual_hidden_seed"}
+{"id":"seed-016","text":"Ingredients: hydrolyzed soy protein, yeast extract.","allergens":["soy"],"diets":[],"source":"manual_hidden_seed"}
+{"id":"seed-017","text":"Ingredients: tofu (water, soybeans, calcium sulfate).","allergens":["soy"],"diets":[],"source":"manual_hidden_seed"}
+{"id":"seed-018","text":"Ingredients: miso (soybeans, rice, salt).","allergens":["soy"],"diets":[],"source":"manual_hidden_seed"}
+{"id":"seed-019","text":"Ingredients: shrimp powder, salt, garlic.","allergens":["shellfish"],"diets":["Vegan","Vegetarian"],"source":"manual_hidden_seed"}
+{"id":"seed-020","text":"Ingredients: crab extract, paprika, sea salt.","allergens":["shellfish"],"diets":["Vegan","Vegetarian"],"source":"manual_hidden_seed"}
+{"id":"seed-021","text":"Ingredients: fish sauce (anchovy extract, salt).","allergens":["fish"],"diets":["Vegan","Vegetarian"],"source":"manual_hidden_seed"}
+{"id":"seed-022","text":"Ingredients: anchovy paste, olive oil.","allergens":["fish"],"diets":["Vegan","Vegetarian"],"source":"manual_hidden_seed"}
+{"id":"seed-023","text":"Ingredients: surimi (pollock), starch, sugar.","allergens":["fish"],"diets":["Vegan","Vegetarian"],"source":"manual_hidden_seed"}
+{"id":"seed-024","text":"Ingredients: almond meal, sugar, egg whites.","allergens":["tree nut","egg"],"diets":["Vegan"],"source":"manual_hidden_seed"}
+{"id":"seed-025","text":"Ingredients: cashew butter, sea salt.","allergens":["tree nut"],"diets":[],"source":"manual_hidden_seed"}
+{"id":"seed-026","text":"Ingredients: hazelnut praline.","allergens":["tree nut"],"diets":[],"source":"manual_hidden_seed"}
+{"id":"seed-027","text":"Ingredients: peanut flour, cane sugar.","allergens":["peanut"],"diets":[],"source":"manual_hidden_seed"}
+{"id":"seed-028","text":"Ingredients: roasted peanuts, salt.","allergens":["peanut"],"diets":[],"source":"manual_hidden_seed"}
+{"id":"seed-029","text":"Ingredients: peanut oil, garlic.","allergens":["peanut"],"diets":[],"source":"manual_hidden_seed"}
+{"id":"seed-030","text":"Ingredients: chicken stock, onion, celery.","allergens":[],"diets":["Vegan","Vegetarian","Pescatarian"],"source":"manual_hidden_seed"}
+{"id":"seed-031","text":"Ingredients: beef gelatin, sugar, natural flavors.","allergens":[],"diets":["Vegan","Vegetarian","Pescatarian"],"source":"manual_hidden_seed"}
+{"id":"seed-032","text":"Ingredients: pork lard, flour tortillas.","allergens":["wheat"],"diets":["Vegan","Vegetarian","Pescatarian","Gluten-free"],"source":"manual_hidden_seed"}
+{"id":"seed-033","text":"Ingredients: barley malt extract, hops, yeast.","allergens":["wheat"],"diets":["Gluten-free"],"source":"manual_hidden_seed"}
+{"id":"seed-034","text":"Ingredients: rye flour, caraway seed.","allergens":["wheat"],"diets":["Gluten-free"],"source":"manual_hidden_seed"}
+{"id":"seed-035","text":"Ingredients: brewer's yeast (from barley), spices.","allergens":["wheat"],"diets":["Gluten-free"],"source":"manual_hidden_seed"}
+{"id":"seed-036","text":"Ingredients: whole grain oats.","allergens":[],"diets":[],"source":"manual_hidden_seed"}
+{"id":"seed-037","text":"Ingredients: coconut milk, water, guar gum.","allergens":["tree nut"],"diets":[],"source":"manual_hidden_seed"}
+{"id":"seed-038","text":"Ingredients: coconut aminos, sea salt.","allergens":["tree nut"],"diets":[],"source":"manual_hidden_seed"}
+{"id":"seed-039","text":"Ingredients: sunflower oil, garlic powder, onion powder.","allergens":[],"diets":[],"source":"manual_hidden_seed"}
+{"id":"seed-040","text":"Ingredients: rice flour, tapioca starch, sea salt.","allergens":[],"diets":[],"source":"manual_hidden_seed"}
+{"id":"seed-041","text":"May contain peanuts and tree nuts.","allergens":["peanut","tree nut"],"diets":[],"source":"manual_hidden_seed"}
+{"id":"seed-042","text":"Processed in a facility that also handles milk, egg, and soy.","allergens":["milk","egg","soy"],"diets":[],"source":"manual_hidden_seed"}
+{"id":"seed-043","text":"Contains sesame and wheat.","allergens":["sesame","wheat"],"diets":["Gluten-free"],"source":"manual_hidden_seed"}
+{"id":"seed-044","text":"Contains caseinates and soy lecithin.","allergens":["milk","soy"],"diets":["Vegan"],"source":"manual_hidden_seed"}
+{"id":"seed-045","text":"Ingredients: worcestershire sauce (distilled vinegar, anchovies, molasses).","allergens":["fish"],"diets":["Vegan","Vegetarian"],"source":"manual_hidden_seed"}
+{"id":"seed-046","text":"Ingredients: caesar dressing (egg yolk, anchovy paste).","allergens":["egg","fish"],"diets":["Vegan","Vegetarian"],"source":"manual_hidden_seed"}
