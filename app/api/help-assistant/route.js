@@ -1,5 +1,6 @@
 import { corsJson, corsOptions } from "../_shared/cors";
 import { asText, prisma } from "../editor-pending-save/_shared/pendingSaveUtils";
+import { Prisma } from "@prisma/client";
 import { buildHelpAssistantSystemPrompt } from "../../lib/claudePrompts";
 
 export const runtime = "nodejs";
@@ -53,22 +54,50 @@ async function fetchKnowledgeBase({ query, mode, pageContext }) {
 
   if (!tokens.length) return { context: "", requestedMode };
 
-  const kbRows = await prisma.help_kb.findMany({
-    where: {
-      mode: {
-        in: requestedMode === "manager" ? ["manager", "customer"] : ["customer"],
+  const requestedModes = requestedMode === "manager" ? ["manager", "customer"] : ["customer"];
+  const searchText = tokens.join(" ");
+
+  let kbRows = [];
+  try {
+    const modeValues = Prisma.join(requestedModes.map((value) => Prisma.sql`${value}`));
+    const rows = await prisma.$queryRaw`
+      SELECT
+        title,
+        content,
+        url,
+        source_path,
+        tags,
+        mode,
+        ts_rank_cd(
+          to_tsvector('english', coalesce(title, '') || ' ' || coalesce(content, '')),
+          websearch_to_tsquery('english', ${searchText})
+        ) AS rank
+      FROM public.help_kb
+      WHERE mode IN (${modeValues})
+        AND to_tsvector('english', coalesce(title, '') || ' ' || coalesce(content, ''))
+          @@ websearch_to_tsquery('english', ${searchText})
+      ORDER BY rank DESC
+      LIMIT 120
+    `;
+    kbRows = Array.isArray(rows) ? rows : [];
+  } catch {
+    kbRows = await prisma.help_kb.findMany({
+      where: {
+        mode: {
+          in: requestedModes,
+        },
       },
-    },
-    select: {
-      title: true,
-      content: true,
-      url: true,
-      source_path: true,
-      tags: true,
-      mode: true,
-    },
-    take: 500,
-  });
+      select: {
+        title: true,
+        content: true,
+        url: true,
+        source_path: true,
+        tags: true,
+        mode: true,
+      },
+      take: 500,
+    });
+  }
 
   const ranked = (Array.isArray(kbRows) ? kbRows : [])
     .map((entry) => ({
