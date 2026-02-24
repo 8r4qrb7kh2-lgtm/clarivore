@@ -110,6 +110,13 @@ CONTAINS_PATTERNS = [
 
 SPLIT_TOKENS_RE = re.compile(r"[,/]|\band\b|\bor\b", re.IGNORECASE)
 NORM_RE = re.compile(r"[^a-z0-9 ]+")
+SPACE_RE = re.compile(r"\s+")
+BAD_PUNCT_SPACE_RE = re.compile(r"\s+([,;:.])")
+EMPTY_PUNCT_RE = re.compile(r"([,;:.])\s*([,;:.])+")
+TRAILING_DISCLOSURE_RE = re.compile(
+    r"(?:[,\s]*\b(?:may contain|contains one or more of the following|contains|processed in a facility(?: that)? (?:also )?(?:processes|handles)|manufactured on shared equipment with)\b\s*[:\-]?\s*)+$",
+    re.IGNORECASE,
+)
 
 
 def parse_args() -> argparse.Namespace:
@@ -164,6 +171,7 @@ def extract_allergens_from_ingredients(text: str) -> Dict[str, object]:
     safe_text = as_text(text)
     segments: List[str] = []
     labels: List[str] = []
+    spans: List[Tuple[int, int]] = []
 
     for pattern in CONTAINS_PATTERNS:
         for match in pattern.finditer(safe_text):
@@ -172,9 +180,51 @@ def extract_allergens_from_ingredients(text: str) -> Dict[str, object]:
                 continue
             segments.append(segment)
             labels.extend(map_segment_to_allergens(segment))
+            spans.append((int(match.start()), int(match.end())))
 
     labels = [label for label in stable_unique(labels) if label in ALLERGEN_CANONICAL]
-    return {"allergens": labels, "contains_segments": stable_unique(segments)}
+    return {
+        "allergens": labels,
+        "contains_segments": stable_unique(segments),
+        "match_spans": spans,
+    }
+
+
+def _merge_spans(spans: Sequence[Tuple[int, int]]) -> List[Tuple[int, int]]:
+    merged: List[Tuple[int, int]] = []
+    for start, end in sorted((max(0, int(s)), max(0, int(e))) for s, e in spans if int(e) > int(s)):
+        if not merged:
+            merged.append((start, end))
+            continue
+        prev_start, prev_end = merged[-1]
+        if start <= prev_end:
+            merged[-1] = (prev_start, max(prev_end, end))
+        else:
+            merged.append((start, end))
+    return merged
+
+
+def strip_disclosure_segments(text: str, spans: Sequence[Tuple[int, int]]) -> str:
+    safe = as_text(text)
+    merged = _merge_spans(spans)
+    if not merged:
+        return safe
+
+    parts: List[str] = []
+    cursor = 0
+    for start, end in merged:
+        if start > cursor:
+            parts.append(safe[cursor:start])
+        cursor = max(cursor, end)
+    if cursor < len(safe):
+        parts.append(safe[cursor:])
+
+    cleaned = "".join(parts)
+    cleaned = EMPTY_PUNCT_RE.sub(r"\1", cleaned)
+    cleaned = BAD_PUNCT_SPACE_RE.sub(r"\1", cleaned)
+    cleaned = TRAILING_DISCLOSURE_RE.sub("", cleaned)
+    cleaned = SPACE_RE.sub(" ", cleaned).strip(" ,;:.")
+    return cleaned
 
 
 def write_jsonl(path: Path, rows: Sequence[Dict[str, object]]) -> None:
@@ -274,6 +324,7 @@ def main() -> int:
     skipped_short = 0
     skipped_unlabeled = 0
     skipped_no_contains = 0
+    skipped_empty_after_strip = 0
     processed_rows = 0
     allergen_counter: Counter = Counter()
 
@@ -296,6 +347,10 @@ def main() -> int:
                 parsed = extract_allergens_from_ingredients(ingredients)
                 allergens = parsed["allergens"]
                 contains_segments = parsed["contains_segments"]
+                sanitized_text = strip_disclosure_segments(ingredients, parsed["match_spans"])
+                if len(sanitized_text) < min_text_len:
+                    skipped_empty_after_strip += 1
+                    continue
 
                 if args.require_contains and not contains_segments:
                     skipped_no_contains += 1
@@ -316,7 +371,7 @@ def main() -> int:
                 rows.append(
                     {
                         "id": row_id,
-                        "text": ingredients,
+                        "text": sanitized_text,
                         "allergens": allergens,
                         "diets": [],
                         "source": "usda_fdc_bulk_branded",
@@ -328,6 +383,7 @@ def main() -> int:
                             "serving_size": as_text(source_row.get("serving_size")),
                             "serving_size_unit": as_text(source_row.get("serving_size_unit")),
                             "contains_segments": contains_segments,
+                            "raw_ingredients": ingredients,
                         },
                     }
                 )
@@ -357,6 +413,7 @@ def main() -> int:
         "skipped_short": skipped_short,
         "skipped_unlabeled": skipped_unlabeled,
         "skipped_no_contains": skipped_no_contains,
+        "skipped_empty_after_strip": skipped_empty_after_strip,
         "allergen_counts": dict(allergen_counter),
     }
     write_json(summary_output, summary)

@@ -28,3 +28,8 @@ ml/data/processed/usda_fdc_summary.json
 ml/data/processed/usda_fdc_bulk_train_examples.jsonl
 ml/data/processed/usda_fdc_bulk_holdout_examples.jsonl
 ml/data/processed/usda_fdc_bulk_summary.json
+ml/data/processed/usda_only_train.jsonl
+ml/data/processed/usda_only_val.jsonl
+ml/data/processed/usda_only_holdout.jsonl
+ml/data/processed/label_space_usda_only.json
+ml/data/processed/usda_only_dataset_summary.json

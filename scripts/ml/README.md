@@ -6,6 +6,7 @@ This folder contains a low-cost, fast multi-label training pipeline for ingredie
 - `fetch_openfoodfacts_targeted.py`: high-yield allergen-tag harvesting from Open Food Facts (balanced positives by allergen class).
 - `fetch_usda_fdc_data.py`: fetches USDA Branded ingredient labels and extracts high-confidence allergen labels from explicit contains/may-contain statements.
 - `fetch_usda_fdc_bulk.py`: downloads USDA Branded CSV ZIP and generates large-scale train/holdout JSONL from real branded labels.
+- `prepare_usda_only_data.py`: builds USDA-only train/val/holdout files and restricts diet label space.
 - `export_training_data.py`: pulls labeled ingredient text from Supabase and writes JSONL train/val splits.
 - `train_fast_model.py`: trains a lightweight hashed-feature PyTorch model for allergen and diet-violation flags.
 - `evaluate_model.py`: evaluates a trained run and writes metrics JSON.
@@ -52,6 +53,20 @@ python3 scripts/ml/evaluate_model.py \
   --dataset ml/data/processed/usda_fdc_bulk_holdout_examples.jsonl
 ```
 
+USDA-only (disclosure segments stripped from model input):
+
+```bash
+python3 scripts/ml/fetch_usda_fdc_bulk.py --require-contains
+python3 scripts/ml/prepare_usda_only_data.py
+python3 scripts/ml/train_fast_model.py \
+  --train-file ml/data/processed/usda_only_train.jsonl \
+  --val-file ml/data/processed/usda_only_val.jsonl \
+  --label-space-file ml/data/processed/label_space_usda_only.json
+python3 scripts/ml/tune_thresholds.py
+python3 scripts/ml/evaluate_model.py \
+  --dataset ml/data/processed/usda_only_holdout.jsonl
+```
+
 Outputs:
 
 - Processed data: `ml/data/processed/`
@@ -65,3 +80,4 @@ Outputs:
 - Open Food Facts API search has a published rate limit (10 requests/minute). Keep `--throttle-seconds` at ~6+ for large pulls.
 - USDA `DEMO_KEY` is heavily rate-limited. Set `USDA_API_KEY` for large-scale pulls.
 - USDA bulk CSV download avoids API throttling and is preferable for large-scale training/validation.
+- `fetch_usda_fdc_bulk.py` uses disclosure segments only to derive ground-truth allergen labels and strips those segments from `text` before saving rows.
