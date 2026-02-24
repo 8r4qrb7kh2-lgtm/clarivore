@@ -408,28 +408,21 @@ export default function HelpContactClient() {
     setFeedbackTone("idle");
 
     try {
-      if (selectedRestaurantId) {
-        const { error } = await supabase.from("anonymous_feedback").insert([
-          { restaurant_id: selectedRestaurantId, feedback_text: text },
-        ]);
-        if (error) throw error;
-      } else {
-        const response = await fetch("/api/report-issue", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            context: "help_feedback",
-            message: text,
-            pageUrl: window.location.href,
-            restaurantName: "Clarivore",
-          }),
-        });
-        const result = await response.json().catch(() => ({}));
-        if (!response.ok || !result?.success) {
-          throw new Error(result?.error || "Failed to send feedback.");
-        }
+      const response = await fetch("/api/report-issue", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          context: "help_feedback",
+          message: text,
+          pageUrl: window.location.href,
+          restaurantName: selectedRestaurant?.name || "Clarivore",
+        }),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || !result?.success) {
+        throw new Error(result?.error || "Failed to send feedback.");
       }
 
       setFeedbackStatus("Thanks for the feedback.");
@@ -442,7 +435,7 @@ export default function HelpContactClient() {
     } finally {
       setFeedbackSending(false);
     }
-  }, [feedbackText, selectedRestaurantId]);
+  }, [feedbackText, selectedRestaurant?.name]);
 
   const handleReportIssue = useCallback(async () => {
     const text = issueText.trim();

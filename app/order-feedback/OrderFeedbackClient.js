@@ -96,25 +96,28 @@ export default function OrderFeedbackClient() {
 
       const loadedConfig = await loadAllergenDietConfig(supabase);
 
-      const { data: queueEntry, error: queueError } = await supabase
-        .from("feedback_email_queue")
-        .select("*")
-        .eq("feedback_token", token)
-        .maybeSingle();
-
-      if (queueError || !queueEntry) {
+      const bootstrapResponse = await fetch(
+        `/api/order-feedback/bootstrap?token=${encodeURIComponent(token)}`,
+        {
+          method: "GET",
+          headers: { Accept: "application/json" },
+          cache: "no-store",
+        },
+      );
+      const bootstrap = await bootstrapResponse.json().catch(() => ({}));
+      if (!bootstrapResponse.ok || !bootstrap?.success || bootstrap?.invalid) {
         return { invalid: true };
       }
 
-      const { data: restaurantBase, error: restaurantError } = await supabase
-        .from("restaurants")
-        .select("id, name, slug")
-        .eq("id", queueEntry.restaurant_id)
-        .maybeSingle();
-
-      if (restaurantError || !restaurantBase) {
-        return { invalid: true };
-      }
+      const queueEntry =
+        bootstrap?.queueEntry && typeof bootstrap.queueEntry === "object"
+          ? bootstrap.queueEntry
+          : null;
+      const restaurantBase =
+        bootstrap?.restaurant && typeof bootstrap.restaurant === "object"
+          ? bootstrap.restaurant
+          : null;
+      if (!queueEntry || !restaurantBase) return { invalid: true };
 
       const restaurant = await hydrateRestaurantWithTableMenuState(
         supabase,
@@ -132,28 +135,21 @@ export default function OrderFeedbackClient() {
 
   const submitMutation = useMutation({
     mutationFn: async (payload) => {
-      const { data: feedbackRecord, error: feedbackError } = await supabase
-        .from("order_feedback")
-        .insert(payload.feedbackRecord)
-        .select()
-        .single();
-      if (feedbackError) throw feedbackError;
-
-      if (payload.accommodationRequests.length > 0) {
-        const { error: requestsError } = await supabase
-          .from("accommodation_requests")
-          .insert(payload.accommodationRequests.map((request) => ({
-            ...request,
-            feedback_id: feedbackRecord.id,
-          })));
-        if (requestsError) throw requestsError;
+      const response = await fetch("/api/order-feedback/submit", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || !result?.success || result?.invalid) {
+        throw new Error(
+          result?.error ||
+            "This feedback link is no longer valid. Please request a new one.",
+        );
       }
-
-      await supabase
-        .from("feedback_email_queue")
-        .update({ sent_at: new Date().toISOString() })
-        .eq("id", payload.queueId);
-
       return true;
     },
   });
@@ -267,7 +263,7 @@ export default function OrderFeedbackClient() {
   }, [escapeText]);
 
   const submitFeedback = useCallback(async () => {
-    if (!supabase || !feedbackData) return;
+    if (!feedbackData) return;
 
     const trimmedRestaurantFeedback = restaurantFeedback.trim();
     const trimmedWebsiteFeedback = websiteFeedback.trim();
@@ -285,35 +281,15 @@ export default function OrderFeedbackClient() {
     }
 
     try {
-      const feedbackRecord = {
-          order_id: feedbackData.order_id,
-          restaurant_id: feedbackData.restaurant_id,
-          user_id: feedbackData.user_id || null,
-          restaurant_feedback: trimmedRestaurantFeedback || null,
-          website_feedback: trimmedWebsiteFeedback || null,
-          restaurant_feedback_include_email: restaurantIncludeEmail,
-          website_feedback_include_email: websiteIncludeEmail,
-          user_email:
-            restaurantIncludeEmail || websiteIncludeEmail
-              ? feedbackData.user_email
-              : null,
-      };
-
-      const accommodationRequests =
-        selectedDishes.length > 0
-          ? selectedDishes.map((dishName) => ({
-          restaurant_id: feedbackData.restaurant_id,
-          user_id: feedbackData.user_id || null,
-          dish_name: dishName,
-          user_allergens: userAllergens,
-          user_diets: userDiets,
-        }))
-          : [];
-
       await submitMutation.mutateAsync({
-        feedbackRecord,
-        accommodationRequests,
-        queueId: feedbackData.id,
+        token,
+        restaurantFeedback: trimmedRestaurantFeedback,
+        websiteFeedback: trimmedWebsiteFeedback,
+        restaurantFeedbackIncludeEmail: restaurantIncludeEmail,
+        websiteFeedbackIncludeEmail: websiteIncludeEmail,
+        selectedDishes,
+        userAllergens,
+        userDiets,
       });
 
       setIsSubmitted(true);
@@ -323,6 +299,7 @@ export default function OrderFeedbackClient() {
     }
   }, [
     feedbackData,
+    token,
     restaurantFeedback,
     websiteFeedback,
     selectedDishes,
