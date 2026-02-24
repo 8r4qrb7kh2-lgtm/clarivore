@@ -8,6 +8,7 @@ import AppLoadingScreen from "../components/AppLoadingScreen";
 import PageShell from "../components/PageShell";
 import RestaurantCard from "../components/RestaurantCard";
 import RestaurantGridState from "../components/RestaurantGridState";
+import RestaurantsMapPreview from "./RestaurantsMapPreview";
 import { loadAllergenDietConfig } from "../lib/allergenConfig";
 import {
   isManagerUser,
@@ -19,6 +20,16 @@ import { hydrateRestaurantsWithTableMenuState } from "../lib/restaurantMenuState
 import { filterRestaurantsByVisibility } from "../lib/restaurantVisibility";
 import { supabaseClient as supabase } from "../lib/supabase";
 import { createCompatibilityEngine } from "../restaurant/features/shared/compatibility";
+import {
+  formatDistanceMiles,
+  isValidUsZip,
+  normalizeUsZip,
+  resolveRestaurantDistanceData,
+  sanitizeUsZipInput,
+} from "./googleMapsLocation";
+
+const ZIP_STORAGE_KEY = "clarivore:restaurants:zip";
+const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
 
 function normalizeOverlays(value) {
   if (Array.isArray(value)) return value;
@@ -64,6 +75,15 @@ export default function RestaurantsClient() {
   const [status, setStatus] = useState("");
   const [statusTone, setStatusTone] = useState("");
   const [busyFavoriteId, setBusyFavoriteId] = useState("");
+  const [zipCodeInput, setZipCodeInput] = useState("");
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const savedZip = sanitizeUsZipInput(window.localStorage.getItem(ZIP_STORAGE_KEY));
+    if (savedZip) {
+      setZipCodeInput(savedZip);
+    }
+  }, []);
 
   const authQuery = useQuery({
     queryKey: queryKeys.auth.user("restaurants"),
@@ -162,7 +182,7 @@ export default function RestaurantsClient() {
 
       let query = supabase
         .from("restaurants")
-        .select("id, name, slug, last_confirmed")
+        .select("id, name, slug, last_confirmed, website")
         .order("name", { ascending: true });
 
       if (isManager && !isOwner) {
@@ -264,6 +284,16 @@ export default function RestaurantsClient() {
     return () => window.clearTimeout(timer);
   }, [status]);
 
+  const normalizedZipCode = normalizeUsZip(zipCodeInput);
+  const zipCodeValid = isValidUsZip(normalizedZipCode);
+  const distanceSortActive = sortMode === "distance";
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!zipCodeValid) return;
+    window.localStorage.setItem(ZIP_STORAGE_KEY, normalizedZipCode);
+  }, [normalizedZipCode, zipCodeValid]);
+
   const user = authQuery.data || null;
   const isOwner = isOwnerUser(user);
   const isManager = isManagerUser(user);
@@ -289,7 +319,76 @@ export default function RestaurantsClient() {
   );
 
   const hasPreferenceFilters = allergies.length > 0 || diets.length > 0;
+  const restaurantLocationFingerprint = useMemo(
+    () =>
+      restaurants
+        .map((restaurant) =>
+          [
+            String(restaurant?.id || ""),
+            String(restaurant?.name || ""),
+            String(restaurant?.website || ""),
+          ].join(":"),
+        )
+        .join("|"),
+    [restaurants],
+  );
+
+  const distanceLookupQuery = useQuery({
+    queryKey: [
+      "restaurants",
+      "distance-lookup",
+      {
+        zipCode: normalizedZipCode,
+        restaurantFingerprint: restaurantLocationFingerprint,
+      },
+    ],
+    enabled:
+      distanceSortActive &&
+      zipCodeValid &&
+      Boolean(GOOGLE_MAPS_API_KEY) &&
+      restaurants.length > 0,
+    queryFn: async () =>
+      resolveRestaurantDistanceData({
+        restaurants,
+        zipCode: normalizedZipCode,
+        apiKey: GOOGLE_MAPS_API_KEY,
+      }),
+    staleTime: 15 * 60 * 1000,
+    retry: 1,
+  });
+
+  const distanceByRestaurantId = distanceLookupQuery.data?.byRestaurantId || {};
+  const mapPreviewLocations = useMemo(
+    () =>
+      [...(Array.isArray(distanceLookupQuery.data?.locations) ? distanceLookupQuery.data.locations : [])]
+        .sort((a, b) => {
+          const aDistance = Number.isFinite(a?.distanceMiles)
+            ? Number(a.distanceMiles)
+            : Number.POSITIVE_INFINITY;
+          const bDistance = Number.isFinite(b?.distanceMiles)
+            ? Number(b.distanceMiles)
+            : Number.POSITIVE_INFINITY;
+          return aDistance - bDistance;
+        }),
+    [distanceLookupQuery.data?.locations],
+  );
+
   const sortedRestaurants = useMemo(() => {
+    if (sortMode === "distance") {
+      return [...restaurants].sort((a, b) => {
+        const aId = String(a?.id || "");
+        const bId = String(b?.id || "");
+        const aDistance = Number.isFinite(distanceByRestaurantId[aId]?.distanceMiles)
+          ? Number(distanceByRestaurantId[aId].distanceMiles)
+          : Number.POSITIVE_INFINITY;
+        const bDistance = Number.isFinite(distanceByRestaurantId[bId]?.distanceMiles)
+          ? Number(distanceByRestaurantId[bId].distanceMiles)
+          : Number.POSITIVE_INFINITY;
+        if (aDistance !== bDistance) return aDistance - bDistance;
+        return (a?.name || "").localeCompare(b?.name || "");
+      });
+    }
+
     if (sortMode === "last_confirmed") {
       return [...restaurants].sort((a, b) => {
         const aDate = a?.last_confirmed ? new Date(a.last_confirmed).getTime() : 0;
@@ -318,7 +417,15 @@ export default function RestaurantsClient() {
     }
 
     return sortByName(restaurants);
-  }, [allergies, compatibilityEngine, diets, hasPreferenceFilters, restaurants, sortMode]);
+  }, [
+    allergies,
+    compatibilityEngine,
+    diets,
+    distanceByRestaurantId,
+    hasPreferenceFilters,
+    restaurants,
+    sortMode,
+  ]);
 
   const queryStatus = !supabase
     ? "Supabase env vars are missing."
@@ -331,8 +438,31 @@ export default function RestaurantsClient() {
       ? "Add allergens or diets in account settings to use this sort."
       : "";
 
-  const effectiveStatus = status || queryStatus || friendlySortStatus;
-  const effectiveStatusTone = statusTone || (queryStatus || friendlySortStatus ? "error" : "");
+  const distanceSortStatus =
+    !distanceSortActive
+      ? ""
+      : !GOOGLE_MAPS_API_KEY
+        ? "Location sort needs Google Maps. Add NEXT_PUBLIC_GOOGLE_MAPS_API_KEY."
+        : !normalizedZipCode
+          ? "Enter your ZIP code to sort restaurants by distance."
+          : !zipCodeValid
+            ? "Enter a valid US ZIP code (for example: 44114)."
+            : distanceLookupQuery.isPending
+              ? "Finding restaurant locations..."
+              : distanceLookupQuery.isError
+                ? distanceLookupQuery.error?.message ||
+                  "Unable to look up restaurant locations."
+                : !mapPreviewLocations.length
+                  ? "No restaurant locations were matched for this ZIP code."
+                  : "";
+
+  const effectiveStatus =
+    status || queryStatus || friendlySortStatus || distanceSortStatus;
+  const effectiveStatusTone =
+    statusTone ||
+    (queryStatus || (distanceSortActive && distanceLookupQuery.isError)
+      ? "error"
+      : "");
 
   const emptyText =
     isManager && !isOwner
@@ -388,25 +518,50 @@ export default function RestaurantsClient() {
         statusId="restaurant-status"
         statusMarginBottom={16}
         betweenContent={
-          <select
-            id="sort-select"
-            value={sortMode}
-            onChange={(event) => setSortMode(event.target.value)}
-            style={{
-              display: "block",
-              maxWidth: 300,
-              margin: "0 auto 20px",
-              padding: "12px 14px",
-              borderRadius: 12,
-              border: "1px solid var(--border)",
-              background: "var(--panel)",
-              color: "var(--text)",
-            }}
-          >
-            <option value="name">Sort: Name (A-Z)</option>
-            <option value="last_confirmed">Sort: Allergens last confirmed</option>
-            <option value="friendly">Sort: Most allergy/diet friendly</option>
-          </select>
+          <div className="restaurants-toolbar">
+            {distanceSortActive && zipCodeValid && GOOGLE_MAPS_API_KEY ? (
+              <RestaurantsMapPreview
+                apiKey={GOOGLE_MAPS_API_KEY}
+                zipCode={normalizedZipCode}
+                locations={mapPreviewLocations}
+                isLoading={distanceLookupQuery.isPending}
+              />
+            ) : null}
+            <div className="restaurants-toolbar-controls">
+              <label className="restaurants-control" htmlFor="sort-select">
+                <span>Sort</span>
+                <select
+                  id="sort-select"
+                  value={sortMode}
+                  onChange={(event) => setSortMode(event.target.value)}
+                >
+                  <option value="name">Sort: Name (A-Z)</option>
+                  <option value="distance">Sort: Nearest to ZIP</option>
+                  <option value="last_confirmed">Sort: Allergens last confirmed</option>
+                  <option value="friendly">Sort: Most allergy/diet friendly</option>
+                </select>
+              </label>
+
+              <label className="restaurants-control" htmlFor="location-zip-input">
+                <span>ZIP code</span>
+                <input
+                  id="location-zip-input"
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="postal-code"
+                  placeholder="Enter ZIP code"
+                  value={zipCodeInput}
+                  onChange={(event) =>
+                    setZipCodeInput(sanitizeUsZipInput(event.target.value))
+                  }
+                  maxLength={10}
+                />
+                <small className="restaurants-zip-help">
+                  Used for location sort and map preview.
+                </small>
+              </label>
+            </div>
+          </div>
         }
         loading={loading}
         loadingText="Loading restaurants..."
@@ -415,6 +570,19 @@ export default function RestaurantsClient() {
         renderRestaurant={(restaurant) => {
           const restaurantKey = restaurant?.id ? String(restaurant.id) : "";
           const isFavorite = restaurantKey && favoriteSet.has(restaurantKey);
+          const distanceInfo = distanceByRestaurantId[restaurantKey];
+          const distanceMeta =
+            sortMode === "distance" && restaurantKey
+              ? distanceInfo
+                ? `Distance: ${formatDistanceMiles(distanceInfo.distanceMiles)}`
+                : zipCodeValid && !distanceLookupQuery.isPending
+                  ? "Distance: unavailable"
+                  : ""
+              : "";
+          const locationMeta =
+            sortMode === "distance" && distanceInfo?.formattedAddress
+              ? `Near: ${distanceInfo.formattedAddress}`
+              : "";
 
           return (
             <RestaurantCard
@@ -422,6 +590,7 @@ export default function RestaurantsClient() {
               restaurant={restaurant}
               confirmationShowAll={isOwner || isManager}
               confirmationUseMonthLabel
+              additionalMeta={[distanceMeta, locationMeta]}
               mediaOverlay={
                 canFavorite && restaurantKey ? (
                   <button

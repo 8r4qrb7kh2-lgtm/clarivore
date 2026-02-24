@@ -14,6 +14,7 @@ export default function RestaurantCard({
   confirmationShowAll = true,
   confirmationUseMonthLabel = true,
   actionLabel = "View menu",
+  additionalMeta = [],
 }) {
   if (!restaurant) return null;
 
@@ -24,6 +25,11 @@ export default function RestaurantCard({
       })
     : null;
   const menuHref = getRestaurantMenuHref(restaurant.slug);
+  const extraMetaItems = Array.isArray(additionalMeta)
+    ? additionalMeta.filter(Boolean)
+    : additionalMeta
+      ? [additionalMeta]
+      : [];
 
   return (
     <article className="restaurant-card">
@@ -41,6 +47,11 @@ export default function RestaurantCard({
             Last confirmed by staff: {confirmation.text}
           </p>
         ) : null}
+        {extraMetaItems.map((text, index) => (
+          <p key={`${text}-${index}`} className="meta">
+            {text}
+          </p>
+        ))}
         <Link className="cta-button" href={menuHref}>
           {actionLabel}
         </Link>
