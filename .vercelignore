@@ -1,0 +1,21 @@
+# Local build artifacts and dependencies
+node_modules/
+.next/
+out/
+.vercel/
+.vercel-next/
+
+# Local metadata and editor files
+.git/
+.git.worktree
+.DS_Store
+*.log
+.cursor/
+.axon/
+
+# Non-runtime project areas
+ml/
+ios/
+archive/
+backups/
+supabase/.temp/

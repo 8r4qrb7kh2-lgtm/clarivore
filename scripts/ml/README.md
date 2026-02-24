@@ -7,6 +7,8 @@ This folder contains a low-cost, fast multi-label training pipeline for ingredie
 - `fetch_usda_fdc_data.py`: fetches USDA Branded ingredient labels and extracts high-confidence allergen labels from explicit contains/may-contain statements.
 - `fetch_usda_fdc_bulk.py`: downloads USDA Branded CSV ZIP and generates large-scale train/holdout JSONL from real branded labels.
 - `prepare_usda_only_data.py`: builds USDA-only train/val/holdout files and restricts diet label space.
+- `distill_with_anthropic.py`: asks a teacher model to relabel hard student examples for distillation.
+- `apply_distilled_labels.py`: merges teacher-distilled labels into student train rows.
 - `export_training_data.py`: pulls labeled ingredient text from Supabase and writes JSONL train/val splits.
 - `train_fast_model.py`: trains a lightweight hashed-feature PyTorch model for allergen and diet-violation flags.
 - `evaluate_model.py`: evaluates a trained run and writes metrics JSON.
@@ -67,6 +69,24 @@ python3 scripts/ml/evaluate_model.py \
   --dataset ml/data/processed/usda_only_holdout.jsonl
 ```
 
+Teacher-student distillation (Anthropic teacher):
+
+```bash
+python3 scripts/ml/distill_with_anthropic.py \
+  --input ml/data/processed/usda_only_train.jsonl \
+  --artifact-dir ml/artifacts/run-<student-run> \
+  --max-examples 1200 \
+  --model claude-haiku-4-5-20251001
+python3 scripts/ml/apply_distilled_labels.py \
+  --train-input ml/data/processed/usda_only_train.jsonl \
+  --distilled-input ml/data/processed/usda_teacher_distilled.jsonl \
+  --train-output ml/data/processed/usda_only_train_distilled.jsonl
+python3 scripts/ml/train_fast_model.py \
+  --train-file ml/data/processed/usda_only_train_distilled.jsonl \
+  --val-file ml/data/processed/usda_only_val.jsonl \
+  --label-space-file ml/data/processed/label_space_usda_only.json
+```
+
 Outputs:
 
 - Processed data: `ml/data/processed/`
@@ -81,3 +101,5 @@ Outputs:
 - USDA `DEMO_KEY` is heavily rate-limited. Set `USDA_API_KEY` for large-scale pulls.
 - USDA bulk CSV download avoids API throttling and is preferable for large-scale training/validation.
 - `fetch_usda_fdc_bulk.py` uses disclosure segments only to derive ground-truth allergen labels and strips those segments from `text` before saving rows.
+- `model_utils.py` tokenization is unit-aware and phrase-aware (e.g., treats plant-milk compounds like `coconut milk` as one semantic unit).
+- `prepare_usda_only_data.py` adds optional semantic augmentation rows for plant-milk/plant-butter compounds to improve phrase-level allergen behavior.

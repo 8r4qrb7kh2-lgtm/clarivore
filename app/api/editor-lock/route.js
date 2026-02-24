@@ -132,6 +132,11 @@ async function ensureEditorLockInfrastructure() {
       CREATE INDEX IF NOT EXISTS idx_restaurant_editor_locks_user_id
         ON ${EDITOR_LOCK_TABLE} (user_id);
     `);
+
+    await prisma.$executeRawUnsafe(`
+      ALTER TABLE ${EDITOR_LOCK_TABLE} ENABLE ROW LEVEL SECURITY;
+      REVOKE ALL ON TABLE ${EDITOR_LOCK_TABLE} FROM anon, authenticated;
+    `);
   })().catch((error) => {
     ensureInfrastructurePromise = null;
     throw error;

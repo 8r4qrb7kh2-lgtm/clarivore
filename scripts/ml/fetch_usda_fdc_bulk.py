@@ -60,6 +60,10 @@ TOKEN_TO_ALLERGEN: Dict[str, str] = {
     "pistachio": "tree nut",
     "pistachios": "tree nut",
     "macadamia": "tree nut",
+    "coconut": "tree nut",
+    "coconuts": "tree nut",
+    "coconut milk": "tree nut",
+    "coconut cream": "tree nut",
     "brazil nut": "tree nut",
     "brazil nuts": "tree nut",
     "fish": "fish",
@@ -108,7 +112,6 @@ CONTAINS_PATTERNS = [
     re.compile(r"\bmanufactured on shared equipment with\b\s*[:\-]?\s*([^.;\n]+)", re.IGNORECASE),
 ]
 
-SPLIT_TOKENS_RE = re.compile(r"[,/]|\band\b|\bor\b", re.IGNORECASE)
 NORM_RE = re.compile(r"[^a-z0-9 ]+")
 SPACE_RE = re.compile(r"\s+")
 BAD_PUNCT_SPACE_RE = re.compile(r"\s+([,;:.])")
@@ -117,6 +120,35 @@ TRAILING_DISCLOSURE_RE = re.compile(
     r"(?:[,\s]*\b(?:may contain|contains one or more of the following|contains|processed in a facility(?: that)? (?:also )?(?:processes|handles)|manufactured on shared equipment with)\b\s*[:\-]?\s*)+$",
     re.IGNORECASE,
 )
+
+PLANT_MILK_BASES = sorted(
+    {
+        "almond",
+        "cashew",
+        "coconut",
+        "hazelnut",
+        "hemp",
+        "macadamia",
+        "oat",
+        "pea",
+        "pecan",
+        "pistachio",
+        "quinoa",
+        "rice",
+        "soy",
+        "walnut",
+    },
+    key=len,
+    reverse=True,
+)
+PLANT_MILK_RE = re.compile(
+    r"\b(" + "|".join(re.escape(value) for value in PLANT_MILK_BASES) + r")\s+milk\b",
+    re.IGNORECASE,
+)
+TOKEN_MATCHERS: List[Tuple[re.Pattern[str], str]] = [
+    (re.compile(rf"\b{re.escape(key)}\b", re.IGNORECASE), allergen)
+    for key, allergen in sorted(TOKEN_TO_ALLERGEN.items(), key=lambda item: len(item[0]), reverse=True)
+]
 
 
 def parse_args() -> argparse.Namespace:
@@ -146,24 +178,21 @@ def parse_args() -> argparse.Namespace:
 
 def normalize_token(value: str) -> str:
     safe = NORM_RE.sub(" ", as_text(value).lower()).strip()
+    # Keep plant-milk compounds from matching dairy milk.
+    safe = PLANT_MILK_RE.sub(lambda match: f"{match.group(1).lower()} plantmilk", safe)
     safe = re.sub(r"\s+", " ", safe)
     return safe
 
 
 def map_segment_to_allergens(segment: str) -> List[str]:
+    cleaned = normalize_token(segment)
+    if not cleaned:
+        return []
+
     mapped: List[str] = []
-    for token in SPLIT_TOKENS_RE.split(segment):
-        cleaned = normalize_token(token)
-        if not cleaned:
-            continue
-
-        candidates = [cleaned]
-        if cleaned.endswith("s"):
-            candidates.append(cleaned[:-1])
-
-        for candidate in candidates:
-            if candidate in TOKEN_TO_ALLERGEN:
-                mapped.append(TOKEN_TO_ALLERGEN[candidate])
+    for pattern, allergen in TOKEN_MATCHERS:
+        if pattern.search(cleaned):
+            mapped.append(allergen)
     return stable_unique(mapped)
 
 

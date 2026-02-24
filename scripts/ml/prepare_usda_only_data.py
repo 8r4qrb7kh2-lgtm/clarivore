@@ -4,6 +4,7 @@
 import argparse
 import json
 import random
+import re
 from collections import Counter
 from pathlib import Path
 from typing import Dict, Iterable, List, Sequence, Set, Tuple
@@ -22,6 +23,13 @@ ALLERGENS = [
 ]
 
 ALLOWED_DIETS = ["Vegan", "Vegetarian", "Pescatarian", "Gluten-free"]
+TREE_NUT_BASES = {"almond", "cashew", "coconut", "hazelnut", "macadamia", "pecan", "pistachio", "walnut"}
+SOY_BASES = {"soy"}
+PEANUT_BASES = {"peanut"}
+
+PLANT_BASES = sorted(TREE_NUT_BASES | SOY_BASES | PEANUT_BASES | {"oat", "rice", "pea", "hemp", "flax", "quinoa"}, key=len, reverse=True)
+PLANT_MILK_RE = re.compile(r"\b(" + "|".join(re.escape(base) for base in PLANT_BASES) + r")\s+milk\b", re.IGNORECASE)
+PLANT_BUTTER_RE = re.compile(r"\b(" + "|".join(re.escape(base) for base in PLANT_BASES) + r")\s+butter\b", re.IGNORECASE)
 
 
 def as_text(value: object) -> str:
@@ -80,6 +88,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--val-ratio", type=float, default=0.2)
     parser.add_argument("--seed", type=int, default=7)
     parser.add_argument(
+        "--no-augment-plant-compounds",
+        action="store_true",
+        help="Disable semantic augmentations for plant milk/butter unit phrases.",
+    )
+    parser.add_argument(
         "--derive-gluten-free-violation-from-wheat",
         action="store_true",
         help="If set, add Gluten-free violation label whenever wheat allergen is present.",
@@ -134,6 +147,55 @@ def summarize(rows: Sequence[Dict[str, object]]) -> Dict[str, object]:
     }
 
 
+def plant_base_to_allergen(base: str) -> str:
+    safe = as_text(base).lower()
+    if safe in TREE_NUT_BASES:
+        return "tree nut"
+    if safe in SOY_BASES:
+        return "soy"
+    if safe in PEANUT_BASES:
+        return "peanut"
+    return ""
+
+
+def build_semantic_augmentations(rows: Sequence[Dict[str, object]]) -> List[Dict[str, object]]:
+    out: List[Dict[str, object]] = []
+
+    for row in rows:
+        row_id = as_text(row.get("id"))
+        text = as_text(row.get("text"))
+        if not text:
+            continue
+
+        augment_index = 0
+
+        for pattern, suffix in ((PLANT_MILK_RE, "milk"), (PLANT_BUTTER_RE, "butter")):
+            for match in pattern.finditer(text):
+                base = as_text(match.group(1)).lower()
+                allergen = plant_base_to_allergen(base)
+                if not allergen:
+                    continue
+
+                phrase = f"{base} {suffix}"
+                augment_index += 1
+                out.append(
+                    {
+                        "id": f"aug::{row_id}::{suffix}::{augment_index}",
+                        "text": phrase,
+                        "allergens": [allergen],
+                        "diets": [],
+                        "source": "usda_semantic_augmentation",
+                        "meta": {
+                            "derived_from_id": row_id,
+                            "phrase": phrase,
+                            "rule": f"plant_{suffix}",
+                        },
+                    }
+                )
+
+    return out
+
+
 def main() -> int:
     args = parse_args()
 
@@ -162,6 +224,11 @@ def main() -> int:
         seed=int(args.seed),
     )
 
+    augmentation_rows: List[Dict[str, object]] = []
+    if not args.no_augment_plant_compounds:
+        augmentation_rows = build_semantic_augmentations(train_rows)
+        train_rows = list(train_rows) + augmentation_rows
+
     write_jsonl(Path(args.train_output), train_rows)
     write_jsonl(Path(args.val_output), val_rows)
     write_jsonl(Path(args.holdout_output), filtered_holdout)
@@ -176,11 +243,13 @@ def main() -> int:
         "config": {
             "seed": int(args.seed),
             "val_ratio": float(args.val_ratio),
+            "augment_plant_compounds": not bool(args.no_augment_plant_compounds),
             "derive_gluten_free_violation_from_wheat": bool(args.derive_gluten_free_violation_from_wheat),
         },
         "label_space": label_space,
         "source_train_rows": len(normalized_train_source),
         "source_holdout_rows": len(normalized_holdout),
+        "augmentation_rows": len(augmentation_rows),
         "train": summarize(train_rows),
         "val": summarize(val_rows),
         "holdout": summarize(filtered_holdout),

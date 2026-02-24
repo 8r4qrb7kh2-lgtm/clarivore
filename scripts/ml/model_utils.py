@@ -11,7 +11,45 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import Dataset
 
-TOKEN_RE = re.compile(r"[a-z0-9]+")
+TOKEN_RE = re.compile(r"[a-z0-9_]+")
+UNIT_SPLIT_RE = re.compile(r"[,\n;]+")
+SPACE_RE = re.compile(r"\s+")
+
+PLANT_MILK_BASES = sorted(
+    {
+        "almond",
+        "cashew",
+        "coconut",
+        "flax",
+        "hazelnut",
+        "hemp",
+        "macadamia",
+        "oat",
+        "pea",
+        "pecan",
+        "pistachio",
+        "quinoa",
+        "rice",
+        "soy",
+        "walnut",
+    },
+    key=len,
+    reverse=True,
+)
+PLANT_BUTTER_BASES = sorted(
+    {
+        "almond",
+        "cashew",
+        "cocoa",
+        "coconut",
+        "peanut",
+        "sunflower",
+    },
+    key=len,
+    reverse=True,
+)
+PLANT_MILK_RE = re.compile(r"\b(" + "|".join(re.escape(v) for v in PLANT_MILK_BASES) + r")\s+milk\b", re.IGNORECASE)
+PLANT_BUTTER_RE = re.compile(r"\b(" + "|".join(re.escape(v) for v in PLANT_BUTTER_BASES) + r")\s+butter\b", re.IGNORECASE)
 
 
 def as_text(value: object) -> str:
@@ -44,8 +82,55 @@ def write_jsonl(path: Path, rows: Sequence[Dict[str, object]]) -> None:
             handle.write("\n")
 
 
+def normalize_ingredient_text(text: str) -> str:
+    safe = as_text(text).lower()
+    if not safe:
+        return ""
+
+    # Keep non-dairy compounds as units so "coconut milk" doesn't look like dairy milk.
+    safe = PLANT_MILK_RE.sub(lambda match: f"{match.group(1).lower()}_milk_plant", safe)
+    safe = PLANT_BUTTER_RE.sub(lambda match: f"{match.group(1).lower()}_butter_plant", safe)
+    safe = SPACE_RE.sub(" ", safe).strip()
+    return safe
+
+
+def ingredient_units_from_normalized(normalized: str) -> List[str]:
+    safe = as_text(normalized)
+    if not safe:
+        return []
+
+    units: List[str] = []
+    for raw_unit in UNIT_SPLIT_RE.split(safe):
+        unit = as_text(raw_unit).strip(" .:;()[]{}")
+        if not unit:
+            continue
+        unit = SPACE_RE.sub(" ", unit)
+        if unit:
+            units.append(unit)
+    return units
+
+
+def ingredient_units(text: str) -> List[str]:
+    normalized = normalize_ingredient_text(text)
+    return ingredient_units_from_normalized(normalized)
+
+
 def tokenize(text: str) -> List[str]:
-    return TOKEN_RE.findall(as_text(text).lower())
+    tokens: List[str] = []
+    normalized = normalize_ingredient_text(text)
+    for unit in ingredient_units_from_normalized(normalized):
+        tokens.extend(TOKEN_RE.findall(unit))
+    return tokens
+
+
+def tokenized_ingredient_units(text: str) -> List[List[str]]:
+    unit_tokens: List[List[str]] = []
+    normalized = normalize_ingredient_text(text)
+    for unit in ingredient_units_from_normalized(normalized):
+        tokens = TOKEN_RE.findall(unit)
+        if tokens:
+            unit_tokens.append(tokens)
+    return unit_tokens
 
 
 def _hash_feature(value: str, feature_dim: int) -> int:
@@ -54,14 +139,26 @@ def _hash_feature(value: str, feature_dim: int) -> int:
 
 
 def extract_feature_indices(text: str, feature_dim: int) -> List[int]:
-    tokens = tokenize(text)
+    normalized = normalize_ingredient_text(text)
+    unit_strings = ingredient_units_from_normalized(normalized)
+    unit_token_lists: List[List[str]] = []
+    for unit in unit_strings:
+        tokens = TOKEN_RE.findall(unit)
+        if tokens:
+            unit_token_lists.append(tokens)
+    tokens = [token for unit_tokens in unit_token_lists for token in unit_tokens]
     features = set()
 
     for token in tokens:
         features.add(f"w:{token}")
 
-    for index in range(len(tokens) - 1):
-        features.add(f"b:{tokens[index]}_{tokens[index + 1]}")
+    # Build bigrams within ingredient units only, avoiding cross-unit leakage.
+    for unit_tokens in unit_token_lists:
+        for index in range(len(unit_tokens) - 1):
+            features.add(f"b:{unit_tokens[index]}_{unit_tokens[index + 1]}")
+
+    for unit in unit_strings:
+        features.add(f"u:{unit}")
 
     for token in tokens:
         if len(token) < 3:

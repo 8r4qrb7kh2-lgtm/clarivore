@@ -33,3 +33,7 @@ ml/data/processed/usda_only_val.jsonl
 ml/data/processed/usda_only_holdout.jsonl
 ml/data/processed/label_space_usda_only.json
 ml/data/processed/usda_only_dataset_summary.json
+ml/data/processed/usda_teacher_distilled.jsonl
+ml/data/processed/usda_teacher_distilled_summary.json
+ml/data/processed/usda_only_train_distilled.jsonl
+ml/data/processed/usda_only_train_distilled_summary.json

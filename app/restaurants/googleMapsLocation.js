@@ -3,6 +3,9 @@ import { loadScript } from "../runtime/scriptLoader";
 const GOOGLE_MAPS_JS_URL = "https://maps.googleapis.com/maps/api/js";
 const GOOGLE_OK_STATUS = "OK";
 const FATAL_GOOGLE_STATUSES = new Set(["REQUEST_DENIED", "INVALID_REQUEST"]);
+const GOOGLE_API_REQUEST_TIMEOUT_MS = 12_000;
+const GOOGLE_API_CONFIG_HINT =
+  "Check that your key is allowed for this domain and that Maps JavaScript API, Geocoding API, and Places API are enabled.";
 const EARTH_RADIUS_MILES = 3958.7613;
 const PLACE_ID_PREFIX = "place_id:";
 const COORDINATE_PAIR_PATTERN = /^(-?\d{1,3}(?:\.\d+)?)\s*,\s*(-?\d{1,3}(?:\.\d+)?)$/;
@@ -20,6 +23,65 @@ function toRadians(value) {
 
 function isFatalGoogleStatus(status) {
   return FATAL_GOOGLE_STATUSES.has(String(status || "").trim().toUpperCase());
+}
+
+function buildGoogleStatusError(operationLabel, status) {
+  const safeStatus = String(status || "").trim();
+  const message = `${operationLabel} failed (${safeStatus || "unknown"}).`;
+  if (safeStatus.toUpperCase() === "REQUEST_DENIED") {
+    return new Error(`${message} ${GOOGLE_API_CONFIG_HINT}`);
+  }
+  return new Error(message);
+}
+
+function buildGoogleTimeoutError(operationLabel) {
+  return new Error(`${operationLabel} timed out. ${GOOGLE_API_CONFIG_HINT}`);
+}
+
+function runGoogleRequestWithTimeout(operationLabel, execute, options = {}) {
+  const timeoutMs =
+    Number.isFinite(Number(options?.timeoutMs)) && Number(options.timeoutMs) > 0
+      ? Math.max(Math.floor(Number(options.timeoutMs)), 1_000)
+      : GOOGLE_API_REQUEST_TIMEOUT_MS;
+
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    let timeoutId = null;
+
+    const finish = (handler, value) => {
+      if (settled) return;
+      settled = true;
+      if (timeoutId != null) {
+        clearTimeout(timeoutId);
+      }
+      handler(value);
+    };
+
+    timeoutId = setTimeout(
+      () => finish(reject, buildGoogleTimeoutError(operationLabel)),
+      timeoutMs,
+    );
+
+    try {
+      execute(
+        (value) => finish(resolve, value),
+        (error) =>
+          finish(
+            reject,
+            error instanceof Error
+              ? error
+              : new Error(asText(error) || "Google Maps request failed."),
+          ),
+      );
+    } catch (error) {
+      finish(
+        reject,
+        error instanceof Error
+          ? error
+          : new Error(asText(error) || "Google Maps request failed."),
+      );
+    }
+  });
 }
 
 function toLatLngLiteral(value) {
@@ -221,26 +283,30 @@ function haversineMiles(a, b) {
 
 async function geocodeRequest(geocoder, request, options = {}) {
   const required = Boolean(options?.required);
-  return new Promise((resolve, reject) => {
-    geocoder.geocode(request, (results, status) => {
-      const safeStatus = String(status || "").trim();
-      if (safeStatus === GOOGLE_OK_STATUS && Array.isArray(results) && results.length) {
-        resolve(results[0]);
-        return;
-      }
+  return runGoogleRequestWithTimeout(
+    "Google Maps geocoding",
+    (resolve, reject) => {
+      geocoder.geocode(request, (results, status) => {
+        const safeStatus = String(status || "").trim();
+        if (safeStatus === GOOGLE_OK_STATUS && Array.isArray(results) && results.length) {
+          resolve(results[0]);
+          return;
+        }
 
-      if (isFatalGoogleStatus(safeStatus) || required) {
-        reject(new Error(`Google Maps geocoding failed (${safeStatus || "unknown"}).`));
-        return;
-      }
+        if (isFatalGoogleStatus(safeStatus) || required) {
+          reject(buildGoogleStatusError("Google Maps geocoding", safeStatus));
+          return;
+        }
 
-      resolve(null);
-    });
-  });
+        resolve(null);
+      });
+    },
+    options,
+  );
 }
 
 async function findPlaceFromQuery(placesService, request) {
-  return new Promise((resolve, reject) => {
+  return runGoogleRequestWithTimeout("Google Maps place lookup", (resolve, reject) => {
     placesService.findPlaceFromQuery(request, (results, status) => {
       const safeStatus = String(status || "").trim();
       if (safeStatus === GOOGLE_OK_STATUS && Array.isArray(results) && results.length) {
@@ -249,7 +315,7 @@ async function findPlaceFromQuery(placesService, request) {
       }
 
       if (isFatalGoogleStatus(safeStatus)) {
-        reject(new Error(`Google Maps place lookup failed (${safeStatus || "unknown"}).`));
+        reject(buildGoogleStatusError("Google Maps place lookup", safeStatus));
         return;
       }
 
@@ -260,22 +326,26 @@ async function findPlaceFromQuery(placesService, request) {
 
 async function getPlaceDetails(placesService, request, options = {}) {
   const required = Boolean(options?.required);
-  return new Promise((resolve, reject) => {
-    placesService.getDetails(request, (result, status) => {
-      const safeStatus = String(status || "").trim();
-      if (safeStatus === GOOGLE_OK_STATUS && result) {
-        resolve(result);
-        return;
-      }
+  return runGoogleRequestWithTimeout(
+    "Google Maps place details",
+    (resolve, reject) => {
+      placesService.getDetails(request, (result, status) => {
+        const safeStatus = String(status || "").trim();
+        if (safeStatus === GOOGLE_OK_STATUS && result) {
+          resolve(result);
+          return;
+        }
 
-      if (isFatalGoogleStatus(safeStatus) || required) {
-        reject(new Error(`Google Maps place details failed (${safeStatus || "unknown"}).`));
-        return;
-      }
+        if (isFatalGoogleStatus(safeStatus) || required) {
+          reject(buildGoogleStatusError("Google Maps place details", safeStatus));
+          return;
+        }
 
-      resolve(null);
-    });
-  });
+        resolve(null);
+      });
+    },
+    options,
+  );
 }
 
 async function resolveLocationFromManualInput({ restaurant, placesService, geocoder }) {
@@ -305,6 +375,7 @@ async function resolveLocationFromManualInput({ restaurant, placesService, geoco
         name: asText(place?.name) || asText(restaurant?.name) || "Restaurant",
         formattedAddress: asText(place?.formatted_address),
         position: placePosition,
+        placeId: asText(place?.place_id) || asText(parsedHint.placeId),
       };
     }
 
@@ -319,6 +390,7 @@ async function resolveLocationFromManualInput({ restaurant, placesService, geoco
         name: asText(restaurant?.name) || "Restaurant",
         formattedAddress: asText(geocodePlace?.formatted_address),
         position: geocodePosition,
+        placeId: asText(geocodePlace?.place_id) || asText(parsedHint.placeId),
       };
     }
     return null;
@@ -339,6 +411,7 @@ async function resolveLocationFromManualInput({ restaurant, placesService, geoco
       name: asText(restaurant?.name) || "Restaurant",
       formattedAddress: asText(geocoded?.formatted_address),
       position: geocodedPosition,
+      placeId: asText(geocoded?.place_id),
     };
   }
 
@@ -366,7 +439,7 @@ async function resolveRestaurantLocation({
   for (const query of queries) {
     const place = await findPlaceFromQuery(placesService, {
       query,
-      fields: ["name", "formatted_address", "geometry"],
+      fields: ["name", "formatted_address", "geometry", "place_id"],
       locationBias: { center: zipCenter, radius: 100_000 },
     });
     const position = toLatLngLiteral(place?.geometry?.location);
@@ -375,6 +448,7 @@ async function resolveRestaurantLocation({
       name: asText(place?.name) || asText(restaurant?.name) || "Restaurant",
       formattedAddress: asText(place?.formatted_address),
       position,
+      placeId: asText(place?.place_id),
     };
   }
 
@@ -393,6 +467,7 @@ async function resolveRestaurantLocation({
     name: asText(restaurant?.name) || "Restaurant",
     formattedAddress: asText(fallback?.formatted_address),
     position: fallbackPosition,
+    placeId: asText(fallback?.place_id),
   };
 }
 
@@ -423,7 +498,7 @@ export async function loadGoogleMapsApi(apiKey) {
   const safeApiKey = asText(apiKey);
   if (!safeApiKey) {
     throw new Error(
-      "Google Maps is not configured. Add GOOGLE_VISION_API_KEY, GOOGLE_MAPS_API_KEY, or NEXT_PUBLIC_GOOGLE_MAPS_API_KEY.",
+      "Google Maps is not configured. Add GOOGLE_MAPS_API_KEY or NEXT_PUBLIC_GOOGLE_MAPS_API_KEY.",
     );
   }
 
@@ -451,7 +526,9 @@ export async function loadGoogleMapsApi(apiKey) {
       .then(() => {
         if (!window.google?.maps?.places) {
           mapsApiPromise = null;
-          throw new Error("Google Maps loaded but Places API is unavailable.");
+          throw new Error(
+            `Google Maps loaded but Places API is unavailable. ${GOOGLE_API_CONFIG_HINT}`,
+          );
         }
         return window.google.maps;
       })
@@ -522,6 +599,7 @@ export async function resolveRestaurantDistanceData({
       restaurantId,
       name: asText(location?.name) || asText(restaurant?.name) || "Restaurant",
       formattedAddress: asText(location?.formattedAddress),
+      placeId: asText(location?.placeId),
       position: location.position,
       distanceMiles: haversineMiles(zipCenter, location.position),
     });
