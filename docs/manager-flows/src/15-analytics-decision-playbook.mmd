@@ -1,0 +1,18 @@
+flowchart TD
+  classDef action fill:#ffffff,stroke:#1f4fd7,color:#122044;
+  classDef decision fill:#fff8e8,stroke:#b7801f,color:#5b3a00;
+  classDef priority fill:#ffeef0,stroke:#ba1f35,color:#5f0d1a;
+  classDef optimize fill:#ebfff3,stroke:#1f8c4d,color:#0d4a28;
+
+  A([Open dashboard analytics panels]):::action --> B[Select heatmap metric: views, loves, orders, requests, % accommodated]:::action
+  B --> C[Find top-demand dishes]:::action
+  C --> D{High demand + low accommodation fit?}:::decision
+  D -- Yes --> E[Open dish analytics details]:::priority
+  D -- No --> F[Track as healthy performer]:::optimize
+  E --> G[Inspect allergen and diet breakdown by request volume]:::priority
+  G --> H{Issue is operational or menu-data?}:::decision
+  H -- Operational --> I[Coach team and update prep process]:::optimize
+  H -- Menu data --> J[Open editor and update overlays/ingredients]:::priority
+  I --> K([Measure impact next review cycle]):::action
+  J --> K
+  F --> K

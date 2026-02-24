@@ -28,6 +28,8 @@ The screenshot script is optional and requires a running app server.
 - `DOCS_BASE_URL` (default: `http://127.0.0.1:8081`)
 - `DOCS_MANAGER_EMAIL` (optional)
 - `DOCS_MANAGER_PASSWORD` (optional)
+- `DOCS_MANAGER_FIRST_NAME` (optional, default: `QA`)
+- `DOCS_MANAGER_LAST_NAME` (optional, default: `Manager`)
 
 Without credentials, only unauthenticated manager flow screenshots are captured.
 
@@ -45,3 +47,9 @@ Without credentials, only unauthenticated manager flow screenshots are captured.
 10. `10-brand-replacement-sequence`
 11. `11-notification-delivery-sequence`
 12. `12-troubleshooting-routing-flow`
+13. `13-editor-workflow-swimlane`
+14. `14-editor-save-publish-sequence`
+15. `15-analytics-decision-playbook`
+16. `16-diner-experience-validation-flow`
+17. `17-tablet-ops-flow`
+18. `18-manager-task-map`

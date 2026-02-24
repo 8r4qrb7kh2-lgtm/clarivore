@@ -1,0 +1,16 @@
+flowchart TD
+  classDef action fill:#ffffff,stroke:#1f4fd7,color:#122044;
+  classDef decision fill:#fff8e8,stroke:#b7801f,color:#5b3a00;
+  classDef risk fill:#ffeef0,stroke:#ba1f35,color:#5f0d1a;
+  classDef done fill:#ebfff3,stroke:#1f8c4d,color:#0d4a28;
+
+  A([Open restaurant in viewer mode]):::action --> B[Set representative allergen + diet profile]:::action
+  B --> C[Inspect overlay statuses on menu pages]:::action
+  C --> D{Expected dishes marked safe/removable/unsafe?}:::decision
+  D -- No --> E[Capture mismatches and open editor fix task]:::risk
+  D -- Yes --> F[Open dish detail reasoning]:::action
+  F --> G{Reasoning and ingredient evidence accurate?}:::decision
+  G -- No --> E
+  G -- Yes --> H[Optionally test favorite/order signals]:::action
+  H --> I([Viewer validation passed]):::done
+  E --> J([Escalate or patch before publish]):::risk

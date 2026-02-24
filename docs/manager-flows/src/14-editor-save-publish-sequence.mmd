@@ -1,0 +1,20 @@
+sequenceDiagram
+  autonumber
+  participant Manager
+  participant Editor as Webpage Editor
+  participant Review as Save Review Modal
+  participant API as /api/restaurant/save
+  participant DB as Supabase/Postgres
+
+  Manager->>Editor: Make page/overlay/dish/settings updates
+  Editor->>Editor: Mark dirty state + history checkpoints
+  Manager->>Editor: Click Save to site
+  Editor->>Review: Open pre-save checklist (if enabled)
+  Review-->>Manager: Show pending issues summary
+  Manager->>Review: Confirm save
+  Review->>Editor: Commit save request
+  Editor->>API: Send normalized payload (pages, overlays, ingredients, settings)
+  API->>DB: Execute protected write transaction
+  DB-->>API: Persist + changelog + confirmation timestamp updates
+  API-->>Editor: Save response with sync metadata
+  Editor-->>Manager: Clear dirty state and show success

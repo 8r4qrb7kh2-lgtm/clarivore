@@ -1,0 +1,14 @@
+flowchart LR
+  classDef action fill:#ffffff,stroke:#1f4fd7,color:#122044;
+  classDef decision fill:#fff8e8,stroke:#b7801f,color:#5b3a00;
+  classDef issue fill:#ffeef0,stroke:#ba1f35,color:#5f0d1a;
+  classDef ok fill:#ebfff3,stroke:#1f8c4d,color:#0d4a28;
+
+  A([Manager opens Tablet pages nav]):::action --> B[Select Server tablet or Kitchen tablet]:::action
+  B --> C[Verify incoming diner notices appear with context]:::action
+  C --> D{Notices syncing correctly?}:::decision
+  D -- No --> E[Check account context, network, and recent message flow]:::issue
+  D -- Yes --> F[Acknowledge and route actions to kitchen/service]:::ok
+  F --> G[Confirm follow-up in dashboard direct messages]:::action
+  G --> H([Tablet operations healthy]):::ok
+  E --> I([Escalate monitoring incident with evidence]):::issue

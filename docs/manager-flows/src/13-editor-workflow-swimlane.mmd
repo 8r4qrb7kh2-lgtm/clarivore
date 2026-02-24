@@ -1,0 +1,29 @@
+flowchart LR
+  classDef lane fill:#f6f9ff,stroke:#8ca8e8,color:#122044;
+  classDef action fill:#ffffff,stroke:#1f4fd7,color:#122044;
+  classDef decision fill:#fff8e8,stroke:#b7801f,color:#5b3a00;
+
+  subgraph Manager[Manager]
+    M1[Open webpage editor]:::action
+    M2[Add or reposition overlays]:::action
+    M3[Open dish editor and confirm ingredient rows]:::action
+    M4[Review settings/changelog/menu pages]:::action
+    M5[Run confirmation flow if due]:::action
+    M6[Click Save to site]:::action
+  end
+
+  subgraph Editor[Restaurant Editor Runtime]
+    E1[Load menu pages + overlay draft]:::action
+    E2[Track pending changes and undo/redo history]:::action
+    E3[Validate unresolved ingredient rows]:::action
+    E4[Stage writes for pages, overlays, ingredients, settings]:::action
+  end
+
+  subgraph Data[Protected Write Gateway]
+    D1[Persist normalized menu tables]:::action
+    D2[Write changelog and update last_confirmed when applicable]:::action
+  end
+
+  M1 --> E1 --> M2 --> E2 --> M3 --> E3 --> Q{All rows confirmed?}:::decision
+  Q -->|No| M3
+  Q -->|Yes| M4 --> M5 --> M6 --> E4 --> D1 --> D2 --> Z([Editor publish complete]):::action

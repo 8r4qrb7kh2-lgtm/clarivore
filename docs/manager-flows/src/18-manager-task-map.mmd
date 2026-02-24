@@ -1,0 +1,22 @@
+flowchart TD
+  classDef action fill:#ffffff,stroke:#1f4fd7,color:#122044;
+  classDef daily fill:#eef4ff,stroke:#3761bf,color:#122044;
+  classDef weekly fill:#fff8e8,stroke:#b7801f,color:#5b3a00;
+  classDef monthly fill:#ffeef0,stroke:#ba1f35,color:#5f0d1a;
+
+  A([Manager operating cadence]):::action --> D1[Daily tasks]:::daily
+  A --> W1[Weekly tasks]:::weekly
+  A --> M1[Monthly tasks]:::monthly
+
+  D1 --> D2[Respond to direct messages]:::daily
+  D1 --> D3[Triage pending requests]:::daily
+  D1 --> D4[Check confirmation due status]:::daily
+  D1 --> D5[Review heatmap and dietary profile]:::daily
+
+  W1 --> W2[Audit recent changes and changelog trends]:::weekly
+  W1 --> W3[Review brand item drift and replacements]:::weekly
+  W1 --> W4[Spot-check diner experience from viewer mode]:::weekly
+
+  M1 --> M2[Complete two-step confirmation flow]:::monthly
+  M1 --> M3[Review unresolved escalations]:::monthly
+  M1 --> M4[Plan remediation for repeated friction dishes]:::monthly
