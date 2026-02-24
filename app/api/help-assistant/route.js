@@ -69,12 +69,12 @@ async function fetchKnowledgeBase({ query, mode, pageContext }) {
         tags,
         mode,
         ts_rank_cd(
-          to_tsvector('english', coalesce(title, '') || ' ' || coalesce(content, '')),
+          to_tsvector('english', title || ' ' || content),
           websearch_to_tsquery('english', ${searchText})
         ) AS rank
       FROM public.help_kb
       WHERE mode IN (${modeValues})
-        AND to_tsvector('english', coalesce(title, '') || ' ' || coalesce(content, ''))
+        AND to_tsvector('english', title || ' ' || content)
           @@ websearch_to_tsquery('english', ${searchText})
       ORDER BY rank DESC
       LIMIT 120
