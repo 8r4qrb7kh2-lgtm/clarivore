@@ -66,6 +66,7 @@ export function useOverlayActions({
   // Create a new default overlay on the active page.
   const addOverlay = useCallback(() => {
     const nextKey = `ov-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const nextDishName = `Dish ${draftOverlaysLength + 1}`;
 
     applyOverlayList((current) => {
       const nextIndex = current.length;
@@ -75,8 +76,8 @@ export function useOverlayActions({
           normalizeOverlay(
             {
               _editorKey: nextKey,
-              id: `Dish ${nextIndex + 1}`,
-              name: `Dish ${nextIndex + 1}`,
+              id: nextDishName,
+              name: nextDishName,
               description: "",
               x: 10,
               y: 10,
@@ -101,7 +102,7 @@ export function useOverlayActions({
     });
 
     setSelectedOverlayKey(nextKey);
-    appendPendingChange("Added overlay", {
+    appendPendingChange(`${nextDishName}: Added overlay`, {
       key: `overlay:${nextKey}:added`,
     });
     queueMicrotask(() => pushHistory());
@@ -119,6 +120,7 @@ export function useOverlayActions({
   const removeOverlay = useCallback((overlayKey) => {
     const overlay = overlaysRef.current.find((item) => item._editorKey === overlayKey);
     const stableOverlayKey = asText(overlay?._editorKey || overlay?.overlayKey || overlayKey);
+    const overlayName = asText(overlay?.id || overlay?.name) || "Dish";
 
     applyOverlayList((current) => current.filter((item) => item._editorKey !== overlayKey));
     setSelectedOverlayKey((current) => {
@@ -127,7 +129,7 @@ export function useOverlayActions({
       return fallback?._editorKey || "";
     });
 
-    appendPendingChange("Removed overlay", {
+    appendPendingChange(`${overlayName}: Removed overlay`, {
       key: stableOverlayKey ? `overlay:${stableOverlayKey}:removed` : "",
     });
     queueMicrotask(() => pushHistory());

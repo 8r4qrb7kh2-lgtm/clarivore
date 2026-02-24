@@ -73,23 +73,25 @@ export function encodePendingChangeLine(text, key) {
   return `${PENDING_CHANGE_KEY_PREFIX}${encodeURIComponent(safeKey)}::${safeText}`;
 }
 
-function buildOverlayNameByKey(overlays) {
+function buildOverlayNameByKey(...overlayCollections) {
   const output = new Map();
-  (Array.isArray(overlays) ? overlays : []).forEach((overlay) => {
-    const name = asText(overlay?.id || overlay?.name || overlay?.dishName);
-    if (!name) return;
+  overlayCollections.forEach((overlays) => {
+    (Array.isArray(overlays) ? overlays : []).forEach((overlay) => {
+      const name = asText(overlay?.id || overlay?.name || overlay?.dishName);
+      if (!name) return;
 
-    const keyCandidates = [
-      overlay?.overlayKey,
-      overlay?._editorKey,
-      overlay?.id,
-      overlay?.name,
-      overlay?.dishName,
-    ];
-    keyCandidates.forEach((value) => {
-      const token = normalizeToken(value);
-      if (!token || output.has(token)) return;
-      output.set(token, name);
+      const keyCandidates = [
+        overlay?.overlayKey,
+        overlay?._editorKey,
+        overlay?.id,
+        overlay?.name,
+        overlay?.dishName,
+      ];
+      keyCandidates.forEach((value) => {
+        const token = normalizeToken(value);
+        if (!token || output.has(token)) return;
+        output.set(token, name);
+      });
     });
   });
   return output;
@@ -140,12 +142,18 @@ function stripLeadingDishPrefix(text) {
   return remainder;
 }
 
-export function buildDefaultChangeLogPayload({ author, pendingChanges, snapshot, overlays }) {
+export function buildDefaultChangeLogPayload({
+  author,
+  pendingChanges,
+  snapshot,
+  overlays,
+  baselineOverlays,
+}) {
   // Group pending-change lines into general messages and item-specific messages.
   // The grouped format keeps change-log cards readable in UI.
   const grouped = {};
   const general = [];
-  const overlayNameByKey = buildOverlayNameByKey(overlays);
+  const overlayNameByKey = buildOverlayNameByKey(overlays, baselineOverlays);
 
   (Array.isArray(pendingChanges) ? pendingChanges : []).forEach((line) => {
     const decoded = decodePendingChangeLine(line);

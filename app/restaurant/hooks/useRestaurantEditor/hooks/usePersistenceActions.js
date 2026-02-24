@@ -104,6 +104,9 @@ export function usePersistenceActions({
       const cleanedOverlays = (overlaysRef.current || []).map(stripEditorOverlay);
       const cleanedMenuImages = normalizeMenuImageList(menuImagesRef.current);
       const baselineSnapshot = parseSerializedEditorState(baselineRef.current);
+      const baselineOverlays = Array.isArray(baselineSnapshot?.overlays)
+        ? baselineSnapshot.overlays
+        : [];
       const baselineMenuImages = normalizeMenuImageList(baselineSnapshot?.menuImages);
       const menuImagesChanged =
         serializeMenuImageList(cleanedMenuImages) !==
@@ -129,6 +132,7 @@ export function usePersistenceActions({
         author,
         pendingChanges: pendingChangesRef.current,
         overlays: overlaysRef.current,
+        baselineOverlays,
         snapshot: {
           mode: "server_generated",
           stateHash,
@@ -264,6 +268,7 @@ export function usePersistenceActions({
           author,
           pendingChanges: pendingChangesRef.current,
           overlays: overlaysRef.current,
+          baselineOverlays,
           snapshot: {
             mode: "server_generated",
           },

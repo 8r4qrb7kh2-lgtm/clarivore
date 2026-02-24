@@ -617,11 +617,13 @@ export function RestaurantEditor({ editor, onNavigate, runtimeConfigHealth }) {
     overlayInteractionRef.current = null;
 
     if (interaction.overlayKey) {
+      const overlayName = asText(interaction.overlayName) || "Dish";
+      const summary = asText(changeLabel) || "Adjusted overlay position";
       editor.updateOverlay(
         interaction.overlayKey,
         (overlay) => overlay,
         {
-          changeText: changeLabel || "Adjusted overlay position",
+          changeText: `${overlayName}: ${summary}`,
           changeKey: `overlay-position:${interaction.overlayKey}`,
           recordHistory: true,
         },
@@ -681,7 +683,7 @@ export function RestaurantEditor({ editor, onNavigate, runtimeConfigHealth }) {
 
     overlayInteractionRef.current = {
       overlayKey: overlay._editorKey,
-      overlayName: overlay.id || "Dish",
+      overlayName: asText(overlay?.id || overlay?.name) || "Dish",
       pointerId: interactionMeta.pointerId,
       captureTarget: interactionMeta.captureTarget,
       moveEventName: interactionMeta.moveEventName,
