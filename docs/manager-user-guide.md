@@ -1,295 +1,403 @@
-# Clarivore Manager User Guide
+# Clarivore Manager Runbook and User Guide
 
-This guide is a practical reference for restaurant managers using Clarivore's manager tools.
+This document is the operational reference for restaurant managers using Clarivore.
 
-## What This Guide Covers
+## Scope and Audience
 
-- Getting access and signing in
-- Running daily manager workflows
-- Handling direct messages and accommodation requests
-- Completing monthly confirmation
-- Using brand replacement and menu analytics tools
-- Troubleshooting common issues
+Use this guide if you are responsible for:
+
+- Monitoring and responding to direct manager/admin communication
+- Triage of accommodation requests
+- Monthly menu confirmation workflow completion
+- Brand item updates and replacement actions
+- Ongoing analytics review and escalation of blockers
+
+This guide is written as a runbook: each section includes entry conditions, exact actions, expected outcomes, and failure handling.
+
+## Navigation Map
+
+- Access and onboarding flow
+- Daily manager workflow
+- Direct messages and communication flow
+- Accommodation request triage and lifecycle
+- Monthly confirmation flow
+- Brand replacement flow
+- Notification and reminder behavior
+- Troubleshooting and escalation
+
+## Core Concepts
+
+- `Manager mode`: editor-capable context (`/manager-dashboard`)
+- `Customer mode`: consumer browsing context (`/home`)
+- `Pending request`: unresolved accommodation request
+- `Implemented`: request addressed with a concrete menu/process change
+- `Reviewed`: request assessed but not fully implemented
+- `Declined`: request cannot be supported
+- `Confirmation due`: monthly confirmation SLA countdown based on `last_confirmed`
 
 ## Quick Start
 
 1. Open `/account` and sign in.
-2. If you were invited, use the invite link (for example `/account?invite=...`).
-3. After login, managers are sent to `/manager-dashboard`.
-4. If you have manager rights, use the topbar mode toggle to switch modes.
+2. If invited, use your invite link (for example `/account?invite=<token>`).
+3. Confirm you land on `/manager-dashboard`.
+4. If you have manager access, use the topbar mode toggle:
 5. `Manager` mode opens `/manager-dashboard`.
 6. `Customer` mode opens `/home`.
 
-## Access Rules
+## Flow 1: Access and Onboarding
 
-- You must be signed in to use manager features.
-- You must have manager access to at least one restaurant.
-- Owners can access all restaurants and see a restaurant selector in the dashboard.
-- Non-owner managers only see restaurants assigned to them. The dashboard opens on their first assigned restaurant.
+### Objective
 
-## Daily Operating Checklist
+Authenticate the user, apply any invite access, and load an authorized dashboard context.
+
+### Entry Conditions
+
+- User opens Clarivore without guaranteed manager session.
+- Invite token may or may not be present.
+
+### Exit Conditions
+
+- Manager dashboard loads with restaurant access, or
+- explicit access-state guidance is displayed.
+
+### Access Sequence Diagram
+
+![Manager Access Invite Sequence](./manager-flows/generated/01-access-invite-sequence.svg)
+
+### Access Decision Diagram
+
+![Manager Access Decision Flow](./manager-flows/generated/02-access-decision-flow.svg)
+
+### Baseline UI Screenshots
+
+Desktop sign-in:
+
+![Manager Sign-In Desktop](./manager-flows/screenshots/manager-signin-desktop.png)
+
+Desktop unauthorized dashboard state:
+
+![Manager Dashboard Auth Required Desktop](./manager-flows/screenshots/manager-dashboard-auth-required-desktop.png)
+
+Mobile sign-in:
+
+![Manager Sign-In Mobile](./manager-flows/screenshots/manager-signin-mobile.png)
+
+Mobile unauthorized dashboard state:
+
+![Manager Dashboard Auth Required Mobile](./manager-flows/screenshots/manager-dashboard-auth-required-mobile.png)
+
+### Operational Notes
+
+- Owners are treated as manager-capable and can access all restaurants.
+- Non-owner managers must have assignment rows for one or more restaurants.
+- If assignment is missing, dashboard correctly shows `Manager Access Required`.
+
+### Failure Handling
+
+- Invalid/used/expired invite: proceed with standard account path and request new invite.
+- Signed in but no manager access: escalate assignment request to admin.
+
+## Flow 2: Daily Manager Workflow
+
+### Objective
+
+Run the full daily dashboard loop in a consistent sequence so communication, requests, and confirmation status do not drift.
+
+### Entry Conditions
+
+- Manager dashboard loads successfully.
+
+### Exit Conditions
+
+- Messages acknowledged or responded to
+- pending requests triaged
+- confirmation status reviewed
+- blockers escalated
+
+### Daily Swimlane Diagram
+
+![Daily Manager Operations Swimlane](./manager-flows/generated/03-daily-ops-swimlane.svg)
+
+### Daily Execution Checklist
 
 1. Open `/manager-dashboard`.
-2. Check `Direct Messages` and acknowledge unread admin/system messages.
-3. Process `Accommodation Requests` in `Pending`.
-4. Review `Menu Confirmation` due status.
-5. Review `Recent changes` and `Brand items in use` for risky updates.
-6. Scan `Menu Interest Heatmap` and `User Dietary Profile Breakdown` for demand patterns.
+2. Validate selected restaurant (owners should verify selector value).
+3. Open `Direct Messages`.
+4. Acknowledge unread admin/system messages.
+5. Triage requests in `Accommodation Requests`.
+6. Check due/overdue state in `Menu Confirmation`.
+7. Review `Recent changes` and `Brand items in use`.
+8. Review heatmap and dietary profile for trend shifts.
+9. Escalate blockers with specific evidence.
 
-## Dashboard Reference
+### Recommended Cadence
 
-### Direct Messages
+- Minimum: once per day
+- High-volume restaurants: start/end of shift
+- Near due date (<= 7 days): include confirmation readiness check every day
 
-Use this panel for manager-to-admin communication.
+## Flow 3: Direct Messages (Manager/Admin Communication)
 
-- `Send`: send a message to Clarivore admin from your current restaurant context.
-- `Acknowledge message(s)`: marks admin-sent messages as read/acknowledged.
-- Unread badge count tracks admin messages you have not acknowledged.
-- Message links to Clarivore pages are resolved as in-app links.
+### Objective
 
-Recommended usage:
+Maintain an auditable, low-latency communication thread with admin/operations.
 
-- Send short, concrete updates (what changed, what is blocked, what is needed).
-- Acknowledge after reviewing action items so unread count returns to zero.
+### Message Sequence Diagram
 
-### Accommodation Requests
+![Direct Message Sequence](./manager-flows/generated/04-chat-message-sequence.svg)
 
-This panel is your request triage queue.
+### Panel Behavior Reference
 
-- Tabs available: `Pending` (only unresolved requests) and `All` (full history).
-- Per request, review dish name, requested allergens/diets, request date, current status, and optional previous manager response.
+- `Send`: inserts a `restaurant` sender-role message for current restaurant context.
+- `Acknowledge message(s)`: writes read marker and clears unread count.
+- Timeline shows sender + timestamp and acknowledgment markers.
+- Chat list auto-scrolls to latest message after reload.
 
-Available actions for `pending` requests:
+### Communication SOP
 
-- `Mark Implemented`
-- `Mark Reviewed`
-- `Decline`
+1. For action-required admin messages, acknowledge only after review.
+2. Reply with concise update format:
+3. `Issue` -> `Impact` -> `Action Taken` -> `Need from Admin`.
+4. Keep one thread per restaurant context to avoid cross-store confusion.
 
-Each action opens a modal where you can add an optional manager response.
+### Quality Standard
 
-Status guidance:
+Good message:
 
-- `implemented`: Use when a real menu/process accommodation is now in place.
-- `reviewed`: Use when you assessed it but did not implement a change yet.
-- `declined`: Use when the request cannot be supported.
+- “Menu page 2 changed at 14:10, gluten-free pasta ingredient replaced, reconfirming rows now, need confirmation on allergen mapping for X brand.”
 
-Important behavior:
+Weak message:
 
-- Action buttons are shown only for pending requests.
-- After status changes, the request remains visible in `All` with your response.
+- “Need help please.”
 
-### Menu Confirmation
+## Flow 4: Accommodation Request Triage
 
-This card shows your monthly confirmation health.
+### Objective
 
-- `Due in N days`, `Due today`, or `X days overdue`
-- `Last confirmed: <date>`
-- `Confirm information is up-to-date`
+Process every pending accommodation request with explicit status and response context.
 
-When you click confirm, Clarivore opens the editor confirmation flow.
+### Triage Sequence Diagram
 
-#### Confirmation Flow (2 Steps)
+![Accommodation Request Triage Sequence](./manager-flows/generated/05-request-triage-sequence.svg)
 
-Step 1: Menu verification
+### Request Lifecycle Diagram
 
-1. Provide a current photo (or replacement) for each saved menu page.
-2. For removed pages, mark them removed.
-3. Answer both attestation questions `Yes`.
-4. Confirm all dishes are clearly visible.
-5. Confirm photos are your most current menu.
-6. Wait for comparison checks to finish.
-7. Continue only when pages are matched/replaced and no comparison is pending.
+![Accommodation Request State Machine](./manager-flows/generated/06-request-state-machine.svg)
 
-Step 2: Brand item verification
+### Request Panel Reference
 
-1. Review each brand item card.
-2. If mismatched, capture a new photo or replace the brand item.
-3. Confirm when all brand items are matched.
+- Tabs:
+- `Pending`: unresolved only
+- `All`: complete historical list
+- Request card details include:
+- dish name
+- date
+- allergen and diet needs
+- current status
+- manager response (if present)
 
-Final submit:
+### Status Decision Rules
 
-- Click `Confirm information is up-to-date` to record confirmation.
+- `implemented`: use when accommodation is now materially available.
+- `reviewed`: use when analyzed but not yet implemented.
+- `declined`: use when request cannot be supported.
 
-### Recent Changes
+### Triage SOP
 
-This panel gives a short view of recent menu edits.
+1. Work from `Pending` tab.
+2. Open request action modal for one of three actions.
+3. Add optional response text to preserve rationale.
+4. Submit and verify status badge update.
+5. Spot-check in `All` tab for audit trail completeness.
 
-- Shows recent log entries.
-- `View full changelog` opens the full log inside the editor.
+### Error Handling
 
-Use this before and after major updates so you can spot unintended edits quickly.
-
-### Brand Items in Use
-
-This panel helps track ingredients/products used across dishes.
-
-- Search by brand, ingredient, or dish.
-- Expand an item to view allergens, diets, and linked dishes.
-- `Open` on a dish deep-links into the editor with AI panel context for that dish/ingredient.
-- `Replace item` starts the guided brand replacement flow in the editor.
-
-Critical detail:
-
-- Brand replacement is staged in draft overlays first.
-- Replacements do not go live until you finish row confirmations and save to site.
-
-### Menu Interest Heatmap
-
-This visual overlays menu regions with demand/safety metrics.
-
-Metric toggles:
-
-- `Total views`
-- `Total loves`
-- `Total orders`
-- `Total requests`
-- `Proportion of views safe/accommodable` (% accommodated)
-
-How to use:
-
-1. Pick a metric.
-2. Click highlighted dish areas to inspect dish-level analytics.
-3. Use page controls for multi-page menus.
-4. Review the accommodation breakdown panel below the heatmap.
-
-### User Dietary Profile Breakdown
-
-This section summarizes dietary/allergen distribution of users who viewed the menu.
-
-- Pie chart: allergens
-- Pie chart: diets
-- Includes users with no listed allergens/diets as separate categories
-
-Use this to prioritize which accommodations likely benefit the most guests.
-
-## Brand Replacement SOP
-
-Use this when a product/brand changed (for example, supplier swap).
-
-1. In `Brand items in use`, find the old brand item.
-2. Click `Replace item`.
-3. In editor flow, capture/scan the replacement product label.
-4. Let Clarivore stage replacements across matching ingredient rows.
-5. Reconfirm affected ingredient rows.
-6. Save to site.
-7. Re-run `Menu Confirmation` if needed.
-
-If no rows were updated, verify you selected the correct brand item and try again.
-
-## Request Triage SOP
-
-Use this sequence for consistent handling.
-
-1. Open `Accommodation Requests` in `Pending`.
-2. Group by repeated dish or repeated allergen pattern.
-3. Choose one action per request.
-4. Use `implemented` if solved in menu/process.
-5. Use `reviewed` if acknowledged but pending future work.
-6. Use `declined` if unsupported.
-7. Add a concise response message for audit history.
-8. Check `All` tab to verify status and response were recorded.
-
-## Notifications and Reminders
-
-Manager notifications can include in-app indicators and external notifications depending on deployment setup.
-
-- Browser/native push registration runs during manager boot.
-- Web push permission is requested after user interaction (first click-triggered request).
-- Confirmation reminders are auto-generated near due date (7, 3, 2, and 1 days before due).
-
-If notifications are missing:
-
-1. Confirm browser/system notification permissions are allowed.
-2. Check that you are signed in with the correct manager account.
-3. Refresh dashboard and send a test chat message.
-4. If still broken, escalate to admin for environment key/subscription checks.
-
-## Troubleshooting
-
-### "Sign in Required"
-
-Cause: no active user session.
-
-Fix:
-
-1. Go to `/account`.
-2. Sign in.
-3. Return to `/manager-dashboard`.
-
-### "Manager Access Required"
-
-Cause: signed in, but no manager assignment exists.
-
-Fix:
-
-1. Ask admin to assign your user to restaurant manager access.
-2. If you received an invite link, re-open it and complete invite flow.
-
-### Dashboard load errors
-
-Cause: data query failure or runtime configuration issue.
-
-Fix:
-
-1. Refresh the page.
-2. Switch to another network and retry.
-3. If persistent, provide timestamp + action to admin for logs.
-
-### No menu image available in heatmap
-
-Cause: menu images or overlays are missing for current restaurant.
-
-Fix:
-
-1. Open webpage editor.
-2. Upload/update menu pages and overlays.
-3. Save to site.
-4. Return to dashboard.
-
-### Request action failed
-
-Cause: update failed while writing request status.
-
-Fix:
+If update fails:
 
 1. Retry once.
-2. Confirm you are still on the same restaurant.
-3. If repeated, copy the request details and escalate.
+2. Verify selected restaurant has not changed.
+3. Capture request id/dish/status target and escalate if repeated.
 
-### Brand replacement ran but site did not change
+## Flow 5: Monthly Confirmation
 
-Cause: replacements were only staged in draft.
+### Objective
 
-Fix:
+Confirm menu and brand information is current before due date to avoid suspension risk.
 
-1. Reconfirm updated ingredient rows.
-2. Click save to site.
-3. Verify change in changelog/preview.
+### Confirmation Gating Diagram
 
-## Manager Status Glossary
+![Monthly Confirmation Gating Flow](./manager-flows/generated/07-confirmation-gating-flow.svg)
 
-- `Pending request`: untriaged accommodation request.
-- `Implemented`: request addressed with a concrete menu/process change.
-- `Reviewed`: request assessed, not fully implemented.
-- `Declined`: request not supported.
-- `Due soon`: confirmation due within 7 days.
-- `Overdue`: confirmation due date has passed.
+### Confirmation Commit Sequence
 
-## Recommended Weekly Review
+![Monthly Confirmation Commit Sequence](./manager-flows/generated/08-confirmation-commit-sequence.svg)
 
-1. Clear pending accommodation requests.
-2. Confirm direct-message unread count is zero.
-3. Review top heatmap dishes by views and requests.
-4. Check high-demand unsafe dishes and plan accommodations.
-5. Verify menu confirmation is not approaching overdue.
+### Due-State Interpretation
 
-## Escalation Checklist (When Contacting Admin)
+- `Due in N days`: healthy if N > 7, caution if N <= 7
+- `Due today`: treat as immediate action item
+- `X days overdue`: highest priority
 
-Include the following to speed resolution:
+### Step 1: Menu Verification
+
+1. Provide a current image or replacement for each saved menu page.
+2. Mark pages removed when no longer current.
+3. Set both attestations to `Yes`.
+4. Wait for comparison outcomes to resolve.
+5. Continue only when all pages are matched/replaced and no comparison is pending.
+
+### Step 2: Brand Verification
+
+1. Review each brand card.
+2. Replace/capture for mismatched items.
+3. Confirm final action only when all brand items are matched.
+
+### Final Submit Outcome
+
+- Confirmation event is written through write gateway flow.
+- Due state updates based on new `last_confirmed` timestamp.
+
+### Common Blocks
+
+- Missing page photos
+- Attestations unanswered or answered `No`
+- Comparison still pending
+- Brand mismatch unresolved
+
+## Flow 6: Brand Replacement Workflow
+
+### Objective
+
+Replace a product/brand across affected ingredient rows safely before publishing.
+
+### Brand Replacement Process Diagram
+
+![Brand Replacement Flow](./manager-flows/generated/09-brand-replacement-flow.svg)
+
+### Brand Replacement Sequence Diagram
+
+![Brand Replacement Sequence](./manager-flows/generated/10-brand-replacement-sequence.svg)
+
+### Execution SOP
+
+1. In `Brand items in use`, locate target brand card.
+2. Click `Replace item`.
+3. System deep-links to editor with replacement context.
+4. Capture/scan replacement label.
+5. Review staged row updates in editor.
+6. Reconfirm all affected ingredient rows.
+7. Save to site.
+
+### Critical Guardrail
+
+Replacement actions are staged in draft overlays and are not live until saved.
+
+### Validation Checklist Before Save
+
+- Target rows updated count is non-zero
+- No unresolved ingredient confirmation flags
+- Dish context matches intended restaurant/menu
+
+## Analytics Interpretation Guidance
+
+### Menu Interest Heatmap Metrics
+
+- `Total views`: top funnel demand
+- `Total loves`: user preference intent
+- `Total orders`: conversion signal
+- `Total requests`: accommodation friction indicator
+- `% accommodated`: compatibility/fit ratio
+
+### Operator Usage Pattern
+
+1. Start with `views` and `orders` to find high-impact dishes.
+2. Switch to `requests` and `% accommodated` to detect friction hotspots.
+3. Open dish analytics for candidates with high demand and low accommodation fit.
+4. Prioritize adjustments that reduce repeated request burden.
+
+### User Dietary Profile Section
+
+- Shows aggregate allergen/diet distribution among interacting users.
+- Use to rank accommodation investment by expected user impact.
+
+## Notifications and Reminder Behavior
+
+### Delivery Sequence Diagram
+
+![Notification Delivery Sequence](./manager-flows/generated/11-notification-delivery-sequence.svg)
+
+### Behavior Summary
+
+- Manager dashboard boot attempts web/native notification registration.
+- Web push permission is user-interaction-gated.
+- Reminder messages are eligible at 7, 3, 2, and 1 days before due date.
+- Duplicate reminder prevention is built into reminder checks.
+
+### Practical Expectations
+
+- Notifications can be partially available depending on permission and env configuration.
+- In-app chat remains primary source of truth for reminder visibility.
+
+## Troubleshooting and Escalation
+
+### Troubleshooting Routing Diagram
+
+![Troubleshooting Routing Flow](./manager-flows/generated/12-troubleshooting-routing-flow.svg)
+
+### Symptom-to-Action Matrix
+
+| Symptom | Likely Cause | Immediate Action |
+| --- | --- | --- |
+| `Sign in Required` | No active session | Sign in at `/account` |
+| `Manager Access Required` | No manager assignment | Request assignment or reapply invite |
+| Dashboard load error | Data fetch/runtime failure | Refresh, retry network, capture timestamp |
+| Request update fails | Write/update issue | Retry once, confirm restaurant, escalate with request details |
+| Brand replacement appears missing | Draft staged but unsaved | Reconfirm rows and save to site |
+| No notifications | Permission/config mismatch | Check permissions, account, and test chat refresh |
+
+### Escalation Template
+
+When escalating to admin, include:
 
 - Restaurant name
-- Exact page URL
-- What action you took
-- Error message shown
+- Full page URL
+- Action attempted
+- Error text shown
 - Approximate timestamp
-- Screenshot if available
+- Screenshot or screen recording if available
+
+## Weekly and Monthly Governance Checklist
+
+### Weekly
+
+1. Pending requests <= operational target.
+2. Unread direct messages at zero by close.
+3. Top demand dishes reviewed for accommodation gaps.
+4. Brand item list reviewed for stale/replaced products.
+
+### Monthly
+
+1. Confirmation completed before due date.
+2. Changelog reviewed for risky edits.
+3. Escalation backlog cleared.
+4. Recurring friction dishes prioritized for remediation.
+
+## Diagram Source and Rebuild
+
+Diagram assets for this guide are generated from Mermaid sources under:
+
+- `docs/manager-flows/src/*.mmd`
+
+Rebuild commands:
+
+- `npm run docs:flows:render`
+- `npm run docs:flows:optimize`
+- `npm run docs:flows:build`
+
+Optional screenshot capture command:
+
+- `npm run docs:flows:capture`
+
+Optional PDF export:
+
+- `npm run docs:manager:pdf`

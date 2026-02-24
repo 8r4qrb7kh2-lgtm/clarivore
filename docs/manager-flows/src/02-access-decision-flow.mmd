@@ -1,0 +1,26 @@
+flowchart TD
+  classDef actor fill:#ffffff,stroke:#1f4fd7,stroke-width:1.5px,color:#10203d;
+  classDef system fill:#eef4ff,stroke:#3761bf,color:#10203d;
+  classDef warning fill:#fff6e9,stroke:#b77000,color:#5b3a00;
+  classDef error fill:#ffeef0,stroke:#ba1f35,color:#5f0d1a;
+
+  A([Manager opens Clarivore]):::actor --> B{Signed in?}:::system
+  B -- No --> C[Go to /account and sign in]:::system
+  C --> D{Invite token present?}:::system
+  D -- Yes --> E[Validate and consume invite token]:::system
+  E --> F{Invite valid?}:::system
+  F -- No --> G[Show invite issue message]:::warning
+  F -- Yes --> H[Grant manager role and assignments]:::system
+  D -- No --> I[Standard sign in path]:::system
+  H --> J{Has manager or owner access?}:::system
+  I --> J
+  B -- Yes --> J
+
+  J -- No --> K[Show Manager Access Required state]:::error
+  J -- Yes --> L[Open /manager-dashboard]:::system
+  L --> M{Owner account?}:::system
+  M -- Yes --> N[Show restaurant selector]:::system
+  M -- No --> O[Default to assigned restaurant]:::system
+  N --> P[Start daily workflow]:::actor
+  O --> P
+  G --> C

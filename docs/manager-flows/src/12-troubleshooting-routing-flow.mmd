@@ -1,0 +1,24 @@
+flowchart TD
+  classDef action fill:#ffffff,stroke:#1f4fd7,color:#122044;
+  classDef decision fill:#fff8e8,stroke:#b7801f,color:#5b3a00;
+  classDef fix fill:#ebfff3,stroke:#1f8c4d,color:#0d4a28;
+  classDef escalate fill:#ffeef0,stroke:#ba1f35,color:#5f0d1a;
+
+  A([Issue observed]):::action --> B{Which issue?}:::decision
+
+  B -- Sign in required --> C[Go to /account and sign in]:::fix
+  B -- Manager access required --> D[Ask admin to assign manager access or reapply invite]:::fix
+  B -- Dashboard load error --> E[Refresh + retry network]:::fix
+  B -- Request action failed --> F[Retry once and verify current restaurant]:::fix
+  B -- Brand replacement no effect --> G[Reconfirm rows and save to site]:::fix
+  B -- Missing notifications --> H[Check permission + correct account]:::fix
+
+  C --> Z{Resolved?}:::decision
+  D --> Z
+  E --> Z
+  F --> Z
+  G --> Z
+  H --> Z
+
+  Z -- Yes --> R([Return to daily workflow]):::fix
+  Z -- No --> X[Escalate with restaurant, URL, action, error, timestamp, screenshot]:::escalate

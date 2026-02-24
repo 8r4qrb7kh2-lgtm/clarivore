@@ -1,0 +1,19 @@
+flowchart TD
+  classDef action fill:#ffffff,stroke:#1f4fd7,color:#122044;
+  classDef decision fill:#fff8e8,stroke:#b7801f,color:#5b3a00;
+  classDef blocked fill:#ffeef0,stroke:#ba1f35,color:#5f0d1a;
+  classDef done fill:#ebfff3,stroke:#1f8c4d,color:#0d4a28;
+
+  A[Manager clicks final confirm button]:::action --> B[Open step 1 menu verification]:::action
+  B --> C{Every saved page has a current photo or removed status}:::decision
+  C -- No --> Cx[Block continue and show missing page guidance]:::blocked --> B
+  C -- Yes --> D{Both attestation answers are Yes}:::decision
+  D -- No --> Dx[Block continue until both answers are Yes]:::blocked --> B
+  D -- Yes --> E{Page comparison status}:::decision
+  E -- Pending or Failed --> Ex[Block continue until every page is matched or replaced]:::blocked --> B
+  E -- Ready --> F[Continue to step 2 brand verification]:::action
+
+  F --> G{All brand items matched}:::decision
+  G -- No --> Gx[Capture or replace mismatched brand items]:::blocked --> F
+  G -- Yes --> H[Enable final confirmation submit]:::action
+  H --> I[Confirmation submit allowed]:::done

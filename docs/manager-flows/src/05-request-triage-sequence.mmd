@@ -1,0 +1,23 @@
+sequenceDiagram
+  autonumber
+  participant Manager
+  participant UI as Requests Panel
+  participant Modal as Action Modal
+  participant DB as accommodation_requests
+  participant Dash as Dashboard State
+
+  Manager->>UI: Open Pending requests
+  UI-->>Manager: Show pending list and statuses
+
+  Manager->>UI: Select action (Implemented/Reviewed/Declined)
+  UI->>Modal: Open action modal with request context
+  Manager->>Modal: Optional manager response + Submit
+  Modal->>DB: Update status + manager_response + timestamps
+  DB-->>Modal: Success
+  Modal->>Dash: Patch local request state
+  Dash-->>Manager: Updated request row + status badge
+
+  alt Update fails
+    DB-->>Modal: Error
+    Modal-->>Manager: Show transient error status
+  end

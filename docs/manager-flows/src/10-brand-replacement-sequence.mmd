@@ -1,0 +1,22 @@
+sequenceDiagram
+  autonumber
+  participant Manager
+  participant Dash as Manager Dashboard
+  participant Editor as Restaurant Editor
+  participant Scan as Ingredient Scan Modal
+  participant Overlay as Draft Overlay State
+  participant Save as Save Draft / Pending Save
+
+  Manager->>Dash: Click Replace item for brand card
+  Dash->>Editor: Navigate with autoReplaceBrand query params
+  Editor->>Scan: Open scan flow (seed ingredient + scan profile)
+  Manager->>Scan: Capture label and apply scan result
+  Scan-->>Editor: Replacement metadata
+  Editor->>Overlay: Update matching ingredient rows in draft overlays
+  Overlay-->>Editor: Replacement counts and changed rows
+  Editor-->>Manager: Show staged replacement success
+
+  Manager->>Editor: Reconfirm changed rows and save
+  Editor->>Save: Persist staged changes via write gateway
+  Save-->>Editor: Commit success
+  Editor-->>Manager: Replacement visible in current menu data

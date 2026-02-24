@@ -1,0 +1,28 @@
+stateDiagram-v2
+  [*] --> Pending
+  Pending --> Implemented: Mark Implemented
+  Pending --> Reviewed: Mark Reviewed
+  Pending --> Declined: Decline
+
+  Implemented --> [*]
+  Reviewed --> [*]
+  Declined --> [*]
+
+  note right of Pending
+    Pending items are action-eligible.
+    Modal allows optional manager response.
+  end note
+
+  note right of Implemented
+    Represents accommodation completed
+    in menu or process.
+  end note
+
+  note right of Reviewed
+    Represents assessment completed
+    without full implementation.
+  end note
+
+  note right of Declined
+    Represents unsupported request.
+  end note

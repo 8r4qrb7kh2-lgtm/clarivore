@@ -1,0 +1,23 @@
+sequenceDiagram
+  autonumber
+  participant Manager
+  participant Editor as Restaurant Editor
+  participant Confirm as confirmInfo()
+  participant Gateway as restaurant-write stage/commit
+  participant DB as restaurants + change_logs
+
+  Manager->>Editor: Complete menu + brand verification
+  Manager->>Editor: Click final Confirm information is up-to-date
+  Editor->>Confirm: confirmInfo(photos)
+  Confirm->>Gateway: Stage operation type CONFIRM_INFO
+  Gateway-->>Confirm: batchId
+  Confirm->>Gateway: Commit staged batch
+  Gateway->>DB: Persist confirmation + change log
+  DB-->>Gateway: Write success
+  Gateway-->>Editor: Commit payload
+  Editor-->>Manager: Success toast + updated due state
+
+  alt Photos missing or payload invalid
+    Confirm-->>Editor: Validation error
+    Editor-->>Manager: Show confirmation error
+  end

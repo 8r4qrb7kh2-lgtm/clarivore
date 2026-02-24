@@ -1,0 +1,30 @@
+sequenceDiagram
+  autonumber
+  participant Manager
+  participant Browser
+  participant Account as Account UI (/account)
+  participant Supabase as Supabase Auth
+  participant Invite as manager_invites RPC
+  participant Dashboard as Manager Dashboard
+
+  Manager->>Browser: Open invite link (/account?invite=token)
+  Browser->>Account: Load account page
+  Account->>Invite: Validate invite token
+  Invite-->>Account: valid/expired/used
+
+  alt Invite valid and manager signs in
+    Manager->>Account: Submit credentials
+    Account->>Supabase: auth.signInWithPassword()
+    Supabase-->>Account: Session + user
+    Account->>Invite: consume_manager_invite()
+    Invite-->>Account: grant manager access
+    Account->>Dashboard: Redirect to /manager-dashboard
+    Dashboard->>Supabase: auth.getUser() + access lookup
+    Supabase-->>Dashboard: Manager restaurants
+    Dashboard-->>Manager: Dashboard ready
+  else Invite invalid or already used
+    Account-->>Manager: Show invite error and continue as standard user
+  else Signed in but no manager assignments
+    Account->>Dashboard: Redirect to /manager-dashboard
+    Dashboard-->>Manager: Manager Access Required state
+  end

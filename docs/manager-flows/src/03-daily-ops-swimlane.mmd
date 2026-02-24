@@ -1,0 +1,34 @@
+flowchart LR
+  classDef lane fill:#f6f9ff,stroke:#8ca8e8,color:#122044;
+  classDef action fill:#ffffff,stroke:#1f4fd7,color:#122044;
+  classDef decision fill:#fff8e8,stroke:#b7801f,color:#5b3a00;
+
+  subgraph Manager[Manager]
+    M1[Open manager dashboard]:::action
+    M2[Review unread direct messages]:::action
+    M3[Triage pending accommodation requests]:::action
+    M4[Review menu confirmation due status]:::action
+    M5[Inspect change log and brand items]:::action
+    M6[Scan heatmap and dietary profile]:::action
+    M7[Escalate blockers with clear notes]:::action
+  end
+
+  subgraph Clarivore[Clarivore Dashboard]
+    C1[Load restaurant snapshot data]:::action
+    C2[Render chat, requests, confirmation, analytics]:::action
+    C3[Persist request action and manager response]:::action
+    C4[Open editor deep links for confirmation or brand edits]:::action
+    C5[Record status updates and refresh panels]:::action
+  end
+
+  subgraph Admin[Admin / Operations]
+    A1[Receives manager chat updates]:::action
+    A2[Acts on escalations or assignment issues]:::action
+  end
+
+  M1 --> C1 --> C2 --> M2 --> M3 --> C3 --> C5 --> M4
+  M4 -->|Needs confirmation work| C4 --> M5
+  M4 -->|Not due| M5
+  M5 --> M6 --> D{Any blockers?}:::decision
+  D -->|Yes| M7 --> A1 --> A2
+  D -->|No| Z([Daily review complete]):::action

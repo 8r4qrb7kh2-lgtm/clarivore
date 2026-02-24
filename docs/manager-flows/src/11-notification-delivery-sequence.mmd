@@ -1,0 +1,29 @@
+sequenceDiagram
+  autonumber
+  participant Manager
+  participant Dash as Manager Dashboard Boot
+  participant Push as Push APIs (Web/Native)
+  participant SubDB as manager_* token/subscription tables
+  participant Reminder as Confirmation Reminder Hook
+  participant ChatDB as restaurant_direct_messages
+
+  Manager->>Dash: Open /manager-dashboard
+  Dash->>Push: Request notification capability and permissions
+  Push-->>Dash: Permission granted/denied
+
+  alt Permission granted
+    Dash->>SubDB: Upsert web push subscription or device token
+    SubDB-->>Dash: Stored
+  else Permission denied
+    Dash-->>Manager: Continue without push registration
+  end
+
+  Dash->>Reminder: Evaluate confirmation due date
+  Reminder->>ChatDB: Check existing reminder message
+
+  alt Reminder day hit (7/3/2/1 days)
+    Reminder->>ChatDB: Insert automated reminder message
+    ChatDB-->>Dash: Message available in chat
+  else Not reminder window
+    Reminder-->>Dash: No action
+  end

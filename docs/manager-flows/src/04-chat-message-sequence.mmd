@@ -1,0 +1,24 @@
+sequenceDiagram
+  autonumber
+  participant Manager
+  participant UI as Dashboard Chat Panel
+  participant DB as restaurant_direct_messages
+  participant Reads as restaurant_direct_message_reads
+  participant Notify as /api/notifications/manager-chat
+  participant Email as SendGrid
+
+  Manager->>UI: Write message and press Send
+  UI->>DB: Insert message (sender_role=restaurant)
+  DB-->>UI: Message stored
+  UI->>DB: Reload latest messages
+  UI-->>Manager: Updated chat timeline
+
+  Manager->>UI: Click Acknowledge message(s)
+  UI->>Reads: Upsert read marker (reader_role=restaurant)
+  Reads-->>UI: Acknowledged timestamp
+  UI-->>Manager: Unread count reset
+
+  Note over UI,Notify: For admin/system-origin messages, notification route may email managers
+  UI->>Notify: POST messageId with auth
+  Notify->>Email: Send manager email alert (if configured)
+  Email-->>Notify: Delivery result
