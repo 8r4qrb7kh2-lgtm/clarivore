@@ -168,9 +168,9 @@ export function useRestaurantPersistence({
     },
   });
 
-  // Save website/phone/delivery/menu links.
+  // Save website/phone/delivery/menu/map-location links.
   const saveRestaurantSettingsMutation = useMutation({
-    mutationFn: async ({ website, phone, delivery_url, menu_url }) => {
+    mutationFn: async ({ website, phone, delivery_url, menu_url, map_location }) => {
       if (!supabaseClient) throw new Error("Supabase is not configured.");
       if (!boot?.restaurant?.id) throw new Error("Restaurant missing.");
 
@@ -182,6 +182,7 @@ export function useRestaurantPersistence({
           phone: phone || null,
           delivery_url: delivery_url || null,
           menu_url: menu_url || null,
+          map_location: map_location || null,
           changePayload: {
             author: editorAuthorName,
             general: ["Restaurant settings updated"],
@@ -193,7 +194,7 @@ export function useRestaurantPersistence({
         batchId: stageResult.batchId,
         targetRestaurantId: boot.restaurant.id,
       });
-      return { website, phone, delivery_url, menu_url };
+      return { website, phone, delivery_url, menu_url, map_location };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: bootQueryKey });

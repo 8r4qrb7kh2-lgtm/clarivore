@@ -11,6 +11,7 @@ export function createEmptySettingsDraft(restaurant) {
     phone: asText(restaurant?.phone),
     delivery_url: asText(restaurant?.delivery_url),
     menu_url: asText(restaurant?.menu_url),
+    map_location: asText(restaurant?.map_location),
   };
 }
 
@@ -21,6 +22,7 @@ export function serializeSettingsDraft(value) {
     phone: asText(value?.phone),
     delivery_url: asText(value?.delivery_url),
     menu_url: asText(value?.menu_url),
+    map_location: asText(value?.map_location),
   });
 }
 

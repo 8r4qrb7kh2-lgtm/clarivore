@@ -101,7 +101,7 @@ export async function loadRestaurantBoot({
   const { data: restaurantBase, error: restaurantError } = await supabaseClient
     .from("restaurants")
     .select(
-      "id, slug, name, last_confirmed, created_at, updated_at, menu_url, last_checked, monitor_enabled, total_checks, emails_sent, check_frequency_hours, delivery_url, website, phone, write_version",
+      "id, slug, name, last_confirmed, created_at, updated_at, menu_url, last_checked, monitor_enabled, total_checks, emails_sent, check_frequency_hours, delivery_url, website, phone, map_location, write_version",
     )
     .eq("slug", slug)
     .single();

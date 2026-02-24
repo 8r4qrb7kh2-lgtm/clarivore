@@ -111,5 +111,6 @@ export function normalizeRestaurantRow(row, deps = {}) {
     website: row.website || null,
     phone: row.phone || null,
     delivery_url: row.delivery_url || null,
+    map_location: row.map_location || null,
   };
 }

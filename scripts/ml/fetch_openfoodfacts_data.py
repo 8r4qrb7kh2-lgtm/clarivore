@@ -3,8 +3,8 @@
 
 import argparse
 import json
-import math
 import random
+import socket
 import time
 import urllib.error
 import urllib.parse
@@ -83,6 +83,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--max-pages", type=int, default=10, help="Maximum pages to fetch.")
     parser.add_argument("--page-size", type=int, default=100, help="Products per API page.")
+    parser.add_argument("--start-page", type=int, default=1, help="First page number to fetch.")
     parser.add_argument(
         "--throttle-seconds",
         type=float,
@@ -108,6 +109,17 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--max-retries", type=int, default=4, help="Retry attempts per page request.")
     parser.add_argument("--timeout", type=float, default=45.0, help="HTTP timeout (seconds).")
     parser.add_argument(
+        "--checkpoint-every",
+        type=int,
+        default=1,
+        help="Write output checkpoints every N pages.",
+    )
+    parser.add_argument(
+        "--append",
+        action="store_true",
+        help="Append to existing output file (resume mode).",
+    )
+    parser.add_argument(
         "--user-agent",
         default="ClarivoreML/0.1 (matt@clarivore.app)",
         help="User-Agent for Open Food Facts API requests.",
@@ -132,7 +144,13 @@ def fetch_json(url: str, user_agent: str, timeout: float, max_retries: int) -> D
                 if isinstance(payload, dict):
                     return payload
                 raise RuntimeError("Unexpected payload type (expected object)")
-        except (urllib.error.HTTPError, urllib.error.URLError, TimeoutError, json.JSONDecodeError) as error:
+        except (
+            urllib.error.HTTPError,
+            urllib.error.URLError,
+            TimeoutError,
+            socket.timeout,
+            json.JSONDecodeError,
+        ) as error:
             last_error = error
             if attempt >= max_retries:
                 break
@@ -190,13 +208,32 @@ def write_json(path: Path, payload: Dict[str, object]) -> None:
         handle.write("\n")
 
 
+def read_jsonl(path: Path) -> List[Dict[str, object]]:
+    rows: List[Dict[str, object]] = []
+    if not path.exists():
+        return rows
+    with path.open("r", encoding="utf-8") as handle:
+        for raw_line in handle:
+            line = raw_line.strip()
+            if not line:
+                continue
+            payload = json.loads(line)
+            if isinstance(payload, dict):
+                rows.append(payload)
+    return rows
+
+
 def main() -> int:
     args = parse_args()
 
     max_pages = max(1, int(args.max_pages))
     page_size = max(1, min(200, int(args.page_size)))
+    start_page = max(1, int(args.start_page))
     min_text_len = max(1, int(args.min_text_len))
+    checkpoint_every = max(1, int(args.checkpoint_every))
     country_tag = as_text(args.country_tag).lower()
+    output_path = Path(args.output)
+    summary_path = Path(args.summary_output)
 
     fields = ",".join(
         [
@@ -213,8 +250,13 @@ def main() -> int:
 
     collected: List[Dict[str, object]] = []
     seen_ids: Set[str] = set()
+    if args.append and output_path.exists():
+        collected = read_jsonl(output_path)
+        seen_ids = {as_text(row.get("id")) for row in collected if as_text(row.get("id"))}
+        print(f"[resume] loaded {len(collected)} existing rows from {output_path}")
 
     pages_fetched = 0
+    failed_pages = 0
     products_seen = 0
     skipped_short_text = 0
     skipped_country = 0
@@ -223,7 +265,7 @@ def main() -> int:
     allergen_counter = Counter()
     diet_counter = Counter()
 
-    for page in range(1, max_pages + 1):
+    for page in range(start_page, start_page + max_pages):
         query = urllib.parse.urlencode(
             {
                 "fields": fields,
@@ -232,12 +274,19 @@ def main() -> int:
             }
         )
         url = f"https://world.openfoodfacts.org/api/v2/search?{query}"
-        payload = fetch_json(
-            url=url,
-            user_agent=args.user_agent,
-            timeout=float(args.timeout),
-            max_retries=max(1, int(args.max_retries)),
-        )
+        try:
+            payload = fetch_json(
+                url=url,
+                user_agent=args.user_agent,
+                timeout=float(args.timeout),
+                max_retries=max(1, int(args.max_retries)),
+            )
+        except RuntimeError as error:
+            failed_pages += 1
+            print(f"[warn] failed page {page}: {error}")
+            if page < (start_page + max_pages - 1) and args.throttle_seconds > 0:
+                time.sleep(float(args.throttle_seconds))
+            continue
 
         products = payload.get("products", [])
         if not isinstance(products, list) or not products:
@@ -316,18 +365,20 @@ def main() -> int:
             print(f"[info] final partial page reached at {page}; stopping")
             break
 
-        if page < max_pages and args.throttle_seconds > 0:
-            time.sleep(float(args.throttle_seconds))
+        if pages_fetched % checkpoint_every == 0:
+            write_jsonl(output_path, collected)
 
-    output_path = Path(args.output)
-    summary_path = Path(args.summary_output)
+        if page < (start_page + max_pages - 1) and args.throttle_seconds > 0:
+            time.sleep(float(args.throttle_seconds))
 
     write_jsonl(output_path, collected)
 
     summary = {
         "source": "openfoodfacts",
         "pages_requested": max_pages,
+        "start_page": start_page,
         "pages_fetched": pages_fetched,
+        "failed_pages": failed_pages,
         "page_size": page_size,
         "products_seen": products_seen,
         "rows_written": len(collected),

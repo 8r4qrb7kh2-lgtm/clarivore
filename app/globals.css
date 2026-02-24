@@ -179,6 +179,10 @@ h2 {
   gap: 12px;
 }
 
+.restaurants-toolbar-controls.is-single {
+  grid-template-columns: minmax(220px, 1fr);
+}
+
 .restaurants-control {
   display: grid;
   gap: 6px;
@@ -202,10 +206,6 @@ h2 {
 
 .restaurants-control input::placeholder {
   color: rgba(167, 178, 209, 0.8);
-}
-
-.restaurants-zip-help {
-  color: var(--muted);
 }
 
 .restaurants-map-preview {

@@ -183,6 +183,7 @@ export function useEditorDerivedState({
     restaurant?.menuImage,
     restaurant?.menuImages,
     restaurant?.menu_url,
+    restaurant?.map_location,
     restaurant?.overlays,
     restaurant?.phone,
     restaurant?.website,

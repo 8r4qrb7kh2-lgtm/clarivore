@@ -1708,6 +1708,7 @@ function normalizeRestaurantSettingsPayload(operationPayload) {
     phone: asText(operationPayload?.phone) || null,
     delivery_url: asText(operationPayload?.delivery_url) || null,
     menu_url: asText(operationPayload?.menu_url) || null,
+    map_location: asText(operationPayload?.map_location) || null,
     changePayload: toJsonSafe(operationPayload?.changePayload, {}),
   };
 }
@@ -1763,6 +1764,7 @@ function normalizeRestaurantCreatePayload(operationPayload) {
     phone: asText(operationPayload?.phone) || null,
     delivery_url: asText(operationPayload?.delivery_url) || null,
     menu_url: asText(operationPayload?.menu_url) || null,
+    map_location: asText(operationPayload?.map_location) || null,
   };
 }
 
@@ -2601,6 +2603,7 @@ export async function applyWriteOperations({
           phone: asText(payload?.phone) || null,
           delivery_url: asText(payload?.delivery_url) || null,
           menu_url: asText(payload?.menu_url) || null,
+          map_location: asText(payload?.map_location) || null,
         };
 
         await tx.restaurants.update({
@@ -2683,6 +2686,7 @@ export async function applyWriteOperations({
             phone: asText(payload?.phone) || null,
             delivery_url: asText(payload?.delivery_url) || null,
             menu_url: asText(payload?.menu_url) || null,
+            map_location: asText(payload?.map_location) || null,
             last_confirmed: null,
           },
           select: {

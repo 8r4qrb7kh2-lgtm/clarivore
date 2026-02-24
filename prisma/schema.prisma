@@ -983,6 +983,7 @@ model restaurants {
   delivery_url                    String?
   website                         String?
   phone                           String?
+  map_location                    String?
   write_version                   BigInt                            @default(0)
   accommodation_requests          accommodation_requests[]
   allergen_detection_issues       allergen_detection_issues[]

@@ -21,3 +21,10 @@ ml/data/processed/label_space.json
 ml/data/processed/dataset_summary.json
 ml/data/processed/openfoodfacts_examples.jsonl
 ml/data/processed/openfoodfacts_summary.json
+ml/data/processed/openfoodfacts_targeted_examples.jsonl
+ml/data/processed/openfoodfacts_targeted_summary.json
+ml/data/processed/usda_fdc_examples.jsonl
+ml/data/processed/usda_fdc_summary.json
+ml/data/processed/usda_fdc_bulk_train_examples.jsonl
+ml/data/processed/usda_fdc_bulk_holdout_examples.jsonl
+ml/data/processed/usda_fdc_bulk_summary.json

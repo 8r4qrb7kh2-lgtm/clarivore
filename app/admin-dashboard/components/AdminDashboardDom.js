@@ -316,6 +316,7 @@ export default function AdminDashboardDom({
 
   const [restaurantName, setRestaurantName] = useState("");
   const [restaurantWebsite, setRestaurantWebsite] = useState("");
+  const [restaurantMapLocation, setRestaurantMapLocation] = useState("");
   const [restaurantDescription, setRestaurantDescription] = useState("");
   const [menuImagePreviews, setMenuImagePreviews] = useState([]);
   const [imageProcessing, setImageProcessing] = useState(false);
@@ -536,6 +537,7 @@ export default function AdminDashboardDom({
               menuImages: menuImagePreviews,
               overlays: [],
               website: String(restaurantWebsite || "").trim() || null,
+              map_location: String(restaurantMapLocation || "").trim() || null,
             },
             summary: `Create restaurant: ${name}`,
           },
@@ -569,6 +571,7 @@ export default function AdminDashboardDom({
 
         setRestaurantName("");
         setRestaurantWebsite("");
+        setRestaurantMapLocation("");
         setRestaurantDescription("");
         setMenuImagePreviews([]);
         if (menuImageInputRef.current) {
@@ -587,6 +590,7 @@ export default function AdminDashboardDom({
       loadRestaurants,
       menuImagePreviews,
       restaurantName,
+      restaurantMapLocation,
       restaurantWebsite,
       showStatus,
     ],
@@ -1494,6 +1498,17 @@ export default function AdminDashboardDom({
                           placeholder="https://example.com"
                           value={restaurantWebsite}
                           onChange={(event) => setRestaurantWebsite(event.target.value)}
+                        />
+                      </div>
+
+                      <div className="form-group">
+                        <label htmlFor="restaurant-map-location">Map Location</label>
+                        <input
+                          type="text"
+                          id="restaurant-map-location"
+                          placeholder="Address, Google Maps URL, place_id:..., or lat,lng"
+                          value={restaurantMapLocation}
+                          onChange={(event) => setRestaurantMapLocation(event.target.value)}
                         />
                       </div>
 

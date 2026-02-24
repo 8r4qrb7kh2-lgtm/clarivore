@@ -4,6 +4,9 @@ const GOOGLE_MAPS_JS_URL = "https://maps.googleapis.com/maps/api/js";
 const GOOGLE_OK_STATUS = "OK";
 const FATAL_GOOGLE_STATUSES = new Set(["REQUEST_DENIED", "INVALID_REQUEST"]);
 const EARTH_RADIUS_MILES = 3958.7613;
+const PLACE_ID_PREFIX = "place_id:";
+const COORDINATE_PAIR_PATTERN = /^(-?\d{1,3}(?:\.\d+)?)\s*,\s*(-?\d{1,3}(?:\.\d+)?)$/;
+const GOOGLE_MAPS_HOST_PATTERN = /(^|\.)(google\.[a-z.]+|goo\.gl)$/i;
 
 let mapsApiPromise = null;
 
@@ -69,6 +72,136 @@ function buildRestaurantSearchQueries(restaurant, zipCode) {
   ]);
 }
 
+function parsePlaceId(value) {
+  const text = asText(value);
+  if (!text) return "";
+  if (/^Ch[IJKL][A-Za-z0-9_-]{10,}$/.test(text)) {
+    return text;
+  }
+  const prefixedMatch = text.match(/\bplace_id:([A-Za-z0-9_-]+)/i);
+  if (prefixedMatch?.[1]) return asText(prefixedMatch[1]);
+  if (text.toLowerCase().startsWith(PLACE_ID_PREFIX)) {
+    return asText(text.slice(PLACE_ID_PREFIX.length));
+  }
+  return "";
+}
+
+function parseCoordinatePair(value) {
+  const text = asText(value);
+  if (!text) return null;
+  const match = text.match(COORDINATE_PAIR_PATTERN);
+  if (!match) return null;
+  const lat = Number(match[1]);
+  const lng = Number(match[2]);
+  if (
+    !Number.isFinite(lat) ||
+    !Number.isFinite(lng) ||
+    lat < -90 ||
+    lat > 90 ||
+    lng < -180 ||
+    lng > 180
+  ) {
+    return null;
+  }
+  return { lat, lng };
+}
+
+function parseUrl(value) {
+  const text = asText(value);
+  if (!text) return null;
+  const withProtocol = /^[a-z][a-z0-9+.-]*:\/\//i.test(text)
+    ? text
+    : /^[\w.-]+\.[a-z]{2,}(\/|$)/i.test(text)
+      ? `https://${text}`
+      : "";
+  if (!withProtocol) return null;
+  try {
+    return new URL(withProtocol);
+  } catch {
+    return null;
+  }
+}
+
+function safeDecodeURIComponent(value) {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return String(value ?? "");
+  }
+}
+
+function isGoogleMapsUrl(url) {
+  const host = asText(url?.hostname).toLowerCase();
+  if (!host) return false;
+  return GOOGLE_MAPS_HOST_PATTERN.test(host);
+}
+
+function parseManualLocationHint(value) {
+  const text = asText(value);
+  if (!text) return null;
+
+  const placeId = parsePlaceId(text);
+  if (placeId) {
+    return { kind: "place_id", placeId };
+  }
+
+  const directCoordinates = parseCoordinatePair(text);
+  if (directCoordinates) {
+    return { kind: "coordinates", position: directCoordinates };
+  }
+
+  const parsedUrl = parseUrl(text);
+  if (parsedUrl) {
+    const queryPlaceId =
+      parsePlaceId(parsedUrl.searchParams.get("query_place_id")) ||
+      parsePlaceId(parsedUrl.searchParams.get("place_id"));
+    if (queryPlaceId) {
+      return { kind: "place_id", placeId: queryPlaceId };
+    }
+
+    const qValue = asText(
+      parsedUrl.searchParams.get("query") || parsedUrl.searchParams.get("q"),
+    );
+    const qPlaceId = parsePlaceId(qValue);
+    if (qPlaceId) {
+      return { kind: "place_id", placeId: qPlaceId };
+    }
+
+    const qCoordinates = parseCoordinatePair(qValue);
+    if (qCoordinates) {
+      return { kind: "coordinates", position: qCoordinates };
+    }
+
+    const atMarkerMatch = `${parsedUrl.pathname}${parsedUrl.hash}`.match(
+      /@(-?\d{1,3}(?:\.\d+)?),(-?\d{1,3}(?:\.\d+)?)/,
+    );
+    if (atMarkerMatch) {
+      const markerCoordinates = parseCoordinatePair(
+        `${atMarkerMatch[1]},${atMarkerMatch[2]}`,
+      );
+      if (markerCoordinates) {
+        return { kind: "coordinates", position: markerCoordinates };
+      }
+    }
+
+    if (isGoogleMapsUrl(parsedUrl)) {
+      if (qValue) {
+        return { kind: "query", query: qValue };
+      }
+      const placeSegment = parsedUrl.pathname.match(/\/place\/([^/]+)/i)?.[1] || "";
+      const decodedPlaceSegment = asText(
+        safeDecodeURIComponent(placeSegment).replace(/\+/g, " "),
+      );
+      if (decodedPlaceSegment) {
+        return { kind: "query", query: decodedPlaceSegment };
+      }
+    }
+    return null;
+  }
+
+  return { kind: "query", query: text };
+}
+
 function haversineMiles(a, b) {
   if (!a || !b) return Number.POSITIVE_INFINITY;
 
@@ -125,6 +258,93 @@ async function findPlaceFromQuery(placesService, request) {
   });
 }
 
+async function getPlaceDetails(placesService, request, options = {}) {
+  const required = Boolean(options?.required);
+  return new Promise((resolve, reject) => {
+    placesService.getDetails(request, (result, status) => {
+      const safeStatus = String(status || "").trim();
+      if (safeStatus === GOOGLE_OK_STATUS && result) {
+        resolve(result);
+        return;
+      }
+
+      if (isFatalGoogleStatus(safeStatus) || required) {
+        reject(new Error(`Google Maps place details failed (${safeStatus || "unknown"}).`));
+        return;
+      }
+
+      resolve(null);
+    });
+  });
+}
+
+async function resolveLocationFromManualInput({ restaurant, placesService, geocoder }) {
+  const parsedHint = parseManualLocationHint(restaurant?.map_location);
+  if (!parsedHint) return null;
+
+  if (parsedHint.kind === "coordinates") {
+    return {
+      name: asText(restaurant?.name) || "Restaurant",
+      formattedAddress: asText(restaurant?.map_location),
+      position: parsedHint.position,
+    };
+  }
+
+  if (parsedHint.kind === "place_id" && parsedHint.placeId) {
+    const place = await getPlaceDetails(
+      placesService,
+      {
+        placeId: parsedHint.placeId,
+        fields: ["name", "formatted_address", "geometry", "place_id"],
+      },
+      { required: false },
+    );
+    const placePosition = toLatLngLiteral(place?.geometry?.location);
+    if (placePosition) {
+      return {
+        name: asText(place?.name) || asText(restaurant?.name) || "Restaurant",
+        formattedAddress: asText(place?.formatted_address),
+        position: placePosition,
+      };
+    }
+
+    const geocodePlace = await geocodeRequest(
+      geocoder,
+      { placeId: parsedHint.placeId },
+      { required: false },
+    );
+    const geocodePosition = toLatLngLiteral(geocodePlace?.geometry?.location);
+    if (geocodePosition) {
+      return {
+        name: asText(restaurant?.name) || "Restaurant",
+        formattedAddress: asText(geocodePlace?.formatted_address),
+        position: geocodePosition,
+      };
+    }
+    return null;
+  }
+
+  if (parsedHint.kind === "query" && parsedHint.query) {
+    const geocoded = await geocodeRequest(
+      geocoder,
+      {
+        address: parsedHint.query,
+        componentRestrictions: { country: "US" },
+      },
+      { required: false },
+    );
+    const geocodedPosition = toLatLngLiteral(geocoded?.geometry?.location);
+    if (!geocodedPosition) return null;
+    return {
+      name: asText(restaurant?.name) || "Restaurant",
+      formattedAddress: asText(geocoded?.formatted_address),
+      position: geocodedPosition,
+    };
+  }
+
+  return null;
+}
+
 async function resolveRestaurantLocation({
   restaurant,
   zipCode,
@@ -132,6 +352,15 @@ async function resolveRestaurantLocation({
   placesService,
   geocoder,
 }) {
+  const manualLocation = await resolveLocationFromManualInput({
+    restaurant,
+    placesService,
+    geocoder,
+  });
+  if (manualLocation?.position) {
+    return manualLocation;
+  }
+
   const queries = buildRestaurantSearchQueries(restaurant, zipCode);
 
   for (const query of queries) {
@@ -194,7 +423,7 @@ export async function loadGoogleMapsApi(apiKey) {
   const safeApiKey = asText(apiKey);
   if (!safeApiKey) {
     throw new Error(
-      "Google Maps is not configured. Add NEXT_PUBLIC_GOOGLE_MAPS_API_KEY.",
+      "Google Maps is not configured. Add GOOGLE_VISION_API_KEY, GOOGLE_MAPS_API_KEY, or NEXT_PUBLIC_GOOGLE_MAPS_API_KEY.",
     );
   }
 

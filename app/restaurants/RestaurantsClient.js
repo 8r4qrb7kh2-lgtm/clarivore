@@ -182,7 +182,7 @@ export default function RestaurantsClient({ googleMapsApiKey = "" }) {
 
       let query = supabase
         .from("restaurants")
-        .select("id, name, slug, last_confirmed, website")
+        .select("id, name, slug, last_confirmed, website, map_location")
         .order("name", { ascending: true });
 
       if (isManager && !isOwner) {
@@ -327,6 +327,7 @@ export default function RestaurantsClient({ googleMapsApiKey = "" }) {
             String(restaurant?.id || ""),
             String(restaurant?.name || ""),
             String(restaurant?.website || ""),
+            String(restaurant?.map_location || ""),
           ].join(":"),
         )
         .join("|"),

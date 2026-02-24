@@ -25,6 +25,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--artifact-dir", default="", help="Path to run dir (contains model.pt/config.json).")
     parser.add_argument("--artifact-root", default="ml/artifacts", help="Fallback root used with latest.json.")
     parser.add_argument("--batch-size", type=int, default=64)
+    parser.add_argument("--threshold", type=float, default=-1.0, help="Override decision threshold (0..1).")
+    parser.add_argument(
+        "--threshold-file",
+        default="",
+        help="JSON file with per-label thresholds (from tune_thresholds.py).",
+    )
     parser.add_argument("--device", default="auto", choices=["auto", "cpu", "mps", "cuda"])
     return parser.parse_args()
 
@@ -70,6 +76,7 @@ def main() -> int:
 
     config = json.loads(config_path.read_text(encoding="utf-8"))
     labels = config.get("label_space", {}) if isinstance(config, dict) else {}
+    model_config = config.get("model", {}) if isinstance(config, dict) else {}
 
     label_space = LabelSpace(
         allergens=[str(v).strip() for v in labels.get("allergens", []) if str(v).strip()],
@@ -77,7 +84,15 @@ def main() -> int:
     )
 
     feature_dim = int(config.get("feature_dim", 32768))
-    threshold = float(config.get("threshold", 0.5))
+    threshold: object = float(config.get("threshold", 0.5))
+    if args.threshold >= 0.0:
+        threshold = max(0.0, min(1.0, float(args.threshold)))
+    elif args.threshold_file:
+        threshold_payload = json.loads(Path(args.threshold_file).read_text(encoding="utf-8"))
+        per_label = threshold_payload.get("per_label_threshold_recall_priority", {})
+        values = per_label.get("thresholds", [])
+        if isinstance(values, list) and len(values) == label_space.output_dim:
+            threshold = [float(value) for value in values]
 
     rows = load_jsonl(dataset_path)
     dataset = HashedMultilabelDataset(rows, label_space, feature_dim)
@@ -89,7 +104,15 @@ def main() -> int:
     loader = DataLoader(dataset, batch_size=max(1, int(args.batch_size)), shuffle=False, collate_fn=collate_batch)
 
     device = pick_device(args.device)
-    model = HashedLinearMultilabelModel(feature_dim, label_space.output_dim).to(device)
+    model = HashedLinearMultilabelModel(
+        feature_dim,
+        label_space.output_dim,
+        mode=str(model_config.get("mode", "linear")),
+        embed_dim=int(model_config.get("embed_dim", 256)),
+        hidden_dim=int(model_config.get("hidden_dim", 256)),
+        dropout=float(model_config.get("dropout", 0.15)),
+        bag_mode=str(model_config.get("bag_mode", "sum")),
+    ).to(device)
     model.load_state_dict(torch.load(model_path, map_location=device))
     model.eval()
 
@@ -110,6 +133,8 @@ def main() -> int:
         "artifact_dir": str(artifact_dir),
         "dataset": str(dataset_path),
         "rows": len(dataset),
+        "threshold": threshold if isinstance(threshold, (int, float)) else "per_label_from_file",
+        "threshold_file": args.threshold_file or "",
         "metrics": metrics,
     }
 

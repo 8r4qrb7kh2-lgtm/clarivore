@@ -38,6 +38,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--lr", type=float, default=0.05)
     parser.add_argument("--weight-decay", type=float, default=1e-4)
     parser.add_argument("--threshold", type=float, default=0.5)
+    parser.add_argument("--model-mode", default="mlp", choices=["linear", "mlp"])
+    parser.add_argument("--embed-dim", type=int, default=256)
+    parser.add_argument("--hidden-dim", type=int, default=256)
+    parser.add_argument("--dropout", type=float, default=0.15)
+    parser.add_argument("--bag-mode", default="sum", choices=["sum", "mean"])
     parser.add_argument("--seed", type=int, default=7)
     parser.add_argument("--device", default="auto", choices=["auto", "cpu", "mps", "cuda"])
     parser.add_argument("--print-every", type=int, default=1)
@@ -159,7 +164,15 @@ def main() -> int:
     )
 
     device = pick_device(args.device)
-    model = HashedLinearMultilabelModel(args.feature_dim, label_space.output_dim).to(device)
+    model = HashedLinearMultilabelModel(
+        args.feature_dim,
+        label_space.output_dim,
+        mode=args.model_mode,
+        embed_dim=args.embed_dim,
+        hidden_dim=args.hidden_dim,
+        dropout=args.dropout,
+        bag_mode=args.bag_mode,
+    ).to(device)
 
     pos_weight = compute_pos_weight(train_dataset.target_matrix()).to(device)
     criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
@@ -241,6 +254,13 @@ def main() -> int:
         "created_at_utc": datetime.now(timezone.utc).isoformat(),
         "feature_dim": int(args.feature_dim),
         "threshold": float(args.threshold),
+        "model": {
+            "mode": args.model_mode,
+            "embed_dim": int(args.embed_dim),
+            "hidden_dim": int(args.hidden_dim),
+            "dropout": float(args.dropout),
+            "bag_mode": args.bag_mode,
+        },
         "label_space": {
             "allergens": label_space.allergens,
             "diets": label_space.diets,

@@ -1977,6 +1977,20 @@ function RestaurantSettingsModal({ editor }) {
           />
         </label>
 
+        <label className="space-y-1 text-sm text-[#bdd0ff] block">
+          Map location
+          <Input
+            value={editor.restaurantSettingsDraft.map_location || ""}
+            onChange={(event) =>
+              editor.setRestaurantSettingsDraft((current) => ({
+                ...current,
+                map_location: event.target.value,
+              }))
+            }
+            placeholder="Address, Google Maps URL, place_id:..., or lat,lng"
+          />
+        </label>
+
         {editor.settingsSaveError ? (
           <p className="m-0 rounded-lg border border-[#a12525] bg-[rgba(139,29,29,0.32)] px-3 py-2 text-sm text-[#ffd0d0]">
             {editor.settingsSaveError}

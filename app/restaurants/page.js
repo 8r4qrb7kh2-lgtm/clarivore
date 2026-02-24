@@ -6,9 +6,15 @@ export const metadata = {
 };
 
 export default function RestaurantsPage() {
+  const googleMapsApiKey =
+    process.env.GOOGLE_VISION_API_KEY ||
+    process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ||
+    process.env.GOOGLE_MAPS_API_KEY ||
+    "";
+
   return (
     <RouteSuspense label="restaurants">
-      <RestaurantsClient />
+      <RestaurantsClient googleMapsApiKey={googleMapsApiKey} />
     </RouteSuspense>
   );
 }

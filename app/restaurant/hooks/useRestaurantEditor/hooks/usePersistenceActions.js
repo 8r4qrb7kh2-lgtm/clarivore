@@ -511,6 +511,7 @@ export function usePersistenceActions({
         phone: asText(restaurantSettingsDraft.phone),
         delivery_url: asText(restaurantSettingsDraft.delivery_url),
         menu_url: asText(restaurantSettingsDraft.menu_url),
+        map_location: asText(restaurantSettingsDraft.map_location),
       };
 
       await callbacks.onSaveRestaurantSettings({

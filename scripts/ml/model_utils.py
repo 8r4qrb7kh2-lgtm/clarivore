@@ -164,23 +164,61 @@ def collate_batch(batch: Sequence[Tuple[List[int], torch.Tensor]]) -> Tuple[torc
 
 
 class HashedLinearMultilabelModel(nn.Module):
-    def __init__(self, feature_dim: int, output_dim: int):
+    def __init__(
+        self,
+        feature_dim: int,
+        output_dim: int,
+        mode: str = "linear",
+        embed_dim: int = 256,
+        hidden_dim: int = 256,
+        dropout: float = 0.15,
+        bag_mode: str = "sum",
+    ):
         super().__init__()
         self.feature_dim = int(feature_dim)
         self.output_dim = int(output_dim)
-        self.embedding = nn.Embedding(self.feature_dim, self.output_dim)
-        self.bias = nn.Parameter(torch.zeros(self.output_dim))
-        nn.init.xavier_uniform_(self.embedding.weight)
+        self.mode = as_text(mode).lower() or "linear"
+        self.bag_mode = "mean" if as_text(bag_mode).lower() == "mean" else "sum"
+
+        if self.mode == "linear":
+            self.embedding = nn.Embedding(self.feature_dim, self.output_dim)
+            self.bias = nn.Parameter(torch.zeros(self.output_dim))
+            nn.init.xavier_uniform_(self.embedding.weight)
+            self.norm = None
+            self.hidden = None
+            self.out = None
+            self.dropout = None
+        else:
+            hidden_width = max(8, int(hidden_dim))
+            embed_width = max(8, int(embed_dim))
+            self.embedding = nn.Embedding(self.feature_dim, embed_width)
+            self.bias = None
+            self.norm = nn.LayerNorm(embed_width)
+            self.hidden = nn.Linear(embed_width, hidden_width)
+            self.out = nn.Linear(hidden_width, self.output_dim)
+            self.dropout = nn.Dropout(float(max(0.0, min(0.8, dropout))))
+            nn.init.xavier_uniform_(self.embedding.weight)
+            nn.init.xavier_uniform_(self.hidden.weight)
+            nn.init.zeros_(self.hidden.bias)
+            nn.init.xavier_uniform_(self.out.weight)
+            nn.init.zeros_(self.out.bias)
 
     def forward(self, flat_features: torch.Tensor, offsets: torch.Tensor) -> torch.Tensor:
-        logits = F.embedding_bag(
+        pooled = F.embedding_bag(
             input=flat_features,
             weight=self.embedding.weight,
             offsets=offsets,
-            mode="sum",
+            mode=self.bag_mode,
             include_last_offset=False,
         )
-        return logits + self.bias
+
+        if self.mode == "linear":
+            return pooled + self.bias
+
+        hidden = self.hidden(self.norm(pooled))
+        hidden = F.gelu(hidden)
+        hidden = self.dropout(hidden)
+        return self.out(hidden)
 
 
 def compute_pos_weight(targets: torch.Tensor, clamp_max: float = 15.0) -> torch.Tensor:
@@ -209,7 +247,7 @@ def summarize_metrics(
     logits: torch.Tensor,
     targets: torch.Tensor,
     label_space: LabelSpace,
-    threshold: float = 0.5,
+    threshold: object = 0.5,
 ) -> Dict[str, object]:
     if targets.numel() == 0:
         empty_head = {"precision": 0.0, "recall": 0.0, "f1": 0.0, "tp": 0, "fp": 0, "fn": 0, "support": 0}
@@ -222,7 +260,19 @@ def summarize_metrics(
         }
 
     probs = torch.sigmoid(logits)
-    preds = probs >= float(threshold)
+
+    if isinstance(threshold, (list, tuple)):
+        threshold_tensor = torch.tensor(
+            [float(value) for value in threshold],
+            dtype=probs.dtype,
+            device=probs.device,
+        ).view(1, -1)
+        preds = probs >= threshold_tensor
+    elif isinstance(threshold, torch.Tensor):
+        threshold_tensor = threshold.to(device=probs.device, dtype=probs.dtype).view(1, -1)
+        preds = probs >= threshold_tensor
+    else:
+        preds = probs >= float(threshold)
     targets_bool = targets >= 0.5
 
     tp = (preds & targets_bool).sum(dim=0)
