@@ -1,17 +1,17 @@
 flowchart LR
   subgraph READERS["Reader Surfaces"]
-    R1["loadRestaurantBoot (9994)\nUser: signed-in diner, manager/owner, app admin\nPage: /restaurant"]
-    R2["Restaurants list hydrators (9779)\nUser: guest and signed-in diners/managers/owners\nPage: /restaurants, /favorites, /home, /guest, /dish-search"]
-    R3["Order feedback bootstrap (9936)\nUser: feedback-token holder\nPage: /order-feedback"]
-    R4["Change log fetch (9588)\nUser: manager/owner, app admin\nPage: /restaurant, /manager-dashboard"]
-    R5["Order views\nuseOrderFlow (10227), fetchAccessibleTabletOrders (9832)\nUser: diners and staff/managers\nPage: /restaurant, /kitchen-tablet, /server-tablet"]
-    R6["Manager/admin chat views\nUser: manager/owner, app admin\nPage: /manager-dashboard, /help-contact, /admin-dashboard"]
+    R1["loadRestaurantBoot (9994)<br/>User: signed-in diner, manager/owner, app admin<br/>Page: /restaurant<br/>File: app/restaurant/client/restaurantBootLoader.js"]
+    R2["Restaurants list hydrators (9779)<br/>User: guest and signed-in diners/managers/owners<br/>Page: /restaurants, /favorites, /home, /guest, /dish-search<br/>Files: app/restaurants/RestaurantsClient.js; app/favorites/FavoritesClient.js; app/home/HomeClient.js; app/guest/GuestLandingClient.js; app/dish-search/DishSearchClient.js"]
+    R3["Order feedback bootstrap (9936)<br/>User: feedback-token holder<br/>Page: /order-feedback<br/>File: app/order-feedback/OrderFeedbackClient.js"]
+    R4["Change log fetch (9588)<br/>User: manager/owner, app admin<br/>Page: /restaurant, /manager-dashboard<br/>File: app/lib/changeLogs.js"]
+    R5["Order views<br/>useOrderFlow (10227), fetchAccessibleTabletOrders (9832)<br/>User: diners and staff/managers<br/>Page: /restaurant, /kitchen-tablet, /server-tablet<br/>Files: app/restaurant/hooks/useOrderFlow.js; app/lib/tabletOrderPersistence.js"]
+    R6["Manager/admin chat views<br/>User: manager/owner, app admin<br/>Page: /manager-dashboard, /help-contact, /admin-dashboard<br/>Files: app/manager-dashboard/components/manager-dashboard-dom/hooks/useManagerChat.js; app/help-contact/HelpContactClient.js; app/admin-dashboard/components/AdminDashboardDom.js"]
   end
 
   subgraph HYDRATE["Hydration Functions"]
-    H1["hydrateRestaurantWithTableMenuState (9780)"]
-    H2["hydrateRestaurantsWithTableMenuState (9779)"]
-    H3["fetchRestaurantMenuStateMapFromTables (9778)"]
+    H1["hydrateRestaurantWithTableMenuState (9780)<br/>File: app/lib/restaurantMenuStateClient.js"]
+    H2["hydrateRestaurantsWithTableMenuState (9779)<br/>File: app/lib/restaurantMenuStateClient.js"]
+    H3["fetchRestaurantMenuStateMapFromTables (9778)<br/>File: app/lib/restaurantMenuStateClient.js"]
   end
 
   subgraph TABLES["Read Tables"]

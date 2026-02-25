@@ -18,7 +18,9 @@ if [ -z "$DOMAIN_SCOPE" ] && [ -f ".vercel/project.json" ]; then
   DOMAIN_SCOPE="$(node -e 'const fs=require("fs");try{const v=JSON.parse(fs.readFileSync(".vercel/project.json","utf8"));if(v&&v.orgId)process.stdout.write(String(v.orgId));}catch(_){ }')"
 fi
 
-deploy_cmd=(vercel --prod --yes --archive=tgz)
+# Use standard upload mode instead of archive mode. In large local worktrees
+# archive mode can include bulky non-runtime folders despite ignore settings.
+deploy_cmd=(vercel --prod --yes)
 if [ -n "$DOMAIN_SCOPE" ]; then
   deploy_cmd+=(--scope "$DOMAIN_SCOPE")
 fi

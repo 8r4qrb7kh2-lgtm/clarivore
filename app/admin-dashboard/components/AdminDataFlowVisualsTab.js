@@ -4,9 +4,18 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabaseClient as supabase } from "../../lib/supabase";
 
 const DEFAULT_DIAGRAM_ID = "storage-topology";
+const MIN_ZOOM_PERCENT = 40;
+const MAX_ZOOM_PERCENT = 400;
+const ZOOM_STEP_PERCENT = 20;
 
 function asText(value) {
   return String(value || "").trim();
+}
+
+function clampZoomPercent(value) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return 100;
+  return Math.max(MIN_ZOOM_PERCENT, Math.min(MAX_ZOOM_PERCENT, Math.round(numeric)));
 }
 
 function normalizeDiagramList(items) {
@@ -44,6 +53,7 @@ export default function AdminDataFlowVisualsTab() {
   const [questionInput, setQuestionInput] = useState("");
   const [clickContext, setClickContext] = useState(null);
   const [qaHistory, setQaHistory] = useState([]);
+  const [zoomPercent, setZoomPercent] = useState(100);
 
   const diagramWrapRef = useRef(null);
   const questionInputRef = useRef(null);
@@ -168,7 +178,58 @@ export default function AdminDataFlowVisualsTab() {
     if (!safeId) return;
     setSelectedDiagramId(safeId);
     setClickContext(null);
+    setZoomPercent(100);
   }, []);
+
+  const zoomIn = useCallback(() => {
+    setZoomPercent((current) => clampZoomPercent(current + ZOOM_STEP_PERCENT));
+  }, []);
+
+  const zoomOut = useCallback(() => {
+    setZoomPercent((current) => clampZoomPercent(current - ZOOM_STEP_PERCENT));
+  }, []);
+
+  const zoomReset = useCallback(() => {
+    setZoomPercent(100);
+  }, []);
+
+  const onZoomSliderChange = useCallback((event) => {
+    setZoomPercent(clampZoomPercent(event.target.value));
+  }, []);
+
+  const onDiagramWheel = useCallback((event) => {
+    if (!event.ctrlKey && !event.metaKey) return;
+    event.preventDefault();
+    setZoomPercent((current) => {
+      const delta = Number(event.deltaY) || 0;
+      if (delta < 0) return clampZoomPercent(current + ZOOM_STEP_PERCENT);
+      if (delta > 0) return clampZoomPercent(current - ZOOM_STEP_PERCENT);
+      return current;
+    });
+  }, []);
+
+  const onDiagramKeyDown = useCallback(
+    (event) => {
+      const key = asText(event.key);
+      if (!key) return;
+
+      if (key === "+" || key === "=") {
+        event.preventDefault();
+        zoomIn();
+        return;
+      }
+      if (key === "-" || key === "_") {
+        event.preventDefault();
+        zoomOut();
+        return;
+      }
+      if (key === "0") {
+        event.preventDefault();
+        zoomReset();
+      }
+    },
+    [zoomIn, zoomOut, zoomReset],
+  );
 
   const onDiagramClick = useCallback((event) => {
     const wrap = diagramWrapRef.current;
@@ -291,19 +352,65 @@ export default function AdminDataFlowVisualsTab() {
           <section className="admin-flow-viewer">
             <div className="admin-flow-viewer-header">
               <h3>{selectedDiagram?.title || "Diagram"}</h3>
-              {selectedUpdatedAt ? (
-                <span className="admin-flow-updated">
-                  Updated: {new Date(selectedUpdatedAt).toLocaleString()}
-                </span>
-              ) : null}
+              <div className="admin-flow-header-right">
+                <div className="admin-flow-zoom-controls">
+                  <button
+                    type="button"
+                    className="btn-secondary"
+                    onClick={zoomOut}
+                    disabled={zoomPercent <= MIN_ZOOM_PERCENT}
+                    aria-label="Zoom out"
+                  >
+                    -
+                  </button>
+                  <span className="admin-flow-zoom-readout">{zoomPercent}%</span>
+                  <button
+                    type="button"
+                    className="btn-secondary"
+                    onClick={zoomIn}
+                    disabled={zoomPercent >= MAX_ZOOM_PERCENT}
+                    aria-label="Zoom in"
+                  >
+                    +
+                  </button>
+                  <button type="button" className="btn-secondary" onClick={zoomReset} aria-label="Reset zoom">
+                    Reset
+                  </button>
+                  <input
+                    type="range"
+                    min={MIN_ZOOM_PERCENT}
+                    max={MAX_ZOOM_PERCENT}
+                    step={10}
+                    value={zoomPercent}
+                    onChange={onZoomSliderChange}
+                    aria-label="Zoom level"
+                  />
+                </div>
+                {selectedUpdatedAt ? (
+                  <span className="admin-flow-updated">
+                    Updated: {new Date(selectedUpdatedAt).toLocaleString()}
+                  </span>
+                ) : null}
+              </div>
             </div>
 
-            <div className="admin-flow-svg-wrap" ref={diagramWrapRef} onClick={onDiagramClick}>
+            <div
+              className="admin-flow-svg-wrap"
+              ref={diagramWrapRef}
+              onClick={onDiagramClick}
+              onWheel={onDiagramWheel}
+              onKeyDown={onDiagramKeyDown}
+              tabIndex={0}
+            >
               {loadingDiagram && !selectedSvg ? (
                 <p className="admin-flow-muted">Loading visual...</p>
               ) : selectedSvg ? (
                 <>
-                  <div className="admin-flow-svg" dangerouslySetInnerHTML={{ __html: selectedSvg }} />
+                  <div
+                    className="admin-flow-svg"
+                    style={{ width: `${zoomPercent}%` }}
+                    dangerouslySetInnerHTML={{ __html: selectedSvg }}
+                  />
                   {clickContext ? (
                     <span
                       className="admin-flow-click-marker"
@@ -319,6 +426,9 @@ export default function AdminDataFlowVisualsTab() {
                 <p className="admin-flow-muted">Select a diagram to view.</p>
               )}
             </div>
+            <p className="admin-flow-zoom-hint">
+              Zoom: use +/- buttons, slider, keyboard (+/-/0), or Ctrl/Cmd + mouse wheel.
+            </p>
 
             <div className="admin-flow-ask-panel">
               <div className="admin-flow-click-context">

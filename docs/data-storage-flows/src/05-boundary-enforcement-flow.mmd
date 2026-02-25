@@ -1,12 +1,12 @@
 flowchart LR
   subgraph WRITERS["Potential Writers"]
-    W1["Gateway tx path\n(setRestaurantWriteContext 9393)\nUsers: manager/owner with restaurant access, app admin, system key\nPage/surface: /restaurant, /admin-dashboard, cron/system"]
-    W2["Direct SQL/Prisma/Supabase write\n(no gateway context)\nUsers: any caller bypassing gateway\nPage/surface: any non-gateway entry"]
+    W1["Gateway tx path<br/>(setRestaurantWriteContext 9393)<br/>Users: manager/owner with restaurant access, app admin, system key<br/>Page/surface: /restaurant, /admin-dashboard, cron/system<br/>Files: app/api/restaurant-write/_shared/writeGatewayUtils.js; app/api/restaurant-write/stage/route.js; app/api/restaurant-write/commit/route.js; app/api/restaurant-write/system/route.js"]
+    W2["Direct SQL/Prisma/Supabase write<br/>(no gateway context)<br/>Users: any caller bypassing gateway<br/>Page/surface: any non-gateway entry"]
   end
 
   subgraph ENFORCER["DB Enforcement"]
-    E1["Trigger function:\nenforce_restaurant_gateway_context()"]
-    E2["Check current_setting('app.restaurant_write_context') == 'gateway'"]
+    E1["Trigger function:<br/>enforce_restaurant_gateway_context()<br/>File: supabase/migrations/20260224201000_enforce_gateway_context_on_restaurant_boundary_tables.sql"]
+    E2["Check current_setting('app.restaurant_write_context') == 'gateway'<br/>File: supabase/migrations/20260224201000_enforce_gateway_context_on_restaurant_boundary_tables.sql"]
   end
 
   subgraph BOUNDARY["Protected Tables"]
@@ -32,4 +32,4 @@ flowchart LR
   E2 -->|allow| B9
 
   W2 --> E1
-  E2 -->|reject| ERR["ERROR 42501:\nDirect write blocked; use unified restaurant write gateway"]
+  E2 -->|reject| ERR["ERROR 42501:<br/>Direct write blocked; use unified restaurant write gateway"]

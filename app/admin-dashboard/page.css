@@ -1228,6 +1228,47 @@
       font-size: 1.15rem;
     }
 
+    .route-admin-dashboard .admin-flow-header-right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .route-admin-dashboard .admin-flow-zoom-controls {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 8px;
+      border: 1px solid #dbe4f0;
+      border-radius: 10px;
+      background: #f8fafc;
+    }
+
+    .route-admin-dashboard .admin-flow-zoom-controls .btn-secondary {
+      min-width: 36px;
+      padding: 6px 10px;
+    }
+
+    .route-admin-dashboard .admin-flow-zoom-controls .btn-secondary:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    .route-admin-dashboard .admin-flow-zoom-readout {
+      min-width: 48px;
+      text-align: center;
+      color: #1e3a5f;
+      font-weight: 600;
+      font-size: 0.86rem;
+    }
+
+    .route-admin-dashboard .admin-flow-zoom-controls input[type="range"] {
+      width: 140px;
+      accent-color: #4c5ad4;
+    }
+
     .route-admin-dashboard .admin-flow-updated {
       color: #64748b;
       font-size: 0.8rem;
@@ -1242,6 +1283,11 @@
       min-height: 420px;
       overflow: auto;
       cursor: crosshair;
+    }
+
+    .route-admin-dashboard .admin-flow-svg-wrap:focus {
+      outline: 2px solid rgba(76, 90, 212, 0.35);
+      outline-offset: 2px;
     }
 
     .route-admin-dashboard .admin-flow-svg {
@@ -1350,6 +1396,12 @@
       margin: 0;
     }
 
+    .route-admin-dashboard .admin-flow-zoom-hint {
+      margin: -2px 0 2px;
+      color: #64748b;
+      font-size: 0.8rem;
+    }
+
     @media (max-width: 1024px) {
       .route-admin-dashboard .admin-flow-layout {
         grid-template-columns: 1fr;
@@ -1357,6 +1409,10 @@
 
       .route-admin-dashboard .admin-flow-sidebar {
         position: static;
+      }
+
+      .route-admin-dashboard .admin-flow-zoom-controls input[type="range"] {
+        width: 120px;
       }
 
       .route-admin-dashboard .admin-flow-svg {
@@ -1367,6 +1423,16 @@
     @media (max-width: 640px) {
       .route-admin-dashboard .admin-flow-svg-wrap {
         min-height: 320px;
+      }
+
+      .route-admin-dashboard .admin-flow-zoom-controls {
+        width: 100%;
+        justify-content: flex-start;
+      }
+
+      .route-admin-dashboard .admin-flow-zoom-controls input[type="range"] {
+        flex: 1;
+        min-width: 80px;
       }
 
       .route-admin-dashboard .admin-flow-svg {

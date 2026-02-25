@@ -1,43 +1,43 @@
 flowchart TD
   subgraph ACCOUNT["Account and Access"]
-    A1["AccountClient (9005)\nUser: signed-in end users\nPage: /account"]
-    A2["saveAllergies (9045) / saveDiets (9046)\nUser: signed-in end users\nPage: /account"]
-    A3["grantManagerInviteAccess (9048)\nUser: signed-in invited user\nPage: /account"]
+    A1["AccountClient (9005)<br/>User: signed-in end users<br/>Page: /account<br/>File: app/account/AccountClient.js"]
+    A2["saveAllergies (9045) / saveDiets (9046)<br/>User: signed-in end users<br/>Page: /account<br/>File: app/account/accountService.js"]
+    A3["grantManagerInviteAccess (9048)<br/>User: signed-in invited user<br/>Page: /account<br/>File: app/account/accountService.js"]
     A4["user_allergies"]
     A5["manager_invites + restaurant_managers"]
   end
 
   subgraph PREFS["Favorites and Loved Dishes"]
-    P1["toggleFavorite (9541/10325)\nUser: signed-in diner/owner\nPage: /favorites, /restaurants"]
-    P2["useRestaurantPersistence loved dishes\nUser: signed-in diner/owner/manager\nPage: /restaurant, /my-dishes"]
+    P1["toggleFavorite (9541/10325)<br/>User: signed-in diner/owner<br/>Page: /favorites, /restaurants<br/>Files: app/favorites/FavoritesClient.js; app/restaurants/RestaurantsClient.js"]
+    P2["useRestaurantPersistence loved dishes<br/>User: signed-in diner/owner/manager<br/>Page: /restaurant, /my-dishes<br/>File: app/restaurant/client/useRestaurantPersistence.js"]
     P3["user_favorites"]
     P4["user_loved_dishes"]
   end
 
   subgraph ORDERS["Orders and Feedback"]
-    O1["useOrderFlow (10227) + upsertTabletOrder (9833)\nUser: diners and staff/managers\nPage: /restaurant, /kitchen-tablet, /server-tablet"]
-    O2["POST /api/order-feedback/submit (9309)\nUser: feedback-token holder\nPage: /order-feedback"]
+    O1["useOrderFlow (10227) + upsertTabletOrder (9833)<br/>User: diners and staff/managers<br/>Page: /restaurant, /kitchen-tablet, /server-tablet<br/>Files: app/restaurant/hooks/useOrderFlow.js; app/lib/tabletOrderPersistence.js"]
+    O2["POST /api/order-feedback/submit (9309)<br/>User: feedback-token holder<br/>Page: /order-feedback<br/>File: app/api/order-feedback/submit/route.js"]
     O3["tablet_orders"]
     O4["order_feedback + accommodation_requests + feedback_email_queue"]
   end
 
   subgraph CHAT["Chat and Support"]
-    C1["useManagerChat (9880) / HelpContactClient (9552)\nUser: manager/owner, app admin\nPage: /manager-dashboard, /help-contact, /admin-dashboard"]
-    C2["POST /api/report-issue (9312)\nUser: any user\nPage: /help-contact, /report-issue"]
+    C1["useManagerChat (9880) / HelpContactClient (9552)<br/>User: manager/owner, app admin<br/>Page: /manager-dashboard, /help-contact, /admin-dashboard<br/>Files: app/manager-dashboard/components/manager-dashboard-dom/hooks/useManagerChat.js; app/help-contact/HelpContactClient.js"]
+    C2["POST /api/report-issue (9312)<br/>User: any user<br/>Page: /help-contact, /report-issue<br/>File: app/api/report-issue/route.js"]
     C3["restaurant_direct_messages + restaurant_direct_message_reads"]
     C4["product_issue_reports"]
   end
 
   subgraph APPEALS["Appeals and Admin"]
-    X1["POST /api/ingredient-scan-appeals (9264)\nUser: authenticated manager/owner for restaurant or app admin\nPage: /restaurant"]
-    X2["POST /api/admin/managers (9077)\nUser: app admin\nPage: /admin-dashboard"]
+    X1["POST /api/ingredient-scan-appeals (9264)<br/>User: authenticated manager/owner for restaurant or app admin<br/>Page: /restaurant<br/>File: app/api/ingredient-scan-appeals/route.js"]
+    X2["POST /api/admin/managers (9077)<br/>User: app admin<br/>Page: /admin-dashboard<br/>File: app/api/admin/managers/route.js"]
     X3["ingredient_scan_appeals (+ storage bucket)"]
     X4["restaurant_managers"]
   end
 
   subgraph PUSH["Push Registration"]
-    N1["initManagerNotifications (9763)\nUser: manager/owner\nPage: /manager-dashboard, /help-contact"]
-    N2["initDinerNotifications (9623)\nUser: diner\nPage: no active caller in current app runtime"]
+    N1["initManagerNotifications (9763)<br/>User: manager/owner<br/>Page: /manager-dashboard, /help-contact<br/>File: app/lib/managerNotifications.js"]
+    N2["initDinerNotifications (9623)<br/>User: diner<br/>Page: no active caller in current app runtime<br/>File: app/lib/dinerNotifications.js"]
     N3["manager_device_tokens + manager_push_subscriptions"]
     N4["diner_device_tokens + diner_push_subscriptions"]
   end

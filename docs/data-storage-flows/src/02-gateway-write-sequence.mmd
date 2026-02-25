@@ -1,12 +1,12 @@
 sequenceDiagram
   autonumber
-  participant UI as "Manager/Owner/App Admin UI\nPages: /restaurant, /admin-dashboard"
-  participant Client as "Gateway client (9821/9822/9824)"
-  participant Stage as "POST /api/restaurant-write/stage (9403)\nAuth: restaurant access or app admin"
-  participant Commit as "POST /api/restaurant-write/commit (9397)\nAuth: restaurant access or app admin"
-  participant Apply as "applyWriteOperations (9396)"
-  participant Ctx as "setRestaurantWriteContext (9393)"
-  participant Sync as "syncIngredientStatusFromOverlays (9391)"
+  participant UI as "Manager/Owner/App Admin UI<br/>Pages: /restaurant, /admin-dashboard"
+  participant Client as "Gateway client (9821/9822/9824)<br/>File: app/lib/restaurantWriteGatewayClient.js"
+  participant Stage as "POST /api/restaurant-write/stage (9403)<br/>Auth: restaurant access or app admin<br/>File: app/api/restaurant-write/stage/route.js"
+  participant Commit as "POST /api/restaurant-write/commit (9397)<br/>Auth: restaurant access or app admin<br/>File: app/api/restaurant-write/commit/route.js"
+  participant Apply as "applyWriteOperations (9396)<br/>File: app/api/restaurant-write/_shared/writeGatewayUtils.js"
+  participant Ctx as "setRestaurantWriteContext (9393)<br/>File: app/api/restaurant-write/_shared/writeGatewayUtils.js"
+  participant Sync as "syncIngredientStatusFromOverlays (9391)<br/>File: app/api/restaurant-write/_shared/writeGatewayUtils.js"
   participant GateDB as "restaurant_write_batches + restaurant_write_ops"
   participant RestDB as "Boundary tables + context triggers"
 
@@ -27,8 +27,8 @@ sequenceDiagram
   Commit-->>Client: success + nextWriteVersions
 
   alt System monitor path
-    participant Monitor as "System monitor\nSurface: Vercel cron"
-    participant System as "POST /api/restaurant-write/system (9406)\nAuth: x-clarivore-system-key/CRON_SECRET"
+    participant Monitor as "System monitor<br/>Surface: Vercel cron<br/>File: app/api/monitor-menus/route.js"
+    participant System as "POST /api/restaurant-write/system (9406)<br/>Auth: x-clarivore-system-key/CRON_SECRET<br/>File: app/api/restaurant-write/system/route.js"
     Monitor->>System: MONITORING_STATS_UPDATE
     System->>Apply: applyWriteOperations(...)
     Apply->>Ctx: set context gateway
