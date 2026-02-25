@@ -1,0 +1,36 @@
+sequenceDiagram
+  autonumber
+  participant UI as "Manager/Owner/App Admin UI\nPages: /restaurant, /admin-dashboard"
+  participant Client as "Gateway client (9821/9822/9824)"
+  participant Stage as "POST /api/restaurant-write/stage (9403)\nAuth: restaurant access or app admin"
+  participant Commit as "POST /api/restaurant-write/commit (9397)\nAuth: restaurant access or app admin"
+  participant Apply as "applyWriteOperations (9396)"
+  participant Ctx as "setRestaurantWriteContext (9393)"
+  participant Sync as "syncIngredientStatusFromOverlays (9391)"
+  participant GateDB as "restaurant_write_batches + restaurant_write_ops"
+  participant RestDB as "Boundary tables + context triggers"
+
+  UI->>Client: stageRestaurantWrite(payload)
+  Client->>Stage: POST /stage
+  Stage->>GateDB: upsert pending batch + operation
+  Stage-->>Client: batchId + review summary
+
+  UI->>Client: commitRestaurantWrite(batchId)
+  Client->>Commit: POST /commit
+  Commit->>Apply: applyWriteOperations(tx, batch, ops)
+  Apply->>Ctx: set app.restaurant_write_context=gateway
+  Ctx-->>Apply: context active
+  Apply->>Sync: sync menu/ingredient tables
+  Sync->>RestDB: replace restaurant_menu_* and dish_ingredient_*
+  Apply->>RestDB: write restaurants + change_logs
+  Apply->>RestDB: bump write_version (9392)
+  Commit-->>Client: success + nextWriteVersions
+
+  alt System monitor path
+    participant Monitor as "System monitor\nSurface: Vercel cron"
+    participant System as "POST /api/restaurant-write/system (9406)\nAuth: x-clarivore-system-key/CRON_SECRET"
+    Monitor->>System: MONITORING_STATS_UPDATE
+    System->>Apply: applyWriteOperations(...)
+    Apply->>Ctx: set context gateway
+    Apply->>RestDB: update restaurants.last_checked/total_checks/emails_sent
+  end

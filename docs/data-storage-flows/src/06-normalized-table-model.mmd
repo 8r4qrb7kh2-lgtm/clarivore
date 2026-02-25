@@ -1,0 +1,101 @@
+erDiagram
+  restaurants ||--o{ restaurant_write_batches : "scope"
+  restaurant_write_batches ||--o{ restaurant_write_ops : "contains"
+
+  restaurants ||--o{ restaurant_menu_pages : "has pages"
+  restaurants ||--o{ restaurant_menu_dishes : "has dishes"
+  restaurants ||--o{ restaurant_menu_ingredient_rows : "has ingredient rows"
+  restaurant_menu_dishes ||--o{ restaurant_menu_ingredient_rows : "dish_id"
+  restaurant_menu_ingredient_rows ||--|| restaurant_menu_ingredient_brand_items : "selected brand"
+
+  restaurants ||--o{ change_logs : "audit trail"
+
+  restaurants ||--o{ dish_ingredient_rows : "compatibility mirror"
+  dish_ingredient_rows ||--o{ dish_ingredient_allergens : "allergen mapping"
+  dish_ingredient_rows ||--o{ dish_ingredient_diets : "diet mapping"
+
+  restaurants {
+    uuid id PK
+    bigint write_version
+    text name
+    text slug
+  }
+
+  restaurant_write_batches {
+    uuid id PK
+    text scope_type
+    text scope_key
+    uuid restaurant_id FK
+    text status
+    bigint base_write_version
+  }
+
+  restaurant_write_ops {
+    uuid id PK
+    uuid batch_id FK
+    int sort_order
+    text operation_type
+    jsonb operation_payload
+  }
+
+  restaurant_menu_pages {
+    uuid id PK
+    uuid restaurant_id FK
+    int page_index
+    text image_url
+  }
+
+  restaurant_menu_dishes {
+    uuid id PK
+    uuid restaurant_id FK
+    text dish_key
+    text dish_name
+    int page_index
+  }
+
+  restaurant_menu_ingredient_rows {
+    uuid id PK
+    uuid restaurant_id FK
+    uuid dish_id FK
+    text dish_name
+    int row_index
+    jsonb ingredient_payload
+  }
+
+  restaurant_menu_ingredient_brand_items {
+    uuid id PK
+    uuid restaurant_id FK
+    uuid ingredient_row_id FK
+    text brand_name
+    text barcode
+    jsonb brand_payload
+  }
+
+  dish_ingredient_rows {
+    uuid id PK
+    uuid restaurant_id FK
+    text dish_name
+    int row_index
+  }
+
+  dish_ingredient_allergens {
+    uuid ingredient_row_id FK
+    uuid allergen_id FK
+    bool is_violation
+    bool is_cross_contamination
+  }
+
+  dish_ingredient_diets {
+    uuid ingredient_row_id FK
+    uuid diet_id FK
+    bool is_violation
+    bool is_cross_contamination
+  }
+
+  change_logs {
+    uuid id PK
+    uuid restaurant_id FK
+    text type
+    jsonb changes
+    timestamptz timestamp
+  }

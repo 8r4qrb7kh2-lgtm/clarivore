@@ -1140,3 +1140,236 @@
       outline: none;
       border-color: #4c5ad4;
     }
+
+    .route-admin-dashboard .admin-flow-card {
+      display: grid;
+      gap: 16px;
+    }
+
+    .route-admin-dashboard .admin-flow-subtitle {
+      margin: 0;
+      color: #64748b;
+    }
+
+    .route-admin-dashboard .admin-flow-layout {
+      display: grid;
+      grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
+      gap: 18px;
+      align-items: start;
+    }
+
+    .route-admin-dashboard .admin-flow-sidebar {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 14px;
+      position: sticky;
+      top: 20px;
+    }
+
+    .route-admin-dashboard .admin-flow-sidebar h3 {
+      margin: 0 0 10px;
+      color: #1e3a5f;
+      font-size: 1rem;
+    }
+
+    .route-admin-dashboard .admin-flow-list {
+      display: grid;
+      gap: 8px;
+    }
+
+    .route-admin-dashboard .admin-flow-list-item {
+      text-align: left;
+      border: 1px solid #dbe4f0;
+      border-radius: 10px;
+      background: #fff;
+      color: #1e3a5f;
+      padding: 10px 12px;
+      display: grid;
+      gap: 4px;
+      cursor: pointer;
+    }
+
+    .route-admin-dashboard .admin-flow-list-item strong {
+      font-size: 0.92rem;
+    }
+
+    .route-admin-dashboard .admin-flow-list-item span {
+      font-size: 0.8rem;
+      color: #64748b;
+      line-height: 1.3;
+    }
+
+    .route-admin-dashboard .admin-flow-list-item:hover {
+      border-color: #4c5ad4;
+    }
+
+    .route-admin-dashboard .admin-flow-list-item.active {
+      border-color: #4c5ad4;
+      background: #eef2ff;
+    }
+
+    .route-admin-dashboard .admin-flow-viewer {
+      display: grid;
+      gap: 12px;
+    }
+
+    .route-admin-dashboard .admin-flow-viewer-header {
+      display: flex;
+      gap: 12px;
+      align-items: baseline;
+      justify-content: space-between;
+      flex-wrap: wrap;
+    }
+
+    .route-admin-dashboard .admin-flow-viewer-header h3 {
+      margin: 0;
+      color: #1e3a5f;
+      font-size: 1.15rem;
+    }
+
+    .route-admin-dashboard .admin-flow-updated {
+      color: #64748b;
+      font-size: 0.8rem;
+    }
+
+    .route-admin-dashboard .admin-flow-svg-wrap {
+      position: relative;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 10px;
+      background: #ffffff;
+      min-height: 420px;
+      overflow: auto;
+      cursor: crosshair;
+    }
+
+    .route-admin-dashboard .admin-flow-svg {
+      min-width: 680px;
+    }
+
+    .route-admin-dashboard .admin-flow-svg svg {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+
+    .route-admin-dashboard .admin-flow-click-marker {
+      position: absolute;
+      width: 14px;
+      height: 14px;
+      border: 2px solid #dc2626;
+      background: rgba(220, 38, 38, 0.22);
+      border-radius: 999px;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.8);
+    }
+
+    .route-admin-dashboard .admin-flow-ask-panel {
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      background: #f8fafc;
+      padding: 12px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .route-admin-dashboard .admin-flow-click-context {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      color: #334155;
+      font-size: 0.86rem;
+    }
+
+    .route-admin-dashboard .admin-flow-click-text {
+      background: #eef2ff;
+      border: 1px solid #c7d2fe;
+      border-radius: 8px;
+      padding: 4px 8px;
+      max-width: 100%;
+      overflow-wrap: anywhere;
+      color: #3730a3;
+    }
+
+    .route-admin-dashboard .admin-flow-ask-row {
+      display: grid;
+      gap: 10px;
+    }
+
+    .route-admin-dashboard .admin-flow-ask-row textarea {
+      width: 100%;
+      min-height: 90px;
+      resize: vertical;
+      border: 1px solid #dbe4f0;
+      border-radius: 8px;
+      padding: 10px 12px;
+      font-family: inherit;
+      font-size: 0.95rem;
+      box-sizing: border-box;
+      color: #1e3a5f;
+      background: #fff;
+    }
+
+    .route-admin-dashboard .admin-flow-ask-row textarea:focus {
+      outline: none;
+      border-color: #4c5ad4;
+      box-shadow: 0 0 0 2px rgba(76, 90, 212, 0.12);
+    }
+
+    .route-admin-dashboard .admin-flow-qa-list {
+      display: grid;
+      gap: 10px;
+      max-height: 360px;
+      overflow-y: auto;
+      padding-right: 2px;
+    }
+
+    .route-admin-dashboard .admin-flow-qa-item {
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      background: #ffffff;
+      padding: 10px 12px;
+      display: grid;
+      gap: 8px;
+    }
+
+    .route-admin-dashboard .admin-flow-qa-question,
+    .route-admin-dashboard .admin-flow-qa-answer {
+      margin: 0;
+      white-space: pre-wrap;
+      color: #1e3a5f;
+      line-height: 1.45;
+    }
+
+    .route-admin-dashboard .admin-flow-muted {
+      color: #64748b;
+      font-size: 0.9rem;
+      margin: 0;
+    }
+
+    @media (max-width: 1024px) {
+      .route-admin-dashboard .admin-flow-layout {
+        grid-template-columns: 1fr;
+      }
+
+      .route-admin-dashboard .admin-flow-sidebar {
+        position: static;
+      }
+
+      .route-admin-dashboard .admin-flow-svg {
+        min-width: 560px;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .route-admin-dashboard .admin-flow-svg-wrap {
+        min-height: 320px;
+      }
+
+      .route-admin-dashboard .admin-flow-svg {
+        min-width: 480px;
+      }
+    }

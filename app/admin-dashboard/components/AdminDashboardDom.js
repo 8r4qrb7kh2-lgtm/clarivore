@@ -5,6 +5,7 @@ import AppTopbar from "../../components/AppTopbar";
 import PageShell from "../../components/PageShell";
 import ChatMessageText from "../../components/chat/ChatMessageText";
 import PageHeading from "../../components/surfaces/PageHeading";
+import AdminDataFlowVisualsTab from "./AdminDataFlowVisualsTab";
 import { notifyManagerChat } from "../../lib/chatNotifications";
 import { formatChatTimestamp } from "../../lib/chatMessage";
 import {
@@ -29,6 +30,7 @@ const TAB_ROUTES = [
   { id: "appeals", label: "Appeals Review" },
   { id: "feedback", label: "Anonymous Feedback" },
   { id: "product-reports", label: "📋 Issue Reports" },
+  { id: "data-flows", label: "🧭 Data Flows" },
 ];
 
 function slugifyName(value) {
@@ -1442,24 +1444,26 @@ export default function AdminDashboardDom({
               ))}
             </div>
 
-            <div className="tab-toolbar">
-              <div className="restaurant-selector">
-                <label htmlFor="admin-restaurant-select">Restaurant</label>
-                <select
-                  id="admin-restaurant-select"
-                  value={selectedRestaurantId}
-                  onChange={(event) => setSelectedRestaurantId(event.target.value)}
-                  disabled={!allRestaurants.length}
-                >
-                  <option value="all">All restaurants</option>
-                  {allRestaurants.map((restaurant) => (
-                    <option key={restaurant.id} value={restaurant.id}>
-                      {restaurant.name}
-                    </option>
-                  ))}
-                </select>
+            {activeTab !== "data-flows" ? (
+              <div className="tab-toolbar">
+                <div className="restaurant-selector">
+                  <label htmlFor="admin-restaurant-select">Restaurant</label>
+                  <select
+                    id="admin-restaurant-select"
+                    value={selectedRestaurantId}
+                    onChange={(event) => setSelectedRestaurantId(event.target.value)}
+                    disabled={!allRestaurants.length}
+                  >
+                    <option value="all">All restaurants</option>
+                    {allRestaurants.map((restaurant) => (
+                      <option key={restaurant.id} value={restaurant.id}>
+                        {restaurant.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
-            </div>
+            ) : null}
 
             {statusMessage.text && activeTab !== "restaurants" ? (
               <p
@@ -2433,6 +2437,8 @@ export default function AdminDashboardDom({
                 </div>
               </div>
             ) : null}
+
+            {activeTab === "data-flows" ? <AdminDataFlowVisualsTab /> : null}
           </>
         ) : null}
     </PageShell>

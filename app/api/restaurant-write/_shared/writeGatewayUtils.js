@@ -53,6 +53,7 @@ const SYSTEM_ONLY_OPS = new Set([
 
 const ALL_OPERATION_TYPES = new Set(Object.values(RESTAURANT_WRITE_OPERATION_TYPES));
 const WRITE_MAINTENANCE_MODE_ENV = "CLARIVORE_WRITE_MAINTENANCE_MODE";
+const WRITE_INFRA_BOOTSTRAP_ENV = "CLARIVORE_ENABLE_RUNTIME_DB_BOOTSTRAP";
 const WRITE_MAINTENANCE_MESSAGE =
   "Restaurant write maintenance mode is enabled. Please retry after maintenance.";
 const INGREDIENT_PROVENANCE_SOURCES = {
@@ -80,6 +81,10 @@ export function isWriteMaintenanceModeEnabled() {
 
 export function getWriteMaintenanceMessage() {
   return WRITE_MAINTENANCE_MESSAGE;
+}
+
+function shouldBootstrapWriteInfrastructureAtRuntime() {
+  return toBooleanFlag(process.env[WRITE_INFRA_BOOTSTRAP_ENV]);
 }
 
 function parseJsonValue(value, fallback) {
@@ -1236,6 +1241,9 @@ function buildTokenMap(items, labelSelector) {
 }
 
 export async function ensureRestaurantWriteInfrastructure(client = prisma) {
+  // Heavy DDL/bootstrap should never run on hot runtime paths in production traffic.
+  // Keep this opt-in for local recovery tasks; standard deploys should apply migrations.
+  if (!shouldBootstrapWriteInfrastructureAtRuntime()) return;
   if (!client || typeof client.$executeRawUnsafe !== "function") return;
 
   await client.$executeRawUnsafe(`
@@ -2123,6 +2131,8 @@ export async function syncIngredientStatusFromOverlays(tx, restaurantId, overlay
       menuBrandItems: 0,
     };
   }
+
+  await setRestaurantWriteContext(tx);
 
   const normalizedOverlays = normalizeOverlayListForStorage(overlays);
   const menuImages = (Array.isArray(options?.menuImages) ? options.menuImages : [])

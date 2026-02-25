@@ -1,0 +1,61 @@
+flowchart TD
+  subgraph ACCOUNT["Account and Access"]
+    A1["AccountClient (9005)\nUser: signed-in end users\nPage: /account"]
+    A2["saveAllergies (9045) / saveDiets (9046)\nUser: signed-in end users\nPage: /account"]
+    A3["grantManagerInviteAccess (9048)\nUser: signed-in invited user\nPage: /account"]
+    A4["user_allergies"]
+    A5["manager_invites + restaurant_managers"]
+  end
+
+  subgraph PREFS["Favorites and Loved Dishes"]
+    P1["toggleFavorite (9541/10325)\nUser: signed-in diner/owner\nPage: /favorites, /restaurants"]
+    P2["useRestaurantPersistence loved dishes\nUser: signed-in diner/owner/manager\nPage: /restaurant, /my-dishes"]
+    P3["user_favorites"]
+    P4["user_loved_dishes"]
+  end
+
+  subgraph ORDERS["Orders and Feedback"]
+    O1["useOrderFlow (10227) + upsertTabletOrder (9833)\nUser: diners and staff/managers\nPage: /restaurant, /kitchen-tablet, /server-tablet"]
+    O2["POST /api/order-feedback/submit (9309)\nUser: feedback-token holder\nPage: /order-feedback"]
+    O3["tablet_orders"]
+    O4["order_feedback + accommodation_requests + feedback_email_queue"]
+  end
+
+  subgraph CHAT["Chat and Support"]
+    C1["useManagerChat (9880) / HelpContactClient (9552)\nUser: manager/owner, app admin\nPage: /manager-dashboard, /help-contact, /admin-dashboard"]
+    C2["POST /api/report-issue (9312)\nUser: any user\nPage: /help-contact, /report-issue"]
+    C3["restaurant_direct_messages + restaurant_direct_message_reads"]
+    C4["product_issue_reports"]
+  end
+
+  subgraph APPEALS["Appeals and Admin"]
+    X1["POST /api/ingredient-scan-appeals (9264)\nUser: authenticated manager/owner for restaurant or app admin\nPage: /restaurant"]
+    X2["POST /api/admin/managers (9077)\nUser: app admin\nPage: /admin-dashboard"]
+    X3["ingredient_scan_appeals (+ storage bucket)"]
+    X4["restaurant_managers"]
+  end
+
+  subgraph PUSH["Push Registration"]
+    N1["initManagerNotifications (9763)\nUser: manager/owner\nPage: /manager-dashboard, /help-contact"]
+    N2["initDinerNotifications (9623)\nUser: diner\nPage: no active caller in current app runtime"]
+    N3["manager_device_tokens + manager_push_subscriptions"]
+    N4["diner_device_tokens + diner_push_subscriptions"]
+  end
+
+  A1 --> A2 --> A4
+  A1 --> A3 --> A5
+
+  P1 --> P3
+  P2 --> P4
+
+  O1 --> O3
+  O2 --> O4
+
+  C1 --> C3
+  C2 --> C4
+
+  X1 --> X3
+  X2 --> X4
+
+  N1 --> N3
+  N2 --> N4

@@ -1,0 +1,45 @@
+flowchart LR
+  subgraph READERS["Reader Surfaces"]
+    R1["loadRestaurantBoot (9994)\nUser: signed-in diner, manager/owner, app admin\nPage: /restaurant"]
+    R2["Restaurants list hydrators (9779)\nUser: guest and signed-in diners/managers/owners\nPage: /restaurants, /favorites, /home, /guest, /dish-search"]
+    R3["Order feedback bootstrap (9936)\nUser: feedback-token holder\nPage: /order-feedback"]
+    R4["Change log fetch (9588)\nUser: manager/owner, app admin\nPage: /restaurant, /manager-dashboard"]
+    R5["Order views\nuseOrderFlow (10227), fetchAccessibleTabletOrders (9832)\nUser: diners and staff/managers\nPage: /restaurant, /kitchen-tablet, /server-tablet"]
+    R6["Manager/admin chat views\nUser: manager/owner, app admin\nPage: /manager-dashboard, /help-contact, /admin-dashboard"]
+  end
+
+  subgraph HYDRATE["Hydration Functions"]
+    H1["hydrateRestaurantWithTableMenuState (9780)"]
+    H2["hydrateRestaurantsWithTableMenuState (9779)"]
+    H3["fetchRestaurantMenuStateMapFromTables (9778)"]
+  end
+
+  subgraph TABLES["Read Tables"]
+    T1["restaurants"]
+    T2["restaurant_menu_pages"]
+    T3["restaurant_menu_dishes"]
+    T4["restaurant_menu_ingredient_rows"]
+    T5["restaurant_menu_ingredient_brand_items"]
+    T6["change_logs"]
+    T7["tablet_orders"]
+    T8["restaurant_direct_messages"]
+    T9["restaurant_direct_message_reads"]
+  end
+
+  R1 --> H1
+  R2 --> H2
+  R3 --> H1
+  H1 --> H3
+  H2 --> H3
+
+  H3 --> T2
+  H3 --> T3
+  H3 --> T4
+  H3 --> T5
+
+  R1 --> T1
+  R2 --> T1
+  R4 --> T6
+  R5 --> T7
+  R6 --> T8
+  R6 --> T9
