@@ -22,6 +22,22 @@ Generated on: 2026-02-24.
 - `src/06-normalized-table-model.mmd`: canonical table model and compatibility dual-write model.
 - `generated/*.svg`: rendered diagrams from the Mermaid sources above.
 
+## Admin diagram assistant grounding
+
+`POST /api/admin/data-flow-ask` now attempts an Axon query on every question and injects Axon evidence into the LLM context:
+
+- Axon endpoint used: `GET /api/v1/search`
+- Optional enrichment endpoint: `POST /api/v1/mcp/tools/get_symbol_context` (top hit)
+
+Environment variables for runtime Axon access:
+
+- `AXON_API_BASE_URL` (e.g. `https://axon.example.com/api/v1` or `https://axon.example.com`)
+- `AXON_API_KEY` (sent as `X-API-Key` when set)
+- `AXON_REPOSITORY_ID` (defaults to `2`)
+- `AXON_TIMEOUT_MS` (optional per-request timeout override)
+
+If `AXON_API_BASE_URL` is not set, the route marks Axon as unavailable and answers from diagram context only.
+
 All interaction nodes in `01` through `05` now include:
 
 - allowed user type(s)

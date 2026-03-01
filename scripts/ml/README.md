@@ -93,6 +93,27 @@ Outputs:
 - Raw source snapshots: `ml/data/raw/`
 - Model artifacts: `ml/artifacts/run-<timestamp>/`
 
+## Lexicon expansion workflow
+
+Use `build_allergen_lexicon_v2.py` to expand allergen aliases with a review loop:
+
+```bash
+python3 scripts/ml/build_allergen_lexicon_v2.py \
+  --workbook-input /path/to/allergen_ingredient_database.xlsx \
+  --workbook-output /path/to/allergen_ingredient_database_lexicon_v2.xlsx \
+  --output-dir ml/data/analysis/lexicon_v2
+```
+
+What it now does:
+
+- applies alias policy controls (`allow` / `deny` / `review`) from `Lexicon Alias Policy` sheet and optional `--denylist-csv`
+- auto-demotes noisy aliases by support + precision + exclusivity thresholds
+- mines new candidates from unmatched positive rows, then scores by support * precision * exclusivity
+- emits review outputs:
+  - `allergen_lexicon_alias_actions.csv`
+  - `allergen_lexicon_coverage_gaps.csv`
+  - workbook tabs: `Lexicon Alias Actions`, `Lexicon Coverage Gaps`, `Lexicon Alias Policy`
+
 ## Notes
 
 - This pipeline is model-first and does not depend on deterministic synonym dictionaries in runtime inference.

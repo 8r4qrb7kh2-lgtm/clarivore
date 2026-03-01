@@ -1,0 +1,18 @@
+allergen,ingredient_name,source_type,target_allergen_rows,matched_rows,target_precision_pct,mentions_total
+Milk,Whey Protein Hydrolysate,expanded_manual,54,55,98.18,55
+Egg,Egg Powder,expanded_manual,48,65,73.85,89
+Tree Nut,Coconut Milk,expanded_manual,364,503,72.37,581
+Tree Nut,Almond Milk,expanded_manual,118,152,77.63,153
+Tree Nut,Walnut Pieces,expanded_manual,24,34,70.59,34
+Soy,Soybeans,expanded_manual,3213,4536,70.83,5352
+Soy,Defatted Soy Flour,expanded_manual,757,867,87.31,867
+Soy,Soybean Lecithin,expanded_manual,365,495,73.74,519
+Soy,Soymilk Powder,expanded_manual,34,34,100.00,34
+Soy,Soybean Protein,expanded_manual,17,18,94.44,18
+Soy,Soy Isolate,expanded_manual,10,10,100.00,10
+Fish,Sardines,expanded_manual,48,49,97.96,53
+Fish,Sardine,expanded_manual,17,22,77.27,25
+Fish,Mackerel,expanded_manual,14,14,100.00,14
+Fish,Fish Powder,expanded_manual,11,15,73.33,16
+Crustacean Shellfish,Crab Meat,expanded_manual,205,285,71.93,350
+Crustacean Shellfish,Lobster Extract,expanded_manual,10,12,83.33,20

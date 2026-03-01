@@ -1,0 +1,11 @@
+class,class_scope,total_rows_scanned,labeled_rows,labeled_rows_with_alias,label_coverage_pct,proxy_rows,proxy_rows_with_alias,proxy_coverage_pct,rows_with_alias_any,rows_with_alias_pct_total,alias_mentions_total,unique_aliases_matched
+Milk,big9,261037,108954,73682,67.63,0,0,0.00,161589,61.90,669979,66
+Egg,big9,261037,47029,3923,8.34,0,0,0.00,11207,4.29,13597,22
+Peanut,big9,261037,11905,5082,42.69,0,0,0.00,8251,3.16,10659,10
+Tree Nut,big9,261037,20745,3456,16.66,0,0,0.00,9050,3.47,12705,40
+Wheat,big9,261037,105033,90274,85.95,0,0,0.00,194164,74.38,1023184,67
+Soy,big9,261037,184181,155161,84.24,0,0,0.00,214196,82.06,953766,48
+Fish,big9,261037,3912,973,24.87,0,0,0.00,3155,1.21,3993,23
+Crustacean Shellfish,big9,261037,2725,1545,56.70,0,0,0.00,3165,1.21,6453,23
+Sesame,big9,261037,10174,922,9.06,0,0,0.00,2143,0.82,2435,7
+Cereals with Gluten,cereals_with_gluten,261037,0,0,0.00,105033,40342,38.41,70865,27.15,263823,42

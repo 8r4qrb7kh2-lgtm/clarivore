@@ -1,0 +1,394 @@
+allergen,ingredient_name,source_type,matched_rows,target_allergen_rows,non_target_rows,target_precision_pct,mentions_total,prevalence_pct,source_origin
+Milk,Milk,existing,75259,40971,34288,54.44,139976,28.8308,"Milk (all forms: condensed, dry, evaporated, goat's, low-fat, malted, milkfat, nonfat, powder, protein, skimmed, solids, whole)"
+Milk,Cheese,existing,35942,22860,13082,63.60,92418,13.7689,Cheese (all types)
+Milk,whey,expanded_parenthetical,31080,17039,14041,54.82,37505,11.9064,"Hydrolysates (casein, milk protein, whey, whey protein)"
+Milk,Cream,existing,28444,15399,13045,54.14,43114,10.8965,Cream
+Milk,malted,expanded_parenthetical,39175,15117,24058,38.59,40584,15.0075,"Milk (all forms: condensed, dry, evaporated, goat's, low-fat, malted, milkfat, nonfat, powder, protein, skimmed, solids, whole)"
+Milk,Butter,existing,31856,15109,16747,47.43,41487,12.2036,Butter
+Milk,whole,expanded_parenthetical,39265,14902,24363,37.95,52472,15.0419,"Milk (all forms: condensed, dry, evaporated, goat's, low-fat, malted, milkfat, nonfat, powder, protein, skimmed, solids, whole)"
+Milk,powder,expanded_parenthetical,27594,12629,14965,45.77,45180,10.5709,"Milk (all forms: condensed, dry, evaporated, goat's, low-fat, malted, milkfat, nonfat, powder, protein, skimmed, solids, whole)"
+Milk,protein,expanded_parenthetical,25337,11563,13774,45.64,39650,9.7063,"Milk (all forms: condensed, dry, evaporated, goat's, low-fat, malted, milkfat, nonfat, powder, protein, skimmed, solids, whole)"
+Milk,nonfat,expanded_parenthetical,21164,9985,11179,47.18,24153,8.1077,"Milk (all forms: condensed, dry, evaporated, goat's, low-fat, malted, milkfat, nonfat, powder, protein, skimmed, solids, whole)"
+Milk,solids,expanded_parenthetical,13950,7735,6215,55.45,15963,5.3441,"Milk (all forms: condensed, dry, evaporated, goat's, low-fat, malted, milkfat, nonfat, powder, protein, skimmed, solids, whole)"
+Milk,nonfat Milk,expanded_parenthetical,14356,6758,7598,47.07,15609,5.4996,"Milk (all forms: condensed, dry, evaporated, goat's, low-fat, malted, milkfat, nonfat, powder, protein, skimmed, solids, whole)"
+Milk,Buttermilk,expanded_manual,10459,5267,5192,50.36,11377,4.0067,manual_expansion_seed
+Milk,dry,expanded_parenthetical,9808,4644,5164,47.35,11723,3.7573,"Milk (all forms: condensed, dry, evaporated, goat's, low-fat, malted, milkfat, nonfat, powder, protein, skimmed, solids, whole)"
+Milk,Cultured Milk,expanded_manual,5889,4102,1787,69.66,6527,2.2560,manual_expansion_seed
+Milk,dry Milk,expanded_parenthetical,7665,3617,4048,47.19,8268,2.9364,"Milk (all forms: condensed, dry, evaporated, goat's, low-fat, malted, milkfat, nonfat, powder, protein, skimmed, solids, whole)"
+Milk,whey protein,expanded_parenthetical,6740,3443,3297,51.08,7778,2.5820,"Hydrolysates (casein, milk protein, whey, whey protein)"
+Milk,Nonfat Dry Milk,expanded_manual,7090,3416,3674,48.18,7682,2.7161,manual_expansion_seed
+Milk,isolate,expanded_parenthetical,6446,2936,3510,45.55,8681,2.4694,"Whey (all forms: whey protein concentrate, isolate, hydrolysate)"
+Milk,milkfat,expanded_parenthetical,6157,2929,3228,47.57,6374,2.3587,"Milk (all forms: condensed, dry, evaporated, goat's, low-fat, malted, milkfat, nonfat, powder, protein, skimmed, solids, whole)"
+Milk,s,expanded_parenthetical,5277,2822,2455,53.48,6130,2.0216,Butter ester(s)
+Milk,whey protein concentrate,expanded_parenthetical,4514,2538,1976,56.23,4714,1.7293,"Whey (all forms: whey protein concentrate, isolate, hydrolysate)"
+Milk,whole Milk,expanded_parenthetical,4847,2394,2453,49.39,5487,1.8568,"Milk (all forms: condensed, dry, evaporated, goat's, low-fat, malted, milkfat, nonfat, powder, protein, skimmed, solids, whole)"
+Milk,milk protein,expanded_parenthetical,3637,2240,1397,61.59,4064,1.3933,"Hydrolysates (casein, milk protein, whey, whey protein)"
+Milk,Lactose,existing,3648,1837,1811,50.36,4036,1.3975,Lactose
+Milk,Casein,existing,2130,1774,356,83.29,2568,0.8160,Casein
+Milk,Milk powder,expanded_parenthetical,3346,1330,2016,39.75,4085,1.2818,"Milk (all forms: condensed, dry, evaporated, goat's, low-fat, malted, milkfat, nonfat, powder, protein, skimmed, solids, whole)"
+Milk,Rennet,existing,1655,1316,339,79.52,2134,0.6340,Rennet
+Milk,Whey Powder,expanded_manual,2991,1243,1748,41.56,3098,1.1458,manual_expansion_seed
+Milk,sodium caseinate,expanded_parenthetical,2037,1197,840,58.76,2154,0.7803,"Caseinates (all forms, incl. sodium caseinate)"
+Milk,Rennet casein,existing,1148,1075,73,93.64,1518,0.4398,Rennet casein
+Milk,Milk nonfat,expanded_parenthetical,1993,1036,957,51.98,2020,0.7635,"Milk (all forms: condensed, dry, evaporated, goat's, low-fat, malted, milkfat, nonfat, powder, protein, skimmed, solids, whole)"
+Milk,Whey Protein Isolate,expanded_manual,1980,991,989,50.05,1991,0.7585,manual_expansion_seed
+Milk,condensed,expanded_parenthetical,1911,957,954,50.08,2367,0.7321,"Milk (all forms: condensed, dry, evaporated, goat's, low-fat, malted, milkfat, nonfat, powder, protein, skimmed, solids, whole)"
+Milk,Calcium Caseinate,expanded_manual,1192,639,553,53.61,1197,0.4566,manual_expansion_seed
+Milk,isolate Whey,expanded_parenthetical,1302,608,694,46.70,1348,0.4988,"Whey (all forms: whey protein concentrate, isolate, hydrolysate)"
+Milk,Yogurt,existing,1560,606,954,38.85,2340,0.5976,Yogurt
+Milk,Cheese flavor,existing,800,575,225,71.88,856,0.3065,Cheese flavor
+Milk,Milk solids,expanded_parenthetical,1549,515,1034,33.25,1796,0.5934,"Milk (all forms: condensed, dry, evaporated, goat's, low-fat, malted, milkfat, nonfat, powder, protein, skimmed, solids, whole)"
+Milk,low-fat,expanded_parenthetical,757,499,258,65.92,798,0.2900,"Milk (all forms: condensed, dry, evaporated, goat's, low-fat, malted, milkfat, nonfat, powder, protein, skimmed, solids, whole)"
+Milk,condensed Milk,expanded_parenthetical,1000,496,504,49.60,1220,0.3831,"Milk (all forms: condensed, dry, evaporated, goat's, low-fat, malted, milkfat, nonfat, powder, protein, skimmed, solids, whole)"
+Milk,evaporated,expanded_parenthetical,1067,495,572,46.39,1184,0.4088,"Milk (all forms: condensed, dry, evaporated, goat's, low-fat, malted, milkfat, nonfat, powder, protein, skimmed, solids, whole)"
+Milk,Butter oil,existing,917,414,503,45.15,968,0.3513,Butter oil
+Milk,Ice cream,existing,2126,412,1714,19.38,2128,0.8144,Ice cream
+Milk,Artificial butter flavor,existing,829,401,428,48.37,836,0.3176,Artificial butter flavor
+Milk,Half-and-half,existing,469,391,78,83.37,469,0.1797,Half-and-half
+Milk,Skim Milk Powder,expanded_manual,553,344,209,62.21,676,0.2118,manual_expansion_seed
+Milk,powder Milk,expanded_parenthetical,658,334,324,50.76,671,0.2521,"Milk (all forms: condensed, dry, evaporated, goat's, low-fat, malted, milkfat, nonfat, powder, protein, skimmed, solids, whole)"
+Milk,low-fat Milk,expanded_parenthetical,325,275,50,84.62,333,0.1245,"Milk (all forms: condensed, dry, evaporated, goat's, low-fat, malted, milkfat, nonfat, powder, protein, skimmed, solids, whole)"
+Milk,Diacetyl,existing,484,205,279,42.36,484,0.1854,Diacetyl
+Milk,skimmed,expanded_parenthetical,658,204,454,31.00,767,0.2521,"Milk (all forms: condensed, dry, evaporated, goat's, low-fat, malted, milkfat, nonfat, powder, protein, skimmed, solids, whole)"
+Milk,Milk condensed,expanded_parenthetical,342,203,139,59.36,367,0.1310,"Milk (all forms: condensed, dry, evaporated, goat's, low-fat, malted, milkfat, nonfat, powder, protein, skimmed, solids, whole)"
+Milk,Milk whole,expanded_parenthetical,445,187,258,42.02,445,0.1705,"Milk (all forms: condensed, dry, evaporated, goat's, low-fat, malted, milkfat, nonfat, powder, protein, skimmed, solids, whole)"
+Milk,skimmed Milk,expanded_parenthetical,614,173,441,28.18,718,0.2352,"Milk (all forms: condensed, dry, evaporated, goat's, low-fat, malted, milkfat, nonfat, powder, protein, skimmed, solids, whole)"
+Milk,evaporated Milk,expanded_parenthetical,217,138,79,63.59,230,0.0831,"Milk (all forms: condensed, dry, evaporated, goat's, low-fat, malted, milkfat, nonfat, powder, protein, skimmed, solids, whole)"
+Milk,Pudding,existing,163,130,33,79.75,186,0.0624,Pudding
+Milk,Caseinates,existing,164,128,36,78.05,164,0.0628,"Caseinates (all forms, incl. sodium caseinate)"
+Milk,Milk dry,expanded_parenthetical,232,121,111,52.16,232,0.0889,"Milk (all forms: condensed, dry, evaporated, goat's, low-fat, malted, milkfat, nonfat, powder, protein, skimmed, solids, whole)"
+Milk,Butter fat,existing,140,112,28,80.00,162,0.0536,Butter fat
+Milk,solids Milk,expanded_parenthetical,220,104,116,47.27,220,0.0843,"Milk (all forms: condensed, dry, evaporated, goat's, low-fat, malted, milkfat, nonfat, powder, protein, skimmed, solids, whole)"
+Milk,Sweet Whey,expanded_manual,201,90,111,44.78,201,0.0770,manual_expansion_seed
+Milk,hydrolysate,expanded_parenthetical,59,57,2,96.61,59,0.0226,"Whey (all forms: whey protein concentrate, isolate, hydrolysate)"
+Milk,Whey Protein Hydrolysate,expanded_manual,55,54,1,98.18,55,0.0211,manual_expansion_seed
+Milk,hydrolysate Whey,expanded_parenthetical,53,53,0,100.00,53,0.0203,"Whey (all forms: whey protein concentrate, isolate, hydrolysate)"
+Milk,Milk Solids Nonfat,expanded_manual,90,47,43,52.22,90,0.0345,manual_expansion_seed
+Milk,Curds,existing,69,43,26,62.32,69,0.0264,Curds
+Milk,Tagatose,existing,46,27,19,58.70,46,0.0176,Tagatose
+Milk,Nougat,existing,20,14,6,70.00,20,0.0077,Nougat
+Milk,goat's,expanded_parenthetical,25,12,13,48.00,26,0.0096,"Milk (all forms: condensed, dry, evaporated, goat's, low-fat, malted, milkfat, nonfat, powder, protein, skimmed, solids, whole)"
+Milk,goat's Milk,expanded_parenthetical,25,12,13,48.00,26,0.0096,"Milk (all forms: condensed, dry, evaporated, goat's, low-fat, malted, milkfat, nonfat, powder, protein, skimmed, solids, whole)"
+Milk,Milk low-fat,expanded_parenthetical,12,12,0,100.00,12,0.0046,"Milk (all forms: condensed, dry, evaporated, goat's, low-fat, malted, milkfat, nonfat, powder, protein, skimmed, solids, whole)"
+Milk,Custard,existing,11,11,0,100.00,11,0.0042,Custard
+Milk,Ghee,existing,15,10,5,66.67,15,0.0057,Ghee
+Milk,Milk skimmed,expanded_parenthetical,39,9,30,23.08,39,0.0149,"Milk (all forms: condensed, dry, evaporated, goat's, low-fat, malted, milkfat, nonfat, powder, protein, skimmed, solids, whole)"
+Milk,malted Milk,expanded_parenthetical,19,9,10,47.37,24,0.0073,"Milk (all forms: condensed, dry, evaporated, goat's, low-fat, malted, milkfat, nonfat, powder, protein, skimmed, solids, whole)"
+Milk,Milk evaporated,expanded_parenthetical,9,5,4,55.56,9,0.0034,"Milk (all forms: condensed, dry, evaporated, goat's, low-fat, malted, milkfat, nonfat, powder, protein, skimmed, solids, whole)"
+Milk,protein Milk,expanded_parenthetical,32,4,28,12.50,32,0.0123,"Milk (all forms: condensed, dry, evaporated, goat's, low-fat, malted, milkfat, nonfat, powder, protein, skimmed, solids, whole)"
+Milk,Milk malted,expanded_parenthetical,6,2,4,33.33,6,0.0023,"Milk (all forms: condensed, dry, evaporated, goat's, low-fat, malted, milkfat, nonfat, powder, protein, skimmed, solids, whole)"
+Milk,Milk Permeate,expanded_manual,1,1,0,100.00,1,0.0004,manual_expansion_seed
+Milk,Hydrolysates,existing,102,0,102,0.00,106,0.0391,"Hydrolysates (casein, milk protein, whey, whey protein)"
+Egg,lecithin,expanded_parenthetical,29685,8656,21029,29.16,37851,11.3720,"Egg (white, yolk, dried, lecithin, powdered, solids)"
+Egg,Egg,existing,19643,5573,14070,28.37,24321,7.5250,"Egg (white, yolk, dried, lecithin, powdered, solids)"
+Egg,white,expanded_parenthetical,18257,3745,14512,20.51,21962,6.9940,"Egg (white, yolk, dried, lecithin, powdered, solids)"
+Egg,Egg Whites,expanded_manual,7669,2563,5106,33.42,7814,2.9379,manual_expansion_seed
+Egg,dried,expanded_parenthetical,12993,2149,10844,16.54,16640,4.9775,"Egg (white, yolk, dried, lecithin, powdered, solids)"
+Egg,solids,expanded_parenthetical,13950,2118,11832,15.18,15963,5.3441,"Egg (white, yolk, dried, lecithin, powdered, solids)"
+Egg,Egg Yolks,expanded_manual,4256,1201,3055,28.22,4513,1.6304,manual_expansion_seed
+Egg,powdered,expanded_parenthetical,3887,996,2891,25.62,4438,1.4891,"Egg (white, yolk, dried, lecithin, powdered, solids)"
+Egg,Mayonnaise,existing,2153,817,1336,37.95,2207,0.8248,Mayonnaise
+Egg,Egg noodles,existing,1467,703,764,47.92,1467,0.5620,Egg noodles
+Egg,Egg white,expanded_parenthetical,2254,608,1646,26.97,2311,0.8635,"Egg (white, yolk, dried, lecithin, powdered, solids)"
+Egg,yolk,expanded_parenthetical,2470,587,1883,23.77,2499,0.9462,"Egg (white, yolk, dried, lecithin, powdered, solids)"
+Egg,Egg yolk,expanded_parenthetical,2456,586,1870,23.86,2485,0.9409,"Egg (white, yolk, dried, lecithin, powdered, solids)"
+Egg,Dried egg,existing,823,365,458,44.35,879,0.3153,Dried egg
+Egg,Surimi,existing,377,280,97,74.27,379,0.1444,Surimi
+Egg,Egg Powder,expanded_manual,65,48,17,73.85,89,0.0249,manual_expansion_seed
+Egg,Pasteurized Eggs,expanded_manual,123,45,78,36.59,123,0.0471,manual_expansion_seed
+Egg,Lysozyme,existing,82,39,43,47.56,82,0.0314,Lysozyme
+Egg,Egg solids,expanded_parenthetical,59,19,40,32.20,59,0.0226,"Egg (white, yolk, dried, lecithin, powdered, solids)"
+Egg,Liquid Egg,expanded_manual,72,13,59,18.06,72,0.0276,manual_expansion_seed
+Egg,Whole Egg Solids,expanded_manual,45,13,32,28.89,45,0.0172,manual_expansion_seed
+Egg,Dried Egg White,expanded_manual,69,12,57,17.39,69,0.0264,manual_expansion_seed
+Egg,Egg dried,expanded_parenthetical,12,12,0,100.00,12,0.0046,"Egg (white, yolk, dried, lecithin, powdered, solids)"
+Egg,white Egg,expanded_parenthetical,33,11,22,33.33,33,0.0126,"Egg (white, yolk, dried, lecithin, powdered, solids)"
+Egg,Albumen,existing,82,10,72,12.20,82,0.0314,Albumen
+Egg,lecithin Egg,expanded_parenthetical,72,10,62,13.89,72,0.0276,"Egg (white, yolk, dried, lecithin, powdered, solids)"
+Egg,Dried Egg Yolk,expanded_manual,30,10,20,33.33,30,0.0115,manual_expansion_seed
+Egg,Aioli,existing,8,5,3,62.50,8,0.0031,Aioli
+Egg,solids Egg,expanded_parenthetical,34,4,30,11.76,34,0.0130,"Egg (white, yolk, dried, lecithin, powdered, solids)"
+Egg,yolk Egg,expanded_parenthetical,31,3,28,9.68,31,0.0119,"Egg (white, yolk, dried, lecithin, powdered, solids)"
+Egg,Egg wash,existing,8,3,5,37.50,8,0.0031,Egg wash
+Egg,Egg Protein,expanded_manual,4,1,3,25.00,4,0.0015,manual_expansion_seed
+Egg,powdered Egg,expanded_parenthetical,25,0,25,0.00,25,0.0096,"Egg (white, yolk, dried, lecithin, powdered, solids)"
+Egg,Albumin,existing,12,0,12,0.00,12,0.0046,Albumin
+Egg,Egg Albumin,expanded_manual,12,0,12,0.00,12,0.0046,manual_expansion_seed
+Egg,Eggnog,existing,8,0,8,0.00,8,0.0031,Eggnog
+Egg,Meringue,existing,1,0,1,0.00,1,0.0004,Meringue
+Peanut,Peanut,expanded_manual,9159,5467,3692,59.69,12049,3.5087,manual_expansion_seed
+Peanut,Peanut butter,existing,6967,4567,2400,65.55,7888,2.6690,Peanut butter
+Peanut,Peanuts,expanded_manual,9968,3729,6239,37.41,12997,3.8186,manual_expansion_seed
+Peanut,peanut oil,expanded_parenthetical,1445,571,874,39.52,1586,0.5536,Arachis oil (peanut oil)
+Peanut,Peanut flour,existing,896,513,383,57.25,1070,0.3432,Peanut flour
+Peanut,Dry Roasted Peanuts,expanded_manual,597,111,486,18.59,603,0.2287,manual_expansion_seed
+Peanut,Expeller pressed,existing,1557,48,1509,3.08,1704,0.5965,Expeller pressed
+Peanut,Mixed nuts,existing,14,8,6,57.14,14,0.0054,Mixed nuts
+Peanut,Peanut Pieces,expanded_manual,11,4,7,36.36,11,0.0042,manual_expansion_seed
+Peanut,Peanut meal,existing,49,3,46,6.12,49,0.0188,Peanut meal
+Peanut,Peanut Paste,expanded_manual,11,3,8,27.27,11,0.0042,manual_expansion_seed
+Peanut,Peanut Extract,expanded_manual,9,3,6,33.33,9,0.0034,manual_expansion_seed
+Peanut,Nut pieces,existing,1,1,0,100.00,1,0.0004,Nut pieces
+Peanut,Beer nuts,existing,40,0,40,0.00,40,0.0153,Beer nuts
+Peanut,Cold pressed,existing,8,0,8,0.00,8,0.0031,Cold pressed
+Peanut,Lupin,existing,2,0,2,0.00,2,0.0008,Lupin (cross-reactive)
+Peanut,Lupine,existing,1,0,1,0.00,1,0.0004,Lupine
+Tree Nut,Coconut,existing,10091,2376,7715,23.55,11617,3.8657,Coconut
+Tree Nut,Almond,existing,1071,669,402,62.46,1110,0.4103,Almond
+Tree Nut,Coconut Milk,expanded_manual,503,364,139,72.37,581,0.1927,manual_expansion_seed
+Tree Nut,Black,expanded_parenthetical,4417,273,4144,6.18,5315,1.6921,"Walnut (English, Persian, Black, Japanese, California)"
+Tree Nut,Coconut Cream,expanded_manual,233,144,89,61.80,249,0.0893,manual_expansion_seed
+Tree Nut,Almond Milk,expanded_manual,152,118,34,77.63,153,0.0582,manual_expansion_seed
+Tree Nut,Cashew,existing,138,99,39,71.74,145,0.0529,Cashew
+Tree Nut,Hazelnut,existing,144,90,54,62.50,154,0.0552,Hazelnut
+Tree Nut,Pecan,existing,149,78,71,52.35,159,0.0571,Pecan
+Tree Nut,walnut,expanded_parenthetical,88,66,22,75.00,88,0.0337,"Natural nut extract (e.g., almond, walnut)"
+Tree Nut,Cashew butter,existing,49,39,10,79.59,49,0.0188,Cashew butter
+Tree Nut,pistachio,expanded_parenthetical,44,32,12,72.73,48,0.0169,"Nut butters (almond, cashew, hazelnut, pistachio, etc.)"
+Tree Nut,Praline,existing,48,28,20,58.33,53,0.0184,Praline
+Tree Nut,Brazil nut,existing,26,26,0,100.00,26,0.0100,Brazil nut
+Tree Nut,Walnut Pieces,expanded_manual,34,24,10,70.59,34,0.0130,manual_expansion_seed
+Tree Nut,Macadamia nut,existing,23,23,0,100.00,23,0.0088,Macadamia nut
+Tree Nut,Pine nut,existing,23,23,0,100.00,23,0.0088,"Pine nut (pignoli, piñon, pinyon, pignon)"
+Tree Nut,Marzipan,existing,16,16,0,100.00,16,0.0061,Marzipan
+Tree Nut,Butternut,existing,348,14,334,4.02,372,0.1333,Butternut
+Tree Nut,Pecan Pieces,expanded_manual,40,12,28,30.00,40,0.0153,manual_expansion_seed
+Tree Nut,Almond Flour,expanded_manual,92,11,81,11.96,92,0.0352,manual_expansion_seed
+Tree Nut,English,expanded_parenthetical,425,10,415,2.35,430,0.1628,"Walnut (English, Persian, Black, Japanese, California)"
+Tree Nut,Almond extract,existing,18,10,8,55.56,18,0.0069,Almond extract
+Tree Nut,Coconut Flour,expanded_manual,56,8,48,14.29,56,0.0215,manual_expansion_seed
+Tree Nut,Nougat,existing,20,8,12,40.00,20,0.0077,Nougat
+Tree Nut,Pesto,existing,98,7,91,7.14,111,0.0375,Pesto
+Tree Nut,Almond paste,existing,17,6,11,35.29,17,0.0065,Almond paste
+Tree Nut,Almond Meal,expanded_manual,9,6,3,66.67,9,0.0034,manual_expansion_seed
+Tree Nut,California,expanded_parenthetical,108,4,104,3.70,131,0.0414,"Walnut (English, Persian, Black, Japanese, California)"
+Tree Nut,Japanese,expanded_parenthetical,37,4,33,10.81,41,0.0142,"Walnut (English, Persian, Black, Japanese, California)"
+Tree Nut,almond oil,expanded_parenthetical,6,4,2,66.67,6,0.0023,"Nut oils (walnut oil, almond oil, etc.)"
+Tree Nut,walnut oil,expanded_parenthetical,4,4,0,100.00,4,0.0015,"Nut oils (walnut oil, almond oil, etc.)"
+Tree Nut,Nutella,existing,2,2,0,100.00,2,0.0008,Nutella®
+Tree Nut,Hazelnut Spread,expanded_manual,25,1,24,4.00,25,0.0096,manual_expansion_seed
+Tree Nut,Filbert,existing,1,1,0,100.00,1,0.0004,Filbert
+Tree Nut,Karite,existing,1,1,0,100.00,1,0.0004,Karite
+Tree Nut,Nut pieces,existing,1,1,0,100.00,1,0.0004,Nut pieces
+Tree Nut,Chestnut,existing,22,0,22,0.00,22,0.0084,Chestnut
+Tree Nut,Shea nut,existing,9,0,9,0.00,9,0.0034,Shea nut
+Tree Nut,Pistachio Paste,expanded_manual,4,0,4,0.00,4,0.0015,manual_expansion_seed
+Wheat,Flour,existing,168622,82951,85671,49.19,395594,64.5970,"Flour (all purpose, bread, cake, durum, enriched, graham, high gluten, high protein, instant, pastry, self-rising, soft wheat, stone ground, whole wheat)"
+Wheat,Wheat,existing,164983,82300,82683,49.88,268012,63.2029,"Wheat (bran, durum, germ, gluten, grass, malt, sprouts, starch)"
+Wheat,Wheat Flour,expanded_manual,155321,78077,77244,50.27,225511,59.5015,manual_expansion_seed
+Wheat,enriched,expanded_parenthetical,127029,64754,62275,50.98,138190,48.6632,"Flour (all purpose, bread, cake, durum, enriched, graham, high gluten, high protein, instant, pastry, self-rising, soft wheat, stone ground, whole wheat)"
+Wheat,enriched Flour,expanded_parenthetical,51572,25055,26517,48.58,52391,19.7566,"Flour (all purpose, bread, cake, durum, enriched, graham, high gluten, high protein, instant, pastry, self-rising, soft wheat, stone ground, whole wheat)"
+Wheat,Enriched Wheat Flour,expanded_manual,42137,24574,17563,58.32,44259,16.1422,manual_expansion_seed
+Wheat,starch,expanded_parenthetical,58184,24227,33957,41.64,77224,22.2896,"Wheat (bran, durum, germ, gluten, grass, malt, sprouts, starch)"
+Wheat,whole wheat,expanded_parenthetical,19839,12796,7043,64.50,21275,7.6001,"Flour (all purpose, bread, cake, durum, enriched, graham, high gluten, high protein, instant, pastry, self-rising, soft wheat, stone ground, whole wheat)"
+Wheat,whole wheat Flour,expanded_parenthetical,18548,12403,6145,66.87,19463,7.1055,"Flour (all purpose, bread, cake, durum, enriched, graham, high gluten, high protein, instant, pastry, self-rising, soft wheat, stone ground, whole wheat)"
+Wheat,gluten,expanded_parenthetical,15401,9153,6248,59.43,16029,5.8999,"Wheat (bran, durum, germ, gluten, grass, malt, sprouts, starch)"
+Wheat,Wheat gluten,expanded_parenthetical,14271,8749,5522,61.31,14657,5.4670,"Wheat (bran, durum, germ, gluten, grass, malt, sprouts, starch)"
+Wheat,Modified food starch,existing,17038,6620,10418,38.85,19368,6.5270,Modified food starch (if wheat-derived)
+Wheat,Flour enriched,expanded_parenthetical,9568,6011,3557,62.82,10396,3.6654,"Flour (all purpose, bread, cake, durum, enriched, graham, high gluten, high protein, instant, pastry, self-rising, soft wheat, stone ground, whole wheat)"
+Wheat,bread,expanded_parenthetical,7713,4615,3098,59.83,8076,2.9548,"Flour (all purpose, bread, cake, durum, enriched, graham, high gluten, high protein, instant, pastry, self-rising, soft wheat, stone ground, whole wheat)"
+Wheat,malt,expanded_parenthetical,7986,3875,4111,48.52,8838,3.0593,"Wheat (bran, durum, germ, gluten, grass, malt, sprouts, starch)"
+Wheat,Durum,existing,5187,3060,2127,58.99,6081,1.9871,Durum
+Wheat,Pasta,existing,5202,2845,2357,54.69,5847,1.9928,Pasta
+Wheat,Semolina,existing,5854,2802,3052,47.86,6534,2.2426,Semolina
+Wheat,durum Wheat,expanded_parenthetical,3769,2272,1497,60.28,4063,1.4439,"Wheat (bran, durum, germ, gluten, grass, malt, sprouts, starch)"
+Wheat,Wheat starch,expanded_parenthetical,5005,2061,2944,41.18,5130,1.9174,"Wheat (bran, durum, germ, gluten, grass, malt, sprouts, starch)"
+Wheat,bran,expanded_parenthetical,3270,1851,1419,56.61,3371,1.2527,"Wheat (bran, durum, germ, gluten, grass, malt, sprouts, starch)"
+Wheat,Vital wheat gluten,existing,3109,1776,1333,57.12,3179,1.1910,Vital wheat gluten
+Wheat,Bread crumbs,existing,3682,1657,2025,45.00,3705,1.4105,Bread crumbs
+Wheat,Durum Wheat Semolina,expanded_manual,2381,1581,800,66.40,2439,0.9121,manual_expansion_seed
+Wheat,Wheat bran,expanded_parenthetical,1923,1244,679,64.69,1924,0.7367,"Wheat (bran, durum, germ, gluten, grass, malt, sprouts, starch)"
+Wheat,cake,expanded_parenthetical,1619,958,661,59.17,1739,0.6202,"Flour (all purpose, bread, cake, durum, enriched, graham, high gluten, high protein, instant, pastry, self-rising, soft wheat, stone ground, whole wheat)"
+Wheat,Flour durum,expanded_parenthetical,1235,899,336,72.79,1239,0.4731,"Flour (all purpose, bread, cake, durum, enriched, graham, high gluten, high protein, instant, pastry, self-rising, soft wheat, stone ground, whole wheat)"
+Wheat,durum Flour,expanded_parenthetical,1314,876,438,66.67,1421,0.5034,"Flour (all purpose, bread, cake, durum, enriched, graham, high gluten, high protein, instant, pastry, self-rising, soft wheat, stone ground, whole wheat)"
+Wheat,starch Wheat,expanded_parenthetical,1977,736,1241,37.23,1986,0.7574,"Wheat (bran, durum, germ, gluten, grass, malt, sprouts, starch)"
+Wheat,Wheat protein isolate,existing,681,444,237,65.20,682,0.2609,Wheat protein isolate
+Wheat,Triticale,existing,524,405,119,77.29,531,0.2007,Triticale
+Wheat,bread Flour,expanded_parenthetical,369,347,22,94.04,369,0.1414,"Flour (all purpose, bread, cake, durum, enriched, graham, high gluten, high protein, instant, pastry, self-rising, soft wheat, stone ground, whole wheat)"
+Wheat,Bulgur,existing,615,344,271,55.93,672,0.2356,Bulgur
+Wheat,gluten Wheat,expanded_parenthetical,496,312,184,62.90,496,0.1900,"Wheat (bran, durum, germ, gluten, grass, malt, sprouts, starch)"
+Wheat,germ,expanded_parenthetical,558,301,257,53.94,559,0.2138,"Wheat (bran, durum, germ, gluten, grass, malt, sprouts, starch)"
+Wheat,Spelt,existing,368,282,86,76.63,369,0.1410,Spelt
+Wheat,Wheat germ,expanded_parenthetical,512,279,233,54.49,513,0.1961,"Wheat (bran, durum, germ, gluten, grass, malt, sprouts, starch)"
+Wheat,stone ground,expanded_parenthetical,535,243,292,45.42,543,0.2050,"Flour (all purpose, bread, cake, durum, enriched, graham, high gluten, high protein, instant, pastry, self-rising, soft wheat, stone ground, whole wheat)"
+Wheat,Flour whole wheat,expanded_parenthetical,581,184,397,31.67,596,0.2226,"Flour (all purpose, bread, cake, durum, enriched, graham, high gluten, high protein, instant, pastry, self-rising, soft wheat, stone ground, whole wheat)"
+Wheat,graham,expanded_parenthetical,1613,172,1441,10.66,1828,0.6179,"Flour (all purpose, bread, cake, durum, enriched, graham, high gluten, high protein, instant, pastry, self-rising, soft wheat, stone ground, whole wheat)"
+Wheat,bran Wheat,expanded_parenthetical,230,160,70,69.57,230,0.0881,"Wheat (bran, durum, germ, gluten, grass, malt, sprouts, starch)"
+Wheat,all purpose,expanded_parenthetical,167,102,65,61.08,183,0.0640,"Flour (all purpose, bread, cake, durum, enriched, graham, high gluten, high protein, instant, pastry, self-rising, soft wheat, stone ground, whole wheat)"
+Wheat,Semolina Flour,expanded_manual,313,93,220,29.71,376,0.1199,manual_expansion_seed
+Wheat,Cracker meal,existing,192,91,101,47.40,192,0.0736,Cracker meal
+Wheat,graham Flour,expanded_parenthetical,1203,78,1125,6.48,1203,0.4609,"Flour (all purpose, bread, cake, durum, enriched, graham, high gluten, high protein, instant, pastry, self-rising, soft wheat, stone ground, whole wheat)"
+Wheat,Kamut,existing,92,77,15,83.70,92,0.0352,Kamut®
+Wheat,Flour bread,expanded_parenthetical,142,75,67,52.82,142,0.0544,"Flour (all purpose, bread, cake, durum, enriched, graham, high gluten, high protein, instant, pastry, self-rising, soft wheat, stone ground, whole wheat)"
+Wheat,malt Wheat,expanded_parenthetical,101,74,27,73.27,101,0.0387,"Wheat (bran, durum, germ, gluten, grass, malt, sprouts, starch)"
+Wheat,Couscous,existing,81,66,15,81.48,85,0.0310,Couscous
+Wheat,all purpose Flour,expanded_parenthetical,101,62,39,61.39,105,0.0387,"Flour (all purpose, bread, cake, durum, enriched, graham, high gluten, high protein, instant, pastry, self-rising, soft wheat, stone ground, whole wheat)"
+Wheat,pastry,expanded_parenthetical,182,60,122,32.97,209,0.0697,"Flour (all purpose, bread, cake, durum, enriched, graham, high gluten, high protein, instant, pastry, self-rising, soft wheat, stone ground, whole wheat)"
+Wheat,Wheat durum,expanded_parenthetical,194,55,139,28.35,194,0.0743,"Wheat (bran, durum, germ, gluten, grass, malt, sprouts, starch)"
+Wheat,Flour stone ground,expanded_parenthetical,63,49,14,77.78,63,0.0241,"Flour (all purpose, bread, cake, durum, enriched, graham, high gluten, high protein, instant, pastry, self-rising, soft wheat, stone ground, whole wheat)"
+Wheat,sprouts,expanded_parenthetical,154,40,114,25.97,158,0.0590,"Wheat (bran, durum, germ, gluten, grass, malt, sprouts, starch)"
+Wheat,high gluten,expanded_parenthetical,100,38,62,38.00,100,0.0383,"Flour (all purpose, bread, cake, durum, enriched, graham, high gluten, high protein, instant, pastry, self-rising, soft wheat, stone ground, whole wheat)"
+Wheat,Hydrolyzed wheat protein,existing,52,38,14,73.08,52,0.0199,Hydrolyzed wheat protein
+Wheat,Farina,existing,48,34,14,70.83,63,0.0184,Farina
+Wheat,Farro,existing,48,34,14,70.83,70,0.0184,Farro
+Wheat,Gluten Flour,expanded_manual,91,30,61,32.97,91,0.0349,manual_expansion_seed
+Wheat,high gluten Flour,expanded_parenthetical,85,29,56,34.12,85,0.0326,"Flour (all purpose, bread, cake, durum, enriched, graham, high gluten, high protein, instant, pastry, self-rising, soft wheat, stone ground, whole wheat)"
+Wheat,grass,expanded_parenthetical,68,27,41,39.71,79,0.0260,"Wheat (bran, durum, germ, gluten, grass, malt, sprouts, starch)"
+Wheat,Sprouted wheat,existing,37,27,10,72.97,37,0.0142,Sprouted wheat
+Wheat,instant,expanded_parenthetical,241,24,217,9.96,241,0.0923,"Flour (all purpose, bread, cake, durum, enriched, graham, high gluten, high protein, instant, pastry, self-rising, soft wheat, stone ground, whole wheat)"
+Wheat,Flour graham,expanded_parenthetical,58,18,40,31.03,58,0.0222,"Flour (all purpose, bread, cake, durum, enriched, graham, high gluten, high protein, instant, pastry, self-rising, soft wheat, stone ground, whole wheat)"
+Wheat,pastry Flour,expanded_parenthetical,38,16,22,42.11,38,0.0146,"Flour (all purpose, bread, cake, durum, enriched, graham, high gluten, high protein, instant, pastry, self-rising, soft wheat, stone ground, whole wheat)"
+Wheat,cake Flour,expanded_parenthetical,71,15,56,21.13,71,0.0272,"Flour (all purpose, bread, cake, durum, enriched, graham, high gluten, high protein, instant, pastry, self-rising, soft wheat, stone ground, whole wheat)"
+Wheat,soft wheat,expanded_parenthetical,29,14,15,48.28,29,0.0111,"Flour (all purpose, bread, cake, durum, enriched, graham, high gluten, high protein, instant, pastry, self-rising, soft wheat, stone ground, whole wheat)"
+Wheat,soft wheat Flour,expanded_parenthetical,29,14,15,48.28,29,0.0111,"Flour (all purpose, bread, cake, durum, enriched, graham, high gluten, high protein, instant, pastry, self-rising, soft wheat, stone ground, whole wheat)"
+Wheat,Wheat malt,expanded_parenthetical,39,11,28,28.21,39,0.0149,"Wheat (bran, durum, germ, gluten, grass, malt, sprouts, starch)"
+Wheat,Flour all purpose,expanded_parenthetical,13,10,3,76.92,13,0.0050,"Flour (all purpose, bread, cake, durum, enriched, graham, high gluten, high protein, instant, pastry, self-rising, soft wheat, stone ground, whole wheat)"
+Wheat,germ Wheat,expanded_parenthetical,9,9,0,100.00,9,0.0034,"Wheat (bran, durum, germ, gluten, grass, malt, sprouts, starch)"
+Wheat,Einkorn,existing,8,8,0,100.00,8,0.0031,Einkorn
+Wheat,Whole wheat berries,existing,8,8,0,100.00,8,0.0031,Whole wheat berries
+Wheat,Matzo,existing,8,6,2,75.00,8,0.0031,Matzo
+Wheat,Emmer,existing,6,6,0,100.00,6,0.0023,Emmer
+Wheat,self-rising,expanded_parenthetical,3,3,0,100.00,3,0.0011,"Flour (all purpose, bread, cake, durum, enriched, graham, high gluten, high protein, instant, pastry, self-rising, soft wheat, stone ground, whole wheat)"
+Wheat,self-rising Flour,expanded_parenthetical,3,3,0,100.00,3,0.0011,"Flour (all purpose, bread, cake, durum, enriched, graham, high gluten, high protein, instant, pastry, self-rising, soft wheat, stone ground, whole wheat)"
+Wheat,Wheat grass,expanded_parenthetical,7,2,5,28.57,7,0.0027,"Wheat (bran, durum, germ, gluten, grass, malt, sprouts, starch)"
+Wheat,grass Wheat,expanded_parenthetical,5,1,4,20.00,5,0.0019,"Wheat (bran, durum, germ, gluten, grass, malt, sprouts, starch)"
+Wheat,Seitan,existing,4,1,3,25.00,4,0.0015,Seitan
+Wheat,Vital Gluten,expanded_manual,6,0,6,0.00,6,0.0023,manual_expansion_seed
+Wheat,Flour high gluten,expanded_parenthetical,5,0,5,0.00,5,0.0019,"Flour (all purpose, bread, cake, durum, enriched, graham, high gluten, high protein, instant, pastry, self-rising, soft wheat, stone ground, whole wheat)"
+Wheat,high protein,expanded_parenthetical,5,0,5,0.00,10,0.0019,"Flour (all purpose, bread, cake, durum, enriched, graham, high gluten, high protein, instant, pastry, self-rising, soft wheat, stone ground, whole wheat)"
+Wheat,Flour cake,expanded_parenthetical,2,0,2,0.00,2,0.0008,"Flour (all purpose, bread, cake, durum, enriched, graham, high gluten, high protein, instant, pastry, self-rising, soft wheat, stone ground, whole wheat)"
+Wheat,Flour pastry,expanded_parenthetical,2,0,2,0.00,2,0.0008,"Flour (all purpose, bread, cake, durum, enriched, graham, high gluten, high protein, instant, pastry, self-rising, soft wheat, stone ground, whole wheat)"
+Soy,flour,expanded_parenthetical,168622,129747,38875,76.95,395594,64.5970,"Soy (fiber, flour, grits, nuts, sprouts)"
+Soy,Soybean,existing,95497,70000,25497,73.30,115170,36.5837,Soybean
+Soy,milk,expanded_parenthetical,75259,48794,26465,64.83,139976,28.8308,"Soy (milk, yogurt, ice cream, cheese)"
+Soy,Soy,existing,49041,39393,9648,80.33,69679,18.7870,"Soy (fiber, flour, grits, nuts, sprouts)"
+Soy,cheese,expanded_parenthetical,35942,21511,14431,59.85,92418,13.7689,"Soy (milk, yogurt, ice cream, cheese)"
+Soy,Soy lecithin,existing,26348,21173,5175,80.36,33366,10.0936,Soy lecithin
+Soy,concentrate,expanded_parenthetical,18708,12020,6688,64.25,22347,7.1668,"Soy protein (concentrate, hydrolyzed, isolate)"
+Soy,Soy protein,existing,13956,11779,2177,84.40,17271,5.3464,"Soy protein (concentrate, hydrolyzed, isolate)"
+Soy,Soy flour,expanded_parenthetical,7765,6775,990,87.25,8449,2.9747,"Soy (fiber, flour, grits, nuts, sprouts)"
+Soy,isolate,expanded_parenthetical,6446,5206,1240,80.76,8681,2.4694,"Soy protein (concentrate, hydrolyzed, isolate)"
+Soy,fiber,expanded_parenthetical,6146,4903,1243,79.78,6690,2.3545,"Soy (fiber, flour, grits, nuts, sprouts)"
+Soy,Soy protein concentrate,expanded_parenthetical,6016,4888,1128,81.25,6831,2.3047,"Soy protein (concentrate, hydrolyzed, isolate)"
+Soy,Soy protein isolate,expanded_parenthetical,4366,3858,508,88.36,4504,1.6726,"Soy protein (concentrate, hydrolyzed, isolate)"
+Soy,hydrolyzed,expanded_parenthetical,4661,3529,1132,75.71,5280,1.7856,"Soy protein (concentrate, hydrolyzed, isolate)"
+Soy,Soybeans,expanded_manual,4536,3213,1323,70.83,5352,1.7377,manual_expansion_seed
+Soy,Soy sauce,existing,4014,2792,1222,69.56,4676,1.5377,Soy sauce
+Soy,Textured vegetable protein,existing,2843,2563,280,90.15,2955,1.0891,Textured vegetable protein (TVP)
+Soy,milk Soy,expanded_parenthetical,2607,2265,342,86.88,2697,0.9987,"Soy (milk, yogurt, ice cream, cheese)"
+Soy,ice cream,expanded_parenthetical,2126,2054,72,96.61,2128,0.8144,"Soy (milk, yogurt, ice cream, cheese)"
+Soy,Textured soy flour,existing,1737,1578,159,90.85,1741,0.6654,Textured soy flour (TSF)
+Soy,hydrolyzed Soy protein,expanded_parenthetical,1698,1408,290,82.92,1760,0.6505,"Soy protein (concentrate, hydrolyzed, isolate)"
+Soy,flour Soy,expanded_parenthetical,1162,833,329,71.69,1170,0.4451,"Soy (fiber, flour, grits, nuts, sprouts)"
+Soy,Defatted Soy Flour,expanded_manual,867,757,110,87.31,867,0.3321,manual_expansion_seed
+Soy,expeller pressed),existing,1557,745,812,47.85,1704,0.5965,expeller pressed)
+Soy,yogurt,expanded_parenthetical,1560,738,822,47.31,2340,0.5976,"Soy (milk, yogurt, ice cream, cheese)"
+Soy,concentrate Soy protein,expanded_parenthetical,735,663,72,90.20,747,0.2816,"Soy protein (concentrate, hydrolyzed, isolate)"
+Soy,nuts,expanded_parenthetical,852,586,266,68.78,894,0.3264,"Soy (fiber, flour, grits, nuts, sprouts)"
+Soy,Soybean Lecithin,expanded_manual,495,365,130,73.74,519,0.1896,manual_expansion_seed
+Soy,fiber Soy,expanded_parenthetical,285,264,21,92.63,285,0.1092,"Soy (fiber, flour, grits, nuts, sprouts)"
+Soy,Edamame,existing,327,253,74,77.37,351,0.1253,Edamame
+Soy,Soya,existing,760,225,535,29.61,858,0.2911,Soya
+Soy,Soy fiber,expanded_parenthetical,243,221,22,90.95,248,0.0931,"Soy (fiber, flour, grits, nuts, sprouts)"
+Soy,Miso,existing,261,190,71,72.80,285,0.1000,Miso
+Soy,Soy Bean,expanded_manual,233,152,81,65.24,236,0.0893,manual_expansion_seed
+Soy,grits,expanded_parenthetical,281,145,136,51.60,343,0.1076,"Soy (fiber, flour, grits, nuts, sprouts)"
+Soy,Tamari,existing,303,140,163,46.20,311,0.1161,Tamari
+Soy,Tofu,existing,169,122,47,72.19,182,0.0647,Tofu (soybean curd)
+Soy,Soy protein hydrolyzed,expanded_parenthetical,117,111,6,94.87,117,0.0448,"Soy protein (concentrate, hydrolyzed, isolate)"
+Soy,sprouts,expanded_parenthetical,154,105,49,68.18,158,0.0590,"Soy (fiber, flour, grits, nuts, sprouts)"
+Soy,Soy milk,expanded_parenthetical,149,75,74,50.34,157,0.0571,"Soy (milk, yogurt, ice cream, cheese)"
+Soy,isolate Soy protein,expanded_parenthetical,66,66,0,100.00,66,0.0253,"Soy protein (concentrate, hydrolyzed, isolate)"
+Soy,Soymilk Powder,expanded_manual,34,34,0,100.00,34,0.0130,manual_expansion_seed
+Soy,Soy grits,expanded_parenthetical,47,27,20,57.45,47,0.0180,"Soy (fiber, flour, grits, nuts, sprouts)"
+Soy,Soy nuts,expanded_parenthetical,31,26,5,83.87,32,0.0119,"Soy (fiber, flour, grits, nuts, sprouts)"
+Soy,Soybean Protein,expanded_manual,18,17,1,94.44,18,0.0069,manual_expansion_seed
+Soy,Soy Isolate,expanded_manual,10,10,0,100.00,10,0.0038,manual_expansion_seed
+Soy,nuts Soy,expanded_parenthetical,4,3,1,75.00,4,0.0015,"Soy (fiber, flour, grits, nuts, sprouts)"
+Soy,cheese Soy,expanded_parenthetical,3,3,0,100.00,3,0.0011,"Soy (milk, yogurt, ice cream, cheese)"
+Soy,soybean curd,expanded_parenthetical,3,3,0,100.00,3,0.0011,Tofu (soybean curd)
+Soy,TVP,expanded_parenthetical,5,2,3,40.00,5,0.0019,Textured vegetable protein (TVP)
+Soy,Bean curd,existing,1,1,0,100.00,1,0.0004,Bean curd
+Soy,Soy ice cream,expanded_parenthetical,1,1,0,100.00,1,0.0004,"Soy (milk, yogurt, ice cream, cheese)"
+Soy,Tempeh,existing,6,0,6,0.00,6,0.0023,Tempeh
+Soy,TVP Textured vegetable protein,expanded_parenthetical,3,0,3,0.00,3,0.0011,Textured vegetable protein (TVP)
+Fish,Pollock,existing,2287,749,1538,32.75,2372,0.8761,Pollock
+Fish,imitation crab,expanded_parenthetical,450,135,315,30.00,472,0.1724,Surimi (imitation crab)
+Fish,Worcestershire sauce,existing,719,130,589,18.08,734,0.2754,Worcestershire sauce
+Fish,Salmon,existing,488,130,358,26.64,655,0.1869,Salmon
+Fish,Anchovies,expanded_manual,367,122,245,33.24,383,0.1406,manual_expansion_seed
+Fish,Tuna,existing,751,121,630,16.11,1064,0.2877,Tuna
+Fish,Cod,existing,443,115,328,25.96,460,0.1697,Cod
+Fish,Fish Protein,expanded_manual,857,104,753,12.14,866,0.3283,manual_expansion_seed
+Fish,Anchovy,existing,358,90,268,25.14,404,0.1371,Anchovy
+Fish,Sardines,expanded_manual,49,48,1,97.96,53,0.0188,manual_expansion_seed
+Fish,Surimi,existing,377,40,337,10.61,379,0.1444,Surimi (imitation crab)
+Fish,Fish stock,existing,44,33,11,75.00,44,0.0169,Fish stock
+Fish,Fish sauce,existing,56,30,26,53.57,56,0.0215,Fish sauce
+Fish,Haddock,existing,112,29,83,25.89,114,0.0429,Haddock
+Fish,Tilapia,existing,206,23,183,11.17,215,0.0789,Tilapia
+Fish,Fish oil,existing,28,23,5,82.14,28,0.0107,Fish oil
+Fish,Sardine,expanded_manual,22,17,5,77.27,25,0.0084,manual_expansion_seed
+Fish,Mackerel,expanded_manual,14,14,0,100.00,14,0.0054,manual_expansion_seed
+Fish,Bonito,expanded_manual,25,13,12,52.00,30,0.0096,manual_expansion_seed
+Fish,Fish Powder,expanded_manual,15,11,4,73.33,16,0.0057,manual_expansion_seed
+Fish,Herring,expanded_manual,39,9,30,23.08,56,0.0149,manual_expansion_seed
+Fish,Fish gelatin,existing,26,9,17,34.62,26,0.0100,Fish gelatin
+Fish,Sole,existing,73,7,66,9.59,73,0.0280,Sole
+Fish,Flounder,existing,137,6,131,4.38,138,0.0525,Flounder
+Fish,Trout,existing,5,5,0,100.00,9,0.0019,Trout
+Fish,Fish broth,existing,4,4,0,100.00,4,0.0015,Fish broth
+Fish,Swordfish,existing,4,4,0,100.00,4,0.0015,Swordfish
+Fish,imitation crab Surimi,expanded_parenthetical,10,3,7,30.00,12,0.0038,Surimi (imitation crab)
+Fish,Mahi-mahi,existing,15,1,14,6.67,16,0.0057,Mahi-mahi
+Fish,Fish Extract,expanded_manual,7,1,6,14.29,7,0.0027,manual_expansion_seed
+Fish,Pike,existing,1,1,0,100.00,1,0.0004,Pike
+Fish,Snapper,existing,1,1,0,100.00,1,0.0004,Snapper
+Fish,Catfish,existing,10,0,10,0.00,10,0.0038,Catfish
+Fish,Halibut,existing,3,0,3,0.00,6,0.0011,Halibut
+Fish,Pollock Fillet,expanded_manual,3,0,3,0.00,3,0.0011,manual_expansion_seed
+Fish,Bass,existing,1,0,1,0.00,1,0.0004,Bass
+Fish,Eel,expanded_manual,1,0,1,0.00,1,0.0004,manual_expansion_seed
+Crustacean Shellfish,Crab,existing,1073,657,416,61.23,1750,0.4111,Crab
+Crustacean Shellfish,Shrimp,existing,1374,523,851,38.06,1877,0.5264,Shrimp
+Crustacean Shellfish,Extract,existing,20355,500,19855,2.46,25826,7.7977,"Extract (crab, clam, etc.)"
+Crustacean Shellfish,Surimi,existing,377,250,127,66.31,379,0.1444,Surimi
+Crustacean Shellfish,Lobster,existing,316,221,95,69.94,595,0.1211,Lobster
+Crustacean Shellfish,Crab Meat,expanded_manual,285,205,80,71.93,350,0.1092,manual_expansion_seed
+Crustacean Shellfish,clam,expanded_parenthetical,978,172,806,17.59,1404,0.3747,"Extract (crab, clam, etc.)"
+Crustacean Shellfish,clams,expanded_parenthetical,724,142,582,19.61,813,0.2774,"Molluscan shellfish (clams, mussels, oysters, scallops)"
+Crustacean Shellfish,crab Extract,expanded_parenthetical,244,80,164,32.79,245,0.0935,"Extract (crab, clam, etc.)"
+Crustacean Shellfish,Oyster,expanded_manual,297,64,233,21.55,762,0.1138,manual_expansion_seed
+Crustacean Shellfish,Shrimp Powder,expanded_manual,33,23,10,69.70,33,0.0126,manual_expansion_seed
+Crustacean Shellfish,oysters,expanded_parenthetical,31,19,12,61.29,31,0.0119,"Molluscan shellfish (clams, mussels, oysters, scallops)"
+Crustacean Shellfish,scallops,expanded_parenthetical,39,17,22,43.59,44,0.0149,"Molluscan shellfish (clams, mussels, oysters, scallops)"
+Crustacean Shellfish,clam Extract,expanded_parenthetical,17,15,2,88.24,18,0.0065,"Extract (crab, clam, etc.)"
+Crustacean Shellfish,Lobster Extract,expanded_manual,12,10,2,83.33,20,0.0046,manual_expansion_seed
+Crustacean Shellfish,mussels,expanded_parenthetical,25,9,16,36.00,25,0.0096,"Molluscan shellfish (clams, mussels, oysters, scallops)"
+Crustacean Shellfish,Shrimp Extract,expanded_manual,7,7,0,100.00,7,0.0027,manual_expansion_seed
+Crustacean Shellfish,Mussel,expanded_manual,6,5,1,83.33,6,0.0023,manual_expansion_seed
+Crustacean Shellfish,Prawns,existing,4,4,0,100.00,4,0.0015,Prawns
+Crustacean Shellfish,Extract clam,expanded_parenthetical,2,2,0,100.00,2,0.0008,"Extract (crab, clam, etc.)"
+Crustacean Shellfish,Molluscan shellfish,existing,2,2,0,100.00,3,0.0008,"Molluscan shellfish (clams, mussels, oysters, scallops)"
+Crustacean Shellfish,Scallop,expanded_manual,2,2,0,100.00,3,0.0008,manual_expansion_seed
+Crustacean Shellfish,Crawfish,existing,16,1,15,6.25,16,0.0061,Crawfish
+Crustacean Shellfish,Crevette,existing,1,1,0,100.00,1,0.0004,Crevette
+Crustacean Shellfish,Glucosamine,existing,1,1,0,100.00,1,0.0004,Glucosamine
+Crustacean Shellfish,Scampi,existing,11,0,11,0.00,11,0.0042,Scampi
+Sesame,Spices,existing,15275,717,14558,4.69,18007,5.8517,Spices
+Sesame,Natural flavor,existing,19928,599,19329,3.01,22949,7.6342,Natural flavor
+Sesame,Sesame oil,existing,1105,535,570,48.42,1190,0.4233,Sesame oil
+Sesame,Sesame Seeds,expanded_manual,2366,491,1875,20.75,2636,0.9064,manual_expansion_seed
+Sesame,Flavoring,existing,7448,345,7103,4.63,8486,2.8532,Flavoring (may contain sesame)
+Sesame,Sesame seed,existing,860,324,536,37.67,904,0.3295,Sesame seed
+Sesame,Toasted Sesame Oil,expanded_manual,154,100,54,64.94,172,0.0590,manual_expansion_seed
+Sesame,Black Sesame,expanded_manual,275,71,204,25.82,278,0.1053,manual_expansion_seed
+Sesame,Tahini,existing,175,71,104,40.57,175,0.0670,Tahini
+Sesame,Sesame flour,existing,89,27,62,30.34,89,0.0341,Sesame flour
+Sesame,White Sesame,expanded_manual,78,23,55,29.49,90,0.0299,manual_expansion_seed
+Sesame,Sesame Tahini,expanded_manual,77,19,58,24.68,77,0.0295,manual_expansion_seed
+Sesame,Sesame paste,existing,18,12,6,66.67,18,0.0069,Sesame paste
+Sesame,Hummus,existing,55,9,46,16.36,57,0.0211,Hummus
+Sesame,Sesame Butter,expanded_manual,3,3,0,100.00,3,0.0011,manual_expansion_seed
+Sesame,may contain sesame,expanded_parenthetical,2,1,1,50.00,2,0.0008,Flavoring (may contain sesame)
+Sesame,Tahini Paste,expanded_manual,1,1,0,100.00,1,0.0004,manual_expansion_seed

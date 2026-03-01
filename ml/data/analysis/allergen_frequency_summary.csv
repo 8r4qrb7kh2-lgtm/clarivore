@@ -1,0 +1,10 @@
+allergen,labeled_rows,labeled_rows_with_any_term,label_coverage_pct,term_mentions_total,unique_terms_matched
+Milk,108954,74101,68.01,724582,80
+Egg,47029,17890,38.04,146640,37
+Peanut,11905,7422,62.34,38043,17
+Tree Nut,20745,3445,16.61,21255,40
+Wheat,105033,90271,85.95,1379613,85
+Soy,184181,155152,84.24,959570,54
+Fish,3912,1393,35.61,8752,37
+Crustacean Shellfish,2725,1723,63.23,34226,26
+Sesame,10174,2265,22.26,55134,17

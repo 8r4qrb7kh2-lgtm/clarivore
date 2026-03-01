@@ -1,0 +1,284 @@
+class,class_scope,canonical_id,canonical_name,source_type,alias_count,rows_matched,target_rows,target_precision_pct,mentions_total,source_origin
+Milk,big9,milk__milk,Milk,workbook_existing,33,146687,67226,45.83,390303,Allergen-Ingredient Map:17
+Milk,big9,milk__cheese,Cheese,workbook_existing,4,36142,22951,63.50,93829,Allergen-Ingredient Map:5
+Milk,big9,milk__hydrolysates,Hydrolysates,workbook_existing,9,32523,17816,54.78,49453,Allergen-Ingredient Map:12
+Milk,big9,milk__cream,Cream,workbook_existing,1,28444,15399,54.14,43114,Allergen-Ingredient Map:6
+Milk,big9,milk__butter,Butter,workbook_existing,2,31856,15109,47.43,41487,Allergen-Ingredient Map:2
+Milk,big9,milk__whey,Whey,workbook_existing,6,9621,4704,48.89,13469,Allergen-Ingredient Map:26
+Milk,big9,milk__milk_solids,Milk Solids,manual_seed,3,7627,3769,49.42,8448,manual_seed
+Milk,big9,milk__butter_ester,Butter ester,workbook_existing,3,5277,2822,53.48,6130,Allergen-Ingredient Map:2
+Milk,big9,milk__caseinates,Caseinates,workbook_existing,6,3387,1970,58.16,5695,Allergen-Ingredient Map:4
+Milk,big9,milk__lactose,Lactose,workbook_existing,2,3648,1837,50.36,4036,Allergen-Ingredient Map:16
+Milk,big9,milk__casein,Casein,workbook_existing,2,2130,1774,83.29,2568,Allergen-Ingredient Map:4
+Milk,big9,milk__rennet,Rennet,workbook_existing,2,1655,1316,79.52,2134,Allergen-Ingredient Map:22
+Milk,big9,milk__rennet_casein,Rennet casein,workbook_existing,1,1148,1075,93.64,1518,Allergen-Ingredient Map:22
+Milk,big9,milk__caseinate_salts,Caseinate Salts,manual_seed,2,1192,639,53.61,1197,manual_seed
+Milk,big9,milk__yogurt,Yogurt,workbook_existing,2,1560,606,38.85,2340,Allergen-Ingredient Map:27
+Milk,big9,milk__cheese_flavor,Cheese flavor,workbook_existing,1,800,575,71.88,856,Allergen-Ingredient Map:5
+Milk,big9,milk__butter_oil,Butter oil,workbook_existing,1,917,414,45.15,968,Allergen-Ingredient Map:2
+Milk,big9,milk__artificial_butter_flavor,Artificial butter flavor,workbook_existing,1,829,401,48.37,836,Allergen-Ingredient Map:3
+Milk,big9,milk__half_and_half,Half-and-half,workbook_existing,1,469,391,83.37,469,Allergen-Ingredient Map:11
+Milk,big9,milk__diacetyl,Diacetyl,workbook_existing,2,484,205,42.36,484,Allergen-Ingredient Map:9
+Milk,big9,milk__pudding,Pudding,workbook_existing,2,163,130,79.75,186,Allergen-Ingredient Map:20
+Milk,big9,milk__butter_fat,Butter fat,workbook_existing,1,140,112,80.00,162,Allergen-Ingredient Map:2
+Milk,big9,milk__whey_protein_hydrolysate,Whey Protein Hydrolysate,manual_seed,3,111,106,95.50,111,manual_seed
+Milk,big9,milk__curds,Curds,workbook_existing,2,94,60,63.83,94,Allergen-Ingredient Map:7
+Milk,big9,milk__tagatose,Tagatose,workbook_existing,2,46,27,58.70,46,Allergen-Ingredient Map:25
+Milk,big9,milk__nougat,Nougat,workbook_existing,2,20,14,70.00,20,Allergen-Ingredient Map:19
+Milk,big9,milk__custard,Custard,workbook_existing,2,11,11,100.00,11,Allergen-Ingredient Map:8
+Milk,big9,milk__ghee,Ghee,workbook_existing,2,15,10,66.67,15,Allergen-Ingredient Map:10
+Milk,big9,milk__butter_acid,Butter acid,workbook_existing,1,0,0,0.00,0,Allergen-Ingredient Map:2
+Milk,big9,milk__ice_cream,Ice cream,workbook_existing,1,0,0,0.00,0,Allergen-Ingredient Map:13
+Milk,big9,milk__lactalbumin,Lactalbumin,workbook_existing,2,0,0,0.00,0,Allergen-Ingredient Map:14
+Milk,big9,milk__lactalbumin_phosphate,Lactalbumin phosphate,workbook_existing,1,0,0,0.00,0,Allergen-Ingredient Map:14
+Milk,big9,milk__lactoferrin,Lactoferrin,workbook_existing,2,0,0,0.00,0,Allergen-Ingredient Map:15
+Milk,big9,milk__lactoglobulin,Lactoglobulin,workbook_existing,2,0,0,0.00,0,Allergen-Ingredient Map:15
+Milk,big9,milk__lactulose,Lactulose,workbook_existing,2,0,0,0.00,0,Allergen-Ingredient Map:16
+Milk,big9,milk__milk_protein_hydrolysate,Milk protein hydrolysate,workbook_existing,1,0,0,0.00,0,Allergen-Ingredient Map:18
+Milk,big9,milk__recaldenttm,RecaldentTM,workbook_existing,2,0,0,0.00,0,Allergen-Ingredient Map:21
+Milk,big9,milk__simpless,Simpless,workbook_existing,2,0,0,0.00,0,Allergen-Ingredient Map:23
+Milk,big9,milk__sour_milk_solids,Sour milk solids,workbook_existing,1,0,0,0.00,0,Allergen-Ingredient Map:24
+Egg,big9,egg__egg,Egg,workbook_existing,19,7840,2607,33.25,7997,Allergen-Ingredient Map:32
+Egg,big9,egg__mayonnaise,Mayonnaise,workbook_existing,2,2153,817,37.95,2207,Allergen-Ingredient Map:41
+Egg,big9,egg__egg_noodles,Egg noodles,workbook_existing,1,1467,703,47.92,1467,Allergen-Ingredient Map:33
+Egg,big9,egg__dried_egg,Dried egg,workbook_existing,1,823,365,44.35,879,Allergen-Ingredient Map:31
+Egg,big9,egg__surimi,Surimi,workbook_existing,2,377,280,74.27,379,Allergen-Ingredient Map:48
+Egg,big9,egg__egg_powder,Egg Powder,manual_seed,3,118,75,63.56,200,manual_seed
+Egg,big9,egg__liquid_egg,Liquid Egg,manual_seed,3,247,44,17.81,267,manual_seed
+Egg,big9,egg__lysozyme,Lysozyme,workbook_existing,2,82,39,47.56,82,Allergen-Ingredient Map:40
+Egg,big9,egg__albumen,Albumen,workbook_existing,2,82,10,12.20,82,Allergen-Ingredient Map:28
+Egg,big9,egg__aioli,Aioli,workbook_existing,2,8,5,62.50,8,Allergen-Ingredient Map:41
+Egg,big9,egg__egg_wash,Egg wash,workbook_existing,1,8,3,37.50,8,Allergen-Ingredient Map:36
+Egg,big9,egg__albumin,Albumin,workbook_existing,2,12,0,0.00,12,Allergen-Ingredient Map:28
+Egg,big9,egg__eggnog,Eggnog,workbook_existing,2,8,0,0.00,8,Allergen-Ingredient Map:35
+Egg,big9,egg__meringue,Meringue,workbook_existing,2,1,0,0.00,1,Allergen-Ingredient Map:42
+Egg,big9,egg__apovitellin,Apovitellin,workbook_existing,2,0,0,0.00,0,Allergen-Ingredient Map:29
+Egg,big9,egg__cholesterol_free_egg_substitute,Cholesterol-free egg substitute,workbook_existing,1,0,0,0.00,0,Allergen-Ingredient Map:30
+Egg,big9,egg__dried_egg_solids,Dried egg solids,workbook_existing,1,0,0,0.00,0,Allergen-Ingredient Map:31
+Egg,big9,egg__egg_substitutes,Egg substitutes,workbook_existing,1,0,0,0.00,0,Allergen-Ingredient Map:34
+Egg,big9,egg__fat_substitutes,Fat substitutes,workbook_existing,3,0,0,0.00,0,Allergen-Ingredient Map:37
+Egg,big9,egg__globulin,Globulin,workbook_existing,2,0,0,0.00,0,Allergen-Ingredient Map:38
+Egg,big9,egg__livetin,Livetin,workbook_existing,2,0,0,0.00,0,Allergen-Ingredient Map:39
+Egg,big9,egg__meringue_powder,Meringue powder,workbook_existing,1,0,0,0.00,0,Allergen-Ingredient Map:42
+Egg,big9,egg__ovalbumin,Ovalbumin,workbook_existing,2,0,0,0.00,0,Allergen-Ingredient Map:43
+Egg,big9,egg__ovoglobulin,Ovoglobulin,workbook_existing,2,0,0,0.00,0,Allergen-Ingredient Map:44
+Egg,big9,egg__ovomucin,Ovomucin,workbook_existing,2,0,0,0.00,0,Allergen-Ingredient Map:45
+Egg,big9,egg__ovomucoid,Ovomucoid,workbook_existing,2,0,0,0.00,0,Allergen-Ingredient Map:45
+Egg,big9,egg__ovotransferrin,Ovotransferrin,workbook_existing,2,0,0,0.00,0,Allergen-Ingredient Map:46
+Egg,big9,egg__ovovitelia,Ovovitelia,workbook_existing,2,0,0,0.00,0,Allergen-Ingredient Map:47
+Egg,big9,egg__ovovitellin,Ovovitellin,workbook_existing,2,0,0,0.00,0,Allergen-Ingredient Map:47
+Peanut,big9,peanut__peanut_butter,Peanut butter,workbook_existing,1,6967,4567,65.55,7888,Allergen-Ingredient Map:60
+Peanut,big9,peanut__arachis_oil,Arachis oil,workbook_existing,3,1445,571,39.52,1586,Allergen-Ingredient Map:49
+Peanut,big9,peanut__peanut_flour,Peanut flour,workbook_existing,1,896,513,57.25,1070,Allergen-Ingredient Map:61
+Peanut,big9,peanut__mixed_nuts,Mixed nuts,workbook_existing,1,14,8,57.14,14,Allergen-Ingredient Map:56
+Peanut,big9,peanut__peanut_meal,Peanut meal,workbook_existing,1,49,3,6.12,49,Allergen-Ingredient Map:61
+Peanut,big9,peanut__nut_pieces,Nut pieces,workbook_existing,1,1,1,100.00,1,Allergen-Ingredient Map:59
+Peanut,big9,peanut__beer_nuts,Beer nuts,workbook_existing,1,40,0,0.00,40,Allergen-Ingredient Map:51
+Peanut,big9,peanut__cold_pressed,Cold pressed,workbook_existing,1,8,0,0.00,8,Allergen-Ingredient Map:52
+Peanut,big9,peanut__lupin,Lupin,workbook_existing,4,2,0,0.00,2,Allergen-Ingredient Map:63
+Peanut,big9,peanut__lupine,Lupine,workbook_existing,2,1,0,0.00,1,Allergen-Ingredient Map:63
+Peanut,big9,peanut__artificial_nuts,Artificial nuts,workbook_existing,1,0,0,0.00,0,Allergen-Ingredient Map:50
+Peanut,big9,peanut__expeller_pressed,Expeller pressed,workbook_existing,1,0,0,0.00,0,Allergen-Ingredient Map:52
+Peanut,big9,peanut__extruded_peanut_oil,Extruded peanut oil,workbook_existing,1,0,0,0.00,0,Allergen-Ingredient Map:52
+Peanut,big9,peanut__goober_nuts,Goober nuts,workbook_existing,1,0,0,0.00,0,Allergen-Ingredient Map:53
+Peanut,big9,peanut__goober_peas,Goober peas,workbook_existing,1,0,0,0.00,0,Allergen-Ingredient Map:53
+Peanut,big9,peanut__goobers,Goobers,workbook_existing,2,0,0,0.00,0,Allergen-Ingredient Map:53
+Peanut,big9,peanut__ground_nuts,Ground nuts,workbook_existing,1,0,0,0.00,0,Allergen-Ingredient Map:54
+Peanut,big9,peanut__mandelonas,Mandelonas,workbook_existing,2,0,0,0.00,0,Allergen-Ingredient Map:55
+Peanut,big9,peanut__monkey_nuts,Monkey nuts,workbook_existing,1,0,0,0.00,0,Allergen-Ingredient Map:57
+Peanut,big9,peanut__nu_nuts,Nu-Nuts,workbook_existing,1,0,0,0.00,0,Allergen-Ingredient Map:58
+Peanut,big9,peanut__nut_meat,Nut meat,workbook_existing,1,0,0,0.00,0,Allergen-Ingredient Map:59
+Peanut,big9,peanut__peanut_protein_hydrolysate,Peanut protein hydrolysate,workbook_existing,1,0,0,0.00,0,Allergen-Ingredient Map:62
+Tree Nut,big9,tree_nut__almond,Almond,workbook_existing,2,5811,2270,39.06,7006,Allergen-Ingredient Map:64
+Tree Nut,big9,tree_nut__cashew,Cashew,workbook_existing,2,1376,466,33.87,1548,Allergen-Ingredient Map:69
+Tree Nut,big9,tree_nut__coconut_milk,Coconut Milk,manual_seed,3,505,364,72.08,583,manual_seed
+Tree Nut,big9,tree_nut__natural_nut_extract,Natural nut extract,workbook_existing,7,1039,343,33.01,1092,Allergen-Ingredient Map:80
+Tree Nut,big9,tree_nut__hazelnut,Hazelnut,workbook_existing,2,733,311,42.43,807,Allergen-Ingredient Map:72
+Tree Nut,big9,tree_nut__almond_milk,Almond Milk,manual_seed,3,207,173,83.57,232,manual_seed
+Tree Nut,big9,tree_nut__nut_butters,Nut butters,workbook_existing,7,235,88,37.45,241,Allergen-Ingredient Map:82
+Tree Nut,big9,tree_nut__pecan,Pecan,workbook_existing,2,149,78,52.35,159,Allergen-Ingredient Map:86
+Tree Nut,big9,tree_nut__cashew_butter,Cashew butter,workbook_existing,1,49,39,79.59,49,Allergen-Ingredient Map:69
+Tree Nut,big9,tree_nut__praline,Praline,workbook_existing,2,56,28,50.00,61,Allergen-Ingredient Map:91
+Tree Nut,big9,tree_nut__brazil_nut,Brazil nut,workbook_existing,1,26,26,100.00,26,Allergen-Ingredient Map:67
+Tree Nut,big9,tree_nut__macadamia_nut,Macadamia nut,workbook_existing,1,23,23,100.00,23,Allergen-Ingredient Map:77
+Tree Nut,big9,tree_nut__pine_nut,Pine nut,workbook_existing,13,23,23,100.00,23,Allergen-Ingredient Map:89
+Tree Nut,big9,tree_nut__coconut,Coconut,workbook_existing,2,25,20,80.00,26,Allergen-Ingredient Map:94
+Tree Nut,big9,tree_nut__filbert,Filbert,workbook_existing,2,53,19,35.85,54,Allergen-Ingredient Map:72
+Tree Nut,big9,tree_nut__marzipan,Marzipan,workbook_existing,2,16,16,100.00,16,Allergen-Ingredient Map:78
+Tree Nut,big9,tree_nut__butternut,Butternut,workbook_existing,2,348,14,4.02,372,Allergen-Ingredient Map:68
+Tree Nut,big9,tree_nut__almond_extract,Almond extract,workbook_existing,1,18,10,55.56,18,Allergen-Ingredient Map:64
+Tree Nut,big9,tree_nut__walnut,Walnut,workbook_existing,15,149,8,5.37,176,Allergen-Ingredient Map:93
+Tree Nut,big9,tree_nut__nougat,Nougat,workbook_existing,2,20,8,40.00,20,Allergen-Ingredient Map:81
+Tree Nut,big9,tree_nut__nut_oils,Nut oils,workbook_existing,5,10,8,80.00,10,Allergen-Ingredient Map:84
+Tree Nut,big9,tree_nut__pesto,Pesto,workbook_existing,2,98,7,7.14,111,Allergen-Ingredient Map:87
+Tree Nut,big9,tree_nut__almond_paste,Almond paste,workbook_existing,1,17,6,35.29,17,Allergen-Ingredient Map:64
+Tree Nut,big9,tree_nut__nutella,Nutella,workbook_existing,2,2,2,100.00,2,Allergen-Ingredient Map:85
+Tree Nut,big9,tree_nut__karite,Karite,workbook_existing,2,1,1,100.00,1,Allergen-Ingredient Map:92
+Tree Nut,big9,tree_nut__nut_pieces,Nut pieces,workbook_existing,1,1,1,100.00,1,Allergen-Ingredient Map:83
+Tree Nut,big9,tree_nut__chestnut,Chestnut,workbook_existing,2,22,0,0.00,22,Allergen-Ingredient Map:70
+Tree Nut,big9,tree_nut__shea_nut,Shea nut,workbook_existing,1,9,0,0.00,9,Allergen-Ingredient Map:92
+Tree Nut,big9,tree_nut__artificial_nuts,Artificial nuts,workbook_existing,1,0,0,0.00,0,Allergen-Ingredient Map:65
+Tree Nut,big9,tree_nut__beechnut,Beechnut,workbook_existing,2,0,0,0.00,0,Allergen-Ingredient Map:66
+Tree Nut,big9,tree_nut__bush_nut,Bush nut,workbook_existing,1,0,0,0.00,0,Allergen-Ingredient Map:77
+Tree Nut,big9,tree_nut__chinquapin_nut,Chinquapin nut,workbook_existing,1,0,0,0.00,0,Allergen-Ingredient Map:71
+Tree Nut,big9,tree_nut__gianduja,Gianduja,workbook_existing,2,0,0,0.00,0,Allergen-Ingredient Map:73
+Tree Nut,big9,tree_nut__ginkgo_nut,Ginkgo nut,workbook_existing,1,0,0,0.00,0,Allergen-Ingredient Map:74
+Tree Nut,big9,tree_nut__hickory_nut,Hickory nut,workbook_existing,1,0,0,0.00,0,Allergen-Ingredient Map:75
+Tree Nut,big9,tree_nut__lichee,Lichee,workbook_existing,2,0,0,0.00,0,Allergen-Ingredient Map:76
+Tree Nut,big9,tree_nut__litchi,Litchi,workbook_existing,2,0,0,0.00,0,Allergen-Ingredient Map:76
+Tree Nut,big9,tree_nut__lychee_nut,Lychee nut,workbook_existing,1,0,0,0.00,0,Allergen-Ingredient Map:76
+Tree Nut,big9,tree_nut__nangai_nut,Nangai nut,workbook_existing,1,0,0,0.00,0,Allergen-Ingredient Map:79
+Tree Nut,big9,tree_nut__nut_meal,Nut meal,workbook_existing,1,0,0,0.00,0,Allergen-Ingredient Map:83
+Tree Nut,big9,tree_nut__nut_meat,Nut meat,workbook_existing,1,0,0,0.00,0,Allergen-Ingredient Map:83
+Tree Nut,big9,tree_nut__nut_paste,Nut paste,workbook_existing,1,0,0,0.00,0,Allergen-Ingredient Map:83
+Tree Nut,big9,tree_nut__pili_nut,Pili nut,workbook_existing,1,0,0,0.00,0,Allergen-Ingredient Map:88
+Tree Nut,big9,tree_nut__pistachio,Pistachio,workbook_existing,0,0,0,0.00,0,Allergen-Ingredient Map:90
+Wheat,big9,wheat__wheat,Wheat,workbook_existing,23,186358,87249,46.82,396787,Allergen-Ingredient Map:118
+Wheat,big9,wheat__flour,Flour,workbook_existing,34,171428,83921,48.95,578800,Allergen-Ingredient Map:106
+Wheat,big9,wheat__modified_food_starch,Modified food starch,workbook_existing,3,17038,6620,38.85,19368,Allergen-Ingredient Map:110
+Wheat,big9,wheat__durum,Durum,workbook_existing,2,5187,3060,58.99,6081,Allergen-Ingredient Map:101
+Wheat,big9,wheat__pasta,Pasta,workbook_existing,2,5202,2845,54.69,5847,Allergen-Ingredient Map:111
+Wheat,big9,wheat__semolina,Semolina,workbook_existing,2,5854,2802,47.86,6534,Allergen-Ingredient Map:113
+Wheat,big9,wheat__vital_wheat_gluten,Vital wheat gluten,workbook_existing,1,3109,1776,57.12,3179,Allergen-Ingredient Map:117
+Wheat,big9,wheat__bread_crumbs,Bread crumbs,workbook_existing,1,3682,1657,45.00,3705,Allergen-Ingredient Map:95
+Wheat,big9,wheat__wheat_protein_isolate,Wheat protein isolate,workbook_existing,1,681,444,65.20,682,Allergen-Ingredient Map:122
+Wheat,big9,wheat__triticale,Triticale,workbook_existing,2,528,409,77.46,535,Allergen-Ingredient Map:116
+Wheat,big9,wheat__bulgur,Bulgur,workbook_existing,2,615,344,55.93,672,Allergen-Ingredient Map:96
+Wheat,big9,wheat__spelt,Spelt,workbook_existing,2,368,282,76.63,369,Allergen-Ingredient Map:114
+Wheat,big9,wheat__cracker_meal,Cracker meal,workbook_existing,1,192,91,47.40,192,Allergen-Ingredient Map:100
+Wheat,big9,wheat__kamut,Kamut,workbook_existing,2,92,77,83.70,92,Allergen-Ingredient Map:108
+Wheat,big9,wheat__couscous,Couscous,workbook_existing,2,81,66,81.48,85,Allergen-Ingredient Map:99
+Wheat,big9,wheat__hydrolyzed_wheat_protein,Hydrolyzed wheat protein,workbook_existing,1,52,38,73.08,52,Allergen-Ingredient Map:107
+Wheat,big9,wheat__farina,Farina,workbook_existing,2,48,34,70.83,63,Allergen-Ingredient Map:104
+Wheat,big9,wheat__farro,Farro,workbook_existing,2,48,34,70.83,70,Allergen-Ingredient Map:105
+Wheat,big9,wheat__sprouted_wheat,Sprouted wheat,workbook_existing,1,37,27,72.97,37,Allergen-Ingredient Map:115
+Wheat,big9,wheat__einkorn,Einkorn,workbook_existing,2,8,8,100.00,8,Allergen-Ingredient Map:102
+Wheat,big9,wheat__whole_wheat_berries,Whole wheat berries,workbook_existing,1,8,8,100.00,8,Allergen-Ingredient Map:123
+Wheat,big9,wheat__matzo,Matzo,workbook_existing,2,8,6,75.00,8,Allergen-Ingredient Map:109
+Wheat,big9,wheat__emmer,Emmer,workbook_existing,2,6,6,100.00,6,Allergen-Ingredient Map:103
+Wheat,big9,wheat__seitan,Seitan,workbook_existing,2,4,1,25.00,4,Allergen-Ingredient Map:112
+Wheat,big9,wheat__cereal_extract,Cereal extract,workbook_existing,1,0,0,0.00,0,Allergen-Ingredient Map:97
+Wheat,big9,wheat__club_wheat,Club wheat,workbook_existing,1,0,0,0.00,0,Allergen-Ingredient Map:98
+Wheat,big9,wheat__matza,Matza,workbook_existing,4,0,0,0.00,0,Allergen-Ingredient Map:109
+Wheat,big9,wheat__matzah,Matzah,workbook_existing,2,0,0,0.00,0,Allergen-Ingredient Map:109
+Wheat,big9,wheat__matzoh,Matzoh,workbook_existing,2,0,0,0.00,0,Allergen-Ingredient Map:109
+Wheat,big9,wheat__wheat_bran_hydrolysate,Wheat bran hydrolysate,workbook_existing,1,0,0,0.00,0,Allergen-Ingredient Map:119
+Wheat,big9,wheat__wheat_germ_oil,Wheat germ oil,workbook_existing,1,0,0,0.00,0,Allergen-Ingredient Map:120
+Wheat,big9,wheat__wheat_grass,Wheat grass,workbook_existing,0,0,0,0.00,0,Allergen-Ingredient Map:121
+Soy,big9,soy__soy,Soy,workbook_existing,24,202858,148768,73.34,720629,Allergen-Ingredient Map:129
+Soy,big9,soy__soybean,Soybean,workbook_existing,2,98740,72318,73.24,120522,Allergen-Ingredient Map:135
+Soy,big9,soy__soy_lecithin,Soy lecithin,workbook_existing,1,26348,21173,80.36,33366,Allergen-Ingredient Map:131
+Soy,big9,soy__soy_protein,Soy protein,workbook_existing,10,28574,19602,68.60,65632,Allergen-Ingredient Map:132
+Soy,big9,soy__soy_sauce,Soy sauce,workbook_existing,1,4014,2792,69.56,4676,Allergen-Ingredient Map:133
+Soy,big9,soy__textured_vegetable_protein,Textured vegetable protein,workbook_existing,3,2845,2565,90.16,2960,Allergen-Ingredient Map:138
+Soy,big9,soy__textured_soy_flour,Textured soy flour,workbook_existing,3,1737,1578,90.85,1741,Allergen-Ingredient Map:138
+Soy,big9,soy__defatted_soy_flour,Defatted Soy Flour,manual_seed,2,868,758,87.33,868,manual_seed
+Soy,big9,soy__expeller_pressed,expeller pressed),workbook_existing,1,1557,745,47.85,1704,Allergen-Ingredient Map:135
+Soy,big9,soy__soybean_lecithin,Soybean Lecithin,manual_seed,1,495,365,73.74,519,manual_seed
+Soy,big9,soy__edamame,Edamame,workbook_existing,2,327,253,77.37,351,Allergen-Ingredient Map:125
+Soy,big9,soy__miso,Miso,workbook_existing,2,261,190,72.80,285,Allergen-Ingredient Map:126
+Soy,big9,soy__tamari,Tamari,workbook_existing,2,303,140,46.20,311,Allergen-Ingredient Map:136
+Soy,big9,soy__tofu,Tofu,workbook_existing,4,172,125,72.67,185,Allergen-Ingredient Map:139
+Soy,big9,soy__soy_isolate,Soy Isolate,manual_seed,2,10,10,100.00,10,manual_seed
+Soy,big9,soy__bean_curd,Bean curd,workbook_existing,1,1,1,100.00,1,Allergen-Ingredient Map:124
+Soy,big9,soy__tempeh,Tempeh,workbook_existing,2,6,0,0.00,6,Allergen-Ingredient Map:137
+Soy,big9,soy__natto,Natto,workbook_existing,2,0,0,0.00,0,Allergen-Ingredient Map:127
+Soy,big9,soy__shoyu_sauce,Shoyu sauce,workbook_existing,1,0,0,0.00,0,Allergen-Ingredient Map:128
+Soy,big9,soy__soya,Soya,workbook_existing,2,0,0,0.00,0,Allergen-Ingredient Map:134
+Soy,big9,soy__soybean_oil_cold_pressed,Soybean oil (cold pressed,workbook_existing,1,0,0,0.00,0,Allergen-Ingredient Map:135
+Fish,big9,fish__pollock,Pollock,workbook_existing,2,2287,749,32.75,2372,Allergen-Ingredient Map:157
+Fish,big9,fish__anchovy,Anchovy,workbook_existing,2,358,90,25.14,404,Allergen-Ingredient Map:140
+Fish,big9,fish__sardine,Sardine,manual_seed,2,71,65,91.55,78,manual_seed
+Fish,big9,fish__surimi,Surimi,workbook_existing,4,377,40,10.61,379,Allergen-Ingredient Map:161
+Fish,big9,fish__fish_stock,Fish stock,workbook_existing,1,44,33,75.00,44,Allergen-Ingredient Map:147
+Fish,big9,fish__fish_sauce,Fish sauce,workbook_existing,1,56,30,53.57,56,Allergen-Ingredient Map:146
+Fish,big9,fish__haddock,Haddock,workbook_existing,2,112,29,25.89,114,Allergen-Ingredient Map:150
+Fish,big9,fish__tilapia,Tilapia,workbook_existing,2,206,23,11.17,215,Allergen-Ingredient Map:163
+Fish,big9,fish__fish_oil,Fish oil,workbook_existing,1,28,23,82.14,28,Allergen-Ingredient Map:145
+Fish,big9,fish__mackerel,Mackerel,manual_seed,2,14,14,100.00,14,manual_seed
+Fish,big9,fish__fish_gelatin,Fish gelatin,workbook_existing,1,26,9,34.62,26,Allergen-Ingredient Map:144
+Fish,big9,fish__sole,Sole,workbook_existing,2,73,7,9.59,73,Allergen-Ingredient Map:160
+Fish,big9,fish__flounder,Flounder,workbook_existing,2,137,6,4.38,138,Allergen-Ingredient Map:148
+Fish,big9,fish__trout,Trout,workbook_existing,2,5,5,100.00,9,Allergen-Ingredient Map:164
+Fish,big9,fish__fish_broth,Fish broth,workbook_existing,1,4,4,100.00,4,Allergen-Ingredient Map:147
+Fish,big9,fish__swordfish,Swordfish,workbook_existing,2,4,4,100.00,4,Allergen-Ingredient Map:162
+Fish,big9,fish__mahi_mahi,Mahi-mahi,workbook_existing,1,15,1,6.67,16,Allergen-Ingredient Map:153
+Fish,big9,fish__pike,Pike,workbook_existing,2,1,1,100.00,1,Allergen-Ingredient Map:156
+Fish,big9,fish__snapper,Snapper,workbook_existing,2,1,1,100.00,1,Allergen-Ingredient Map:159
+Fish,big9,fish__catfish,Catfish,workbook_existing,2,10,0,0.00,10,Allergen-Ingredient Map:142
+Fish,big9,fish__halibut,Halibut,workbook_existing,2,3,0,0.00,6,Allergen-Ingredient Map:151
+Fish,big9,fish__bass,Bass,workbook_existing,1,1,0,0.00,1,Allergen-Ingredient Map:141
+Fish,big9,fish__cod,Cod,workbook_existing,1,0,0,0.00,0,Allergen-Ingredient Map:143
+Fish,big9,fish__grouper,Grouper,workbook_existing,2,0,0,0.00,0,Allergen-Ingredient Map:149
+Fish,big9,fish__isinglass,Isinglass,workbook_existing,2,0,0,0.00,0,Allergen-Ingredient Map:152
+Fish,big9,fish__omega_3_supplements,Omega-3 supplements,workbook_existing,3,0,0,0.00,0,Allergen-Ingredient Map:154
+Fish,big9,fish__perch,Perch,workbook_existing,2,0,0,0.00,0,Allergen-Ingredient Map:155
+Fish,big9,fish__salmon,Salmon,workbook_existing,2,0,0,0.00,0,Allergen-Ingredient Map:158
+Fish,big9,fish__tuna,Tuna,workbook_existing,2,0,0,0.00,0,Allergen-Ingredient Map:165
+Fish,big9,fish__worcestershire_sauce,Worcestershire sauce,workbook_existing,1,0,0,0.00,0,Allergen-Ingredient Map:166
+Crustacean Shellfish,big9,shellfish__crab,Crab,workbook_existing,2,1073,657,61.23,1750,Allergen-Ingredient Map:168
+Crustacean Shellfish,big9,shellfish__shrimp,Shrimp,workbook_existing,2,1375,524,38.11,1880,Allergen-Ingredient Map:177
+Crustacean Shellfish,big9,shellfish__crab_meat,Crab Meat,manual_seed,3,737,385,52.24,914,manual_seed
+Crustacean Shellfish,big9,shellfish__surimi,Surimi,workbook_existing,2,377,250,66.31,379,Allergen-Ingredient Map:182
+Crustacean Shellfish,big9,shellfish__lobster,Lobster,workbook_existing,2,316,221,69.94,595,Allergen-Ingredient Map:172
+Crustacean Shellfish,big9,shellfish__molluscan_shellfish,Molluscan shellfish,workbook_existing,12,393,111,28.24,874,Allergen-Ingredient Map:183
+Crustacean Shellfish,big9,shellfish__lobster_extract,Lobster Extract,manual_seed,1,12,10,83.33,20,manual_seed
+Crustacean Shellfish,big9,shellfish__prawns,Prawns,workbook_existing,2,7,7,100.00,9,Allergen-Ingredient Map:174
+Crustacean Shellfish,big9,shellfish__extract,Extract,workbook_existing,4,2,2,100.00,2,Allergen-Ingredient Map:176
+Crustacean Shellfish,big9,shellfish__crawfish,Crawfish,workbook_existing,2,16,1,6.25,16,Allergen-Ingredient Map:169
+Crustacean Shellfish,big9,shellfish__crevette,Crevette,workbook_existing,2,1,1,100.00,2,Allergen-Ingredient Map:177
+Crustacean Shellfish,big9,shellfish__glucosamine,Glucosamine,workbook_existing,2,1,1,100.00,1,Allergen-Ingredient Map:181
+Crustacean Shellfish,big9,shellfish__scampi,Scampi,workbook_existing,2,11,0,0.00,11,Allergen-Ingredient Map:175
+Crustacean Shellfish,big9,shellfish__barnacle,Barnacle,workbook_existing,2,0,0,0.00,0,Allergen-Ingredient Map:167
+Crustacean Shellfish,big9,shellfish__bouillabaisse,Bouillabaisse,workbook_existing,2,0,0,0.00,0,Allergen-Ingredient Map:179
+Crustacean Shellfish,big9,shellfish__crawdad,Crawdad,workbook_existing,2,0,0,0.00,0,Allergen-Ingredient Map:169
+Crustacean Shellfish,big9,shellfish__crayfish,Crayfish,workbook_existing,2,0,0,0.00,0,Allergen-Ingredient Map:169
+Crustacean Shellfish,big9,shellfish__cuttlefish_ink,Cuttlefish ink,workbook_existing,1,0,0,0.00,0,Allergen-Ingredient Map:180
+Crustacean Shellfish,big9,shellfish__ecrevisse,Ecrevisse,workbook_existing,2,0,0,0.00,0,Allergen-Ingredient Map:169
+Crustacean Shellfish,big9,shellfish__krill,Krill,workbook_existing,2,0,0,0.00,0,Allergen-Ingredient Map:170
+Crustacean Shellfish,big9,shellfish__krill_oil,Krill oil,workbook_existing,1,0,0,0.00,0,Allergen-Ingredient Map:171
+Crustacean Shellfish,big9,shellfish__langouste,Langouste,workbook_existing,2,0,0,0.00,0,Allergen-Ingredient Map:172
+Crustacean Shellfish,big9,shellfish__langoustine,Langoustine,workbook_existing,2,0,0,0.00,0,Allergen-Ingredient Map:172
+Crustacean Shellfish,big9,shellfish__moreton_bay_bugs,Moreton bay bugs,workbook_existing,1,0,0,0.00,0,Allergen-Ingredient Map:173
+Crustacean Shellfish,big9,shellfish__seafood_flavoring,Seafood flavoring,workbook_existing,1,0,0,0.00,0,Allergen-Ingredient Map:176
+Crustacean Shellfish,big9,shellfish__tomalley,Tomalley,workbook_existing,2,0,0,0.00,0,Allergen-Ingredient Map:178
+Sesame,big9,sesame__sesame_oil,Sesame oil,workbook_existing,1,1105,535,48.42,1190,Allergen-Ingredient Map:190
+Sesame,big9,sesame__sesame_seed,Sesame seed,workbook_existing,1,860,324,37.67,904,Allergen-Ingredient Map:193
+Sesame,big9,sesame__tahini,Tahini,workbook_existing,2,175,71,40.57,175,Allergen-Ingredient Map:198
+Sesame,big9,sesame__sesame_flour,Sesame flour,workbook_existing,1,89,27,30.34,89,Allergen-Ingredient Map:189
+Sesame,big9,sesame__sesame_paste,Sesame paste,workbook_existing,1,18,12,66.67,18,Allergen-Ingredient Map:191
+Sesame,big9,sesame__hummus,Hummus,workbook_existing,2,55,9,16.36,57,Allergen-Ingredient Map:188
+Sesame,big9,sesame__flavoring,Flavoring,workbook_existing,4,2,1,50.00,2,Allergen-Ingredient Map:201
+Sesame,big9,sesame__benne,Benne,workbook_existing,2,0,0,0.00,0,Allergen-Ingredient Map:184
+Sesame,big9,sesame__benne_seed,Benne seed,workbook_existing,1,0,0,0.00,0,Allergen-Ingredient Map:184
+Sesame,big9,sesame__benniseed,Benniseed,workbook_existing,2,0,0,0.00,0,Allergen-Ingredient Map:184
+Sesame,big9,sesame__gingelly,Gingelly,workbook_existing,2,0,0,0.00,0,Allergen-Ingredient Map:185
+Sesame,big9,sesame__gingelly_oil,Gingelly oil,workbook_existing,1,0,0,0.00,0,Allergen-Ingredient Map:185
+Sesame,big9,sesame__gomasio,Gomasio,workbook_existing,2,0,0,0.00,0,Allergen-Ingredient Map:186
+Sesame,big9,sesame__halva,Halva,workbook_existing,2,0,0,0.00,0,Allergen-Ingredient Map:187
+Sesame,big9,sesame__halvah,Halvah,workbook_existing,2,0,0,0.00,0,Allergen-Ingredient Map:187
+Sesame,big9,sesame__natural_flavor,Natural flavor,workbook_existing,1,0,0,0.00,0,Allergen-Ingredient Map:201
+Sesame,big9,sesame__sesame_salt,Sesame salt,workbook_existing,1,0,0,0.00,0,Allergen-Ingredient Map:192
+Sesame,big9,sesame__sesamol,Sesamol,workbook_existing,2,0,0,0.00,0,Allergen-Ingredient Map:194
+Sesame,big9,sesame__sesamum_indicum,Sesamum indicum,workbook_existing,1,0,0,0.00,0,Allergen-Ingredient Map:195
+Sesame,big9,sesame__sesemolina,Sesemolina,workbook_existing,2,0,0,0.00,0,Allergen-Ingredient Map:196
+Sesame,big9,sesame__sim_sim,Sim sim,workbook_existing,1,0,0,0.00,0,Allergen-Ingredient Map:197
+Sesame,big9,sesame__spices,Spices,workbook_existing,2,0,0,0.00,0,Allergen-Ingredient Map:201
+Sesame,big9,sesame__tahina,Tahina,workbook_existing,2,0,0,0.00,0,Allergen-Ingredient Map:198
+Sesame,big9,sesame__teel,Teel,workbook_existing,2,0,0,0.00,0,Allergen-Ingredient Map:199
+Sesame,big9,sesame__tehina,Tehina,workbook_existing,2,0,0,0.00,0,Allergen-Ingredient Map:198
+Sesame,big9,sesame__til,Til,workbook_existing,1,0,0,0.00,0,Allergen-Ingredient Map:199
+Sesame,big9,sesame__za_atar,Za'atar,workbook_existing,1,0,0,0.00,0,Allergen-Ingredient Map:200
+Cereals with Gluten,cereals_with_gluten,cereals_with_gluten__malt,Malt,manual_seed,7,46408,28527,61.47,52829,manual_seed
+Cereals with Gluten,cereals_with_gluten,cereals_with_gluten__barley,Barley,manual_seed,7,44602,28055,62.90,128149,manual_seed
+Cereals with Gluten,cereals_with_gluten,cereals_with_gluten__gluten,Gluten,manual_seed,6,15402,9154,59.43,33869,manual_seed
+Cereals with Gluten,cereals_with_gluten,cereals_with_gluten__oat,Oat,manual_seed,7,12725,5786,45.47,22306,manual_seed
+Cereals with Gluten,cereals_with_gluten,cereals_with_gluten__durum,Durum,manual_seed,5,5187,3060,58.99,12105,manual_seed
+Cereals with Gluten,cereals_with_gluten,cereals_with_gluten__semolina,Semolina,manual_seed,3,5854,2802,47.86,6910,manual_seed
+Cereals with Gluten,cereals_with_gluten,cereals_with_gluten__rye,Rye,manual_seed,4,3165,2093,66.13,6258,manual_seed
+Cereals with Gluten,cereals_with_gluten,cereals_with_gluten__triticale,Triticale,manual_seed,2,528,409,77.46,535,manual_seed
+Cereals with Gluten,cereals_with_gluten,cereals_with_gluten__spelt,Spelt,manual_seed,3,368,282,76.63,548,manual_seed
+Cereals with Gluten,cereals_with_gluten,cereals_with_gluten__kamut,Kamut,manual_seed,4,153,138,90.20,230,manual_seed
+Cereals with Gluten,cereals_with_gluten,cereals_with_gluten__farro,Farro,manual_seed,2,48,34,70.83,70,manual_seed
+Cereals with Gluten,cereals_with_gluten,cereals_with_gluten__einkorn,Einkorn,manual_seed,3,8,8,100.00,8,manual_seed
+Cereals with Gluten,cereals_with_gluten,cereals_with_gluten__emmer,Emmer,manual_seed,2,6,6,100.00,6,manual_seed

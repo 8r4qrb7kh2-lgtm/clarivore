@@ -1,0 +1,11 @@
+class,class_scope,target_rows,covered_rows,uncovered_rows,coverage_pct
+Cereals with Gluten,cereals_with_gluten,105033,40342,64691,38.41
+Egg,big9,47029,3923,43106,8.34
+Milk,big9,108954,73682,35272,67.63
+Soy,big9,184181,155161,29020,84.24
+Tree Nut,big9,20745,3456,17289,16.66
+Wheat,big9,105033,90274,14759,85.95
+Sesame,big9,10174,922,9252,9.06
+Peanut,big9,11905,5082,6823,42.69
+Fish,big9,3912,973,2939,24.87
+Crustacean Shellfish,big9,2725,1545,1180,56.70
