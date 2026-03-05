@@ -1,7 +1,8 @@
 import { corsJson, corsOptions } from "../_shared/cors";
 import {
-  buildIngredientAllergenAnalysisPrompts,
+  buildIngredientAllergenExtractionPrompts,
   buildIngredientAllergenRepairPrompts,
+  buildIngredientAllergenVerificationPrompts,
 } from "../../lib/claudePrompts";
 
 export const runtime = "nodejs";
@@ -9,8 +10,10 @@ export const runtime = "nodejs";
 const PINNED_ANTHROPIC_MODEL = "claude-haiku-4-5-20251001";
 const MAX_ANALYSIS_ATTEMPTS = 2;
 const ANALYSIS_MAX_TOKENS = 1800;
+const VERIFICATION_MAX_TOKENS = 1400;
 const REPAIR_MAX_TOKENS = 700;
 const ANTHROPIC_THINKING_BUDGET_TOKENS = 1024;
+const PROMPT_VERSION = "ingredient-allergen-two-pass-v1-20260305";
 
 const CONFIG_TTL_MS = 60 * 60 * 1000;
 const ANALYSIS_CACHE_TTL_MS = 15 * 60 * 1000;
@@ -184,6 +187,7 @@ function buildAnalysisCacheKey({
   transcriptLines,
   allergenEntries,
   dietEntries,
+  promptVersion,
 }) {
   const normalizedLines = (Array.isArray(transcriptLines) ? transcriptLines : [])
     .map((line) => asText(line))
@@ -197,7 +201,7 @@ function buildAnalysisCacheKey({
     .map((entry) => asText(entry?.value || entry))
     .filter(Boolean)
     .join("|");
-  return `${normalizedLines}::${allergenKey}::${dietKey}`;
+  return `${asText(promptVersion) || "unknown"}::${normalizedLines}::${allergenKey}::${dietKey}`;
 }
 
 function getCachedAnalysis(cacheKey) {
@@ -457,6 +461,8 @@ async function runFlagAnalysis({
   model,
   systemPrompt,
   userPrompt,
+  maxTokens = ANALYSIS_MAX_TOKENS,
+  phaseName = "analysis",
 }) {
   let lastError = null;
   for (let attempt = 1; attempt <= MAX_ANALYSIS_ATTEMPTS; attempt += 1) {
@@ -466,7 +472,7 @@ async function runFlagAnalysis({
         model,
         systemPrompt,
         userPrompt,
-        maxTokens: ANALYSIS_MAX_TOKENS,
+        maxTokens,
       });
 
       const parsed = parseClaudeJson(responseText);
@@ -484,7 +490,9 @@ async function runFlagAnalysis({
         return repaired;
       }
 
-      lastError = new Error("Ingredient allergen analyzer returned malformed JSON output.");
+      lastError = new Error(
+        `Ingredient allergen ${asText(phaseName) || "analysis"} pass returned malformed JSON output.`,
+      );
       if (attempt >= MAX_ANALYSIS_ATTEMPTS) {
         break;
       }
@@ -498,6 +506,34 @@ async function runFlagAnalysis({
   }
 
   throw lastError || new Error("Failed to analyze ingredient transcript.");
+}
+
+function buildDietConflictGuideText(dietAllergenConflicts) {
+  const map = dietAllergenConflicts && typeof dietAllergenConflicts === "object"
+    ? dietAllergenConflicts
+    : {};
+  const rows = Object.keys(map)
+    .sort((a, b) => a.localeCompare(b))
+    .map((dietLabel) => {
+      const allergens = dedupeStrings(map[dietLabel] || [])
+        .map((value) => asText(value))
+        .filter(Boolean);
+      if (!allergens.length) {
+        return `- ${dietLabel}: no mapped allergens.`;
+      }
+      return `- ${dietLabel}: ${allergens.join(", ")}`;
+    });
+  return rows.length ? rows.join("\n") : "- No mapped diet conflicts.";
+}
+
+function readAnalysisOptions(body) {
+  const options = body?.analysisOptions && typeof body.analysisOptions === "object"
+    ? body.analysisOptions
+    : {};
+  return {
+    disableCache: options.disableCache === true,
+    debug: options.debug === true,
+  };
 }
 
 function buildDietAliasResolver({ glutenFreeLabel, pescatarianLabel }) {
@@ -535,9 +571,26 @@ export async function POST(request) {
   const transcriptLines = (Array.isArray(body?.transcriptLines) ? body.transcriptLines : [])
     .map((line) => asText(line))
     .filter(Boolean);
+  const analysisOptions = readAnalysisOptions(body);
+
+  const buildDebugPayload = ({
+    pass1Used = false,
+    pass2Used = false,
+    fallbackReason = null,
+  } = {}) => ({
+    promptVersion: PROMPT_VERSION,
+    pass1Used,
+    pass2Used,
+    pass2Applied: pass2Used,
+    fallbackReason: asText(fallbackReason) || null,
+  });
 
   if (!transcriptLines.length) {
-    return corsJson({ success: true, flags: [] }, { status: 200 });
+    const payload = { success: true, flags: [] };
+    if (analysisOptions.debug) {
+      payload.debug = buildDebugPayload({ fallbackReason: "empty-transcript" });
+    }
+    return corsJson(payload, { status: 200 });
   }
 
   const anthropicApiKey = asText(process.env.ANTHROPIC_API_KEY);
@@ -601,24 +654,78 @@ export async function POST(request) {
       pescatarianLabel,
     });
 
+    const mapAllergens = (raw) =>
+      dedupeStrings([
+        ...parseCodeList(raw?.allergen_codes, allergenCodebook.codeToValue),
+        ...parseLegacyList(raw?.allergens, allergenCodebook.tokenToValue),
+      ]);
+
+    const mapDiets = (raw) =>
+      dedupeStrings([
+        ...parseCodeList(raw?.diet_codes, dietCodebook.codeToValue),
+        ...parseLegacyList(raw?.diets, dietCodebook.tokenToValue, resolveDietAlias),
+      ]);
+
+    const normalizeFlagsFromResponse = (parsedResponse) =>
+      (Array.isArray(parsedResponse?.flags) ? parsedResponse.flags : [])
+        .map((flag) => {
+          const riskRaw = asText(flag?.risk_type).toLowerCase();
+          const risk_type = riskRaw.includes("cross")
+            ? "cross-contamination"
+            : "contained";
+
+          const word_indices = (
+            Array.isArray(flag?.word_indices) ? flag.word_indices : [flag?.word_indices]
+          )
+            .map((value) => Number(value))
+            .filter((value) => Number.isFinite(value) && value >= 0)
+            .map((value) => Math.trunc(value));
+          const normalizedIndices = Array.from(new Set(word_indices)).sort(
+            (a, b) => a - b,
+          );
+
+          return {
+            ingredient: asText(flag?.ingredient),
+            word_indices: normalizedIndices,
+            allergens: mapAllergens(flag),
+            diets: mapDiets(flag),
+            risk_type,
+          };
+        })
+        .filter((flag) =>
+          flag.ingredient ||
+          flag.word_indices.length ||
+          flag.allergens.length ||
+          flag.diets.length,
+        );
+
     const analysisCacheKey = buildAnalysisCacheKey({
       transcriptLines,
       allergenEntries: allergenCodebook.entries,
       dietEntries: dietCodebook.entries,
+      promptVersion: PROMPT_VERSION,
     });
-    const cachedFlags = getCachedAnalysis(analysisCacheKey);
-    if (cachedFlags !== null) {
-      return corsJson(
-        {
+    if (!analysisOptions.disableCache) {
+      const cachedFlags = getCachedAnalysis(analysisCacheKey);
+      if (cachedFlags !== null) {
+        const payload = {
           success: true,
           flags: cachedFlags,
-        },
-        { status: 200 },
-      );
+        };
+        if (analysisOptions.debug) {
+          payload.debug = buildDebugPayload({
+            pass1Used: false,
+            pass2Used: false,
+            fallbackReason: "cache-hit",
+          });
+        }
+        return corsJson(payload, { status: 200 });
+      }
     }
 
     const allergenCodebookText = buildPromptCodebookLines(allergenCodebook.entries);
     const dietCodebookText = buildPromptCodebookLines(dietCodebook.entries);
+    const dietConflictGuideText = buildDietConflictGuideText(config?.dietAllergenConflicts);
 
     const wordList = [];
     transcriptLines.forEach((line) => {
@@ -632,77 +739,90 @@ export async function POST(request) {
       .map((word, index) => `${index}: "${word}"`)
       .join("\n");
 
-    const { systemPrompt, userPrompt } = buildIngredientAllergenAnalysisPrompts({
+    const extractionPrompts = buildIngredientAllergenExtractionPrompts({
       allergenCodebookText,
       dietCodebookText,
+      dietConflictGuideText,
       indexedWordList,
+      promptVersion: PROMPT_VERSION,
     });
 
-    const parsed = await runFlagAnalysis({
+    const pass1Parsed = await runFlagAnalysis({
       apiKey: anthropicApiKey,
       model: anthropicModel,
-      systemPrompt,
-      userPrompt,
+      systemPrompt: extractionPrompts.systemPrompt,
+      userPrompt: extractionPrompts.userPrompt,
+      maxTokens: ANALYSIS_MAX_TOKENS,
+      phaseName: "extraction",
     });
+    const pass1Flags = normalizeFlagsFromResponse(pass1Parsed);
 
-    const mapAllergens = (raw) =>
-      dedupeStrings([
-        ...parseCodeList(raw?.allergen_codes, allergenCodebook.codeToValue),
-        ...parseLegacyList(raw?.allergens, allergenCodebook.tokenToValue),
-      ]);
+    let pass2Used = false;
+    let fallbackReason = "";
+    let finalFlags = pass1Flags;
 
-    const mapDiets = (raw) =>
-      dedupeStrings([
-        ...parseCodeList(raw?.diet_codes, dietCodebook.codeToValue),
-        ...parseLegacyList(raw?.diets, dietCodebook.tokenToValue, resolveDietAlias),
-      ]);
+    try {
+      const verificationPrompts = buildIngredientAllergenVerificationPrompts({
+        allergenCodebookText,
+        dietCodebookText,
+        dietConflictGuideText,
+        indexedWordList,
+        candidateFlagsJson: JSON.stringify({
+          flags: Array.isArray(pass1Parsed?.flags) ? pass1Parsed.flags : [],
+        }),
+        promptVersion: PROMPT_VERSION,
+      });
 
-    const flags = (Array.isArray(parsed?.flags) ? parsed.flags : [])
-      .map((flag) => {
-        const riskRaw = asText(flag?.risk_type).toLowerCase();
-        const risk_type = riskRaw.includes("cross")
-          ? "cross-contamination"
-          : "contained";
+      const pass2Parsed = await runFlagAnalysis({
+        apiKey: anthropicApiKey,
+        model: anthropicModel,
+        systemPrompt: verificationPrompts.systemPrompt,
+        userPrompt: verificationPrompts.userPrompt,
+        maxTokens: VERIFICATION_MAX_TOKENS,
+        phaseName: "verification",
+      });
+      const pass2Flags = normalizeFlagsFromResponse(pass2Parsed);
 
-        const word_indices = (
-          Array.isArray(flag?.word_indices) ? flag.word_indices : [flag?.word_indices]
-        )
-          .map((value) => Number(value))
-          .filter((value) => Number.isFinite(value) && value >= 0)
-          .map((value) => Math.trunc(value));
+      if (pass2Flags.length === 0 && pass1Flags.length > 0) {
+        fallbackReason = "pass2-empty-while-pass1-non-empty";
+      } else {
+        finalFlags = pass2Flags;
+        pass2Used = true;
+      }
+    } catch (pass2Error) {
+      fallbackReason = `pass2-failed:${asText(pass2Error?.message) || "unknown"}`;
+    }
 
-        return {
-          ingredient: asText(flag?.ingredient),
-          word_indices,
-          allergens: mapAllergens(flag),
-          diets: mapDiets(flag),
-          risk_type,
-        };
-      })
-      .filter((flag) =>
-        flag.ingredient ||
-        flag.word_indices.length ||
-        flag.allergens.length ||
-        flag.diets.length,
-      );
+    if (!analysisOptions.disableCache) {
+      setCachedAnalysis(analysisCacheKey, finalFlags);
+    }
 
-    setCachedAnalysis(analysisCacheKey, flags);
+    const payload = {
+      success: true,
+      flags: finalFlags,
+    };
+    if (analysisOptions.debug) {
+      payload.debug = buildDebugPayload({
+        pass1Used: true,
+        pass2Used,
+        fallbackReason,
+      });
+    }
 
-    return corsJson(
-      {
-        success: true,
-        flags,
-      },
-      { status: 200 },
-    );
+    return corsJson(payload, { status: 200 });
   } catch (error) {
-    return corsJson(
-      {
-        success: false,
-        error: asText(error?.message) || "Failed to analyze ingredient transcript.",
-        flags: [],
-      },
-      { status: 200 },
-    );
+    const payload = {
+      success: false,
+      error: asText(error?.message) || "Failed to analyze ingredient transcript.",
+      flags: [],
+    };
+    if (analysisOptions.debug) {
+      payload.debug = buildDebugPayload({
+        pass1Used: false,
+        pass2Used: false,
+        fallbackReason: "route-error",
+      });
+    }
+    return corsJson(payload, { status: 200 });
   }
 }

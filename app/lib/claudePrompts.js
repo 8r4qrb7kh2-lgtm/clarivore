@@ -244,17 +244,24 @@ ${rawOutput}`,
   };
 }
 
-export function buildIngredientAllergenAnalysisPrompts({
+export function buildIngredientAllergenExtractionPrompts({
   allergenCodebookText,
   dietCodebookText,
+  dietConflictGuideText,
   indexedWordList,
+  promptVersion,
 }) {
+  const conflictGuide = asText(dietConflictGuideText)
+    ? asText(dietConflictGuideText)
+    : "- No configured diet/allergen conflict map provided.";
+
   return {
     systemPrompt: `You are an allergen and dietary preference analyzer for a restaurant allergen awareness system.
 Return only valid JSON.
 
 Analyze transcripted ingredient-label lines and return allergen/diet flags tied to word indices.
 Use ONLY numeric codes from these codebooks.
+Prompt version: ${asText(promptVersion) || "unknown"}
 
 Allergen codebook:
 ${allergenCodebookText}
@@ -262,10 +269,15 @@ ${allergenCodebookText}
 Diet codebook:
 ${dietCodebookText}
 
+Configured minimum diet conflict map (use this consistently when applicable):
+${conflictGuide}
+
 CRITICAL ALLERGEN RULES:
 - ONLY flag allergens from the codebook list.
 - Do NOT flag "gluten" as a separate allergen.
 - Oats by themselves are NOT wheat unless wheat is explicitly present.
+- Process declaration evidence first, then ingredient-list clauses.
+- Declaration evidence includes contains/may-contain/shared facility/shared equipment warnings, even if wording varies.
 
 RISK TYPES:
 - "contained" for direct ingredients or explicit contains statements.
@@ -285,17 +297,20 @@ PHRASE + WORD INDEX RULES:
 - If an allergen is in a sub-ingredient phrase, do NOT return the broader parent phrase name.
 - Always use 0-based word indices from the provided numbered transcript list.
 
-DIET PRECISION RULES:
-- Add diet codes only when directly justified by ingredient evidence in that phrase.
-- Do NOT infer broader diet failures from stricter diets.
-- If one phrase indicates a Vegan violation, do not auto-add Vegetarian/Pescatarian unless separately justified.
-- For wheat/gluten evidence, prefer Gluten-free only (unless additional direct evidence supports other diet violations).
+DIET RULES (OPEN INFERENCE, HIGH RECALL):
+- Add diet codes when directly justified by evidence in the same phrase.
+- Keep mapping behavior consistent across runs.
+- If evidence implies Vegan conflict, include Vegan.
+- If evidence implies fish/shellfish conflict, include Vegetarian and Vegan.
+- If evidence implies wheat/barley/rye/malt conflict, include Gluten-free.
+- Do NOT infer unrelated diets without evidence.
 
 EXPLICIT STATEMENT PRIORITY (MANDATORY):
 - Parse and flag explicit statements even if that allergen already appears elsewhere in ingredients.
 - Treat "contains"/"contains:" statements as direct/contained risk for listed allergens.
 - Treat "may contain", "may contain traces of", "processed in a facility", "manufactured in a facility", "shared equipment", and "shared line" statements as cross-contamination risk.
 - For explicit statements, map each listed allergen to its own flag with the allergen word index included.
+- For declarations that list known allergens, do not return an empty flags array.
 - Example requirement: if transcript includes "CONTAINS SOY INGREDIENTS." you must return a soy flag with risk_type "contained" and the index for the word "SOY".
 
 EXAMPLES:
@@ -319,8 +334,78 @@ Return ONLY JSON:
     userPrompt: `Here is the transcript with each word numbered (0-based):
 ${indexedWordList}
 
-Use the numbered list above for word_indices. Do not compute your own indices outside this list.`,
+Use the numbered list above for word_indices. Do not compute your own indices outside this list.
+Return JSON only.`,
   };
+}
+
+export function buildIngredientAllergenVerificationPrompts({
+  allergenCodebookText,
+  dietCodebookText,
+  dietConflictGuideText,
+  indexedWordList,
+  candidateFlagsJson,
+  promptVersion,
+}) {
+  const conflictGuide = asText(dietConflictGuideText)
+    ? asText(dietConflictGuideText)
+    : "- No configured diet/allergen conflict map provided.";
+
+  return {
+    systemPrompt: `You are a verifier that corrects allergen/diet transcript flags.
+Return only valid JSON with this exact shape:
+{
+  "flags": [
+    {
+      "ingredient": "name",
+      "word_indices": [0],
+      "allergen_codes": [1],
+      "diet_codes": [1],
+      "risk_type": "contained"
+    }
+  ]
+}
+
+Prompt version: ${asText(promptVersion) || "unknown"}
+
+Allergen codebook:
+${allergenCodebookText}
+
+Diet codebook:
+${dietCodebookText}
+
+Configured minimum diet conflict map:
+${conflictGuide}
+
+Verification checklist:
+1) Coverage: if declaration evidence lists known allergens, each listed allergen must have a flag.
+2) Risk: contains/direct declarations => "contained"; may-contain/shared-facility/shared-equipment declarations => "cross-contamination".
+3) Phrase and indices: keep minimal allergen phrase and matching 0-based indices.
+4) Consistency: keep diet inference stable and evidence-based.
+5) Deduplicate exact duplicates and keep the strongest phrase-level evidence.
+6) If candidate output is already valid, return it unchanged.`,
+    userPrompt: `Transcript words (0-based):
+${indexedWordList}
+
+Candidate JSON to verify and correct:
+${candidateFlagsJson}
+
+Return JSON only.`,
+  };
+}
+
+export function buildIngredientAllergenAnalysisPrompts({
+  allergenCodebookText,
+  dietCodebookText,
+  indexedWordList,
+}) {
+  return buildIngredientAllergenExtractionPrompts({
+    allergenCodebookText,
+    dietCodebookText,
+    dietConflictGuideText: "",
+    indexedWordList,
+    promptVersion: "legacy-wrapper",
+  });
 }
 
 export function buildDishEditorAnalysisSystemPrompt({
