@@ -9,6 +9,12 @@ import {
   getDataFlowSourcePath,
   getDataFlowVisualById,
 } from "../_shared/dataFlowVisuals";
+import {
+  callAnthropicApi,
+  callOpenAiApi,
+  createTextMessage,
+  runWithProviderSelection,
+} from "../../../lib/server/ai/providerRuntime.js";
 
 export const runtime = "nodejs";
 
@@ -428,11 +434,6 @@ export async function POST(request) {
     return json({ error: "Unknown diagram id." }, 404);
   }
 
-  const anthropicApiKey = asText(process.env.ANTHROPIC_API_KEY);
-  if (!anthropicApiKey) {
-    return json({ error: "Anthropic API key not configured." }, 500);
-  }
-
   try {
     const sourcePath = getDataFlowSourcePath(entry);
     const sourceText = await readFile(sourcePath, "utf8");
@@ -452,36 +453,52 @@ export async function POST(request) {
       },
     ];
 
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "x-api-key": anthropicApiKey,
-        "anthropic-version": "2023-06-01",
-        "content-type": "application/json",
+    const result = await runWithProviderSelection({
+      routeId: "admin-data-flow-ask",
+      promptClass: "adminDataFlowAsk",
+      requestSummary: {
+        diagramId,
+        question,
+        axonStatus: asText(axonEvidence?.status),
+        messageCount: messages.length,
       },
-      body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
-        max_tokens: 900,
-        temperature: 0.2,
-        system: buildSystemPrompt(),
-        messages,
-      }),
+      invokeProvider: async (provider) => {
+        const response =
+          provider === "openai"
+            ? await callOpenAiApi({
+                promptClass: "adminDataFlowAsk",
+                systemPrompt: buildSystemPrompt(),
+                messages: messages.map((message) => ({
+                  role: message.role,
+                  content: [createTextMessage(message.content)],
+                })),
+                maxTokens: 900,
+                temperature: 0.2,
+              })
+            : await callAnthropicApi({
+                promptClass: "adminDataFlowAsk",
+                systemPrompt: buildSystemPrompt(),
+                messages: messages.map((message) => ({
+                  role: message.role,
+                  content: [createTextMessage(message.content)],
+                })),
+                maxTokens: 900,
+                temperature: 0.2,
+              });
+
+        return {
+          ...response,
+          normalizedOutput: {
+            answer: asText(response.text),
+          },
+        };
+      },
     });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(
-        `Claude API error (${response.status}): ${errorText.slice(0, 260)}`,
-      );
-    }
-
-    const payload = await response.json();
-    const answer = asText(payload?.content?.[0]?.text);
 
     return json(
       {
         success: true,
-        answer,
+        answer: result.normalizedOutput.answer,
         axon: {
           status: asText(axonEvidence?.status),
           query: asText(axonEvidence?.query),

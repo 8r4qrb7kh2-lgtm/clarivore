@@ -1,5 +1,13 @@
 import { corsJson, corsOptions } from "../_shared/cors";
 import { buildDetectMenuDishesPrompts } from "../../lib/claudePrompts";
+import {
+  callAnthropicApi,
+  callOpenAiApi,
+  createImageMessage,
+  createTextMessage,
+  runWithProviderSelection,
+} from "../../lib/server/ai/providerRuntime";
+import { detectMenuDishesSchema } from "../../lib/server/ai/responseSchemas";
 
 export const runtime = "nodejs";
 
@@ -87,70 +95,61 @@ export async function POST(request) {
     );
   }
 
-  const anthropicApiKey = asText(process.env.ANTHROPIC_API_KEY);
-  if (!anthropicApiKey) {
-    return corsJson(
-      {
-        success: false,
-        error: "Anthropic API key not configured.",
-        dishes: [],
-      },
-      { status: 500 },
-    );
-  }
-
   try {
     const { systemPrompt, userPrompt } = buildDetectMenuDishesPrompts();
-
-    const claudeResponse = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "x-api-key": anthropicApiKey,
-        "anthropic-version": "2023-06-01",
-        "content-type": "application/json",
+    const result = await runWithProviderSelection({
+      routeId: "detect-menu-dishes",
+      promptClass: "detectMenuDishes",
+      requestSummary: {
+        mediaType: imageData.mediaType,
       },
-      body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
-        max_tokens: 4000,
-        system: systemPrompt,
-        messages: [
-          {
-            role: "user",
-            content: [
-              {
-                type: "image",
-                source: {
-                  type: "base64",
-                  media_type: imageData.mediaType,
-                  data: imageData.base64Data,
-                },
-              },
-              {
-                type: "text",
-                text: userPrompt,
-              },
-            ],
-          },
-        ],
-      }),
+      invokeProvider: async (provider) => {
+        const response =
+          provider === "openai"
+            ? await callOpenAiApi({
+                promptClass: "detectMenuDishes",
+                systemPrompt,
+                messages: [
+                  {
+                    role: "user",
+                    content: [
+                      createImageMessage(imageData),
+                      createTextMessage(userPrompt),
+                    ],
+                  },
+                ],
+                maxTokens: 4000,
+                jsonSchema: detectMenuDishesSchema,
+              })
+            : await callAnthropicApi({
+                promptClass: "detectMenuDishes",
+                systemPrompt,
+                messages: [
+                  {
+                    role: "user",
+                    content: [
+                      createImageMessage(imageData),
+                      createTextMessage(userPrompt),
+                    ],
+                  },
+                ],
+                maxTokens: 4000,
+              });
+
+        const parsed = parseClaudeJson(response.text);
+        return {
+          ...response,
+          normalizedOutput: (Array.isArray(parsed?.dishes) ? parsed.dishes : [])
+            .map((dish) => ({
+              name: asText(dish?.name),
+              mapped: false,
+            }))
+            .filter((dish) => dish.name),
+        };
+      },
     });
 
-    if (!claudeResponse.ok) {
-      const errorText = await claudeResponse.text();
-      throw new Error(`Claude API error (${claudeResponse.status}): ${errorText.slice(0, 240)}`);
-    }
-
-    const aiResult = await claudeResponse.json();
-    const responseText = asText(aiResult?.content?.[0]?.text);
-    const parsed = parseClaudeJson(responseText);
-    const dishes = (Array.isArray(parsed?.dishes) ? parsed.dishes : [])
-      .map((dish) => ({
-        name: asText(dish?.name),
-        mapped: false,
-      }))
-      .filter((dish) => dish.name);
-
-    return corsJson({ success: true, dishes }, { status: 200 });
+    return corsJson({ success: true, dishes: result.normalizedOutput }, { status: 200 });
   } catch (error) {
     return corsJson(
       {

@@ -3,10 +3,17 @@ import {
   buildDishEditorAnalysisSystemPrompt,
   buildDishEditorAnalysisUserPrompt,
 } from "../../lib/claudePrompts";
+import {
+  callAnthropicApi,
+  callOpenAiApi,
+  createImageMessage,
+  createTextMessage,
+  runWithProviderSelection,
+} from "../../lib/server/ai/providerRuntime";
+import { dishEditorAnalysisSchema } from "../../lib/server/ai/responseSchemas";
 
 export const runtime = "nodejs";
 
-const DEFAULT_ANTHROPIC_MODEL = "claude-sonnet-4-20250514";
 const CONFIG_TTL_MS = 5 * 60 * 1000;
 
 let cachedConfig = null;
@@ -241,66 +248,6 @@ async function fetchAllergenDietConfig() {
   return cachedConfig;
 }
 
-async function callAnthropic({
-  apiKey,
-  model,
-  systemPrompt,
-  content,
-  maxTokens = 4000,
-}) {
-  const response = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01",
-      "content-type": "application/json",
-    },
-    body: JSON.stringify({
-      model: asText(model) || DEFAULT_ANTHROPIC_MODEL,
-      max_tokens: maxTokens,
-      system: systemPrompt,
-      messages: [
-        {
-          role: "user",
-          content,
-        },
-      ],
-    }),
-  });
-
-  const payloadText = await response.text();
-  let payload = null;
-  try {
-    payload = payloadText ? JSON.parse(payloadText) : null;
-  } catch {
-    payload = null;
-  }
-
-  if (!response.ok) {
-    const message =
-      asText(payload?.error?.message) ||
-      asText(payload?.error) ||
-      asText(payloadText) ||
-      "Anthropic API request failed.";
-    throw new Error(message);
-  }
-
-  const blocks = Array.isArray(payload?.content) ? payload.content : [];
-  const text = blocks
-    .filter(
-      (block) =>
-        block &&
-        typeof block === "object" &&
-        typeof block.text === "string" &&
-        (block.type === "text" || block.type === "output_text" || !block.type),
-    )
-    .map((block) => block.text)
-    .join("\n")
-    .trim();
-
-  return text || asText(payload?.content);
-}
-
 function buildDietAliasResolver({ glutenFreeLabel, pescatarianLabel }) {
   return (token) => {
     const safe = canonicalToken(token);
@@ -363,14 +310,6 @@ export async function POST(request) {
   const dishName = asText(body?.dishName);
   const text = asText(body?.text);
   const parsedImage = parseImageData(body?.imageData);
-
-  const anthropicApiKey = asText(process.env.ANTHROPIC_API_KEY);
-  if (!anthropicApiKey) {
-    return corsJson(
-      { error: "ANTHROPIC_API_KEY is not configured.", ingredients: [] },
-      { status: 500 },
-    );
-  }
 
   try {
     const config = await fetchAllergenDietConfig();
@@ -461,90 +400,111 @@ export async function POST(request) {
       text,
     });
 
-    const content = [];
-    if (parsedImage) {
-      content.push({
-        type: "image",
-        source: {
-          type: "base64",
-          media_type: parsedImage.mediaType,
-          data: parsedImage.base64Data,
-        },
-      });
-    }
-    content.push({
-      type: "text",
-      text: userPrompt,
-    });
+    const result = await runWithProviderSelection({
+      routeId: "dish-editor-analysis",
+      promptClass: "dishEditorAnalysis",
+      requestSummary: {
+        dishName,
+        hasImage: Boolean(parsedImage),
+      },
+      invokeProvider: async (provider) => {
+        const messageContent = [];
+        if (parsedImage) {
+          messageContent.push(
+            createImageMessage({
+              mediaType: parsedImage.mediaType,
+              base64Data: parsedImage.base64Data,
+            }),
+          );
+        }
+        messageContent.push(createTextMessage(userPrompt));
 
-    const responseText = await callAnthropic({
-      apiKey: anthropicApiKey,
-      model: DEFAULT_ANTHROPIC_MODEL,
-      systemPrompt,
-      content,
-      maxTokens: 4000,
-    });
+        const response =
+          provider === "openai"
+            ? await callOpenAiApi({
+                promptClass: "dishEditorAnalysis",
+                systemPrompt,
+                messages: [{ role: "user", content: messageContent }],
+                maxTokens: 4000,
+                jsonSchema: dishEditorAnalysisSchema,
+              })
+            : await callAnthropicApi({
+                promptClass: "dishEditorAnalysis",
+                systemPrompt,
+                messages: [{ role: "user", content: messageContent }],
+                maxTokens: 4000,
+              });
 
-    const parsed = parseClaudeJson(responseText);
-    if (!parsed || typeof parsed !== "object") {
-      return corsJson(
-        {
-          error: "AI returned invalid format. Please try again or describe ingredients in text.",
-          ingredients: [],
-          raw_response: asText(responseText).substring(0, 200),
-        },
-        { status: 200 },
-      );
-    }
+        const parsed = parseClaudeJson(response.text);
+        if (!parsed || typeof parsed !== "object") {
+          throw new Error(
+            "AI returned invalid format. Please try again or describe ingredients in text.",
+          );
+        }
 
-    const mapAllergens = (raw) =>
-      dedupeStrings([
-        ...parseCodeList(raw?.allergen_codes, allergenCodebook.codeToValue),
-        ...parseLegacyList(raw?.allergens, allergenCodebook.tokenToValue),
-      ]);
+        const mapAllergens = (raw) =>
+          dedupeStrings([
+            ...parseCodeList(raw?.allergen_codes, allergenCodebook.codeToValue),
+            ...parseLegacyList(raw?.allergens, allergenCodebook.tokenToValue),
+          ]);
 
-    const mapDiets = (raw) =>
-      dedupeStrings([
-        ...parseCodeList(raw?.diet_codes, dietCodebook.codeToValue),
-        ...parseLegacyList(raw?.diets, dietCodebook.tokenToValue, resolveDietAlias),
-      ]);
+        const mapDiets = (raw) =>
+          dedupeStrings([
+            ...parseCodeList(raw?.diet_codes, dietCodebook.codeToValue),
+            ...parseLegacyList(raw?.diets, dietCodebook.tokenToValue, resolveDietAlias),
+          ]);
 
-    const ingredients = (Array.isArray(parsed?.ingredients) ? parsed.ingredients : [])
-      .map((ingredient, index) => {
-        const name = asText(ingredient?.name) || `Ingredient ${index + 1}`;
-        const allergens = mapAllergens(ingredient);
-        const diets = expandDietHierarchy(mapDiets(ingredient), labels);
-        const ingredientsList = Array.isArray(ingredient?.ingredientsList)
-          ? ingredient.ingredientsList.map((entry) => asText(entry)).filter(Boolean)
-          : [];
+        const ingredients = (Array.isArray(parsed?.ingredients) ? parsed.ingredients : [])
+          .map((ingredient, index) => {
+            const name = asText(ingredient?.name) || `Ingredient ${index + 1}`;
+            const allergens = mapAllergens(ingredient);
+            const diets = expandDietHierarchy(mapDiets(ingredient), labels);
+            const ingredientsList = Array.isArray(ingredient?.ingredientsList)
+              ? ingredient.ingredientsList.map((entry) => asText(entry)).filter(Boolean)
+              : [];
+
+            return {
+              name,
+              brand: asText(ingredient?.brand),
+              allergens,
+              diets,
+              ingredientsList,
+              imageQuality: asText(ingredient?.imageQuality),
+            };
+          })
+          .filter(Boolean);
+
+        const dietaryOptions = expandDietHierarchy(
+          dedupeStrings([
+            ...parseCodeList(parsed?.dietary_option_codes, dietCodebook.codeToValue),
+            ...parseLegacyList(
+              parsed?.dietaryOptions,
+              dietCodebook.tokenToValue,
+              resolveDietAlias,
+            ),
+          ]),
+          labels,
+        );
 
         return {
-          name,
-          brand: asText(ingredient?.brand),
-          allergens,
-          diets,
-          ingredientsList,
-          imageQuality: asText(ingredient?.imageQuality),
+          ...response,
+          normalizedOutput: {
+            ingredients,
+            dietaryOptions,
+            verifiedFromImage:
+              parsed?.verifiedFromImage !== undefined
+                ? Boolean(parsed.verifiedFromImage)
+                : Boolean(parsedImage),
+          },
         };
-      })
-      .filter(Boolean);
-
-    const dietaryOptions = expandDietHierarchy(
-      dedupeStrings([
-        ...parseCodeList(parsed?.dietary_option_codes, dietCodebook.codeToValue),
-        ...parseLegacyList(parsed?.dietaryOptions, dietCodebook.tokenToValue, resolveDietAlias),
-      ]),
-      labels,
-    );
+      },
+    });
 
     return corsJson(
       {
-        ingredients,
-        dietaryOptions,
-        verifiedFromImage:
-          parsed?.verifiedFromImage !== undefined
-            ? Boolean(parsed.verifiedFromImage)
-            : Boolean(parsedImage),
+        ingredients: result.normalizedOutput.ingredients,
+        dietaryOptions: result.normalizedOutput.dietaryOptions,
+        verifiedFromImage: result.normalizedOutput.verifiedFromImage,
       },
       { status: 200 },
     );

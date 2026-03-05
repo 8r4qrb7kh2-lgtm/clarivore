@@ -1,14 +1,25 @@
-import { corsJson, corsOptions } from "../_shared/cors";
+import { corsJson, corsOptions } from "../_shared/cors.js";
 import {
   buildFrontProductNamePrompts,
   buildIngredientPhotoLineMatchingPrompts,
   buildIngredientPhotoQualityPrompts,
   buildIngredientPhotoTranscriptionPrompts,
-} from "../../lib/claudePrompts";
+} from "../../lib/claudePrompts.js";
+import {
+  callAnthropicApi,
+  callOpenAiApi,
+  createImageMessage,
+  createTextMessage,
+  runWithProviderSelection,
+} from "../../lib/server/ai/providerRuntime.js";
+import {
+  frontProductNameSchema,
+  ingredientPhotoLineMatchingSchema,
+  ingredientPhotoQualitySchema,
+  ingredientPhotoTranscriptionSchema,
+} from "../../lib/server/ai/responseSchemas.js";
 
 export const runtime = "nodejs";
-
-const DEFAULT_ANTHROPIC_MODEL = "claude-sonnet-4-20250514";
 
 export function OPTIONS() {
   return corsOptions();
@@ -43,14 +54,6 @@ function parseImageData(imageData) {
     mediaType,
     base64Data,
   };
-}
-
-function pickTextBlock(content) {
-  const blocks = Array.isArray(content) ? content : [];
-  const textBlock = blocks.find(
-    (block) => block?.type === "text" || block?.type === "output_text",
-  );
-  return asText(textBlock?.text);
 }
 
 function parseJsonObject(text) {
@@ -163,118 +166,104 @@ function normalizeQualityAssessment(raw) {
   };
 }
 
-async function callAnthropicImage({
-  apiKey,
-  model,
+async function runImagePromptStep({
+  routeId,
+  promptClass,
   mediaType,
   base64Data,
   systemPrompt,
   userPrompt,
   maxTokens = 4096,
+  jsonSchema,
 }) {
-  const response = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01",
+  const result = await runWithProviderSelection({
+    routeId,
+    promptClass,
+    requestSummary: {
+      mediaType,
     },
-    body: JSON.stringify({
-      model: asText(model) || DEFAULT_ANTHROPIC_MODEL,
-      max_tokens: maxTokens,
-      system: systemPrompt,
-      messages: [
-        {
-          role: "user",
-          content: [
-            {
-              type: "image",
-              source: {
-                type: "base64",
-                media_type: mediaType,
-                data: base64Data,
-              },
-            },
-            {
-              type: "text",
-              text: userPrompt,
-            },
-          ],
+    invokeProvider: async (provider) => {
+      const response =
+        provider === "openai"
+          ? await callOpenAiApi({
+              promptClass,
+              systemPrompt,
+              messages: [
+                {
+                  role: "user",
+                  content: [
+                    createImageMessage({ mediaType, base64Data }),
+                    createTextMessage(userPrompt),
+                  ],
+                },
+              ],
+              maxTokens,
+              jsonSchema,
+            })
+          : await callAnthropicApi({
+              promptClass,
+              systemPrompt,
+              messages: [
+                {
+                  role: "user",
+                  content: [
+                    createImageMessage({ mediaType, base64Data }),
+                    createTextMessage(userPrompt),
+                  ],
+                },
+              ],
+              maxTokens,
+            });
+      return {
+        ...response,
+        normalizedOutput: {
+          text: response.text,
         },
-      ],
-    }),
+      };
+    },
   });
-
-  const payloadText = await response.text();
-  let payload = null;
-  try {
-    payload = payloadText ? JSON.parse(payloadText) : null;
-  } catch {
-    payload = null;
-  }
-
-  if (!response.ok) {
-    const message =
-      asText(payload?.error?.message) ||
-      asText(payload?.error) ||
-      asText(payloadText) ||
-      "Anthropic API request failed.";
-    throw new Error(message);
-  }
-
-  return pickTextBlock(payload?.content);
+  return result.normalizedOutput.text;
 }
 
-async function callAnthropicText({
-  apiKey,
-  model,
+async function runTextPromptStep({
+  routeId,
+  promptClass,
   systemPrompt,
   userPrompt,
   maxTokens = 1600,
+  jsonSchema,
 }) {
-  const response = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01",
+  const result = await runWithProviderSelection({
+    routeId,
+    promptClass,
+    requestSummary: {
+      userPromptLength: asText(userPrompt).length,
     },
-    body: JSON.stringify({
-      model: asText(model) || DEFAULT_ANTHROPIC_MODEL,
-      max_tokens: maxTokens,
-      system: systemPrompt,
-      messages: [
-        {
-          role: "user",
-          content: [
-            {
-              type: "text",
-              text: userPrompt,
-            },
-          ],
+    invokeProvider: async (provider) => {
+      const response =
+        provider === "openai"
+          ? await callOpenAiApi({
+              promptClass,
+              systemPrompt,
+              messages: [{ role: "user", content: [createTextMessage(userPrompt)] }],
+              maxTokens,
+              jsonSchema,
+            })
+          : await callAnthropicApi({
+              promptClass,
+              systemPrompt,
+              messages: [{ role: "user", content: [createTextMessage(userPrompt)] }],
+              maxTokens,
+            });
+      return {
+        ...response,
+        normalizedOutput: {
+          text: response.text,
         },
-      ],
-    }),
+      };
+    },
   });
-
-  const payloadText = await response.text();
-  let payload = null;
-  try {
-    payload = payloadText ? JSON.parse(payloadText) : null;
-  } catch {
-    payload = null;
-  }
-
-  if (!response.ok) {
-    const message =
-      asText(payload?.error?.message) ||
-      asText(payload?.error) ||
-      asText(payloadText) ||
-      "Anthropic API request failed.";
-    throw new Error(message);
-  }
-
-  return pickTextBlock(payload?.content);
+  return result.normalizedOutput.text;
 }
 
 async function getVisionWords({ googleVisionApiKey, base64Data }) {
@@ -698,29 +687,26 @@ function sanitizeTranscriptLines(rawLines) {
 }
 
 async function getClaudeTranscription({
-  apiKey,
-  model,
   mediaType,
   base64Data,
 }) {
   const { systemPrompt, userPrompt } = buildIngredientPhotoTranscriptionPrompts();
 
-  const text = await callAnthropicImage({
-    apiKey,
-    model,
+  const text = await runImagePromptStep({
+    routeId: "ingredient-photo-analysis/transcription",
+    promptClass: "ingredientPhotoTranscription",
     mediaType,
     base64Data,
     systemPrompt,
     userPrompt,
     maxTokens: 3200,
+    jsonSchema: ingredientPhotoTranscriptionSchema,
   });
 
   return sanitizeTranscriptLines(parseJsonArray(text));
 }
 
 async function getClaudeQualityAssessment({
-  apiKey,
-  model,
   mediaType,
   base64Data,
   transcriptLines,
@@ -730,22 +716,21 @@ async function getClaudeQualityAssessment({
     : "";
   const { systemPrompt, userPrompt } = buildIngredientPhotoQualityPrompts(transcriptText);
 
-  const text = await callAnthropicImage({
-    apiKey,
-    model,
+  const text = await runImagePromptStep({
+    routeId: "ingredient-photo-analysis/quality",
+    promptClass: "ingredientPhotoQuality",
     mediaType,
     base64Data,
     systemPrompt,
     userPrompt,
     maxTokens: 1200,
+    jsonSchema: ingredientPhotoQualitySchema,
   });
 
   return normalizeQualityAssessment(parseJsonObject(text) || {});
 }
 
 async function matchLinesToVisualLines({
-  apiKey,
-  model,
   transcriptLines,
   visualLines,
 }) {
@@ -760,12 +745,13 @@ async function matchLinesToVisualLines({
     visualDesc,
   });
 
-  const text = await callAnthropicText({
-    apiKey,
-    model,
+  const text = await runTextPromptStep({
+    routeId: "ingredient-photo-analysis/line-matching",
+    promptClass: "ingredientPhotoLineMatching",
     systemPrompt,
     userPrompt,
     maxTokens: 1200,
+    jsonSchema: ingredientPhotoLineMatchingSchema,
   });
 
   const parsed = parseJsonObject(text);
@@ -863,8 +849,6 @@ function deriveFrontNameFromVisionWords({ words, pageHeight }) {
 }
 
 async function analyzeFrontProductName({
-  anthropicApiKey,
-  anthropicModel,
   googleVisionApiKey,
   mediaType,
   base64Data,
@@ -873,14 +857,15 @@ async function analyzeFrontProductName({
   let confidence = "low";
   const { systemPrompt, userPrompt } = buildFrontProductNamePrompts();
 
-  const text = await callAnthropicImage({
-    apiKey: anthropicApiKey,
-    model: anthropicModel,
+  const text = await runImagePromptStep({
+    routeId: "ingredient-photo-analysis/front-product",
+    promptClass: "frontProductName",
     mediaType,
     base64Data,
     systemPrompt,
     userPrompt,
     maxTokens: 500,
+    jsonSchema: frontProductNameSchema,
   });
 
   const parsed = parseJsonObject(text) || {};
@@ -946,26 +931,11 @@ export async function POST(request) {
     );
   }
 
-  const anthropicApiKey = readFirstEnv(["ANTHROPIC_API_KEY"]);
   const googleVisionApiKey = readFirstEnv(["GOOGLE_VISION_API_KEY"]);
-  const anthropicModel =
-    readFirstEnv(["ANTHROPIC_MODEL"]) || DEFAULT_ANTHROPIC_MODEL;
-
-  if (!anthropicApiKey) {
-    return corsJson(
-      {
-        success: false,
-        error: "ANTHROPIC_API_KEY is not configured.",
-      },
-      { status: 500 },
-    );
-  }
 
   if (mode === "front-analysis") {
     try {
       const front = await analyzeFrontProductName({
-        anthropicApiKey,
-        anthropicModel,
         googleVisionApiKey,
         mediaType: parsedImage.mediaType,
         base64Data: parsedImage.base64Data,
@@ -1002,15 +972,11 @@ export async function POST(request) {
 
   try {
     const transcriptLines = await getClaudeTranscription({
-      apiKey: anthropicApiKey,
-      model: anthropicModel,
       mediaType: parsedImage.mediaType,
       base64Data: parsedImage.base64Data,
     });
 
     const quality = await getClaudeQualityAssessment({
-      apiKey: anthropicApiKey,
-      model: anthropicModel,
       mediaType: parsedImage.mediaType,
       base64Data: parsedImage.base64Data,
       transcriptLines,
@@ -1058,8 +1024,6 @@ export async function POST(request) {
 
     const visualLines = groupVisualLines(vision.words);
     const lineMapping = await matchLinesToVisualLines({
-      apiKey: anthropicApiKey,
-      model: anthropicModel,
       transcriptLines,
       visualLines,
     });
@@ -1105,3 +1069,10 @@ export async function POST(request) {
     );
   }
 }
+
+export const __bench = {
+  getVisionWords,
+  groupVisualLines,
+  parseImageData,
+  toPercentLineData,
+};

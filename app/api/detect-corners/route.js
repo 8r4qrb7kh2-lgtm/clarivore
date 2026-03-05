@@ -1,5 +1,13 @@
 import { corsJson, corsOptions } from "../_shared/cors";
 import { buildDetectCornersPrompts } from "../../lib/claudePrompts";
+import {
+  callAnthropicApi,
+  callOpenAiApi,
+  createImageMessage,
+  createTextMessage,
+  runWithProviderSelection,
+} from "../../lib/server/ai/providerRuntime";
+import { detectCornersSchema } from "../../lib/server/ai/responseSchemas";
 
 export const runtime = "nodejs";
 
@@ -161,76 +169,72 @@ export async function POST(request) {
     );
   }
 
-  const anthropicApiKey = asText(process.env.ANTHROPIC_API_KEY);
-  if (!anthropicApiKey) {
-    return corsJson(
-      {
-        success: false,
-        error: "Anthropic API key not configured.",
-        corners: fallbackCorners,
-      },
-      { status: 500 },
-    );
-  }
-
   try {
     const { base64Data, mediaType } = extractBase64ImageData(image);
     const { systemPrompt, userPrompt } = buildDetectCornersPrompts({
       width,
       height,
     });
-
-    const claudeResponse = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "x-api-key": anthropicApiKey,
-        "anthropic-version": "2023-06-01",
-        "content-type": "application/json",
+    const result = await runWithProviderSelection({
+      routeId: "detect-corners",
+      promptClass: "detectCorners",
+      requestSummary: {
+        width,
+        height,
+        mediaType,
       },
-      body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
-        max_tokens: 600,
-        system: systemPrompt,
-        messages: [
-          {
-            role: "user",
-            content: [
-              {
-                type: "image",
-                source: {
-                  type: "base64",
-                  media_type: mediaType,
-                  data: base64Data,
-                },
-              },
-              {
-                type: "text",
-                text: userPrompt,
-              },
-            ],
+      invokeProvider: async (provider) => {
+        const response =
+          provider === "openai"
+            ? await callOpenAiApi({
+                promptClass: "detectCorners",
+                systemPrompt,
+                messages: [
+                  {
+                    role: "user",
+                    content: [
+                      createImageMessage({ mediaType, base64Data }),
+                      createTextMessage(userPrompt),
+                    ],
+                  },
+                ],
+                maxTokens: 600,
+                jsonSchema: detectCornersSchema,
+              })
+            : await callAnthropicApi({
+                promptClass: "detectCorners",
+                systemPrompt,
+                messages: [
+                  {
+                    role: "user",
+                    content: [
+                      createImageMessage({ mediaType, base64Data }),
+                      createTextMessage(userPrompt),
+                    ],
+                  },
+                ],
+                maxTokens: 600,
+              });
+
+        const parsed = parseAnthropicJson(response.text);
+        const normalized = normalizeCorners(parsed, width, height);
+        return {
+          ...response,
+          normalizedOutput: {
+            corners: normalized.corners,
+            description: asText(parsed?.description),
+            usedFallback: !normalized.valid,
           },
-        ],
-      }),
+        };
+      },
     });
-
-    if (!claudeResponse.ok) {
-      const errorText = await claudeResponse.text();
-      throw new Error(
-        `Corner detection model request failed (${claudeResponse.status}): ${errorText.slice(0, 240)}`,
-      );
-    }
-
-    const aiResult = await claudeResponse.json();
-    const responseText = asText(aiResult?.content?.[0]?.text);
-    const parsed = parseAnthropicJson(responseText);
-    const normalized = normalizeCorners(parsed, width, height);
 
     return corsJson(
       {
         success: true,
-        corners: normalized.corners,
-        description: asText(parsed?.description),
-        usedFallback: !normalized.valid,
+        corners: result.normalizedOutput.corners,
+        description: result.normalizedOutput.description,
+        usedFallback: result.normalizedOutput.usedFallback,
       },
       { status: 200 },
     );

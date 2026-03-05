@@ -3,10 +3,16 @@ import {
   buildIngredientNameAnalysisPrompts,
   buildIngredientNameRepairPrompts,
 } from "../../lib/claudePrompts";
+import {
+  callAnthropicApi,
+  callOpenAiApi,
+  createTextMessage,
+  runWithProviderSelection,
+} from "../../lib/server/ai/providerRuntime";
+import { ingredientNameAnalysisSchema } from "../../lib/server/ai/responseSchemas";
 
 export const runtime = "nodejs";
 
-const PINNED_ANTHROPIC_MODEL = "claude-haiku-4-5-20251001";
 const ANTHROPIC_THINKING_BUDGET_TOKENS = 1024;
 const ANTHROPIC_MIN_OUTPUT_TOKENS = 220;
 const MAX_ANALYSIS_ATTEMPTS = 3;
@@ -268,78 +274,6 @@ async function fetchAllergenDietConfig() {
   return cachedConfig;
 }
 
-async function callAnthropicText({
-  apiKey,
-  model,
-  systemPrompt,
-  userPrompt,
-  maxTokens = 1200,
-}) {
-  const safeMaxTokens = Math.max(
-    Number(maxTokens) || 0,
-    ANTHROPIC_THINKING_BUDGET_TOKENS + ANTHROPIC_MIN_OUTPUT_TOKENS,
-  );
-  const requestPayload = {
-    model: asText(model) || PINNED_ANTHROPIC_MODEL,
-    max_tokens: safeMaxTokens,
-    system: systemPrompt,
-    messages: [
-      {
-        role: "user",
-        content: userPrompt,
-      },
-    ],
-  };
-  if (ANTHROPIC_THINKING_BUDGET_TOKENS > 0) {
-    requestPayload.thinking = {
-      type: "enabled",
-      budget_tokens: ANTHROPIC_THINKING_BUDGET_TOKENS,
-    };
-  }
-
-  const response = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01",
-      "content-type": "application/json",
-    },
-    body: JSON.stringify(requestPayload),
-  });
-
-  const payloadText = await response.text();
-  let responsePayload = null;
-  try {
-    responsePayload = payloadText ? JSON.parse(payloadText) : null;
-  } catch {
-    responsePayload = null;
-  }
-
-  if (!response.ok) {
-    const message =
-      asText(responsePayload?.error?.message) ||
-      asText(responsePayload?.error) ||
-      asText(payloadText) ||
-      "Anthropic API request failed.";
-    throw new Error(message);
-  }
-
-  const content = Array.isArray(responsePayload?.content) ? responsePayload.content : [];
-  const text = content
-    .filter(
-      (block) =>
-        block &&
-        typeof block === "object" &&
-        typeof block.text === "string" &&
-        (block.type === "text" || block.type === "output_text" || !block.type),
-    )
-    .map((block) => block.text)
-    .join("\n")
-    .trim();
-
-  return text || asText(responsePayload?.content);
-}
-
 function buildDietAliasResolver({ glutenFreeLabel, pescatarianLabel }) {
   return (token) => {
     const safe = canonicalToken(token);
@@ -380,44 +314,56 @@ function sleep(ms) {
   });
 }
 
-async function repairJsonResponse({ apiKey, model, rawOutput }) {
+async function repairJsonResponse(rawOutput) {
   const { systemPrompt: repairSystemPrompt, userPrompt: repairUserPrompt } =
     buildIngredientNameRepairPrompts(rawOutput);
-  return await callAnthropicText({
-    apiKey,
-    model,
+  return await callAnthropicApi({
+    promptClass: "ingredientNameAnalysis",
     systemPrompt: repairSystemPrompt,
-    userPrompt: repairUserPrompt,
+    messages: [{ role: "user", content: [createTextMessage(repairUserPrompt)] }],
     maxTokens: 320,
   });
 }
 
-async function runNameAnalysis({
-  apiKey,
-  model,
-  systemPrompt,
-  userPrompt,
-}) {
+async function runAnthropicNameAnalysis({ systemPrompt, userPrompt }) {
   let lastError = null;
   for (let attempt = 1; attempt <= MAX_ANALYSIS_ATTEMPTS; attempt += 1) {
     try {
-      const responseText = await callAnthropicText({
-        apiKey,
-        model,
+      const response = await callAnthropicApi({
+        promptClass: "ingredientNameAnalysis",
         systemPrompt,
-        userPrompt,
+        messages: [{ role: "user", content: [createTextMessage(userPrompt)] }],
         maxTokens: 520,
+        thinkingBudgetTokens: ANTHROPIC_THINKING_BUDGET_TOKENS,
       });
-      const parsed = parseClaudeJson(responseText);
-      if (parsed && typeof parsed === "object") return parsed;
+      const parsed = parseClaudeJson(response.text);
+      if (parsed && typeof parsed === "object") {
+        return {
+          ...response,
+          parsed,
+        };
+      }
 
-      const repairedText = await repairJsonResponse({
-        apiKey,
-        model,
-        rawOutput: responseText.slice(0, 8000),
-      });
-      const repaired = parseClaudeJson(repairedText);
-      if (repaired && typeof repaired === "object") return repaired;
+      const repairedResponse = await repairJsonResponse(response.text.slice(0, 8000));
+      const repaired = parseClaudeJson(repairedResponse.text);
+      if (repaired && typeof repaired === "object") {
+        return {
+          ...repairedResponse,
+          parsed: repaired,
+          latencyMs: Number(response.latencyMs || 0) + Number(repairedResponse.latencyMs || 0),
+          usage: {
+            input_tokens:
+              Number(response.usage?.input_tokens || 0) +
+              Number(repairedResponse.usage?.input_tokens || 0),
+            output_tokens:
+              Number(response.usage?.output_tokens || 0) +
+              Number(repairedResponse.usage?.output_tokens || 0),
+            total_tokens:
+              Number(response.usage?.total_tokens || 0) +
+              Number(repairedResponse.usage?.total_tokens || 0),
+          },
+        };
+      }
 
       lastError = new Error("Ingredient name analyzer returned malformed JSON output.");
     } catch (error) {
@@ -461,20 +407,6 @@ export async function POST(request) {
         error: "ingredientName is required.",
       },
       { status: 400 },
-    );
-  }
-
-  const anthropicApiKey = asText(process.env.ANTHROPIC_API_KEY);
-  if (!anthropicApiKey) {
-    return corsJson(
-      {
-        success: false,
-        allergens: [],
-        diets: [],
-        reasoning: "",
-        error: "ANTHROPIC_API_KEY is not configured.",
-      },
-      { status: 500 },
     );
   }
 
@@ -544,29 +476,64 @@ export async function POST(request) {
       dishName,
     });
 
-    const parsed = await runNameAnalysis({
-      apiKey: anthropicApiKey,
-      model: PINNED_ANTHROPIC_MODEL,
-      systemPrompt,
-      userPrompt,
+    const result = await runWithProviderSelection({
+      routeId: "ingredient-name-analysis",
+      promptClass: "ingredientNameAnalysis",
+      requestSummary: {
+        ingredientName,
+        dishName,
+      },
+      invokeProvider: async (provider) => {
+        const response =
+          provider === "openai"
+            ? await callOpenAiApi({
+                promptClass: "ingredientNameAnalysis",
+                systemPrompt,
+                messages: [{ role: "user", content: [createTextMessage(userPrompt)] }],
+                maxTokens: 520,
+                jsonSchema: ingredientNameAnalysisSchema,
+                reasoningEffort: "medium",
+              })
+            : await runAnthropicNameAnalysis({
+                systemPrompt,
+                userPrompt,
+              });
+
+        const parsed =
+          response?.parsed && typeof response.parsed === "object"
+            ? response.parsed
+            : parseClaudeJson(response.text);
+        if (!parsed || typeof parsed !== "object") {
+          throw new Error("Ingredient name analysis failed.");
+        }
+
+        const allergens = dedupeStrings([
+          ...parseCodeList(parsed?.allergen_codes, allergenCodebook.codeToValue),
+          ...parseLegacyList(parsed?.allergens, allergenCodebook.tokenToValue),
+        ]);
+
+        const diets = expandDietHierarchy([
+          ...parseCodeList(parsed?.diet_codes, dietCodebook.codeToValue),
+          ...parseLegacyList(parsed?.diets, dietCodebook.tokenToValue, resolveDietAlias),
+        ]);
+
+        return {
+          ...response,
+          normalizedOutput: {
+            allergens,
+            diets,
+            reasoning: asText(parsed?.reasoning),
+          },
+        };
+      },
     });
-
-    const allergens = dedupeStrings([
-      ...parseCodeList(parsed?.allergen_codes, allergenCodebook.codeToValue),
-      ...parseLegacyList(parsed?.allergens, allergenCodebook.tokenToValue),
-    ]);
-
-    const diets = expandDietHierarchy([
-      ...parseCodeList(parsed?.diet_codes, dietCodebook.codeToValue),
-      ...parseLegacyList(parsed?.diets, dietCodebook.tokenToValue, resolveDietAlias),
-    ]);
 
     return corsJson(
       {
         success: true,
-        allergens,
-        diets,
-        reasoning: asText(parsed?.reasoning),
+        allergens: result.normalizedOutput.allergens,
+        diets: result.normalizedOutput.diets,
+        reasoning: result.normalizedOutput.reasoning,
       },
       { status: 200 },
     );

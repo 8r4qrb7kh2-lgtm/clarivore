@@ -1,9 +1,16 @@
 import { corsJson, corsOptions } from "../_shared/cors";
 import { buildConfirmInfoComparisonPrompts } from "../../lib/claudePrompts";
+import {
+  callAnthropicApi,
+  callOpenAiApi,
+  createImageMessage,
+  createTextMessage,
+  runWithProviderSelection,
+} from "../../lib/server/ai/providerRuntime";
+import { confirmInfoCompareSchema } from "../../lib/server/ai/responseSchemas";
 
 export const runtime = "nodejs";
 
-const DEFAULT_ANTHROPIC_MODEL = "claude-sonnet-4-20250514";
 const ALLOWED_KINDS = new Set(["menu_page", "brand_item"]);
 
 function asText(value) {
@@ -122,101 +129,18 @@ function parseClaudeJson(value) {
   return null;
 }
 
-function extractTextFromAnthropicPayload(payload) {
-  const blocks = Array.isArray(payload?.content) ? payload.content : [];
-  return blocks
-    .filter(
-      (block) =>
-        block &&
-        typeof block === "object" &&
-        typeof block.text === "string" &&
-        (block.type === "text" || block.type === "output_text" || !block.type),
-    )
-    .map((block) => block.text)
-    .join("\n")
-    .trim();
-}
-
 function buildComparisonPrompts(kind, label) {
   return buildConfirmInfoComparisonPrompts(kind, label);
 }
 
-async function compareWithClaude({
-  apiKey,
-  model,
-  kind,
-  label,
-  baselineImage,
-  candidateImage,
-}) {
-  const { systemPrompt, userPrompt } = buildComparisonPrompts(kind, label);
-  const response = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01",
-      "content-type": "application/json",
-    },
-    body: JSON.stringify({
-      model: asText(model) || DEFAULT_ANTHROPIC_MODEL,
-      max_tokens: 800,
-      system: systemPrompt,
-      messages: [
-        {
-          role: "user",
-          content: [
-            {
-              type: "image",
-              source: {
-                type: "base64",
-                media_type: baselineImage.mediaType,
-                data: baselineImage.base64Data,
-              },
-            },
-            {
-              type: "image",
-              source: {
-                type: "base64",
-                media_type: candidateImage.mediaType,
-                data: candidateImage.base64Data,
-              },
-            },
-            {
-              type: "text",
-              text: userPrompt,
-            },
-          ],
-        },
-      ],
-    }),
-  });
-
-  const responseText = await response.text();
-  let responsePayload = null;
-  try {
-    responsePayload = responseText ? JSON.parse(responseText) : null;
-  } catch {
-    responsePayload = null;
-  }
-
-  if (!response.ok) {
-    const providerMessage =
-      asText(responsePayload?.error?.message) ||
-      asText(responsePayload?.error) ||
-      asText(responseText) ||
-      "Claude comparison request failed.";
-    throw new RequestError(providerMessage, 502);
-  }
-
-  const modelText =
-    extractTextFromAnthropicPayload(responsePayload) || asText(responsePayload?.content);
+function normalizeComparisonResult(modelText) {
   if (!modelText) {
-    throw new RequestError("Claude comparison response was empty.", 502);
+    throw new RequestError("Comparison response was empty.", 502);
   }
 
   const parsed = parseClaudeJson(modelText);
   if (!parsed || typeof parsed !== "object") {
-    throw new RequestError("Failed to parse Claude comparison response JSON.", 502);
+    throw new RequestError("Failed to parse comparison response JSON.", 502);
   }
 
   const confidence = normalizeConfidence(parsed.confidence);
@@ -242,6 +166,54 @@ async function compareWithClaude({
     confidence,
     summary,
     differences,
+  };
+}
+
+async function compareWithProvider({
+  provider,
+  kind,
+  label,
+  baselineImage,
+  candidateImage,
+}) {
+  const { systemPrompt, userPrompt } = buildComparisonPrompts(kind, label);
+  const response =
+    provider === "openai"
+      ? await callOpenAiApi({
+          promptClass: "confirmInfoCompare",
+          systemPrompt,
+          messages: [
+            {
+              role: "user",
+              content: [
+                createImageMessage(baselineImage),
+                createImageMessage(candidateImage),
+                createTextMessage(userPrompt),
+              ],
+            },
+          ],
+          maxTokens: 800,
+          jsonSchema: confirmInfoCompareSchema,
+        })
+      : await callAnthropicApi({
+          promptClass: "confirmInfoCompare",
+          systemPrompt,
+          messages: [
+            {
+              role: "user",
+              content: [
+                createImageMessage(baselineImage),
+                createImageMessage(candidateImage),
+                createTextMessage(userPrompt),
+              ],
+            },
+          ],
+          maxTokens: 800,
+        });
+
+  return {
+    ...response,
+    normalizedOutput: normalizeComparisonResult(response.text),
   };
 }
 
@@ -275,26 +247,27 @@ export async function POST(request) {
       throw new RequestError("baselineImage and candidateImage are required.", 400);
     }
 
-    const anthropicApiKey = asText(process.env.ANTHROPIC_API_KEY);
-    if (!anthropicApiKey) {
-      throw new RequestError("ANTHROPIC_API_KEY is not configured.", 500);
-    }
-
     const baselineImage = await parseImageInput(baselineImageRaw);
     const candidateImage = await parseImageInput(candidateImageRaw);
     const label = asText(body?.label);
-    const model = asText(process.env.ANTHROPIC_MODEL) || DEFAULT_ANTHROPIC_MODEL;
-
-    const result = await compareWithClaude({
-      apiKey: anthropicApiKey,
-      model,
-      kind,
-      label,
-      baselineImage,
-      candidateImage,
+    const result = await runWithProviderSelection({
+      routeId: "confirm-info-compare",
+      promptClass: "confirmInfoCompare",
+      requestSummary: {
+        kind,
+        label,
+      },
+      invokeProvider: (provider) =>
+        compareWithProvider({
+          provider,
+          kind,
+          label,
+          baselineImage,
+          candidateImage,
+        }),
     });
 
-    return corsJson(result, { status: 200 });
+    return corsJson(result.normalizedOutput, { status: 200 });
   } catch (error) {
     const statusCode = Number.isFinite(Number(error?.statusCode))
       ? Math.max(400, Math.min(599, Number(error.statusCode)))

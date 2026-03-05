@@ -1,5 +1,12 @@
 import { corsJson, corsOptions } from "../_shared/cors";
 import { buildAnalyzeIngredientScanPrompts } from "../../lib/claudePrompts";
+import {
+  callAnthropicApi,
+  callOpenAiApi,
+  createTextMessage,
+  runWithProviderSelection,
+} from "../../lib/server/ai/providerRuntime";
+import { analyzeIngredientScanSchema } from "../../lib/server/ai/responseSchemas";
 
 export const runtime = "nodejs";
 
@@ -60,68 +67,51 @@ export async function POST(request) {
     );
   }
 
-  const anthropicApiKey = asText(process.env.ANTHROPIC_API_KEY);
-  if (!anthropicApiKey) {
-    return corsJson(
-      {
-        needsScan: null,
-        reasoning: "",
-        error: "Anthropic API key not configured",
-      },
-      { status: 500 },
-    );
-  }
-
   try {
     const { systemPrompt, userPrompt } = buildAnalyzeIngredientScanPrompts({
       dishName,
       ingredientName,
     });
-
-    const requestPayload = {
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 300,
-      system: systemPrompt,
-      messages: [{ role: "user", content: userPrompt }],
-    };
-
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "x-api-key": anthropicApiKey,
-        "anthropic-version": "2023-06-01",
-        "content-type": "application/json",
+    const result = await runWithProviderSelection({
+      routeId: "analyze-ingredient-scan",
+      promptClass: "analyzeIngredientScan",
+      requestSummary: {
+        dishName,
+        ingredientName,
       },
-      // Leave temperature unset to use Anthropic defaults across thinking/non-thinking modes.
-      body: JSON.stringify(requestPayload),
+      invokeProvider: async (provider) => {
+        const response =
+          provider === "openai"
+            ? await callOpenAiApi({
+                promptClass: "analyzeIngredientScan",
+                systemPrompt,
+                messages: [{ role: "user", content: [createTextMessage(userPrompt)] }],
+                maxTokens: 300,
+                jsonSchema: analyzeIngredientScanSchema,
+              })
+            : await callAnthropicApi({
+                promptClass: "analyzeIngredientScan",
+                systemPrompt,
+                messages: [{ role: "user", content: [createTextMessage(userPrompt)] }],
+                maxTokens: 300,
+              });
+
+        const parsed = parseClaudeJson(response.text);
+        return {
+          ...response,
+          normalizedOutput: {
+            needsScan:
+              parsed && typeof parsed.needsScan === "boolean" ? parsed.needsScan : null,
+            reasoning: asText(parsed?.reasoning),
+          },
+        };
+      },
     });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Claude API error (${response.status}): ${errorText.slice(0, 240)}`);
-    }
-
-    const aiResult = await response.json();
-    const contentBlocks = Array.isArray(aiResult?.content) ? aiResult.content : [];
-    const textBlocks = contentBlocks.filter(
-      (block) =>
-        block &&
-        typeof block === "object" &&
-        typeof block.text === "string" &&
-        (block.type === "text" || block.type === "output_text" || !block.type),
-    );
-    const responseText =
-      textBlocks.map((block) => block.text).join("\n").trim() ||
-      (typeof aiResult?.content === "string" ? aiResult.content : "");
-
-    const parsed = parseClaudeJson(responseText);
-    const needsScan =
-      parsed && typeof parsed.needsScan === "boolean" ? parsed.needsScan : null;
 
     return corsJson(
       {
-        needsScan,
-        reasoning: asText(parsed?.reasoning),
+        needsScan: result.normalizedOutput.needsScan,
+        reasoning: result.normalizedOutput.reasoning,
       },
       { status: 200 },
     );

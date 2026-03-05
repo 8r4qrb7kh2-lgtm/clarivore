@@ -3,6 +3,14 @@ import fsp from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { buildMenuImageAnalysisPrompt } from "../../lib/claudePrompts.js";
+import {
+  callAnthropicApi,
+  callOpenAiApi,
+  createImageMessage,
+  createTextMessage,
+  runWithProviderSelection,
+} from "../../lib/server/ai/providerRuntime.js";
+import { menuImageAnalysisSchema } from "../../lib/server/ai/responseSchemas.js";
 
 const DEFAULT_ANTHROPIC_MODEL = "claude-sonnet-4-5-20250929";
 const GOOGLE_VISION_ENDPOINT = "https://vision.googleapis.com/v1/images:annotate";
@@ -755,78 +763,61 @@ function extractClaudeJsonArray(text) {
   throw new ApiError("Claude response JSON was not an array.", 500);
 }
 
-async function callAnthropicMessages({ apiKey, model, image, prompt }) {
-  const response = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01",
-      "content-type": "application/json",
-    },
-    body: JSON.stringify({
-      model: asText(model) || DEFAULT_ANTHROPIC_MODEL,
-      temperature: 0,
-      max_tokens: 8192,
-      messages: [
-        {
-          role: "user",
-          content: [
-            {
-              type: "image",
-              source: {
-                type: "base64",
-                media_type: image.mediaType,
-                data: image.base64Data,
-              },
-            },
-            { type: "text", text: prompt },
-          ],
-        },
-      ],
-    }),
-  });
-
-  const payloadText = await response.text();
-  let payload = null;
-  try {
-    payload = payloadText ? JSON.parse(payloadText) : null;
-  } catch {
-    payload = null;
-  }
-
-  if (!response.ok) {
-    const message =
-      asText(payload?.error?.message) ||
-      asText(payload?.error) ||
-      asText(payloadText) ||
-      "Anthropic API request failed.";
-    throw new ApiError(message, 500);
-  }
-
-  const contentBlocks = Array.isArray(payload?.content) ? payload.content : [];
-  const text = contentBlocks
-    .filter((block) => {
-      if (!block || typeof block !== "object") return false;
-      if (typeof block.text !== "string") return false;
-      return block.type === "text" || block.type === "output_text" || !block.type;
-    })
-    .map((block) => block.text)
-    .join("\n")
-    .trim();
-
-  return text || asText(payload?.content);
-}
-
 async function analyzeMenu({ imageInput, elements, fullText, existingNames, model, anthropicApiKey }) {
   const spatialMap = buildSpatialRepresentation(elements);
   const prompt = buildPrompt(spatialMap, fullText, existingNames);
-  const responseText = await callAnthropicMessages({
-    apiKey: anthropicApiKey,
-    model,
-    image: imageInput,
-    prompt,
+  const result = await runWithProviderSelection({
+    routeId: "menu-image-analysis",
+    promptClass: "menuImageAnalysis",
+    requestSummary: {
+      elementCount: elements.length,
+      existingNameCount: existingNames.length,
+      model: asText(model) || DEFAULT_ANTHROPIC_MODEL,
+    },
+    invokeProvider: async (provider) => {
+      const env =
+        provider === "anthropic" && asText(model)
+          ? { ...process.env, ANTHROPIC_MODEL_MENU_IMAGE_ANALYSIS: asText(model) }
+          : process.env;
+      const response =
+        provider === "openai"
+          ? await callOpenAiApi({
+              promptClass: "menuImageAnalysis",
+              messages: [
+                {
+                  role: "user",
+                  content: [
+                    createImageMessage(imageInput),
+                    createTextMessage(prompt),
+                  ],
+                },
+              ],
+              maxTokens: 8192,
+              temperature: 0,
+              jsonSchema: menuImageAnalysisSchema,
+            })
+          : await callAnthropicApi({
+              promptClass: "menuImageAnalysis",
+              messages: [
+                {
+                  role: "user",
+                  content: [
+                    createImageMessage(imageInput),
+                    createTextMessage(prompt),
+                  ],
+                },
+              ],
+              maxTokens: 8192,
+              temperature: 0,
+              env,
+            });
+      return {
+        ...response,
+        normalizedOutput: extractClaudeJsonArray(response.text),
+      };
+    },
   });
-  return extractClaudeJsonArray(responseText);
+  return Array.isArray(result.normalizedOutput) ? result.normalizedOutput : [];
 }
 
 function normalizeBounds(bounds = {}) {
@@ -1643,11 +1634,6 @@ async function runLegacyRepositionPipeline({
 }
 
 export async function analyzeMenuImageWithLocalEngine({ body, env = process.env }) {
-  const anthropicApiKey = readFirstEnv(env, ["ANTHROPIC_API_KEY"]);
-  if (!anthropicApiKey) {
-    throw new ApiError("ANTHROPIC_API_KEY is not configured.", 500);
-  }
-
   const googleVisionApiKey = readFirstEnv(env, ["GOOGLE_VISION_API_KEY", "GOOGLE_CLOUD_API_KEY"]);
   if (!googleVisionApiKey) {
     throw new ApiError("GOOGLE_VISION_API_KEY is not configured.", 500);
@@ -1681,7 +1667,6 @@ export async function analyzeMenuImageWithLocalEngine({ body, env = process.env 
   const result = await runLegacyRepositionPipeline({
     body,
     mode,
-    anthropicApiKey,
     googleVisionApiKey,
     model,
   });
@@ -1707,4 +1692,11 @@ const __test = {
   enforceUniformPaddingForDish,
 };
 
-export { ApiError, normalizeToken, dedupeByName, sanitizeRemapOverlay, __test };
+const __bench = {
+  extractTextElements,
+  buildSpatialRepresentation,
+  buildPrompt,
+  parseImageDataSync,
+};
+
+export { ApiError, normalizeToken, dedupeByName, sanitizeRemapOverlay, __bench, __test };

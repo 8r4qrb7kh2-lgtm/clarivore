@@ -2,6 +2,12 @@ import { corsJson, corsOptions } from "../_shared/cors";
 import { asText, prisma } from "../editor-pending-save/_shared/pendingSaveUtils";
 import { Prisma } from "@prisma/client";
 import { buildHelpAssistantSystemPrompt } from "../../lib/claudePrompts";
+import {
+  callAnthropicApi,
+  callOpenAiApi,
+  createTextMessage,
+  runWithProviderSelection,
+} from "../../lib/server/ai/providerRuntime";
 
 export const runtime = "nodejs";
 
@@ -181,11 +187,6 @@ export async function POST(request) {
     return corsJson({ error: "Query is required." }, { status: 400 });
   }
 
-  const anthropicApiKey = asText(process.env.ANTHROPIC_API_KEY);
-  if (!anthropicApiKey) {
-    return corsJson({ error: "Anthropic API key not configured." }, { status: 500 });
-  }
-
   try {
     const { context, requestedMode } = await fetchKnowledgeBase({
       query,
@@ -201,31 +202,48 @@ export async function POST(request) {
     });
     const messages = sanitizeHistory(body?.messages, query);
 
-    const claudeResponse = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "x-api-key": anthropicApiKey,
-        "anthropic-version": "2023-06-01",
-        "content-type": "application/json",
+    const result = await runWithProviderSelection({
+      routeId: "help-assistant",
+      promptClass: "helpAssistant",
+      requestSummary: {
+        query,
+        mode: requestedMode,
+        messageCount: messages.length,
       },
-      body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
-        max_tokens: 900,
-        temperature: 0.2,
-        system: systemPrompt,
-        messages,
-      }),
+      invokeProvider: async (provider) => {
+        const response =
+          provider === "openai"
+            ? await callOpenAiApi({
+                promptClass: "helpAssistant",
+                systemPrompt,
+                messages: messages.map((message) => ({
+                  role: message.role,
+                  content: [createTextMessage(message.content)],
+                })),
+                maxTokens: 900,
+                temperature: 0.2,
+              })
+            : await callAnthropicApi({
+                promptClass: "helpAssistant",
+                systemPrompt,
+                messages: messages.map((message) => ({
+                  role: message.role,
+                  content: [createTextMessage(message.content)],
+                })),
+                maxTokens: 900,
+                temperature: 0.2,
+              });
+
+        return {
+          ...response,
+          normalizedOutput: {
+            answer: asText(response.text),
+          },
+        };
+      },
     });
 
-    if (!claudeResponse.ok) {
-      const errorText = await claudeResponse.text();
-      throw new Error(`Claude API error (${claudeResponse.status}): ${errorText.slice(0, 240)}`);
-    }
-
-    const aiResult = await claudeResponse.json();
-    const answer = asText(aiResult?.content?.[0]?.text);
-
-    return corsJson({ answer }, { status: 200 });
+    return corsJson({ answer: result.normalizedOutput.answer }, { status: 200 });
   } catch (error) {
     return corsJson(
       {

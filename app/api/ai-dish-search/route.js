@@ -2,6 +2,13 @@ import { corsJson, corsOptions } from "../_shared/cors";
 import { asText, prisma } from "../editor-pending-save/_shared/pendingSaveUtils";
 import { fetchRestaurantMenuStateMapFromTablesWithPrisma } from "../../lib/server/restaurantMenuStateServer.js";
 import { buildAiDishSearchPrompt } from "../../lib/claudePrompts";
+import {
+  callAnthropicApi,
+  callOpenAiApi,
+  createTextMessage,
+  runWithProviderSelection,
+} from "../../lib/server/ai/providerRuntime";
+import { aiDishSearchSchema } from "../../lib/server/ai/responseSchemas";
 
 export const runtime = "nodejs";
 
@@ -349,12 +356,6 @@ export async function POST(request) {
     const clipped = candidates.slice(0, MAX_AI_CANDIDATES);
     const candidateById = new Map(clipped.map((candidate) => [candidate.candidate_id, candidate]));
 
-    const anthropicApiKey = asText(process.env.ANTHROPIC_API_KEY);
-    if (!anthropicApiKey) {
-      const fallback = addLastConfirmed(summarizeBasic(clipped), clipped);
-      return corsJson({ results: fallback, provider: "basic" }, { status: 200 });
-    }
-
     const prompt = buildPrompt({
       userQuery,
       userAllergens,
@@ -369,53 +370,63 @@ export async function POST(request) {
       })),
     });
 
-    const aiResponse = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": anthropicApiKey,
-        "anthropic-version": "2023-06-01",
-      },
-      body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
-        max_tokens: 2000,
-        temperature: 0,
-        messages: [{ role: "user", content: prompt }],
-      }),
-    });
+    let aiResult;
+    try {
+      aiResult = await runWithProviderSelection({
+        routeId: "ai-dish-search",
+        promptClass: "aiDishSearch",
+        requestSummary: {
+          userQuery,
+          candidateCount: clipped.length,
+        },
+        invokeProvider: async (provider) => {
+          const response =
+            provider === "openai"
+              ? await callOpenAiApi({
+                  promptClass: "aiDishSearch",
+                  messages: [{ role: "user", content: [createTextMessage(prompt)] }],
+                  maxTokens: 2000,
+                  temperature: 0,
+                  jsonSchema: aiDishSearchSchema,
+                })
+              : await callAnthropicApi({
+                  promptClass: "aiDishSearch",
+                  messages: [{ role: "user", content: [createTextMessage(prompt)] }],
+                  maxTokens: 2000,
+                  temperature: 0,
+                });
 
-    if (!aiResponse.ok) {
-      const fallback = addLastConfirmed(summarizeBasic(clipped), clipped);
-      return corsJson(
-        { results: fallback, provider: "fallback", error: "AI request failed" },
-        { status: 200 },
-      );
-    }
-
-    const aiData = await aiResponse.json();
-    const content = asText(aiData?.content?.[0]?.text);
-    const jsonMatch = content.match(/\{[\s\S]*"matches"[\s\S]*\}/);
-
-    if (!jsonMatch?.[0]) {
+          const jsonMatch = response.text.match(/\{[\s\S]*"matches"[\s\S]*\}/);
+          const parsed = jsonMatch?.[0] ? JSON.parse(jsonMatch[0]) : { matches: [] };
+          return {
+            ...response,
+            normalizedOutput: {
+              matches: Array.isArray(parsed?.matches) ? parsed.matches : [],
+            },
+          };
+        },
+      });
+    } catch {
       const fallback = addLastConfirmed(summarizeBasic(clipped), clipped);
       return corsJson(
         {
           results: fallback,
           provider: "fallback",
-          error: "Could not parse AI output",
+          error: "AI request failed",
         },
         { status: 200 },
       );
     }
 
-    const parsed = JSON.parse(jsonMatch[0]);
-    const matches = Array.isArray(parsed?.matches) ? parsed.matches : [];
+    const matches = Array.isArray(aiResult?.normalizedOutput?.matches)
+      ? aiResult.normalizedOutput.matches
+      : [];
     if (!matches.length) {
-      return corsJson({ results: [], provider: "claude-empty" }, { status: 200 });
+      return corsJson({ results: [], provider: "ai-empty" }, { status: 200 });
     }
 
     const results = addLastConfirmed(mapAiMatchesToResults(matches, candidateById), clipped);
-    return corsJson({ results, provider: "claude" }, { status: 200 });
+    return corsJson({ results, provider: aiResult.provider }, { status: 200 });
   } catch (error) {
     return corsJson(
       {

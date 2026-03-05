@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextResponse } from "next/server.js";
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -26,4 +26,3 @@ export function corsJson(payload, init = {}) {
 export function corsOptions() {
   return new Response(null, withCorsHeaders({ status: 204 }));
 }
-
