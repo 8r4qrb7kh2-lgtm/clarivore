@@ -11,6 +11,7 @@ import {
   runWithProviderSelection,
 } from "../../lib/server/ai/providerRuntime";
 import { ingredientAllergenFlagsSchema } from "../../lib/server/ai/responseSchemas";
+import { findIngredientCatalogEntriesByNames } from "../../lib/server/ingredientCatalog";
 
 export const runtime = "nodejs";
 
@@ -243,6 +244,33 @@ function setCachedAnalysis(cacheKey, flags) {
   });
   if (oldestKey) {
     analysisCache.delete(oldestKey);
+  }
+}
+
+async function applyIngredientCatalogOverrides(flags) {
+  const safeFlags = Array.isArray(flags) ? flags : [];
+  const ingredientNames = safeFlags.map((flag) => asText(flag?.ingredient)).filter(Boolean);
+  if (!ingredientNames.length) return safeFlags;
+
+  try {
+    const entriesByIngredient = await findIngredientCatalogEntriesByNames(
+      ingredientNames,
+    );
+
+    return safeFlags.map((flag) => {
+      const entry = entriesByIngredient.get(asText(flag?.ingredient));
+      if (!entry?.isReady) {
+        return flag;
+      }
+      return {
+        ...flag,
+        allergens: dedupeStrings(entry.allergens),
+        diets: dedupeStrings(entry.diets),
+      };
+    });
+  } catch (error) {
+    console.warn("Ingredient catalog overrides unavailable:", error);
+    return safeFlags;
   }
 }
 
@@ -812,6 +840,8 @@ export async function POST(request) {
         } catch (pass2Error) {
           fallbackReason = `pass2-failed:${asText(pass2Error?.message) || "unknown"}`;
         }
+
+        finalFlags = await applyIngredientCatalogOverrides(finalFlags);
 
         return {
           ...aggregateResponse,

@@ -1,0 +1,354 @@
+{
+  "alias_limit": 12,
+  "limit": 2500,
+  "ready_entries": 2448,
+  "seeded_entries": 2500,
+  "top_allergens": [
+    [
+      "milk",
+      250
+    ],
+    [
+      "wheat",
+      189
+    ],
+    [
+      "soy",
+      150
+    ],
+    [
+      "tree nut",
+      28
+    ],
+    [
+      "egg",
+      25
+    ],
+    [
+      "peanut",
+      20
+    ],
+    [
+      "shellfish",
+      18
+    ],
+    [
+      "fish",
+      18
+    ],
+    [
+      "sesame",
+      12
+    ]
+  ],
+  "top_examples": [
+    {
+      "allergens": [],
+      "canonical_name": "water",
+      "diets": [
+        "Vegan",
+        "Vegetarian",
+        "Pescatarian",
+        "Gluten-free"
+      ],
+      "is_ready": true,
+      "lookup_count": 177395
+    },
+    {
+      "allergens": [],
+      "canonical_name": "sugar",
+      "diets": [
+        "Vegan",
+        "Vegetarian",
+        "Pescatarian",
+        "Gluten-free"
+      ],
+      "is_ready": true,
+      "lookup_count": 158038
+    },
+    {
+      "allergens": [],
+      "canonical_name": "salt",
+      "diets": [
+        "Vegan",
+        "Vegetarian",
+        "Pescatarian",
+        "Gluten-free"
+      ],
+      "is_ready": true,
+      "lookup_count": 148500
+    },
+    {
+      "allergens": [],
+      "canonical_name": "folic acid",
+      "diets": [
+        "Vegan",
+        "Vegetarian",
+        "Pescatarian",
+        "Gluten-free"
+      ],
+      "is_ready": true,
+      "lookup_count": 122576
+    },
+    {
+      "allergens": [],
+      "canonical_name": "niacin",
+      "diets": [
+        "Vegan",
+        "Vegetarian",
+        "Pescatarian",
+        "Gluten-free"
+      ],
+      "is_ready": true,
+      "lookup_count": 117757
+    },
+    {
+      "allergens": [],
+      "canonical_name": "riboflavin",
+      "diets": [
+        "Vegan",
+        "Vegetarian",
+        "Pescatarian",
+        "Gluten-free"
+      ],
+      "is_ready": true,
+      "lookup_count": 108071
+    },
+    {
+      "allergens": [
+        "wheat"
+      ],
+      "canonical_name": "wheat flour",
+      "diets": [
+        "Vegan",
+        "Vegetarian",
+        "Pescatarian"
+      ],
+      "is_ready": true,
+      "lookup_count": 99347
+    },
+    {
+      "allergens": [],
+      "canonical_name": "reduced iron",
+      "diets": [
+        "Vegan",
+        "Vegetarian",
+        "Pescatarian",
+        "Gluten-free"
+      ],
+      "is_ready": true,
+      "lookup_count": 83070
+    },
+    {
+      "allergens": [],
+      "canonical_name": "thiamine mononitrate",
+      "diets": [
+        "Vegan",
+        "Vegetarian",
+        "Pescatarian",
+        "Gluten-free"
+      ],
+      "is_ready": true,
+      "lookup_count": 70181
+    },
+    {
+      "allergens": [
+        "soy"
+      ],
+      "canonical_name": "soybean oil",
+      "diets": [
+        "Vegan",
+        "Vegetarian",
+        "Pescatarian",
+        "Gluten-free"
+      ],
+      "is_ready": true,
+      "lookup_count": 45250
+    },
+    {
+      "allergens": [],
+      "canonical_name": "enzyme",
+      "diets": [
+        "Vegan",
+        "Vegetarian",
+        "Pescatarian",
+        "Gluten-free"
+      ],
+      "is_ready": false,
+      "lookup_count": 39117
+    },
+    {
+      "allergens": [],
+      "canonical_name": "thiamin mononitrate",
+      "diets": [
+        "Vegan",
+        "Vegetarian",
+        "Pescatarian",
+        "Gluten-free"
+      ],
+      "is_ready": true,
+      "lookup_count": 35951
+    },
+    {
+      "allergens": [],
+      "canonical_name": "corn syrup",
+      "diets": [
+        "Vegan",
+        "Vegetarian",
+        "Pescatarian",
+        "Gluten-free"
+      ],
+      "is_ready": true,
+      "lookup_count": 35675
+    },
+    {
+      "allergens": [
+        "wheat"
+      ],
+      "canonical_name": "malted barley flour",
+      "diets": [
+        "Vegan",
+        "Vegetarian",
+        "Pescatarian"
+      ],
+      "is_ready": true,
+      "lookup_count": 33249
+    },
+    {
+      "allergens": [],
+      "canonical_name": "palm oil",
+      "diets": [
+        "Vegan",
+        "Vegetarian",
+        "Pescatarian",
+        "Gluten-free"
+      ],
+      "is_ready": true,
+      "lookup_count": 32387
+    },
+    {
+      "allergens": [],
+      "canonical_name": "enriched flour",
+      "diets": [
+        "Vegan",
+        "Vegetarian",
+        "Pescatarian",
+        "Gluten-free"
+      ],
+      "is_ready": true,
+      "lookup_count": 31465
+    },
+    {
+      "allergens": [
+        "milk"
+      ],
+      "canonical_name": "milk",
+      "diets": [
+        "Vegetarian",
+        "Pescatarian",
+        "Gluten-free"
+      ],
+      "is_ready": true,
+      "lookup_count": 31266
+    },
+    {
+      "allergens": [],
+      "canonical_name": "dextrose",
+      "diets": [
+        "Vegan",
+        "Vegetarian",
+        "Pescatarian",
+        "Gluten-free"
+      ],
+      "is_ready": true,
+      "lookup_count": 29828
+    },
+    {
+      "allergens": [],
+      "canonical_name": "vegetable oil",
+      "diets": [
+        "Vegan",
+        "Vegetarian",
+        "Pescatarian",
+        "Gluten-free"
+      ],
+      "is_ready": false,
+      "lookup_count": 27357
+    },
+    {
+      "allergens": [],
+      "canonical_name": "high fructose corn syrup",
+      "diets": [
+        "Vegan",
+        "Vegetarian",
+        "Pescatarian",
+        "Gluten-free"
+      ],
+      "is_ready": true,
+      "lookup_count": 25083
+    },
+    {
+      "allergens": [
+        "soy"
+      ],
+      "canonical_name": "soy lecithin",
+      "diets": [
+        "Vegan",
+        "Vegetarian",
+        "Pescatarian",
+        "Gluten-free"
+      ],
+      "is_ready": true,
+      "lookup_count": 24103
+    },
+    {
+      "allergens": [],
+      "canonical_name": "yeast",
+      "diets": [
+        "Vegan",
+        "Vegetarian",
+        "Pescatarian",
+        "Gluten-free"
+      ],
+      "is_ready": true,
+      "lookup_count": 23927
+    },
+    {
+      "allergens": [],
+      "canonical_name": "natural flavor",
+      "diets": [
+        "Vegan",
+        "Vegetarian",
+        "Pescatarian",
+        "Gluten-free"
+      ],
+      "is_ready": false,
+      "lookup_count": 23572
+    },
+    {
+      "allergens": [
+        "milk"
+      ],
+      "canonical_name": "cheese culture",
+      "diets": [
+        "Vegetarian",
+        "Pescatarian",
+        "Gluten-free"
+      ],
+      "is_ready": true,
+      "lookup_count": 23452
+    },
+    {
+      "allergens": [],
+      "canonical_name": "iron",
+      "diets": [
+        "Vegan",
+        "Vegetarian",
+        "Pescatarian",
+        "Gluten-free"
+      ],
+      "is_ready": true,
+      "lookup_count": 23164
+    }
+  ]
+}

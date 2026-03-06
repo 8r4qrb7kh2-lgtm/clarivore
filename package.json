@@ -29,6 +29,8 @@
     "ml:fetch:usda": "python3 scripts/ml/fetch_usda_fdc_data.py",
     "ml:fetch:usda:bulk": "python3 scripts/ml/fetch_usda_fdc_bulk.py --require-contains",
     "ml:prepare:usda-only": "python3 scripts/ml/prepare_usda_only_data.py",
+    "ml:build:ingredient-catalog": "python3 scripts/ml/build_ingredient_catalog.py",
+    "ml:seed:ingredient-catalog": "node scripts/sync-ingredient-catalog.mjs",
     "ml:distill:teacher": "python3 scripts/ml/distill_with_anthropic.py",
     "ml:distill:apply": "python3 scripts/ml/apply_distilled_labels.py",
     "ml:train": "python3 scripts/ml/train_fast_model.py",

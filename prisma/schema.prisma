@@ -713,6 +713,26 @@ model ingredient_scan_appeals {
   @@schema("public")
 }
 
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model ingredient_catalog_entries {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  canonical_name  String
+  normalized_name String   @unique
+  aliases         String[] @default([])
+  lookup_terms    String[] @default([])
+  lookup_count    Int      @default(0)
+  allergens       String[] @default([])
+  diets           String[] @default([])
+  is_ready        Boolean  @default(false)
+  seed_source     String   @default("corpus_seed")
+  metadata        Json     @default("{}")
+  created_at      DateTime @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([is_ready], map: "ingredient_catalog_entries_ready_idx")
+  @@schema("public")
+}
+
 model issue_reports {
   id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   name            String?
