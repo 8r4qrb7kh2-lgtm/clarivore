@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import DefaultDict, Dict, Iterable, Iterator, List, Sequence, Set, Tuple
 
 
-DEFAULT_LIMIT = 2500
+DEFAULT_LIMIT = 5000
 DEFAULT_OUTPUT = "ml/seeds/ingredient_catalog_seed.jsonl"
 DEFAULT_SUMMARY_OUTPUT = "ml/seeds/ingredient_catalog_seed_summary.json"
 
@@ -147,6 +147,19 @@ AMBIGUOUS_PREFIX_TERMS: Tuple[str, ...] = (
     "spices ",
 )
 
+AMBIGUOUS_SUFFIX_TERMS: Tuple[str, ...] = (
+    " flavor",
+    " flavors",
+)
+
+REJECT_SUBSTRINGS: Tuple[str, ...] = (
+    "added to preserve freshness",
+    "carefully chosen ingredients",
+    "ingredients not in regular",
+    "preserve freshness",
+    "to preserve freshness",
+)
+
 MEAT_TERMS: Tuple[str, ...] = (
     "bacon",
     "beef",
@@ -200,7 +213,6 @@ GLUTEN_BLOCKERS: Tuple[str, ...] = (
     "emmer",
     "farina",
     "farro",
-    "gluten",
     "kamut",
     "malt",
     "matzo",
@@ -210,6 +222,10 @@ GLUTEN_BLOCKERS: Tuple[str, ...] = (
     "spelt",
     "triticale",
     "wheat",
+)
+
+GLUTEN_LABEL_TERMS: Tuple[str, ...] = (
+    "gluten",
 )
 
 MILK_TERMS: Tuple[str, ...] = (
@@ -454,6 +470,9 @@ def singularize(token: str) -> str:
 
 def canonicalize_name(value: str) -> str:
     base = PAREN_CONTENT_RE.sub("", value)
+    base = re.sub(r"\([^)]*$", " ", base)
+    base = base.replace("(", " ").replace(")", " ")
+    base = base.replace("*", " ")
     base = normalize_spaces(base)
     tokens = base.split()
 
@@ -468,6 +487,28 @@ def canonicalize_name(value: str) -> str:
 
     normalized = normalize_spaces(" ".join(tokens))
     return normalized
+
+
+def should_keep_catalog_name(value: str) -> bool:
+    safe = as_text(value)
+    if len(safe) < 2:
+        return False
+    lowered = safe.lower()
+    if lowered.startswith("ingredients "):
+        return False
+    if ":" in safe:
+        return False
+    if ". " in safe:
+        return False
+    if any(token in lowered for token in REJECT_SUBSTRINGS):
+        return False
+    if "(" in safe or ")" in safe:
+        return False
+    if safe.startswith(("(", ")", "-", "*")):
+        return False
+    if len(safe.split()) > 18:
+        return False
+    return True
 
 
 def normalize_lookup_term(value: str) -> str:
@@ -581,10 +622,12 @@ MEAT_MATCHERS = compile_matchers(MEAT_TERMS)
 VEGAN_ONLY_MATCHERS = compile_matchers(VEGAN_ONLY_BLOCKERS)
 ALL_DIET_BLOCKER_MATCHERS = compile_matchers(ALL_DIET_BLOCKERS)
 GLUTEN_MATCHERS = compile_matchers(GLUTEN_BLOCKERS)
+GLUTEN_LABEL_MATCHERS = compile_matchers(GLUTEN_LABEL_TERMS)
 
 
 def classify_catalog_entry(name: str) -> Dict[str, object]:
     normalized = f" {normalize_lookup_term(name)} "
+    has_gluten_free_claim = " gluten free " in normalized
     allergens: Set[str] = set()
     blocked_diets: Set[str] = set()
     reason_codes: List[str] = []
@@ -621,7 +664,9 @@ def classify_catalog_entry(name: str) -> Dict[str, object]:
         allergens.add("milk")
         reason_codes.append("allergen:milk")
 
-    if match_any(normalized, GLUTEN_MATCHERS):
+    if match_any(normalized, GLUTEN_MATCHERS) or (
+        match_any(normalized, GLUTEN_LABEL_MATCHERS) and not has_gluten_free_claim
+    ):
         allergens.add("wheat")
         blocked_diets.add("Gluten-free")
         reason_codes.append("diet_block:gluten_free")
@@ -648,7 +693,7 @@ def classify_catalog_entry(name: str) -> Dict[str, object]:
     is_ready = True
     if name in AMBIGUOUS_EXACT_TERMS or any(
         name.startswith(prefix) for prefix in AMBIGUOUS_PREFIX_TERMS
-    ):
+    ) or any(name.endswith(suffix) for suffix in AMBIGUOUS_SUFFIX_TERMS):
         is_ready = False
         reason_codes.append("review:ambiguous_generic")
     if " extract " in normalized and not allergens:
@@ -723,6 +768,8 @@ def main() -> int:
                 if len(canonical_name) < 2:
                     continue
                 if canonical_name in NOISE_TERMS:
+                    continue
+                if not should_keep_catalog_name(canonical_name):
                     continue
                 lookup_term = normalize_lookup_term(canonical_name)
                 if len(lookup_term) < 2:

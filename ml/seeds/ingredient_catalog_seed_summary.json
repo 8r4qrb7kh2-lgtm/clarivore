@@ -1,44 +1,44 @@
 {
   "alias_limit": 12,
-  "limit": 2500,
-  "ready_entries": 2448,
-  "seeded_entries": 2500,
+  "limit": 5000,
+  "ready_entries": 4816,
+  "seeded_entries": 5000,
   "top_allergens": [
     [
       "milk",
-      250
+      486
     ],
     [
       "wheat",
-      189
+      307
     ],
     [
       "soy",
-      150
+      265
     ],
     [
       "tree nut",
-      28
-    ],
-    [
-      "egg",
-      25
-    ],
-    [
-      "peanut",
-      20
-    ],
-    [
-      "shellfish",
-      18
+      64
     ],
     [
       "fish",
-      18
+      48
+    ],
+    [
+      "peanut",
+      44
+    ],
+    [
+      "egg",
+      43
+    ],
+    [
+      "shellfish",
+      32
     ],
     [
       "sesame",
-      12
+      22
     ]
   ],
   "top_examples": [
@@ -52,7 +52,7 @@
         "Gluten-free"
       ],
       "is_ready": true,
-      "lookup_count": 177395
+      "lookup_count": 177447
     },
     {
       "allergens": [],
@@ -64,7 +64,7 @@
         "Gluten-free"
       ],
       "is_ready": true,
-      "lookup_count": 158038
+      "lookup_count": 158106
     },
     {
       "allergens": [],
@@ -76,7 +76,7 @@
         "Gluten-free"
       ],
       "is_ready": true,
-      "lookup_count": 148500
+      "lookup_count": 148608
     },
     {
       "allergens": [],
@@ -88,7 +88,7 @@
         "Gluten-free"
       ],
       "is_ready": true,
-      "lookup_count": 122576
+      "lookup_count": 123008
     },
     {
       "allergens": [],
@@ -100,7 +100,7 @@
         "Gluten-free"
       ],
       "is_ready": true,
-      "lookup_count": 117757
+      "lookup_count": 117763
     },
     {
       "allergens": [],
@@ -112,7 +112,7 @@
         "Gluten-free"
       ],
       "is_ready": true,
-      "lookup_count": 108071
+      "lookup_count": 108081
     },
     {
       "allergens": [
@@ -125,7 +125,7 @@
         "Pescatarian"
       ],
       "is_ready": true,
-      "lookup_count": 99347
+      "lookup_count": 99645
     },
     {
       "allergens": [],
@@ -149,7 +149,7 @@
         "Gluten-free"
       ],
       "is_ready": true,
-      "lookup_count": 70181
+      "lookup_count": 70182
     },
     {
       "allergens": [
@@ -163,7 +163,7 @@
         "Gluten-free"
       ],
       "is_ready": true,
-      "lookup_count": 45250
+      "lookup_count": 45418
     },
     {
       "allergens": [],
@@ -175,7 +175,7 @@
         "Gluten-free"
       ],
       "is_ready": false,
-      "lookup_count": 39117
+      "lookup_count": 39296
     },
     {
       "allergens": [],
@@ -199,7 +199,7 @@
         "Gluten-free"
       ],
       "is_ready": true,
-      "lookup_count": 35675
+      "lookup_count": 35789
     },
     {
       "allergens": [
@@ -212,7 +212,7 @@
         "Pescatarian"
       ],
       "is_ready": true,
-      "lookup_count": 33249
+      "lookup_count": 33277
     },
     {
       "allergens": [],
@@ -224,7 +224,7 @@
         "Gluten-free"
       ],
       "is_ready": true,
-      "lookup_count": 32387
+      "lookup_count": 32551
     },
     {
       "allergens": [],
@@ -236,7 +236,7 @@
         "Gluten-free"
       ],
       "is_ready": true,
-      "lookup_count": 31465
+      "lookup_count": 31850
     },
     {
       "allergens": [
@@ -249,7 +249,7 @@
         "Gluten-free"
       ],
       "is_ready": true,
-      "lookup_count": 31266
+      "lookup_count": 31563
     },
     {
       "allergens": [],
@@ -261,7 +261,7 @@
         "Gluten-free"
       ],
       "is_ready": true,
-      "lookup_count": 29828
+      "lookup_count": 29868
     },
     {
       "allergens": [],
@@ -273,7 +273,7 @@
         "Gluten-free"
       ],
       "is_ready": false,
-      "lookup_count": 27357
+      "lookup_count": 28325
     },
     {
       "allergens": [],
@@ -285,7 +285,7 @@
         "Gluten-free"
       ],
       "is_ready": true,
-      "lookup_count": 25083
+      "lookup_count": 25087
     },
     {
       "allergens": [
@@ -299,7 +299,7 @@
         "Gluten-free"
       ],
       "is_ready": true,
-      "lookup_count": 24103
+      "lookup_count": 24199
     },
     {
       "allergens": [],
@@ -311,7 +311,7 @@
         "Gluten-free"
       ],
       "is_ready": true,
-      "lookup_count": 23927
+      "lookup_count": 24020
     },
     {
       "allergens": [],
@@ -323,7 +323,7 @@
         "Gluten-free"
       ],
       "is_ready": false,
-      "lookup_count": 23572
+      "lookup_count": 23872
     },
     {
       "allergens": [
