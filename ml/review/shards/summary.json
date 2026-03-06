@@ -3,11 +3,11 @@
   "input_rows": 10000,
   "lanes": {
     "extracts": {
-      "count": 153,
+      "count": 130,
       "path": "ml/review/shards/extracts.csv"
     },
     "flavors": {
-      "count": 499,
+      "count": 476,
       "path": "ml/review/shards/flavors.csv"
     },
     "other": {
@@ -15,11 +15,11 @@
       "path": "ml/review/shards/other.csv"
     },
     "products": {
-      "count": 209,
+      "count": 199,
       "path": "ml/review/shards/products.csv"
     },
     "sauces": {
-      "count": 170,
+      "count": 142,
       "path": "ml/review/shards/sauces.csv"
     }
   }

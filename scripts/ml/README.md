@@ -10,6 +10,9 @@ This folder contains a low-cost, fast multi-label training pipeline for ingredie
 - `build_ingredient_catalog.py`: mines the stored corpora into a reusable common-ingredient catalog seed for runtime lookup.
 - `build_ingredient_catalog_review_queue.py`: builds a CSV queue to manually verify and correct catalog rows.
 - `build_ingredient_catalog_review_shards.py`: splits the review queue into parallel audit lanes like extracts, sauces, flavors, and composite product rows.
+- `build_ingredient_catalog_review_packets.py`: builds Codex-friendly packet directories so multiple Codex chats can manually review disjoint row batches in parallel.
+- `summarize_ingredient_catalog_review_packets.py`: reports pending, submitted, and merged packet counts for the local packet workspace.
+- `merge_ingredient_catalog_review_packets.py`: merges reviewed packet submissions into the master manual review override file.
 - `distill_with_anthropic.py`: asks a teacher model to relabel hard student examples for distillation.
 - `apply_distilled_labels.py`: merges teacher-distilled labels into student train rows.
 - `export_training_data.py`: pulls labeled ingredient text from Supabase and writes JSONL train/val splits.
@@ -37,6 +40,7 @@ python3 scripts/ml/fetch_usda_fdc_data.py --max-pages 40 --page-size 200
 python3 scripts/ml/build_ingredient_catalog.py
 python3 scripts/ml/build_ingredient_catalog_review_queue.py
 python3 scripts/ml/build_ingredient_catalog_review_shards.py
+python3 scripts/ml/build_ingredient_catalog_review_packets.py
 python3 scripts/ml/export_training_data.py \
   --manual-labels scripts/ml/manual_hidden_alias_seed.jsonl \
   --manual-labels ml/data/processed/openfoodfacts_examples.jsonl \
@@ -102,6 +106,60 @@ Outputs:
 - Ingredient catalog review queue: `ml/review/ingredient_catalog_review_queue.csv`
 - Ingredient catalog manual review overrides: `ml/review/ingredient_catalog_manual_review.jsonl`
 - Ingredient catalog review shards: `ml/review/shards/*.csv`
+- Ingredient catalog local review packets: `ml/review/packets/`
+
+## Codex-only parallel review workflow
+
+Use this when you want multiple Codex chats to manually review rows without spending external AI API credits.
+
+1. Build or refresh the queue:
+
+```bash
+npm run ml:review:ingredient-catalog
+npm run ml:review:ingredient-catalog:shards
+```
+
+2. Generate review packets:
+
+```bash
+npm run ml:review:ingredient-catalog:packets
+```
+
+This creates local packet folders under `ml/review/packets/<lane>/<packet-id>/` with:
+
+- `input.jsonl`: the rows to review
+- `prompt.md`: packet-specific review instructions
+- `submission.jsonl`: where that Codex chat writes its decisions
+
+3. Assign different packet directories to different Codex chats. Each chat should only work inside its assigned packet directory so reviews do not overlap.
+
+4. Check progress at any time:
+
+```bash
+npm run ml:review:ingredient-catalog:packets:status
+```
+
+5. Merge completed packet submissions:
+
+```bash
+npm run ml:review:ingredient-catalog:merge
+```
+
+The merge step archives each merged `submission.jsonl` to `submission.merged.jsonl` so repeated merges stay clean.
+
+6. Rebuild the queue and shard summaries after merging:
+
+```bash
+npm run ml:review:ingredient-catalog
+npm run ml:review:ingredient-catalog:shards
+npm run ml:review:ingredient-catalog:packets:status
+```
+
+Notes:
+
+- `ml/review/packets/` is local-only and ignored by git.
+- Generate packets once, fan them out across Codex chats, then merge completed packets as they come back.
+- If you want to discard an old packet workspace and rebuild from scratch, run `python3 scripts/ml/build_ingredient_catalog_review_packets.py --clean`.
 
 ## Lexicon expansion workflow
 
