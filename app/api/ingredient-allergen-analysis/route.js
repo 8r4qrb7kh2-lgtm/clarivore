@@ -20,7 +20,7 @@ const ANALYSIS_MAX_TOKENS = 1800;
 const VERIFICATION_MAX_TOKENS = 1400;
 const REPAIR_MAX_TOKENS = 700;
 const ANTHROPIC_THINKING_BUDGET_TOKENS = 1024;
-const PROMPT_VERSION = "ingredient-allergen-two-pass-v1-20260305";
+const PROMPT_VERSION = "ingredient-allergen-two-pass-v4-20260305";
 
 const CONFIG_TTL_MS = 60 * 60 * 1000;
 const ANALYSIS_CACHE_TTL_MS = 15 * 60 * 1000;
@@ -683,7 +683,6 @@ export async function POST(request) {
 
     const allergenCodebookText = buildPromptCodebookLines(allergenCodebook.entries);
     const dietCodebookText = buildPromptCodebookLines(dietCodebook.entries);
-    const dietConflictGuideText = buildDietConflictGuideText(config?.dietAllergenConflicts);
 
     const wordList = [];
     transcriptLines.forEach((line) => {
@@ -700,7 +699,6 @@ export async function POST(request) {
     const extractionPrompts = buildIngredientAllergenExtractionPrompts({
       allergenCodebookText,
       dietCodebookText,
-      dietConflictGuideText,
       indexedWordList,
       promptVersion: PROMPT_VERSION,
     });
@@ -751,7 +749,6 @@ export async function POST(request) {
           const verificationPrompts = buildIngredientAllergenVerificationPrompts({
             allergenCodebookText,
             dietCodebookText,
-            dietConflictGuideText,
             indexedWordList,
             candidateFlagsJson: JSON.stringify({
               flags: Array.isArray(pass1Parsed?.flags) ? pass1Parsed.flags : [],

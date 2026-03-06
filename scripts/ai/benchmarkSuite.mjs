@@ -364,6 +364,33 @@ function aggregateFlags(flags) {
   };
 }
 
+function normalizeDocumentFlag(flag) {
+  return {
+    ingredient: normalizePhrase(flag?.ingredient),
+    risk_type: asText(flag?.risk_type).toLowerCase().includes("cross")
+      ? "cross-contamination"
+      : "contained",
+    allergens: dedupeStrings(Array.isArray(flag?.allergens) ? flag.allergens : [])
+      .map((value) => normalizePhrase(value))
+      .filter(Boolean)
+      .sort(),
+    diets: dedupeStrings(Array.isArray(flag?.diets) ? flag.diets : [])
+      .map((value) => normalizePhrase(value))
+      .filter(Boolean)
+      .sort(),
+  };
+}
+
+function buildDocumentFlagKey(flag, { includeDiets = true } = {}) {
+  const normalized = normalizeDocumentFlag(flag);
+  return [
+    normalized.ingredient || "-",
+    normalized.risk_type,
+    normalized.allergens.join("|"),
+    includeDiets ? normalized.diets.join("|") : "",
+  ].join("::");
+}
+
 async function invokeModel({ provider, promptClass, model, invocation, env = process.env }) {
   const overrideEnv = buildModelOverrideEnv(promptClass, provider, model, env);
   const messages = (Array.isArray(invocation?.messages) ? invocation.messages : []).map((message) => ({
@@ -615,10 +642,10 @@ async function executeIngredientAllergenCase(caseDoc, provider, model, env) {
   const allergenCodebook = buildCodebook(caseDoc.input.allergenValues);
   const dietCodebook = buildCodebook(caseDoc.input.dietValues);
   const resolveDietAlias = buildDietAliasResolver(caseDoc.input.labels || {});
+  const reasoningEffort = asText(caseDoc?.input?.reasoningEffort) || "medium";
   const extractionPrompts = buildIngredientAllergenExtractionPrompts({
     allergenCodebookText: buildPromptCodebookLines(allergenCodebook.entries),
     dietCodebookText: buildPromptCodebookLines(dietCodebook.entries),
-    dietConflictGuideText: caseDoc.input.dietConflictGuideText,
     indexedWordList: caseDoc.input.indexedWordList,
     promptVersion: caseDoc.input.promptVersion,
   });
@@ -634,7 +661,7 @@ async function executeIngredientAllergenCase(caseDoc, provider, model, env) {
           systemPrompt,
           messages: [{ role: "user", content: [{ type: "text", text: userPrompt }] }],
           maxTokens,
-          reasoningEffort: "medium",
+          reasoningEffort,
           jsonSchema: ingredientAllergenFlagsSchema,
         },
       });
@@ -669,7 +696,6 @@ async function executeIngredientAllergenCase(caseDoc, provider, model, env) {
   const verificationPrompts = buildIngredientAllergenVerificationPrompts({
     allergenCodebookText: buildPromptCodebookLines(allergenCodebook.entries),
     dietCodebookText: buildPromptCodebookLines(dietCodebook.entries),
-    dietConflictGuideText: caseDoc.input.dietConflictGuideText,
     indexedWordList: caseDoc.input.indexedWordList,
     candidateFlagsJson: JSON.stringify({
       flags: Array.isArray(pass1?.parsed?.flags) ? pass1.parsed.flags : [],
@@ -861,6 +887,16 @@ export function scoreBenchmarkCase(caseDoc, output, baselineOutput = null) {
     return { precision, recall, f1, exact: actualSet.size === expectedSet.size && intersection === actualSet.size };
   };
 
+  const compareKeySets = (actual, expected) => {
+    const actualSet = new Set((Array.isArray(actual) ? actual : []).map((value) => asText(value)).filter(Boolean));
+    const expectedSet = new Set((Array.isArray(expected) ? expected : []).map((value) => asText(value)).filter(Boolean));
+    const intersection = Array.from(actualSet).filter((value) => expectedSet.has(value)).length;
+    const precision = actualSet.size ? intersection / actualSet.size : expectedSet.size ? 0 : 1;
+    const recall = expectedSet.size ? intersection / expectedSet.size : actualSet.size ? 0 : 1;
+    const f1 = precision + recall > 0 ? (2 * precision * recall) / (precision + recall) : 0;
+    return { precision, recall, f1, exact: actualSet.size === expectedSet.size && intersection === actualSet.size };
+  };
+
   switch (metricType) {
     case "boolean_exact":
       {
@@ -974,19 +1010,62 @@ export function scoreBenchmarkCase(caseDoc, output, baselineOutput = null) {
       };
     }
     case "document_flags": {
+      const expectedFlags = Array.isArray(expectation.flags) ? expectation.flags : [];
+      const hasDetailedFlags = Array.isArray(expectation.flags);
       const aggregate = normalized?.aggregate || aggregateFlags(normalized?.flags);
+      const expectedAggregate = hasDetailedFlags
+        ? aggregateFlags(expectedFlags)
+        : {
+            containedAllergens: [],
+            crossAllergens: [],
+            diets: Array.isArray(expectation.diets) ? expectation.diets : [],
+          };
       const allergenScore = compareSets(
         [...(aggregate?.containedAllergens || []), ...(aggregate?.crossAllergens || [])],
-        expectation.allergens,
+        hasDetailedFlags
+          ? [...(expectedAggregate?.containedAllergens || []), ...(expectedAggregate?.crossAllergens || [])]
+          : expectation.allergens,
       );
-      const dietScore = compareSets(aggregate?.diets, expectation.diets);
-      const expectedAllergens = new Set((Array.isArray(expectation.allergens) ? expectation.allergens : []).map((value) => normalizePhrase(value)).filter(Boolean));
+      const dietScore = compareSets(
+        aggregate?.diets,
+        hasDetailedFlags ? expectedAggregate?.diets : expectation.diets,
+      );
+      const expectedAllergens = new Set(
+        (
+          hasDetailedFlags
+            ? [...(expectedAggregate?.containedAllergens || []), ...(expectedAggregate?.crossAllergens || [])]
+            : Array.isArray(expectation.allergens)
+              ? expectation.allergens
+              : []
+        )
+          .map((value) => normalizePhrase(value))
+          .filter(Boolean),
+      );
       const actualAllergens = new Set(
         [...(aggregate?.containedAllergens || []), ...(aggregate?.crossAllergens || [])]
           .map((value) => normalizePhrase(value))
           .filter(Boolean),
       );
       const falseNegatives = Array.from(expectedAllergens).filter((value) => !actualAllergens.has(value)).length;
+      if (hasDetailedFlags) {
+        const actualFlags = Array.isArray(normalized?.flags) ? normalized.flags : [];
+        const flagScore = compareKeySets(
+          actualFlags.map((flag) => buildDocumentFlagKey(flag)),
+          expectedFlags.map((flag) => buildDocumentFlagKey(flag)),
+        );
+        const riskScore = compareKeySets(
+          actualFlags.map((flag) => buildDocumentFlagKey(flag, { includeDiets: false })),
+          expectedFlags.map((flag) => buildDocumentFlagKey(flag, { includeDiets: false })),
+        );
+        return {
+          primaryScore: (flagScore.f1 + allergenScore.f1 + dietScore.f1) / 3,
+          flagF1: flagScore.f1,
+          riskF1: riskScore.f1,
+          allergenF1: allergenScore.f1,
+          dietF1: dietScore.f1,
+          allergenFalseNegatives: falseNegatives,
+        };
+      }
       return {
         primaryScore: (allergenScore.f1 + dietScore.f1) / 2,
         allergenF1: allergenScore.f1,
@@ -1306,11 +1385,10 @@ function buildIngredientAllergenCases(brandRows, aiConfig, fixtureRows, limit) {
       input: {
         transcriptLines,
         indexedWordList,
-        promptVersion: "ingredient-allergen-two-pass-v1-20260305",
+        promptVersion: "ingredient-allergen-two-pass-v4-20260305",
         allergenValues: aiConfig.allergenValues,
         dietValues: aiConfig.dietValues,
         labels: aiConfig.labels,
-        dietConflictGuideText: aiConfig.dietConflictGuideText,
       },
       expectation: {
         metricType: "document_flags",
@@ -1333,6 +1411,16 @@ function buildIngredientAllergenCases(brandRows, aiConfig, fixtureRows, limit) {
       .flatMap((line) => line.split(/\s+/).map((word) => asText(word)).filter(Boolean))
       .map((word, index) => `${index}: "${word}"`)
       .join("\n");
+    const expectedFlags = Array.isArray(row.expectedFlags)
+      ? row.expectedFlags.map((flag) => ({
+          ingredient: asText(flag?.ingredient),
+          risk_type: asText(flag?.risk_type).toLowerCase().includes("cross")
+            ? "cross-contamination"
+            : "contained",
+          allergens: dedupeStrings(Array.isArray(flag?.allergens) ? flag.allergens : []),
+          diets: dedupeStrings(Array.isArray(flag?.diets) ? flag.diets : []),
+        }))
+      : [];
     return {
       id: buildCaseId("ingredientAllergenAnalysis", row.id || JSON.stringify(row)),
       promptClass: "ingredientAllergenAnalysis",
@@ -1340,19 +1428,20 @@ function buildIngredientAllergenCases(brandRows, aiConfig, fixtureRows, limit) {
       input: {
         transcriptLines,
         indexedWordList,
-        promptVersion: "ingredient-allergen-two-pass-v1-20260305",
+        promptVersion: "ingredient-allergen-two-pass-v4-20260305",
         allergenValues: aiConfig.allergenValues,
         dietValues: aiConfig.dietValues,
         labels: aiConfig.labels,
-        dietConflictGuideText: aiConfig.dietConflictGuideText,
       },
       expectation: {
         metricType: "document_flags",
-        allergens: dedupeStrings(row.expectedDeclarationAllergens),
-        diets: [],
+        allergens: dedupeStrings(expectedFlags.flatMap((flag) => flag.allergens)),
+        diets: dedupeStrings(expectedFlags.flatMap((flag) => flag.diets)),
+        flags: expectedFlags,
       },
       source: {
         fixtureId: asText(row.id),
+        notes: asText(row.notes),
       },
     };
   });
