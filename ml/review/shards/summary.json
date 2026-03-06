@@ -1,0 +1,26 @@
+{
+  "included_reviewed": false,
+  "input_rows": 10000,
+  "lanes": {
+    "extracts": {
+      "count": 153,
+      "path": "ml/review/shards/extracts.csv"
+    },
+    "flavors": {
+      "count": 499,
+      "path": "ml/review/shards/flavors.csv"
+    },
+    "other": {
+      "count": 8885,
+      "path": "ml/review/shards/other.csv"
+    },
+    "products": {
+      "count": 209,
+      "path": "ml/review/shards/products.csv"
+    },
+    "sauces": {
+      "count": 170,
+      "path": "ml/review/shards/sauces.csv"
+    }
+  }
+}

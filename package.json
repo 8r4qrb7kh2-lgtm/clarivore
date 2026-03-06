@@ -31,6 +31,7 @@
     "ml:prepare:usda-only": "python3 scripts/ml/prepare_usda_only_data.py",
     "ml:build:ingredient-catalog": "python3 scripts/ml/build_ingredient_catalog.py",
     "ml:review:ingredient-catalog": "python3 scripts/ml/build_ingredient_catalog_review_queue.py",
+    "ml:review:ingredient-catalog:shards": "python3 scripts/ml/build_ingredient_catalog_review_shards.py",
     "ml:seed:ingredient-catalog": "node scripts/sync-ingredient-catalog.mjs",
     "ml:distill:teacher": "python3 scripts/ml/distill_with_anthropic.py",
     "ml:distill:apply": "python3 scripts/ml/apply_distilled_labels.py",
