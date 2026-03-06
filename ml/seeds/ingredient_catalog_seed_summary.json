@@ -1,44 +1,44 @@
 {
   "alias_limit": 12,
-  "limit": 5000,
-  "ready_entries": 4816,
-  "seeded_entries": 5000,
+  "limit": 10000,
+  "ready_entries": 9289,
+  "seeded_entries": 10000,
   "top_allergens": [
     [
       "milk",
-      486
-    ],
-    [
-      "wheat",
-      307
+      1419
     ],
     [
       "soy",
-      265
+      1371
+    ],
+    [
+      "wheat",
+      1266
     ],
     [
       "tree nut",
-      64
-    ],
-    [
-      "fish",
-      48
-    ],
-    [
-      "peanut",
-      44
+      213
     ],
     [
       "egg",
-      43
+      201
+    ],
+    [
+      "peanut",
+      127
+    ],
+    [
+      "fish",
+      113
     ],
     [
       "shellfish",
-      32
+      82
     ],
     [
       "sesame",
-      22
+      79
     ]
   ],
   "top_examples": [
@@ -227,13 +227,14 @@
       "lookup_count": 32551
     },
     {
-      "allergens": [],
+      "allergens": [
+        "wheat"
+      ],
       "canonical_name": "enriched flour",
       "diets": [
         "Vegan",
         "Vegetarian",
-        "Pescatarian",
-        "Gluten-free"
+        "Pescatarian"
       ],
       "is_ready": true,
       "lookup_count": 31850
@@ -264,7 +265,9 @@
       "lookup_count": 29868
     },
     {
-      "allergens": [],
+      "allergens": [
+        "soy"
+      ],
       "canonical_name": "vegetable oil",
       "diets": [
         "Vegan",

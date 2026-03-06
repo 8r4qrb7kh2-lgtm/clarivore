@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import DefaultDict, Dict, Iterable, Iterator, List, Sequence, Set, Tuple
 
 
-DEFAULT_LIMIT = 5000
+DEFAULT_LIMIT = 10000
 DEFAULT_OUTPUT = "ml/seeds/ingredient_catalog_seed.jsonl"
 DEFAULT_SUMMARY_OUTPUT = "ml/seeds/ingredient_catalog_seed_summary.json"
 
@@ -152,6 +152,68 @@ AMBIGUOUS_SUFFIX_TERMS: Tuple[str, ...] = (
     " flavors",
 )
 
+READY_EXACT_EXCEPTIONS: Set[str] = {
+    "fish sauce",
+}
+
+PRODUCT_STYLE_EXACT_TERMS: Set[str] = {
+    "animal cracker",
+    "batter",
+    "biscuit",
+    "bread",
+    "cake",
+    "cornbread",
+    "cookie",
+    "cracker",
+    "dressing",
+    "dumpling",
+    "english muffin",
+    "flatbread",
+    "flour tortilla",
+    "imitation crabmeat",
+    "mix",
+    "pita bread",
+    "pizza crust",
+    "ravioli",
+    "rotini pasta",
+    "sauce",
+    "seafood stuffing",
+    "seasoned crouton",
+    "surimi",
+}
+
+PRODUCT_STYLE_SUFFIX_TERMS: Tuple[str, ...] = (
+    " batter",
+    " bread",
+    " brownie",
+    " brownie mix",
+    " cake",
+    " cake mix",
+    " cookie",
+    " cracker",
+    " crouton",
+    " crust",
+    " dressing",
+    " dumpling",
+    " english muffin",
+    " flatbread",
+    " flour tortilla",
+    " granola",
+    " mix",
+    " muffin",
+    " pasta",
+    " pita bread",
+    " pizza crust",
+    " ravioli",
+    " roll",
+    " salad",
+    " sauce",
+    " stuffing",
+    " surimi",
+    " tortilla",
+    " wrap",
+)
+
 REJECT_SUBSTRINGS: Tuple[str, ...] = (
     "added to preserve freshness",
     "carefully chosen ingredients",
@@ -159,6 +221,8 @@ REJECT_SUBSTRINGS: Tuple[str, ...] = (
     "preserve freshness",
     "to preserve freshness",
 )
+
+SHORT_CODE_RE = re.compile(r"^[a-z]\d{1,2}$", re.IGNORECASE)
 
 MEAT_TERMS: Tuple[str, ...] = (
     "bacon",
@@ -213,6 +277,7 @@ GLUTEN_BLOCKERS: Tuple[str, ...] = (
     "emmer",
     "farina",
     "farro",
+    "graham",
     "kamut",
     "malt",
     "matzo",
@@ -229,6 +294,7 @@ GLUTEN_LABEL_TERMS: Tuple[str, ...] = (
 )
 
 MILK_TERMS: Tuple[str, ...] = (
+    "butter",
     "buttermilk",
     "casein",
     "caseinate",
@@ -250,6 +316,11 @@ MILK_TERMS: Tuple[str, ...] = (
     "yogurt",
     "yoghurt",
 )
+
+MILK_FALSE_POSITIVE_EXACT_TERMS: Set[str] = {
+    "cream corn",
+    "cream of tartar",
+}
 
 EGG_TERMS: Tuple[str, ...] = (
     "aioli",
@@ -308,7 +379,8 @@ SESAME_TERMS: Tuple[str, ...] = (
 )
 
 FISH_TERMS: Tuple[str, ...] = (
-    "anchov",
+    "anchovy",
+    "anchovies",
     "bass",
     "bonito",
     "cod",
@@ -494,6 +566,8 @@ def should_keep_catalog_name(value: str) -> bool:
     if len(safe) < 2:
         return False
     lowered = safe.lower()
+    if SHORT_CODE_RE.match(safe):
+        return False
     if lowered.startswith("ingredients "):
         return False
     if ":" in safe:
@@ -625,12 +699,67 @@ GLUTEN_MATCHERS = compile_matchers(GLUTEN_BLOCKERS)
 GLUTEN_LABEL_MATCHERS = compile_matchers(GLUTEN_LABEL_TERMS)
 
 
-def classify_catalog_entry(name: str) -> Dict[str, object]:
+def surface_form_support(
+    surface_forms: Sequence[Dict[str, object]],
+    matchers: Sequence[Tuple[str, re.Pattern[str]]],
+    *,
+    skip_plant_dairy: bool = False,
+) -> Tuple[int, int]:
+    matched_count = 0
+    total_count = 0
+
+    for surface_form in surface_forms:
+        if not isinstance(surface_form, dict):
+            continue
+        label = normalize_lookup_term(as_text(surface_form.get("name")))
+        if not label:
+            continue
+        count = int(surface_form.get("count") or 0)
+        if count <= 0:
+            count = 1
+        total_count += count
+        normalized = f" {label} "
+        if skip_plant_dairy and plant_dairy_exception(normalized):
+            continue
+        if match_any(normalized, matchers):
+            matched_count += count
+
+    return matched_count, total_count
+
+
+def has_strong_surface_support(
+    surface_forms: Sequence[Dict[str, object]],
+    matchers: Sequence[Tuple[str, re.Pattern[str]]],
+    *,
+    skip_plant_dairy: bool = False,
+    min_count: int = 4,
+    min_ratio: float = 0.25,
+) -> bool:
+    matched_count, total_count = surface_form_support(
+        surface_forms,
+        matchers,
+        skip_plant_dairy=skip_plant_dairy,
+    )
+    if matched_count < min_count or total_count <= 0:
+        return False
+    return (matched_count / total_count) >= min_ratio
+
+
+def is_product_style_name(name: str) -> bool:
+    if name in READY_EXACT_EXCEPTIONS:
+        return False
+    if name in PRODUCT_STYLE_EXACT_TERMS:
+        return True
+    return any(name.endswith(suffix) for suffix in PRODUCT_STYLE_SUFFIX_TERMS)
+
+
+def classify_catalog_entry(name: str, surface_forms: Sequence[Dict[str, object]]) -> Dict[str, object]:
     normalized = f" {normalize_lookup_term(name)} "
     has_gluten_free_claim = " gluten free " in normalized
     allergens: Set[str] = set()
     blocked_diets: Set[str] = set()
     reason_codes: List[str] = []
+    used_surface_evidence = False
 
     if match_any(normalized, PEANUT_MATCHERS):
         allergens.add("peanut")
@@ -660,7 +789,11 @@ def classify_catalog_entry(name: str) -> Dict[str, object]:
         allergens.add("egg")
         reason_codes.append("allergen:egg")
 
-    if match_any(normalized, MILK_MATCHERS) and not plant_dairy_exception(normalized):
+    if (
+        name not in MILK_FALSE_POSITIVE_EXACT_TERMS
+        and match_any(normalized, MILK_MATCHERS)
+        and not plant_dairy_exception(normalized)
+    ):
         allergens.add("milk")
         reason_codes.append("allergen:milk")
 
@@ -670,6 +803,66 @@ def classify_catalog_entry(name: str) -> Dict[str, object]:
         allergens.add("wheat")
         blocked_diets.add("Gluten-free")
         reason_codes.append("diet_block:gluten_free")
+
+    if "peanut" not in allergens and has_strong_surface_support(surface_forms, PEANUT_MATCHERS):
+        allergens.add("peanut")
+        reason_codes.extend(("allergen:peanut", "evidence:surface_form"))
+        used_surface_evidence = True
+
+    if "tree nut" not in allergens and has_strong_surface_support(surface_forms, TREE_NUT_MATCHERS):
+        allergens.add("tree nut")
+        reason_codes.extend(("allergen:tree_nut", "evidence:surface_form"))
+        used_surface_evidence = True
+
+    if "soy" not in allergens and has_strong_surface_support(surface_forms, SOY_MATCHERS):
+        allergens.add("soy")
+        reason_codes.extend(("allergen:soy", "evidence:surface_form"))
+        used_surface_evidence = True
+
+    if "sesame" not in allergens and has_strong_surface_support(surface_forms, SESAME_MATCHERS):
+        allergens.add("sesame")
+        reason_codes.extend(("allergen:sesame", "evidence:surface_form"))
+        used_surface_evidence = True
+
+    if "fish" not in allergens and has_strong_surface_support(surface_forms, FISH_MATCHERS):
+        allergens.add("fish")
+        reason_codes.extend(("allergen:fish", "evidence:surface_form"))
+        used_surface_evidence = True
+
+    if "shellfish" not in allergens and has_strong_surface_support(surface_forms, SHELLFISH_MATCHERS):
+        allergens.add("shellfish")
+        reason_codes.extend(("allergen:shellfish", "evidence:surface_form"))
+        used_surface_evidence = True
+
+    if "egg" not in allergens and has_strong_surface_support(surface_forms, EGG_MATCHERS):
+        allergens.add("egg")
+        reason_codes.extend(("allergen:egg", "evidence:surface_form"))
+        used_surface_evidence = True
+
+    if (
+        "milk" not in allergens
+        and name not in MILK_FALSE_POSITIVE_EXACT_TERMS
+        and has_strong_surface_support(surface_forms, MILK_MATCHERS, skip_plant_dairy=True)
+    ):
+        allergens.add("milk")
+        reason_codes.extend(("allergen:milk", "evidence:surface_form"))
+        used_surface_evidence = True
+
+    if "Gluten-free" not in blocked_diets and has_strong_surface_support(surface_forms, GLUTEN_MATCHERS):
+        allergens.add("wheat")
+        blocked_diets.add("Gluten-free")
+        reason_codes.extend(("diet_block:gluten_free", "evidence:surface_form"))
+        used_surface_evidence = True
+
+    if (
+        "Gluten-free" not in blocked_diets
+        and not has_gluten_free_claim
+        and has_strong_surface_support(surface_forms, GLUTEN_LABEL_MATCHERS)
+    ):
+        allergens.add("wheat")
+        blocked_diets.add("Gluten-free")
+        reason_codes.extend(("diet_block:gluten_free", "evidence:surface_form"))
+        used_surface_evidence = True
 
     if allergens.intersection({"milk", "egg", "fish", "shellfish"}):
         blocked_diets.add("Vegan")
@@ -689,6 +882,21 @@ def classify_catalog_entry(name: str) -> Dict[str, object]:
         blocked_diets.update({"Vegan", "Vegetarian", "Pescatarian"})
         reason_codes.append("diet_block:animal_derivative")
 
+    if has_strong_surface_support(surface_forms, MEAT_MATCHERS):
+        blocked_diets.update({"Vegan", "Vegetarian", "Pescatarian"})
+        reason_codes.extend(("diet_block:meat", "evidence:surface_form"))
+        used_surface_evidence = True
+
+    if has_strong_surface_support(surface_forms, VEGAN_ONLY_MATCHERS):
+        blocked_diets.add("Vegan")
+        reason_codes.extend(("diet_block:vegan_only", "evidence:surface_form"))
+        used_surface_evidence = True
+
+    if has_strong_surface_support(surface_forms, ALL_DIET_BLOCKER_MATCHERS):
+        blocked_diets.update({"Vegan", "Vegetarian", "Pescatarian"})
+        reason_codes.extend(("diet_block:animal_derivative", "evidence:surface_form"))
+        used_surface_evidence = True
+
     compatible_diets = [diet for diet in SUPPORTED_DIETS if diet not in blocked_diets]
     is_ready = True
     if name in AMBIGUOUS_EXACT_TERMS or any(
@@ -702,6 +910,11 @@ def classify_catalog_entry(name: str) -> Dict[str, object]:
     if name.endswith(" oil") and "soybean oil" not in name and name == "vegetable oil":
         is_ready = False
         reason_codes.append("review:generic_oil")
+    if is_product_style_name(name):
+        is_ready = False
+        reason_codes.append("review:product_style")
+    if used_surface_evidence and is_product_style_name(name):
+        reason_codes.append("review:surface_form_composite")
 
     return {
         "allergens": sorted(allergens),
@@ -788,6 +1001,10 @@ def main() -> int:
             for alias, _ in alias_counts[canonical_name].most_common(alias_limit * 3)
             if is_reasonable_alias(canonical_name, alias)
         ][:alias_limit]
+        top_surface_forms = [
+            {"name": alias, "count": count}
+            for alias, count in alias_counts[canonical_name].most_common(alias_limit * 3)
+        ]
         alias_set = [canonical_name]
         for alias in aliases:
             if alias not in alias_set:
@@ -800,7 +1017,7 @@ def main() -> int:
             }
         )
 
-        classification = classify_catalog_entry(canonical_name)
+        classification = classify_catalog_entry(canonical_name, top_surface_forms)
         if classification["is_ready"]:
             ready_counter += 1
         for allergen in classification["allergens"]:
@@ -813,10 +1030,7 @@ def main() -> int:
                 for dataset_name, count in dataset_counts[canonical_name].most_common()
             ],
             "reason_codes": classification["reason_codes"],
-            "surface_forms": [
-                {"name": alias, "count": count}
-                for alias, count in alias_counts[canonical_name].most_common(alias_limit)
-            ],
+            "surface_forms": top_surface_forms[:alias_limit],
         }
 
         catalog_rows.append(

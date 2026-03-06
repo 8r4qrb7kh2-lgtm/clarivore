@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 const DEFAULT_SEED_FILE = "ml/seeds/ingredient_catalog_seed.jsonl";
+const DEFAULT_REVIEW_FILE = "ml/review/ingredient_catalog_manual_review.jsonl";
 
 function asText(value) {
   return String(value ?? "").trim();
@@ -11,12 +12,18 @@ function asText(value) {
 function parseArgs(argv) {
   const output = {
     seedFile: DEFAULT_SEED_FILE,
+    reviewFile: DEFAULT_REVIEW_FILE,
   };
 
   for (let index = 2; index < argv.length; index += 1) {
     const arg = argv[index];
     if (arg === "--seed-file" && argv[index + 1]) {
       output.seedFile = argv[index + 1];
+      index += 1;
+      continue;
+    }
+    if (arg === "--review-file" && argv[index + 1]) {
+      output.reviewFile = argv[index + 1];
       index += 1;
     }
   }
@@ -31,6 +38,23 @@ function readJsonlRows(filePath) {
     .map((line) => line.trim())
     .filter(Boolean)
     .map((line) => JSON.parse(line));
+}
+
+function readManualReviewMap(filePath) {
+  if (!fs.existsSync(filePath)) {
+    return new Map();
+  }
+
+  const rows = readJsonlRows(filePath);
+  const reviewMap = new Map();
+
+  rows.forEach((row) => {
+    const normalizedName = asText(row?.normalized_name);
+    if (!normalizedName) return;
+    reviewMap.set(normalizedName, row);
+  });
+
+  return reviewMap;
 }
 
 function normalizeStringList(values) {
@@ -72,16 +96,53 @@ function normalizeRow(row) {
   };
 }
 
+function applyManualReview(row, review) {
+  if (!review || typeof review !== "object") return row;
+
+  const nextRow = { ...row };
+  if (Array.isArray(review?.allergens)) {
+    nextRow.allergens = normalizeStringList(review.allergens);
+  }
+  if (Array.isArray(review?.diets)) {
+    nextRow.diets = normalizeStringList(review.diets);
+  }
+  if (typeof review?.is_ready === "boolean") {
+    nextRow.is_ready = review.is_ready;
+  }
+
+  const reviewMetadata =
+    review?.metadata && typeof review.metadata === "object" && !Array.isArray(review.metadata)
+      ? review.metadata
+      : {};
+
+  nextRow.metadata = {
+    ...(nextRow.metadata && typeof nextRow.metadata === "object" ? nextRow.metadata : {}),
+    manual_review: {
+      status: asText(review?.status) || "reviewed",
+      notes: asText(review?.notes),
+      reviewer: asText(review?.reviewer) || "codex",
+      reviewed_at: asText(review?.reviewed_at),
+      ...reviewMetadata,
+    },
+  };
+
+  return nextRow;
+}
+
 async function main() {
   const args = parseArgs(process.argv);
   const resolvedSeedFile = path.resolve(process.cwd(), args.seedFile);
+  const resolvedReviewFile = path.resolve(process.cwd(), args.reviewFile);
   if (!fs.existsSync(resolvedSeedFile)) {
     throw new Error(`Seed file not found: ${resolvedSeedFile}`);
   }
 
   const prisma = new PrismaClient();
   try {
-    const rows = readJsonlRows(resolvedSeedFile).map(normalizeRow);
+    const reviewMap = readManualReviewMap(resolvedReviewFile);
+    const rows = readJsonlRows(resolvedSeedFile)
+      .map(normalizeRow)
+      .map((row) => applyManualReview(row, reviewMap.get(row.normalized_name)));
     let upserted = 0;
     let ready = 0;
 
