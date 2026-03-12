@@ -313,7 +313,7 @@ STEP 4: MAP ALLERGEN CODES
 - oats by themselves are NOT wheat unless wheat is explicitly present
 - do NOT reinterpret plant terms as animal/dairy allergens
 - coconut milk/cream, oat milk, soy milk, and rice milk are not dairy milk
-- coconut is not tree nut here unless explicitly stated
+- treat coconut as tree nut for allergen purposes
 
 STEP 5: MAP DIET CODES FROM THE SAME PHRASE ONLY
 Add diet codes only when directly justified by the same phrase.
@@ -416,7 +416,7 @@ Re-check the candidate output in this order and fix any violation you find.
 - no separate "gluten" allergen
 - oats alone are not wheat
 - coconut milk/cream, oat milk, soy milk, and rice milk are not dairy milk
-- coconut is not tree nut here unless explicitly stated
+- treat coconut as tree nut for allergen purposes
 5) Diet mapping:
 - milk or egg -> Vegan
 - fish or shellfish -> Vegetarian and Vegan
