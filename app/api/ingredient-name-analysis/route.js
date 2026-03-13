@@ -10,7 +10,10 @@ import {
   runWithProviderSelection,
 } from "../../lib/server/ai/providerRuntime";
 import { ingredientNameAnalysisSchema } from "../../lib/server/ai/responseSchemas";
-import { findIngredientCatalogEntryByName } from "../../lib/server/ingredientCatalog";
+import {
+  findIngredientCatalogEntryByName,
+  isSafeIngredientCatalogEntry,
+} from "../../lib/server/ingredientCatalog";
 
 export const runtime = "nodejs";
 
@@ -414,7 +417,7 @@ export async function POST(request) {
   try {
     try {
       const catalogEntry = await findIngredientCatalogEntryByName(ingredientName);
-      if (catalogEntry?.isReady) {
+      if (isSafeIngredientCatalogEntry(catalogEntry)) {
         return corsJson(
           {
             success: true,
@@ -422,7 +425,7 @@ export async function POST(request) {
               ? catalogEntry.allergens
               : [],
             diets: Array.isArray(catalogEntry.diets) ? catalogEntry.diets : [],
-            reasoning: `Matched ingredient catalog entry "${catalogEntry.canonicalName || ingredientName}".`,
+            reasoning: `Matched known-safe ingredient catalog entry "${catalogEntry.canonicalName || ingredientName}".`,
           },
           { status: 200 },
         );

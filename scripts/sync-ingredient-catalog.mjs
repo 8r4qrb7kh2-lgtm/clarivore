@@ -3,7 +3,9 @@ import fs from "node:fs";
 import path from "node:path";
 
 const DEFAULT_SEED_FILE = "ml/seeds/ingredient_catalog_seed.jsonl";
-const DEFAULT_REVIEW_FILE = "ml/review/ingredient_catalog_manual_review.jsonl";
+const SAFE_DIETS = ["Vegan", "Vegetarian", "Pescatarian", "Gluten-free"];
+const SAFE_SEED_PREFIX = "openfoodfacts_safe_only_";
+const INSERT_BATCH_SIZE = 500;
 
 function asText(value) {
   return String(value ?? "").trim();
@@ -12,18 +14,12 @@ function asText(value) {
 function parseArgs(argv) {
   const output = {
     seedFile: DEFAULT_SEED_FILE,
-    reviewFile: DEFAULT_REVIEW_FILE,
   };
 
   for (let index = 2; index < argv.length; index += 1) {
     const arg = argv[index];
     if (arg === "--seed-file" && argv[index + 1]) {
       output.seedFile = argv[index + 1];
-      index += 1;
-      continue;
-    }
-    if (arg === "--review-file" && argv[index + 1]) {
-      output.reviewFile = argv[index + 1];
       index += 1;
     }
   }
@@ -40,23 +36,6 @@ function readJsonlRows(filePath) {
     .map((line) => JSON.parse(line));
 }
 
-function readManualReviewMap(filePath) {
-  if (!fs.existsSync(filePath)) {
-    return new Map();
-  }
-
-  const rows = readJsonlRows(filePath);
-  const reviewMap = new Map();
-
-  rows.forEach((row) => {
-    const normalizedName = asText(row?.normalized_name);
-    if (!normalizedName) return;
-    reviewMap.set(normalizedName, row);
-  });
-
-  return reviewMap;
-}
-
 function normalizeStringList(values) {
   const seen = new Set();
   const output = [];
@@ -71,11 +50,59 @@ function normalizeStringList(values) {
   return output;
 }
 
+function hasSafeDietSet(diets) {
+  const actual = new Set(normalizeStringList(diets));
+  if (actual.size !== SAFE_DIETS.length) return false;
+  return SAFE_DIETS.every((label) => actual.has(label));
+}
+
+function normalizeMetadata(metadata) {
+  return metadata && typeof metadata === "object" && !Array.isArray(metadata)
+    ? metadata
+    : {};
+}
+
+function assertSafeOnlyRow(row) {
+  const metadata = normalizeMetadata(row?.metadata);
+  const seedSource = asText(row?.seed_source || row?.seedSource);
+  const allergens = normalizeStringList(row?.allergens);
+  const diets = normalizeStringList(row?.diets);
+  const catalogType = asText(metadata?.catalog_type || metadata?.catalogType);
+
+  if (!seedSource.startsWith(SAFE_SEED_PREFIX)) {
+    throw new Error(
+      `Catalog row "${asText(row?.normalized_name)}" is not a safe-only OFF seed row.`,
+    );
+  }
+  if (catalogType !== "safe_only") {
+    throw new Error(
+      `Catalog row "${asText(row?.normalized_name)}" is missing metadata.catalog_type=safe_only.`,
+    );
+  }
+  if (allergens.length) {
+    throw new Error(
+      `Catalog row "${asText(row?.normalized_name)}" unexpectedly contains allergens.`,
+    );
+  }
+  if (!hasSafeDietSet(diets)) {
+    throw new Error(
+      `Catalog row "${asText(row?.normalized_name)}" is missing the full safe diet set.`,
+    );
+  }
+  if (row?.is_ready !== true) {
+    throw new Error(
+      `Catalog row "${asText(row?.normalized_name)}" must be marked is_ready=true.`,
+    );
+  }
+}
+
 function normalizeRow(row) {
   const normalizedName = asText(row?.normalized_name);
   if (!normalizedName) {
     throw new Error("Catalog row missing normalized_name.");
   }
+
+  assertSafeOnlyRow(row);
 
   return {
     canonical_name: asText(row?.canonical_name) || normalizedName,
@@ -85,96 +112,49 @@ function normalizeRow(row) {
     lookup_count: Number.isFinite(Number(row?.lookup_count))
       ? Math.max(0, Math.trunc(Number(row.lookup_count)))
       : 0,
-    allergens: normalizeStringList(row?.allergens),
-    diets: normalizeStringList(row?.diets),
-    is_ready: row?.is_ready === true,
-    seed_source: asText(row?.seed_source) || "corpus_seed",
-    metadata:
-      row?.metadata && typeof row.metadata === "object" && !Array.isArray(row.metadata)
-        ? row.metadata
-        : {},
+    allergens: [],
+    diets: SAFE_DIETS,
+    is_ready: true,
+    seed_source: asText(row?.seed_source) || `${SAFE_SEED_PREFIX}v1`,
+    metadata: normalizeMetadata(row?.metadata),
   };
 }
 
-function applyManualReview(row, review) {
-  if (!review || typeof review !== "object") return row;
-
-  const nextRow = { ...row };
-  if (Array.isArray(review?.allergens)) {
-    nextRow.allergens = normalizeStringList(review.allergens);
+function chunkRows(rows, chunkSize) {
+  const output = [];
+  for (let index = 0; index < rows.length; index += chunkSize) {
+    output.push(rows.slice(index, index + chunkSize));
   }
-  if (Array.isArray(review?.diets)) {
-    nextRow.diets = normalizeStringList(review.diets);
-  }
-  if (typeof review?.is_ready === "boolean") {
-    nextRow.is_ready = review.is_ready;
-  }
-
-  const reviewMetadata =
-    review?.metadata && typeof review.metadata === "object" && !Array.isArray(review.metadata)
-      ? review.metadata
-      : {};
-
-  nextRow.metadata = {
-    ...(nextRow.metadata && typeof nextRow.metadata === "object" ? nextRow.metadata : {}),
-    manual_review: {
-      status: asText(review?.status) || "reviewed",
-      notes: asText(review?.notes),
-      reviewer: asText(review?.reviewer) || "codex",
-      reviewed_at: asText(review?.reviewed_at),
-      ...reviewMetadata,
-    },
-  };
-
-  return nextRow;
+  return output;
 }
 
 async function main() {
   const args = parseArgs(process.argv);
   const resolvedSeedFile = path.resolve(process.cwd(), args.seedFile);
-  const resolvedReviewFile = path.resolve(process.cwd(), args.reviewFile);
   if (!fs.existsSync(resolvedSeedFile)) {
     throw new Error(`Seed file not found: ${resolvedSeedFile}`);
   }
 
   const prisma = new PrismaClient();
   try {
-    const reviewMap = readManualReviewMap(resolvedReviewFile);
-    const rows = readJsonlRows(resolvedSeedFile)
-      .map(normalizeRow)
-      .map((row) => applyManualReview(row, reviewMap.get(row.normalized_name)));
-    let upserted = 0;
-    let ready = 0;
+    const rows = readJsonlRows(resolvedSeedFile).map(normalizeRow);
+    let inserted = 0;
 
-    for (const row of rows) {
-      await prisma.ingredient_catalog_entries.upsert({
-        where: {
-          normalized_name: row.normalized_name,
-        },
-        update: {
-          canonical_name: row.canonical_name,
-          aliases: row.aliases,
-          lookup_terms: row.lookup_terms,
-          lookup_count: row.lookup_count,
-          allergens: row.allergens,
-          diets: row.diets,
-          is_ready: row.is_ready,
-          seed_source: row.seed_source,
-          metadata: row.metadata,
-        },
-        create: row,
-      });
+    await prisma.$transaction(async (tx) => {
+      await tx.ingredient_catalog_entries.deleteMany({});
 
-      upserted += 1;
-      if (row.is_ready) ready += 1;
-      if (upserted % 100 === 0) {
-        console.log(`Upserted ${upserted}/${rows.length} ingredient catalog rows...`);
+      for (const batch of chunkRows(rows, INSERT_BATCH_SIZE)) {
+        if (!batch.length) continue;
+        await tx.ingredient_catalog_entries.createMany({
+          data: batch,
+        });
+        inserted += batch.length;
+        console.log(`Inserted ${inserted}/${rows.length} ingredient catalog rows...`);
       }
-    }
+    });
 
-    console.log(`Ingredient catalog sync complete.`);
-    console.log(`Rows upserted: ${upserted}`);
-    console.log(`Ready rows: ${ready}`);
+    console.log("Ingredient catalog sync complete.");
+    console.log(`Rows inserted: ${inserted}`);
   } finally {
     await prisma.$disconnect();
   }

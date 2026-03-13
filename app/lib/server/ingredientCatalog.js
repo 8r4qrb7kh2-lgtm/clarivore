@@ -117,6 +117,43 @@ function selectCatalogRow(row) {
   };
 }
 
+function normalizeTokenSet(values) {
+  return new Set(
+    (Array.isArray(values) ? values : [])
+      .map((value) => normalizeLookupTerm(value))
+      .filter(Boolean),
+  );
+}
+
+export function isSafeIngredientCatalogEntry(row) {
+  if (!row || typeof row !== "object") return false;
+
+  const metadata =
+    row.metadata && typeof row.metadata === "object" && !Array.isArray(row.metadata)
+      ? row.metadata
+      : {};
+  const catalogType = asText(metadata.catalog_type || metadata.catalogType);
+  const supportedDietSet = normalizeTokenSet(metadata.supported_diets || metadata.supportedDiets);
+  const dietSet = normalizeTokenSet(row.diets);
+  const allergenSet = normalizeTokenSet(row.allergens);
+  const seedSource = asText(row.seedSource || row.seed_source);
+
+  if (row.isReady !== true || allergenSet.size !== 0) return false;
+  if (!dietSet.size) return false;
+  if (
+    catalogType !== "safe_only" &&
+    !seedSource.startsWith("openfoodfacts_safe_only_")
+  ) {
+    return false;
+  }
+  if (!supportedDietSet.size) return true;
+  if (supportedDietSet.size !== dietSet.size) return false;
+  for (const value of supportedDietSet) {
+    if (!dietSet.has(value)) return false;
+  }
+  return true;
+}
+
 function scoreCatalogRow(tokens, row) {
   const tokenSet = new Set(Array.isArray(tokens) ? tokens : []);
   if (!tokenSet.size || !row) return -1;

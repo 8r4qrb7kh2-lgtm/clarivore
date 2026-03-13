@@ -1,37 +1,41 @@
 #!/usr/bin/env python3
-"""Build a seeded ingredient catalog from Clarivore's existing corpora."""
+"""Build a safe-only ingredient catalog from the Open Food Facts bulk export."""
 
 from __future__ import annotations
 
 import argparse
+import gzip
 import json
+import os
 import re
 import sys
 import unicodedata
+import urllib.error
+import urllib.request
 from collections import Counter, defaultdict
 from pathlib import Path
 from typing import DefaultDict, Dict, Iterable, Iterator, List, Sequence, Set, Tuple
 
 
-DEFAULT_LIMIT = 10000
+DEFAULT_DOWNLOAD_URL = "https://static.openfoodfacts.org/data/openfoodfacts-products.jsonl.gz"
+DEFAULT_INPUT = "ml/data/raw/openfoodfacts-products.jsonl.gz"
 DEFAULT_OUTPUT = "ml/seeds/ingredient_catalog_seed.jsonl"
 DEFAULT_SUMMARY_OUTPUT = "ml/seeds/ingredient_catalog_seed_summary.json"
+DEFAULT_LIMIT = 0
+DEFAULT_ALIAS_LIMIT = 12
+DEFAULT_MIN_SUPPORT = 2
+DEFAULT_COUNTRY_TAG = "en:united-states"
+DEFAULT_USER_AGENT = "ClarivoreML/0.1 (matt@clarivore.app)"
+DEFAULT_TIMEOUT = 120.0
+
+SEED_SOURCE = "openfoodfacts_safe_only_v1"
+EXTRACTION_VERSION = "off_safe_only_v1"
 
 SUPPORTED_DIETS: Tuple[str, ...] = (
     "Vegan",
     "Vegetarian",
     "Pescatarian",
     "Gluten-free",
-)
-
-DEFAULT_SOURCES: Sequence[Tuple[str, str]] = (
-    ("usda_only_train", "ml/data/processed/usda_only_train.jsonl"),
-    ("usda_only_val", "ml/data/processed/usda_only_val.jsonl"),
-    ("usda_only_holdout", "ml/data/processed/usda_only_holdout.jsonl"),
-    ("openfoodfacts_examples", "ml/data/processed/openfoodfacts_examples.jsonl"),
-    ("openfoodfacts_targeted", "ml/data/processed/openfoodfacts_targeted_examples.jsonl"),
-    ("dish_ingredient_rows", "ml/data/raw/dish_ingredient_rows.json"),
-    ("brand_items", "ml/data/raw/brand_items.json"),
 )
 
 SPACE_RE = re.compile(r"\s+")
@@ -47,6 +51,7 @@ CONTAINS_PATTERNS: Sequence[re.Pattern[str]] = (
         r"\bcontains one or more of the following\b\s*[:\-]?\s*([^.;\n]+)",
         re.IGNORECASE,
     ),
+    re.compile(r"\btraces of\b\s*[:\-]?\s*([^.;\n]+)", re.IGNORECASE),
     re.compile(
         r"\bprocessed in a facility(?: that)? (?:also )?(?:processes|handles)\b\s*[:\-]?\s*([^.;\n]+)",
         re.IGNORECASE,
@@ -97,6 +102,8 @@ IRREGULAR_SINGULARS: Dict[str, str] = {
     "carrots": "carrot",
     "cultures": "culture",
     "eggs": "egg",
+    "flowers": "flower",
+    "leaves": "leaf",
     "onions": "onion",
     "potatoes": "potato",
     "tomatoes": "tomato",
@@ -120,6 +127,8 @@ AMBIGUOUS_EXACT_TERMS: Set[str] = {
     "cultures",
     "enzyme",
     "enzymes",
+    "extract",
+    "extracts",
     "flavor",
     "flavoring",
     "leavening",
@@ -220,6 +229,9 @@ REJECT_SUBSTRINGS: Tuple[str, ...] = (
     "ingredients not in regular",
     "preserve freshness",
     "to preserve freshness",
+    "www.",
+    "http://",
+    "https://",
 )
 
 SHORT_CODE_RE = re.compile(r"^[a-z]\d{1,2}$", re.IGNORECASE)
@@ -287,10 +299,6 @@ GLUTEN_BLOCKERS: Tuple[str, ...] = (
     "spelt",
     "triticale",
     "wheat",
-)
-
-GLUTEN_LABEL_TERMS: Tuple[str, ...] = (
-    "gluten",
 )
 
 MILK_TERMS: Tuple[str, ...] = (
@@ -443,19 +451,41 @@ PLANT_BASES: Tuple[str, ...] = (
     "walnut",
 )
 
+BLOCKED_ANALYSIS_TAGS: Tuple[str, ...] = (
+    "en:non-vegan",
+    "en:non-vegetarian",
+    "en:non-pescatarian",
+)
 
-def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Build a seeded ingredient catalog.")
+NOISY_SUBSTRINGS: Tuple[str, ...] = (
+    " agr",
+    " ajr ",
+    " www.",
+    " http",
+    " // ",
+)
+
+def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Build a safe-only ingredient catalog from OFF.")
+    parser.add_argument("--input", default=DEFAULT_INPUT)
     parser.add_argument("--output", default=DEFAULT_OUTPUT)
     parser.add_argument("--summary-output", default=DEFAULT_SUMMARY_OUTPUT)
+    parser.add_argument("--download-url", default=DEFAULT_DOWNLOAD_URL)
     parser.add_argument("--limit", type=int, default=DEFAULT_LIMIT)
+    parser.add_argument("--alias-limit", type=int, default=DEFAULT_ALIAS_LIMIT)
+    parser.add_argument("--min-support", type=int, default=DEFAULT_MIN_SUPPORT)
+    parser.add_argument("--country-tag", default=DEFAULT_COUNTRY_TAG)
+    parser.add_argument("--min-text-len", type=int, default=12)
+    parser.add_argument("--sample-limit", type=int, default=5)
+    parser.add_argument("--timeout", type=float, default=DEFAULT_TIMEOUT)
+    parser.add_argument("--force-download", action="store_true")
     parser.add_argument(
-        "--alias-limit",
-        type=int,
-        default=12,
-        help="Maximum human-readable aliases stored per ingredient.",
+        "--no-download",
+        action="store_true",
+        help="Fail if --input is missing instead of downloading the official OFF export.",
     )
-    return parser.parse_args()
+    parser.add_argument("--user-agent", default=DEFAULT_USER_AGENT)
+    return parser.parse_args(argv)
 
 
 def as_text(value: object) -> str:
@@ -471,11 +501,89 @@ def normalize_spaces(value: str) -> str:
     return SPACE_RE.sub(" ", value).strip(" .,:;-/")
 
 
-def strip_disclosure_segments(text: str) -> str:
-    safe = text
-    for pattern in CONTAINS_PATTERNS:
-        safe = pattern.sub("", safe)
-    return safe
+def normalize_lookup_term(value: str) -> str:
+    return re.sub(r"[^a-z0-9]+", " ", ascii_text(value).lower()).strip()
+
+
+def stable_unique(values: Iterable[object]) -> List[str]:
+    out: List[str] = []
+    seen: Set[str] = set()
+    for value in values:
+        safe = as_text(value)
+        if not safe or safe in seen:
+            continue
+        seen.add(safe)
+        out.append(safe)
+    return out
+
+
+def write_jsonl(path: Path, rows: Sequence[Dict[str, object]]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", encoding="utf-8") as handle:
+        for row in rows:
+            handle.write(json.dumps(row, ensure_ascii=False))
+            handle.write("\n")
+
+
+def write_json(path: Path, payload: Dict[str, object]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+
+def maybe_download_file(
+    *,
+    url: str,
+    output_path: Path,
+    timeout: float,
+    force_download: bool,
+    skip_download: bool,
+    user_agent: str,
+) -> Dict[str, object]:
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    if output_path.exists() and not force_download:
+        return {"downloaded": False, "bytes_written": int(output_path.stat().st_size)}
+
+    if skip_download:
+        raise RuntimeError(f"OFF snapshot missing: {output_path}")
+
+    temp_path = output_path.with_suffix(output_path.suffix + ".tmp")
+    if temp_path.exists():
+        temp_path.unlink()
+
+    request = urllib.request.Request(
+        url,
+        method="GET",
+        headers={"User-Agent": user_agent},
+    )
+
+    bytes_written = 0
+    try:
+        with urllib.request.urlopen(request, timeout=timeout) as response, temp_path.open("wb") as out:
+            while True:
+                chunk = response.read(1024 * 1024)
+                if not chunk:
+                    break
+                out.write(chunk)
+                bytes_written += len(chunk)
+    except (urllib.error.HTTPError, urllib.error.URLError, TimeoutError) as error:
+        if temp_path.exists():
+            temp_path.unlink()
+        raise RuntimeError(f"OFF download failed: {error}") from error
+
+    os.replace(temp_path, output_path)
+    return {"downloaded": True, "bytes_written": bytes_written}
+
+
+def iter_off_rows(path: Path) -> Iterator[Dict[str, object]]:
+    opener = gzip.open if path.suffix == ".gz" else open
+    with opener(path, "rt", encoding="utf-8") as handle:
+        for raw_line in handle:
+            line = raw_line.strip()
+            if not line:
+                continue
+            payload = json.loads(line)
+            if isinstance(payload, dict):
+                yield payload
 
 
 def split_top_level(text: str) -> List[str]:
@@ -524,6 +632,27 @@ def clean_candidate(part: str) -> str:
     cleaned = re.sub(r"\bfor freshness\b", "", cleaned)
     cleaned = normalize_spaces(cleaned)
     return cleaned
+
+
+def strip_disclosure_segments(text: str) -> str:
+    safe = as_text(text)
+    for pattern in CONTAINS_PATTERNS:
+        safe = pattern.sub("", safe)
+    return safe
+
+
+def extract_top_level_candidates(text: str) -> List[str]:
+    safe = strip_disclosure_segments(text or "")
+    safe = ascii_text(safe).replace("\n", ", ")
+    out: List[str] = []
+    for part in split_top_level(safe):
+        cleaned = clean_candidate(part)
+        if not cleaned or cleaned in NOISE_TERMS:
+            continue
+        if cleaned.endswith("(") or cleaned == ")":
+            continue
+        out.append(cleaned)
+    return out
 
 
 def singularize(token: str) -> str:
@@ -576,81 +705,11 @@ def should_keep_catalog_name(value: str) -> bool:
         return False
     if any(token in lowered for token in REJECT_SUBSTRINGS):
         return False
-    if "(" in safe or ")" in safe:
-        return False
     if safe.startswith(("(", ")", "-", "*")):
         return False
     if len(safe.split()) > 18:
         return False
     return True
-
-
-def normalize_lookup_term(value: str) -> str:
-    return re.sub(r"[^a-z0-9]+", " ", ascii_text(value).lower()).strip()
-
-
-def iter_source_rows(source_name: str, path: Path) -> Iterator[str]:
-    if not path.exists():
-        print(f"[warn] missing source: {path}", file=sys.stderr)
-        return
-
-    if path.suffix == ".jsonl":
-        with path.open("r", encoding="utf-8") as handle:
-            for index, raw_line in enumerate(handle, start=1):
-                line = raw_line.strip()
-                if not line:
-                    continue
-                payload = json.loads(line)
-                text = as_text(payload.get("text"))
-                if text:
-                    yield text
-                if index % 100000 == 0:
-                    print(f"[progress] {source_name}: {index} rows", file=sys.stderr)
-        return
-
-    payload = json.loads(path.read_text(encoding="utf-8"))
-    rows = payload.get("rows") if isinstance(payload, dict) else []
-    if not isinstance(rows, list):
-        return
-
-    for row in rows:
-        if not isinstance(row, dict):
-            continue
-        if source_name == "dish_ingredient_rows":
-            text = as_text(row.get("row_text"))
-            if text:
-                yield text
-            continue
-
-        if source_name == "brand_items":
-            ingredient_list = as_text(row.get("ingredient_list"))
-            if ingredient_list:
-                yield ingredient_list
-            ingredients_list = row.get("ingredients_list")
-            if isinstance(ingredients_list, list) and ingredients_list:
-                merged = ", ".join(as_text(item) for item in ingredients_list if as_text(item))
-                if merged:
-                    yield merged
-
-
-def extract_candidates(text: str) -> List[str]:
-    safe = strip_disclosure_segments(text or "")
-    safe = ascii_text(safe).replace("\n", ", ")
-    out: List[str] = []
-
-    def walk(segment: str) -> None:
-        for part in split_top_level(segment):
-            cleaned = clean_candidate(part)
-            if not cleaned or cleaned in NOISE_TERMS:
-                continue
-            if cleaned.endswith("(") or cleaned == ")":
-                continue
-            out.append(cleaned)
-            for inner in PAREN_CONTENT_RE.findall(cleaned):
-                walk(inner)
-
-    walk(safe)
-    return out
 
 
 def compile_matchers(phrases: Iterable[str]) -> List[Tuple[str, re.Pattern[str]]]:
@@ -696,54 +755,6 @@ MEAT_MATCHERS = compile_matchers(MEAT_TERMS)
 VEGAN_ONLY_MATCHERS = compile_matchers(VEGAN_ONLY_BLOCKERS)
 ALL_DIET_BLOCKER_MATCHERS = compile_matchers(ALL_DIET_BLOCKERS)
 GLUTEN_MATCHERS = compile_matchers(GLUTEN_BLOCKERS)
-GLUTEN_LABEL_MATCHERS = compile_matchers(GLUTEN_LABEL_TERMS)
-
-
-def surface_form_support(
-    surface_forms: Sequence[Dict[str, object]],
-    matchers: Sequence[Tuple[str, re.Pattern[str]]],
-    *,
-    skip_plant_dairy: bool = False,
-) -> Tuple[int, int]:
-    matched_count = 0
-    total_count = 0
-
-    for surface_form in surface_forms:
-        if not isinstance(surface_form, dict):
-            continue
-        label = normalize_lookup_term(as_text(surface_form.get("name")))
-        if not label:
-            continue
-        count = int(surface_form.get("count") or 0)
-        if count <= 0:
-            count = 1
-        total_count += count
-        normalized = f" {label} "
-        if skip_plant_dairy and plant_dairy_exception(normalized):
-            continue
-        if match_any(normalized, matchers):
-            matched_count += count
-
-    return matched_count, total_count
-
-
-def has_strong_surface_support(
-    surface_forms: Sequence[Dict[str, object]],
-    matchers: Sequence[Tuple[str, re.Pattern[str]]],
-    *,
-    skip_plant_dairy: bool = False,
-    min_count: int = 4,
-    min_ratio: float = 0.25,
-) -> bool:
-    matched_count, total_count = surface_form_support(
-        surface_forms,
-        matchers,
-        skip_plant_dairy=skip_plant_dairy,
-    )
-    if matched_count < min_count or total_count <= 0:
-        return False
-    return (matched_count / total_count) >= min_ratio
-
 
 def is_product_style_name(name: str) -> bool:
     if name in READY_EXACT_EXCEPTIONS:
@@ -753,13 +764,26 @@ def is_product_style_name(name: str) -> bool:
     return any(name.endswith(suffix) for suffix in PRODUCT_STYLE_SUFFIX_TERMS)
 
 
-def classify_catalog_entry(name: str, surface_forms: Sequence[Dict[str, object]]) -> Dict[str, object]:
+def classify_candidate(name: str) -> Dict[str, object]:
     normalized = f" {normalize_lookup_term(name)} "
-    has_gluten_free_claim = " gluten free " in normalized
     allergens: Set[str] = set()
     blocked_diets: Set[str] = set()
     reason_codes: List[str] = []
-    used_surface_evidence = False
+    has_gluten_free_claim = " gluten free " in normalized
+
+    if (
+        match_any(normalized, MILK_MATCHERS)
+        and name not in MILK_FALSE_POSITIVE_EXACT_TERMS
+        and not plant_dairy_exception(normalized)
+    ):
+        allergens.add("milk")
+        blocked_diets.add("Vegan")
+        reason_codes.append("allergen:milk")
+
+    if match_any(normalized, EGG_MATCHERS):
+        allergens.add("egg")
+        blocked_diets.add("Vegan")
+        reason_codes.append("allergen:egg")
 
     if match_any(normalized, PEANUT_MATCHERS):
         allergens.add("peanut")
@@ -785,84 +809,10 @@ def classify_catalog_entry(name: str, surface_forms: Sequence[Dict[str, object]]
         allergens.add("shellfish")
         reason_codes.append("allergen:shellfish")
 
-    if match_any(normalized, EGG_MATCHERS):
-        allergens.add("egg")
-        reason_codes.append("allergen:egg")
-
-    if (
-        name not in MILK_FALSE_POSITIVE_EXACT_TERMS
-        and match_any(normalized, MILK_MATCHERS)
-        and not plant_dairy_exception(normalized)
-    ):
-        allergens.add("milk")
-        reason_codes.append("allergen:milk")
-
-    if match_any(normalized, GLUTEN_MATCHERS) or (
-        match_any(normalized, GLUTEN_LABEL_MATCHERS) and not has_gluten_free_claim
-    ):
+    if match_any(normalized, GLUTEN_MATCHERS) and not has_gluten_free_claim:
         allergens.add("wheat")
         blocked_diets.add("Gluten-free")
         reason_codes.append("diet_block:gluten_free")
-
-    if "peanut" not in allergens and has_strong_surface_support(surface_forms, PEANUT_MATCHERS):
-        allergens.add("peanut")
-        reason_codes.extend(("allergen:peanut", "evidence:surface_form"))
-        used_surface_evidence = True
-
-    if "tree nut" not in allergens and has_strong_surface_support(surface_forms, TREE_NUT_MATCHERS):
-        allergens.add("tree nut")
-        reason_codes.extend(("allergen:tree_nut", "evidence:surface_form"))
-        used_surface_evidence = True
-
-    if "soy" not in allergens and has_strong_surface_support(surface_forms, SOY_MATCHERS):
-        allergens.add("soy")
-        reason_codes.extend(("allergen:soy", "evidence:surface_form"))
-        used_surface_evidence = True
-
-    if "sesame" not in allergens and has_strong_surface_support(surface_forms, SESAME_MATCHERS):
-        allergens.add("sesame")
-        reason_codes.extend(("allergen:sesame", "evidence:surface_form"))
-        used_surface_evidence = True
-
-    if "fish" not in allergens and has_strong_surface_support(surface_forms, FISH_MATCHERS):
-        allergens.add("fish")
-        reason_codes.extend(("allergen:fish", "evidence:surface_form"))
-        used_surface_evidence = True
-
-    if "shellfish" not in allergens and has_strong_surface_support(surface_forms, SHELLFISH_MATCHERS):
-        allergens.add("shellfish")
-        reason_codes.extend(("allergen:shellfish", "evidence:surface_form"))
-        used_surface_evidence = True
-
-    if "egg" not in allergens and has_strong_surface_support(surface_forms, EGG_MATCHERS):
-        allergens.add("egg")
-        reason_codes.extend(("allergen:egg", "evidence:surface_form"))
-        used_surface_evidence = True
-
-    if (
-        "milk" not in allergens
-        and name not in MILK_FALSE_POSITIVE_EXACT_TERMS
-        and has_strong_surface_support(surface_forms, MILK_MATCHERS, skip_plant_dairy=True)
-    ):
-        allergens.add("milk")
-        reason_codes.extend(("allergen:milk", "evidence:surface_form"))
-        used_surface_evidence = True
-
-    if "Gluten-free" not in blocked_diets and has_strong_surface_support(surface_forms, GLUTEN_MATCHERS):
-        allergens.add("wheat")
-        blocked_diets.add("Gluten-free")
-        reason_codes.extend(("diet_block:gluten_free", "evidence:surface_form"))
-        used_surface_evidence = True
-
-    if (
-        "Gluten-free" not in blocked_diets
-        and not has_gluten_free_claim
-        and has_strong_surface_support(surface_forms, GLUTEN_LABEL_MATCHERS)
-    ):
-        allergens.add("wheat")
-        blocked_diets.add("Gluten-free")
-        reason_codes.extend(("diet_block:gluten_free", "evidence:surface_form"))
-        used_surface_evidence = True
 
     if allergens.intersection({"milk", "egg", "fish", "shellfish"}):
         blocked_diets.add("Vegan")
@@ -882,45 +832,27 @@ def classify_catalog_entry(name: str, surface_forms: Sequence[Dict[str, object]]
         blocked_diets.update({"Vegan", "Vegetarian", "Pescatarian"})
         reason_codes.append("diet_block:animal_derivative")
 
-    if has_strong_surface_support(surface_forms, MEAT_MATCHERS):
-        blocked_diets.update({"Vegan", "Vegetarian", "Pescatarian"})
-        reason_codes.extend(("diet_block:meat", "evidence:surface_form"))
-        used_surface_evidence = True
-
-    if has_strong_surface_support(surface_forms, VEGAN_ONLY_MATCHERS):
-        blocked_diets.add("Vegan")
-        reason_codes.extend(("diet_block:vegan_only", "evidence:surface_form"))
-        used_surface_evidence = True
-
-    if has_strong_surface_support(surface_forms, ALL_DIET_BLOCKER_MATCHERS):
-        blocked_diets.update({"Vegan", "Vegetarian", "Pescatarian"})
-        reason_codes.extend(("diet_block:animal_derivative", "evidence:surface_form"))
-        used_surface_evidence = True
-
-    compatible_diets = [diet for diet in SUPPORTED_DIETS if diet not in blocked_diets]
-    is_ready = True
     if name in AMBIGUOUS_EXACT_TERMS or any(
         name.startswith(prefix) for prefix in AMBIGUOUS_PREFIX_TERMS
     ) or any(name.endswith(suffix) for suffix in AMBIGUOUS_SUFFIX_TERMS):
-        is_ready = False
         reason_codes.append("review:ambiguous_generic")
-    if " extract " in normalized and not allergens:
-        is_ready = False
-        reason_codes.append("review:generic_extract")
-    if name.endswith(" oil") and "soybean oil" not in name and name == "vegetable oil":
-        is_ready = False
-        reason_codes.append("review:generic_oil")
-    if is_product_style_name(name):
-        is_ready = False
-        reason_codes.append("review:product_style")
-    if used_surface_evidence and is_product_style_name(name):
-        reason_codes.append("review:surface_form_composite")
 
+    if " extract " in normalized and not allergens:
+        reason_codes.append("review:generic_extract")
+
+    if name.endswith(" oil") and name == "vegetable oil":
+        reason_codes.append("review:generic_oil")
+
+    if is_product_style_name(name):
+        reason_codes.append("review:product_style")
+
+    compatible_diets = [diet for diet in SUPPORTED_DIETS if diet not in blocked_diets]
+    is_safe = not allergens and not blocked_diets and not reason_codes
     return {
         "allergens": sorted(allergens),
         "blocked_diets": sorted(blocked_diets),
         "diets": compatible_diets,
-        "is_ready": is_ready,
+        "is_safe": is_safe,
         "reason_codes": sorted(set(reason_codes)),
     }
 
@@ -951,60 +883,208 @@ def is_reasonable_alias(canonical_name: str, alias: str) -> bool:
     return False
 
 
-def write_jsonl(path: Path, rows: Sequence[Dict[str, object]]) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("w", encoding="utf-8") as handle:
-        for row in rows:
-            handle.write(json.dumps(row, ensure_ascii=False))
-            handle.write("\n")
+def product_has_country_tag(product: Dict[str, object], country_tag: str) -> bool:
+    safe_tag = as_text(country_tag).lower()
+    if not safe_tag:
+        return True
+    countries = [as_text(value).lower() for value in (product.get("countries_tags") or [])]
+    return safe_tag in countries
 
 
-def write_json(path: Path, payload: Dict[str, object]) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+def has_blocked_analysis_tags(product: Dict[str, object]) -> bool:
+    tags = {as_text(value).lower() for value in (product.get("ingredients_analysis_tags") or [])}
+    return any(tag in tags for tag in BLOCKED_ANALYSIS_TAGS)
 
 
-def main() -> int:
-    args = parse_args()
-    limit = max(1, int(args.limit))
-    alias_limit = max(1, int(args.alias_limit))
+def is_usable_english_like_text(text: str, *, min_text_len: int) -> bool:
+    safe = as_text(text)
+    if len(safe) < min_text_len:
+        return False
 
-    term_counts: Counter[str] = Counter()
-    alias_counts: DefaultDict[str, Counter[str]] = defaultdict(Counter)
-    dataset_counts: DefaultDict[str, Counter[str]] = defaultdict(Counter)
+    if any(token in safe.lower() for token in NOISY_SUBSTRINGS):
+        return False
 
-    for source_name, source_path in DEFAULT_SOURCES:
-        print(f"[source] {source_name} -> {source_path}", file=sys.stderr)
-        for raw_text in iter_source_rows(source_name, Path(source_path)):
-            for candidate in extract_candidates(raw_text):
-                canonical_name = canonicalize_name(candidate)
-                if len(canonical_name) < 2:
-                    continue
-                if canonical_name in NOISE_TERMS:
-                    continue
-                if not should_keep_catalog_name(canonical_name):
-                    continue
-                lookup_term = normalize_lookup_term(canonical_name)
-                if len(lookup_term) < 2:
-                    continue
-                term_counts[canonical_name] += 1
-                alias_counts[canonical_name][candidate] += 1
-                dataset_counts[canonical_name][source_name] += 1
+    alpha_count = sum(ch.isalpha() for ch in safe)
+    if alpha_count < 3:
+        return False
+
+    ascii_alpha = sum(ch.isascii() and ch.isalpha() for ch in safe)
+    if ascii_alpha / max(1, alpha_count) < 0.88:
+        return False
+
+    allowed_count = sum(
+        ch.isascii()
+        and (ch.isalnum() or ch.isspace() or ch in ".,;:%()[]/&-+'\"")
+        for ch in safe
+    )
+    if allowed_count / max(1, len(safe)) < 0.85:
+        return False
+
+    digits = sum(ch.isdigit() for ch in safe)
+    if digits / max(1, len(safe)) > 0.2:
+        return False
+
+    tokens = re.findall(r"[A-Za-z][A-Za-z'\-]*", safe)
+    if not tokens:
+        return False
+
+    short_token_ratio = sum(1 for token in tokens if len(token) == 1) / max(1, len(tokens))
+    if short_token_ratio > 0.25:
+        return False
+
+    return True
+
+
+def choose_ingredient_text(
+    product: Dict[str, object],
+    *,
+    min_text_len: int,
+) -> Tuple[str, str]:
+    english_text = as_text(product.get("ingredients_text_en"))
+    if english_text and is_usable_english_like_text(english_text, min_text_len=min_text_len):
+        return english_text, "ingredients_text_en"
+
+    fallback_text = as_text(product.get("ingredients_text"))
+    if fallback_text and is_usable_english_like_text(fallback_text, min_text_len=min_text_len):
+        return fallback_text, "ingredients_text"
+
+    return "", ""
+
+
+def safe_product_name(product: Dict[str, object]) -> str:
+    return as_text(product.get("product_name_en")) or as_text(product.get("product_name"))
+
+
+def build_catalog_rows(
+    *,
+    input_path: Path,
+    alias_limit: int,
+    limit: int,
+    min_support: int,
+    country_tag: str,
+    min_text_len: int,
+    sample_limit: int,
+) -> Tuple[List[Dict[str, object]], Dict[str, object]]:
+    product_support: DefaultDict[str, Set[str]] = defaultdict(set)
+    alias_support: DefaultDict[str, DefaultDict[str, Set[str]]] = defaultdict(
+        lambda: defaultdict(set)
+    )
+    product_samples: DefaultDict[str, Dict[str, Dict[str, str]]] = defaultdict(dict)
+
+    processed_rows = 0
+    safe_products = 0
+    rejection_counts: Counter[str] = Counter()
+
+    for product in iter_off_rows(input_path):
+        processed_rows += 1
+
+        code = as_text(product.get("code")) or as_text(product.get("_id"))
+        if not code:
+            rejection_counts["missing_code"] += 1
+            continue
+
+        if not product_has_country_tag(product, country_tag):
+            rejection_counts["missing_country_tag"] += 1
+            continue
+
+        allergens_tags = stable_unique(product.get("allergens_tags") or [])
+        if allergens_tags:
+            rejection_counts["allergens_tags_present"] += 1
+            continue
+
+        traces_tags = stable_unique(product.get("traces_tags") or [])
+        if traces_tags:
+            rejection_counts["traces_tags_present"] += 1
+            continue
+
+        if has_blocked_analysis_tags(product):
+            rejection_counts["blocked_analysis_tags"] += 1
+            continue
+
+        ingredient_text, text_source = choose_ingredient_text(
+            product,
+            min_text_len=min_text_len,
+        )
+        if not ingredient_text:
+            rejection_counts["unusable_ingredient_text"] += 1
+            continue
+
+        candidates = extract_top_level_candidates(ingredient_text)
+        if not candidates:
+            rejection_counts["no_candidates"] += 1
+            continue
+
+        accepted_terms: Dict[str, Set[str]] = defaultdict(set)
+        rejected_reason = ""
+
+        for candidate in candidates:
+            canonical_name = canonicalize_name(candidate)
+            if not should_keep_catalog_name(canonical_name):
+                rejected_reason = "invalid_candidate_shape"
+                break
+            if canonical_name in NOISE_TERMS or len(normalize_lookup_term(canonical_name)) < 2:
+                rejected_reason = "invalid_candidate_shape"
+                break
+
+            classification = classify_candidate(canonical_name)
+            if not classification["is_safe"]:
+                rejected_reason = classification["reason_codes"][0] if classification["reason_codes"] else "unsafe_candidate"
+                break
+
+            accepted_terms[canonical_name].add(candidate)
+
+        if rejected_reason:
+            rejection_counts[rejected_reason] += 1
+            continue
+
+        if not accepted_terms:
+            rejection_counts["no_safe_candidates"] += 1
+            continue
+
+        safe_products += 1
+        sample = {
+            "code": code,
+            "product_name": safe_product_name(product),
+            "brand": as_text(product.get("brands")),
+            "text_source": text_source,
+        }
+
+        for canonical_name, aliases in accepted_terms.items():
+            product_support[canonical_name].add(code)
+            for alias in aliases:
+                alias_support[canonical_name][alias].add(code)
+            if len(product_samples[canonical_name]) < sample_limit or code in product_samples[canonical_name]:
+                product_samples[canonical_name][code] = sample
+
+        if processed_rows % 100000 == 0:
+            print(f"[progress] processed={processed_rows} safe_products={safe_products}", file=sys.stderr)
 
     catalog_rows: List[Dict[str, object]] = []
-    allergen_counter: Counter[str] = Counter()
-    ready_counter = 0
+    skipped_low_support = 0
 
-    for canonical_name, lookup_count in term_counts.most_common(limit):
+    ranked_names = sorted(
+        product_support.keys(),
+        key=lambda name: (-len(product_support[name]), name),
+    )
+
+    for canonical_name in ranked_names:
+        lookup_count = len(product_support[canonical_name])
+        if lookup_count < min_support:
+            skipped_low_support += 1
+            continue
+
+        surface_forms = sorted(
+            (
+                {"name": alias, "count": len(codes)}
+                for alias, codes in alias_support[canonical_name].items()
+            ),
+            key=lambda item: (-int(item["count"]), as_text(item["name"])),
+        )
         aliases = [
-            alias
-            for alias, _ in alias_counts[canonical_name].most_common(alias_limit * 3)
-            if is_reasonable_alias(canonical_name, alias)
+            item["name"]
+            for item in surface_forms[: alias_limit * 3]
+            if is_reasonable_alias(canonical_name, as_text(item["name"]))
         ][:alias_limit]
-        top_surface_forms = [
-            {"name": alias, "count": count}
-            for alias, count in alias_counts[canonical_name].most_common(alias_limit * 3)
-        ]
         alias_set = [canonical_name]
         for alias in aliases:
             if alias not in alias_set:
@@ -1017,20 +1097,19 @@ def main() -> int:
             }
         )
 
-        classification = classify_catalog_entry(canonical_name, top_surface_forms)
-        if classification["is_ready"]:
-            ready_counter += 1
-        for allergen in classification["allergens"]:
-            allergen_counter[allergen] += 1
-
         metadata = {
-            "blocked_diets": classification["blocked_diets"],
-            "datasets": [
-                {"name": dataset_name, "count": count}
-                for dataset_name, count in dataset_counts[canonical_name].most_common()
-            ],
-            "reason_codes": classification["reason_codes"],
-            "surface_forms": top_surface_forms[:alias_limit],
+            "catalog_type": "safe_only",
+            "country_tag": as_text(country_tag),
+            "extraction_version": EXTRACTION_VERSION,
+            "off_snapshot": {
+                "input_path": str(input_path),
+            },
+            "reason_codes": [],
+            "source": "openfoodfacts",
+            "source_product_count": lookup_count,
+            "supporting_products": list(product_samples[canonical_name].values())[:sample_limit],
+            "supported_diets": list(SUPPORTED_DIETS),
+            "surface_forms": surface_forms[:alias_limit],
         }
 
         catalog_rows.append(
@@ -1040,41 +1119,82 @@ def main() -> int:
                 "aliases": alias_set,
                 "lookup_terms": lookup_terms,
                 "lookup_count": lookup_count,
-                "allergens": classification["allergens"],
-                "diets": classification["diets"],
-                "is_ready": bool(classification["is_ready"]),
-                "seed_source": "corpus_seed",
+                "allergens": [],
+                "diets": list(SUPPORTED_DIETS),
+                "is_ready": True,
+                "seed_source": SEED_SOURCE,
                 "metadata": metadata,
             }
         )
 
+        if limit and len(catalog_rows) >= limit:
+            break
+
+    summary = {
+        "country_tag": as_text(country_tag),
+        "processed_rows": processed_rows,
+        "safe_products_admitted": safe_products,
+        "unique_safe_phrases": len(product_support),
+        "min_support": min_support,
+        "rows_below_support_threshold": skipped_low_support,
+        "seeded_entries": len(catalog_rows),
+        "rejection_counts": dict(sorted(rejection_counts.items())),
+        "top_examples": [
+            {
+                "canonical_name": row["canonical_name"],
+                "lookup_count": row["lookup_count"],
+                "diets": row["diets"],
+            }
+            for row in catalog_rows[:25]
+        ],
+    }
+    return catalog_rows, summary
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    args = parse_args(argv)
+    alias_limit = max(1, int(args.alias_limit))
+    limit = max(0, int(args.limit))
+    min_support = max(1, int(args.min_support))
+    min_text_len = max(1, int(args.min_text_len))
+    sample_limit = max(1, int(args.sample_limit))
+
+    input_path = Path(args.input)
     output_path = Path(args.output)
     summary_path = Path(args.summary_output)
+
+    download_meta = maybe_download_file(
+        url=as_text(args.download_url),
+        output_path=input_path,
+        timeout=float(args.timeout),
+        force_download=bool(args.force_download),
+        skip_download=bool(args.no_download),
+        user_agent=as_text(args.user_agent) or DEFAULT_USER_AGENT,
+    )
+
+    catalog_rows, summary = build_catalog_rows(
+        input_path=input_path,
+        alias_limit=alias_limit,
+        limit=limit,
+        min_support=min_support,
+        country_tag=as_text(args.country_tag),
+        min_text_len=min_text_len,
+        sample_limit=sample_limit,
+    )
+
     write_jsonl(output_path, catalog_rows)
-    write_json(
-        summary_path,
+    summary.update(
         {
-            "alias_limit": alias_limit,
-            "limit": limit,
-            "ready_entries": ready_counter,
-            "seeded_entries": len(catalog_rows),
-            "top_allergens": allergen_counter.most_common(),
-            "top_examples": [
-                {
-                    "canonical_name": row["canonical_name"],
-                    "lookup_count": row["lookup_count"],
-                    "allergens": row["allergens"],
-                    "diets": row["diets"],
-                    "is_ready": row["is_ready"],
-                }
-                for row in catalog_rows[:25]
-            ],
-        },
+            "download_bytes": int(download_meta.get("bytes_written", 0)),
+            "download_url": as_text(args.download_url),
+            "downloaded": bool(download_meta.get("downloaded")),
+            "input_path": str(input_path),
+            "output_path": str(output_path),
+            "seed_source": SEED_SOURCE,
+        }
     )
-    print(
-        f"[done] wrote {len(catalog_rows)} catalog rows to {output_path}",
-        file=sys.stderr,
-    )
+    write_json(summary_path, summary)
+    print(f"[done] wrote {len(catalog_rows)} catalog rows to {output_path}", file=sys.stderr)
     return 0
 
 

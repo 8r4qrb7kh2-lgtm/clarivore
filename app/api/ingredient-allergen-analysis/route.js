@@ -11,7 +11,10 @@ import {
   runWithProviderSelection,
 } from "../../lib/server/ai/providerRuntime";
 import { ingredientAllergenFlagsSchema } from "../../lib/server/ai/responseSchemas";
-import { findIngredientCatalogEntriesByNames } from "../../lib/server/ingredientCatalog";
+import {
+  findIngredientCatalogEntriesByNames,
+  isSafeIngredientCatalogEntry,
+} from "../../lib/server/ingredientCatalog";
 
 export const runtime = "nodejs";
 
@@ -259,7 +262,7 @@ async function applyIngredientCatalogOverrides(flags) {
 
     return safeFlags.map((flag) => {
       const entry = entriesByIngredient.get(asText(flag?.ingredient));
-      if (!entry?.isReady) {
+      if (!isSafeIngredientCatalogEntry(entry)) {
         return flag;
       }
       return {

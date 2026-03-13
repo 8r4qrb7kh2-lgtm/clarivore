@@ -7,7 +7,7 @@ This folder contains a low-cost, fast multi-label training pipeline for ingredie
 - `fetch_usda_fdc_data.py`: fetches USDA Branded ingredient labels and extracts high-confidence allergen labels from explicit contains/may-contain statements.
 - `fetch_usda_fdc_bulk.py`: downloads USDA Branded CSV ZIP and generates large-scale train/holdout JSONL from real branded labels.
 - `prepare_usda_only_data.py`: builds USDA-only train/val/holdout files and restricts diet label space.
-- `build_ingredient_catalog.py`: mines the stored corpora into a reusable common-ingredient catalog seed for runtime lookup.
+- `build_ingredient_catalog.py`: downloads or reads the official Open Food Facts bulk snapshot and builds a strict safe-only ingredient catalog seed for runtime lookup.
 - `build_ingredient_catalog_review_queue.py`: builds a CSV queue to manually verify and correct catalog rows.
 - `build_ingredient_catalog_review_shards.py`: splits the review queue into parallel audit lanes like extracts, sauces, flavors, and composite product rows.
 - `build_ingredient_catalog_review_packets.py`: builds Codex-friendly packet directories so multiple Codex chats can manually review disjoint row batches in parallel.
@@ -31,16 +31,26 @@ python3 scripts/ml/tune_thresholds.py
 # python3 scripts/ml/evaluate_model.py --threshold-file ml/artifacts/run-*/threshold_tuning.json
 ```
 
+Safe-only ingredient catalog rebuild:
+
+```bash
+python3 scripts/ml/build_ingredient_catalog.py
+node scripts/sync-ingredient-catalog.mjs
+```
+
+The catalog builder now:
+
+- uses the official Open Food Facts bulk `jsonl.gz` snapshot instead of the page-limited search fetchers
+- keeps only U.S.-tagged products with usable English-biased ingredient text
+- rejects products with allergen tags, trace tags, non-vegan/non-vegetarian/non-pescatarian analysis tags, or ambiguous/unsafe ingredient phrases
+- seeds only ingredient phrases that appear in at least two distinct safe products
+
 Online ingestion + train:
 
 ```bash
 python3 scripts/ml/fetch_openfoodfacts_data.py --max-pages 10 --include-traces
 python3 scripts/ml/fetch_openfoodfacts_targeted.py --pages-per-tag 6 --include-traces
 python3 scripts/ml/fetch_usda_fdc_data.py --max-pages 40 --page-size 200
-python3 scripts/ml/build_ingredient_catalog.py
-python3 scripts/ml/build_ingredient_catalog_review_queue.py
-python3 scripts/ml/build_ingredient_catalog_review_shards.py
-python3 scripts/ml/build_ingredient_catalog_review_packets.py
 python3 scripts/ml/export_training_data.py \
   --manual-labels scripts/ml/manual_hidden_alias_seed.jsonl \
   --manual-labels ml/data/processed/openfoodfacts_examples.jsonl \
@@ -103,6 +113,7 @@ Outputs:
 - Raw source snapshots: `ml/data/raw/`
 - Model artifacts: `ml/artifacts/run-<timestamp>/`
 - Ingredient catalog seed: `ml/seeds/ingredient_catalog_seed.jsonl`
+- Ingredient catalog summary: `ml/seeds/ingredient_catalog_seed_summary.json`
 - Ingredient catalog review queue: `ml/review/ingredient_catalog_review_queue.csv`
 - Ingredient catalog manual review overrides: `ml/review/ingredient_catalog_manual_review.jsonl`
 - Ingredient catalog review shards: `ml/review/shards/*.csv`
@@ -185,8 +196,10 @@ What it now does:
 ## Notes
 
 - This pipeline is model-first and does not depend on deterministic synonym dictionaries in runtime inference.
+- The runtime ingredient catalog is now safe-only and OFF-only. Unsafe or unknown phrases are expected to miss the catalog and fall back to AI.
 - Brand-item diet arrays in current schema represent compatibility labels, not violations, so they are excluded from diet-violation targets.
 - Open Food Facts API search has a published rate limit (10 requests/minute). Keep `--throttle-seconds` at ~6+ for large pulls.
+- `build_ingredient_catalog.py` uses the official OFF bulk export snapshot and may download `ml/data/raw/openfoodfacts-products.jsonl.gz` if it is missing.
 - USDA `DEMO_KEY` is heavily rate-limited. Set `USDA_API_KEY` for large-scale pulls.
 - USDA bulk CSV download avoids API throttling and is preferable for large-scale training/validation.
 - `fetch_usda_fdc_bulk.py` uses disclosure segments only to derive ground-truth allergen labels and strips those segments from `text` before saving rows.

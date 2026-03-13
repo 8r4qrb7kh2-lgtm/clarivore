@@ -36,6 +36,7 @@
     "ml:review:ingredient-catalog:packets:status": "python3 scripts/ml/summarize_ingredient_catalog_review_packets.py",
     "ml:review:ingredient-catalog:merge": "python3 scripts/ml/merge_ingredient_catalog_review_packets.py",
     "ml:seed:ingredient-catalog": "node scripts/sync-ingredient-catalog.mjs",
+    "ml:test:ingredient-catalog": "python3 -m unittest scripts/ml/test_build_ingredient_catalog.py",
     "ml:distill:teacher": "python3 scripts/ml/distill_with_anthropic.py",
     "ml:distill:apply": "python3 scripts/ml/apply_distilled_labels.py",
     "ml:train": "python3 scripts/ml/train_fast_model.py",
