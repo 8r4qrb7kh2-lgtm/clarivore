@@ -37,6 +37,8 @@ DEFAULT_MAX_WORKERS = 12
 DEFAULT_MAX_PER_HOST = 0
 DEFAULT_MAX_TOTAL = 0
 DEFAULT_TIMEOUT_SECONDS = 20
+DEFAULT_SEARCH_API_PAGES = 0
+DEFAULT_SEARCH_API_PER_PAGE = 500
 DEFAULT_SITEMAP_HOSTS = [
     "smartlabel1.foodclub.com",
     "smartlabel.freedomschoice.info",
@@ -48,6 +50,7 @@ DEFAULT_SITEMAP_HOSTS = [
 ]
 SITEMAP_NS = {"sm": "http://www.sitemaps.org/schemas/sitemap/0.9"}
 USER_AGENT = "Mozilla/5.0 (compatible; ClarivoreSmartLabelScraper/1.0)"
+SEARCH_API_URL = "https://api.smartlabel.org/api/search"
 CSV_FIELDNAMES = [
     "smartlabel_id",
     "smartlabel_upc",
@@ -116,6 +119,17 @@ def parse_args() -> argparse.Namespace:
         type=int,
         default=DEFAULT_TIMEOUT_SECONDS,
         help="Per-request timeout in seconds.",
+    )
+    parser.add_argument(
+        "--search-api-pages",
+        type=int,
+        default=DEFAULT_SEARCH_API_PAGES,
+        help="Number of SmartLabel search API pages to crawl for additional product URLs. Use 0 to disable.",
+    )
+    parser.add_argument(
+        "--search-api-hosts",
+        default="",
+        help="Optional comma-separated host filter for SmartLabel search API discovered URLs.",
     )
     return parser.parse_args()
 
@@ -198,6 +212,16 @@ def fetch_url(url: str, timeout_seconds: int) -> tuple[str, str, str]:
         return "", "", str(exc)
 
 
+def fetch_json(url: str, timeout_seconds: int) -> tuple[str, Any | None, str]:
+    status, text, error = fetch_url(url, timeout_seconds)
+    if status != "200":
+        return status, None, error
+    try:
+        return status, json.loads(text), ""
+    except json.JSONDecodeError as exc:
+        return status, None, str(exc)
+
+
 def make_numeric_id(seed: str) -> str:
     return str(zlib.crc32(seed.encode("utf-8")) & 0xFFFFFFFF)
 
@@ -242,6 +266,11 @@ def path_upc_and_rev(url: str) -> tuple[str, str]:
     return match.group(1), str(int(match.group(2)))
 
 
+def labelinsight_product_id(url: str) -> str:
+    match = re.search(r"/(?:product|id)/(\d+)(?:/|$)", url)
+    return as_text(match.group(1)) if match else ""
+
+
 def find_meta_content(soup: BeautifulSoup, name: str, attr: str = "property") -> str:
     tag = soup.find("meta", attrs={attr: name})
     if not tag:
@@ -267,6 +296,19 @@ def extract_syndigo_upc(soup: BeautifulSoup) -> str:
             continue
         text = normalize_spaces(candidate.get_text(" ", strip=True))
         digits = re.sub(r"\D+", "", text)
+        if digits:
+            return digits
+    return ""
+
+
+def extract_bestchoice_upc(soup: BeautifulSoup) -> str:
+    for candidate in [
+        soup.select_one(".product-upc"),
+        soup.select_one(".image-gtin-container p"),
+    ]:
+        if not candidate:
+            continue
+        digits = re.sub(r"\D+", "", normalize_spaces(candidate.get_text(" ", strip=True)))
         if digits:
             return digits
     return ""
@@ -429,6 +471,90 @@ def parse_syndigo_ingredients_html(html: str) -> tuple[str, list[str]]:
     return ", ".join(unique_items), unique_items
 
 
+def parse_bestchoice_allergens_html(html: str) -> tuple[list[str], list[str], list[str], int]:
+    soup = BeautifulSoup(html, "html.parser")
+    declared: list[str] = []
+    present: list[str] = []
+    may_contain: list[str] = []
+    explicit_rows = 0
+
+    for row in soup.select("ul.allergen-list li"):
+        name_node = row.select_one(".atc")
+        status_node = row.select_one(".locc")
+        name = normalize_spaces(name_node.get_text(" ", strip=True)) if name_node else ""
+        status = normalize_spaces(status_node.get_text(" ", strip=True)) if status_node else ""
+        if not name or not status:
+            continue
+        explicit_rows += 1
+        assign_allergen_bucket(name, status, declared, present, may_contain)
+
+    return dedupe_strings(declared), dedupe_strings(present), dedupe_strings(may_contain), explicit_rows
+
+
+def parse_bestchoice_ingredients_html(html: str) -> tuple[str, list[str]]:
+    soup = BeautifulSoup(html, "html.parser")
+    container = soup.select_one("#ingredients") or soup
+    items = [
+        normalize_spaces(node.get_text(" ", strip=True))
+        for node in container.select("li")
+        if normalize_spaces(node.get_text(" ", strip=True))
+    ]
+    unique_items = dedupe_strings(items)
+    return ", ".join(unique_items), unique_items
+
+
+def flatten_labelinsight_ingredients(items: list[dict[str, Any]]) -> list[str]:
+    output: list[str] = []
+
+    def visit(nodes: list[dict[str, Any]]) -> None:
+        for node in nodes or []:
+            if not isinstance(node, dict):
+                continue
+            name = normalize_spaces(node.get("name"))
+            if name:
+                output.append(name)
+            visit(node.get("subIngredients") or [])
+            visit(node.get("ingredientComponents") or [])
+
+    visit(items)
+    return dedupe_strings(output)
+
+
+def parse_labelinsight_payload(payload: dict[str, Any]) -> tuple[str, list[str], list[str], list[str], list[str], str]:
+    ingredient_section = payload.get("ingredientSection") or {}
+    allergen_section = payload.get("allergenSection") or {}
+
+    ingredient_items = flatten_labelinsight_ingredients(ingredient_section.get("ingredients") or [])
+    if not ingredient_items:
+        ingredient_items = flatten_labelinsight_ingredients(ingredient_section.get("activeIngredients") or [])
+
+    declared: list[str] = []
+    present: list[str] = []
+    may_contain: list[str] = []
+
+    for allergen in allergen_section.get("allergens") or []:
+        if not isinstance(allergen, dict):
+            continue
+        presence = normalize_spaces(allergen.get("presence"))
+        if not presence:
+            continue
+        assign_allergen_bucket(allergen.get("name", ""), presence, declared, present, may_contain)
+
+    ingredients_text = normalize_spaces(payload.get("rawIngredients"))
+    if not ingredients_text:
+        ingredients_text = ", ".join(ingredient_items)
+
+    image_url = normalize_spaces(payload.get("marketingImage"))
+    return (
+        ingredients_text,
+        ingredient_items,
+        dedupe_strings(declared),
+        dedupe_strings(present),
+        dedupe_strings(may_contain),
+        image_url,
+    )
+
+
 def finalize_row(row: dict[str, str], errors: list[str], parser_name: str) -> dict[str, str]:
     row["ingredients_items_json"] = json.dumps(parse_json_list(row["ingredients_items_json"]), ensure_ascii=True)
     row["allergens_declared_json"] = json.dumps(parse_json_list(row["allergens_declared_json"]), ensure_ascii=True)
@@ -437,6 +563,58 @@ def finalize_row(row: dict[str, str], errors: list[str], parser_name: str) -> di
     row["notes"] = SAFE_NOTES if not errors else f"{parser_name}_partial"
     row["smartlabel_error"] = "; ".join(errors)
     return row
+
+
+def scrape_labelinsight_page(landing_url: str, timeout_seconds: int) -> dict[str, str]:
+    row = build_empty_row(landing_url)
+    row["http_status"] = "200"
+    row["notes"] = SAFE_NOTES
+    errors: list[str] = []
+
+    product_id = labelinsight_product_id(landing_url)
+    if not product_id:
+        row["notes"] = "unsupported"
+        row["smartlabel_error"] = "labelinsight:missing_product_id"
+        return row
+
+    api_url = f"https://external-api.labelinsight.com/smartlabel-api/api/v3/{product_id}"
+    api_status, payload, api_error = fetch_json(api_url, timeout_seconds)
+    row["ingredients_http_status"] = api_status
+    row["allergens_http_status"] = api_status
+    if api_status != "200" or not isinstance(payload, dict):
+        row["notes"] = "fetch_failed"
+        row["smartlabel_error"] = api_error or api_status or "labelinsight_api_failed"
+        return row
+
+    row["smartlabel_id"] = product_id
+    row["smartlabel_upc"] = re.sub(r"\D+", "", as_text(payload.get("upc")))
+    if "/product/" in landing_url:
+        row["smartlabel_url_ingredients"] = f"https://smartlabel.labelinsight.com/product/{product_id}/ingredients"
+        row["smartlabel_url_allergens"] = f"https://smartlabel.labelinsight.com/product/{product_id}/allergens"
+    else:
+        row["smartlabel_url_ingredients"] = landing_url
+        row["smartlabel_url_allergens"] = landing_url
+
+    (
+        ingredients_text,
+        ingredient_items,
+        declared,
+        present,
+        may_contain,
+        image_url,
+    ) = parse_labelinsight_payload(payload)
+    row["ingredients_text"] = ingredients_text
+    row["ingredients_items_json"] = json.dumps(ingredient_items, ensure_ascii=True)
+    row["allergens_declared_json"] = json.dumps(declared, ensure_ascii=True)
+    row["allergens_present_json"] = json.dumps(present, ensure_ascii=True)
+    row["allergens_may_contain_json"] = json.dumps(may_contain, ensure_ascii=True)
+    row["image_url"] = image_url
+    row["image_field"] = "front" if image_url else ""
+
+    if not ingredient_items:
+        append_error(errors, "ingredients:empty_after_parse")
+
+    return finalize_row(row, errors, "labelinsight")
 
 
 def scrape_scanbuy_page(landing_url: str, landing_html: str, timeout_seconds: int) -> dict[str, str]:
@@ -523,7 +701,46 @@ def scrape_syndigo_page(landing_url: str, landing_html: str) -> dict[str, str]:
     return finalize_row(row, errors, "syndigo")
 
 
+def scrape_bestchoice_page(landing_url: str, landing_html: str) -> dict[str, str]:
+    row = build_empty_row(landing_url)
+    row["http_status"] = "200"
+    row["smartlabel_url_ingredients"] = landing_url
+    row["smartlabel_url_allergens"] = landing_url
+    row["ingredients_http_status"] = "200"
+    errors: list[str] = []
+
+    soup = BeautifulSoup(landing_html, "html.parser")
+    row["smartlabel_upc"] = extract_bestchoice_upc(soup)
+    row["image_url"] = urljoin(landing_url, find_meta_content(soup, "og:image"))
+    if not row["image_url"]:
+        image_tag = soup.select_one(".productImg")
+        if image_tag and image_tag.get("src"):
+            row["image_url"] = urljoin(landing_url, as_text(image_tag.get("src")))
+    row["image_field"] = "front" if row["image_url"] else ""
+
+    ingredients_text, items = parse_bestchoice_ingredients_html(landing_html)
+    declared, present, may_contain, explicit_rows = parse_bestchoice_allergens_html(landing_html)
+    row["ingredients_text"] = ingredients_text
+    row["ingredients_items_json"] = json.dumps(items, ensure_ascii=True)
+    if explicit_rows:
+        row["allergens_http_status"] = "200"
+    else:
+        row["allergens_http_status"] = "204"
+        append_error(errors, "allergens:missing_explicit_status_rows")
+    row["allergens_declared_json"] = json.dumps(declared, ensure_ascii=True)
+    row["allergens_present_json"] = json.dumps(present, ensure_ascii=True)
+    row["allergens_may_contain_json"] = json.dumps(may_contain, ensure_ascii=True)
+
+    if not items:
+        append_error(errors, "ingredients:empty_after_parse")
+
+    return finalize_row(row, errors, "bestchoice")
+
+
 def scrape_url(url: str, timeout_seconds: int) -> dict[str, str]:
+    if urlparse(url).netloc.lower() == "smartlabel.labelinsight.com":
+        return scrape_labelinsight_page(url, timeout_seconds)
+
     status, html, error = fetch_url(url, timeout_seconds)
     row = build_empty_row(url)
     row["http_status"] = status
@@ -536,6 +753,8 @@ def scrape_url(url: str, timeout_seconds: int) -> dict[str, str]:
         return scrape_scanbuy_page(url, html, timeout_seconds)
     if 'data-name="ingredients"' in html or "data-name='ingredients'" in html:
         return scrape_syndigo_page(url, html)
+    if "#ingredients" in html and "allergen-list" in html:
+        return scrape_bestchoice_page(url, html)
 
     row["notes"] = "unsupported"
     row["smartlabel_error"] = "unsupported_template"
@@ -568,12 +787,43 @@ def discover_sitemap_urls(host: str, timeout_seconds: int) -> list[str]:
     return [as_text(node.text) for node in root.findall("sm:url/sm:loc", SITEMAP_NS) if as_text(node.text)]
 
 
+def discover_search_api_urls(
+    timeout_seconds: int,
+    pages: int,
+    host_filter: set[str],
+) -> list[str]:
+    discovered: list[str] = []
+    seen: set[str] = set()
+    for page in range(1, pages + 1):
+        url = f"{SEARCH_API_URL}?perPage={DEFAULT_SEARCH_API_PER_PAGE}&page={page}"
+        status, payload, error = fetch_json(url, timeout_seconds)
+        if status != "200" or not isinstance(payload, dict):
+            raise RuntimeError(f"Search API page {page} failed: {error or status}")
+        data = payload.get("data") or {}
+        for item in data.get("data") or []:
+            if not isinstance(item, dict):
+                continue
+            candidate = as_text(item.get("url"))
+            if not candidate:
+                continue
+            host = urlparse(candidate).netloc.lower()
+            if host_filter and host not in host_filter:
+                continue
+            if candidate in seen:
+                continue
+            seen.add(candidate)
+            discovered.append(candidate)
+    return discovered
+
+
 def build_scrape_queue(
     existing_by_url: dict[str, dict[str, str]],
     hosts: list[str],
     timeout_seconds: int,
     max_per_host: int,
     max_total: int,
+    search_api_pages: int,
+    search_api_hosts: set[str],
 ) -> tuple[list[str], dict[str, int]]:
     queue: list[str] = []
     per_host_counts: dict[str, int] = {}
@@ -598,6 +848,24 @@ def build_scrape_queue(
             kept_for_host += 1
         if max_total and len(queue) >= max_total:
             break
+
+    if search_api_pages and (not max_total or len(queue) < max_total):
+        search_urls = discover_search_api_urls(
+            timeout_seconds=timeout_seconds,
+            pages=search_api_pages,
+            host_filter=search_api_hosts,
+        )
+        per_host_counts["search_api"] = len(search_urls)
+        for url in search_urls:
+            if max_total and len(queue) >= max_total:
+                break
+            if url in seen:
+                continue
+            existing_row = existing_by_url.get(url)
+            if existing_row and not row_needs_refresh(existing_row):
+                continue
+            queue.append(url)
+            seen.add(url)
 
     for url, row in existing_by_url.items():
         if max_total and len(queue) >= max_total:
@@ -653,6 +921,8 @@ def main() -> None:
         timeout_seconds=args.timeout_seconds,
         max_per_host=args.max_per_host,
         max_total=args.max_total,
+        search_api_pages=max(0, args.search_api_pages),
+        search_api_hosts=set(hosts_from_arg(args.search_api_hosts)),
     )
 
     scraped_rows: dict[str, dict[str, str]] = {}
