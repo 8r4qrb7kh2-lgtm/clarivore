@@ -285,13 +285,23 @@ export async function analyzeFrontProductName(imageDataUrl) {
 }
 
 export async function analyzeTranscriptFlags(transcriptLines) {
-  const result = await analyzeAllergensWithLabelCropper(transcriptLines);
+  const result = await analyzeAllergensWithLabelCropper(transcriptLines, {
+    debug: true,
+  });
   if (!result?.success) {
     const message =
       asText(result?.error) || "Ingredient allergen analysis failed.";
     throw new Error(message);
   }
-  return Array.isArray(result?.data?.flags) ? result.data.flags : [];
+  return {
+    flags: Array.isArray(result?.data?.flags) ? result.data.flags : [],
+    debug:
+      result?.data?.debug &&
+      typeof result.data.debug === "object" &&
+      !Array.isArray(result.data.debug)
+        ? result.data.debug
+        : null,
+  };
 }
 
 export async function analyzeIngredientLabelImage(
@@ -341,14 +351,18 @@ export async function analyzeIngredientLabelImage(
 
   onStatus?.("Analyzing ingredients");
   let allergenFlags = [];
+  let allergenDebug = null;
   if (!skipAllergenAnalysis) {
-    allergenFlags = await analyzeTranscriptFlags(transcript);
+    const analysis = await analyzeTranscriptFlags(transcript);
+    allergenFlags = Array.isArray(analysis?.flags) ? analysis.flags : [];
+    allergenDebug = analysis?.debug || null;
   }
 
   return {
     lines,
     transcript,
     allergenFlags,
+    allergenDebug,
     correctedImage: prepared.imageData,
     quality: photoResult?.quality || null,
     allergenAnalysisPending: skipAllergenAnalysis,

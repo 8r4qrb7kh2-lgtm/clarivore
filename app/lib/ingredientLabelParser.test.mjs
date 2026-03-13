@@ -64,3 +64,26 @@ test("parseIngredientLabelTranscript keeps quantified contains phrases in direct
   ]);
   assert.equal(parsed.declarationCandidates.length, 0);
 });
+
+test("parseIngredientLabelTranscript treats manufactured-on-equipment advisories as cross-contamination declarations", () => {
+  const parsed = parseIngredientLabelTranscript([
+    "Ingredients: Sugar, Salt. Manufactured on equipment that processes peanuts, dairy, soy, sesame, tree nuts, wheat, and egg.",
+  ]);
+
+  assert.deepEqual(parsed.parsedIngredientsList, ["Sugar", "Salt"]);
+  assert.deepEqual(
+    parsed.declarationCandidates.map((candidate) => ({
+      text: candidate.text,
+      riskType: candidate.riskType,
+    })),
+    [
+      { text: "peanuts", riskType: "cross-contamination" },
+      { text: "dairy", riskType: "cross-contamination" },
+      { text: "soy", riskType: "cross-contamination" },
+      { text: "sesame", riskType: "cross-contamination" },
+      { text: "tree nuts", riskType: "cross-contamination" },
+      { text: "wheat", riskType: "cross-contamination" },
+      { text: "egg", riskType: "cross-contamination" },
+    ],
+  );
+});

@@ -46,6 +46,12 @@ const DECLARATION_PATTERNS = [
       /\bprocessed in a facility(?: that)? (?:also )?(?:processes|handles)\b\s*[:\-]?\s*([^.;]+)/gi,
   },
   {
+    declarationType: "facility",
+    riskType: "cross-contamination",
+    regex:
+      /\b(?:manufactured|made) in a facility(?: that)? (?:also )?(?:processes|handles)\b\s*[:\-]?\s*([^.;]+)/gi,
+  },
+  {
     declarationType: "shared-equipment",
     riskType: "cross-contamination",
     regex:
@@ -57,9 +63,21 @@ const DECLARATION_PATTERNS = [
     regex: /\bshared equipment with\b\s*[:\-]?\s*([^.;]+)/gi,
   },
   {
+    declarationType: "shared-equipment",
+    riskType: "cross-contamination",
+    regex:
+      /\b(?:manufactured|made) on equipment(?: that)? (?:also )?(?:processes|handles)\b\s*[:\-]?\s*([^.;]+)/gi,
+  },
+  {
     declarationType: "shared-line",
     riskType: "cross-contamination",
     regex: /\bshared line with\b\s*[:\-]?\s*([^.;]+)/gi,
+  },
+  {
+    declarationType: "shared-line",
+    riskType: "cross-contamination",
+    regex:
+      /\b(?:manufactured|made) on (?:a )?shared line(?: that)? (?:also )?(?:processes|handles)\b\s*[:\-]?\s*([^.;]+)/gi,
   },
   {
     declarationType: "contains",

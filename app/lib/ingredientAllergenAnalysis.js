@@ -4,8 +4,11 @@ function asText(value) {
 
 // Label transcript -> allergen/diet flags via Next.js Node runtime endpoint.
 // Input: array of transcript lines.
-// Output: { success, data: { flags: [...] } }.
-export async function analyzeAllergensWithLabelCropper(transcriptLines) {
+// Output: { success, data: { flags: [...], debug: {...}|null } }.
+export async function analyzeAllergensWithLabelCropper(
+  transcriptLines,
+  { debug = false } = {},
+) {
   const lines = Array.isArray(transcriptLines)
     ? transcriptLines.filter(
         (line) => typeof line === "string" && line.trim().length > 0,
@@ -13,7 +16,7 @@ export async function analyzeAllergensWithLabelCropper(transcriptLines) {
     : [];
 
   if (!lines.length) {
-    return { success: true, data: { flags: [] } };
+    return { success: true, data: { flags: [], debug: null } };
   }
 
   try {
@@ -24,6 +27,9 @@ export async function analyzeAllergensWithLabelCropper(transcriptLines) {
       },
       body: JSON.stringify({
         transcriptLines: lines,
+        analysisOptions: {
+          debug: debug === true,
+        },
       }),
     });
 
@@ -50,18 +56,22 @@ export async function analyzeAllergensWithLabelCropper(transcriptLines) {
           asText(payload?.error) ||
           asText(payload?.message) ||
           "Ingredient allergen analysis request failed.",
-        data: { flags: [] },
+        data: { flags: [], debug: null },
       };
     }
 
     const flags = Array.isArray(payload?.flags) ? payload.flags : [];
-    return { success: true, data: { flags } };
+    const debugPayload =
+      payload?.debug && typeof payload.debug === "object" && !Array.isArray(payload.debug)
+        ? payload.debug
+        : null;
+    return { success: true, data: { flags, debug: debugPayload } };
   } catch (error) {
     console.error("Allergen label analysis failed:", error);
     return {
       success: false,
       error: asText(error?.message) || "Ingredient allergen analysis request failed.",
-      data: { flags: [] },
+      data: { flags: [], debug: null },
     };
   }
 }

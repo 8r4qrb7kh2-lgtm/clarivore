@@ -740,6 +740,218 @@ function buildGroupedResults(flags) {
   };
 }
 
+function IngredientScanDebugBucket({
+  title,
+  count,
+  items,
+  accentColor,
+  emptyLabel,
+  testId,
+}) {
+  const safeItems = dedupeStrings(items);
+  return (
+    <div
+      data-testid={testId}
+      style={{
+        border: "1px solid rgba(148,163,184,0.18)",
+        borderRadius: 10,
+        background: "rgba(15,23,42,0.42)",
+        padding: "10px 12px",
+        display: "flex",
+        flexDirection: "column",
+        gap: 8,
+      }}
+    >
+      <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "baseline" }}>
+        <div style={{ color: "#fff", fontSize: "0.84rem", fontWeight: 700 }}>{title}</div>
+        <div style={{ color: accentColor, fontSize: "0.8rem", fontWeight: 700 }}>{count}</div>
+      </div>
+      {safeItems.length ? (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+          {safeItems.map((item) => (
+            <span
+              key={`${title}-${item}`}
+              style={{
+                borderRadius: 999,
+                padding: "4px 8px",
+                background: "rgba(30,41,59,0.95)",
+                border: "1px solid rgba(148,163,184,0.16)",
+                color: "#dbeafe",
+                fontSize: "0.78rem",
+                lineHeight: 1.2,
+              }}
+            >
+              {item}
+            </span>
+          ))}
+        </div>
+      ) : (
+        <div style={{ color: "#94a3b8", fontSize: "0.78rem" }}>{emptyLabel}</div>
+      )}
+    </div>
+  );
+}
+
+function IngredientScanDebugView({ debug }) {
+  const safeDebug =
+    debug && typeof debug === "object" && !Array.isArray(debug) ? debug : null;
+  if (!safeDebug) return null;
+
+  const catalogSafeCandidateTexts = dedupeStrings(safeDebug.catalogSafeCandidateTexts);
+  const resolvedDeclarationCandidateTexts = dedupeStrings(
+    safeDebug.resolvedDeclarationCandidateTexts,
+  );
+  const unresolvedDeclarationCandidateTexts = dedupeStrings(
+    safeDebug.unresolvedDeclarationCandidateTexts,
+  );
+  const aiCandidateTexts = dedupeStrings(safeDebug.aiCandidateTexts);
+  const fallbackReason = asText(safeDebug.fallbackReason);
+  const passSummary =
+    safeDebug.pass1Used === true
+      ? safeDebug.pass2Used === true
+        ? "AI ran extraction and verification."
+        : "AI ran extraction only."
+      : "AI did not run.";
+
+  return (
+    <details
+      data-testid="ingredient-scan-debug"
+      style={{
+        background: "rgba(15,23,42,0.55)",
+        border: "1px dashed rgba(148,163,184,0.34)",
+        borderRadius: 12,
+        padding: "10px 12px",
+      }}
+    >
+      <summary
+        style={{
+          cursor: "pointer",
+          color: "#cbd5e1",
+          fontSize: "0.84rem",
+          fontWeight: 700,
+          display: "flex",
+          justifyContent: "space-between",
+          gap: 12,
+          alignItems: "center",
+        }}
+      >
+        <span>Internal debug</span>
+        <span style={{ color: "#94a3b8", fontSize: "0.76rem", fontWeight: 600 }}>
+          safe {catalogSafeCandidateTexts.length} · resolved {resolvedDeclarationCandidateTexts.length} · AI {aiCandidateTexts.length}
+        </span>
+      </summary>
+
+      <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 10 }}>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
+            gap: 8,
+          }}
+        >
+          <div
+            style={{
+              borderRadius: 10,
+              padding: "8px 10px",
+              background: "rgba(30,41,59,0.9)",
+              border: "1px solid rgba(148,163,184,0.16)",
+            }}
+          >
+            <div style={{ color: "#94a3b8", fontSize: "0.72rem", textTransform: "uppercase", fontWeight: 700 }}>
+              AI passes
+            </div>
+            <div style={{ color: "#e2e8f0", fontSize: "0.79rem", marginTop: 4 }}>{passSummary}</div>
+          </div>
+          <div
+            style={{
+              borderRadius: 10,
+              padding: "8px 10px",
+              background: "rgba(30,41,59,0.9)",
+              border: "1px solid rgba(148,163,184,0.16)",
+            }}
+          >
+            <div style={{ color: "#94a3b8", fontSize: "0.72rem", textTransform: "uppercase", fontWeight: 700 }}>
+              Fallback
+            </div>
+            <div style={{ color: "#e2e8f0", fontSize: "0.79rem", marginTop: 4 }}>
+              {fallbackReason || "none"}
+            </div>
+          </div>
+        </div>
+
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+            gap: 8,
+          }}
+        >
+          <IngredientScanDebugBucket
+            title="Catalog-safe"
+            count={catalogSafeCandidateTexts.length}
+            items={catalogSafeCandidateTexts}
+            accentColor="#4ade80"
+            emptyLabel="No catalog-safe candidates."
+            testId="ingredient-scan-debug-safe"
+          />
+          <IngredientScanDebugBucket
+            title="Resolved declarations"
+            count={resolvedDeclarationCandidateTexts.length}
+            items={resolvedDeclarationCandidateTexts}
+            accentColor="#fbbf24"
+            emptyLabel="No declaration candidates resolved deterministically."
+            testId="ingredient-scan-debug-resolved"
+          />
+          <IngredientScanDebugBucket
+            title="AI candidates"
+            count={aiCandidateTexts.length}
+            items={aiCandidateTexts}
+            accentColor="#f87171"
+            emptyLabel="No candidates were sent to AI."
+            testId="ingredient-scan-debug-ai"
+          />
+        </div>
+
+        {unresolvedDeclarationCandidateTexts.length ? (
+          <div
+            style={{
+              borderRadius: 10,
+              padding: "10px 12px",
+              background: "rgba(120,53,15,0.16)",
+              border: "1px solid rgba(251,191,36,0.24)",
+              display: "flex",
+              flexDirection: "column",
+              gap: 8,
+            }}
+          >
+            <div style={{ color: "#fde68a", fontSize: "0.8rem", fontWeight: 700 }}>
+              Unresolved declarations
+            </div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+              {unresolvedDeclarationCandidateTexts.map((item) => (
+                <span
+                  key={`unresolved-${item}`}
+                  style={{
+                    borderRadius: 999,
+                    padding: "4px 8px",
+                    background: "rgba(30,41,59,0.95)",
+                    border: "1px solid rgba(251,191,36,0.18)",
+                    color: "#fef3c7",
+                    fontSize: "0.78rem",
+                    lineHeight: 1.2,
+                  }}
+                >
+                  {item}
+                </span>
+              ))}
+            </div>
+          </div>
+        ) : null}
+      </div>
+    </details>
+  );
+}
+
 export default function IngredientScanModal({
   open,
   ingredientName,
@@ -759,6 +971,7 @@ export default function IngredientScanModal({
   const [analysisResult, setAnalysisResult] = useState(null);
   const [lines, setLines] = useState([]);
   const [allergenFlags, setAllergenFlags] = useState([]);
+  const [analysisDebug, setAnalysisDebug] = useState(null);
   const [analysisPending, setAnalysisPending] = useState(false);
   const [annotatedImage, setAnnotatedImage] = useState("");
   const [frontCaptureResult, setFrontCaptureResult] = useState(null);
@@ -793,6 +1006,7 @@ export default function IngredientScanModal({
     }
     setCameraActive(false);
     setAnalysisPending(false);
+    setAnalysisDebug(null);
     setFrontModalOpen(false);
   }, [open]);
 
@@ -867,6 +1081,7 @@ export default function IngredientScanModal({
     setAnalysisResult(null);
     setLines([]);
     setAllergenFlags([]);
+    setAnalysisDebug(null);
     setAnalysisPending(false);
     setStatusText("");
     setErrorText("");
@@ -972,22 +1187,28 @@ export default function IngredientScanModal({
 
     if (!transcript.length) {
       setIfCurrent(setAllergenFlags, []);
+      setIfCurrent(setAnalysisDebug, null);
       setIfCurrent(setAnalysisPending, false);
       return;
     }
 
     setIfCurrent(setAnalysisPending, true);
+    setIfCurrent(setAnalysisDebug, null);
     setIfCurrent(setErrorText, "");
     setIfCurrent(setStatusText, statusMessage);
     try {
-      const flags = await analyzeTranscriptFlags(transcript);
+      const analysis = await analyzeTranscriptFlags(transcript);
       if (!isCurrentRun()) return;
-      setAllergenFlags(Array.isArray(flags) ? flags : []);
+      setAllergenFlags(Array.isArray(analysis?.flags) ? analysis.flags : []);
+      setAnalysisDebug(
+        analysis?.debug && typeof analysis.debug === "object" ? analysis.debug : null,
+      );
       setStatusText("Allergen and diet analysis complete.");
     } catch (error) {
       if (!isCurrentRun()) return;
       const message = error?.message || "Allergen analysis failed.";
       setAllergenFlags([]);
+      setAnalysisDebug(null);
       setStatusText(message);
       setErrorText(message);
       throw error;
@@ -1023,6 +1244,7 @@ export default function IngredientScanModal({
       setAnalysisResult(result);
       setLines(nextLines);
       setAllergenFlags([]);
+      setAnalysisDebug(null);
       setStatusText("Text extracted. Running allergen analysis...");
 
       await runAllergenAnalysis(nextLines);
@@ -1531,6 +1753,8 @@ export default function IngredientScanModal({
               )}
             </div>
           ) : null}
+
+          {lines.length ? <IngredientScanDebugView debug={analysisDebug} /> : null}
 
           <div
             style={{

@@ -16,9 +16,12 @@ import {
   isSafeIngredientCatalogEntry,
 } from "../../lib/server/ingredientCatalog";
 import {
+  buildAllergenAliasMap,
   buildCandidateListText,
+  buildDietsByAllergenIndex,
   mapCandidateFlagsToPublicFlags,
   partitionCandidatesByCatalogSafety,
+  resolveExplicitDeclarationCandidates,
 } from "../../lib/server/ingredientAllergenCandidates.js";
 import { parseIngredientLabelTranscript } from "../../lib/ingredientLabelParser";
 
@@ -539,6 +542,51 @@ function readAnalysisOptions(body) {
   };
 }
 
+function buildCandidateDebugPayload({
+  parsedTranscript,
+  catalogSafeDirectCandidates,
+  resolvedDeclarationFlags,
+  unresolvedDeclarationCandidates,
+  aiCandidates,
+}) {
+  return {
+    parsedIngredientsList: Array.isArray(parsedTranscript?.parsedIngredientsList)
+      ? parsedTranscript.parsedIngredientsList
+      : [],
+    catalogSafeCandidateCount: Array.isArray(catalogSafeDirectCandidates)
+      ? catalogSafeDirectCandidates.length
+      : 0,
+    catalogSafeCandidateTexts: (Array.isArray(catalogSafeDirectCandidates)
+      ? catalogSafeDirectCandidates
+      : []
+    )
+      .map((candidate) => asText(candidate?.text))
+      .filter(Boolean),
+    resolvedDeclarationCandidateCount: Array.isArray(resolvedDeclarationFlags)
+      ? resolvedDeclarationFlags.length
+      : 0,
+    resolvedDeclarationCandidateTexts: (Array.isArray(resolvedDeclarationFlags)
+      ? resolvedDeclarationFlags
+      : []
+    )
+      .map((flag) => asText(flag?.ingredient))
+      .filter(Boolean),
+    unresolvedDeclarationCandidateCount: Array.isArray(unresolvedDeclarationCandidates)
+      ? unresolvedDeclarationCandidates.length
+      : 0,
+    unresolvedDeclarationCandidateTexts: (Array.isArray(unresolvedDeclarationCandidates)
+      ? unresolvedDeclarationCandidates
+      : []
+    )
+      .map((candidate) => asText(candidate?.text))
+      .filter(Boolean),
+    aiCandidateCount: Array.isArray(aiCandidates) ? aiCandidates.length : 0,
+    aiCandidateTexts: (Array.isArray(aiCandidates) ? aiCandidates : [])
+      .map((candidate) => asText(candidate?.text))
+      .filter(Boolean),
+  };
+}
+
 function buildDietAliasResolver({ glutenFreeLabel, pescatarianLabel }) {
   return (token) => {
     const safe = canonicalToken(token);
@@ -576,16 +624,20 @@ export async function POST(request) {
     .filter(Boolean);
   const analysisOptions = readAnalysisOptions(body);
 
-  const buildDebugPayload = ({
-    pass1Used = false,
-    pass2Used = false,
-    fallbackReason = null,
-  } = {}) => ({
+  const buildDebugPayload = (
+    {
+      pass1Used = false,
+      pass2Used = false,
+      fallbackReason = null,
+    } = {},
+    extra = {},
+  ) => ({
     promptVersion: PROMPT_VERSION,
     pass1Used,
     pass2Used,
     pass2Applied: pass2Used,
     fallbackReason: asText(fallbackReason) || null,
+    ...(extra && typeof extra === "object" ? extra : {}),
   });
 
   if (!transcriptLines.length) {
@@ -674,6 +726,37 @@ export async function POST(request) {
           flag.candidate_id && (flag.allergens.length || flag.diets.length),
         );
 
+    const parsedTranscript = parseIngredientLabelTranscript(transcriptLines);
+    const directCandidateTexts = parsedTranscript.directCandidates
+      .map((candidate) => asText(candidate?.text))
+      .filter(Boolean);
+    const entriesByIngredient = directCandidateTexts.length
+      ? await findIngredientCatalogEntriesByNames(directCandidateTexts)
+      : new Map();
+    const { catalogSafeDirectCandidates, aiCandidates: aiDirectCandidates } =
+      partitionCandidatesByCatalogSafety({
+      directCandidates: parsedTranscript.directCandidates,
+      declarationCandidates: [],
+      entriesByIngredient,
+    });
+    const allergenAliasMap = buildAllergenAliasMap(config?.allergens);
+    const dietsByAllergen = buildDietsByAllergenIndex(config?.dietAllergenConflicts);
+    const {
+      resolvedFlags: resolvedDeclarationFlags,
+      unresolvedCandidates: unresolvedDeclarationCandidates,
+    } = resolveExplicitDeclarationCandidates({
+      declarationCandidates: parsedTranscript.declarationCandidates,
+      allergenAliasMap,
+      dietsByAllergen,
+    });
+    const aiCandidates = [...aiDirectCandidates, ...unresolvedDeclarationCandidates];
+    const candidateDebugPayload = buildCandidateDebugPayload({
+      parsedTranscript,
+      catalogSafeDirectCandidates,
+      resolvedDeclarationFlags,
+      unresolvedDeclarationCandidates,
+      aiCandidates,
+    });
     const analysisCacheKey = buildAnalysisCacheKey({
       transcriptLines,
       allergenEntries: allergenCodebook.entries,
@@ -688,48 +771,38 @@ export async function POST(request) {
           flags: cachedFlags,
         };
         if (analysisOptions.debug) {
-          payload.debug = buildDebugPayload({
-            pass1Used: false,
-            pass2Used: false,
-            fallbackReason: "cache-hit",
-          });
+          payload.debug = buildDebugPayload(
+            {
+              pass1Used: false,
+              pass2Used: false,
+              fallbackReason: "cache-hit",
+            },
+            candidateDebugPayload,
+          );
         }
         return corsJson(payload, { status: 200 });
       }
     }
 
-    const parsedTranscript = parseIngredientLabelTranscript(transcriptLines);
-    const directCandidateTexts = parsedTranscript.directCandidates
-      .map((candidate) => asText(candidate?.text))
-      .filter(Boolean);
-    const entriesByIngredient = directCandidateTexts.length
-      ? await findIngredientCatalogEntriesByNames(directCandidateTexts)
-      : new Map();
-    const { catalogSafeDirectCandidates, aiCandidates } = partitionCandidatesByCatalogSafety({
-      directCandidates: parsedTranscript.directCandidates,
-      declarationCandidates: parsedTranscript.declarationCandidates,
-      entriesByIngredient,
-    });
-
     if (!aiCandidates.length) {
       const payload = {
         success: true,
-        flags: [],
+        flags: resolvedDeclarationFlags,
       };
       if (analysisOptions.debug) {
-        payload.debug = {
-          ...buildDebugPayload({
+        payload.debug = buildDebugPayload(
+          {
             pass1Used: false,
             pass2Used: false,
-            fallbackReason: "catalog-safe-only",
-          }),
-          parsedIngredientsList: parsedTranscript.parsedIngredientsList,
-          catalogSafeCandidateCount: catalogSafeDirectCandidates.length,
-          aiCandidateCount: 0,
-        };
+            fallbackReason: resolvedDeclarationFlags.length
+              ? "deterministic-declarations-only"
+              : "catalog-safe-only",
+          },
+          candidateDebugPayload,
+        );
       }
       if (!analysisOptions.disableCache) {
-        setCachedAnalysis(analysisCacheKey, []);
+        setCachedAnalysis(analysisCacheKey, resolvedDeclarationFlags);
       }
       return corsJson(payload, { status: 200 });
     }
@@ -755,6 +828,7 @@ export async function POST(request) {
         transcriptLineCount: transcriptLines.length,
         parsedIngredientCount: parsedTranscript.parsedIngredientsList.length,
         aiCandidateCount: aiCandidates.length,
+        resolvedDeclarationCandidateCount: resolvedDeclarationFlags.length,
         promptVersion: PROMPT_VERSION,
       },
       invokeProvider: async (provider) => {
@@ -862,16 +936,20 @@ export async function POST(request) {
 
         const publicFlags = mapCandidateFlagsToPublicFlags(finalFlags, candidateById);
         const safeFlags = await applyIngredientCatalogOverrides(publicFlags);
+        const combinedFlags = [...resolvedDeclarationFlags, ...safeFlags];
 
         return {
           ...aggregateResponse,
           normalizedOutput: {
-            flags: safeFlags,
-            debug: buildDebugPayload({
-              pass1Used: true,
-              pass2Used,
-              fallbackReason,
-            }),
+            flags: combinedFlags,
+            debug: buildDebugPayload(
+              {
+                pass1Used: true,
+                pass2Used,
+                fallbackReason,
+              },
+              candidateDebugPayload,
+            ),
           },
         };
       },
