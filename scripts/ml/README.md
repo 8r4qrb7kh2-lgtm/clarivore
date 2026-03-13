@@ -8,6 +8,7 @@ This folder contains a low-cost, fast multi-label training pipeline for ingredie
 - `fetch_usda_fdc_bulk.py`: downloads USDA Branded CSV ZIP and generates large-scale train/holdout JSONL from real branded labels.
 - `prepare_usda_only_data.py`: builds USDA-only train/val/holdout files and restricts diet label space.
 - `build_ingredient_catalog.py`: legacy Open Food Facts catalog tooling for offline audit/review workflows. Runtime inference does not consult this catalog.
+- `scrape_smartlabel_ground_truth.py`: expands the SmartLabel ground-truth CSV from live SmartLabel pages and host sitemaps.
 - `build_smartlabel_safe_catalog.py`: builds the current safe ingredient catalog from SmartLabel ground-truth product extracts without allergen term inference.
 - `build_ingredient_catalog_review_queue.py`: builds a CSV queue to manually verify and correct catalog rows.
 - `build_ingredient_catalog_review_shards.py`: splits the review queue into parallel audit lanes like extracts, sauces, flavors, and composite product rows.
@@ -49,6 +50,9 @@ The legacy catalog builder:
 SmartLabel safe catalog rebuild:
 
 ```bash
+python3 scripts/ml/scrape_smartlabel_ground_truth.py \
+  --input "full_smartlabel_ground_truth copy.csv" \
+  --output "full_smartlabel_ground_truth copy.csv"
 python3 scripts/ml/build_smartlabel_safe_catalog.py \
   --input "full_smartlabel_ground_truth copy.csv"
 node scripts/sync-ingredient-catalog.mjs
@@ -56,6 +60,8 @@ node scripts/sync-ingredient-catalog.mjs
 
 The SmartLabel builder:
 
+- merges newly scraped SmartLabel rows into the local CSV and refreshes non-labelinsight rows that previously failed to parse
+- discovers additional scanbuy-style SmartLabel products from live XML sitemaps and reparses embedded syndigo-style product pages
 - deduplicates repeated SmartLabel revisions by UPC and keeps the richest extracted row
 - keeps only products with parsed ingredient items and empty SmartLabel allergen declared/present/may-contain fields
 - strips structural ingredient-list headers like `Less Than 2% Of:` without inferring allergens from ingredient text

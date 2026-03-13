@@ -3,114 +3,114 @@
   "input_file": "/Users/mattdavis/.cursor/worktrees/clarivore-main/9J1NT/full_smartlabel_ground_truth copy.csv",
   "min_support": 2,
   "products_skipped_unsafe_or_unknown_with_items": 308,
-  "products_skipped_without_items": 1294,
-  "safe_products_used": 297,
+  "products_skipped_without_items": 3991,
+  "safe_products_used": 1897,
   "seed_source": "smartlabel_ground_truth_safe_v1",
-  "structural_items_filtered": 79,
+  "structural_items_filtered": 532,
   "top_entries": [
     {
-      "lookup_count": 100,
-      "normalized_name": "water"
-    },
-    {
-      "lookup_count": 62,
+      "lookup_count": 1060,
       "normalized_name": "salt"
     },
     {
-      "lookup_count": 59,
-      "normalized_name": "citric acid"
+      "lookup_count": 971,
+      "normalized_name": "water"
     },
     {
-      "lookup_count": 43,
+      "lookup_count": 948,
       "normalized_name": "natural flavor"
     },
     {
-      "lookup_count": 38,
+      "lookup_count": 822,
+      "normalized_name": "citric acid"
+    },
+    {
+      "lookup_count": 718,
       "normalized_name": "sugar"
     },
     {
-      "lookup_count": 28,
-      "normalized_name": "sea salt"
-    },
-    {
-      "lookup_count": 27,
-      "normalized_name": "calcium chloride"
-    },
-    {
-      "lookup_count": 27,
+      "lookup_count": 357,
       "normalized_name": "spice"
     },
     {
-      "lookup_count": 21,
-      "normalized_name": "corn syrup"
-    },
-    {
-      "lookup_count": 19,
-      "normalized_name": "garlic"
-    },
-    {
-      "lookup_count": 18,
-      "normalized_name": "ascorbic acid"
-    },
-    {
-      "lookup_count": 18,
-      "normalized_name": "onion"
-    },
-    {
-      "lookup_count": 17,
-      "normalized_name": "high fructose corn syrup"
-    },
-    {
-      "lookup_count": 16,
-      "normalized_name": "tomato paste"
-    },
-    {
-      "lookup_count": 13,
+      "lookup_count": 291,
       "normalized_name": "dextrose"
     },
     {
-      "lookup_count": 13,
-      "normalized_name": "extra virgin olive oil"
-    },
-    {
-      "lookup_count": 13,
+      "lookup_count": 273,
       "normalized_name": "garlic powder"
     },
     {
-      "lookup_count": 12,
+      "lookup_count": 265,
+      "normalized_name": "caramel color"
+    },
+    {
+      "lookup_count": 263,
+      "normalized_name": "sodium citrate"
+    },
+    {
+      "lookup_count": 231,
+      "normalized_name": "carbonated water"
+    },
+    {
+      "lookup_count": 223,
+      "normalized_name": "calcium disodium edta"
+    },
+    {
+      "lookup_count": 222,
+      "normalized_name": "maltodextrin"
+    },
+    {
+      "lookup_count": 214,
+      "normalized_name": "modified corn starch"
+    },
+    {
+      "lookup_count": 211,
+      "normalized_name": "xanthan gum"
+    },
+    {
+      "lookup_count": 206,
+      "normalized_name": "onion powder"
+    },
+    {
+      "lookup_count": 204,
+      "normalized_name": "canola oil"
+    },
+    {
+      "lookup_count": 204,
+      "normalized_name": "high fructose corn syrup"
+    },
+    {
+      "lookup_count": 203,
       "normalized_name": "corn starch"
     },
     {
-      "lookup_count": 12,
-      "normalized_name": "gelatin"
+      "lookup_count": 195,
+      "normalized_name": "caffeine"
     },
     {
-      "lookup_count": 11,
-      "normalized_name": "cane sugar"
+      "lookup_count": 193,
+      "normalized_name": "soybean oil"
     },
     {
-      "lookup_count": 11,
-      "normalized_name": "tomato"
+      "lookup_count": 186,
+      "normalized_name": "corn syrup"
     },
     {
-      "lookup_count": 11,
-      "normalized_name": "vinegar"
+      "lookup_count": 186,
+      "normalized_name": "onion"
     },
     {
-      "lookup_count": 10,
-      "normalized_name": "artificial flavor"
+      "lookup_count": 182,
+      "normalized_name": "acesulfame potassium"
     },
     {
-      "lookup_count": 10,
-      "normalized_name": "blue 1"
-    },
-    {
-      "lookup_count": 10,
-      "normalized_name": "caramel color"
+      "lookup_count": 182,
+      "normalized_name": "gum arabic"
     }
   ],
-  "total_input_rows": 1899,
-  "unique_products": 1899,
-  "unique_safe_ingredients_after_support_filter": 288,
-  "unique_safe_ingredients_before_support_filter": 533
+  "total_input_rows": 6196,
+  "unique_products": 6196,
+  "unique_safe_ingredients_after_support_filter": 1261,
+  "unique_safe_ingredients_before_support_filter": 2100
 }
