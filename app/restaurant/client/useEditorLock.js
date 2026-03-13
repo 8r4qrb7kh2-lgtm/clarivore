@@ -4,6 +4,7 @@ import {
   refreshEditorLock,
   releaseEditorLock,
 } from "../../lib/editorLockClient";
+import { readOrCreateEditorLockSessionKey } from "./editorLockSessionKey";
 
 const HEARTBEAT_INTERVAL_MS = 20 * 1000;
 const DEFAULT_BLOCKED_MESSAGE = "Someone is currently in web page editor.";
@@ -11,13 +12,6 @@ const DEFAULT_ERROR_MESSAGE = "Unable to verify editor availability.";
 
 function asText(value) {
   return String(value || "").trim();
-}
-
-function generateSessionKey() {
-  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
-    return crypto.randomUUID();
-  }
-  return `session-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
 function resolveHolderInstance() {
@@ -51,8 +45,12 @@ export function useEditorLock({
   const sessionKeyRef = useRef("");
 
   if (!sessionKeyRef.current) {
-    // Keep one key for this tab instance only; do not persist across tabs.
-    sessionKeyRef.current = generateSessionKey();
+    // Keep one key per browser tab. sessionStorage survives reloads in the same
+    // tab, but a separately opened tab gets its own key and must acquire
+    // the editor lock independently.
+    sessionKeyRef.current = readOrCreateEditorLockSessionKey({
+      storage: typeof window === "undefined" ? null : window.sessionStorage,
+    });
   }
 
   const [status, setStatus] = useState("idle");
@@ -61,9 +59,10 @@ export function useEditorLock({
   const [refreshBusy, setRefreshBusy] = useState(false);
 
   const readSessionKey = useCallback(() => {
-    if (!sessionKeyRef.current) {
-      sessionKeyRef.current = generateSessionKey();
-    }
+    sessionKeyRef.current = readOrCreateEditorLockSessionKey({
+      currentKey: sessionKeyRef.current,
+      storage: typeof window === "undefined" ? null : window.sessionStorage,
+    });
     return sessionKeyRef.current;
   }, []);
 
