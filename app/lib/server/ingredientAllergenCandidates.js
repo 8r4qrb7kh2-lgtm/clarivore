@@ -1,5 +1,3 @@
-import { isSafeIngredientCatalogEntry } from "./ingredientCatalog.js";
-
 function asText(value) {
   return String(value ?? "").trim();
 }
@@ -99,33 +97,6 @@ export function buildCandidateListText(candidates) {
       return `${id} | ${meta || "candidate"} | risk=${riskType || "contained"} | text="${text}"`;
     })
     .join("\n");
-}
-
-export function partitionCandidatesByCatalogSafety({
-  directCandidates,
-  declarationCandidates,
-  entriesByIngredient,
-}) {
-  const catalogSafeDirectCandidates = [];
-  const aiCandidates = [];
-
-  (Array.isArray(directCandidates) ? directCandidates : []).forEach((candidate) => {
-    const entry = entriesByIngredient.get(asText(candidate?.text));
-    if (isSafeIngredientCatalogEntry(entry)) {
-      catalogSafeDirectCandidates.push(candidate);
-      return;
-    }
-    aiCandidates.push(candidate);
-  });
-
-  (Array.isArray(declarationCandidates) ? declarationCandidates : []).forEach((candidate) => {
-    aiCandidates.push(candidate);
-  });
-
-  return {
-    catalogSafeDirectCandidates,
-    aiCandidates,
-  };
 }
 
 export function mapCandidateFlagsToPublicFlags(candidateFlags, candidateById) {

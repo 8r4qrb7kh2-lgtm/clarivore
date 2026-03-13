@@ -236,12 +236,13 @@ export function buildIngredientCandidateExtractionPrompts({
 Return ONLY valid JSON.
 
 Your source is OCR transcript text from a food ingredient label. Extract two lists:
-1. direct_ingredients: actual ingredients or ingredient groups exactly as written on the label
+1. direct_ingredients: actual ingredients as they should be treated individually for downstream analysis
 2. declaration_candidates: allergen/advisory items from statements like Contains, May Contain, Manufactured on equipment, Shared line, or Facility warnings
 
 STRICT RULES:
 - Preserve the original transcript wording for each item text. Do not paraphrase or normalize.
-- Keep parenthetical sub-ingredients attached to the containing ingredient.
+- If an ingredient is followed by a parenthetical sub-ingredient list, discard the outer wrapper ingredient and return each sub-ingredient inside the parentheses as its own direct ingredient.
+- For example, "Pea Crisps (Pea Protein, Rice Starch)" must become "Pea Protein" and "Rice Starch". Do not return "Pea Crisps".
 - Exclude lead-in words from item text, including "Ingredients", "Ingredient", "Contains", "May Contain", "Manufactured", "Processed", "Shared equipment", "Shared line", and similar prefixes.
 - direct_ingredients must contain ONLY actual ingredients, never advisory/warning phrases.
 - declaration_candidates must contain ONLY the item being declared, never the full advisory sentence.
@@ -289,7 +290,8 @@ Indexed words:
 Return:
 {
   "direct_ingredients": [
-    { "text": "Pea Crisps (Pea Protein, Rice Starch)" },
+    { "text": "Pea Protein" },
+    { "text": "Rice Starch" },
     { "text": "Hazelnut" }
   ],
   "declaration_candidates": [
@@ -325,7 +327,8 @@ Return ONLY valid JSON.
 Rules:
 - Extract only direct ingredients.
 - Exclude advisory or allergen declaration statements such as Contains, May Contain, facility warnings, shared-equipment warnings, and traces-of warnings.
-- Preserve ingredient grouping such as parenthetical sub-ingredients.
+- If an ingredient is followed by a parenthetical sub-ingredient list, discard the outer wrapper ingredient and return each sub-ingredient inside the parentheses as its own ingredient.
+- For example, "Pea Crisps (Pea Protein, Rice Starch)" must become "Pea Protein" and "Rice Starch". Do not return "Pea Crisps".
 - Preserve original ingredient wording; do not paraphrase.
 - Exclude lead-in labels like "Ingredients:".
 - Return ingredients in the same order they appear in the transcript.
@@ -340,7 +343,8 @@ Line 3: and Egg. May Contain nut shell fragments.
 Return:
 {
   "parsed_ingredients": [
-    "Pea Crisps (Pea Protein, Rice Starch)",
+    "Pea Protein",
+    "Rice Starch",
     "Hazelnut"
   ]
 }`,

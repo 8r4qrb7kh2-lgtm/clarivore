@@ -308,13 +308,21 @@ export async function analyzeTranscriptFlags(transcriptLines) {
 }
 
 export async function separateIngredientList(transcriptLines) {
+  const normalizedLines = Array.isArray(transcriptLines)
+    ? transcriptLines.map((line) => asText(line)).filter(Boolean)
+    : [];
+
+  if (!normalizedLines.length) {
+    return [];
+  }
+
   const response = await fetch("/api/ingredient-list-analysis", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      transcriptLines: Array.isArray(transcriptLines) ? transcriptLines : [],
+      transcriptLines: normalizedLines,
     }),
   });
 
@@ -336,9 +344,14 @@ export async function separateIngredientList(transcriptLines) {
     throw error;
   }
 
-  return Array.isArray(parsed?.parsedIngredientsList)
+  const parsedIngredientsList = Array.isArray(parsed?.parsedIngredientsList)
     ? parsed.parsedIngredientsList
     : [];
+  if (!parsedIngredientsList.length) {
+    throw new Error("Ingredient list analysis returned no parsed ingredients.");
+  }
+
+  return parsedIngredientsList;
 }
 
 export async function analyzeIngredientLabelImage(

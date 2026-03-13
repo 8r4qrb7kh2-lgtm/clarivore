@@ -1,14 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-let ingredientCatalogRows = [];
-
-globalThis.__clarivorePrisma = {
-  ingredient_catalog_entries: {
-    findMany: async () => ingredientCatalogRows,
-  },
-};
-
 const { POST } = await import("./route.js");
 
 function jsonResponse(payload, status = 200) {
@@ -83,9 +75,7 @@ function createConfigPayloads() {
 async function invokeRoute({
   transcriptLines,
   openAiPayloads,
-  catalogRows = [],
 }) {
-  ingredientCatalogRows = catalogRows;
   process.env.SUPABASE_URL = "https://supabase.test";
   process.env.SUPABASE_ANON_KEY = "supabase-anon-test";
   process.env.OPENAI_API_KEY = "openai-test";
@@ -221,7 +211,7 @@ test("ingredient allergen route adjudicates conflicting parallel agent results w
   assert.match(adjudicationInput, /Agent B candidate JSON/);
 });
 
-test("ingredient allergen route does not trust malformed safe-only hazelnut catalog rows", async () => {
+test("ingredient allergen route analyzes hazelnuts via AI", async () => {
   const agreedFlags = [
     {
       candidate_id: "direct:0",
@@ -232,24 +222,6 @@ test("ingredient allergen route does not trust malformed safe-only hazelnut cata
 
   const { body, openAiRequests } = await invokeRoute({
     transcriptLines: ["Ingredients: Hazelnuts"],
-    catalogRows: [
-      {
-        canonical_name: "hazelnuts +",
-        normalized_name: "hazelnuts",
-        aliases: ["hazelnuts*+"],
-        lookup_terms: ["hazelnuts"],
-        lookup_count: 3,
-        allergens: [],
-        diets: ["Vegan", "Vegetarian", "Pescatarian", "Gluten-free"],
-        is_ready: true,
-        seed_source: "openfoodfacts_safe_only_v1",
-        metadata: {
-          catalog_type: "safe_only",
-          supported_diets: ["Vegan", "Vegetarian", "Pescatarian", "Gluten-free"],
-          surface_forms: [{ name: "hazelnuts*+", count: 3 }],
-        },
-      },
-    ],
     openAiPayloads: [
       createOpenAiStructuredPayload(agreedFlags),
       createOpenAiStructuredPayload(agreedFlags),
@@ -267,6 +239,5 @@ test("ingredient allergen route does not trust malformed safe-only hazelnut cata
       risk_type: "contained",
     },
   ]);
-  assert.equal(body.debug.catalogSafeCandidateCount, 0);
   assert.equal(body.debug.aiCandidateCount, 1);
 });

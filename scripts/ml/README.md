@@ -7,7 +7,7 @@ This folder contains a low-cost, fast multi-label training pipeline for ingredie
 - `fetch_usda_fdc_data.py`: fetches USDA Branded ingredient labels and extracts high-confidence allergen labels from explicit contains/may-contain statements.
 - `fetch_usda_fdc_bulk.py`: downloads USDA Branded CSV ZIP and generates large-scale train/holdout JSONL from real branded labels.
 - `prepare_usda_only_data.py`: builds USDA-only train/val/holdout files and restricts diet label space.
-- `build_ingredient_catalog.py`: downloads or reads the official Open Food Facts bulk snapshot and builds a strict safe-only ingredient catalog seed for runtime lookup.
+- `build_ingredient_catalog.py`: legacy Open Food Facts catalog tooling for offline audit/review workflows. Runtime inference does not consult this catalog.
 - `build_ingredient_catalog_review_queue.py`: builds a CSV queue to manually verify and correct catalog rows.
 - `build_ingredient_catalog_review_shards.py`: splits the review queue into parallel audit lanes like extracts, sauces, flavors, and composite product rows.
 - `build_ingredient_catalog_review_packets.py`: builds Codex-friendly packet directories so multiple Codex chats can manually review disjoint row batches in parallel.
@@ -31,14 +31,14 @@ python3 scripts/ml/tune_thresholds.py
 # python3 scripts/ml/evaluate_model.py --threshold-file ml/artifacts/run-*/threshold_tuning.json
 ```
 
-Safe-only ingredient catalog rebuild:
+Legacy OFF ingredient catalog tooling:
 
 ```bash
 python3 scripts/ml/build_ingredient_catalog.py
 node scripts/sync-ingredient-catalog.mjs
 ```
 
-The catalog builder now:
+The legacy catalog builder:
 
 - uses the official Open Food Facts bulk CSV export by default, while still accepting the bulk `jsonl.gz` snapshot if you point `--input` at it
 - keeps only U.S.-tagged products with usable English-biased ingredient text
@@ -196,7 +196,7 @@ What it now does:
 ## Notes
 
 - This pipeline is model-first and does not depend on deterministic synonym dictionaries in runtime inference.
-- The runtime ingredient catalog is now safe-only and OFF-only. Unsafe or unknown phrases are expected to miss the catalog and fall back to AI.
+- Runtime inference does not consult the Open Food Facts ingredient catalog. Ingredient/allergen decisions come from explicit declaration resolution plus model analysis.
 - Brand-item diet arrays in current schema represent compatibility labels, not violations, so they are excluded from diet-violation targets.
 - Open Food Facts API search has a published rate limit (10 requests/minute). Keep `--throttle-seconds` at ~6+ for large pulls.
 - `build_ingredient_catalog.py` uses the official OFF bulk export and may download `ml/data/raw/en.openfoodfacts.org.products.csv.gz` if it is missing.

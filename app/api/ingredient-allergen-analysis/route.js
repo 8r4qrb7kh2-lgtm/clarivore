@@ -14,15 +14,10 @@ import {
   ingredientCandidateExtractionSchema,
 } from "../../lib/server/ai/responseSchemas.js";
 import {
-  findIngredientCatalogEntriesByNames,
-  isSafeIngredientCatalogEntry,
-} from "../../lib/server/ingredientCatalog.js";
-import {
   buildAllergenAliasMap,
   buildCandidateListText,
   buildDietsByAllergenIndex,
   mapCandidateFlagsToPublicFlags,
-  partitionCandidatesByCatalogSafety,
   resolveExplicitDeclarationCandidates,
 } from "../../lib/server/ingredientAllergenCandidates.js";
 import { parseIngredientLabelTranscript } from "../../lib/ingredientLabelParser.js";
@@ -306,33 +301,6 @@ function setCachedCandidateExtraction(cacheKey, value) {
   });
   if (oldestKey) {
     candidateExtractionCache.delete(oldestKey);
-  }
-}
-
-async function applyIngredientCatalogOverrides(flags) {
-  const safeFlags = Array.isArray(flags) ? flags : [];
-  const ingredientNames = safeFlags.map((flag) => asText(flag?.ingredient)).filter(Boolean);
-  if (!ingredientNames.length) return safeFlags;
-
-  try {
-    const entriesByIngredient = await findIngredientCatalogEntriesByNames(
-      ingredientNames,
-    );
-
-    return safeFlags.map((flag) => {
-      const entry = entriesByIngredient.get(asText(flag?.ingredient));
-      if (!isSafeIngredientCatalogEntry(entry)) {
-        return flag;
-      }
-      return {
-        ...flag,
-        allergens: dedupeStrings(entry.allergens),
-        diets: dedupeStrings(entry.diets),
-      };
-    });
-  } catch (error) {
-    console.warn("Ingredient catalog overrides unavailable:", error);
-    return safeFlags;
   }
 }
 
@@ -740,7 +708,6 @@ function readAnalysisOptions(body) {
 
 function buildCandidateDebugPayload({
   parsedTranscript,
-  catalogSafeDirectCandidates,
   resolvedDeclarationFlags,
   unresolvedDeclarationCandidates,
   aiCandidates,
@@ -750,15 +717,6 @@ function buildCandidateDebugPayload({
     parsedIngredientsList: Array.isArray(parsedTranscript?.parsedIngredientsList)
       ? parsedTranscript.parsedIngredientsList
       : [],
-    catalogSafeCandidateCount: Array.isArray(catalogSafeDirectCandidates)
-      ? catalogSafeDirectCandidates.length
-      : 0,
-    catalogSafeCandidateTexts: (Array.isArray(catalogSafeDirectCandidates)
-      ? catalogSafeDirectCandidates
-      : []
-    )
-      .map((candidate) => asText(candidate?.text))
-      .filter(Boolean),
     resolvedDeclarationCandidateCount: Array.isArray(resolvedDeclarationFlags)
       ? resolvedDeclarationFlags.length
       : 0,
@@ -949,18 +907,9 @@ export async function POST(request) {
         console.warn("Ingredient candidate extraction fell back to parser:", error);
       }
     }
-    const directCandidateTexts = parsedTranscript.directCandidates
-      .map((candidate) => asText(candidate?.text))
-      .filter(Boolean);
-    const entriesByIngredient = directCandidateTexts.length
-      ? await findIngredientCatalogEntriesByNames(directCandidateTexts)
-      : new Map();
-    const { catalogSafeDirectCandidates, aiCandidates: aiDirectCandidates } =
-      partitionCandidatesByCatalogSafety({
-      directCandidates: parsedTranscript.directCandidates,
-      declarationCandidates: [],
-      entriesByIngredient,
-    });
+    const aiDirectCandidates = Array.isArray(parsedTranscript.directCandidates)
+      ? parsedTranscript.directCandidates
+      : [];
     const allergenAliasMap = buildAllergenAliasMap(config?.allergens);
     const dietsByAllergen = buildDietsByAllergenIndex(config?.dietAllergenConflicts);
     const {
@@ -974,7 +923,6 @@ export async function POST(request) {
     const aiCandidates = [...aiDirectCandidates, ...unresolvedDeclarationCandidates];
     const candidateDebugPayload = buildCandidateDebugPayload({
       parsedTranscript,
-      catalogSafeDirectCandidates,
       resolvedDeclarationFlags,
       unresolvedDeclarationCandidates,
       aiCandidates,
@@ -1021,7 +969,7 @@ export async function POST(request) {
             pass2Used: false,
             fallbackReason: resolvedDeclarationFlags.length
               ? "deterministic-declarations-only"
-              : "catalog-safe-only",
+              : "no-candidates",
             agentAgreement: "not-run",
           },
           candidateDebugPayload,
@@ -1158,8 +1106,7 @@ export async function POST(request) {
         }
 
         const publicFlags = mapCandidateFlagsToPublicFlags(finalFlags, candidateById);
-        const safeFlags = await applyIngredientCatalogOverrides(publicFlags);
-        const combinedFlags = [...resolvedDeclarationFlags, ...safeFlags];
+        const combinedFlags = [...resolvedDeclarationFlags, ...publicFlags];
         const completedResponses = [agentAResponse, agentBResponse].filter(Boolean);
         if (adjudicationResponse) completedResponses.push(adjudicationResponse);
 

@@ -56,6 +56,14 @@ function normalizeStringList(value) {
     });
 }
 
+function buildFailurePayload(message) {
+  return {
+    success: false,
+    parsedIngredientsList: [],
+    error: asText(message) || "Ingredient list analysis failed.",
+  };
+}
+
 export function OPTIONS() {
   return corsOptions();
 }
@@ -65,14 +73,7 @@ export async function POST(request) {
   try {
     body = await request.json();
   } catch {
-    return corsJson(
-      {
-        success: false,
-        parsedIngredientsList: [],
-        error: "Invalid JSON payload.",
-      },
-      { status: 400 },
-    );
+    return corsJson(buildFailurePayload("Invalid JSON payload."), { status: 400 });
   }
 
   const transcriptLines = normalizeLines(body?.transcriptLines);
@@ -122,10 +123,16 @@ export async function POST(request) {
         });
 
         const parsed = parseJsonObject(response.text);
+        const parsedIngredientsList = normalizeStringList(parsed?.parsed_ingredients);
+        if (!parsedIngredientsList.length) {
+          throw new Error(
+            "Ingredient list analysis returned no parsed ingredients for a non-empty transcript.",
+          );
+        }
         return {
           ...response,
           normalizedOutput: {
-            parsedIngredientsList: normalizeStringList(parsed?.parsed_ingredients),
+            parsedIngredientsList,
           },
         };
       },
@@ -139,13 +146,6 @@ export async function POST(request) {
       { status: 200 },
     );
   } catch (error) {
-    return corsJson(
-      {
-        success: false,
-        parsedIngredientsList: [],
-        error: asText(error?.message) || "Ingredient list analysis failed.",
-      },
-      { status: 200 },
-    );
+    return corsJson(buildFailurePayload(error?.message), { status: 200 });
   }
 }

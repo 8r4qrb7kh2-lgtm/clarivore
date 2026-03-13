@@ -797,7 +797,6 @@ function IngredientScanDebugView({ debug }) {
     debug && typeof debug === "object" && !Array.isArray(debug) ? debug : null;
   if (!safeDebug) return null;
 
-  const catalogSafeCandidateTexts = dedupeStrings(safeDebug.catalogSafeCandidateTexts);
   const resolvedDeclarationCandidateTexts = dedupeStrings(
     safeDebug.resolvedDeclarationCandidateTexts,
   );
@@ -854,7 +853,7 @@ function IngredientScanDebugView({ debug }) {
       >
         <span>Internal debug</span>
         <span style={{ color: "#94a3b8", fontSize: "0.76rem", fontWeight: 600 }}>
-          safe {catalogSafeCandidateTexts.length} · resolved {resolvedDeclarationCandidateTexts.length} · AI {aiCandidateTexts.length}
+          resolved {resolvedDeclarationCandidateTexts.length} · AI {aiCandidateTexts.length}
         </span>
       </summary>
 
@@ -920,14 +919,6 @@ function IngredientScanDebugView({ debug }) {
             gap: 8,
           }}
         >
-          <IngredientScanDebugBucket
-            title="Catalog-safe"
-            count={catalogSafeCandidateTexts.length}
-            items={catalogSafeCandidateTexts}
-            accentColor="#4ade80"
-            emptyLabel="No catalog-safe candidates."
-            testId="ingredient-scan-debug-safe"
-          />
           <IngredientScanDebugBucket
             title="Resolved declarations"
             count={resolvedDeclarationCandidateTexts.length}
@@ -1365,14 +1356,7 @@ export default function IngredientScanModal({
       const finalLines = lines
         .map((line) => asText(line?.text))
         .filter(Boolean);
-      let resolvedParsedIngredientsList = [];
-      try {
-        resolvedParsedIngredientsList = await separateIngredientList(finalLines);
-      } catch {
-        resolvedParsedIngredientsList = Array.isArray(parsedIngredientsList)
-          ? parsedIngredientsList.filter(Boolean)
-          : [];
-      }
+      const resolvedParsedIngredientsList = await separateIngredientList(finalLines);
 
       const ingredientText = finalLines.join(" ");
       const containedAllergens = new Set();
@@ -1440,9 +1424,7 @@ export default function IngredientScanModal({
         brandImage: persistedBrandImage,
         ingredientsImage: persistedIngredientsImage,
         ingredientsList: finalLines,
-        parsedIngredientsList: resolvedParsedIngredientsList.length
-          ? resolvedParsedIngredientsList
-          : finalLines,
+        parsedIngredientsList: resolvedParsedIngredientsList,
         productName: asText(front?.productName),
       });
       return;

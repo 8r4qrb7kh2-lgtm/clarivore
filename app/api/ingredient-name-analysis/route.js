@@ -10,10 +10,6 @@ import {
   runWithProviderSelection,
 } from "../../lib/server/ai/providerRuntime";
 import { ingredientNameAnalysisSchema } from "../../lib/server/ai/responseSchemas";
-import {
-  findIngredientCatalogEntryByName,
-  isSafeIngredientCatalogEntry,
-} from "../../lib/server/ingredientCatalog";
 
 export const runtime = "nodejs";
 
@@ -415,25 +411,6 @@ export async function POST(request) {
   }
 
   try {
-    try {
-      const catalogEntry = await findIngredientCatalogEntryByName(ingredientName);
-      if (isSafeIngredientCatalogEntry(catalogEntry)) {
-        return corsJson(
-          {
-            success: true,
-            allergens: Array.isArray(catalogEntry.allergens)
-              ? catalogEntry.allergens
-              : [],
-            diets: Array.isArray(catalogEntry.diets) ? catalogEntry.diets : [],
-            reasoning: `Matched known-safe ingredient catalog entry "${catalogEntry.canonicalName || ingredientName}".`,
-          },
-          { status: 200 },
-        );
-      }
-    } catch (catalogError) {
-      console.warn("Ingredient catalog lookup unavailable:", catalogError);
-    }
-
     const config = await fetchAllergenDietConfig();
     const allergenKeys = (Array.isArray(config?.allergens) ? config.allergens : [])
       .map((allergen) => asText(allergen?.key))
