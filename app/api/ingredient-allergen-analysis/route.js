@@ -10,11 +10,17 @@ import {
   createTextMessage,
   runWithProviderSelection,
 } from "../../lib/server/ai/providerRuntime";
-import { ingredientAllergenFlagsSchema } from "../../lib/server/ai/responseSchemas";
+import { ingredientAllergenCandidateFlagsSchema } from "../../lib/server/ai/responseSchemas";
 import {
   findIngredientCatalogEntriesByNames,
   isSafeIngredientCatalogEntry,
 } from "../../lib/server/ingredientCatalog";
+import {
+  buildCandidateListText,
+  mapCandidateFlagsToPublicFlags,
+  partitionCandidatesByCatalogSafety,
+} from "../../lib/server/ingredientAllergenCandidates.js";
+import { parseIngredientLabelTranscript } from "../../lib/ingredientLabelParser";
 
 export const runtime = "nodejs";
 
@@ -24,7 +30,7 @@ const ANALYSIS_MAX_TOKENS = 1800;
 const VERIFICATION_MAX_TOKENS = 1400;
 const REPAIR_MAX_TOKENS = 700;
 const ANTHROPIC_THINKING_BUDGET_TOKENS = 1024;
-const PROMPT_VERSION = "ingredient-allergen-two-pass-v4-20260305";
+const PROMPT_VERSION = "ingredient-allergen-catalog-gated-v1-20260313";
 
 const CONFIG_TTL_MS = 60 * 60 * 1000;
 const ANALYSIS_CACHE_TTL_MS = 15 * 60 * 1000;
@@ -655,37 +661,17 @@ export async function POST(request) {
         ...parseLegacyList(raw?.diets, dietCodebook.tokenToValue, resolveDietAlias),
       ]);
 
-    const normalizeFlagsFromResponse = (parsedResponse) =>
+    const normalizeCandidateFlagsFromResponse = (parsedResponse) =>
       (Array.isArray(parsedResponse?.flags) ? parsedResponse.flags : [])
         .map((flag) => {
-          const riskRaw = asText(flag?.risk_type).toLowerCase();
-          const risk_type = riskRaw.includes("cross")
-            ? "cross-contamination"
-            : "contained";
-
-          const word_indices = (
-            Array.isArray(flag?.word_indices) ? flag.word_indices : [flag?.word_indices]
-          )
-            .map((value) => Number(value))
-            .filter((value) => Number.isFinite(value) && value >= 0)
-            .map((value) => Math.trunc(value));
-          const normalizedIndices = Array.from(new Set(word_indices)).sort(
-            (a, b) => a - b,
-          );
-
           return {
-            ingredient: asText(flag?.ingredient),
-            word_indices: normalizedIndices,
+            candidate_id: asText(flag?.candidate_id || flag?.candidateId),
             allergens: mapAllergens(flag),
             diets: mapDiets(flag),
-            risk_type,
           };
         })
         .filter((flag) =>
-          flag.ingredient ||
-          flag.word_indices.length ||
-          flag.allergens.length ||
-          flag.diets.length,
+          flag.candidate_id && (flag.allergens.length || flag.diets.length),
         );
 
     const analysisCacheKey = buildAnalysisCacheKey({
@@ -712,25 +698,53 @@ export async function POST(request) {
       }
     }
 
-    const allergenCodebookText = buildPromptCodebookLines(allergenCodebook.entries);
-    const dietCodebookText = buildPromptCodebookLines(dietCodebook.entries);
-
-    const wordList = [];
-    transcriptLines.forEach((line) => {
-      line.split(/\s+/).forEach((word) => {
-        const safe = asText(word);
-        if (safe) wordList.push(safe);
-      });
+    const parsedTranscript = parseIngredientLabelTranscript(transcriptLines);
+    const directCandidateTexts = parsedTranscript.directCandidates
+      .map((candidate) => asText(candidate?.text))
+      .filter(Boolean);
+    const entriesByIngredient = directCandidateTexts.length
+      ? await findIngredientCatalogEntriesByNames(directCandidateTexts)
+      : new Map();
+    const { catalogSafeDirectCandidates, aiCandidates } = partitionCandidatesByCatalogSafety({
+      directCandidates: parsedTranscript.directCandidates,
+      declarationCandidates: parsedTranscript.declarationCandidates,
+      entriesByIngredient,
     });
 
-    const indexedWordList = wordList
-      .map((word, index) => `${index}: "${word}"`)
-      .join("\n");
+    if (!aiCandidates.length) {
+      const payload = {
+        success: true,
+        flags: [],
+      };
+      if (analysisOptions.debug) {
+        payload.debug = {
+          ...buildDebugPayload({
+            pass1Used: false,
+            pass2Used: false,
+            fallbackReason: "catalog-safe-only",
+          }),
+          parsedIngredientsList: parsedTranscript.parsedIngredientsList,
+          catalogSafeCandidateCount: catalogSafeDirectCandidates.length,
+          aiCandidateCount: 0,
+        };
+      }
+      if (!analysisOptions.disableCache) {
+        setCachedAnalysis(analysisCacheKey, []);
+      }
+      return corsJson(payload, { status: 200 });
+    }
+
+    const allergenCodebookText = buildPromptCodebookLines(allergenCodebook.entries);
+    const dietCodebookText = buildPromptCodebookLines(dietCodebook.entries);
+    const candidateListText = buildCandidateListText(aiCandidates);
+    const candidateById = new Map(
+      aiCandidates.map((candidate) => [asText(candidate?.id), candidate]),
+    );
 
     const extractionPrompts = buildIngredientAllergenExtractionPrompts({
       allergenCodebookText,
       dietCodebookText,
-      indexedWordList,
+      candidateListText,
       promptVersion: PROMPT_VERSION,
     });
 
@@ -739,6 +753,8 @@ export async function POST(request) {
       promptClass: "ingredientAllergenAnalysis",
       requestSummary: {
         transcriptLineCount: transcriptLines.length,
+        parsedIngredientCount: parsedTranscript.parsedIngredientsList.length,
+        aiCandidateCount: aiCandidates.length,
         promptVersion: PROMPT_VERSION,
       },
       invokeProvider: async (provider) => {
@@ -749,7 +765,7 @@ export async function POST(request) {
                 systemPrompt: extractionPrompts.systemPrompt,
                 messages: [{ role: "user", content: [createTextMessage(extractionPrompts.userPrompt)] }],
                 maxTokens: ANALYSIS_MAX_TOKENS,
-                jsonSchema: ingredientAllergenFlagsSchema,
+                jsonSchema: ingredientAllergenCandidateFlagsSchema,
                 reasoningEffort: "medium",
               })
             : await runFlagAnalysis({
@@ -768,7 +784,7 @@ export async function POST(request) {
           throw new Error("Failed to analyze ingredient transcript.");
         }
 
-        const pass1Flags = normalizeFlagsFromResponse(pass1Parsed);
+        const pass1Flags = normalizeCandidateFlagsFromResponse(pass1Parsed);
         let pass2Used = false;
         let fallbackReason = "";
         let finalFlags = pass1Flags;
@@ -780,7 +796,7 @@ export async function POST(request) {
           const verificationPrompts = buildIngredientAllergenVerificationPrompts({
             allergenCodebookText,
             dietCodebookText,
-            indexedWordList,
+            candidateListText,
             candidateFlagsJson: JSON.stringify({
               flags: Array.isArray(pass1Parsed?.flags) ? pass1Parsed.flags : [],
             }),
@@ -796,7 +812,7 @@ export async function POST(request) {
                     { role: "user", content: [createTextMessage(verificationPrompts.userPrompt)] },
                   ],
                   maxTokens: VERIFICATION_MAX_TOKENS,
-                  jsonSchema: ingredientAllergenFlagsSchema,
+                  jsonSchema: ingredientAllergenCandidateFlagsSchema,
                   reasoningEffort: "medium",
                 })
               : await runFlagAnalysis({
@@ -814,7 +830,7 @@ export async function POST(request) {
           if (!pass2Parsed || typeof pass2Parsed !== "object") {
             throw new Error("Ingredient verification returned malformed JSON output.");
           }
-          const pass2Flags = normalizeFlagsFromResponse(pass2Parsed);
+          const pass2Flags = normalizeCandidateFlagsFromResponse(pass2Parsed);
 
           aggregateResponse = {
             ...pass2Response,
@@ -844,12 +860,13 @@ export async function POST(request) {
           fallbackReason = `pass2-failed:${asText(pass2Error?.message) || "unknown"}`;
         }
 
-        finalFlags = await applyIngredientCatalogOverrides(finalFlags);
+        const publicFlags = mapCandidateFlagsToPublicFlags(finalFlags, candidateById);
+        const safeFlags = await applyIngredientCatalogOverrides(publicFlags);
 
         return {
           ...aggregateResponse,
           normalizedOutput: {
-            flags: finalFlags,
+            flags: safeFlags,
             debug: buildDebugPayload({
               pass1Used: true,
               pass2Used,

@@ -209,6 +209,30 @@ export const ingredientAllergenFlagsSchema = {
   },
 };
 
+export const ingredientAllergenCandidateFlagsSchema = {
+  name: "ingredient_allergen_candidate_flags",
+  schema: {
+    type: "object",
+    additionalProperties: false,
+    required: ["flags"],
+    properties: {
+      flags: {
+        type: "array",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: ["candidate_id", "allergen_codes", "diet_codes"],
+          properties: {
+            candidate_id: { type: "string" },
+            allergen_codes: integerArraySchema(),
+            diet_codes: integerArraySchema(),
+          },
+        },
+      },
+    },
+  },
+};
+
 export const ingredientNameAnalysisSchema = {
   name: "ingredient_name_analysis",
   schema: {

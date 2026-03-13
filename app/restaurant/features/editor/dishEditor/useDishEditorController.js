@@ -976,6 +976,9 @@ export function useDishEditorController({
             ingredientsList: Array.isArray(payload.ingredientsList)
               ? payload.ingredientsList
               : [],
+            parsedIngredientsList: Array.isArray(payload.parsedIngredientsList)
+              ? payload.parsedIngredientsList
+              : [],
             brandImage: asText(payload.brandImage),
             ingredientsImage: asText(payload.ingredientsImage),
           });

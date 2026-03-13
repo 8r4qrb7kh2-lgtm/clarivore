@@ -760,6 +760,11 @@ function ConfirmInfoModal({ editor }) {
     const replacementIngredientsList = Array.isArray(replacementBrand?.ingredientsList)
       ? replacementBrand.ingredientsList.map((entry) => asText(entry)).filter(Boolean)
       : [];
+    const replacementParsedIngredientsList = Array.isArray(
+      replacementBrand?.parsedIngredientsList,
+    )
+      ? replacementBrand.parsedIngredientsList.map((entry) => asText(entry)).filter(Boolean)
+      : [];
     const replacementIngredientList = asText(
       replacementBrand?.ingredientList || replacementIngredientsList.join(" "),
     );
@@ -769,6 +774,7 @@ function ConfirmInfoModal({ editor }) {
       ingredientsImage: "",
       image: "",
       ingredientsList: replacementIngredientsList,
+      parsedIngredientsList: replacementParsedIngredientsList,
       ingredientList: replacementIngredientList,
     };
 
@@ -1082,6 +1088,9 @@ function ConfirmInfoModal({ editor }) {
           crossContaminationDiets: payload.crossContaminationDiets,
           ingredientsList: Array.isArray(payload.ingredientsList)
             ? payload.ingredientsList
+            : [],
+          parsedIngredientsList: Array.isArray(payload.parsedIngredientsList)
+            ? payload.parsedIngredientsList
             : [],
           brandImage: asText(payload.brandImage),
           ingredientsImage: asText(payload.ingredientsImage),

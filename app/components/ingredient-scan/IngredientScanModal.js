@@ -11,6 +11,7 @@ import {
   prepareAnalysisImage,
   rebuildLineWordBoxes,
 } from "./analysisClient";
+import { parseIngredientLabelTranscript } from "../../lib/ingredientLabelParser";
 
 function asText(value) {
   return String(value ?? "").trim();
@@ -1096,6 +1097,7 @@ export default function IngredientScanModal({
       const finalLines = lines
         .map((line) => asText(line?.text))
         .filter(Boolean);
+      const parsedIngredientsList = parseIngredientLabelTranscript(finalLines).parsedIngredientsList;
 
       const ingredientText = finalLines.join(" ");
       const containedAllergens = new Set();
@@ -1163,6 +1165,7 @@ export default function IngredientScanModal({
         brandImage: persistedBrandImage,
         ingredientsImage: persistedIngredientsImage,
         ingredientsList: finalLines,
+        parsedIngredientsList,
         productName: asText(front?.productName),
       });
       return;

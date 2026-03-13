@@ -230,11 +230,9 @@ Return ONLY valid JSON with this exact shape:
 {
   "flags": [
     {
-      "ingredient": "name",
-      "word_indices": [0],
+      "candidate_id": "direct:0",
       "allergen_codes": [1],
-      "diet_codes": [1],
-      "risk_type": "contained"
+      "diet_codes": [1]
     }
   ]
 }`,
@@ -247,14 +245,14 @@ ${rawOutput}`,
 export function buildIngredientAllergenExtractionPrompts({
   allergenCodebookText,
   dietCodebookText,
-  indexedWordList,
+  candidateListText,
   promptVersion,
 }) {
   return {
     systemPrompt: `You are an allergen and dietary preference analyzer for a restaurant allergen awareness system.
 Return only valid JSON.
 
-Analyze transcripted ingredient-label lines and return allergen/diet flags tied to word indices.
+Analyze structured ingredient-label candidates and return allergen/diet flags tied to candidate IDs.
 Use ONLY numeric codes from these codebooks.
 Prompt version: ${asText(promptVersion) || "unknown"}
 
@@ -267,47 +265,13 @@ ${dietCodebookText}
 EXECUTION PROTOCOL (MANDATORY):
 Follow these steps internally in order. Do not skip steps. Do not output reasoning.
 
-STEP 1: FIND CANDIDATE EVIDENCE SPANS
-Scan the full transcript and collect every phrase that could justify a flag.
-Supported evidence types:
-- contains declaration
-- cross-contact declaration
-- direct ingredient clause
-- parenthetical source disclosure
-Unit rule for direct ingredient clauses:
-- treat each delimiter-bounded ingredient phrase as one ingredient unit before analyzing allergens or diets
-- do NOT analyze each word in a direct ingredient phrase independently
-- a multi-word ingredient such as "Rice Milk Powder" or "Durum Wheat Semolina" is one unit, not separate single-word ingredients
+STEP 1: REVIEW EACH CANDIDATE INDEPENDENTLY
+- treat each candidate as a complete analysis unit
+- do NOT invent extra candidates
+- do NOT split a direct candidate into smaller pieces
+- a multi-word direct ingredient such as "Rice Milk Powder" or "Durum Wheat Semolina" is one unit, not separate single-word ingredients
 
-STEP 2: CLASSIFY EACH EVIDENCE SPAN
-Assign exactly one evidence type to each candidate span.
-- contains declaration: wording such as "contains" or "contains:"
-- cross-contact declaration: wording such as "may contain", "may contain traces of", "processed in a facility", "manufactured in a facility", "shared equipment", or "shared line"
-- direct ingredient clause: a delimiter-bounded ingredient phrase in the ingredient list
-- parenthetical source disclosure: a parenthetical that explicitly names the allergen/source
-Declaration evidence must be processed before ingredient-list clauses, but declaration flags never replace direct ingredient flags.
-
-STEP 3: CHOOSE THE RETURNED INGREDIENT PHRASE
-Choose the exact phrase before assigning any codes.
-- contains declaration -> return the smallest allergen phrase only
-- cross-contact declaration -> return the smallest allergen phrase only
-- direct ingredient clause -> return the full delimiter-bounded ingredient phrase
-- parenthetical source disclosure -> return the smallest disclosed allergen/source phrase only
-Phrase boundary rules:
-- for a direct ingredient clause, first identify the full ingredient unit, then analyze allergens and diets for that whole unit
-- do NOT map allergens or diets from isolated words inside a direct ingredient unit unless a parenthetical disclosure rule applies
-- direct ingredient phrase start: first word immediately after nearest previous comma/semicolon, or line start
-- direct ingredient phrase end: last word immediately before next comma/semicolon, or line end
-- do not return a broader parent/group phrase when a smaller supported sub-phrase is the real evidence
-- keep separate flags for separate evidence phrases even when they point to the same allergen
-Examples:
-- "Whole Milk Powder" -> return "Whole Milk Powder", not "Milk"
-- "Rice Milk Powder" -> treat the full phrase as one unit before deciding whether it implies any allergen
-- "Durum Wheat Semolina" -> return "Durum Wheat Semolina", not "Wheat"
-- "Lecithin (Soy)" -> return "Soy"
-- "Anchovy Extract (Fish)" -> return "Fish"
-
-STEP 4: MAP ALLERGEN CODES
+STEP 2: MAP ALLERGEN CODES
 - ONLY flag allergens from the codebook list
 - do NOT flag "gluten" as a separate allergen
 - oats by themselves are NOT wheat unless wheat is explicitly present
@@ -315,59 +279,48 @@ STEP 4: MAP ALLERGEN CODES
 - coconut milk/cream, oat milk, soy milk, and rice milk are not dairy milk
 - treat coconut as tree nut for allergen purposes
 
-STEP 5: MAP DIET CODES FROM THE SAME PHRASE ONLY
-Add diet codes only when directly justified by the same phrase.
+STEP 3: MAP DIET CODES FROM THE SAME CANDIDATE ONLY
+Add diet codes only when directly justified by the same candidate text.
 - milk or egg -> include Vegan
 - fish or shellfish -> include Vegetarian and Vegan
 - wheat, barley, rye, or malt -> include Gluten-free
 - do NOT infer Vegetarian from milk or egg alone
 - do NOT infer unrelated diets without evidence
 
-STEP 6: ASSIGN RISK TYPE
-- contains declaration -> "contained"
-- direct ingredient clause -> "contained"
-- parenthetical source disclosure -> "contained"
-- cross-contact declaration -> "cross-contamination"
-
-STEP 7: DEDUPE CAREFULLY
+STEP 4: DEDUPE CAREFULLY
 - remove exact duplicates only
-- if declaration evidence and ingredient-list evidence both support the same allergen, keep both flags
+- if two different candidates support the same allergen, keep both candidate IDs
 
-STEP 8: VALIDATE BEFORE RETURNING JSON
+STEP 5: VALIDATE BEFORE RETURNING JSON
 For every flag:
-- "ingredient" must exactly match the chosen phrase and must not be a parent/group phrase
-- "word_indices" must include ALL and ONLY words from that exact phrase
-- "word_indices" must be unique and sorted ascending
-- for a single-word phrase, return exactly one index
-- every flag must include at least one matching allergen/diet word index from the transcript
-- do NOT include section-heading/context tokens such as "INGREDIENTS:", "CONTAINS", "MAY", or "FACILITY" unless they are part of the phrase itself
-- always use 0-based word indices from the provided numbered transcript list
-- if an explicit declaration lists known allergens, do not return an empty flags array
-- for a direct ingredient clause, confirm the returned phrase represents the whole ingredient unit, not a single token pulled out of that unit
+- "candidate_id" must exactly match one provided candidate ID
+- return at most one flag object per candidate ID
+- if a candidate is safe/neutral, omit it entirely from the flags array
+- do not return empty allergen_codes and empty diet_codes together
+- do not return codes for candidates that are clearly safe
+- if an explicit declaration candidate names a supported allergen, do not omit it
 
 MINI EXAMPLES:
-- Positive: "Wheat flour" -> include wheat and Gluten-free
-- Negative: "Wheat flour" -> do NOT include Vegan, Vegetarian, or Pescatarian from that phrase alone
-- Negative: "Rice Milk Powder" -> analyze the whole phrase as one unit; do NOT flag dairy milk from the word "Milk" alone
-- Negative: "Coconut Milk Powder" -> do NOT map to dairy milk or tree nut from "coconut milk" alone
-- Positive: direct ingredient + declaration for the same allergen -> return separate flags, not one merged flag
+- Positive: direct candidate "Wheat flour" -> include wheat and Gluten-free
+- Negative: direct candidate "Wheat flour" -> do NOT include Vegan, Vegetarian, or Pescatarian from that phrase alone
+- Negative: direct candidate "Rice Milk Powder" -> analyze the whole phrase as one unit; do NOT flag dairy milk from the word "Milk" alone
+- Negative: direct candidate "Coconut Milk Powder" -> do NOT map to dairy milk or tree nut from "coconut milk" alone
+- Positive: direct candidate and declaration candidate for the same allergen -> return separate candidate IDs, not one merged flag
 
 Return ONLY JSON:
 {
   "flags": [
     {
-      "ingredient": "Wheat flour",
-      "word_indices": [45, 46],
+      "candidate_id": "direct:3",
       "allergen_codes": [1],
-      "diet_codes": [2],
-      "risk_type": "contained"
+      "diet_codes": [2]
     }
   ]
 }`,
-    userPrompt: `Here is the transcript with each word numbered (0-based):
-${indexedWordList}
+    userPrompt: `Here are the candidates to analyze:
+${candidateListText}
 
-Use the numbered list above for word_indices. Do not compute your own indices outside this list.
+Return only candidate IDs from the provided list.
 Return JSON only.`,
   };
 }
@@ -375,7 +328,7 @@ Return JSON only.`,
 export function buildIngredientAllergenVerificationPrompts({
   allergenCodebookText,
   dietCodebookText,
-  indexedWordList,
+  candidateListText,
   candidateFlagsJson,
   promptVersion,
 }) {
@@ -385,11 +338,9 @@ Return only valid JSON with this exact shape:
 {
   "flags": [
     {
-      "ingredient": "name",
-      "word_indices": [0],
+      "candidate_id": "direct:0",
       "allergen_codes": [1],
-      "diet_codes": [1],
-      "risk_type": "contained"
+      "diet_codes": [1]
     }
   ]
 }
@@ -404,36 +355,31 @@ ${dietCodebookText}
 
 VERIFICATION PROTOCOL (MANDATORY):
 Re-check the candidate output in this order and fix any violation you find.
-1) Coverage: explicit declarations of supported allergens must produce flags, and declaration flags do not replace direct ingredient flags.
-2) Evidence type: classify each flag as contains declaration, cross-contact declaration, direct ingredient clause, or parenthetical source disclosure.
-3) Phrase fidelity:
-- declarations -> smallest allergen phrase only
-- direct ingredient clauses -> full delimiter-bounded phrase
-- parenthetical disclosures -> smallest disclosed allergen/source phrase only
-- for direct ingredient clauses, treat the full delimiter-bounded phrase as one ingredient unit and do not analyze or return isolated words from inside that unit
-4) Allergen mapping:
+1) Coverage: explicit declaration candidates naming supported allergens must produce flags, and declaration candidates do not replace direct candidates.
+2) Candidate fidelity:
+- candidate_id must exist in the provided candidate list
+- do not invent or rename candidate IDs
+- do not split direct candidates into smaller phrases
+3) Allergen mapping:
 - only supported codebook allergens
 - no separate "gluten" allergen
 - oats alone are not wheat
 - coconut milk/cream, oat milk, soy milk, and rice milk are not dairy milk
 - treat coconut as tree nut for allergen purposes
-5) Diet mapping:
+4) Diet mapping:
 - milk or egg -> Vegan
 - fish or shellfish -> Vegetarian and Vegan
 - wheat, barley, rye, or malt -> Gluten-free
 - no unrelated diets
-6) Risk type:
-- contains/direct/parenthetical -> "contained"
-- may-contain/shared-facility/shared-equipment/shared-line -> "cross-contamination"
-7) Deduplication:
+5) Deduplication:
 - remove exact duplicates only
-- keep separate flags for separate evidence phrases
-8) Index validation:
-- ingredient text and word_indices must match exactly
-- word_indices must be sorted, unique, and 0-based
+- keep separate flags for separate candidate IDs
+6) Shape validation:
+- every flag must have candidate_id, allergen_codes, and diet_codes
+- do not return empty allergen_codes and empty diet_codes together
 - if candidate output is already valid, return it unchanged.`,
-    userPrompt: `Transcript words (0-based):
-${indexedWordList}
+    userPrompt: `Candidate list:
+${candidateListText}
 
 Candidate JSON to verify and correct:
 ${candidateFlagsJson}
@@ -445,12 +391,12 @@ Return JSON only.`,
 export function buildIngredientAllergenAnalysisPrompts({
   allergenCodebookText,
   dietCodebookText,
-  indexedWordList,
+  candidateListText,
 }) {
   return buildIngredientAllergenExtractionPrompts({
     allergenCodebookText,
     dietCodebookText,
-    indexedWordList,
+    candidateListText,
     promptVersion: "legacy-wrapper",
   });
 }

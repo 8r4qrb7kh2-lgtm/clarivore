@@ -72,6 +72,9 @@ function normalizeBrandFromRow(brandRow) {
         ? brandRow.ingredients_list
         : [],
   );
+  const parsedIngredientsList = normalizeStringList(
+    Array.isArray(payload.parsedIngredientsList) ? payload.parsedIngredientsList : [],
+  );
 
   const brandImage = asText(payload.brandImage || brandRow.brand_image || payload.image || brandRow.image);
   const ingredientsImage = asText(payload.ingredientsImage || brandRow.ingredients_image);
@@ -86,6 +89,7 @@ function normalizeBrandFromRow(brandRow) {
     image,
     ingredientList: asText(payload.ingredientList || brandRow.ingredient_list),
     ingredientsList,
+    parsedIngredientsList,
     allergens: normalizeStringList(
       Array.isArray(payload.allergens) && payload.allergens.length
         ? payload.allergens

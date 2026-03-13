@@ -53,6 +53,9 @@ function normalizeBrandForWrite(brand) {
     ingredientsList: Array.isArray(safe?.ingredientsList)
       ? safe.ingredientsList.map((entry) => asText(entry)).filter(Boolean)
       : [],
+    parsedIngredientsList: Array.isArray(safe?.parsedIngredientsList)
+      ? safe.parsedIngredientsList.map((entry) => asText(entry)).filter(Boolean)
+      : [],
   };
 
   // Persist one compact thumbnail field only; large ingredient-label captures

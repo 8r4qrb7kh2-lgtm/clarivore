@@ -768,6 +768,9 @@ function normalizeBrandForSignature(brand) {
     ingredientsList: Array.isArray(normalized.ingredientsList)
       ? normalized.ingredientsList.map((line) => asText(line)).filter(Boolean)
       : [],
+    parsedIngredientsList: Array.isArray(normalized.parsedIngredientsList)
+      ? normalized.parsedIngredientsList.map((line) => asText(line)).filter(Boolean)
+      : [],
   };
 }
 
@@ -967,6 +970,9 @@ function normalizeBrandEntry(brand) {
     crossContaminationDiets: dedupeTokenList(base.crossContaminationDiets),
     ingredientsList: Array.isArray(base.ingredientsList)
       ? base.ingredientsList.map((line) => asText(line)).filter(Boolean)
+      : [],
+    parsedIngredientsList: Array.isArray(base.parsedIngredientsList)
+      ? base.parsedIngredientsList.map((line) => asText(line)).filter(Boolean)
       : [],
   };
 }

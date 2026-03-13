@@ -168,6 +168,7 @@ function buildReplacementBrandFromScan(result, fallbackName, config) {
         ? [ingredientText]
         : [],
   );
+  const parsedIngredientsList = normalizeStringList(result?.parsedIngredientsList);
 
   return {
     name: asText(result?.productName) || asText(fallbackName) || "Brand item",
@@ -176,6 +177,7 @@ function buildReplacementBrandFromScan(result, fallbackName, config) {
     image: "",
     ingredientsImage: asText(result?.ingredientsImage),
     ingredientsList: ingredientLines,
+    parsedIngredientsList,
     ingredientList: ingredientText || ingredientLines.join(" "),
     allergens: normalizeStringList(result?.allergens, config?.normalizeAllergen),
     crossContaminationAllergens: normalizeStringList(
@@ -197,6 +199,9 @@ function applyReplacementBrandToIngredient(ingredient, replacementBrand) {
     replacementBrand?.brandImage || replacementBrand?.image || replacementBrand?.ingredientsImage,
   );
   const replacementIngredientsList = normalizeStringList(replacementBrand?.ingredientsList);
+  const replacementParsedIngredientsList = normalizeStringList(
+    replacementBrand?.parsedIngredientsList,
+  );
   const replacementIngredientList = asText(
     replacementBrand?.ingredientList || replacementIngredientsList.join(" "),
   );
@@ -206,6 +211,7 @@ function applyReplacementBrandToIngredient(ingredient, replacementBrand) {
     ingredientsImage: "",
     image: "",
     ingredientsList: replacementIngredientsList,
+    parsedIngredientsList: replacementParsedIngredientsList,
     ingredientList: replacementIngredientList,
   };
 

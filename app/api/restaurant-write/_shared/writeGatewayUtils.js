@@ -258,6 +258,11 @@ function normalizeBrandEntryForStorage(brand) {
     ingredientsList: (Array.isArray(safe?.ingredientsList) ? safe.ingredientsList : [])
       .map((value) => asText(value))
       .filter(Boolean),
+    parsedIngredientsList: (Array.isArray(safe?.parsedIngredientsList)
+      ? safe.parsedIngredientsList
+      : [])
+      .map((value) => asText(value))
+      .filter(Boolean),
   };
 
   const brandImage = sanitizePersistedImageValue(safe?.brandImage);
