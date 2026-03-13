@@ -40,7 +40,7 @@ node scripts/sync-ingredient-catalog.mjs
 
 The catalog builder now:
 
-- uses the official Open Food Facts bulk `jsonl.gz` snapshot instead of the page-limited search fetchers
+- uses the official Open Food Facts bulk CSV export by default, while still accepting the bulk `jsonl.gz` snapshot if you point `--input` at it
 - keeps only U.S.-tagged products with usable English-biased ingredient text
 - rejects products with allergen tags, trace tags, non-vegan/non-vegetarian/non-pescatarian analysis tags, or ambiguous/unsafe ingredient phrases
 - seeds only ingredient phrases that appear in at least two distinct safe products
@@ -199,7 +199,7 @@ What it now does:
 - The runtime ingredient catalog is now safe-only and OFF-only. Unsafe or unknown phrases are expected to miss the catalog and fall back to AI.
 - Brand-item diet arrays in current schema represent compatibility labels, not violations, so they are excluded from diet-violation targets.
 - Open Food Facts API search has a published rate limit (10 requests/minute). Keep `--throttle-seconds` at ~6+ for large pulls.
-- `build_ingredient_catalog.py` uses the official OFF bulk export snapshot and may download `ml/data/raw/openfoodfacts-products.jsonl.gz` if it is missing.
+- `build_ingredient_catalog.py` uses the official OFF bulk export and may download `ml/data/raw/en.openfoodfacts.org.products.csv.gz` if it is missing.
 - USDA `DEMO_KEY` is heavily rate-limited. Set `USDA_API_KEY` for large-scale pulls.
 - USDA bulk CSV download avoids API throttling and is preferable for large-scale training/validation.
 - `fetch_usda_fdc_bulk.py` uses disclosure segments only to derive ground-truth allergen labels and strips those segments from `text` before saving rows.

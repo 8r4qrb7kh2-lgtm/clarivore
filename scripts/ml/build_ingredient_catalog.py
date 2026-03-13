@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import csv
 import gzip
 import json
 import os
@@ -17,15 +18,15 @@ from pathlib import Path
 from typing import DefaultDict, Dict, Iterable, Iterator, List, Sequence, Set, Tuple
 
 
-DEFAULT_DOWNLOAD_URL = "https://static.openfoodfacts.org/data/openfoodfacts-products.jsonl.gz"
-DEFAULT_INPUT = "ml/data/raw/openfoodfacts-products.jsonl.gz"
+DEFAULT_DOWNLOAD_URL = "https://static.openfoodfacts.org/data/en.openfoodfacts.org.products.csv.gz"
+DEFAULT_INPUT = "ml/data/raw/en.openfoodfacts.org.products.csv.gz"
 DEFAULT_OUTPUT = "ml/seeds/ingredient_catalog_seed.jsonl"
 DEFAULT_SUMMARY_OUTPUT = "ml/seeds/ingredient_catalog_seed_summary.json"
 DEFAULT_LIMIT = 0
 DEFAULT_ALIAS_LIMIT = 12
 DEFAULT_MIN_SUPPORT = 2
 DEFAULT_COUNTRY_TAG = "en:united-states"
-DEFAULT_USER_AGENT = "ClarivoreML/0.1 (matt@clarivore.app)"
+DEFAULT_USER_AGENT = "Clarivore/1.0 (ingredient catalog rebuild; matt@clarivore.app)"
 DEFAULT_TIMEOUT = 120.0
 
 SEED_SOURCE = "openfoodfacts_safe_only_v1"
@@ -575,15 +576,55 @@ def maybe_download_file(
 
 
 def iter_off_rows(path: Path) -> Iterator[Dict[str, object]]:
+    path_name = path.name.lower()
     opener = gzip.open if path.suffix == ".gz" else open
-    with opener(path, "rt", encoding="utf-8") as handle:
-        for raw_line in handle:
-            line = raw_line.strip()
-            if not line:
-                continue
-            payload = json.loads(line)
-            if isinstance(payload, dict):
-                yield payload
+
+    if path_name.endswith(".jsonl") or path_name.endswith(".jsonl.gz"):
+        with opener(path, "rt", encoding="utf-8") as handle:
+            for raw_line in handle:
+                line = raw_line.strip()
+                if not line:
+                    continue
+                payload = json.loads(line)
+                if isinstance(payload, dict):
+                    yield payload
+        return
+
+    if path_name.endswith(".csv") or path_name.endswith(".csv.gz"):
+        field_limit = sys.maxsize
+        while True:
+            try:
+                csv.field_size_limit(field_limit)
+                break
+            except OverflowError:
+                field_limit //= 10
+        with opener(path, "rt", encoding="utf-8", newline="") as handle:
+            reader = csv.DictReader(handle, delimiter="\t")
+            for row in reader:
+                if isinstance(row, dict):
+                    yield row
+        return
+
+    raise RuntimeError(f"Unsupported OFF input format: {path}")
+
+
+def split_field_values(value: object) -> List[str]:
+    if value is None:
+        return []
+    if isinstance(value, (list, tuple, set)):
+        return stable_unique(value)
+    safe = as_text(value)
+    if not safe:
+        return []
+    return stable_unique(part.strip() for part in safe.split(","))
+
+
+def first_present_field(product: Dict[str, object], *field_names: str) -> List[str]:
+    for field_name in field_names:
+        values = split_field_values(product.get(field_name))
+        if values:
+            return values
+    return []
 
 
 def split_top_level(text: str) -> List[str]:
@@ -883,16 +924,32 @@ def is_reasonable_alias(canonical_name: str, alias: str) -> bool:
     return False
 
 
+def canonical_display_name_sort_key(
+    name: str,
+    *,
+    support_count: int,
+) -> Tuple[int, int, int, str]:
+    punctuation_penalty = sum(
+        1
+        for ch in ascii_text(name)
+        if not (ch.isalnum() or ch.isspace() or ch == "-")
+    )
+    return (-support_count, punctuation_penalty, len(name), name)
+
+
 def product_has_country_tag(product: Dict[str, object], country_tag: str) -> bool:
     safe_tag = as_text(country_tag).lower()
     if not safe_tag:
         return True
-    countries = [as_text(value).lower() for value in (product.get("countries_tags") or [])]
+    countries = [as_text(value).lower() for value in split_field_values(product.get("countries_tags"))]
     return safe_tag in countries
 
 
 def has_blocked_analysis_tags(product: Dict[str, object]) -> bool:
-    tags = {as_text(value).lower() for value in (product.get("ingredients_analysis_tags") or [])}
+    tags = {
+        as_text(value).lower()
+        for value in split_field_values(product.get("ingredients_analysis_tags"))
+    }
     return any(tag in tags for tag in BLOCKED_ANALYSIS_TAGS)
 
 
@@ -987,12 +1044,12 @@ def build_catalog_rows(
             rejection_counts["missing_country_tag"] += 1
             continue
 
-        allergens_tags = stable_unique(product.get("allergens_tags") or [])
+        allergens_tags = first_present_field(product, "allergens_tags", "allergens")
         if allergens_tags:
             rejection_counts["allergens_tags_present"] += 1
             continue
 
-        traces_tags = stable_unique(product.get("traces_tags") or [])
+        traces_tags = first_present_field(product, "traces_tags", "traces")
         if traces_tags:
             rejection_counts["traces_tags_present"] += 1
             continue
@@ -1059,40 +1116,69 @@ def build_catalog_rows(
         if processed_rows % 100000 == 0:
             print(f"[progress] processed={processed_rows} safe_products={safe_products}", file=sys.stderr)
 
+    grouped_names: DefaultDict[str, List[str]] = defaultdict(list)
+    for canonical_name in product_support.keys():
+        normalized_name = normalize_lookup_term(canonical_name)
+        if normalized_name:
+            grouped_names[normalized_name].append(canonical_name)
+
     catalog_rows: List[Dict[str, object]] = []
     skipped_low_support = 0
 
-    ranked_names = sorted(
-        product_support.keys(),
-        key=lambda name: (-len(product_support[name]), name),
+    ranked_groups = sorted(
+        grouped_names.items(),
+        key=lambda item: (
+            -max(len(product_support[name]) for name in item[1]),
+            item[0],
+        ),
     )
 
-    for canonical_name in ranked_names:
-        lookup_count = len(product_support[canonical_name])
+    for normalized_name, canonical_names in ranked_groups:
+        supporting_codes: Set[str] = set()
+        merged_alias_support: DefaultDict[str, Set[str]] = defaultdict(set)
+        merged_samples: Dict[str, Dict[str, str]] = {}
+
+        for canonical_name in canonical_names:
+            supporting_codes.update(product_support[canonical_name])
+            for alias, codes in alias_support[canonical_name].items():
+                merged_alias_support[alias].update(codes)
+            for code, sample in product_samples[canonical_name].items():
+                if len(merged_samples) < sample_limit or code in merged_samples:
+                    merged_samples[code] = sample
+
+        lookup_count = len(supporting_codes)
         if lookup_count < min_support:
             skipped_low_support += 1
             continue
 
+        preferred_canonical_name = sorted(
+            canonical_names,
+            key=lambda name: canonical_display_name_sort_key(
+                name,
+                support_count=len(product_support[name]),
+            ),
+        )[0]
+
         surface_forms = sorted(
             (
                 {"name": alias, "count": len(codes)}
-                for alias, codes in alias_support[canonical_name].items()
+                for alias, codes in merged_alias_support.items()
             ),
             key=lambda item: (-int(item["count"]), as_text(item["name"])),
         )
         aliases = [
             item["name"]
             for item in surface_forms[: alias_limit * 3]
-            if is_reasonable_alias(canonical_name, as_text(item["name"]))
+            if is_reasonable_alias(preferred_canonical_name, as_text(item["name"]))
         ][:alias_limit]
-        alias_set = [canonical_name]
+        alias_set = [preferred_canonical_name]
         for alias in aliases:
             if alias not in alias_set:
                 alias_set.append(alias)
 
         lookup_terms = sorted(
             {
-                normalize_lookup_term(canonical_name),
+                normalized_name,
                 *(normalize_lookup_term(alias) for alias in alias_set),
             }
         )
@@ -1107,15 +1193,15 @@ def build_catalog_rows(
             "reason_codes": [],
             "source": "openfoodfacts",
             "source_product_count": lookup_count,
-            "supporting_products": list(product_samples[canonical_name].values())[:sample_limit],
+            "supporting_products": list(merged_samples.values())[:sample_limit],
             "supported_diets": list(SUPPORTED_DIETS),
             "surface_forms": surface_forms[:alias_limit],
         }
 
         catalog_rows.append(
             {
-                "canonical_name": canonical_name,
-                "normalized_name": normalize_lookup_term(canonical_name),
+                "canonical_name": preferred_canonical_name,
+                "normalized_name": normalized_name,
                 "aliases": alias_set,
                 "lookup_terms": lookup_terms,
                 "lookup_count": lookup_count,
@@ -1134,7 +1220,7 @@ def build_catalog_rows(
         "country_tag": as_text(country_tag),
         "processed_rows": processed_rows,
         "safe_products_admitted": safe_products,
-        "unique_safe_phrases": len(product_support),
+        "unique_safe_phrases": len(grouped_names),
         "min_support": min_support,
         "rows_below_support_threshold": skipped_low_support,
         "seeded_entries": len(catalog_rows),

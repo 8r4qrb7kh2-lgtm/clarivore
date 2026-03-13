@@ -6,6 +6,8 @@ const DEFAULT_SEED_FILE = "ml/seeds/ingredient_catalog_seed.jsonl";
 const SAFE_DIETS = ["Vegan", "Vegetarian", "Pescatarian", "Gluten-free"];
 const SAFE_SEED_PREFIX = "openfoodfacts_safe_only_";
 const INSERT_BATCH_SIZE = 500;
+const TRANSACTION_MAX_WAIT_MS = 30_000;
+const TRANSACTION_TIMEOUT_MS = 300_000;
 
 function asText(value) {
   return String(value ?? "").trim();
@@ -128,6 +130,22 @@ function chunkRows(rows, chunkSize) {
   return output;
 }
 
+function assertUniqueNormalizedNames(rows) {
+  const seen = new Map();
+  for (const row of rows) {
+    const normalizedName = asText(row?.normalized_name);
+    if (!normalizedName) continue;
+    const previous = seen.get(normalizedName);
+    if (!previous) {
+      seen.set(normalizedName, row);
+      continue;
+    }
+    throw new Error(
+      `Seed contains duplicate normalized_name "${normalizedName}" for canonical rows "${asText(previous.canonical_name)}" and "${asText(row?.canonical_name)}".`,
+    );
+  }
+}
+
 async function main() {
   const args = parseArgs(process.argv);
   const resolvedSeedFile = path.resolve(process.cwd(), args.seedFile);
@@ -138,20 +156,27 @@ async function main() {
   const prisma = new PrismaClient();
   try {
     const rows = readJsonlRows(resolvedSeedFile).map(normalizeRow);
+    assertUniqueNormalizedNames(rows);
     let inserted = 0;
 
-    await prisma.$transaction(async (tx) => {
-      await tx.ingredient_catalog_entries.deleteMany({});
+    await prisma.$transaction(
+      async (tx) => {
+        await tx.ingredient_catalog_entries.deleteMany({});
 
-      for (const batch of chunkRows(rows, INSERT_BATCH_SIZE)) {
-        if (!batch.length) continue;
-        await tx.ingredient_catalog_entries.createMany({
-          data: batch,
-        });
-        inserted += batch.length;
-        console.log(`Inserted ${inserted}/${rows.length} ingredient catalog rows...`);
-      }
-    });
+        for (const batch of chunkRows(rows, INSERT_BATCH_SIZE)) {
+          if (!batch.length) continue;
+          await tx.ingredient_catalog_entries.createMany({
+            data: batch,
+          });
+          inserted += batch.length;
+          console.log(`Inserted ${inserted}/${rows.length} ingredient catalog rows...`);
+        }
+      },
+      {
+        maxWait: TRANSACTION_MAX_WAIT_MS,
+        timeout: TRANSACTION_TIMEOUT_MS,
+      },
+    );
 
     console.log("Ingredient catalog sync complete.");
     console.log(`Rows inserted: ${inserted}`);
