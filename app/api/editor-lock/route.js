@@ -4,6 +4,7 @@ import {
   prisma,
   requireRestaurantAccessSession,
 } from "../restaurant-write/_shared/writeGatewayUtils";
+import { buildEditorLockConflictWhereClause } from "./policy";
 
 export const runtime = "nodejs";
 
@@ -178,7 +179,13 @@ async function attemptLockUpsert({
   holderName,
   holderEmail,
   holderInstance,
+  allowSameUserTakeover = false,
 }) {
+  const conflictWhereClause = buildEditorLockConflictWhereClause({
+    tableName: EDITOR_LOCK_TABLE,
+    allowSameUserTakeover,
+  });
+
   const rows = await prisma.$queryRawUnsafe(
     `
     INSERT INTO ${EDITOR_LOCK_TABLE} (
@@ -216,9 +223,7 @@ async function attemptLockUpsert({
       expires_at = now() + make_interval(secs => $7::int),
       updated_at = now()
     WHERE
-      ${EDITOR_LOCK_TABLE}.session_key = EXCLUDED.session_key
-      OR ${EDITOR_LOCK_TABLE}.expires_at <= now()
-      OR ${EDITOR_LOCK_TABLE}.last_heartbeat_at <= now() - make_interval(secs => $8::int)
+      ${conflictWhereClause}
     RETURNING
       restaurant_id,
       user_id,
@@ -243,11 +248,12 @@ async function attemptLockUpsert({
   return rows?.[0] || null;
 }
 
-async function acquireEditorLock({
+async function requestEditorLock({
   restaurantId,
   sessionKey,
   holderInstance,
   session,
+  allowSameUserTakeover = false,
 }) {
   const holderName = trimText(resolveHolderName(session?.user), MAX_NAME_CHARS) || "Manager";
   const holderEmail = trimText(session?.userEmail, MAX_EMAIL_CHARS);
@@ -260,6 +266,7 @@ async function acquireEditorLock({
     holderName,
     holderEmail,
     holderInstance: safeInstance,
+    allowSameUserTakeover,
   });
 
   if (lockRow) {
@@ -286,6 +293,7 @@ async function acquireEditorLock({
     holderName,
     holderEmail,
     holderInstance: safeInstance,
+    allowSameUserTakeover,
   });
   if (retryLock) {
     return buildAvailabilityPayload({
@@ -296,6 +304,24 @@ async function acquireEditorLock({
   }
 
   throw new Error("Failed to acquire editor lock");
+}
+
+async function acquireEditorLock(options) {
+  // A fresh acquire can replace another live tab owned by the same user so
+  // reloads and reopened tabs do not self-block on their own lease.
+  return await requestEditorLock({
+    ...options,
+    allowSameUserTakeover: true,
+  });
+}
+
+async function refreshEditorLock(options) {
+  // Heartbeats stay pinned to the current session key so an older tab cannot
+  // reclaim the editor after a newer tab has taken over.
+  return await requestEditorLock({
+    ...options,
+    allowSameUserTakeover: false,
+  });
 }
 
 async function readEditorLockStatus({
@@ -393,12 +419,20 @@ export async function POST(request) {
       return NextResponse.json(payload, { status: 200 });
     }
 
-    const payload = await acquireEditorLock({
-      restaurantId,
-      sessionKey,
-      holderInstance,
-      session,
-    });
+    const payload =
+      action === "refresh"
+        ? await refreshEditorLock({
+            restaurantId,
+            sessionKey,
+            holderInstance,
+            session,
+          })
+        : await acquireEditorLock({
+            restaurantId,
+            sessionKey,
+            holderInstance,
+            session,
+          });
     return NextResponse.json(payload, { status: 200 });
   } catch (error) {
     const message = asText(error?.message) || "Editor lock request failed.";
