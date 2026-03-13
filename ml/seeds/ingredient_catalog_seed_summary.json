@@ -1,292 +1,116 @@
 {
-  "country_tag": "en:united-states",
-  "download_bytes": 1172546785,
-  "download_url": "https://static.openfoodfacts.org/data/en.openfoodfacts.org.products.csv.gz",
-  "downloaded": false,
-  "input_path": "ml/data/raw/en.openfoodfacts.org.products.csv.gz",
+  "extraction_version": "smartlabel_safe_v1",
+  "input_file": "/Users/mattdavis/.cursor/worktrees/clarivore-main/9J1NT/full_smartlabel_ground_truth copy.csv",
   "min_support": 2,
-  "normalized_name_collisions_merged": 178,
-  "output_path": "ml/seeds/ingredient_catalog_seed.jsonl",
-  "processed_rows": 4415725,
-  "rejection_counts": {
-    "allergen:egg": 311,
-    "allergen:fish": 1350,
-    "allergen:milk": 4677,
-    "allergen:peanut": 3251,
-    "allergen:sesame": 1973,
-    "allergen:shellfish": 525,
-    "allergen:soy": 8358,
-    "allergen:tree_nut": 12525,
-    "allergens_tags_present": 89039,
-    "blocked_analysis_tags": 111237,
-    "diet_block:animal_derivative": 392,
-    "diet_block:gluten_free": 15916,
-    "diet_block:meat": 2572,
-    "diet_block:vegan_only": 744,
-    "invalid_candidate_shape": 11956,
-    "missing_country_tag": 3539535,
-    "no_candidates": 1081,
-    "review:ambiguous_generic": 47771,
-    "review:generic_extract": 4573,
-    "review:product_style": 1123,
-    "traces_tags_present": 4783,
-    "unusable_ingredient_text": 475590
-  },
-  "rows_below_support_threshold": 20170,
-  "safe_products_admitted": 76443,
-  "seed_source": "openfoodfacts_safe_only_v1",
-  "seeded_entries": 9552,
-  "top_examples": [
+  "products_skipped_unsafe_or_unknown_with_items": 308,
+  "products_skipped_without_items": 1294,
+  "safe_products_used": 297,
+  "seed_source": "smartlabel_ground_truth_safe_v1",
+  "structural_items_filtered": 79,
+  "top_entries": [
     {
-      "canonical_name": "water",
-      "diets": [
-        "Vegan",
-        "Vegetarian",
-        "Pescatarian",
-        "Gluten-free"
-      ],
-      "lookup_count": 20398
+      "lookup_count": 100,
+      "normalized_name": "water"
     },
     {
-      "canonical_name": "salt",
-      "diets": [
-        "Vegan",
-        "Vegetarian",
-        "Pescatarian",
-        "Gluten-free"
-      ],
-      "lookup_count": 14120
+      "lookup_count": 62,
+      "normalized_name": "salt"
     },
     {
-      "canonical_name": "sugar",
-      "diets": [
-        "Vegan",
-        "Vegetarian",
-        "Pescatarian",
-        "Gluten-free"
-      ],
-      "lookup_count": 10873
+      "lookup_count": 59,
+      "normalized_name": "citric acid"
     },
     {
-      "canonical_name": "citric acid",
-      "diets": [
-        "Vegan",
-        "Vegetarian",
-        "Pescatarian",
-        "Gluten-free"
-      ],
-      "lookup_count": 8519
+      "lookup_count": 43,
+      "normalized_name": "natural flavor"
     },
     {
-      "canonical_name": "sea salt",
-      "diets": [
-        "Vegan",
-        "Vegetarian",
-        "Pescatarian",
-        "Gluten-free"
-      ],
-      "lookup_count": 5695
+      "lookup_count": 38,
+      "normalized_name": "sugar"
     },
     {
-      "canonical_name": "garlic",
-      "diets": [
-        "Vegan",
-        "Vegetarian",
-        "Pescatarian",
-        "Gluten-free"
-      ],
-      "lookup_count": 4109
+      "lookup_count": 28,
+      "normalized_name": "sea salt"
     },
     {
-      "canonical_name": "onion",
-      "diets": [
-        "Vegan",
-        "Vegetarian",
-        "Pescatarian",
-        "Gluten-free"
-      ],
-      "lookup_count": 3674
+      "lookup_count": 27,
+      "normalized_name": "calcium chloride"
     },
     {
-      "canonical_name": "ascorbic acid",
-      "diets": [
-        "Vegan",
-        "Vegetarian",
-        "Pescatarian",
-        "Gluten-free"
-      ],
-      "lookup_count": 3490
+      "lookup_count": 27,
+      "normalized_name": "spice"
     },
     {
-      "canonical_name": "corn syrup",
-      "diets": [
-        "Vegan",
-        "Vegetarian",
-        "Pescatarian",
-        "Gluten-free"
-      ],
-      "lookup_count": 3049
+      "lookup_count": 21,
+      "normalized_name": "corn syrup"
     },
     {
-      "canonical_name": "high fructose corn syrup",
-      "diets": [
-        "Vegan",
-        "Vegetarian",
-        "Pescatarian",
-        "Gluten-free"
-      ],
-      "lookup_count": 2599
+      "lookup_count": 19,
+      "normalized_name": "garlic"
     },
     {
-      "canonical_name": "cane sugar",
-      "diets": [
-        "Vegan",
-        "Vegetarian",
-        "Pescatarian",
-        "Gluten-free"
-      ],
-      "lookup_count": 2563
+      "lookup_count": 18,
+      "normalized_name": "ascorbic acid"
     },
     {
-      "canonical_name": "calcium chloride",
-      "diets": [
-        "Vegan",
-        "Vegetarian",
-        "Pescatarian",
-        "Gluten-free"
-      ],
-      "lookup_count": 2448
+      "lookup_count": 18,
+      "normalized_name": "onion"
     },
     {
-      "canonical_name": "vinegar",
-      "diets": [
-        "Vegan",
-        "Vegetarian",
-        "Pescatarian",
-        "Gluten-free"
-      ],
-      "lookup_count": 2373
+      "lookup_count": 17,
+      "normalized_name": "high fructose corn syrup"
     },
     {
-      "canonical_name": "potato",
-      "diets": [
-        "Vegan",
-        "Vegetarian",
-        "Pescatarian",
-        "Gluten-free"
-      ],
-      "lookup_count": 2219
+      "lookup_count": 16,
+      "normalized_name": "tomato paste"
     },
     {
-      "canonical_name": "tomato",
-      "diets": [
-        "Vegan",
-        "Vegetarian",
-        "Pescatarian",
-        "Gluten-free"
-      ],
-      "lookup_count": 2178
+      "lookup_count": 13,
+      "normalized_name": "dextrose"
     },
     {
-      "canonical_name": "apple",
-      "diets": [
-        "Vegan",
-        "Vegetarian",
-        "Pescatarian",
-        "Gluten-free"
-      ],
-      "lookup_count": 2083
+      "lookup_count": 13,
+      "normalized_name": "extra virgin olive oil"
     },
     {
-      "canonical_name": "carrot",
-      "diets": [
-        "Vegan",
-        "Vegetarian",
-        "Pescatarian",
-        "Gluten-free"
-      ],
-      "lookup_count": 2038
+      "lookup_count": 13,
+      "normalized_name": "garlic powder"
     },
     {
-      "canonical_name": "extra virgin olive oil",
-      "diets": [
-        "Vegan",
-        "Vegetarian",
-        "Pescatarian",
-        "Gluten-free"
-      ],
-      "lookup_count": 1947
+      "lookup_count": 12,
+      "normalized_name": "corn starch"
     },
     {
-      "canonical_name": "black pepper",
-      "diets": [
-        "Vegan",
-        "Vegetarian",
-        "Pescatarian",
-        "Gluten-free"
-      ],
-      "lookup_count": 1796
+      "lookup_count": 12,
+      "normalized_name": "gelatin"
     },
     {
-      "canonical_name": "filtered water",
-      "diets": [
-        "Vegan",
-        "Vegetarian",
-        "Pescatarian",
-        "Gluten-free"
-      ],
-      "lookup_count": 1742
+      "lookup_count": 11,
+      "normalized_name": "cane sugar"
     },
     {
-      "canonical_name": "sunflower oil",
-      "diets": [
-        "Vegan",
-        "Vegetarian",
-        "Pescatarian",
-        "Gluten-free"
-      ],
-      "lookup_count": 1629
+      "lookup_count": 11,
+      "normalized_name": "tomato"
     },
     {
-      "canonical_name": "strawberry",
-      "diets": [
-        "Vegan",
-        "Vegetarian",
-        "Pescatarian",
-        "Gluten-free"
-      ],
-      "lookup_count": 1428
+      "lookup_count": 11,
+      "normalized_name": "vinegar"
     },
     {
-      "canonical_name": "corn",
-      "diets": [
-        "Vegan",
-        "Vegetarian",
-        "Pescatarian",
-        "Gluten-free"
-      ],
-      "lookup_count": 1296
+      "lookup_count": 10,
+      "normalized_name": "artificial flavor"
     },
     {
-      "canonical_name": "green bean",
-      "diets": [
-        "Vegan",
-        "Vegetarian",
-        "Pescatarian",
-        "Gluten-free"
-      ],
-      "lookup_count": 1264
+      "lookup_count": 10,
+      "normalized_name": "blue 1"
     },
     {
-      "canonical_name": "xanthan gum",
-      "diets": [
-        "Vegan",
-        "Vegetarian",
-        "Pescatarian",
-        "Gluten-free"
-      ],
-      "lookup_count": 1229
+      "lookup_count": 10,
+      "normalized_name": "caramel color"
     }
   ],
-  "unique_safe_phrases": 29900
+  "total_input_rows": 1899,
+  "unique_products": 1899,
+  "unique_safe_ingredients_after_support_filter": 288,
+  "unique_safe_ingredients_before_support_filter": 533
 }

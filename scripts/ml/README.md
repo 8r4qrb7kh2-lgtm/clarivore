@@ -8,6 +8,7 @@ This folder contains a low-cost, fast multi-label training pipeline for ingredie
 - `fetch_usda_fdc_bulk.py`: downloads USDA Branded CSV ZIP and generates large-scale train/holdout JSONL from real branded labels.
 - `prepare_usda_only_data.py`: builds USDA-only train/val/holdout files and restricts diet label space.
 - `build_ingredient_catalog.py`: legacy Open Food Facts catalog tooling for offline audit/review workflows. Runtime inference does not consult this catalog.
+- `build_smartlabel_safe_catalog.py`: builds the current safe ingredient catalog from SmartLabel ground-truth product extracts without allergen term inference.
 - `build_ingredient_catalog_review_queue.py`: builds a CSV queue to manually verify and correct catalog rows.
 - `build_ingredient_catalog_review_shards.py`: splits the review queue into parallel audit lanes like extracts, sauces, flavors, and composite product rows.
 - `build_ingredient_catalog_review_packets.py`: builds Codex-friendly packet directories so multiple Codex chats can manually review disjoint row batches in parallel.
@@ -44,6 +45,21 @@ The legacy catalog builder:
 - keeps only U.S.-tagged products with usable English-biased ingredient text
 - rejects products with allergen tags, trace tags, non-vegan/non-vegetarian/non-pescatarian analysis tags, or ambiguous/unsafe ingredient phrases
 - seeds only ingredient phrases that appear in at least two distinct safe products
+
+SmartLabel safe catalog rebuild:
+
+```bash
+python3 scripts/ml/build_smartlabel_safe_catalog.py \
+  --input "full_smartlabel_ground_truth copy.csv"
+node scripts/sync-ingredient-catalog.mjs
+```
+
+The SmartLabel builder:
+
+- deduplicates repeated SmartLabel revisions by UPC and keeps the richest extracted row
+- keeps only products with parsed ingredient items and empty SmartLabel allergen declared/present/may-contain fields
+- strips structural ingredient-list headers like `Less Than 2% Of:` without inferring allergens from ingredient text
+- writes a safe ingredient catalog with allergen-safe evidence only; diet arrays remain empty because SmartLabel extract does not provide diet truth
 
 Online ingestion + train:
 

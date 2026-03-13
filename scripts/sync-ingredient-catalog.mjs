@@ -3,8 +3,6 @@ import fs from "node:fs";
 import path from "node:path";
 
 const DEFAULT_SEED_FILE = "ml/seeds/ingredient_catalog_seed.jsonl";
-const SAFE_DIETS = ["Vegan", "Vegetarian", "Pescatarian", "Gluten-free"];
-const SAFE_SEED_PREFIX = "openfoodfacts_safe_only_";
 const INSERT_BATCH_SIZE = 500;
 const TRANSACTION_MAX_WAIT_MS = 30_000;
 const TRANSACTION_TIMEOUT_MS = 300_000;
@@ -52,50 +50,10 @@ function normalizeStringList(values) {
   return output;
 }
 
-function hasSafeDietSet(diets) {
-  const actual = new Set(normalizeStringList(diets));
-  if (actual.size !== SAFE_DIETS.length) return false;
-  return SAFE_DIETS.every((label) => actual.has(label));
-}
-
 function normalizeMetadata(metadata) {
   return metadata && typeof metadata === "object" && !Array.isArray(metadata)
     ? metadata
     : {};
-}
-
-function assertSafeOnlyRow(row) {
-  const metadata = normalizeMetadata(row?.metadata);
-  const seedSource = asText(row?.seed_source || row?.seedSource);
-  const allergens = normalizeStringList(row?.allergens);
-  const diets = normalizeStringList(row?.diets);
-  const catalogType = asText(metadata?.catalog_type || metadata?.catalogType);
-
-  if (!seedSource.startsWith(SAFE_SEED_PREFIX)) {
-    throw new Error(
-      `Catalog row "${asText(row?.normalized_name)}" is not a safe-only OFF seed row.`,
-    );
-  }
-  if (catalogType !== "safe_only") {
-    throw new Error(
-      `Catalog row "${asText(row?.normalized_name)}" is missing metadata.catalog_type=safe_only.`,
-    );
-  }
-  if (allergens.length) {
-    throw new Error(
-      `Catalog row "${asText(row?.normalized_name)}" unexpectedly contains allergens.`,
-    );
-  }
-  if (!hasSafeDietSet(diets)) {
-    throw new Error(
-      `Catalog row "${asText(row?.normalized_name)}" is missing the full safe diet set.`,
-    );
-  }
-  if (row?.is_ready !== true) {
-    throw new Error(
-      `Catalog row "${asText(row?.normalized_name)}" must be marked is_ready=true.`,
-    );
-  }
 }
 
 function normalizeRow(row) {
@@ -103,22 +61,27 @@ function normalizeRow(row) {
   if (!normalizedName) {
     throw new Error("Catalog row missing normalized_name.");
   }
-
-  assertSafeOnlyRow(row);
+  const canonicalName = asText(row?.canonical_name) || normalizedName;
+  const aliases = normalizeStringList(row?.aliases);
+  const lookupTerms = normalizeStringList(row?.lookup_terms);
+  const allergens = normalizeStringList(row?.allergens);
+  const diets = normalizeStringList(row?.diets);
+  const seedSource = asText(row?.seed_source) || "manual_seed";
+  const metadata = normalizeMetadata(row?.metadata);
 
   return {
-    canonical_name: asText(row?.canonical_name) || normalizedName,
+    canonical_name: canonicalName,
     normalized_name: normalizedName,
-    aliases: normalizeStringList(row?.aliases),
-    lookup_terms: normalizeStringList(row?.lookup_terms),
+    aliases,
+    lookup_terms: lookupTerms.length ? lookupTerms : [normalizedName],
     lookup_count: Number.isFinite(Number(row?.lookup_count))
       ? Math.max(0, Math.trunc(Number(row.lookup_count)))
       : 0,
-    allergens: [],
-    diets: SAFE_DIETS,
-    is_ready: true,
-    seed_source: asText(row?.seed_source) || `${SAFE_SEED_PREFIX}v1`,
-    metadata: normalizeMetadata(row?.metadata),
+    allergens,
+    diets,
+    is_ready: row?.is_ready !== false,
+    seed_source: seedSource,
+    metadata,
   };
 }
 
