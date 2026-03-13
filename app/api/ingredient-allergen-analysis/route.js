@@ -1,20 +1,22 @@
-import { corsJson, corsOptions } from "../_shared/cors";
+import { corsJson, corsOptions } from "../_shared/cors.js";
 import {
+  buildIngredientAllergenConflictVerificationPrompts,
   buildIngredientAllergenExtractionPrompts,
-  buildIngredientAllergenRepairPrompts,
-  buildIngredientAllergenVerificationPrompts,
-} from "../../lib/claudePrompts";
+  buildIngredientCandidateExtractionPrompts,
+} from "../../lib/claudePrompts.js";
 import {
-  callAnthropicApi,
   callOpenAiApi,
   createTextMessage,
   runWithProviderSelection,
-} from "../../lib/server/ai/providerRuntime";
-import { ingredientAllergenCandidateFlagsSchema } from "../../lib/server/ai/responseSchemas";
+} from "../../lib/server/ai/providerRuntime.js";
+import {
+  ingredientAllergenCandidateFlagsSchema,
+  ingredientCandidateExtractionSchema,
+} from "../../lib/server/ai/responseSchemas.js";
 import {
   findIngredientCatalogEntriesByNames,
   isSafeIngredientCatalogEntry,
-} from "../../lib/server/ingredientCatalog";
+} from "../../lib/server/ingredientCatalog.js";
 import {
   buildAllergenAliasMap,
   buildCandidateListText,
@@ -23,25 +25,30 @@ import {
   partitionCandidatesByCatalogSafety,
   resolveExplicitDeclarationCandidates,
 } from "../../lib/server/ingredientAllergenCandidates.js";
-import { parseIngredientLabelTranscript } from "../../lib/ingredientLabelParser";
+import { parseIngredientLabelTranscript } from "../../lib/ingredientLabelParser.js";
+import { buildParsedTranscriptFromCandidateExtraction } from "../../lib/server/ingredientCandidateExtraction.js";
 
 export const runtime = "nodejs";
 
-const PINNED_ANTHROPIC_MODEL = "claude-haiku-4-5-20251001";
+const PINNED_OPENAI_MODEL = "gpt-5.4";
+const OPENAI_REASONING_EFFORT = "medium";
 const MAX_ANALYSIS_ATTEMPTS = 2;
 const ANALYSIS_MAX_TOKENS = 1800;
 const VERIFICATION_MAX_TOKENS = 1400;
-const REPAIR_MAX_TOKENS = 700;
-const ANTHROPIC_THINKING_BUDGET_TOKENS = 1024;
-const PROMPT_VERSION = "ingredient-allergen-catalog-gated-v1-20260313";
+const PROMPT_VERSION = "ingredient-allergen-openai-dual-agent-v3-20260313";
+const CANDIDATE_EXTRACTION_PROMPT_VERSION =
+  "ingredient-candidate-extraction-openai-v1-20260313";
 
 const CONFIG_TTL_MS = 60 * 60 * 1000;
 const ANALYSIS_CACHE_TTL_MS = 15 * 60 * 1000;
 const ANALYSIS_CACHE_MAX_ENTRIES = 128;
+const CANDIDATE_EXTRACTION_CACHE_TTL_MS = 15 * 60 * 1000;
+const CANDIDATE_EXTRACTION_CACHE_MAX_ENTRIES = 128;
 let cachedConfig = null;
 let cachedConfigAt = 0;
 let cachedConfigPromise = null;
 const analysisCache = new Map();
+const candidateExtractionCache = new Map();
 
 export function OPTIONS() {
   return corsOptions();
@@ -224,6 +231,14 @@ function buildAnalysisCacheKey({
   return `${asText(promptVersion) || "unknown"}::${normalizedLines}::${allergenKey}::${dietKey}`;
 }
 
+function buildTranscriptCacheKey({ transcriptLines, promptVersion }) {
+  const normalizedLines = (Array.isArray(transcriptLines) ? transcriptLines : [])
+    .map((line) => asText(line))
+    .filter(Boolean)
+    .join("\n");
+  return `${asText(promptVersion) || "unknown"}::${normalizedLines}`;
+}
+
 function getCachedAnalysis(cacheKey) {
   const entry = analysisCache.get(cacheKey);
   if (!entry) return null;
@@ -256,6 +271,41 @@ function setCachedAnalysis(cacheKey, flags) {
   });
   if (oldestKey) {
     analysisCache.delete(oldestKey);
+  }
+}
+
+function getCachedCandidateExtraction(cacheKey) {
+  const entry = candidateExtractionCache.get(cacheKey);
+  if (!entry) return null;
+  if (Date.now() - entry.at > CANDIDATE_EXTRACTION_CACHE_TTL_MS) {
+    candidateExtractionCache.delete(cacheKey);
+    return null;
+  }
+  return entry.value && typeof entry.value === "object" ? entry.value : null;
+}
+
+function setCachedCandidateExtraction(cacheKey, value) {
+  candidateExtractionCache.set(cacheKey, {
+    at: Date.now(),
+    value: value && typeof value === "object" ? value : null,
+  });
+
+  if (candidateExtractionCache.size <= CANDIDATE_EXTRACTION_CACHE_MAX_ENTRIES) {
+    return;
+  }
+
+  let oldestKey = "";
+  let oldestAt = Number.POSITIVE_INFINITY;
+  candidateExtractionCache.forEach((entry, key) => {
+    const at = Number(entry?.at);
+    if (!Number.isFinite(at)) return;
+    if (at < oldestAt) {
+      oldestAt = at;
+      oldestKey = key;
+    }
+  });
+  if (oldestKey) {
+    candidateExtractionCache.delete(oldestKey);
   }
 }
 
@@ -393,28 +443,6 @@ async function fetchAllergenDietConfig() {
   }
 }
 
-async function callAnthropicText({
-  systemPrompt,
-  userPrompt,
-  maxTokens = ANALYSIS_MAX_TOKENS,
-  enableThinking = true,
-  env = process.env,
-}) {
-  const minTokens = enableThinking
-    ? ANTHROPIC_THINKING_BUDGET_TOKENS + 300
-    : 400;
-  const safeMaxTokens = Math.max(Number(maxTokens) || 0, minTokens);
-  return await callAnthropicApi({
-    promptClass: "ingredientAllergenAnalysis",
-    systemPrompt,
-    messages: [{ role: "user", content: [createTextMessage(userPrompt)] }],
-    maxTokens: safeMaxTokens,
-    thinkingBudgetTokens: enableThinking ? ANTHROPIC_THINKING_BUDGET_TOKENS : undefined,
-    temperature: enableThinking ? undefined : 0,
-    env,
-  });
-}
-
 function isTransientFailure(error) {
   const message = asText(error?.message).toLowerCase();
   return (
@@ -434,33 +462,121 @@ function sleep(ms) {
   });
 }
 
-async function repairJsonResponse({ rawOutput, env }) {
-  const { systemPrompt: repairSystemPrompt, userPrompt: repairUserPrompt } =
-    buildIngredientAllergenRepairPrompts(rawOutput);
+function sortStrings(values) {
+  return dedupeStrings(values).sort((left, right) => left.localeCompare(right));
+}
 
-  return await callAnthropicText({
-    systemPrompt: repairSystemPrompt,
-    userPrompt: repairUserPrompt,
-    maxTokens: REPAIR_MAX_TOKENS,
-    enableThinking: false,
-    env,
+function normalizeIntegerCodes(values) {
+  const numbers = [];
+  const seen = new Set();
+  (Array.isArray(values) ? values : []).forEach((value) => {
+    const numeric = Math.trunc(Number(value));
+    if (!Number.isFinite(numeric) || seen.has(numeric)) return;
+    seen.add(numeric);
+    numbers.push(numeric);
+  });
+  return numbers.sort((left, right) => left - right);
+}
+
+function normalizeStructuredCandidateFlags(flags) {
+  return (Array.isArray(flags) ? flags : [])
+    .map((flag) => ({
+      candidate_id: asText(flag?.candidate_id || flag?.candidateId),
+      allergen_codes: normalizeIntegerCodes(flag?.allergen_codes),
+      diet_codes: normalizeIntegerCodes(flag?.diet_codes),
+    }))
+    .filter(
+      (flag) =>
+        flag.candidate_id &&
+        (flag.allergen_codes.length || flag.diet_codes.length),
+    )
+    .sort((left, right) => {
+      const byId = left.candidate_id.localeCompare(right.candidate_id);
+      if (byId !== 0) return byId;
+      const leftKey = JSON.stringify([left.allergen_codes, left.diet_codes]);
+      const rightKey = JSON.stringify([right.allergen_codes, right.diet_codes]);
+      return leftKey.localeCompare(rightKey);
+    });
+}
+
+function normalizeCandidateFlagConsensus(flags) {
+  return (Array.isArray(flags) ? flags : [])
+    .map((flag) => ({
+      candidate_id: asText(flag?.candidate_id || flag?.candidateId),
+      allergens: sortStrings(flag?.allergens),
+      diets: sortStrings(flag?.diets),
+    }))
+    .filter((flag) => flag.candidate_id && (flag.allergens.length || flag.diets.length))
+    .sort((left, right) => {
+      const byId = left.candidate_id.localeCompare(right.candidate_id);
+      if (byId !== 0) return byId;
+      const leftKey = JSON.stringify([left.allergens, left.diets]);
+      const rightKey = JSON.stringify([right.allergens, right.diets]);
+      return leftKey.localeCompare(rightKey);
+    });
+}
+
+function candidateFlagConsensusMatches(left, right) {
+  return (
+    JSON.stringify(normalizeCandidateFlagConsensus(left)) ===
+    JSON.stringify(normalizeCandidateFlagConsensus(right))
+  );
+}
+
+function sumUsage(responses) {
+  return (Array.isArray(responses) ? responses : []).reduce(
+    (accumulator, response) => ({
+      input_tokens:
+        accumulator.input_tokens + Number(response?.usage?.input_tokens || 0),
+      output_tokens:
+        accumulator.output_tokens + Number(response?.usage?.output_tokens || 0),
+      total_tokens:
+        accumulator.total_tokens + Number(response?.usage?.total_tokens || 0),
+    }),
+    {
+      input_tokens: 0,
+      output_tokens: 0,
+      total_tokens: 0,
+    },
+  );
+}
+
+function buildAggregateLatencyMs(parallelResponses, serialResponses = []) {
+  const parallelLatencies = (Array.isArray(parallelResponses) ? parallelResponses : [])
+    .map((response) => Number(response?.latencyMs || 0))
+    .filter(Number.isFinite);
+  const serialLatency = (Array.isArray(serialResponses) ? serialResponses : []).reduce(
+    (total, response) => total + Number(response?.latencyMs || 0),
+    0,
+  );
+  return Math.max(0, ...parallelLatencies) + serialLatency;
+}
+
+function serializeStructuredFlags(parsedResponse) {
+  return JSON.stringify({
+    flags: normalizeStructuredCandidateFlags(parsedResponse?.flags),
   });
 }
 
-async function runFlagAnalysis({
+async function runOpenAiFlagAnalysis({
   systemPrompt,
   userPrompt,
   maxTokens = ANALYSIS_MAX_TOKENS,
   phaseName = "analysis",
+  metadata,
   env = process.env,
 }) {
   let lastError = null;
   for (let attempt = 1; attempt <= MAX_ANALYSIS_ATTEMPTS; attempt += 1) {
     try {
-      const response = await callAnthropicText({
+      const response = await callOpenAiApi({
+        promptClass: "ingredientAllergenAnalysis",
         systemPrompt,
-        userPrompt,
+        messages: [{ role: "user", content: [createTextMessage(userPrompt)] }],
         maxTokens,
+        jsonSchema: ingredientAllergenCandidateFlagsSchema,
+        reasoningEffort: OPENAI_REASONING_EFFORT,
+        metadata,
         env,
       });
 
@@ -472,32 +588,8 @@ async function runFlagAnalysis({
         };
       }
 
-      const repairedResponse = await repairJsonResponse({
-        rawOutput: response.text.slice(0, 8000),
-        env,
-      });
-      const repaired = parseClaudeJson(repairedResponse.text);
-      if (repaired && typeof repaired === "object" && Array.isArray(repaired.flags)) {
-        return {
-          ...repairedResponse,
-          parsed: repaired,
-          latencyMs: Number(response.latencyMs || 0) + Number(repairedResponse.latencyMs || 0),
-          usage: {
-            input_tokens:
-              Number(response.usage?.input_tokens || 0) +
-              Number(repairedResponse.usage?.input_tokens || 0),
-            output_tokens:
-              Number(response.usage?.output_tokens || 0) +
-              Number(repairedResponse.usage?.output_tokens || 0),
-            total_tokens:
-              Number(response.usage?.total_tokens || 0) +
-              Number(repairedResponse.usage?.total_tokens || 0),
-          },
-        };
-      }
-
       lastError = new Error(
-        `Ingredient allergen ${asText(phaseName) || "analysis"} pass returned malformed JSON output.`,
+        `Ingredient allergen ${asText(phaseName) || "analysis"} pass returned malformed structured output.`,
       );
       if (attempt >= MAX_ANALYSIS_ATTEMPTS) {
         break;
@@ -514,22 +606,125 @@ async function runFlagAnalysis({
   throw lastError || new Error("Failed to analyze ingredient transcript.");
 }
 
-function buildDietConflictGuideText(dietAllergenConflicts) {
-  const map = dietAllergenConflicts && typeof dietAllergenConflicts === "object"
-    ? dietAllergenConflicts
-    : {};
-  const rows = Object.keys(map)
-    .sort((a, b) => a.localeCompare(b))
-    .map((dietLabel) => {
-      const allergens = dedupeStrings(map[dietLabel] || [])
-        .map((value) => asText(value))
-        .filter(Boolean);
-      if (!allergens.length) {
-        return `- ${dietLabel}: no mapped allergens.`;
+async function runOpenAiCandidateExtraction({
+  systemPrompt,
+  userPrompt,
+  maxTokens = 1200,
+  metadata,
+  env = process.env,
+}) {
+  let lastError = null;
+  for (let attempt = 1; attempt <= MAX_ANALYSIS_ATTEMPTS; attempt += 1) {
+    try {
+      const response = await callOpenAiApi({
+        promptClass: "ingredientCandidateExtraction",
+        systemPrompt,
+        messages: [{ role: "user", content: [createTextMessage(userPrompt)] }],
+        maxTokens,
+        jsonSchema: ingredientCandidateExtractionSchema,
+        reasoningEffort: OPENAI_REASONING_EFFORT,
+        metadata,
+        env,
+      });
+
+      const parsed =
+        response?.parsed && typeof response.parsed === "object"
+          ? response.parsed
+          : parseClaudeJson(response.text);
+      if (
+        parsed &&
+        typeof parsed === "object" &&
+        Array.isArray(parsed.direct_ingredients) &&
+        Array.isArray(parsed.declaration_candidates)
+      ) {
+        return {
+          ...response,
+          parsed,
+        };
       }
-      return `- ${dietLabel}: ${allergens.join(", ")}`;
-    });
-  return rows.length ? rows.join("\n") : "- No mapped diet conflicts.";
+
+      lastError = new Error("Ingredient candidate extraction returned malformed output.");
+      if (attempt >= MAX_ANALYSIS_ATTEMPTS) {
+        break;
+      }
+    } catch (error) {
+      lastError = error;
+      if (!isTransientFailure(error) || attempt >= MAX_ANALYSIS_ATTEMPTS) {
+        break;
+      }
+      await sleep(attempt * 250);
+    }
+  }
+
+  throw lastError || new Error("Failed to extract ingredient candidates.");
+}
+
+async function extractIngredientCandidates({
+  transcriptLines,
+  fallbackParsedTranscript,
+  analysisOptions,
+  env = process.env,
+}) {
+  const cacheKey = buildTranscriptCacheKey({
+    transcriptLines,
+    promptVersion: CANDIDATE_EXTRACTION_PROMPT_VERSION,
+  });
+
+  if (!analysisOptions.disableCache) {
+    const cached = getCachedCandidateExtraction(cacheKey);
+    if (cached) {
+      return buildParsedTranscriptFromCandidateExtraction({
+        transcriptLines,
+        extractionPayload: cached,
+        fallbackParsedTranscript,
+      });
+    }
+  }
+
+  const { systemPrompt, userPrompt } = buildIngredientCandidateExtractionPrompts({
+    transcriptLines,
+    indexedWordList: fallbackParsedTranscript?.indexedWordList,
+  });
+
+  const result = await runWithProviderSelection({
+    routeId: "ingredient-candidate-extraction",
+    promptClass: "ingredientCandidateExtraction",
+    requestSummary: {
+      transcriptLineCount: Array.isArray(transcriptLines) ? transcriptLines.length : 0,
+      promptVersion: CANDIDATE_EXTRACTION_PROMPT_VERSION,
+    },
+    invokeProvider: async (provider) => {
+      if (provider !== "openai") {
+        throw new Error("Ingredient candidate extraction is pinned to OpenAI for this route.");
+      }
+
+      const response = await runOpenAiCandidateExtraction({
+        systemPrompt,
+        userPrompt,
+        metadata: {
+          route_id: "ingredient-candidate-extraction",
+          prompt_version: CANDIDATE_EXTRACTION_PROMPT_VERSION,
+        },
+        env,
+      });
+
+      return {
+        ...response,
+        normalizedOutput:
+          response?.parsed && typeof response.parsed === "object" ? response.parsed : {},
+      };
+    },
+  });
+
+  if (!analysisOptions.disableCache) {
+    setCachedCandidateExtraction(cacheKey, result.normalizedOutput);
+  }
+
+  return buildParsedTranscriptFromCandidateExtraction({
+    transcriptLines,
+    extractionPayload: result.normalizedOutput,
+    fallbackParsedTranscript,
+  });
 }
 
 function readAnalysisOptions(body) {
@@ -539,6 +734,7 @@ function readAnalysisOptions(body) {
   return {
     disableCache: options.disableCache === true,
     debug: options.debug === true,
+    useAiCandidateExtraction: options.useAiCandidateExtraction === true,
   };
 }
 
@@ -550,6 +746,7 @@ function buildCandidateDebugPayload({
   aiCandidates,
 }) {
   return {
+    ingredientExtractionMethod: asText(parsedTranscript?.extractionMethod) || "fallback",
     parsedIngredientsList: Array.isArray(parsedTranscript?.parsedIngredientsList)
       ? parsedTranscript.parsedIngredientsList
       : [],
@@ -629,35 +826,47 @@ export async function POST(request) {
       pass1Used = false,
       pass2Used = false,
       fallbackReason = null,
+      provider = "openai",
+      model = PINNED_OPENAI_MODEL,
+      reasoningEffort = OPENAI_REASONING_EFFORT,
+      agentStrategy = "parallel-dual-analysis-with-conflict-verification",
+      agentAUsed = false,
+      agentBUsed = false,
+      agentAgreement = "not-run",
+      adjudicationUsed = false,
     } = {},
     extra = {},
   ) => ({
     promptVersion: PROMPT_VERSION,
+    provider,
+    model,
+    reasoningEffort,
+    agentStrategy,
     pass1Used,
     pass2Used,
     pass2Applied: pass2Used,
+    agentAUsed,
+    agentBUsed,
+    agentAgreement,
+    adjudicationUsed,
     fallbackReason: asText(fallbackReason) || null,
     ...(extra && typeof extra === "object" ? extra : {}),
   });
 
   if (!transcriptLines.length) {
-    const payload = { success: true, flags: [] };
+    const payload = { success: true, flags: [], parsedIngredientsList: [] };
     if (analysisOptions.debug) {
       payload.debug = buildDebugPayload({ fallbackReason: "empty-transcript" });
     }
     return corsJson(payload, { status: 200 });
   }
 
-  const anthropicModel =
-    asText(process.env.ANTHROPIC_MODEL_INGREDIENT_FLAGS) ||
-    asText(process.env.ANTHROPIC_MODEL) ||
-    PINNED_ANTHROPIC_MODEL;
-  const anthropicEnv = {
-    ...process.env,
-    ANTHROPIC_MODEL_INGREDIENT_ALLERGEN_ANALYSIS: anthropicModel,
-  };
-
   try {
+    const openAiEnv = {
+      ...process.env,
+      AI_PROVIDER: "openai",
+      OPENAI_MODEL_INGREDIENT_FLAGS: PINNED_OPENAI_MODEL,
+    };
     const config = await fetchAllergenDietConfig();
     const allergenKeys = (Array.isArray(config?.allergens) ? config.allergens : [])
       .map((allergen) => asText(allergen?.key))
@@ -726,7 +935,20 @@ export async function POST(request) {
           flag.candidate_id && (flag.allergens.length || flag.diets.length),
         );
 
-    const parsedTranscript = parseIngredientLabelTranscript(transcriptLines);
+    const fallbackParsedTranscript = parseIngredientLabelTranscript(transcriptLines);
+    let parsedTranscript = fallbackParsedTranscript;
+    if (analysisOptions.useAiCandidateExtraction) {
+      try {
+        parsedTranscript = await extractIngredientCandidates({
+          transcriptLines,
+          fallbackParsedTranscript,
+          analysisOptions,
+          env: openAiEnv,
+        });
+      } catch (error) {
+        console.warn("Ingredient candidate extraction fell back to parser:", error);
+      }
+    }
     const directCandidateTexts = parsedTranscript.directCandidates
       .map((candidate) => asText(candidate?.text))
       .filter(Boolean);
@@ -761,7 +983,7 @@ export async function POST(request) {
       transcriptLines,
       allergenEntries: allergenCodebook.entries,
       dietEntries: dietCodebook.entries,
-      promptVersion: PROMPT_VERSION,
+      promptVersion: `${PROMPT_VERSION}|${CANDIDATE_EXTRACTION_PROMPT_VERSION}`,
     });
     if (!analysisOptions.disableCache) {
       const cachedFlags = getCachedAnalysis(analysisCacheKey);
@@ -769,6 +991,7 @@ export async function POST(request) {
         const payload = {
           success: true,
           flags: cachedFlags,
+          parsedIngredientsList: parsedTranscript.parsedIngredientsList,
         };
         if (analysisOptions.debug) {
           payload.debug = buildDebugPayload(
@@ -776,6 +999,7 @@ export async function POST(request) {
               pass1Used: false,
               pass2Used: false,
               fallbackReason: "cache-hit",
+              agentAgreement: "cache-hit",
             },
             candidateDebugPayload,
           );
@@ -788,6 +1012,7 @@ export async function POST(request) {
       const payload = {
         success: true,
         flags: resolvedDeclarationFlags,
+        parsedIngredientsList: parsedTranscript.parsedIngredientsList,
       };
       if (analysisOptions.debug) {
         payload.debug = buildDebugPayload(
@@ -797,6 +1022,7 @@ export async function POST(request) {
             fallbackReason: resolvedDeclarationFlags.length
               ? "deterministic-declarations-only"
               : "catalog-safe-only",
+            agentAgreement: "not-run",
           },
           candidateDebugPayload,
         );
@@ -832,120 +1058,141 @@ export async function POST(request) {
         promptVersion: PROMPT_VERSION,
       },
       invokeProvider: async (provider) => {
-        const pass1Response =
-          provider === "openai"
-            ? await callOpenAiApi({
-                promptClass: "ingredientAllergenAnalysis",
-                systemPrompt: extractionPrompts.systemPrompt,
-                messages: [{ role: "user", content: [createTextMessage(extractionPrompts.userPrompt)] }],
-                maxTokens: ANALYSIS_MAX_TOKENS,
-                jsonSchema: ingredientAllergenCandidateFlagsSchema,
-                reasoningEffort: "medium",
-              })
-            : await runFlagAnalysis({
-                systemPrompt: extractionPrompts.systemPrompt,
-                userPrompt: extractionPrompts.userPrompt,
-                maxTokens: ANALYSIS_MAX_TOKENS,
-                phaseName: "extraction",
-                env: anthropicEnv,
-              });
-
-        const pass1Parsed =
-          pass1Response?.parsed && typeof pass1Response.parsed === "object"
-            ? pass1Response.parsed
-            : parseClaudeJson(pass1Response.text);
-        if (!pass1Parsed || typeof pass1Parsed !== "object") {
-          throw new Error("Failed to analyze ingredient transcript.");
+        if (provider !== "openai") {
+          throw new Error("Ingredient allergen analysis is pinned to OpenAI for this route.");
         }
 
-        const pass1Flags = normalizeCandidateFlagsFromResponse(pass1Parsed);
-        let pass2Used = false;
+        const buildMetadata = (phase, agent) => ({
+          route_id: "ingredient-allergen-analysis",
+          phase,
+          agent,
+          prompt_version: PROMPT_VERSION,
+        });
+
+        const [agentASettled, agentBSettled] = await Promise.allSettled([
+          runOpenAiFlagAnalysis({
+            systemPrompt: extractionPrompts.systemPrompt,
+            userPrompt: extractionPrompts.userPrompt,
+            maxTokens: ANALYSIS_MAX_TOKENS,
+            phaseName: "agent-a-analysis",
+            metadata: buildMetadata("analysis", "agent-a"),
+            env: openAiEnv,
+          }),
+          runOpenAiFlagAnalysis({
+            systemPrompt: extractionPrompts.systemPrompt,
+            userPrompt: extractionPrompts.userPrompt,
+            maxTokens: ANALYSIS_MAX_TOKENS,
+            phaseName: "agent-b-analysis",
+            metadata: buildMetadata("analysis", "agent-b"),
+            env: openAiEnv,
+          }),
+        ]);
+
+        const agentAResponse =
+          agentASettled.status === "fulfilled" ? agentASettled.value : null;
+        const agentBResponse =
+          agentBSettled.status === "fulfilled" ? agentBSettled.value : null;
+        const agentAFlags = agentAResponse
+          ? normalizeCandidateFlagsFromResponse(agentAResponse.parsed)
+          : null;
+        const agentBFlags = agentBResponse
+          ? normalizeCandidateFlagsFromResponse(agentBResponse.parsed)
+          : null;
+
+        let adjudicationResponse = null;
         let fallbackReason = "";
-        let finalFlags = pass1Flags;
-        let aggregateResponse = {
-          ...pass1Response,
-        };
+        let finalFlags = [];
+        let agentAgreement = "not-run";
 
-        try {
-          const verificationPrompts = buildIngredientAllergenVerificationPrompts({
-            allergenCodebookText,
-            dietCodebookText,
-            candidateListText,
-            candidateFlagsJson: JSON.stringify({
-              flags: Array.isArray(pass1Parsed?.flags) ? pass1Parsed.flags : [],
-            }),
-            promptVersion: PROMPT_VERSION,
-          });
-
-          const pass2Response =
-            provider === "openai"
-              ? await callOpenAiApi({
-                  promptClass: "ingredientAllergenAnalysis",
-                  systemPrompt: verificationPrompts.systemPrompt,
-                  messages: [
-                    { role: "user", content: [createTextMessage(verificationPrompts.userPrompt)] },
-                  ],
-                  maxTokens: VERIFICATION_MAX_TOKENS,
-                  jsonSchema: ingredientAllergenCandidateFlagsSchema,
-                  reasoningEffort: "medium",
-                })
-              : await runFlagAnalysis({
-                  systemPrompt: verificationPrompts.systemPrompt,
-                  userPrompt: verificationPrompts.userPrompt,
-                  maxTokens: VERIFICATION_MAX_TOKENS,
-                  phaseName: "verification",
-                  env: anthropicEnv,
-                });
-
-          const pass2Parsed =
-            pass2Response?.parsed && typeof pass2Response.parsed === "object"
-              ? pass2Response.parsed
-              : parseClaudeJson(pass2Response.text);
-          if (!pass2Parsed || typeof pass2Parsed !== "object") {
-            throw new Error("Ingredient verification returned malformed JSON output.");
-          }
-          const pass2Flags = normalizeCandidateFlagsFromResponse(pass2Parsed);
-
-          aggregateResponse = {
-            ...pass2Response,
-            latencyMs:
-              Number(pass1Response.latencyMs || 0) + Number(pass2Response.latencyMs || 0),
-            usage: {
-              input_tokens:
-                Number(pass1Response.usage?.input_tokens || 0) +
-                Number(pass2Response.usage?.input_tokens || 0),
-              output_tokens:
-                Number(pass1Response.usage?.output_tokens || 0) +
-                Number(pass2Response.usage?.output_tokens || 0),
-              total_tokens:
-                Number(pass1Response.usage?.total_tokens || 0) +
-                Number(pass2Response.usage?.total_tokens || 0),
-            },
-            rawText: [pass1Response.text, pass2Response.text].filter(Boolean).join("\n\n"),
-          };
-
-          if (pass2Flags.length === 0 && pass1Flags.length > 0) {
-            fallbackReason = "pass2-empty-while-pass1-non-empty";
+        if (agentAFlags && agentBFlags) {
+          if (candidateFlagConsensusMatches(agentAFlags, agentBFlags)) {
+            finalFlags = agentAFlags;
+            agentAgreement = "agreed";
           } else {
-            finalFlags = pass2Flags;
-            pass2Used = true;
+            try {
+              const verificationPrompts = buildIngredientAllergenConflictVerificationPrompts({
+                allergenCodebookText,
+                dietCodebookText,
+                candidateListText,
+                agentAFlagsJson: serializeStructuredFlags(agentAResponse.parsed),
+                agentBFlagsJson: serializeStructuredFlags(agentBResponse.parsed),
+                promptVersion: PROMPT_VERSION,
+              });
+
+              adjudicationResponse = await runOpenAiFlagAnalysis({
+                systemPrompt: verificationPrompts.systemPrompt,
+                userPrompt: verificationPrompts.userPrompt,
+                maxTokens: VERIFICATION_MAX_TOKENS,
+                phaseName: "conflict-verification",
+                metadata: buildMetadata("verification", "adjudicator"),
+                env: openAiEnv,
+              });
+              finalFlags = normalizeCandidateFlagsFromResponse(adjudicationResponse.parsed);
+              agentAgreement = "conflict-resolved";
+            } catch (verificationError) {
+              finalFlags = agentAFlags;
+              agentAgreement = "conflict-fallback-agent-a";
+              fallbackReason =
+                `adjudication-failed:${asText(verificationError?.message) || "unknown"}`;
+            }
           }
-        } catch (pass2Error) {
-          fallbackReason = `pass2-failed:${asText(pass2Error?.message) || "unknown"}`;
+        } else if (agentAFlags || agentBFlags) {
+          finalFlags = agentAFlags || agentBFlags || [];
+          agentAgreement = "single-agent-fallback";
+          if (!agentAFlags) {
+            fallbackReason =
+              `agent-a-failed:${asText(agentASettled.reason?.message || agentASettled.reason) || "unknown"}`;
+          } else if (!agentBFlags) {
+            fallbackReason =
+              `agent-b-failed:${asText(agentBSettled.reason?.message || agentBSettled.reason) || "unknown"}`;
+          }
+        } else {
+          const failures = [agentASettled, agentBSettled]
+            .filter((entry) => entry.status === "rejected")
+            .map((entry, index) =>
+              `agent-${index === 0 ? "a" : "b"}:${asText(entry.reason?.message || entry.reason) || "unknown"}`,
+            );
+          throw new Error(
+            failures.join("; ") || "Failed to analyze ingredient transcript.",
+          );
         }
 
         const publicFlags = mapCandidateFlagsToPublicFlags(finalFlags, candidateById);
         const safeFlags = await applyIngredientCatalogOverrides(publicFlags);
         const combinedFlags = [...resolvedDeclarationFlags, ...safeFlags];
+        const completedResponses = [agentAResponse, agentBResponse].filter(Boolean);
+        if (adjudicationResponse) completedResponses.push(adjudicationResponse);
 
         return {
-          ...aggregateResponse,
+          provider: "openai",
+          model:
+            asText(adjudicationResponse?.model) ||
+            asText(agentAResponse?.model) ||
+            asText(agentBResponse?.model) ||
+            PINNED_OPENAI_MODEL,
+          latencyMs: buildAggregateLatencyMs(
+            [agentAResponse, agentBResponse],
+            adjudicationResponse ? [adjudicationResponse] : [],
+          ),
+          usage: sumUsage(completedResponses),
+          rawText: completedResponses.map((response) => response.text).filter(Boolean).join("\n\n"),
           normalizedOutput: {
             flags: combinedFlags,
             debug: buildDebugPayload(
               {
-                pass1Used: true,
-                pass2Used,
+                pass1Used: Boolean(agentAResponse || agentBResponse),
+                pass2Used: Boolean(adjudicationResponse),
+                provider: "openai",
+                model:
+                  asText(adjudicationResponse?.model) ||
+                  asText(agentAResponse?.model) ||
+                  asText(agentBResponse?.model) ||
+                  PINNED_OPENAI_MODEL,
+                reasoningEffort: OPENAI_REASONING_EFFORT,
+                agentAUsed: Boolean(agentAResponse),
+                agentBUsed: Boolean(agentBResponse),
+                agentAgreement,
+                adjudicationUsed: Boolean(adjudicationResponse),
                 fallbackReason,
               },
               candidateDebugPayload,
@@ -953,6 +1200,7 @@ export async function POST(request) {
           },
         };
       },
+      env: openAiEnv,
     });
     const finalFlags = result.normalizedOutput.flags;
     const debugPayload = result.normalizedOutput.debug;
@@ -964,6 +1212,7 @@ export async function POST(request) {
     const payload = {
       success: true,
       flags: finalFlags,
+      parsedIngredientsList: parsedTranscript.parsedIngredientsList,
     };
     if (analysisOptions.debug) {
       payload.debug = debugPayload;
@@ -975,6 +1224,7 @@ export async function POST(request) {
       success: false,
       error: asText(error?.message) || "Failed to analyze ingredient transcript.",
       flags: [],
+      parsedIngredientsList: [],
     };
     if (analysisOptions.debug) {
       payload.debug = buildDebugPayload({

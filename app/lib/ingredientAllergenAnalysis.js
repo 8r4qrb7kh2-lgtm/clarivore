@@ -4,7 +4,7 @@ function asText(value) {
 
 // Label transcript -> allergen/diet flags via Next.js Node runtime endpoint.
 // Input: array of transcript lines.
-// Output: { success, data: { flags: [...], debug: {...}|null } }.
+// Output: { success, data: { flags: [...], debug: {...}|null, parsedIngredientsList: [...] } }.
 export async function analyzeAllergensWithLabelCropper(
   transcriptLines,
   { debug = false } = {},
@@ -16,7 +16,10 @@ export async function analyzeAllergensWithLabelCropper(
     : [];
 
   if (!lines.length) {
-    return { success: true, data: { flags: [], debug: null } };
+    return {
+      success: true,
+      data: { flags: [], debug: null, parsedIngredientsList: [] },
+    };
   }
 
   try {
@@ -56,22 +59,28 @@ export async function analyzeAllergensWithLabelCropper(
           asText(payload?.error) ||
           asText(payload?.message) ||
           "Ingredient allergen analysis request failed.",
-        data: { flags: [], debug: null },
+        data: { flags: [], debug: null, parsedIngredientsList: [] },
       };
     }
 
     const flags = Array.isArray(payload?.flags) ? payload.flags : [];
+    const parsedIngredientsList = Array.isArray(payload?.parsedIngredientsList)
+      ? payload.parsedIngredientsList
+      : [];
     const debugPayload =
       payload?.debug && typeof payload.debug === "object" && !Array.isArray(payload.debug)
         ? payload.debug
         : null;
-    return { success: true, data: { flags, debug: debugPayload } };
+    return {
+      success: true,
+      data: { flags, debug: debugPayload, parsedIngredientsList },
+    };
   } catch (error) {
     console.error("Allergen label analysis failed:", error);
     return {
       success: false,
       error: asText(error?.message) || "Ingredient allergen analysis request failed.",
-      data: { flags: [], debug: null },
+      data: { flags: [], debug: null, parsedIngredientsList: [] },
     };
   }
 }

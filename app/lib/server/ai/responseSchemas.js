@@ -247,6 +247,69 @@ export const ingredientNameAnalysisSchema = {
   },
 };
 
+export const ingredientCandidateExtractionSchema = {
+  name: "ingredient_candidate_extraction",
+  schema: {
+    type: "object",
+    additionalProperties: false,
+    required: ["direct_ingredients", "declaration_candidates"],
+    properties: {
+      direct_ingredients: {
+        type: "array",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: ["text"],
+          properties: {
+            text: { type: "string" },
+            word_indices: integerArraySchema(),
+          },
+        },
+      },
+      declaration_candidates: {
+        type: "array",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: ["text", "declaration_type", "risk_type"],
+          properties: {
+            text: { type: "string" },
+            word_indices: integerArraySchema(),
+            declaration_type: {
+              type: ["string", "null"],
+              enum: [
+                "contains",
+                "may-contain",
+                "traces-of",
+                "facility",
+                "shared-equipment",
+                "shared-line",
+                null,
+              ],
+            },
+            risk_type: {
+              type: "string",
+              enum: ["contained", "cross-contamination"],
+            },
+          },
+        },
+      },
+    },
+  },
+};
+
+export const ingredientListSeparationSchema = {
+  name: "ingredient_list_separation",
+  schema: {
+    type: "object",
+    additionalProperties: false,
+    required: ["parsed_ingredients"],
+    properties: {
+      parsed_ingredients: stringArraySchema(),
+    },
+  },
+};
+
 export const ingredientPhotoLineMatchingSchema = {
   name: "ingredient_photo_line_matching",
   schema: {

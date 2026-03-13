@@ -144,8 +144,24 @@ export const AI_PROMPT_MODELS = {
   },
   ingredientAllergenAnalysis: {
     openai: {
-      defaultModel: OPENAI_MODEL_DEFAULTS.balanced,
+      defaultModel: "gpt-5.4",
       candidates: [
+        "gpt-5.4",
+        OPENAI_MODEL_DEFAULTS.balanced,
+        OPENAI_MODEL_DEFAULTS.miniVision,
+        OPENAI_MODEL_DEFAULTS.cheap,
+      ],
+    },
+    anthropic: {
+      defaultModel: ANTHROPIC_MODEL_DEFAULTS.haiku,
+      candidates: [ANTHROPIC_MODEL_DEFAULTS.haiku],
+    },
+  },
+  ingredientCandidateExtraction: {
+    openai: {
+      defaultModel: "gpt-5.4",
+      candidates: [
+        "gpt-5.4",
         OPENAI_MODEL_DEFAULTS.balanced,
         OPENAI_MODEL_DEFAULTS.miniVision,
         OPENAI_MODEL_DEFAULTS.cheap,
@@ -160,6 +176,20 @@ export const AI_PROMPT_MODELS = {
     openai: {
       defaultModel: OPENAI_MODEL_DEFAULTS.cheap,
       candidates: [OPENAI_MODEL_DEFAULTS.cheap, OPENAI_MODEL_DEFAULTS.balanced],
+    },
+    anthropic: {
+      defaultModel: ANTHROPIC_MODEL_DEFAULTS.haiku,
+      candidates: [ANTHROPIC_MODEL_DEFAULTS.haiku],
+    },
+  },
+  ingredientListSeparation: {
+    openai: {
+      defaultModel: "gpt-5.4",
+      candidates: [
+        "gpt-5.4",
+        OPENAI_MODEL_DEFAULTS.balanced,
+        OPENAI_MODEL_DEFAULTS.cheap,
+      ],
     },
     anthropic: {
       defaultModel: ANTHROPIC_MODEL_DEFAULTS.haiku,

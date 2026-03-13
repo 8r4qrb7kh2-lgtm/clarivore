@@ -279,6 +279,44 @@ class BuildIngredientCatalogTests(unittest.TestCase):
         self.assertEqual(rows_by_name["carrot"]["lookup_count"], 2)
         self.assertEqual(rows_by_name["water"]["lookup_count"], 2)
 
+    def test_classify_candidate_rejects_punctuation_tainted_and_compact_allergen_terms(self):
+        unsafe_names = [
+            "hazelnuts*+",
+            "almonds +",
+            "peanuts +",
+            "eggwhite",
+            "wheatflour",
+            "almondmilk",
+            "catfish",
+            "crabmeat",
+        ]
+
+        for name in unsafe_names:
+            with self.subTest(name=name):
+                classification = build_ingredient_catalog.classify_candidate(
+                    build_ingredient_catalog.canonicalize_name(name)
+                )
+                self.assertFalse(classification["is_safe"])
+                self.assertTrue(classification["reason_codes"])
+
+    def test_classify_candidate_preserves_known_safe_false_positives(self):
+        safe_names = [
+            "cream of tartar",
+            "butternut squash",
+            "eggplant",
+            "buckwheat flour",
+            "oat milk",
+            "sunflower butter",
+            "cocoa butter",
+        ]
+
+        for name in safe_names:
+            with self.subTest(name=name):
+                classification = build_ingredient_catalog.classify_candidate(
+                    build_ingredient_catalog.canonicalize_name(name)
+                )
+                self.assertTrue(classification["is_safe"])
+
 
 if __name__ == "__main__":
     unittest.main()

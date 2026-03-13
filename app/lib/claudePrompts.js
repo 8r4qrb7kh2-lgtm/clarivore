@@ -223,6 +223,134 @@ Infer allergen and diet compatibility from typical formulation.`,
   };
 }
 
+export function buildIngredientCandidateExtractionPrompts({
+  transcriptLines,
+  indexedWordList,
+}) {
+  const safeLines = Array.isArray(transcriptLines)
+    ? transcriptLines.map((line, index) => `Line ${index + 1}: ${asText(line)}`).join("\n")
+    : "";
+
+  return {
+    systemPrompt: `You separate ingredient-label transcripts into direct ingredients and advisory declaration items.
+Return ONLY valid JSON.
+
+Your source is OCR transcript text from a food ingredient label. Extract two lists:
+1. direct_ingredients: actual ingredients or ingredient groups exactly as written on the label
+2. declaration_candidates: allergen/advisory items from statements like Contains, May Contain, Manufactured on equipment, Shared line, or Facility warnings
+
+STRICT RULES:
+- Preserve the original transcript wording for each item text. Do not paraphrase or normalize.
+- Keep parenthetical sub-ingredients attached to the containing ingredient.
+- Exclude lead-in words from item text, including "Ingredients", "Ingredient", "Contains", "May Contain", "Manufactured", "Processed", "Shared equipment", "Shared line", and similar prefixes.
+- direct_ingredients must contain ONLY actual ingredients, never advisory/warning phrases.
+- declaration_candidates must contain ONLY the item being declared, never the full advisory sentence.
+- Use risk_type "contained" only for explicit contains declarations.
+- Use risk_type "cross-contamination" for may-contain, facility, shared-equipment, shared-line, traces-of, and similar advisory warnings.
+- Use only these declaration_type values: "contains", "may-contain", "traces-of", "facility", "shared-equipment", "shared-line", or null.
+- word_indices are optional. If you include them, they must point to the exact indexed transcript words for that item text, excluding any lead-in words.
+- Do not invent items that are not present in the transcript.
+
+Example:
+Transcript:
+Line 1: Ingredients: Pea Crisps (Pea Protein, Rice Starch), Hazelnut.
+Line 2: Manufactured on equipment that processes Peanut, Dairy, Soy, Sesame, Tree Nuts, Wheat
+Line 3: and Egg. May Contain nut shell fragments.
+
+Indexed words:
+0: "Ingredients:"
+1: "Pea"
+2: "Crisps"
+3: "(Pea"
+4: "Protein,"
+5: "Rice"
+6: "Starch),"
+7: "Hazelnut."
+8: "Manufactured"
+9: "on"
+10: "equipment"
+11: "that"
+12: "processes"
+13: "Peanut,"
+14: "Dairy,"
+15: "Soy,"
+16: "Sesame,"
+17: "Tree"
+18: "Nuts,"
+19: "Wheat"
+20: "and"
+21: "Egg."
+22: "May"
+23: "Contain"
+24: "nut"
+25: "shell"
+26: "fragments."
+
+Return:
+{
+  "direct_ingredients": [
+    { "text": "Pea Crisps (Pea Protein, Rice Starch)" },
+    { "text": "Hazelnut" }
+  ],
+  "declaration_candidates": [
+    { "text": "Peanut", "declaration_type": "shared-equipment", "risk_type": "cross-contamination" },
+    { "text": "Dairy", "declaration_type": "shared-equipment", "risk_type": "cross-contamination" },
+    { "text": "Soy", "declaration_type": "shared-equipment", "risk_type": "cross-contamination" },
+    { "text": "Sesame", "declaration_type": "shared-equipment", "risk_type": "cross-contamination" },
+    { "text": "Tree Nuts", "declaration_type": "shared-equipment", "risk_type": "cross-contamination" },
+    { "text": "Wheat", "declaration_type": "shared-equipment", "risk_type": "cross-contamination" },
+    { "text": "Egg", "declaration_type": "shared-equipment", "risk_type": "cross-contamination" },
+    { "text": "nut shell fragments", "declaration_type": "may-contain", "risk_type": "cross-contamination" }
+  ]
+}`,
+    userPrompt: `Transcript lines:
+${safeLines || "No transcript lines provided."}
+
+Indexed words:
+${asText(indexedWordList) || "No indexed words provided."}
+
+Separate this transcript into direct ingredients and declaration candidates.`,
+  };
+}
+
+export function buildIngredientListSeparationPrompts({ transcriptLines }) {
+  const safeLines = Array.isArray(transcriptLines)
+    ? transcriptLines.map((line, index) => `Line ${index + 1}: ${asText(line)}`).join("\n")
+    : "";
+
+  return {
+    systemPrompt: `You separate ingredient-label transcript text into a clean list of direct ingredients.
+Return ONLY valid JSON.
+
+Rules:
+- Extract only direct ingredients.
+- Exclude advisory or allergen declaration statements such as Contains, May Contain, facility warnings, shared-equipment warnings, and traces-of warnings.
+- Preserve ingredient grouping such as parenthetical sub-ingredients.
+- Preserve original ingredient wording; do not paraphrase.
+- Exclude lead-in labels like "Ingredients:".
+- Return ingredients in the same order they appear in the transcript.
+- Do not invent ingredients that are not present.
+
+Example:
+Input:
+Line 1: Ingredients: Pea Crisps (Pea Protein, Rice Starch), Hazelnut.
+Line 2: Manufactured on equipment that processes Peanut, Dairy, Soy, Sesame, Tree Nuts, Wheat
+Line 3: and Egg. May Contain nut shell fragments.
+
+Return:
+{
+  "parsed_ingredients": [
+    "Pea Crisps (Pea Protein, Rice Starch)",
+    "Hazelnut"
+  ]
+}`,
+    userPrompt: `Transcript lines:
+${safeLines || "No transcript lines provided."}
+
+Return the direct ingredients only.`,
+  };
+}
+
 export function buildIngredientAllergenRepairPrompts(rawOutput) {
   return {
     systemPrompt: `You repair malformed JSON.
@@ -385,6 +513,78 @@ Candidate JSON to verify and correct:
 ${candidateFlagsJson}
 
 Return JSON only.`,
+  };
+}
+
+export function buildIngredientAllergenConflictVerificationPrompts({
+  allergenCodebookText,
+  dietCodebookText,
+  candidateListText,
+  agentAFlagsJson,
+  agentBFlagsJson,
+  promptVersion,
+}) {
+  return {
+    systemPrompt: `You are a verifier that adjudicates conflicting allergen/diet transcript flags from two independent analysts.
+Return only valid JSON with this exact shape:
+{
+  "flags": [
+    {
+      "candidate_id": "direct:0",
+      "allergen_codes": [1],
+      "diet_codes": [1]
+    }
+  ]
+}
+
+Prompt version: ${asText(promptVersion) || "unknown"}
+
+Allergen codebook:
+${allergenCodebookText}
+
+Diet codebook:
+${dietCodebookText}
+
+ADJUDICATION PROTOCOL (MANDATORY):
+1) Re-check the candidate list directly. Do not assume either analyst is correct.
+2) Candidate fidelity:
+- candidate_id must exist in the provided candidate list
+- do not invent, rename, or merge candidate IDs
+- do not split direct candidates into smaller phrases
+3) Coverage:
+- explicit declaration candidates naming supported allergens must produce flags
+- declaration candidates do not replace direct candidates with the same allergen
+4) Allergen mapping:
+- only supported codebook allergens
+- no separate "gluten" allergen
+- oats alone are not wheat
+- coconut milk/cream, oat milk, soy milk, and rice milk are not dairy milk
+- treat coconut as tree nut for allergen purposes
+5) Diet mapping:
+- milk or egg -> Vegan
+- fish or shellfish -> Vegetarian and Vegan
+- wheat, barley, rye, or malt -> Gluten-free
+- no unrelated diets
+6) Conflict resolution:
+- when Agent A and Agent B disagree, choose the correct result for that candidate
+- if both are wrong, correct both
+- if both are right for different candidate IDs, keep both
+7) Shape validation:
+- every flag must have candidate_id, allergen_codes, and diet_codes
+- do not return empty allergen_codes and empty diet_codes together
+- remove exact duplicates only
+
+Return JSON only.`,
+    userPrompt: `Candidate list:
+${candidateListText}
+
+Agent A candidate JSON:
+${agentAFlagsJson}
+
+Agent B candidate JSON:
+${agentBFlagsJson}
+
+Adjudicate the disagreement and return the single correct final JSON only.`,
   };
 }
 

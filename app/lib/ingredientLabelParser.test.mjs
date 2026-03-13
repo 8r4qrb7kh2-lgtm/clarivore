@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { parseIngredientLabelTranscript } from "./ingredientLabelParser.js";
+const ingredientLabelParserModule = await import("./ingredientLabelParser.js");
+const { parseIngredientLabelTranscript } =
+  ingredientLabelParserModule.parseIngredientLabelTranscript
+    ? ingredientLabelParserModule
+    : ingredientLabelParserModule.default;
 
 test("parseIngredientLabelTranscript preserves top-level parenthetical groups", () => {
   const parsed = parseIngredientLabelTranscript([

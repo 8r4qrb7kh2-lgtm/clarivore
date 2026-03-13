@@ -331,6 +331,17 @@ MILK_FALSE_POSITIVE_EXACT_TERMS: Set[str] = {
     "cream of tartar",
 }
 
+SAFE_ONLY_EXACT_EXCEPTIONS: Set[str] = {
+    "cream of tartar",
+    "eggplant",
+    "eggplants",
+}
+
+SAFE_ONLY_COMPACT_EXCEPTIONS: Tuple[str, ...] = (
+    "buckwheat",
+    "wheatgrass",
+)
+
 EGG_TERMS: Tuple[str, ...] = (
     "aioli",
     "albumen",
@@ -452,6 +463,130 @@ PLANT_BASES: Tuple[str, ...] = (
     "walnut",
 )
 
+TREE_NUT_COMPACT_TERMS: Tuple[str, ...] = (
+    "almond",
+    "brazilnut",
+    "cashew",
+    "chestnut",
+    "coconut",
+    "hazelnut",
+    "macadamia",
+    "nutmilk",
+    "pecan",
+    "pinenut",
+    "pistachio",
+    "praline",
+    "treenut",
+    "walnut",
+)
+
+PEANUT_COMPACT_TERMS: Tuple[str, ...] = (
+    "groundnut",
+    "peanut",
+)
+
+SOY_COMPACT_TERMS: Tuple[str, ...] = (
+    "edamame",
+    "miso",
+    "natto",
+    "shoyu",
+    "soy",
+    "soya",
+    "soybean",
+    "tamari",
+    "tempeh",
+    "tofu",
+)
+
+SESAME_COMPACT_TERMS: Tuple[str, ...] = (
+    "benne",
+    "gingelly",
+    "sesame",
+    "tahini",
+)
+
+EGG_COMPACT_TERMS: Tuple[str, ...] = (
+    "aioli",
+    "albumen",
+    "albumin",
+    "egg",
+    "lysozyme",
+    "mayonnaise",
+    "meringue",
+    "ovalbumin",
+)
+
+FISH_COMPACT_TERMS: Tuple[str, ...] = (
+    "anchovy",
+    "bass",
+    "bonito",
+    "catfish",
+    "cod",
+    "fish",
+    "haddock",
+    "lumpfish",
+    "mahi",
+    "mackerel",
+    "pollock",
+    "salmon",
+    "sardine",
+    "snapper",
+    "surimi",
+    "swordfish",
+    "tilapia",
+    "trout",
+    "tuna",
+    "whitefish",
+)
+
+SHELLFISH_COMPACT_TERMS: Tuple[str, ...] = (
+    "abalone",
+    "clam",
+    "crab",
+    "crawfish",
+    "crayfish",
+    "cuttlefish",
+    "krill",
+    "lobster",
+    "mollusc",
+    "mollusk",
+    "mussel",
+    "octopus",
+    "oyster",
+    "prawn",
+    "scallop",
+    "shellfish",
+    "shrimp",
+    "squid",
+)
+
+GLUTEN_COMPACT_TERMS: Tuple[str, ...] = (
+    "barley",
+    "gluten",
+    "rye",
+    "spelt",
+    "triticale",
+    "wheat",
+)
+
+MILK_COMPACT_TERMS: Tuple[str, ...] = (
+    "buttermilk",
+    "casein",
+    "caseinate",
+    "cheese",
+    "curd",
+    "dairy",
+    "ghee",
+    "kefir",
+    "lactose",
+    "milk",
+    "milkfat",
+    "milksolid",
+    "whey",
+    "yoghurt",
+    "yogurt",
+)
+
 BLOCKED_ANALYSIS_TAGS: Tuple[str, ...] = (
     "en:non-vegan",
     "en:non-vegetarian",
@@ -504,6 +639,10 @@ def normalize_spaces(value: str) -> str:
 
 def normalize_lookup_term(value: str) -> str:
     return re.sub(r"[^a-z0-9]+", " ", ascii_text(value).lower()).strip()
+
+
+def compact_lookup_term(value: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "", ascii_text(value).lower())
 
 
 def stable_unique(values: Iterable[object]) -> List[str]:
@@ -716,7 +855,7 @@ def canonicalize_name(value: str) -> str:
     base = base.replace("(", " ").replace(")", " ")
     base = base.replace("*", " ")
     base = normalize_spaces(base)
-    tokens = base.split()
+    tokens = [token for token in base.split() if any(ch.isalnum() for ch in token)]
 
     for prefix in sorted(QUALIFIER_PREFIXES, key=len, reverse=True):
         prefix_tokens = prefix.split()
@@ -771,15 +910,38 @@ def match_any(text: str, matchers: Sequence[Tuple[str, re.Pattern[str]]]) -> boo
     return any(pattern.search(text) for _, pattern in matchers)
 
 
+def contains_any_compact_term(text: str, terms: Sequence[str]) -> bool:
+    compact = compact_lookup_term(text)
+    return any(compact_lookup_term(term) in compact for term in terms)
+
+
 def plant_dairy_exception(text: str) -> bool:
+    compact = compact_lookup_term(text)
     for base in PLANT_BASES:
         safe_base = normalize_lookup_term(base)
         for suffix in (" milk ", " cream ", " cheese ", " yogurt ", " yoghurt ", " butter "):
             if f" {safe_base}{suffix}" in text:
                 return True
-    if " non dairy " in text or " nondairy " in text or " dairy free " in text:
+        compact_base = compact_lookup_term(base)
+        for suffix in ("milk", "cream", "cheese", "yogurt", "yoghurt", "butter"):
+            if f"{compact_base}{suffix}" in compact:
+                return True
+    if (
+        " non dairy " in text
+        or " nondairy " in text
+        or " dairy free " in text
+        or "nondairy" in compact
+        or "dairyfree" in compact
+    ):
         return True
-    if " vegan butter " in text or " vegan cheese " in text or " vegan yogurt " in text:
+    if (
+        " vegan butter " in text
+        or " vegan cheese " in text
+        or " vegan yogurt " in text
+        or "veganbutter" in compact
+        or "vegancheese" in compact
+        or "veganyogurt" in compact
+    ):
         return True
     return False
 
@@ -807,50 +969,81 @@ def is_product_style_name(name: str) -> bool:
 
 def classify_candidate(name: str) -> Dict[str, object]:
     normalized = f" {normalize_lookup_term(name)} "
+    compact = compact_lookup_term(name)
     allergens: Set[str] = set()
     blocked_diets: Set[str] = set()
     reason_codes: List[str] = []
-    has_gluten_free_claim = " gluten free " in normalized
+    has_gluten_free_claim = " gluten free " in normalized or "glutenfree" in compact
+    has_compact_exception = any(token in compact for token in SAFE_ONLY_COMPACT_EXCEPTIONS)
 
     if (
-        match_any(normalized, MILK_MATCHERS)
+        (
+            match_any(normalized, MILK_MATCHERS)
+            or contains_any_compact_term(compact, MILK_COMPACT_TERMS)
+        )
         and name not in MILK_FALSE_POSITIVE_EXACT_TERMS
+        and name not in SAFE_ONLY_EXACT_EXCEPTIONS
         and not plant_dairy_exception(normalized)
     ):
         allergens.add("milk")
         blocked_diets.add("Vegan")
         reason_codes.append("allergen:milk")
 
-    if match_any(normalized, EGG_MATCHERS):
+    if (
+        not compact.startswith("eggplant")
+        and (
+            match_any(normalized, EGG_MATCHERS)
+            or contains_any_compact_term(compact, EGG_COMPACT_TERMS)
+        )
+    ):
         allergens.add("egg")
         blocked_diets.add("Vegan")
         reason_codes.append("allergen:egg")
 
-    if match_any(normalized, PEANUT_MATCHERS):
+    if match_any(normalized, PEANUT_MATCHERS) or contains_any_compact_term(
+        compact, PEANUT_COMPACT_TERMS
+    ):
         allergens.add("peanut")
         reason_codes.append("allergen:peanut")
 
-    if match_any(normalized, TREE_NUT_MATCHERS):
+    if match_any(normalized, TREE_NUT_MATCHERS) or contains_any_compact_term(
+        compact, TREE_NUT_COMPACT_TERMS
+    ):
         allergens.add("tree nut")
         reason_codes.append("allergen:tree_nut")
 
-    if match_any(normalized, SOY_MATCHERS):
+    if match_any(normalized, SOY_MATCHERS) or contains_any_compact_term(
+        compact, SOY_COMPACT_TERMS
+    ):
         allergens.add("soy")
         reason_codes.append("allergen:soy")
 
-    if match_any(normalized, SESAME_MATCHERS):
+    if match_any(normalized, SESAME_MATCHERS) or contains_any_compact_term(
+        compact, SESAME_COMPACT_TERMS
+    ):
         allergens.add("sesame")
         reason_codes.append("allergen:sesame")
 
-    if match_any(normalized, FISH_MATCHERS):
+    if match_any(normalized, FISH_MATCHERS) or contains_any_compact_term(
+        compact, FISH_COMPACT_TERMS
+    ):
         allergens.add("fish")
         reason_codes.append("allergen:fish")
 
-    if match_any(normalized, SHELLFISH_MATCHERS):
+    if match_any(normalized, SHELLFISH_MATCHERS) or contains_any_compact_term(
+        compact, SHELLFISH_COMPACT_TERMS
+    ):
         allergens.add("shellfish")
         reason_codes.append("allergen:shellfish")
 
-    if match_any(normalized, GLUTEN_MATCHERS) and not has_gluten_free_claim:
+    if (
+        not has_compact_exception
+        and (
+            match_any(normalized, GLUTEN_MATCHERS)
+            or contains_any_compact_term(compact, GLUTEN_COMPACT_TERMS)
+        )
+        and not has_gluten_free_claim
+    ):
         allergens.add("wheat")
         blocked_diets.add("Gluten-free")
         reason_codes.append("diet_block:gluten_free")

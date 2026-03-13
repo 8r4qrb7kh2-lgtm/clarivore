@@ -1,197 +1,272 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { parseIngredientLabelTranscript } from "../../lib/ingredientLabelParser.js";
-import {
-  buildAllergenAliasMap,
-  buildDietsByAllergenIndex,
-  mapCandidateFlagsToPublicFlags,
-  partitionCandidatesByCatalogSafety,
-  resolveExplicitDeclarationCandidates,
-} from "../../lib/server/ingredientAllergenCandidates.js";
+let ingredientCatalogRows = [];
 
-const SUPPORTED_DIETS = ["Vegan", "Vegetarian", "Pescatarian", "Gluten-free"];
+globalThis.__clarivorePrisma = {
+  ingredient_catalog_entries: {
+    findMany: async () => ingredientCatalogRows,
+  },
+};
 
-function createSafeCatalogEntry() {
+const { POST } = await import("./route.js");
+
+function jsonResponse(payload, status = 200) {
+  return new Response(JSON.stringify(payload), {
+    status,
+    headers: {
+      "content-type": "application/json",
+    },
+  });
+}
+
+function createOpenAiStructuredPayload(flags) {
   return {
-    isReady: true,
-    allergens: [],
-    diets: [...SUPPORTED_DIETS],
-    seedSource: "openfoodfacts_safe_only_v1",
-    metadata: {
-      catalog_type: "safe_only",
-      supported_diets: [...SUPPORTED_DIETS],
+    output_text: JSON.stringify({ flags }),
+    usage: {
+      input_tokens: 100,
+      output_tokens: 25,
+      total_tokens: 125,
     },
   };
 }
 
-test("partitionCandidatesByCatalogSafety skips safe direct ingredients and retains declarations", () => {
-  const parsed = parseIngredientLabelTranscript([
-    "Ingredients: Salt, Wheat flour. Contains: sesame.",
-  ]);
-
-  const { catalogSafeDirectCandidates, aiCandidates } =
-    partitionCandidatesByCatalogSafety({
-      directCandidates: parsed.directCandidates,
-      declarationCandidates: parsed.declarationCandidates,
-      entriesByIngredient: new Map([["Salt", createSafeCatalogEntry()]]),
-    });
-
-  assert.deepEqual(
-    catalogSafeDirectCandidates.map((candidate) => candidate.text),
-    ["Salt"],
-  );
-  assert.deepEqual(
-    aiCandidates.map((candidate) => candidate.text),
-    ["Wheat flour", "sesame"],
-  );
-});
-
-test("partitionCandidatesByCatalogSafety yields no AI candidates when all direct ingredients are safe", () => {
-  const parsed = parseIngredientLabelTranscript([
-    "Ingredients: Salt, Water",
-  ]);
-
-  const safeEntries = new Map(
-    parsed.directCandidates.map((candidate) => [
-      candidate.text,
-      createSafeCatalogEntry(),
-    ]),
-  );
-
-  const { catalogSafeDirectCandidates, aiCandidates } =
-    partitionCandidatesByCatalogSafety({
-      directCandidates: parsed.directCandidates,
-      declarationCandidates: parsed.declarationCandidates,
-      entriesByIngredient: safeEntries,
-    });
-
-  assert.equal(catalogSafeDirectCandidates.length, 2);
-  assert.equal(aiCandidates.length, 0);
-});
-
-test("mapCandidateFlagsToPublicFlags restores ingredient text, word indices, and risk type", () => {
-  const parsed = parseIngredientLabelTranscript([
-    "Ingredients: Salt, Wheat flour. May contain sesame.",
-  ]);
-
-  const candidateById = new Map(
-    [...parsed.directCandidates, ...parsed.declarationCandidates].map((candidate) => [
-      candidate.id,
-      candidate,
-    ]),
-  );
-
-  const publicFlags = mapCandidateFlagsToPublicFlags(
-    [
+function createConfigPayloads() {
+  return {
+    allergens: [
+      { key: "wheat", label: "Wheat", sort_order: 1, is_active: true },
+      { key: "milk", label: "Milk", sort_order: 2, is_active: true },
+      { key: "soy", label: "Soy", sort_order: 3, is_active: true },
+      { key: "tree_nut", label: "Tree Nut", sort_order: 4, is_active: true },
+    ],
+    diets: [
       {
-        candidate_id: parsed.directCandidates[1].id,
-        allergens: ["wheat"],
-        diets: ["Gluten-free"],
+        key: "gluten_free",
+        label: "Gluten-free",
+        sort_order: 1,
+        is_active: true,
+        is_supported: true,
+        is_ai_enabled: true,
       },
       {
-        candidate_id: parsed.declarationCandidates[0].id,
-        allergens: ["sesame"],
-        diets: [],
+        key: "vegan",
+        label: "Vegan",
+        sort_order: 2,
+        is_active: true,
+        is_supported: true,
+        is_ai_enabled: true,
+      },
+      {
+        key: "vegetarian",
+        label: "Vegetarian",
+        sort_order: 3,
+        is_active: true,
+        is_supported: true,
+        is_ai_enabled: true,
+      },
+      {
+        key: "pescatarian",
+        label: "Pescatarian",
+        sort_order: 4,
+        is_active: true,
+        is_supported: true,
+        is_ai_enabled: true,
       },
     ],
-    candidateById,
-  );
+    conflicts: [
+      { diet: { label: "Gluten-free" }, allergen: { key: "wheat" } },
+      { diet: { label: "Vegan" }, allergen: { key: "milk" } },
+    ],
+  };
+}
 
-  assert.deepEqual(publicFlags, [
+async function invokeRoute({
+  transcriptLines,
+  openAiPayloads,
+  catalogRows = [],
+}) {
+  ingredientCatalogRows = catalogRows;
+  process.env.SUPABASE_URL = "https://supabase.test";
+  process.env.SUPABASE_ANON_KEY = "supabase-anon-test";
+  process.env.OPENAI_API_KEY = "openai-test";
+
+  const { allergens, diets, conflicts } = createConfigPayloads();
+  const openAiRequests = [];
+  let openAiIndex = 0;
+  const originalFetch = global.fetch;
+
+  global.fetch = async (input, init = {}) => {
+    const url = typeof input === "string" ? input : input?.url || "";
+    if (url.startsWith("https://supabase.test/rest/v1/allergens")) {
+      return jsonResponse(allergens);
+    }
+    if (url.startsWith("https://supabase.test/rest/v1/diets")) {
+      return jsonResponse(diets);
+    }
+    if (url.startsWith("https://supabase.test/rest/v1/diet_allergen_conflicts")) {
+      return jsonResponse(conflicts);
+    }
+    if (url === "https://api.openai.com/v1/responses") {
+      const body = JSON.parse(String(init?.body || "{}"));
+      openAiRequests.push(body);
+      const payload = openAiPayloads[openAiIndex];
+      openAiIndex += 1;
+      if (!payload) {
+        throw new Error(`Missing OpenAI payload for request ${openAiIndex}.`);
+      }
+      return jsonResponse(payload);
+    }
+    throw new Error(`Unexpected fetch URL: ${url}`);
+  };
+
+  try {
+    const request = new Request("http://localhost/api/ingredient-allergen-analysis", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        transcriptLines,
+        analysisOptions: {
+          disableCache: true,
+          debug: true,
+        },
+      }),
+    });
+    const response = await POST(request);
+    return {
+      status: response.status,
+      body: await response.json(),
+      openAiRequests,
+    };
+  } finally {
+    global.fetch = originalFetch;
+  }
+}
+
+test("ingredient allergen route uses gpt-5.4 medium reasoning and accepts matching parallel agent results", async () => {
+  const agreedFlags = [
+    {
+      candidate_id: "direct:0",
+      allergen_codes: [1],
+      diet_codes: [1],
+    },
+  ];
+
+  const { body, openAiRequests } = await invokeRoute({
+    transcriptLines: ["Ingredients: Wheat flour"],
+    openAiPayloads: [
+      createOpenAiStructuredPayload(agreedFlags),
+      createOpenAiStructuredPayload(agreedFlags),
+    ],
+  });
+
+  assert.equal(body.success, true);
+  assert.equal(openAiRequests.length, 2);
+  assert.ok(openAiRequests.every((request) => request.model === "gpt-5.4"));
+  assert.ok(
+    openAiRequests.every((request) => request.reasoning?.effort === "medium"),
+  );
+  assert.deepEqual(body.flags, [
     {
       ingredient: "Wheat flour",
-      word_indices: parsed.directCandidates[1].wordIndices,
+      word_indices: [1, 2],
       allergens: ["wheat"],
       diets: ["Gluten-free"],
       risk_type: "contained",
     },
-    {
-      ingredient: "sesame",
-      word_indices: parsed.declarationCandidates[0].wordIndices,
-      allergens: ["sesame"],
-      diets: [],
-      risk_type: "cross-contamination",
-    },
   ]);
+  assert.equal(body.debug.provider, "openai");
+  assert.equal(body.debug.model, "gpt-5.4");
+  assert.equal(body.debug.reasoningEffort, "medium");
+  assert.equal(body.debug.agentAgreement, "agreed");
+  assert.equal(body.debug.adjudicationUsed, false);
+  assert.equal(body.debug.aiCandidateCount, 1);
 });
 
-test("resolveExplicitDeclarationCandidates maps advisory allergens without AI", () => {
-  const parsed = parseIngredientLabelTranscript([
-    "Ingredients: Sugar. Manufactured on equipment that processes peanuts, dairy, soy, sesame, tree nuts, wheat, and egg.",
-  ]);
+test("ingredient allergen route adjudicates conflicting parallel agent results with a third verification call", async () => {
+  const agentAFlags = [
+    {
+      candidate_id: "direct:0",
+      allergen_codes: [1],
+      diet_codes: [1],
+    },
+  ];
+  const agentBFlags = [];
 
-  const allergenAliasMap = buildAllergenAliasMap([
-    { key: "milk", label: "Milk" },
-    { key: "peanut", label: "Peanut" },
-    { key: "soy", label: "Soy" },
-    { key: "sesame", label: "Sesame" },
-    { key: "tree_nut", label: "Tree Nut" },
-    { key: "wheat", label: "Wheat" },
-    { key: "egg", label: "Egg" },
-  ]);
-  const dietsByAllergen = buildDietsByAllergenIndex({
-    Vegan: ["milk", "egg"],
-    "Gluten-free": ["wheat"],
+  const { body, openAiRequests } = await invokeRoute({
+    transcriptLines: ["Ingredients: Wheat flour"],
+    openAiPayloads: [
+      createOpenAiStructuredPayload(agentAFlags),
+      createOpenAiStructuredPayload(agentBFlags),
+      createOpenAiStructuredPayload(agentAFlags),
+    ],
   });
 
-  const { resolvedFlags, unresolvedCandidates } = resolveExplicitDeclarationCandidates({
-    declarationCandidates: parsed.declarationCandidates,
-    allergenAliasMap,
-    dietsByAllergen,
-  });
+  assert.equal(body.success, true);
+  assert.equal(openAiRequests.length, 3);
+  assert.equal(body.debug.agentAgreement, "conflict-resolved");
+  assert.equal(body.debug.adjudicationUsed, true);
+  assert.equal(body.debug.fallbackReason, null);
+  assert.deepEqual(body.flags, [
+    {
+      ingredient: "Wheat flour",
+      word_indices: [1, 2],
+      allergens: ["wheat"],
+      diets: ["Gluten-free"],
+      risk_type: "contained",
+    },
+  ]);
 
-  assert.equal(unresolvedCandidates.length, 0);
-  assert.deepEqual(
-    resolvedFlags.map((flag) => ({
-      ingredient: flag.ingredient,
-      allergens: flag.allergens,
-      diets: flag.diets,
-      risk_type: flag.risk_type,
-    })),
-    [
+  const adjudicationInput = JSON.stringify(openAiRequests[2].input);
+  assert.match(adjudicationInput, /Agent A candidate JSON/);
+  assert.match(adjudicationInput, /Agent B candidate JSON/);
+});
+
+test("ingredient allergen route does not trust malformed safe-only hazelnut catalog rows", async () => {
+  const agreedFlags = [
+    {
+      candidate_id: "direct:0",
+      allergen_codes: [4],
+      diet_codes: [],
+    },
+  ];
+
+  const { body, openAiRequests } = await invokeRoute({
+    transcriptLines: ["Ingredients: Hazelnuts"],
+    catalogRows: [
       {
-        ingredient: "peanuts",
-        allergens: ["peanut"],
-        diets: [],
-        risk_type: "cross-contamination",
-      },
-      {
-        ingredient: "dairy",
-        allergens: ["milk"],
-        diets: ["Vegan"],
-        risk_type: "cross-contamination",
-      },
-      {
-        ingredient: "soy",
-        allergens: ["soy"],
-        diets: [],
-        risk_type: "cross-contamination",
-      },
-      {
-        ingredient: "sesame",
-        allergens: ["sesame"],
-        diets: [],
-        risk_type: "cross-contamination",
-      },
-      {
-        ingredient: "tree nuts",
-        allergens: ["tree_nut"],
-        diets: [],
-        risk_type: "cross-contamination",
-      },
-      {
-        ingredient: "wheat",
-        allergens: ["wheat"],
-        diets: ["Gluten-free"],
-        risk_type: "cross-contamination",
-      },
-      {
-        ingredient: "egg",
-        allergens: ["egg"],
-        diets: ["Vegan"],
-        risk_type: "cross-contamination",
+        canonical_name: "hazelnuts +",
+        normalized_name: "hazelnuts",
+        aliases: ["hazelnuts*+"],
+        lookup_terms: ["hazelnuts"],
+        lookup_count: 3,
+        allergens: [],
+        diets: ["Vegan", "Vegetarian", "Pescatarian", "Gluten-free"],
+        is_ready: true,
+        seed_source: "openfoodfacts_safe_only_v1",
+        metadata: {
+          catalog_type: "safe_only",
+          supported_diets: ["Vegan", "Vegetarian", "Pescatarian", "Gluten-free"],
+          surface_forms: [{ name: "hazelnuts*+", count: 3 }],
+        },
       },
     ],
-  );
+    openAiPayloads: [
+      createOpenAiStructuredPayload(agreedFlags),
+      createOpenAiStructuredPayload(agreedFlags),
+    ],
+  });
+
+  assert.equal(body.success, true);
+  assert.equal(openAiRequests.length, 2);
+  assert.deepEqual(body.flags, [
+    {
+      ingredient: "Hazelnuts",
+      word_indices: [1],
+      allergens: ["tree_nut"],
+      diets: [],
+      risk_type: "contained",
+    },
+  ]);
+  assert.equal(body.debug.catalogSafeCandidateCount, 0);
+  assert.equal(body.debug.aiCandidateCount, 1);
 });

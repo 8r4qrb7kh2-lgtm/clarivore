@@ -295,13 +295,50 @@ export async function analyzeTranscriptFlags(transcriptLines) {
   }
   return {
     flags: Array.isArray(result?.data?.flags) ? result.data.flags : [],
+    parsedIngredientsList: Array.isArray(result?.data?.parsedIngredientsList)
+      ? result.data.parsedIngredientsList
+      : [],
     debug:
       result?.data?.debug &&
       typeof result.data.debug === "object" &&
       !Array.isArray(result.data.debug)
         ? result.data.debug
         : null,
-  };
+    };
+}
+
+export async function separateIngredientList(transcriptLines) {
+  const response = await fetch("/api/ingredient-list-analysis", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      transcriptLines: Array.isArray(transcriptLines) ? transcriptLines : [],
+    }),
+  });
+
+  const bodyText = await response.text();
+  let parsed = null;
+  try {
+    parsed = bodyText ? JSON.parse(bodyText) : null;
+  } catch {
+    parsed = null;
+  }
+
+  if (!response.ok || parsed?.success === false) {
+    const error = new Error(
+      asText(parsed?.error) ||
+        asText(parsed?.message) ||
+        "Ingredient list analysis failed.",
+    );
+    error.status = response.status;
+    throw error;
+  }
+
+  return Array.isArray(parsed?.parsedIngredientsList)
+    ? parsed.parsedIngredientsList
+    : [];
 }
 
 export async function analyzeIngredientLabelImage(

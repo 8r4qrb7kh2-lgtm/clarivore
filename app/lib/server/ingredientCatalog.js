@@ -29,6 +29,157 @@ const IRREGULAR_SINGULARS = {
   tomatoes: "tomato",
 };
 
+const SAFE_ONLY_EXACT_EXCEPTIONS = new Set([
+  "cream of tartar",
+  "eggplant",
+  "eggplants",
+]);
+
+const SAFE_ONLY_COMPACT_EXCEPTIONS = [
+  "buckwheat",
+  "wheatgrass",
+];
+
+const SAFE_ONLY_TREE_NUT_COMPACT_TERMS = [
+  "almond",
+  "brazilnut",
+  "cashew",
+  "chestnut",
+  "coconut",
+  "hazelnut",
+  "macadamia",
+  "nutmilk",
+  "pecan",
+  "pinenut",
+  "pistachio",
+  "praline",
+  "treenut",
+  "walnut",
+];
+
+const SAFE_ONLY_PEANUT_COMPACT_TERMS = ["groundnut", "peanut"];
+
+const SAFE_ONLY_SOY_COMPACT_TERMS = [
+  "edamame",
+  "miso",
+  "natto",
+  "shoyu",
+  "soy",
+  "soya",
+  "soybean",
+  "tamari",
+  "tempeh",
+  "tofu",
+];
+
+const SAFE_ONLY_SESAME_COMPACT_TERMS = ["benne", "gingelly", "sesame", "tahini"];
+
+const SAFE_ONLY_EGG_COMPACT_TERMS = [
+  "aioli",
+  "albumen",
+  "albumin",
+  "egg",
+  "lysozyme",
+  "mayonnaise",
+  "meringue",
+  "ovalbumin",
+];
+
+const SAFE_ONLY_FISH_COMPACT_TERMS = [
+  "anchovy",
+  "bass",
+  "bonito",
+  "catfish",
+  "cod",
+  "fish",
+  "haddock",
+  "lumpfish",
+  "mahi",
+  "mackerel",
+  "pollock",
+  "salmon",
+  "sardine",
+  "snapper",
+  "surimi",
+  "swordfish",
+  "tilapia",
+  "trout",
+  "tuna",
+  "whitefish",
+];
+
+const SAFE_ONLY_SHELLFISH_COMPACT_TERMS = [
+  "abalone",
+  "clam",
+  "crab",
+  "crawfish",
+  "crayfish",
+  "cuttlefish",
+  "krill",
+  "lobster",
+  "mollusc",
+  "mollusk",
+  "mussel",
+  "octopus",
+  "oyster",
+  "prawn",
+  "scallop",
+  "shellfish",
+  "shrimp",
+  "squid",
+];
+
+const SAFE_ONLY_GLUTEN_COMPACT_TERMS = [
+  "barley",
+  "gluten",
+  "rye",
+  "spelt",
+  "triticale",
+  "wheat",
+];
+
+const SAFE_ONLY_MILK_COMPACT_TERMS = [
+  "buttermilk",
+  "casein",
+  "caseinate",
+  "cheese",
+  "curd",
+  "dairy",
+  "ghee",
+  "kefir",
+  "lactose",
+  "milk",
+  "milkfat",
+  "milksolid",
+  "whey",
+  "yoghurt",
+  "yogurt",
+];
+
+const SAFE_ONLY_PLANT_BASE_COMPACTS = [
+  "almond",
+  "apple",
+  "cashew",
+  "cocoa",
+  "coconut",
+  "cookie",
+  "hazelnut",
+  "hemp",
+  "macadamia",
+  "nut",
+  "oat",
+  "pea",
+  "peanut",
+  "pecan",
+  "pistachio",
+  "pumpkinseed",
+  "rice",
+  "sesame",
+  "soy",
+  "sunflower",
+  "walnut",
+];
+
 function asText(value) {
   return String(value ?? "").trim();
 }
@@ -43,6 +194,10 @@ function normalizeSpaces(value) {
 
 function normalizeLookupTerm(value) {
   return asciiText(value).toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+}
+
+function compactLookupTerm(value) {
+  return asciiText(value).toLowerCase().replace(/[^a-z0-9]+/g, "");
 }
 
 function singularize(token) {
@@ -125,6 +280,122 @@ function normalizeTokenSet(values) {
   );
 }
 
+function rowTextValue(row, camelKey, snakeKey) {
+  return asText(row?.[camelKey] ?? row?.[snakeKey]);
+}
+
+function rowTextList(row, camelKey, snakeKey) {
+  const values = Array.isArray(row?.[camelKey])
+    ? row[camelKey]
+    : Array.isArray(row?.[snakeKey])
+      ? row[snakeKey]
+      : [];
+
+  return values
+    .map(asText)
+    .filter(Boolean);
+}
+
+function buildSafeOnlyValidationTexts(row) {
+  const metadata =
+    row?.metadata && typeof row.metadata === "object" && !Array.isArray(row.metadata)
+      ? row.metadata
+      : {};
+  const surfaceForms = Array.isArray(metadata.surface_forms)
+    ? metadata.surface_forms
+        .map((entry) => asText(entry?.name))
+        .filter(Boolean)
+    : [];
+
+  return Array.from(
+    new Set(
+      [
+        rowTextValue(row, "canonicalName", "canonical_name"),
+        rowTextValue(row, "normalizedName", "normalized_name"),
+        ...rowTextList(row, "aliases", "aliases"),
+        ...rowTextList(row, "lookupTerms", "lookup_terms"),
+        ...surfaceForms,
+      ]
+        .map(normalizeSpaces)
+        .filter(Boolean),
+    ),
+  );
+}
+
+function compactIncludesAny(value, terms) {
+  return (Array.isArray(terms) ? terms : []).some((term) =>
+    compactLookupTerm(value).includes(compactLookupTerm(term)),
+  );
+}
+
+function hasSafeOnlyPlantDairyException(value) {
+  const compact = compactLookupTerm(value);
+  if (!compact) return false;
+
+  if (
+    compact.includes("nondairy") ||
+    compact.includes("dairyfree") ||
+    compact.includes("veganyogurt") ||
+    compact.includes("vegancheese") ||
+    compact.includes("veganbutter")
+  ) {
+    return true;
+  }
+
+  return SAFE_ONLY_PLANT_BASE_COMPACTS.some((base) => {
+    const safeBase = compactLookupTerm(base);
+    return (
+      compact.includes(`${safeBase}milk`) ||
+      compact.includes(`${safeBase}cream`) ||
+      compact.includes(`${safeBase}cheese`) ||
+      compact.includes(`${safeBase}yogurt`) ||
+      compact.includes(`${safeBase}yoghurt`) ||
+      compact.includes(`${safeBase}butter`)
+    );
+  });
+}
+
+function looksUnsafeForSafeOnlyCatalog(value) {
+  const normalized = normalizeLookupTerm(value);
+  const compact = compactLookupTerm(value);
+  if (!normalized || !compact) return false;
+
+  if (SAFE_ONLY_EXACT_EXCEPTIONS.has(normalized)) return false;
+
+  const hasCompactException = SAFE_ONLY_COMPACT_EXCEPTIONS.some((token) =>
+    compact.includes(token),
+  );
+
+  if (compactIncludesAny(compact, SAFE_ONLY_TREE_NUT_COMPACT_TERMS)) return true;
+  if (compactIncludesAny(compact, SAFE_ONLY_PEANUT_COMPACT_TERMS)) return true;
+  if (compactIncludesAny(compact, SAFE_ONLY_SOY_COMPACT_TERMS)) return true;
+  if (compactIncludesAny(compact, SAFE_ONLY_SESAME_COMPACT_TERMS)) return true;
+
+  if (!compact.startsWith("eggplant") && compactIncludesAny(compact, SAFE_ONLY_EGG_COMPACT_TERMS)) {
+    return true;
+  }
+
+  if (compactIncludesAny(compact, SAFE_ONLY_SHELLFISH_COMPACT_TERMS)) return true;
+  if (compactIncludesAny(compact, SAFE_ONLY_FISH_COMPACT_TERMS)) return true;
+
+  if (
+    !hasCompactException &&
+    compactIncludesAny(compact, SAFE_ONLY_GLUTEN_COMPACT_TERMS) &&
+    !compact.includes("glutenfree")
+  ) {
+    return true;
+  }
+
+  if (
+    !hasSafeOnlyPlantDairyException(compact) &&
+    compactIncludesAny(compact, SAFE_ONLY_MILK_COMPACT_TERMS)
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
 export function isSafeIngredientCatalogEntry(row) {
   if (!row || typeof row !== "object") return false;
 
@@ -144,6 +415,9 @@ export function isSafeIngredientCatalogEntry(row) {
     catalogType !== "safe_only" &&
     !seedSource.startsWith("openfoodfacts_safe_only_")
   ) {
+    return false;
+  }
+  if (buildSafeOnlyValidationTexts(row).some((value) => looksUnsafeForSafeOnlyCatalog(value))) {
     return false;
   }
   if (!supportedDietSet.size) return true;

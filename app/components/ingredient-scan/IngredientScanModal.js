@@ -10,8 +10,8 @@ import {
   buildWordLayout,
   prepareAnalysisImage,
   rebuildLineWordBoxes,
+  separateIngredientList,
 } from "./analysisClient";
-import { parseIngredientLabelTranscript } from "../../lib/ingredientLabelParser";
 
 function asText(value) {
   return String(value ?? "").trim();
@@ -806,12 +806,29 @@ function IngredientScanDebugView({ debug }) {
   );
   const aiCandidateTexts = dedupeStrings(safeDebug.aiCandidateTexts);
   const fallbackReason = asText(safeDebug.fallbackReason);
-  const passSummary =
-    safeDebug.pass1Used === true
-      ? safeDebug.pass2Used === true
-        ? "AI ran extraction and verification."
-        : "AI ran extraction only."
-      : "AI did not run.";
+  const provider = asText(safeDebug.provider) || "openai";
+  const model = asText(safeDebug.model);
+  const reasoningEffort = asText(safeDebug.reasoningEffort);
+  const agentAgreement = asText(safeDebug.agentAgreement);
+  const flowSummary =
+    agentAgreement === "agreed"
+      ? "Two parallel agents agreed."
+      : agentAgreement === "conflict-resolved"
+        ? "Agents conflicted; adjudication resolved it."
+        : agentAgreement === "conflict-fallback-agent-a"
+          ? "Agents conflicted; adjudication failed, so agent A was used."
+          : agentAgreement === "single-agent-fallback"
+            ? "One agent failed, so the surviving result was used."
+            : agentAgreement === "cache-hit"
+              ? "Served from cache."
+              : safeDebug.pass1Used === true
+                ? safeDebug.pass2Used === true
+                  ? "AI ran."
+                  : "AI ran without adjudication."
+                : "AI did not run.";
+  const modelSummary = [provider, model, reasoningEffort ? `thinking ${reasoningEffort}` : ""]
+    .filter(Boolean)
+    .join(" · ");
 
   return (
     <details
@@ -858,9 +875,26 @@ function IngredientScanDebugView({ debug }) {
             }}
           >
             <div style={{ color: "#94a3b8", fontSize: "0.72rem", textTransform: "uppercase", fontWeight: 700 }}>
-              AI passes
+              Model
             </div>
-            <div style={{ color: "#e2e8f0", fontSize: "0.79rem", marginTop: 4 }}>{passSummary}</div>
+            <div style={{ color: "#e2e8f0", fontSize: "0.79rem", marginTop: 4 }}>
+              {modelSummary || "openai"}
+            </div>
+          </div>
+          <div
+            style={{
+              borderRadius: 10,
+              padding: "8px 10px",
+              background: "rgba(30,41,59,0.9)",
+              border: "1px solid rgba(148,163,184,0.16)",
+            }}
+          >
+            <div style={{ color: "#94a3b8", fontSize: "0.72rem", textTransform: "uppercase", fontWeight: 700 }}>
+              AI flow
+            </div>
+            <div style={{ color: "#e2e8f0", fontSize: "0.79rem", marginTop: 4 }}>
+              {flowSummary}
+            </div>
           </div>
           <div
             style={{
@@ -971,6 +1005,7 @@ export default function IngredientScanModal({
   const [analysisResult, setAnalysisResult] = useState(null);
   const [lines, setLines] = useState([]);
   const [allergenFlags, setAllergenFlags] = useState([]);
+  const [parsedIngredientsList, setParsedIngredientsList] = useState([]);
   const [analysisDebug, setAnalysisDebug] = useState(null);
   const [analysisPending, setAnalysisPending] = useState(false);
   const [annotatedImage, setAnnotatedImage] = useState("");
@@ -1006,6 +1041,7 @@ export default function IngredientScanModal({
     }
     setCameraActive(false);
     setAnalysisPending(false);
+    setParsedIngredientsList([]);
     setAnalysisDebug(null);
     setFrontModalOpen(false);
   }, [open]);
@@ -1081,6 +1117,7 @@ export default function IngredientScanModal({
     setAnalysisResult(null);
     setLines([]);
     setAllergenFlags([]);
+    setParsedIngredientsList([]);
     setAnalysisDebug(null);
     setAnalysisPending(false);
     setStatusText("");
@@ -1187,6 +1224,7 @@ export default function IngredientScanModal({
 
     if (!transcript.length) {
       setIfCurrent(setAllergenFlags, []);
+      setIfCurrent(setParsedIngredientsList, []);
       setIfCurrent(setAnalysisDebug, null);
       setIfCurrent(setAnalysisPending, false);
       return;
@@ -1200,6 +1238,11 @@ export default function IngredientScanModal({
       const analysis = await analyzeTranscriptFlags(transcript);
       if (!isCurrentRun()) return;
       setAllergenFlags(Array.isArray(analysis?.flags) ? analysis.flags : []);
+      setParsedIngredientsList(
+        Array.isArray(analysis?.parsedIngredientsList)
+          ? analysis.parsedIngredientsList
+          : [],
+      );
       setAnalysisDebug(
         analysis?.debug && typeof analysis.debug === "object" ? analysis.debug : null,
       );
@@ -1208,6 +1251,7 @@ export default function IngredientScanModal({
       if (!isCurrentRun()) return;
       const message = error?.message || "Allergen analysis failed.";
       setAllergenFlags([]);
+      setParsedIngredientsList([]);
       setAnalysisDebug(null);
       setStatusText(message);
       setErrorText(message);
@@ -1244,6 +1288,7 @@ export default function IngredientScanModal({
       setAnalysisResult(result);
       setLines(nextLines);
       setAllergenFlags([]);
+      setParsedIngredientsList([]);
       setAnalysisDebug(null);
       setStatusText("Text extracted. Running allergen analysis...");
 
@@ -1290,6 +1335,7 @@ export default function IngredientScanModal({
 
     if (!nextLines.length) return;
     setAllergenFlags([]);
+    setParsedIngredientsList([]);
     try {
       await runAllergenAnalysis(nextLines, "Updating analysis...");
     } catch {
@@ -1319,7 +1365,14 @@ export default function IngredientScanModal({
       const finalLines = lines
         .map((line) => asText(line?.text))
         .filter(Boolean);
-      const parsedIngredientsList = parseIngredientLabelTranscript(finalLines).parsedIngredientsList;
+      let resolvedParsedIngredientsList = [];
+      try {
+        resolvedParsedIngredientsList = await separateIngredientList(finalLines);
+      } catch {
+        resolvedParsedIngredientsList = Array.isArray(parsedIngredientsList)
+          ? parsedIngredientsList.filter(Boolean)
+          : [];
+      }
 
       const ingredientText = finalLines.join(" ");
       const containedAllergens = new Set();
@@ -1387,7 +1440,9 @@ export default function IngredientScanModal({
         brandImage: persistedBrandImage,
         ingredientsImage: persistedIngredientsImage,
         ingredientsList: finalLines,
-        parsedIngredientsList,
+        parsedIngredientsList: resolvedParsedIngredientsList.length
+          ? resolvedParsedIngredientsList
+          : finalLines,
         productName: asText(front?.productName),
       });
       return;
