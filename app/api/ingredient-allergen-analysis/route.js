@@ -30,9 +30,12 @@ export const runtime = "nodejs";
 
 const PINNED_OPENAI_MODEL = "gpt-5.4";
 const OPENAI_REASONING_EFFORT = "medium";
+const CANDIDATE_EXTRACTION_REASONING_EFFORT = "none";
 const MAX_ANALYSIS_ATTEMPTS = 2;
 const ANALYSIS_MAX_TOKENS = 1800;
 const VERIFICATION_MAX_TOKENS = 1400;
+const CANDIDATE_EXTRACTION_MIN_TOKENS = 1200;
+const CANDIDATE_EXTRACTION_MAX_TOKENS = 6400;
 const PROMPT_VERSION = "ingredient-allergen-openai-dual-agent-v3-20260313";
 const CANDIDATE_EXTRACTION_PROMPT_VERSION =
   "ingredient-candidate-extraction-openai-v3-20260313";
@@ -551,6 +554,129 @@ function buildCatalogLookupVariants(value) {
   return Array.from(variants).filter(Boolean);
 }
 
+const CATALOG_BYPASS_RISK_TERMS = [
+  "milk",
+  "butter",
+  "cream",
+  "cheese",
+  "whey",
+  "casein",
+  "lactose",
+  "yogurt",
+  "ghee",
+  "egg",
+  "eggs",
+  "albumen",
+  "albumin",
+  "mayonnaise",
+  "mayo",
+  "peanut",
+  "peanuts",
+  "tree nut",
+  "tree nuts",
+  "almond",
+  "almonds",
+  "hazelnut",
+  "hazelnuts",
+  "pistachio",
+  "pistachios",
+  "cashew",
+  "cashews",
+  "walnut",
+  "walnuts",
+  "pecan",
+  "pecans",
+  "macadamia",
+  "macadamias",
+  "brazil nut",
+  "brazil nuts",
+  "pine nut",
+  "pine nuts",
+  "coconut",
+  "coconuts",
+  "soy",
+  "soybean",
+  "soybeans",
+  "edamame",
+  "miso",
+  "tempeh",
+  "tofu",
+  "sesame",
+  "sesame seed",
+  "sesame seeds",
+  "tahini",
+  "wheat",
+  "gluten",
+  "barley",
+  "rye",
+  "spelt",
+  "semolina",
+  "farro",
+  "malt",
+  "fish",
+  "salmon",
+  "tuna",
+  "cod",
+  "anchovy",
+  "anchovies",
+  "sardine",
+  "sardines",
+  "pollock",
+  "shellfish",
+  "shrimp",
+  "prawn",
+  "prawns",
+  "crab",
+  "crabs",
+  "lobster",
+  "lobsters",
+  "crayfish",
+  "mussel",
+  "mussels",
+  "clam",
+  "clams",
+  "oyster",
+  "oysters",
+  "scallop",
+  "scallops",
+];
+
+function containsCatalogBypassRiskTerm(value) {
+  const normalized = normalizeCatalogLookupTerm(value);
+  if (!normalized) return false;
+  const padded = ` ${normalized} `;
+  return CATALOG_BYPASS_RISK_TERMS.some((term) => padded.includes(` ${term} `));
+}
+
+function partitionDirectCandidatesForAiReview({ directCandidates, catalogMatches }) {
+  const matchedTexts = new Set(
+    Array.isArray(catalogMatches?.matchedCandidateTexts) ? catalogMatches.matchedCandidateTexts : [],
+  );
+  const safeCatalogDirectCandidates = [];
+  const aiReviewDirectCandidates = [];
+  const riskyCatalogMatchedDirectCandidates = [];
+
+  (Array.isArray(directCandidates) ? directCandidates : []).forEach((candidate) => {
+    const text = asText(candidate?.text);
+    if (!text || !matchedTexts.has(text)) {
+      aiReviewDirectCandidates.push(candidate);
+      return;
+    }
+    if (containsCatalogBypassRiskTerm(text)) {
+      aiReviewDirectCandidates.push(candidate);
+      riskyCatalogMatchedDirectCandidates.push(candidate);
+      return;
+    }
+    safeCatalogDirectCandidates.push(candidate);
+  });
+
+  return {
+    safeCatalogDirectCandidates,
+    aiReviewDirectCandidates,
+    riskyCatalogMatchedDirectCandidates,
+  };
+}
+
 function toPostgresTextArrayLiteral(values) {
   const safeValues = dedupeStrings(values);
   if (!safeValues.length) return "{}";
@@ -807,21 +933,23 @@ async function runOpenAiFlagAnalysis({
 async function runOpenAiCandidateExtraction({
   systemPrompt,
   userPrompt,
-  maxTokens = 1200,
+  maxTokens = CANDIDATE_EXTRACTION_MIN_TOKENS,
   metadata,
   env = process.env,
 }) {
   let lastError = null;
   for (let attempt = 1; attempt <= MAX_ANALYSIS_ATTEMPTS; attempt += 1) {
     try {
-      const attemptMaxTokens = Math.min(Math.max(1, Number(maxTokens) || 0) * attempt, 2400);
+      const attemptMaxTokens = Math.min(
+        Math.max(CANDIDATE_EXTRACTION_MIN_TOKENS, Number(maxTokens) || 0) * attempt,
+        CANDIDATE_EXTRACTION_MAX_TOKENS,
+      );
       const response = await callOpenAiApi({
         promptClass: "ingredientCandidateExtraction",
         systemPrompt,
         messages: [{ role: "user", content: [createTextMessage(userPrompt)] }],
         maxTokens: attemptMaxTokens,
         jsonSchema: ingredientCandidateExtractionSchema,
-        reasoningEffort: OPENAI_REASONING_EFFORT,
         metadata,
         env,
       });
@@ -860,12 +988,40 @@ async function runOpenAiCandidateExtraction({
   throw lastError || new Error("Failed to extract ingredient candidates.");
 }
 
+function estimateCandidateExtractionMaxTokens(parsedTranscript) {
+  const words = Array.isArray(parsedTranscript?.words) ? parsedTranscript.words : [];
+  const directCandidates = Array.isArray(parsedTranscript?.directCandidates)
+    ? parsedTranscript.directCandidates
+    : [];
+  const declarationCandidates = Array.isArray(parsedTranscript?.declarationCandidates)
+    ? parsedTranscript.declarationCandidates
+    : [];
+  const candidates = [...directCandidates, ...declarationCandidates];
+  const candidateWordCount = candidates.reduce((sum, candidate) => {
+    const wordIndices = Array.isArray(candidate?.wordIndices) ? candidate.wordIndices : [];
+    if (wordIndices.length) return sum + wordIndices.length;
+    return sum + asText(candidate?.text).split(/\s+/).filter(Boolean).length;
+  }, 0);
+  const estimated =
+    800 +
+    candidates.length * 80 +
+    candidateWordCount * 20 +
+    words.length * 8;
+
+  return Math.min(
+    CANDIDATE_EXTRACTION_MAX_TOKENS,
+    Math.max(CANDIDATE_EXTRACTION_MIN_TOKENS, estimated),
+  );
+}
+
 async function extractIngredientCandidates({
   transcriptLines,
-  fallbackParsedTranscript,
+  indexedTranscript,
   analysisOptions,
   env = process.env,
 }) {
+  const seedTranscript = indexedTranscript || parseIngredientLabelTranscript(transcriptLines);
+
   const cacheKey = buildTranscriptCacheKey({
     transcriptLines,
     promptVersion: CANDIDATE_EXTRACTION_PROMPT_VERSION,
@@ -877,7 +1033,7 @@ async function extractIngredientCandidates({
       const parsedTranscript = buildParsedTranscriptFromCandidateExtraction({
         transcriptLines,
         extractionPayload: cached,
-        fallbackParsedTranscript,
+        seedTranscript,
       });
       if (
         !parsedTranscript.directCandidates.length &&
@@ -885,16 +1041,24 @@ async function extractIngredientCandidates({
       ) {
         throw new Error("Ingredient candidate extraction returned no candidates.");
       }
-      return parsedTranscript;
+      return {
+        parsedTranscript,
+        debug: {
+          provider: "openai",
+          model: PINNED_OPENAI_MODEL,
+          reasoningEffort: CANDIDATE_EXTRACTION_REASONING_EFFORT,
+        },
+      };
     }
   }
 
   const { systemPrompt, userPrompt } = buildIngredientCandidateExtractionPrompts({
     transcriptLines,
-    indexedWordList: fallbackParsedTranscript?.indexedWordList,
+    indexedWordList: seedTranscript?.indexedWordList,
   });
 
-  const result = await runWithProviderSelection({
+  let result;
+  result = await runWithProviderSelection({
     routeId: "ingredient-candidate-extraction",
     promptClass: "ingredientCandidateExtraction",
     requestSummary: {
@@ -909,6 +1073,7 @@ async function extractIngredientCandidates({
       const response = await runOpenAiCandidateExtraction({
         systemPrompt,
         userPrompt,
+        maxTokens: estimateCandidateExtractionMaxTokens(seedTranscript),
         metadata: {
           route_id: "ingredient-candidate-extraction",
           prompt_version: CANDIDATE_EXTRACTION_PROMPT_VERSION,
@@ -932,7 +1097,7 @@ async function extractIngredientCandidates({
   const parsedTranscript = buildParsedTranscriptFromCandidateExtraction({
     transcriptLines,
     extractionPayload: result.normalizedOutput,
-    fallbackParsedTranscript,
+    seedTranscript,
   });
   if (
     !parsedTranscript.directCandidates.length &&
@@ -940,7 +1105,14 @@ async function extractIngredientCandidates({
   ) {
     throw new Error("Ingredient candidate extraction returned no candidates.");
   }
-  return parsedTranscript;
+  return {
+    parsedTranscript,
+    debug: {
+      provider: asText(result?.provider) || "openai",
+      model: asText(result?.model) || PINNED_OPENAI_MODEL,
+      reasoningEffort: CANDIDATE_EXTRACTION_REASONING_EFFORT,
+    },
+  };
 }
 
 function readAnalysisOptions(body) {
@@ -957,19 +1129,56 @@ function buildCandidateDebugPayload({
   parsedTranscript,
   resolvedDeclarationFlags,
   unresolvedDeclarationCandidates,
+  safeCatalogDirectCandidates,
+  aiReviewDirectCandidates,
+  riskyCatalogMatchedDirectCandidates,
   aiCandidates,
   catalogMatches,
+  candidateExtractionDebug,
 }) {
   const matchedEntriesByCandidateText =
     catalogMatches?.matchedEntriesByCandidateText &&
     typeof catalogMatches.matchedEntriesByCandidateText === "object"
       ? catalogMatches.matchedEntriesByCandidateText
       : {};
+  const directIngredientTexts = Array.isArray(parsedTranscript?.parsedIngredientsList)
+    ? parsedTranscript.parsedIngredientsList
+    : [];
+  const declarationsSentToAiTexts = (Array.isArray(unresolvedDeclarationCandidates)
+    ? unresolvedDeclarationCandidates
+    : []
+  )
+    .map((candidate) => asText(candidate?.text))
+    .filter(Boolean);
+  const catalogBypassedDirectIngredientTexts = (Array.isArray(safeCatalogDirectCandidates)
+    ? safeCatalogDirectCandidates
+    : []
+  )
+    .map((candidate) => asText(candidate?.text))
+    .filter(Boolean);
+  const directIngredientsSentToAiTexts = (Array.isArray(aiReviewDirectCandidates)
+    ? aiReviewDirectCandidates
+    : []
+  )
+    .map((candidate) => asText(candidate?.text))
+    .filter(Boolean);
+  const riskyCatalogMatchedDirectIngredientTexts = (Array.isArray(riskyCatalogMatchedDirectCandidates)
+    ? riskyCatalogMatchedDirectCandidates
+    : []
+  )
+    .map((candidate) => asText(candidate?.text))
+    .filter(Boolean);
   return {
-    ingredientExtractionMethod: asText(parsedTranscript?.extractionMethod) || "fallback",
-    parsedIngredientsList: Array.isArray(parsedTranscript?.parsedIngredientsList)
-      ? parsedTranscript.parsedIngredientsList
-      : [],
+    ingredientExtractionMethod: asText(parsedTranscript?.extractionMethod) || "ai",
+    parsedIngredientsList: directIngredientTexts,
+    directIngredientCount: directIngredientTexts.length,
+    directIngredientTexts,
+    catalogBypassedDirectIngredientCount: catalogBypassedDirectIngredientTexts.length,
+    catalogBypassedDirectIngredientTexts,
+    directIngredientsSentToAiCount: directIngredientsSentToAiTexts.length,
+    directIngredientsSentToAiTexts,
+    riskyCatalogMatchedDirectIngredientCount: riskyCatalogMatchedDirectIngredientTexts.length,
+    riskyCatalogMatchedDirectIngredientTexts,
     resolvedDeclarationCandidateCount: Array.isArray(resolvedDeclarationFlags)
       ? resolvedDeclarationFlags.length
       : 0,
@@ -982,12 +1191,12 @@ function buildCandidateDebugPayload({
     unresolvedDeclarationCandidateCount: Array.isArray(unresolvedDeclarationCandidates)
       ? unresolvedDeclarationCandidates.length
       : 0,
-    unresolvedDeclarationCandidateTexts: (Array.isArray(unresolvedDeclarationCandidates)
-      ? unresolvedDeclarationCandidates
-      : []
-    )
-      .map((candidate) => asText(candidate?.text))
-      .filter(Boolean),
+    unresolvedDeclarationCandidateTexts: declarationsSentToAiTexts,
+    declarationsSentToAiCount: declarationsSentToAiTexts.length,
+    declarationsSentToAiTexts,
+    aiReviewInputCount: Array.isArray(aiCandidates) ? aiCandidates.length : 0,
+    aiReviewDirectIngredientCount: directIngredientsSentToAiTexts.length,
+    aiReviewDeclarationCount: declarationsSentToAiTexts.length,
     aiCandidateCount: Array.isArray(aiCandidates) ? aiCandidates.length : 0,
     aiCandidateTexts: (Array.isArray(aiCandidates) ? aiCandidates : [])
       .map((candidate) => asText(candidate?.text))
@@ -999,6 +1208,12 @@ function buildCandidateDebugPayload({
       ? catalogMatches.matchedCandidateTexts
       : [],
     catalogMatchedEntriesByCandidateText: matchedEntriesByCandidateText,
+    candidateExtractionProvider: asText(candidateExtractionDebug?.provider) || "openai",
+    candidateExtractionModel:
+      asText(candidateExtractionDebug?.model) || PINNED_OPENAI_MODEL,
+    candidateExtractionReasoningEffort:
+      asText(candidateExtractionDebug?.reasoningEffort) ||
+      CANDIDATE_EXTRACTION_REASONING_EFFORT,
   };
 }
 
@@ -1059,6 +1274,9 @@ export async function POST(request) {
     provider,
     model,
     reasoningEffort,
+    analysisProvider: provider,
+    analysisModel: model,
+    analysisReasoningEffort: reasoningEffort,
     agentStrategy,
     pass1Used,
     pass2Used,
@@ -1154,15 +1372,30 @@ export async function POST(request) {
         );
 
     const indexedTranscript = parseIngredientLabelTranscript(transcriptLines);
-    const parsedTranscript = await extractIngredientCandidates({
+    const {
+      parsedTranscript,
+      debug: candidateExtractionDebug,
+    } = await extractIngredientCandidates({
       transcriptLines,
-      fallbackParsedTranscript: indexedTranscript,
+      indexedTranscript,
       analysisOptions,
       env: openAiEnv,
     });
     const aiDirectCandidates = Array.isArray(parsedTranscript.directCandidates)
       ? parsedTranscript.directCandidates
       : [];
+    const catalogMatches = await fetchIngredientCatalogMatches({
+      candidateTexts: parsedTranscript.parsedIngredientsList,
+      disableCache: analysisOptions.disableCache,
+    });
+    const {
+      safeCatalogDirectCandidates,
+      aiReviewDirectCandidates,
+      riskyCatalogMatchedDirectCandidates,
+    } = partitionDirectCandidatesForAiReview({
+      directCandidates: aiDirectCandidates,
+      catalogMatches,
+    });
     const allergenAliasMap = buildAllergenAliasMap(config?.allergens);
     const dietsByAllergen = buildDietsByAllergenIndex(config?.dietAllergenConflicts);
     const {
@@ -1173,19 +1406,17 @@ export async function POST(request) {
       allergenAliasMap,
       dietsByAllergen,
     });
-    const aiCandidates = [...aiDirectCandidates, ...unresolvedDeclarationCandidates];
-    const catalogMatches = analysisOptions.debug
-      ? await fetchIngredientCatalogMatches({
-          candidateTexts: parsedTranscript.parsedIngredientsList,
-          disableCache: analysisOptions.disableCache,
-        })
-      : null;
+    const aiCandidates = [...aiReviewDirectCandidates, ...unresolvedDeclarationCandidates];
     const candidateDebugPayload = buildCandidateDebugPayload({
       parsedTranscript,
       resolvedDeclarationFlags,
       unresolvedDeclarationCandidates,
+      safeCatalogDirectCandidates,
+      aiReviewDirectCandidates,
+      riskyCatalogMatchedDirectCandidates,
       aiCandidates,
-      catalogMatches,
+      catalogMatches: analysisOptions.debug ? catalogMatches : null,
+      candidateExtractionDebug,
     });
     const analysisCacheKey = buildAnalysisCacheKey({
       transcriptLines,

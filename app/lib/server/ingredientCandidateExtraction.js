@@ -248,10 +248,10 @@ function dedupeCandidates(candidates, kind) {
 export function buildParsedTranscriptFromCandidateExtraction({
   transcriptLines,
   extractionPayload,
-  fallbackParsedTranscript,
+  seedTranscript,
 }) {
-  const fallback = fallbackParsedTranscript || parseIngredientLabelTranscript(transcriptLines);
-  const words = Array.isArray(fallback?.words) ? fallback.words : [];
+  const baseTranscript = seedTranscript || parseIngredientLabelTranscript(transcriptLines);
+  const words = Array.isArray(baseTranscript?.words) ? baseTranscript.words : [];
   const directUsedIndices = new Set();
   const declarationUsedIndices = new Set();
 
@@ -270,7 +270,7 @@ export function buildParsedTranscriptFromCandidateExtraction({
   );
 
   return {
-    ...fallback,
+    ...baseTranscript,
     directCandidates,
     declarationCandidates,
     parsedIngredientsList: directCandidates.map((candidate) => candidate.text),

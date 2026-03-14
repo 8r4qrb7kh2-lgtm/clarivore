@@ -797,21 +797,54 @@ function IngredientScanDebugView({ debug }) {
     debug && typeof debug === "object" && !Array.isArray(debug) ? debug : null;
   if (!safeDebug) return null;
 
+  const directIngredientTexts = dedupeStrings(
+    safeDebug.directIngredientTexts || safeDebug.parsedIngredientsList,
+  );
   const resolvedDeclarationCandidateTexts = dedupeStrings(
     safeDebug.resolvedDeclarationCandidateTexts,
   );
-  const unresolvedDeclarationCandidateTexts = dedupeStrings(
-    safeDebug.unresolvedDeclarationCandidateTexts,
+  const declarationsSentToAiTexts = dedupeStrings(
+    safeDebug.declarationsSentToAiTexts || safeDebug.unresolvedDeclarationCandidateTexts,
   );
   const catalogMatchedCandidateTexts = dedupeStrings(
     safeDebug.catalogMatchedCandidateTexts,
   );
-  const aiCandidateTexts = dedupeStrings(safeDebug.aiCandidateTexts);
+  const catalogBypassedDirectIngredientTexts = dedupeStrings(
+    safeDebug.catalogBypassedDirectIngredientTexts,
+  );
+  const directIngredientsSentToAiTexts = dedupeStrings(
+    safeDebug.directIngredientsSentToAiTexts,
+  );
+  const riskyCatalogMatchedDirectIngredientTexts = dedupeStrings(
+    safeDebug.riskyCatalogMatchedDirectIngredientTexts,
+  );
   const fallbackReason = asText(safeDebug.fallbackReason);
-  const provider = asText(safeDebug.provider) || "openai";
-  const model = asText(safeDebug.model);
-  const reasoningEffort = asText(safeDebug.reasoningEffort);
+  const candidateExtractionProvider =
+    asText(safeDebug.candidateExtractionProvider) || "openai";
+  const candidateExtractionModel = asText(safeDebug.candidateExtractionModel);
+  const candidateExtractionReasoningEffort = asText(
+    safeDebug.candidateExtractionReasoningEffort,
+  );
+  const analysisProvider =
+    asText(safeDebug.analysisProvider || safeDebug.provider) || "openai";
+  const analysisModel = asText(safeDebug.analysisModel || safeDebug.model);
+  const analysisReasoningEffort = asText(
+    safeDebug.analysisReasoningEffort || safeDebug.reasoningEffort,
+  );
   const agentAgreement = asText(safeDebug.agentAgreement);
+  const aiReviewInputCount = Number.isFinite(Number(safeDebug.aiReviewInputCount))
+    ? Math.max(0, Math.trunc(Number(safeDebug.aiReviewInputCount)))
+    : 0;
+  const aiReviewDirectIngredientCount = Number.isFinite(
+    Number(safeDebug.aiReviewDirectIngredientCount),
+  )
+    ? Math.max(0, Math.trunc(Number(safeDebug.aiReviewDirectIngredientCount)))
+    : directIngredientTexts.length;
+  const aiReviewDeclarationCount = Number.isFinite(
+    Number(safeDebug.aiReviewDeclarationCount),
+  )
+    ? Math.max(0, Math.trunc(Number(safeDebug.aiReviewDeclarationCount)))
+    : declarationsSentToAiTexts.length;
   const flowSummary =
     agentAgreement === "agreed"
       ? "Two parallel agents agreed."
@@ -825,12 +858,34 @@ function IngredientScanDebugView({ debug }) {
               ? "Served from cache."
               : safeDebug.pass1Used === true
                 ? safeDebug.pass2Used === true
-                  ? "AI ran."
+                ? "AI ran."
                   : "AI ran without adjudication."
                 : "AI did not run.";
-  const modelSummary = [provider, model, reasoningEffort ? `thinking ${reasoningEffort}` : ""]
-    .filter(Boolean)
-    .join(" · ");
+  const buildModelSummary = (provider, model, reasoningEffort) =>
+    [provider, model, reasoningEffort === "none"
+      ? "no reasoning"
+      : reasoningEffort
+        ? `thinking ${reasoningEffort}`
+        : "",
+    ]
+      .filter(Boolean)
+      .join(" · ");
+  const candidateExtractionSummary = buildModelSummary(
+    candidateExtractionProvider,
+    candidateExtractionModel,
+    candidateExtractionReasoningEffort,
+  );
+  const analysisSummary = buildModelSummary(
+    analysisProvider,
+    analysisModel,
+    analysisReasoningEffort,
+  );
+  const aiReviewSummary = aiReviewInputCount
+    ? `Reviewed ${aiReviewInputCount} items (${aiReviewDirectIngredientCount} direct sent to AI, ${aiReviewDeclarationCount} declarations).`
+    : "Allergen analysis did not run.";
+  const catalogRetentionSummary = riskyCatalogMatchedDirectIngredientTexts.length
+    ? `Catalog matched but still reviewed by AI: ${riskyCatalogMatchedDirectIngredientTexts.join(", ")}.`
+    : `${catalogBypassedDirectIngredientTexts.length} catalog-matched direct ingredients bypassed AI.`;
 
   return (
     <details
@@ -856,7 +911,7 @@ function IngredientScanDebugView({ debug }) {
       >
         <span>Internal debug</span>
         <span style={{ color: "#94a3b8", fontSize: "0.76rem", fontWeight: 600 }}>
-          resolved {resolvedDeclarationCandidateTexts.length} · catalog {catalogMatchedCandidateTexts.length} · AI {aiCandidateTexts.length}
+          direct {directIngredientTexts.length} · catalog {catalogMatchedCandidateTexts.length} · AI-direct {directIngredientsSentToAiTexts.length} · AI-decl {declarationsSentToAiTexts.length}
         </span>
       </summary>
 
@@ -877,10 +932,10 @@ function IngredientScanDebugView({ debug }) {
             }}
           >
             <div style={{ color: "#94a3b8", fontSize: "0.72rem", textTransform: "uppercase", fontWeight: 700 }}>
-              Model
+              Candidate extraction
             </div>
             <div style={{ color: "#e2e8f0", fontSize: "0.79rem", marginTop: 4 }}>
-              {modelSummary || "openai"}
+              {candidateExtractionSummary || "openai"}
             </div>
           </div>
           <div
@@ -892,7 +947,28 @@ function IngredientScanDebugView({ debug }) {
             }}
           >
             <div style={{ color: "#94a3b8", fontSize: "0.72rem", textTransform: "uppercase", fontWeight: 700 }}>
-              AI flow
+              Allergen analysis
+            </div>
+            <div style={{ color: "#e2e8f0", fontSize: "0.79rem", marginTop: 4 }}>
+              {analysisSummary || "openai"}
+            </div>
+            <div style={{ color: "#94a3b8", fontSize: "0.72rem", marginTop: 4 }}>
+              {aiReviewSummary}
+            </div>
+            <div style={{ color: "#94a3b8", fontSize: "0.72rem", marginTop: 4 }}>
+              {catalogRetentionSummary}
+            </div>
+          </div>
+          <div
+            style={{
+              borderRadius: 10,
+              padding: "8px 10px",
+              background: "rgba(30,41,59,0.9)",
+              border: "1px solid rgba(148,163,184,0.16)",
+            }}
+          >
+            <div style={{ color: "#94a3b8", fontSize: "0.72rem", textTransform: "uppercase", fontWeight: 700 }}>
+              Analysis flow
             </div>
             <div style={{ color: "#e2e8f0", fontSize: "0.79rem", marginTop: 4 }}>
               {flowSummary}
@@ -907,7 +983,7 @@ function IngredientScanDebugView({ debug }) {
             }}
           >
             <div style={{ color: "#94a3b8", fontSize: "0.72rem", textTransform: "uppercase", fontWeight: 700 }}>
-              Fallback
+              Special path
             </div>
             <div style={{ color: "#e2e8f0", fontSize: "0.79rem", marginTop: 4 }}>
               {fallbackReason || "none"}
@@ -921,68 +997,48 @@ function IngredientScanDebugView({ debug }) {
             gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
             gap: 8,
           }}
-        >
-          <IngredientScanDebugBucket
-            title="Resolved declarations"
-            count={resolvedDeclarationCandidateTexts.length}
-            items={resolvedDeclarationCandidateTexts}
-            accentColor="#fbbf24"
-            emptyLabel="No declaration candidates resolved deterministically."
-            testId="ingredient-scan-debug-resolved"
-          />
-          <IngredientScanDebugBucket
-            title="Catalog matches"
-            count={catalogMatchedCandidateTexts.length}
-            items={catalogMatchedCandidateTexts}
-            accentColor="#22c55e"
-            emptyLabel="No parsed ingredient candidates matched the ingredient catalog."
-            testId="ingredient-scan-debug-catalog"
-          />
-          <IngredientScanDebugBucket
-            title="AI candidates"
-            count={aiCandidateTexts.length}
-            items={aiCandidateTexts}
-            accentColor="#f87171"
-            emptyLabel="No candidates were sent to AI."
-            testId="ingredient-scan-debug-ai"
-          />
-        </div>
-
-        {unresolvedDeclarationCandidateTexts.length ? (
-          <div
-            style={{
-              borderRadius: 10,
-              padding: "10px 12px",
-              background: "rgba(120,53,15,0.16)",
-              border: "1px solid rgba(251,191,36,0.24)",
-              display: "flex",
-              flexDirection: "column",
-              gap: 8,
-            }}
           >
-            <div style={{ color: "#fde68a", fontSize: "0.8rem", fontWeight: 700 }}>
-              Unresolved declarations
-            </div>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-              {unresolvedDeclarationCandidateTexts.map((item) => (
-                <span
-                  key={`unresolved-${item}`}
-                  style={{
-                    borderRadius: 999,
-                    padding: "4px 8px",
-                    background: "rgba(30,41,59,0.95)",
-                    border: "1px solid rgba(251,191,36,0.18)",
-                    color: "#fef3c7",
-                    fontSize: "0.78rem",
-                    lineHeight: 1.2,
-                  }}
-                >
-                  {item}
-                </span>
-              ))}
-            </div>
+            <IngredientScanDebugBucket
+              title="Direct ingredients extracted"
+              count={directIngredientTexts.length}
+              items={directIngredientTexts}
+              accentColor="#60a5fa"
+              emptyLabel="No direct ingredients were extracted."
+              testId="ingredient-scan-debug-direct"
+            />
+            <IngredientScanDebugBucket
+              title="Catalog-backed direct ingredients"
+              count={catalogMatchedCandidateTexts.length}
+              items={catalogMatchedCandidateTexts}
+              accentColor="#22c55e"
+              emptyLabel="No direct ingredients matched the ingredient catalog."
+              testId="ingredient-scan-debug-catalog"
+            />
+            <IngredientScanDebugBucket
+              title="Direct ingredients sent to AI"
+              count={directIngredientsSentToAiTexts.length}
+              items={directIngredientsSentToAiTexts}
+              accentColor="#f87171"
+              emptyLabel="No direct ingredients needed AI review."
+              testId="ingredient-scan-debug-ai-direct"
+            />
+            <IngredientScanDebugBucket
+              title="Auto-resolved declarations"
+              count={resolvedDeclarationCandidateTexts.length}
+              items={resolvedDeclarationCandidateTexts}
+              accentColor="#fbbf24"
+              emptyLabel="No declaration candidates were resolved deterministically."
+              testId="ingredient-scan-debug-resolved"
+            />
+            <IngredientScanDebugBucket
+              title="Declarations sent to AI"
+              count={declarationsSentToAiTexts.length}
+              items={declarationsSentToAiTexts}
+              accentColor="#fb7185"
+              emptyLabel="No declaration candidates needed AI review."
+              testId="ingredient-scan-debug-ai-declarations"
+            />
           </div>
-        ) : null}
       </div>
     </details>
   );
