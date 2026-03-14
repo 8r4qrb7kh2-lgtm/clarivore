@@ -124,7 +124,7 @@ function findWordIndicesForText(words, text, usedIndices = new Set()) {
   return bestMatch;
 }
 
-function normalizeDirectIngredients(value) {
+export function normalizeDirectIngredients(value) {
   const list = Array.isArray(value?.direct_ingredients)
     ? value.direct_ingredients
     : Array.isArray(value?.directIngredients)
@@ -133,13 +133,34 @@ function normalizeDirectIngredients(value) {
   return list;
 }
 
-function normalizeDeclarationCandidates(value) {
+export function normalizeDeclarationCandidates(value) {
   const list = Array.isArray(value?.declaration_candidates)
     ? value.declaration_candidates
     : Array.isArray(value?.declarationCandidates)
       ? value.declarationCandidates
       : [];
   return list;
+}
+
+export function normalizeCandidateExtractionPayload(value) {
+  if (!value || typeof value !== "object") return null;
+
+  const source =
+    value?.value && typeof value.value === "object" && !Array.isArray(value.value)
+      ? value.value
+      : value;
+  const hasKnownKey =
+    Object.prototype.hasOwnProperty.call(source, "direct_ingredients") ||
+    Object.prototype.hasOwnProperty.call(source, "directIngredients") ||
+    Object.prototype.hasOwnProperty.call(source, "declaration_candidates") ||
+    Object.prototype.hasOwnProperty.call(source, "declarationCandidates");
+
+  if (!hasKnownKey) return null;
+
+  return {
+    direct_ingredients: normalizeDirectIngredients(source),
+    declaration_candidates: normalizeDeclarationCandidates(source),
+  };
 }
 
 function createDirectCandidate(item, index, words, usedIndices) {

@@ -40,6 +40,29 @@ function createOpenAiCandidateExtractionPayload({
   };
 }
 
+function createOpenAiParsedContentPayload(parsed) {
+  return {
+    output: [
+      {
+        type: "message",
+        role: "assistant",
+        content: [
+          {
+            type: "output_text",
+            text: "",
+            parsed,
+          },
+        ],
+      },
+    ],
+    usage: {
+      input_tokens: 100,
+      output_tokens: 25,
+      total_tokens: 125,
+    },
+  };
+}
+
 function createConfigPayloads() {
   return {
     allergens: [
@@ -47,6 +70,7 @@ function createConfigPayloads() {
       { key: "milk", label: "Milk", sort_order: 2, is_active: true },
       { key: "soy", label: "Soy", sort_order: 3, is_active: true },
       { key: "tree_nut", label: "Tree Nut", sort_order: 4, is_active: true },
+      { key: "sesame", label: "Sesame", sort_order: 5, is_active: true },
     ],
     diets: [
       {
@@ -233,6 +257,77 @@ test("ingredient allergen route adjudicates conflicting parallel agent results w
   const adjudicationInput = JSON.stringify(openAiRequests[3].input);
   assert.match(adjudicationInput, /Agent A candidate JSON/);
   assert.match(adjudicationInput, /Agent B candidate JSON/);
+});
+
+test("ingredient allergen route accepts nested parsed structured output from OpenAI candidate extraction", async () => {
+  const agreedFlags = [
+    {
+      candidate_id: "direct:0",
+      allergen_codes: [4],
+      diet_codes: [],
+    },
+  ];
+
+  const { body, openAiRequests } = await invokeRoute({
+    transcriptLines: ["Ingredients: Hazelnuts"],
+    openAiPayloads: [
+      createOpenAiParsedContentPayload({
+        direct_ingredients: [{ text: "Hazelnuts", word_indices: [1] }],
+        declaration_candidates: [],
+      }),
+      createOpenAiStructuredPayload(agreedFlags),
+      createOpenAiStructuredPayload(agreedFlags),
+    ],
+  });
+
+  assert.equal(body.success, true);
+  assert.equal(openAiRequests.length, 3);
+  assert.deepEqual(body.flags, [
+    {
+      ingredient: "Hazelnuts",
+      word_indices: [1],
+      allergens: ["tree_nut"],
+      diets: [],
+      risk_type: "contained",
+    },
+  ]);
+  assert.equal(body.debug.ingredientExtractionMethod, "ai");
+  assert.equal(body.debug.aiCandidateCount, 1);
+});
+
+test("ingredient allergen route accepts candidate extraction payloads with camelCase keys and no declaration list", async () => {
+  const agreedFlags = [
+    {
+      candidate_id: "direct:0",
+      allergen_codes: [5],
+      diet_codes: [],
+    },
+  ];
+
+  const { body, openAiRequests } = await invokeRoute({
+    transcriptLines: ["Ingredients: Sesame oil"],
+    openAiPayloads: [
+      createOpenAiParsedContentPayload({
+        directIngredients: [{ text: "Sesame oil", word_indices: [1, 2] }],
+      }),
+      createOpenAiStructuredPayload(agreedFlags),
+      createOpenAiStructuredPayload(agreedFlags),
+    ],
+  });
+
+  assert.equal(body.success, true);
+  assert.equal(openAiRequests.length, 3);
+  assert.deepEqual(body.flags, [
+    {
+      ingredient: "Sesame oil",
+      word_indices: [1, 2],
+      allergens: ["sesame"],
+      diets: [],
+      risk_type: "contained",
+    },
+  ]);
+  assert.deepEqual(body.parsedIngredientsList, ["Sesame oil"]);
+  assert.equal(body.debug.aiCandidateCount, 1);
 });
 
 test("ingredient allergen route analyzes hazelnuts via AI", async () => {

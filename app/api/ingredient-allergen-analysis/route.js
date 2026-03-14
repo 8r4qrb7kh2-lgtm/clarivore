@@ -21,7 +21,10 @@ import {
   resolveExplicitDeclarationCandidates,
 } from "../../lib/server/ingredientAllergenCandidates.js";
 import { parseIngredientLabelTranscript } from "../../lib/ingredientLabelParser.js";
-import { buildParsedTranscriptFromCandidateExtraction } from "../../lib/server/ingredientCandidateExtraction.js";
+import {
+  buildParsedTranscriptFromCandidateExtraction,
+  normalizeCandidateExtractionPayload,
+} from "../../lib/server/ingredientCandidateExtraction.js";
 
 export const runtime = "nodejs";
 
@@ -584,34 +587,37 @@ async function runOpenAiCandidateExtraction({
   let lastError = null;
   for (let attempt = 1; attempt <= MAX_ANALYSIS_ATTEMPTS; attempt += 1) {
     try {
+      const attemptMaxTokens = Math.min(Math.max(1, Number(maxTokens) || 0) * attempt, 2400);
       const response = await callOpenAiApi({
         promptClass: "ingredientCandidateExtraction",
         systemPrompt,
         messages: [{ role: "user", content: [createTextMessage(userPrompt)] }],
-        maxTokens,
+        maxTokens: attemptMaxTokens,
         jsonSchema: ingredientCandidateExtractionSchema,
         reasoningEffort: OPENAI_REASONING_EFFORT,
         metadata,
         env,
       });
 
-      const parsed =
+      const normalized = normalizeCandidateExtractionPayload(
         response?.parsed && typeof response.parsed === "object"
           ? response.parsed
-          : parseClaudeJson(response.text);
-      if (
-        parsed &&
-        typeof parsed === "object" &&
-        Array.isArray(parsed.direct_ingredients) &&
-        Array.isArray(parsed.declaration_candidates)
-      ) {
+          : parseClaudeJson(response.text),
+      );
+      if (normalized) {
         return {
           ...response,
-          parsed,
+          parsed: normalized,
         };
       }
 
-      lastError = new Error("Ingredient candidate extraction returned malformed output.");
+      const incompleteReason = asText(response?.rawResponse?.incomplete_details?.reason);
+      const incompleteStatus = asText(response?.rawResponse?.status);
+      lastError = new Error(
+        incompleteReason || incompleteStatus === "incomplete"
+          ? `Ingredient candidate extraction returned malformed output (${incompleteReason || "incomplete response"}).`
+          : "Ingredient candidate extraction returned malformed output.",
+      );
       if (attempt >= MAX_ANALYSIS_ATTEMPTS) {
         break;
       }

@@ -171,6 +171,17 @@ function collectTextSegments(value) {
   return "";
 }
 
+function parseStructuredJsonValue(value) {
+  if (value === undefined || value === null) return null;
+  if (typeof value === "object") return value;
+  if (typeof value !== "string" || !value.trim()) return null;
+  try {
+    return JSON.parse(value);
+  } catch {
+    return null;
+  }
+}
+
 function extractOpenAiText(payload) {
   const directOutputText = collectTextSegments(payload?.output_text);
   if (directOutputText) return directOutputText;
@@ -204,6 +215,30 @@ function extractOpenAiText(payload) {
   }
 
   return "";
+}
+
+function extractOpenAiParsed(payload) {
+  const topLevelParsed = parseStructuredJsonValue(payload?.output_parsed);
+  if (topLevelParsed !== null) return topLevelParsed;
+
+  const stack = Array.isArray(payload?.output) ? [...payload.output] : [];
+  while (stack.length) {
+    const current = stack.shift();
+    if (!current || typeof current !== "object") continue;
+
+    const currentParsed =
+      parseStructuredJsonValue(current.parsed) ||
+      parseStructuredJsonValue(current.output_parsed) ||
+      parseStructuredJsonValue(current.json) ||
+      parseStructuredJsonValue(current.arguments);
+    if (currentParsed !== null) {
+      return currentParsed;
+    }
+
+    if (Array.isArray(current.content)) stack.push(...current.content);
+  }
+
+  return null;
 }
 
 function buildOpenAiJsonSchema(promptClass, jsonSchema) {
@@ -250,6 +285,14 @@ function unwrapOpenAiStructuredText(text, schemaSpec) {
     return text;
   }
   return text;
+}
+
+function unwrapOpenAiStructuredValue(value, schemaSpec) {
+  if (!schemaSpec?.unwrapValue) return value;
+  if (value && typeof value === "object" && "value" in value) {
+    return value.value;
+  }
+  return value;
 }
 
 function toAnthropicMessages(messages) {
@@ -469,12 +512,17 @@ export async function callOpenAiApi({
     throw new Error(message);
   }
 
-  const text = unwrapOpenAiStructuredText(extractOpenAiText(payload), openAiSchema);
+  const parsed = unwrapOpenAiStructuredValue(extractOpenAiParsed(payload), openAiSchema);
+  const extractedText = extractOpenAiText(payload);
+  const textSource =
+    extractedText || (parsed !== null && parsed !== undefined ? JSON.stringify(parsed) : "");
+  const text = unwrapOpenAiStructuredText(textSource, openAiSchema);
   const usage = normalizeUsage("openai", payload);
   return {
     provider: "openai",
     model,
     text,
+    parsed,
     usage,
     latencyMs,
     rawResponse: payload,
