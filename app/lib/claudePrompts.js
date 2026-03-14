@@ -249,7 +249,9 @@ STRICT RULES:
 - Use risk_type "contained" only for explicit contains declarations.
 - Use risk_type "cross-contamination" for may-contain, facility, shared-equipment, shared-line, traces-of, and similar advisory warnings.
 - Use only these declaration_type values: "contains", "may-contain", "traces-of", "facility", "shared-equipment", "shared-line", or null.
-- word_indices are optional. If you include them, they must point to the exact indexed transcript words for that item text, excluding any lead-in words.
+- Always include word_indices for every item.
+- If you can map the item confidently, word_indices must point to the exact indexed transcript words for that item text, excluding any lead-in words.
+- If you cannot map the item confidently, set word_indices to null.
 - Do not invent items that are not present in the transcript.
 
 Example:
@@ -290,19 +292,19 @@ Indexed words:
 Return:
 {
   "direct_ingredients": [
-    { "text": "Pea Protein" },
-    { "text": "Rice Starch" },
-    { "text": "Hazelnut" }
+    { "text": "Pea Protein", "word_indices": [3, 4] },
+    { "text": "Rice Starch", "word_indices": [5, 6] },
+    { "text": "Hazelnut", "word_indices": [7] }
   ],
   "declaration_candidates": [
-    { "text": "Peanut", "declaration_type": "shared-equipment", "risk_type": "cross-contamination" },
-    { "text": "Dairy", "declaration_type": "shared-equipment", "risk_type": "cross-contamination" },
-    { "text": "Soy", "declaration_type": "shared-equipment", "risk_type": "cross-contamination" },
-    { "text": "Sesame", "declaration_type": "shared-equipment", "risk_type": "cross-contamination" },
-    { "text": "Tree Nuts", "declaration_type": "shared-equipment", "risk_type": "cross-contamination" },
-    { "text": "Wheat", "declaration_type": "shared-equipment", "risk_type": "cross-contamination" },
-    { "text": "Egg", "declaration_type": "shared-equipment", "risk_type": "cross-contamination" },
-    { "text": "nut shell fragments", "declaration_type": "may-contain", "risk_type": "cross-contamination" }
+    { "text": "Peanut", "word_indices": [13], "declaration_type": "shared-equipment", "risk_type": "cross-contamination" },
+    { "text": "Dairy", "word_indices": [14], "declaration_type": "shared-equipment", "risk_type": "cross-contamination" },
+    { "text": "Soy", "word_indices": [15], "declaration_type": "shared-equipment", "risk_type": "cross-contamination" },
+    { "text": "Sesame", "word_indices": [16], "declaration_type": "shared-equipment", "risk_type": "cross-contamination" },
+    { "text": "Tree Nuts", "word_indices": [17, 18], "declaration_type": "shared-equipment", "risk_type": "cross-contamination" },
+    { "text": "Wheat", "word_indices": [19], "declaration_type": "shared-equipment", "risk_type": "cross-contamination" },
+    { "text": "Egg", "word_indices": [21], "declaration_type": "shared-equipment", "risk_type": "cross-contamination" },
+    { "text": "nut shell fragments", "word_indices": [24, 25, 26], "declaration_type": "may-contain", "risk_type": "cross-contamination" }
   ]
 }`,
     userPrompt: `Transcript lines:

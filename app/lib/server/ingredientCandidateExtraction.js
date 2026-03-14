@@ -248,30 +248,11 @@ export function buildParsedTranscriptFromCandidateExtraction({
     "declaration",
   );
 
-  if (!directCandidates.length && !declarationCandidates.length) {
-    return {
-      ...fallback,
-      extractionMethod: "fallback",
-    };
-  }
-
-  const finalDirectCandidates = directCandidates.length
-    ? directCandidates
-    : Array.isArray(fallback?.directCandidates)
-      ? fallback.directCandidates
-      : [];
-  const finalDeclarationCandidates = declarationCandidates.length
-    ? declarationCandidates
-    : Array.isArray(fallback?.declarationCandidates)
-      ? fallback.declarationCandidates
-      : [];
-
   return {
     ...fallback,
-    directCandidates: finalDirectCandidates,
-    declarationCandidates: finalDeclarationCandidates,
-    parsedIngredientsList: finalDirectCandidates.map((candidate) => candidate.text),
-    extractionMethod:
-      directCandidates.length && declarationCandidates.length ? "ai" : "hybrid",
+    directCandidates,
+    declarationCandidates,
+    parsedIngredientsList: directCandidates.map((candidate) => candidate.text),
+    extractionMethod: "ai",
   };
 }

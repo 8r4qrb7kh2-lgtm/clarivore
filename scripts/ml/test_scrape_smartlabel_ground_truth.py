@@ -2,11 +2,18 @@ import unittest
 
 from scripts.ml.scrape_smartlabel_ground_truth import (
     extract_bestchoice_upc,
+    extract_generalmills_gtin,
     extract_scanbuy_product_id,
     labelinsight_product_id,
     parse_bestchoice_allergens_html,
     parse_bestchoice_ingredients_html,
+    parse_generalmills_allergens_html,
+    parse_generalmills_ingredients_html,
+    parse_hormel_allergens_html,
+    parse_hormel_ingredients_html,
     parse_labelinsight_payload,
+    parse_pg_product_payload,
+    parse_rbnainfo_ingredients_html,
     parse_scanbuy_allergens_html,
     parse_scanbuy_ingredients_html,
     parse_syndigo_allergens_html,
@@ -31,6 +38,14 @@ SCANBUY_INGREDIENTS_HTML = """
   <a><span class="list-title">Rice</span></a>
   <a><span class="list-title">Wheat Flour</span></a>
   <a><span class="list-title">Palm Oil</span></a>
+</div>
+"""
+
+SCANBUY_INGREDIENTS_DIV_HTML = """
+<div id="ingredient-list">
+  <a><div class="list-title">Corn Syrup</div></a>
+  <a><div class="list-title">Sugar</div></a>
+  <a><div class="list-title">Coconut</div></a>
 </div>
 """
 
@@ -110,6 +125,60 @@ BESTCHOICE_MISSING_ALLERGEN_STATUS_HTML = """
 </body></html>
 """
 
+GENERALMILLS_INGREDIENTS_HTML = """
+<div class="container-fluid margin-top-20">
+  <ul id="ingredients-list">
+    <li class="ingredient-li"><div class="list-title header1 ing-head">ORGANIC WHEAT FLOUR</div></li>
+    <li class="ingredient-li"><div class="list-title header1 ing-head">WATER</div></li>
+    <li class="ingredient-li">
+      <div class="list-title header1 ing-head">BAKING POWDER</div>
+      <ul class="no-bullet">
+        <li><div class="list-title header1 ing-head">SODIUM ACID PYROPHOSPHATE</div></li>
+        <li><div class="list-title header1 ing-head">BAKING SODA</div></li>
+      </ul>
+    </li>
+  </ul>
+</div>
+"""
+
+GENERALMILLS_ALLERGENS_HTML = """
+<div class="container-fluid margin-top-20">
+  <ul id="allergens-list">
+    <li class="allergen-li">
+      <div class="list-title header1"><h3>Wheat</h3></div>
+      <div class="contain-link"><span>Contains</span></div>
+    </li>
+    <li class="allergen-li">
+      <div class="list-title header1"><h3>Sesame</h3></div>
+      <div class="contain-link"><span>May Contain</span></div>
+    </li>
+  </ul>
+</div>
+"""
+
+HORMEL_INGREDIENTS_HTML = """
+<main id="ingredientsTab" class="tabcontent">
+  <ul>
+    <li><p>Cashews</p></li>
+    <li><p>Peanut Oil</p></li>
+    <li><p>Sea Salt</p></li>
+  </ul>
+</main>
+"""
+
+HORMEL_ALLERGENS_HTML = """
+<main id="allergensTab" class="tabcontent">
+  <div class="allergens-header"><h5>According to the FDA...</h5></div>
+  <ul>
+    <li><p>Cashew</p><span class="contains-pill">Contains</span></li>
+    <li><p>Tree Nut</p><span class="contains-pill">Contains</span></li>
+  </ul>
+  <ul>
+    <li><p>Contains: Cashew. May Contain: Peanuts, Other Tree Nuts.</p></li>
+  </ul>
+</main>
+"""
+
 LABELINSIGHT_PAYLOAD = {
     "upc": "021130174744",
     "marketingImage": "https://example.com/image.jpg",
@@ -131,6 +200,74 @@ LABELINSIGHT_PAYLOAD = {
     },
 }
 
+PG_PAYLOAD = {
+    "fields": {
+        "ingredientList": [
+            {
+                "ingredientName": "Water",
+                "ingredientType": "INGREDIENTS",
+            },
+            {
+                "ingredientName": "Fragrance",
+                "ingredientType": "INGREDIENTS",
+                "fragranceIngredients": [
+                    {
+                        "ingredientName": "ETHYL LINALOOL",
+                        "ingredientType": "SUB INGREDIENTS",
+                    },
+                    {
+                        "ingredientName": "LIMONENE",
+                        "ingredientType": "SUB INGREDIENTS",
+                    },
+                ],
+            },
+        ],
+        "allergen": {
+            "fields": {
+                "allergenStatement": "Salicylate: 261 mg.;",
+            }
+        },
+        "productImage": {
+            "fields": {
+                "file": {
+                    "url": "//images.ctfassets.net/example/product.png",
+                }
+            }
+        },
+    }
+}
+
+RBNINFO_HTML = """
+<section id="ingredients">
+  <div id="accordionOuter">
+    <div class="card card-blue">
+      <div class="card-header"><h3 class="cas-category-head">INTENTIONALLY ADDED</h3></div>
+      <div class="accParent collapse">
+        <div class="card-body">
+          <div class="card" id="intentionally-addedChild">
+            <div class="card-header" id="ingred-1Heading"><h3>Water</h3></div>
+            <div class="accChild collapse" id="ingred-1"><div class="card-body blueBg">CAS #: 7732-18-5</div></div>
+            <div class="card-header" id="ingred-2Heading"><h3>Ethanol</h3></div>
+            <div class="accChild collapse" id="ingred-2"><div class="card-body blueBg">CAS #: 64-17-5</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card card-blue">
+      <div class="card-header"><h3 class="cas-category-head">FRAGRANCE COMPONENT</h3></div>
+      <div class="accParent collapse">
+        <div class="card-body">
+          <div class="card">
+            <div class="card-header" id="ingred-3Heading"><h3>Limonene</h3></div>
+            <div class="accChild collapse" id="ingred-3"><div class="card-body blueBg">CAS #: 138-86-3</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+"""
+
 
 class SmartLabelScrapeTests(unittest.TestCase):
     def test_extract_bestchoice_upc(self):
@@ -148,11 +285,17 @@ class SmartLabelScrapeTests(unittest.TestCase):
             extract_scanbuy_product_id(SCANBUY_LANDING_HTML_VALUE_FIRST),
             "be66bd25-cb4d-4656-8547-561d29bec849",
         )
+        self.assertEqual(extract_generalmills_gtin("https://smartlabel.generalmills.com/13562472949"), "13562472949")
 
     def test_parse_scanbuy_ingredients_html(self):
         ingredients_text, items = parse_scanbuy_ingredients_html(SCANBUY_INGREDIENTS_HTML)
         self.assertEqual(items, ["Rice", "Wheat Flour", "Palm Oil"])
         self.assertIn("Rice", ingredients_text)
+
+    def test_parse_scanbuy_ingredients_html_accepts_div_titles(self):
+        ingredients_text, items = parse_scanbuy_ingredients_html(SCANBUY_INGREDIENTS_DIV_HTML)
+        self.assertEqual(items, ["Corn Syrup", "Sugar", "Coconut"])
+        self.assertIn("Corn Syrup", ingredients_text)
 
     def test_parse_scanbuy_allergens_html(self):
         declared, present, may_contain = parse_scanbuy_allergens_html(SCANBUY_ALLERGENS_HTML)
@@ -200,6 +343,31 @@ class SmartLabelScrapeTests(unittest.TestCase):
         self.assertEqual(may_contain, [])
         self.assertEqual(explicit_rows, 0)
 
+    def test_parse_generalmills_ingredients_html(self):
+        ingredients_text, items = parse_generalmills_ingredients_html(GENERALMILLS_INGREDIENTS_HTML)
+        self.assertEqual(
+            items,
+            ["ORGANIC WHEAT FLOUR", "WATER", "BAKING POWDER", "SODIUM ACID PYROPHOSPHATE", "BAKING SODA"],
+        )
+        self.assertIn("BAKING POWDER", ingredients_text)
+
+    def test_parse_generalmills_allergens_html(self):
+        declared, present, may_contain = parse_generalmills_allergens_html(GENERALMILLS_ALLERGENS_HTML)
+        self.assertEqual(declared, [])
+        self.assertEqual(present, ["Wheat"])
+        self.assertEqual(may_contain, ["Sesame"])
+
+    def test_parse_hormel_ingredients_html(self):
+        ingredients_text, items = parse_hormel_ingredients_html(HORMEL_INGREDIENTS_HTML)
+        self.assertEqual(items, ["Cashews", "Peanut Oil", "Sea Salt"])
+        self.assertIn("Cashews", ingredients_text)
+
+    def test_parse_hormel_allergens_html(self):
+        declared, present, may_contain = parse_hormel_allergens_html(HORMEL_ALLERGENS_HTML)
+        self.assertEqual(declared, [])
+        self.assertEqual(present, ["Cashew", "Tree Nut"])
+        self.assertEqual(may_contain, ["Peanuts", "Other Tree Nuts"])
+
     def test_labelinsight_product_id(self):
         self.assertEqual(
             labelinsight_product_id("https://smartlabel.labelinsight.com/product/11188035/nutrition"),
@@ -218,6 +386,20 @@ class SmartLabelScrapeTests(unittest.TestCase):
         self.assertEqual(present, ["Egg", "Milk"])
         self.assertEqual(may_contain, ["Peanuts"])
         self.assertEqual(image_url, "https://example.com/image.jpg")
+
+    def test_parse_pg_product_payload(self):
+        ingredients_text, items, declared, present, may_contain, image_url = parse_pg_product_payload(PG_PAYLOAD)
+        self.assertIn("Fragrance", ingredients_text)
+        self.assertEqual(items, ["Water", "Fragrance", "ETHYL LINALOOL", "LIMONENE"])
+        self.assertEqual(declared, ["Salicylate: 261 mg.;"])
+        self.assertEqual(present, [])
+        self.assertEqual(may_contain, [])
+        self.assertEqual(image_url, "https://images.ctfassets.net/example/product.png")
+
+    def test_parse_rbnainfo_ingredients_html(self):
+        ingredients_text, items = parse_rbnainfo_ingredients_html(RBNINFO_HTML)
+        self.assertEqual(items, ["Water", "Ethanol", "Limonene"])
+        self.assertIn("Ethanol", ingredients_text)
 
 
 if __name__ == "__main__":

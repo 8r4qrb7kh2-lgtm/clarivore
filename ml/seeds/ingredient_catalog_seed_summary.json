@@ -1,116 +1,116 @@
 {
-  "extraction_version": "smartlabel_safe_v1",
+  "extraction_version": "smartlabel_safe_v1_surface_rows_v2",
   "input_file": "/Users/mattdavis/.cursor/worktrees/clarivore-main/9J1NT/full_smartlabel_ground_truth copy.csv",
-  "min_support": 2,
-  "products_skipped_unsafe_or_unknown_with_items": 2652,
-  "products_skipped_without_items": 7228,
-  "safe_products_used": 5148,
+  "min_support": 1,
+  "products_skipped_unsafe_or_unknown_with_items": 7173,
+  "products_skipped_without_items": 12635,
+  "safe_products_used": 21365,
   "seed_source": "smartlabel_ground_truth_safe_v1",
-  "structural_items_filtered": 1045,
+  "structural_items_filtered": 10136,
   "top_entries": [
     {
-      "lookup_count": 2725,
-      "normalized_name": "water"
+      "lookup_count": 6549,
+      "normalized_name": "Salt"
     },
     {
-      "lookup_count": 2408,
-      "normalized_name": "salt"
+      "lookup_count": 5182,
+      "normalized_name": "Water"
     },
     {
-      "lookup_count": 1836,
-      "normalized_name": "natural flavor"
+      "lookup_count": 4948,
+      "normalized_name": "Sugar"
     },
     {
-      "lookup_count": 1644,
-      "normalized_name": "citric acid"
+      "lookup_count": 4102,
+      "normalized_name": "Citric Acid"
     },
     {
-      "lookup_count": 1604,
-      "normalized_name": "sugar"
+      "lookup_count": 3726,
+      "normalized_name": "Natural Flavor"
     },
     {
-      "lookup_count": 901,
-      "normalized_name": "spice"
+      "lookup_count": 1796,
+      "normalized_name": "Dextrose"
     },
     {
-      "lookup_count": 654,
-      "normalized_name": "dextrose"
+      "lookup_count": 1490,
+      "normalized_name": "Natural Flavors"
     },
     {
-      "lookup_count": 626,
-      "normalized_name": "garlic powder"
+      "lookup_count": 1472,
+      "normalized_name": "Corn Syrup"
     },
     {
-      "lookup_count": 574,
-      "normalized_name": "xanthan gum"
+      "lookup_count": 1392,
+      "normalized_name": "Spices"
     },
     {
-      "lookup_count": 536,
-      "normalized_name": "modified corn starch"
+      "lookup_count": 1364,
+      "normalized_name": "Sodium Citrate"
     },
     {
-      "lookup_count": 524,
-      "normalized_name": "caramel color"
+      "lookup_count": 1318,
+      "normalized_name": "Lecithin"
     },
     {
-      "lookup_count": 514,
-      "normalized_name": "onion"
+      "lookup_count": 1224,
+      "normalized_name": "Garlic Powder"
     },
     {
-      "lookup_count": 492,
-      "normalized_name": "soybean oil"
+      "lookup_count": 1188,
+      "normalized_name": "Palm Oil"
     },
     {
-      "lookup_count": 490,
-      "normalized_name": "corn starch"
+      "lookup_count": 1186,
+      "normalized_name": "Soybean Oil"
     },
     {
-      "lookup_count": 488,
-      "normalized_name": "garlic"
+      "lookup_count": 1164,
+      "normalized_name": "Caramel Color"
     },
     {
-      "lookup_count": 459,
-      "normalized_name": "onion powder"
+      "lookup_count": 1159,
+      "normalized_name": "High Fructose Corn Syrup"
     },
     {
-      "lookup_count": 439,
-      "normalized_name": "corn syrup"
+      "lookup_count": 1154,
+      "normalized_name": "Xanthan Gum"
     },
     {
-      "lookup_count": 439,
-      "normalized_name": "maltodextrin"
+      "lookup_count": 1099,
+      "normalized_name": "Folic Acid"
     },
     {
-      "lookup_count": 436,
-      "normalized_name": "canola oil"
+      "lookup_count": 1019,
+      "normalized_name": "Vegetable Oil"
     },
     {
-      "lookup_count": 430,
-      "normalized_name": "sodium citrate"
+      "lookup_count": 1017,
+      "normalized_name": "Riboflavin"
     },
     {
-      "lookup_count": 426,
-      "normalized_name": "high fructose corn syrup"
+      "lookup_count": 996,
+      "normalized_name": "Modified Corn Starch"
     },
     {
-      "lookup_count": 417,
-      "normalized_name": "carbonated water"
+      "lookup_count": 994,
+      "normalized_name": "Niacin"
     },
     {
-      "lookup_count": 410,
-      "normalized_name": "folic acid"
+      "lookup_count": 991,
+      "normalized_name": "Canola Oil"
     },
     {
-      "lookup_count": 404,
-      "normalized_name": "sea salt"
+      "lookup_count": 988,
+      "normalized_name": "Chocolate"
     },
     {
-      "lookup_count": 399,
-      "normalized_name": "riboflavin"
+      "lookup_count": 973,
+      "normalized_name": "Carbonated Water"
     }
   ],
-  "total_input_rows": 15028,
-  "unique_products": 15028,
-  "unique_safe_ingredients_after_support_filter": 2373,
-  "unique_safe_ingredients_before_support_filter": 3855
+  "total_input_rows": 41173,
+  "unique_products": 25074,
+  "unique_safe_ingredients_after_support_filter": 10033,
+  "unique_safe_ingredients_before_support_filter": 10033
 }

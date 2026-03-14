@@ -32,6 +32,7 @@ export async function analyzeAllergensWithLabelCropper(
         transcriptLines: lines,
         analysisOptions: {
           debug: debug === true,
+          useAiCandidateExtraction: true,
         },
       }),
     });

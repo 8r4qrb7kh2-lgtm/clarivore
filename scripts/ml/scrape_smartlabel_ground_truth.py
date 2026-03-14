@@ -24,7 +24,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import Any
 from urllib.error import HTTPError, URLError
-from urllib.parse import urljoin, urlparse
+from urllib.parse import urlencode, urljoin, urlparse
 from urllib.request import Request, urlopen
 import xml.etree.ElementTree as ET
 
@@ -51,6 +51,8 @@ DEFAULT_SITEMAP_HOSTS = [
 SITEMAP_NS = {"sm": "http://www.sitemaps.org/schemas/sitemap/0.9"}
 USER_AGENT = "Mozilla/5.0 (compatible; ClarivoreSmartLabelScraper/1.0)"
 SEARCH_API_URL = "https://api.smartlabel.org/api/search"
+PG_PRODUCT_DETAILS_URL = "https://az-na-smartlabel-prod-functionapp-api.pgcloud.com/api/getproductdetails"
+PG_FUNCTIONS_KEY = "rcFCU9OGRqabB1wIlttDM8MKKGU8aVb0YquO2xw6uiW9a7SGraQhlw=="
 CSV_FIELDNAMES = [
     "smartlabel_id",
     "smartlabel_upc",
@@ -222,6 +224,48 @@ def fetch_json(url: str, timeout_seconds: int) -> tuple[str, Any | None, str]:
         return status, None, str(exc)
 
 
+def fetch_json_with_headers(url: str, timeout_seconds: int, headers: dict[str, str]) -> tuple[str, Any | None, str]:
+    request = Request(url, headers={"User-Agent": USER_AGENT, **headers})
+    try:
+        with urlopen(request, timeout=timeout_seconds) as response:
+            charset = response.headers.get_content_charset() or "utf-8"
+            text = response.read().decode(charset, "ignore")
+            return str(response.status), json.loads(text), ""
+    except HTTPError as exc:
+        body = exc.read().decode("utf-8", "ignore") if exc.fp else ""
+        return str(exc.code), None, body or str(exc)
+    except json.JSONDecodeError as exc:
+        return "200", None, str(exc)
+    except URLError as exc:
+        return "", None, str(exc)
+    except TimeoutError as exc:
+        return "", None, str(exc)
+
+
+def fetch_form_url(url: str, form_data: dict[str, str], timeout_seconds: int) -> tuple[str, str, str]:
+    request = Request(
+        url,
+        data=urlencode(form_data).encode("utf-8"),
+        headers={
+            "User-Agent": USER_AGENT,
+            "Content-Type": "application/x-www-form-urlencoded",
+        },
+        method="POST",
+    )
+    try:
+        with urlopen(request, timeout=timeout_seconds) as response:
+            charset = response.headers.get_content_charset() or "utf-8"
+            text = response.read().decode(charset, "ignore")
+            return str(response.status), text, ""
+    except HTTPError as exc:
+        body = exc.read().decode("utf-8", "ignore") if exc.fp else ""
+        return str(exc.code), body, str(exc)
+    except URLError as exc:
+        return "", "", str(exc)
+    except TimeoutError as exc:
+        return "", "", str(exc)
+
+
 def make_numeric_id(seed: str) -> str:
     return str(zlib.crc32(seed.encode("utf-8")) & 0xFFFFFFFF)
 
@@ -314,6 +358,18 @@ def extract_bestchoice_upc(soup: BeautifulSoup) -> str:
     return ""
 
 
+def extract_generalmills_gtin(value: str) -> str:
+    match = re.search(r"(\d{11,14})", as_text(value))
+    return as_text(match.group(1)) if match else ""
+
+
+def extract_pg_locale_and_gtin(url: str) -> tuple[str, str]:
+    match = re.search(r"/([a-z]{2}-[a-z]{2})/([0-9]{11,14})\.html$", as_text(url), re.IGNORECASE)
+    if not match:
+        return "", extract_generalmills_gtin(url)
+    return match.group(1), match.group(2)
+
+
 def normalize_allergen_name(value: str) -> str:
     text = normalize_spaces(value).strip(".:,;")
     return text
@@ -404,7 +460,7 @@ def parse_scanbuy_ingredients_html(html: str) -> tuple[str, list[str]]:
     container = soup.select_one("#ingredient-list") or soup
     items = [
         normalize_spaces(node.get_text(" ", strip=True))
-        for node in container.select("span.list-title")
+        for node in container.select(".list-title")
         if normalize_spaces(node.get_text(" ", strip=True))
     ]
     unique_items = dedupe_strings(items)
@@ -503,6 +559,89 @@ def parse_bestchoice_ingredients_html(html: str) -> tuple[str, list[str]]:
     return ", ".join(unique_items), unique_items
 
 
+def parse_generalmills_ingredients_html(html: str) -> tuple[str, list[str]]:
+    soup = BeautifulSoup(html, "html.parser")
+    items = [
+        normalize_spaces(node.get_text(" ", strip=True))
+        for node in soup.select("#ingredients-list .list-title")
+        if normalize_spaces(node.get_text(" ", strip=True))
+    ]
+    unique_items = dedupe_strings(items)
+    return ", ".join(unique_items), unique_items
+
+
+def parse_generalmills_allergens_html(html: str) -> tuple[list[str], list[str], list[str]]:
+    soup = BeautifulSoup(html, "html.parser")
+    declared: list[str] = []
+    present: list[str] = []
+    may_contain: list[str] = []
+
+    for row in soup.select("#allergens-list li"):
+        name_node = row.select_one("h3, .list-title")
+        status_node = row.select_one(".contain-link span, .contain-link")
+        name = normalize_spaces(name_node.get_text(" ", strip=True)) if name_node else ""
+        status = normalize_spaces(status_node.get_text(" ", strip=True)) if status_node else ""
+        if not name:
+            continue
+        assign_allergen_bucket(name, status, declared, present, may_contain)
+
+    return dedupe_strings(declared), dedupe_strings(present), dedupe_strings(may_contain)
+
+
+def parse_hormel_ingredients_html(html: str) -> tuple[str, list[str]]:
+    soup = BeautifulSoup(html, "html.parser")
+    items = [
+        normalize_spaces(node.get_text(" ", strip=True))
+        for node in soup.select("#ingredientsTab li p")
+        if normalize_spaces(node.get_text(" ", strip=True))
+    ]
+    if not items:
+        text = normalize_spaces((soup.select_one("#ingredientsTab") or soup).get_text(" ", strip=True))
+        items = split_allergen_names(text) if "," in text else [text] if text else []
+    unique_items = dedupe_strings(items)
+    return ", ".join(unique_items), unique_items
+
+
+def parse_hormel_allergens_html(html: str) -> tuple[list[str], list[str], list[str]]:
+    soup = BeautifulSoup(html, "html.parser")
+    declared: list[str] = []
+    present: list[str] = []
+    may_contain: list[str] = []
+
+    for row in soup.select("#allergensTab ul li"):
+        name_node = row.select_one("p")
+        status_node = row.select_one(".contains-pill")
+        name = normalize_spaces(name_node.get_text(" ", strip=True)) if name_node else ""
+        status = normalize_spaces(status_node.get_text(" ", strip=True)) if status_node else ""
+        if name and status:
+            assign_allergen_bucket(name, status, declared, present, may_contain)
+
+    text = normalize_spaces((soup.select_one("#allergensTab") or soup).get_text(" ", strip=True))
+    for prefix, bucket in [("Contains:", present), ("May Contain:", may_contain)]:
+        for match in re.finditer(rf"{re.escape(prefix)}\s*([^\.]+)", text, re.IGNORECASE):
+            for name in split_allergen_names(match.group(1)):
+                bucket.append(name)
+
+    return dedupe_strings(declared), dedupe_strings(present), dedupe_strings(may_contain)
+
+
+def parse_rbnainfo_ingredients_html(html: str) -> tuple[str, list[str]]:
+    soup = BeautifulSoup(html, "html.parser")
+    items: list[str] = []
+
+    for detail in soup.select("#ingredients .accChild"):
+        header = detail.find_previous_sibling("div", class_="card-header")
+        if not header:
+            continue
+        heading = header.select_one("h3")
+        name = normalize_spaces(heading.get_text(" ", strip=True)) if heading else ""
+        if name:
+            items.append(name)
+
+    unique_items = dedupe_strings(items)
+    return ", ".join(unique_items), unique_items
+
+
 def flatten_labelinsight_ingredients(items: list[dict[str, Any]]) -> list[str]:
     output: list[str] = []
 
@@ -553,6 +692,44 @@ def parse_labelinsight_payload(payload: dict[str, Any]) -> tuple[str, list[str],
         dedupe_strings(may_contain),
         image_url,
     )
+
+
+def flatten_pg_ingredients(items: list[dict[str, Any]]) -> list[str]:
+    output: list[str] = []
+
+    def visit(nodes: list[dict[str, Any]]) -> None:
+        for node in nodes or []:
+            if not isinstance(node, dict):
+                continue
+            name = normalize_spaces(node.get("ingredientName"))
+            if name:
+                output.append(name)
+            visit(node.get("subIngredients") or [])
+            visit(node.get("fragranceIngredients") or [])
+
+    visit(items)
+    return dedupe_strings(output)
+
+
+def parse_pg_product_payload(payload: dict[str, Any]) -> tuple[str, list[str], list[str], list[str], list[str], str]:
+    fields = payload.get("fields") or {}
+    ingredient_items = flatten_pg_ingredients(fields.get("ingredientList") or [])
+    ingredients_text = ", ".join(ingredient_items)
+
+    declared: list[str] = []
+    allergen_fields = (fields.get("allergen") or {}).get("fields") or {}
+    allergen_statement = normalize_spaces(allergen_fields.get("allergenStatement"))
+    if allergen_statement:
+        declared.append(allergen_statement)
+
+    image_url = ""
+    for key in ["productImage", "drugFactImage"]:
+        file_url = normalize_spaces((((fields.get(key) or {}).get("fields") or {}).get("file") or {}).get("url"))
+        if file_url:
+            image_url = f"https:{file_url}" if file_url.startswith("//") else file_url
+            break
+
+    return ingredients_text, ingredient_items, dedupe_strings(declared), [], [], image_url
 
 
 def finalize_row(row: dict[str, str], errors: list[str], parser_name: str) -> dict[str, str]:
@@ -737,8 +914,175 @@ def scrape_bestchoice_page(landing_url: str, landing_html: str) -> dict[str, str
     return finalize_row(row, errors, "bestchoice")
 
 
+def scrape_generalmills_page(landing_url: str, landing_html: str, timeout_seconds: int) -> dict[str, str]:
+    row = build_empty_row(landing_url)
+    row["http_status"] = "200"
+    errors: list[str] = []
+    soup = BeautifulSoup(landing_html, "html.parser")
+    base_url = "https://smartlabel.generalmills.com"
+
+    gtin = extract_generalmills_gtin(landing_url) or extract_generalmills_gtin(
+        as_text((soup.select_one("#hdnGTINId") or {}).get("value"))
+    )
+    row["smartlabel_upc"] = gtin
+    row["smartlabel_url_ingredients"] = f"{base_url}/GTIN/Ingredients"
+    row["smartlabel_url_allergens"] = f"{base_url}/GTIN/Allergens"
+
+    product_info_status, product_info_html, product_info_error = fetch_url(
+        f"{base_url}/GTIN/ProductInfo?gtinID={gtin}",
+        timeout_seconds,
+    )
+    if product_info_status == "200":
+        product_info_soup = BeautifulSoup(product_info_html, "html.parser")
+        image_tag = product_info_soup.select_one(".product-image")
+        if image_tag and image_tag.get("src"):
+            row["image_url"] = urljoin(landing_url, as_text(image_tag.get("src")))
+            row["image_field"] = "front"
+        if not row["smartlabel_upc"]:
+            row["smartlabel_upc"] = extract_generalmills_gtin(product_info_html)
+    else:
+        append_error(errors, f"product_info:{product_info_error or product_info_status or 'fetch_failed'}")
+
+    form_data = {"id": gtin, "isNutri": "true"}
+    ingredients_status, ingredients_html, ingredients_error = fetch_url(
+        row["smartlabel_url_ingredients"], timeout_seconds
+    )
+    if ingredients_status != "200":
+        ingredients_status, ingredients_html, ingredients_error = fetch_form_url(
+            row["smartlabel_url_ingredients"], form_data, timeout_seconds
+        )
+    row["ingredients_http_status"] = ingredients_status
+    if ingredients_status == "200":
+        ingredients_text, items = parse_generalmills_ingredients_html(ingredients_html)
+        row["ingredients_text"] = ingredients_text
+        row["ingredients_items_json"] = json.dumps(items, ensure_ascii=True)
+        if not items:
+            append_error(errors, "ingredients:empty_after_parse")
+    else:
+        append_error(errors, f"ingredients:{ingredients_error or ingredients_status or 'fetch_failed'}")
+
+    allergens_status, allergens_html, allergens_error = fetch_url(row["smartlabel_url_allergens"], timeout_seconds)
+    if allergens_status != "200":
+        allergens_status, allergens_html, allergens_error = fetch_form_url(
+            row["smartlabel_url_allergens"], form_data, timeout_seconds
+        )
+    row["allergens_http_status"] = allergens_status
+    if allergens_status == "200":
+        declared, present, may_contain = parse_generalmills_allergens_html(allergens_html)
+        row["allergens_declared_json"] = json.dumps(declared, ensure_ascii=True)
+        row["allergens_present_json"] = json.dumps(present, ensure_ascii=True)
+        row["allergens_may_contain_json"] = json.dumps(may_contain, ensure_ascii=True)
+    else:
+        append_error(errors, f"allergens:{allergens_error or allergens_status or 'fetch_failed'}")
+
+    return finalize_row(row, errors, "generalmills")
+
+
+def scrape_hormel_page(landing_url: str, landing_html: str) -> dict[str, str]:
+    row = build_empty_row(landing_url)
+    row["http_status"] = "200"
+    row["smartlabel_url_ingredients"] = landing_url
+    row["smartlabel_url_allergens"] = landing_url
+    row["ingredients_http_status"] = "200"
+    row["allergens_http_status"] = "200"
+    errors: list[str] = []
+
+    soup = BeautifulSoup(landing_html, "html.parser")
+    row["smartlabel_upc"] = extract_generalmills_gtin(landing_url) or extract_generalmills_gtin(
+        normalize_spaces((soup.select_one(".image-gtin-container p") or soup).get_text(" ", strip=True))
+    )
+    image_tag = soup.select_one(".product-image")
+    if image_tag and image_tag.get("src"):
+        row["image_url"] = urljoin(landing_url, as_text(image_tag.get("src")))
+        row["image_field"] = "front"
+
+    ingredients_text, items = parse_hormel_ingredients_html(landing_html)
+    declared, present, may_contain = parse_hormel_allergens_html(landing_html)
+    row["ingredients_text"] = ingredients_text
+    row["ingredients_items_json"] = json.dumps(items, ensure_ascii=True)
+    row["allergens_declared_json"] = json.dumps(declared, ensure_ascii=True)
+    row["allergens_present_json"] = json.dumps(present, ensure_ascii=True)
+    row["allergens_may_contain_json"] = json.dumps(may_contain, ensure_ascii=True)
+
+    if not items:
+        append_error(errors, "ingredients:empty_after_parse")
+
+    return finalize_row(row, errors, "hormel")
+
+
+def scrape_pg_page(landing_url: str, timeout_seconds: int) -> dict[str, str]:
+    row = build_empty_row(landing_url)
+    row["http_status"] = "200"
+    row["smartlabel_url_ingredients"] = landing_url
+    row["smartlabel_url_allergens"] = landing_url
+    errors: list[str] = []
+
+    locale, gtin = extract_pg_locale_and_gtin(landing_url)
+    row["smartlabel_upc"] = gtin
+    api_url = f"{PG_PRODUCT_DETAILS_URL}?gtin={gtin}&locale={locale or 'en-US'}"
+    status, payload, error = fetch_json_with_headers(
+        api_url,
+        timeout_seconds,
+        headers={"x-functions-key": PG_FUNCTIONS_KEY},
+    )
+    row["ingredients_http_status"] = status
+    row["allergens_http_status"] = status
+    if status != "200" or not isinstance(payload, dict):
+        append_error(errors, f"pg_api:{error or status or 'fetch_failed'}")
+        return finalize_row(row, errors, "pg")
+
+    (
+        ingredients_text,
+        ingredient_items,
+        declared,
+        present,
+        may_contain,
+        image_url,
+    ) = parse_pg_product_payload(payload)
+    row["ingredients_text"] = ingredients_text
+    row["ingredients_items_json"] = json.dumps(ingredient_items, ensure_ascii=True)
+    row["allergens_declared_json"] = json.dumps(declared, ensure_ascii=True)
+    row["allergens_present_json"] = json.dumps(present, ensure_ascii=True)
+    row["allergens_may_contain_json"] = json.dumps(may_contain, ensure_ascii=True)
+    row["image_url"] = image_url
+    row["image_field"] = "front" if image_url else ""
+
+    if not ingredient_items:
+        append_error(errors, "ingredients:empty_after_parse")
+
+    return finalize_row(row, errors, "pg")
+
+
+def scrape_rbnainfo_page(landing_url: str, landing_html: str) -> dict[str, str]:
+    row = build_empty_row(landing_url)
+    row["http_status"] = "200"
+    row["smartlabel_url_ingredients"] = landing_url
+    row["smartlabel_url_allergens"] = landing_url
+    row["ingredients_http_status"] = "200"
+    row["allergens_http_status"] = "200"
+    errors: list[str] = []
+
+    soup = BeautifulSoup(landing_html, "html.parser")
+    upc_node = soup.select_one(".header-upcs td")
+    row["smartlabel_upc"] = extract_generalmills_gtin(upc_node.get_text(" ", strip=True) if upc_node else landing_url)
+    image_tag = soup.select_one(".product-image img")
+    if image_tag and image_tag.get("src"):
+        row["image_url"] = urljoin(landing_url, as_text(image_tag.get("src")))
+        row["image_field"] = "front"
+
+    ingredients_text, items = parse_rbnainfo_ingredients_html(landing_html)
+    row["ingredients_text"] = ingredients_text
+    row["ingredients_items_json"] = json.dumps(items, ensure_ascii=True)
+
+    if not items:
+        append_error(errors, "ingredients:empty_after_parse")
+
+    return finalize_row(row, errors, "rbnainfo")
+
+
 def scrape_url(url: str, timeout_seconds: int) -> dict[str, str]:
-    if urlparse(url).netloc.lower() == "smartlabel.labelinsight.com":
+    host = urlparse(url).netloc.lower()
+    if host == "smartlabel.labelinsight.com":
         return scrape_labelinsight_page(url, timeout_seconds)
 
     status, html, error = fetch_url(url, timeout_seconds)
@@ -749,6 +1093,14 @@ def scrape_url(url: str, timeout_seconds: int) -> dict[str, str]:
         row["smartlabel_error"] = error or status or "fetch_failed"
         return row
 
+    if host == "smartlabel.generalmills.com":
+        return scrape_generalmills_page(url, html, timeout_seconds)
+    if host == "smartlabel.hormelfoods.com":
+        return scrape_hormel_page(url, html)
+    if host == "smartlabel.pg.com":
+        return scrape_pg_page(url, timeout_seconds)
+    if host in {"www.rbnainfo.com", "rbnainfo.com"}:
+        return scrape_rbnainfo_page(url, html)
     if extract_scanbuy_product_id(html):
         return scrape_scanbuy_page(url, html, timeout_seconds)
     if 'data-name="ingredients"' in html or "data-name='ingredients'" in html:

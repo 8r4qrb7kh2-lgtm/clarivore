@@ -23,6 +23,23 @@ function createOpenAiStructuredPayload(flags) {
   };
 }
 
+function createOpenAiCandidateExtractionPayload({
+  directIngredients = [],
+  declarationCandidates = [],
+}) {
+  return {
+    output_text: JSON.stringify({
+      direct_ingredients: directIngredients,
+      declaration_candidates: declarationCandidates,
+    }),
+    usage: {
+      input_tokens: 100,
+      output_tokens: 25,
+      total_tokens: 125,
+    },
+  };
+}
+
 function createConfigPayloads() {
   return {
     allergens: [
@@ -144,13 +161,16 @@ test("ingredient allergen route uses gpt-5.4 medium reasoning and accepts matchi
   const { body, openAiRequests } = await invokeRoute({
     transcriptLines: ["Ingredients: Wheat flour"],
     openAiPayloads: [
+      createOpenAiCandidateExtractionPayload({
+        directIngredients: [{ text: "Wheat flour", word_indices: [1, 2] }],
+      }),
       createOpenAiStructuredPayload(agreedFlags),
       createOpenAiStructuredPayload(agreedFlags),
     ],
   });
 
   assert.equal(body.success, true);
-  assert.equal(openAiRequests.length, 2);
+  assert.equal(openAiRequests.length, 3);
   assert.ok(openAiRequests.every((request) => request.model === "gpt-5.4"));
   assert.ok(
     openAiRequests.every((request) => request.reasoning?.effort === "medium"),
@@ -170,6 +190,7 @@ test("ingredient allergen route uses gpt-5.4 medium reasoning and accepts matchi
   assert.equal(body.debug.agentAgreement, "agreed");
   assert.equal(body.debug.adjudicationUsed, false);
   assert.equal(body.debug.aiCandidateCount, 1);
+  assert.equal(body.debug.ingredientExtractionMethod, "ai");
 });
 
 test("ingredient allergen route adjudicates conflicting parallel agent results with a third verification call", async () => {
@@ -185,6 +206,9 @@ test("ingredient allergen route adjudicates conflicting parallel agent results w
   const { body, openAiRequests } = await invokeRoute({
     transcriptLines: ["Ingredients: Wheat flour"],
     openAiPayloads: [
+      createOpenAiCandidateExtractionPayload({
+        directIngredients: [{ text: "Wheat flour", word_indices: [1, 2] }],
+      }),
       createOpenAiStructuredPayload(agentAFlags),
       createOpenAiStructuredPayload(agentBFlags),
       createOpenAiStructuredPayload(agentAFlags),
@@ -192,7 +216,7 @@ test("ingredient allergen route adjudicates conflicting parallel agent results w
   });
 
   assert.equal(body.success, true);
-  assert.equal(openAiRequests.length, 3);
+  assert.equal(openAiRequests.length, 4);
   assert.equal(body.debug.agentAgreement, "conflict-resolved");
   assert.equal(body.debug.adjudicationUsed, true);
   assert.equal(body.debug.fallbackReason, null);
@@ -206,7 +230,7 @@ test("ingredient allergen route adjudicates conflicting parallel agent results w
     },
   ]);
 
-  const adjudicationInput = JSON.stringify(openAiRequests[2].input);
+  const adjudicationInput = JSON.stringify(openAiRequests[3].input);
   assert.match(adjudicationInput, /Agent A candidate JSON/);
   assert.match(adjudicationInput, /Agent B candidate JSON/);
 });
@@ -223,13 +247,16 @@ test("ingredient allergen route analyzes hazelnuts via AI", async () => {
   const { body, openAiRequests } = await invokeRoute({
     transcriptLines: ["Ingredients: Hazelnuts"],
     openAiPayloads: [
+      createOpenAiCandidateExtractionPayload({
+        directIngredients: [{ text: "Hazelnuts", word_indices: [1] }],
+      }),
       createOpenAiStructuredPayload(agreedFlags),
       createOpenAiStructuredPayload(agreedFlags),
     ],
   });
 
   assert.equal(body.success, true);
-  assert.equal(openAiRequests.length, 2);
+  assert.equal(openAiRequests.length, 3);
   assert.deepEqual(body.flags, [
     {
       ingredient: "Hazelnuts",
@@ -240,4 +267,86 @@ test("ingredient allergen route analyzes hazelnuts via AI", async () => {
     },
   ]);
   assert.equal(body.debug.aiCandidateCount, 1);
+});
+
+test("ingredient allergen route debug reflects AI-flattened parenthetical ingredients", async () => {
+  const agreedFlags = [
+    {
+      candidate_id: "direct:2",
+      allergen_codes: [4],
+      diet_codes: [],
+    },
+  ];
+
+  const { body } = await invokeRoute({
+    transcriptLines: [
+      "Ingredients: Pea Crisps (Pea Protein, Rice Starch), Hazelnut.",
+      "Manufactured on equipment that processes Peanut, Dairy, Soy, Sesame, Tree Nuts, Wheat",
+      "and Egg. May Contain nut shell fragments.",
+    ],
+    openAiPayloads: [
+      createOpenAiCandidateExtractionPayload({
+        directIngredients: [
+          { text: "Pea Protein" },
+          { text: "Rice Starch" },
+          { text: "Hazelnut", word_indices: [7] },
+        ],
+        declarationCandidates: [
+          {
+            text: "Peanut",
+            declaration_type: "shared-equipment",
+            risk_type: "cross-contamination",
+          },
+          {
+            text: "Dairy",
+            declaration_type: "shared-equipment",
+            risk_type: "cross-contamination",
+          },
+          {
+            text: "Soy",
+            declaration_type: "shared-equipment",
+            risk_type: "cross-contamination",
+          },
+          {
+            text: "Sesame",
+            declaration_type: "shared-equipment",
+            risk_type: "cross-contamination",
+          },
+          {
+            text: "Tree Nuts",
+            declaration_type: "shared-equipment",
+            risk_type: "cross-contamination",
+          },
+          {
+            text: "Wheat",
+            declaration_type: "shared-equipment",
+            risk_type: "cross-contamination",
+          },
+          {
+            text: "Egg",
+            declaration_type: "shared-equipment",
+            risk_type: "cross-contamination",
+          },
+          {
+            text: "nut shell fragments",
+            declaration_type: "may-contain",
+            risk_type: "cross-contamination",
+          },
+        ],
+      }),
+      createOpenAiStructuredPayload(agreedFlags),
+      createOpenAiStructuredPayload(agreedFlags),
+    ],
+  });
+
+  assert.equal(body.success, true);
+  assert.equal(body.debug.ingredientExtractionMethod, "ai");
+  assert.deepEqual(body.parsedIngredientsList, [
+    "Pea Protein",
+    "Rice Starch",
+    "Hazelnut",
+  ]);
+  assert.ok(body.debug.aiCandidateTexts.includes("Pea Protein"));
+  assert.ok(body.debug.aiCandidateTexts.includes("Rice Starch"));
+  assert.ok(!body.debug.aiCandidateTexts.includes("Pea Crisps (Pea Protein, Rice Starch)"));
 });

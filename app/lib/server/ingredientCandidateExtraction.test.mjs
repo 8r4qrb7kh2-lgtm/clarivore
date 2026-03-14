@@ -14,7 +14,8 @@ test("buildParsedTranscriptFromCandidateExtraction uses AI-separated ingredients
     transcriptLines,
     extractionPayload: {
       direct_ingredients: [
-        { text: "Pea Crisps (Pea Protein, Rice Starch)" },
+        { text: "Pea Protein" },
+        { text: "Rice Starch" },
         { text: "Hazelnut", word_indices: [7] },
       ],
       declaration_candidates: [
@@ -39,11 +40,13 @@ test("buildParsedTranscriptFromCandidateExtraction uses AI-separated ingredients
 
   assert.equal(parsed.extractionMethod, "ai");
   assert.deepEqual(parsed.parsedIngredientsList, [
-    "Pea Crisps (Pea Protein, Rice Starch)",
+    "Pea Protein",
+    "Rice Starch",
     "Hazelnut",
   ]);
-  assert.deepEqual(parsed.directCandidates[0].wordIndices, [1, 2, 3, 4, 5, 6]);
-  assert.deepEqual(parsed.directCandidates[1].wordIndices, [7]);
+  assert.deepEqual(parsed.directCandidates[0].wordIndices, [3, 4]);
+  assert.deepEqual(parsed.directCandidates[1].wordIndices, [5, 6]);
+  assert.deepEqual(parsed.directCandidates[2].wordIndices, [7]);
   assert.deepEqual(
     parsed.declarationCandidates.map((candidate) => candidate.text),
     ["Peanut", "Tree Nuts", "nut shell fragments"],
@@ -52,7 +55,7 @@ test("buildParsedTranscriptFromCandidateExtraction uses AI-separated ingredients
   assert.deepEqual(parsed.declarationCandidates[2].wordIndices, [24, 25, 26]);
 });
 
-test("buildParsedTranscriptFromCandidateExtraction falls back when AI extraction is empty", () => {
+test("buildParsedTranscriptFromCandidateExtraction does not fall back when AI extraction is empty", () => {
   const parsed = buildParsedTranscriptFromCandidateExtraction({
     transcriptLines: ["Ingredients: Tomato Puree (Water, Tomato Paste), Salt"],
     extractionPayload: {
@@ -61,9 +64,8 @@ test("buildParsedTranscriptFromCandidateExtraction falls back when AI extraction
     },
   });
 
-  assert.equal(parsed.extractionMethod, "fallback");
-  assert.deepEqual(parsed.parsedIngredientsList, [
-    "Tomato Puree (Water, Tomato Paste)",
-    "Salt",
-  ]);
+  assert.equal(parsed.extractionMethod, "ai");
+  assert.deepEqual(parsed.parsedIngredientsList, []);
+  assert.deepEqual(parsed.directCandidates, []);
+  assert.deepEqual(parsed.declarationCandidates, []);
 });

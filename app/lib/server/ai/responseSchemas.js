@@ -12,6 +12,13 @@ function integerArraySchema() {
   };
 }
 
+function nullableIntegerArraySchema() {
+  return {
+    type: ["array", "null"],
+    items: { type: "integer" },
+  };
+}
+
 export const analyzeIngredientScanSchema = {
   name: "analyze_ingredient_scan",
   schema: {
@@ -259,10 +266,10 @@ export const ingredientCandidateExtractionSchema = {
         items: {
           type: "object",
           additionalProperties: false,
-          required: ["text"],
+          required: ["text", "word_indices"],
           properties: {
             text: { type: "string" },
-            word_indices: integerArraySchema(),
+            word_indices: nullableIntegerArraySchema(),
           },
         },
       },
@@ -271,10 +278,10 @@ export const ingredientCandidateExtractionSchema = {
         items: {
           type: "object",
           additionalProperties: false,
-          required: ["text", "declaration_type", "risk_type"],
+          required: ["text", "word_indices", "declaration_type", "risk_type"],
           properties: {
             text: { type: "string" },
-            word_indices: integerArraySchema(),
+            word_indices: nullableIntegerArraySchema(),
             declaration_type: {
               type: ["string", "null"],
               enum: [

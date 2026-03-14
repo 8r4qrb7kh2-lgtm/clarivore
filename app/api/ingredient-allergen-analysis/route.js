@@ -32,7 +32,7 @@ const ANALYSIS_MAX_TOKENS = 1800;
 const VERIFICATION_MAX_TOKENS = 1400;
 const PROMPT_VERSION = "ingredient-allergen-openai-dual-agent-v3-20260313";
 const CANDIDATE_EXTRACTION_PROMPT_VERSION =
-  "ingredient-candidate-extraction-openai-v1-20260313";
+  "ingredient-candidate-extraction-openai-v3-20260313";
 
 const CONFIG_TTL_MS = 60 * 60 * 1000;
 const ANALYSIS_CACHE_TTL_MS = 15 * 60 * 1000;
@@ -641,11 +641,18 @@ async function extractIngredientCandidates({
   if (!analysisOptions.disableCache) {
     const cached = getCachedCandidateExtraction(cacheKey);
     if (cached) {
-      return buildParsedTranscriptFromCandidateExtraction({
+      const parsedTranscript = buildParsedTranscriptFromCandidateExtraction({
         transcriptLines,
         extractionPayload: cached,
         fallbackParsedTranscript,
       });
+      if (
+        !parsedTranscript.directCandidates.length &&
+        !parsedTranscript.declarationCandidates.length
+      ) {
+        throw new Error("Ingredient candidate extraction returned no candidates.");
+      }
+      return parsedTranscript;
     }
   }
 
@@ -682,17 +689,25 @@ async function extractIngredientCandidates({
           response?.parsed && typeof response.parsed === "object" ? response.parsed : {},
       };
     },
+    env,
   });
 
   if (!analysisOptions.disableCache) {
     setCachedCandidateExtraction(cacheKey, result.normalizedOutput);
   }
 
-  return buildParsedTranscriptFromCandidateExtraction({
+  const parsedTranscript = buildParsedTranscriptFromCandidateExtraction({
     transcriptLines,
     extractionPayload: result.normalizedOutput,
     fallbackParsedTranscript,
   });
+  if (
+    !parsedTranscript.directCandidates.length &&
+    !parsedTranscript.declarationCandidates.length
+  ) {
+    throw new Error("Ingredient candidate extraction returned no candidates.");
+  }
+  return parsedTranscript;
 }
 
 function readAnalysisOptions(body) {
@@ -702,7 +717,6 @@ function readAnalysisOptions(body) {
   return {
     disableCache: options.disableCache === true,
     debug: options.debug === true,
-    useAiCandidateExtraction: options.useAiCandidateExtraction === true,
   };
 }
 
@@ -893,20 +907,13 @@ export async function POST(request) {
           flag.candidate_id && (flag.allergens.length || flag.diets.length),
         );
 
-    const fallbackParsedTranscript = parseIngredientLabelTranscript(transcriptLines);
-    let parsedTranscript = fallbackParsedTranscript;
-    if (analysisOptions.useAiCandidateExtraction) {
-      try {
-        parsedTranscript = await extractIngredientCandidates({
-          transcriptLines,
-          fallbackParsedTranscript,
-          analysisOptions,
-          env: openAiEnv,
-        });
-      } catch (error) {
-        console.warn("Ingredient candidate extraction fell back to parser:", error);
-      }
-    }
+    const indexedTranscript = parseIngredientLabelTranscript(transcriptLines);
+    const parsedTranscript = await extractIngredientCandidates({
+      transcriptLines,
+      fallbackParsedTranscript: indexedTranscript,
+      analysisOptions,
+      env: openAiEnv,
+    });
     const aiDirectCandidates = Array.isArray(parsedTranscript.directCandidates)
       ? parsedTranscript.directCandidates
       : [];

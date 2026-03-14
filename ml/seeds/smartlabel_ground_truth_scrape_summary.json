@@ -1,17 +1,18 @@
 {
-  "existing_row_count": 18540,
+  "existing_row_count": 41173,
   "input_file": "/Users/mattdavis/.cursor/worktrees/clarivore-main/9J1NT/full_smartlabel_ground_truth copy.csv",
   "output_file": "/Users/mattdavis/.cursor/worktrees/clarivore-main/9J1NT/full_smartlabel_ground_truth copy.csv",
-  "output_row_count": 20010,
-  "scrape_queue_count": 1500,
+  "output_row_count": 41173,
+  "scrape_queue_count": 400,
   "scrape_stats": {
-    "host::alwayssavebrand.com": 1073,
-    "host::bestchoicebrand.com": 427,
-    "ok": 493,
-    "rows_with_ingredients": 540,
-    "safe_rows": 146
+    "host::alwayssavebrand.com": 16,
+    "host::bestchoicebrand.com": 8,
+    "host::rbnainfo.com": 376,
+    "ok": 369,
+    "rows_with_ingredients": 369,
+    "safe_rows": 369
   },
   "sitemap_discovered_by_host": {
-    "search_api": 5086
+    "search_api": 376
   }
 }
