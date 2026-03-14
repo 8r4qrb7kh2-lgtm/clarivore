@@ -116,6 +116,7 @@ function createConfigPayloads() {
 async function invokeRoute({
   transcriptLines,
   openAiPayloads,
+  catalogRows = [],
 }) {
   process.env.SUPABASE_URL = "https://supabase.test";
   process.env.SUPABASE_ANON_KEY = "supabase-anon-test";
@@ -136,6 +137,9 @@ async function invokeRoute({
     }
     if (url.startsWith("https://supabase.test/rest/v1/diet_allergen_conflicts")) {
       return jsonResponse(conflicts);
+    }
+    if (url.startsWith("https://supabase.test/rest/v1/ingredient_catalog_entries")) {
+      return jsonResponse(catalogRows);
     }
     if (url === "https://api.openai.com/v1/responses") {
       const body = JSON.parse(String(init?.body || "{}"));
@@ -444,4 +448,75 @@ test("ingredient allergen route debug reflects AI-flattened parenthetical ingred
   assert.ok(body.debug.aiCandidateTexts.includes("Pea Protein"));
   assert.ok(body.debug.aiCandidateTexts.includes("Rice Starch"));
   assert.ok(!body.debug.aiCandidateTexts.includes("Pea Crisps (Pea Protein, Rice Starch)"));
+});
+
+test("ingredient allergen route surfaces ingredient catalog matches in debug output", async () => {
+  const { body } = await invokeRoute({
+    transcriptLines: [
+      "Ingredients: Pea Protein, Rice Starch, Organic Tapioca Syrup, Pistachio.",
+    ],
+    openAiPayloads: [
+      createOpenAiCandidateExtractionPayload({
+        directIngredients: [
+          { text: "Pea Protein", word_indices: [1, 2] },
+          { text: "Rice Starch", word_indices: [3, 4] },
+          { text: "Organic Tapioca Syrup", word_indices: [5, 6, 7] },
+          { text: "Pistachio", word_indices: [8] },
+        ],
+      }),
+      createOpenAiStructuredPayload([]),
+      createOpenAiStructuredPayload([]),
+    ],
+    catalogRows: [
+      {
+        canonical_name: "Pea Protein",
+        normalized_name: "Pea Protein",
+        lookup_terms: ["pea protein"],
+        lookup_count: 3,
+        seed_source: "smartlabel_ground_truth_safe_v1",
+        is_ready: true,
+      },
+      {
+        canonical_name: "Rice Starch",
+        normalized_name: "Rice Starch",
+        lookup_terms: ["rice starch"],
+        lookup_count: 2,
+        seed_source: "smartlabel_ground_truth_safe_v1",
+        is_ready: true,
+      },
+      {
+        canonical_name: "Organic Tapioca Syrup",
+        normalized_name: "Organic Tapioca Syrup",
+        lookup_terms: ["organic tapioca syrup"],
+        lookup_count: 1,
+        seed_source: "smartlabel_ground_truth_safe_v1",
+        is_ready: true,
+      },
+      {
+        canonical_name: "Pistachios",
+        normalized_name: "Pistachios",
+        lookup_terms: ["pistachios"],
+        lookup_count: 1,
+        seed_source: "smartlabel_ground_truth_safe_v1",
+        is_ready: true,
+      },
+    ],
+  });
+
+  assert.equal(body.success, true);
+  assert.deepEqual(body.debug.catalogMatchedCandidateTexts, [
+    "Pea Protein",
+    "Rice Starch",
+    "Organic Tapioca Syrup",
+    "Pistachio",
+  ]);
+  assert.equal(body.debug.catalogMatchedCandidateCount, 4);
+  assert.deepEqual(body.debug.catalogMatchedEntriesByCandidateText.Pistachio, [
+    {
+      canonicalName: "Pistachios",
+      normalizedName: "Pistachios",
+      lookupCount: 1,
+      seedSource: "smartlabel_ground_truth_safe_v1",
+    },
+  ]);
 });

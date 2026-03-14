@@ -42,11 +42,14 @@ const ANALYSIS_CACHE_TTL_MS = 15 * 60 * 1000;
 const ANALYSIS_CACHE_MAX_ENTRIES = 128;
 const CANDIDATE_EXTRACTION_CACHE_TTL_MS = 15 * 60 * 1000;
 const CANDIDATE_EXTRACTION_CACHE_MAX_ENTRIES = 128;
+const CATALOG_MATCH_CACHE_TTL_MS = 15 * 60 * 1000;
+const CATALOG_MATCH_CACHE_MAX_ENTRIES = 128;
 let cachedConfig = null;
 let cachedConfigAt = 0;
 let cachedConfigPromise = null;
 const analysisCache = new Map();
 const candidateExtractionCache = new Map();
+const catalogMatchCache = new Map();
 
 export function OPTIONS() {
   return corsOptions();
@@ -237,6 +240,14 @@ function buildTranscriptCacheKey({ transcriptLines, promptVersion }) {
   return `${asText(promptVersion) || "unknown"}::${normalizedLines}`;
 }
 
+function buildCatalogMatchCacheKey(values) {
+  return (Array.isArray(values) ? values : [])
+    .map((value) => asText(value))
+    .filter(Boolean)
+    .sort((left, right) => left.localeCompare(right))
+    .join("|");
+}
+
 function getCachedAnalysis(cacheKey) {
   const entry = analysisCache.get(cacheKey);
   if (!entry) return null;
@@ -304,6 +315,41 @@ function setCachedCandidateExtraction(cacheKey, value) {
   });
   if (oldestKey) {
     candidateExtractionCache.delete(oldestKey);
+  }
+}
+
+function getCachedCatalogMatches(cacheKey) {
+  const entry = catalogMatchCache.get(cacheKey);
+  if (!entry) return null;
+  if (Date.now() - entry.at > CATALOG_MATCH_CACHE_TTL_MS) {
+    catalogMatchCache.delete(cacheKey);
+    return null;
+  }
+  return entry.value && typeof entry.value === "object" ? entry.value : null;
+}
+
+function setCachedCatalogMatches(cacheKey, value) {
+  catalogMatchCache.set(cacheKey, {
+    at: Date.now(),
+    value: value && typeof value === "object" ? value : null,
+  });
+
+  if (catalogMatchCache.size <= CATALOG_MATCH_CACHE_MAX_ENTRIES) {
+    return;
+  }
+
+  let oldestKey = "";
+  let oldestAt = Number.POSITIVE_INFINITY;
+  catalogMatchCache.forEach((entry, key) => {
+    const at = Number(entry?.at);
+    if (!Number.isFinite(at)) return;
+    if (at < oldestAt) {
+      oldestAt = at;
+      oldestKey = key;
+    }
+  });
+  if (oldestKey) {
+    catalogMatchCache.delete(oldestKey);
   }
 }
 
@@ -435,6 +481,187 @@ function sleep(ms) {
 
 function sortStrings(values) {
   return dedupeStrings(values).sort((left, right) => left.localeCompare(right));
+}
+
+function asciiText(value) {
+  return asText(value)
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
+function normalizeCatalogLookupTerm(value) {
+  return asciiText(value)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+function singularizeLookupWord(value) {
+  const word = normalizeCatalogLookupTerm(value);
+  if (!word) return "";
+  if (word.endsWith("ies") && word.length > 4) return `${word.slice(0, -3)}y`;
+  if (
+    word.endsWith("s") &&
+    !word.endsWith("ss") &&
+    !word.endsWith("us") &&
+    !word.endsWith("is")
+  ) {
+    return word.slice(0, -1);
+  }
+  return word;
+}
+
+function pluralizeLookupWord(value) {
+  const word = normalizeCatalogLookupTerm(value);
+  if (!word) return "";
+  if (word.endsWith("s")) return word;
+  if (
+    word.endsWith("ch") ||
+    word.endsWith("sh") ||
+    word.endsWith("x") ||
+    word.endsWith("z")
+  ) {
+    return `${word}es`;
+  }
+  if (word.endsWith("y") && word.length > 1 && !/[aeiou]y$/.test(word)) {
+    return `${word.slice(0, -1)}ies`;
+  }
+  return `${word}s`;
+}
+
+function buildCatalogLookupVariants(value) {
+  const base = normalizeCatalogLookupTerm(value);
+  if (!base) return [];
+
+  const variants = new Set([base]);
+  const words = base.split(" ").filter(Boolean);
+  if (!words.length) return Array.from(variants);
+
+  const lastWord = words[words.length - 1];
+  const singularLastWord = singularizeLookupWord(lastWord);
+  const pluralLastWord = pluralizeLookupWord(lastWord);
+
+  if (singularLastWord && singularLastWord !== lastWord) {
+    variants.add([...words.slice(0, -1), singularLastWord].join(" "));
+  }
+  if (pluralLastWord && pluralLastWord !== lastWord) {
+    variants.add([...words.slice(0, -1), pluralLastWord].join(" "));
+  }
+
+  return Array.from(variants).filter(Boolean);
+}
+
+function toPostgresTextArrayLiteral(values) {
+  const safeValues = dedupeStrings(values);
+  if (!safeValues.length) return "{}";
+  return `{${safeValues
+    .map((value) => `"${asText(value).replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`)
+    .join(",")}}`;
+}
+
+async function fetchIngredientCatalogMatches({
+  candidateTexts,
+  disableCache = false,
+}) {
+  const safeCandidateTexts = dedupeStrings(candidateTexts);
+  if (!safeCandidateTexts.length) {
+    return {
+      matchedCandidateCount: 0,
+      matchedCandidateTexts: [],
+      matchedEntriesByCandidateText: {},
+    };
+  }
+
+  const candidateTerms = safeCandidateTexts.flatMap((text) => buildCatalogLookupVariants(text));
+  const normalizedLookupTerms = dedupeStrings(candidateTerms);
+  if (!normalizedLookupTerms.length) {
+    return {
+      matchedCandidateCount: 0,
+      matchedCandidateTexts: [],
+      matchedEntriesByCandidateText: {},
+    };
+  }
+
+  const cacheKey = buildCatalogMatchCacheKey(normalizedLookupTerms);
+  if (!disableCache) {
+    const cached = getCachedCatalogMatches(cacheKey);
+    if (cached) return cached;
+  }
+
+  const { url, key } = readSupabaseRuntime();
+  if (!url || !key) {
+    return {
+      matchedCandidateCount: 0,
+      matchedCandidateTexts: [],
+      matchedEntriesByCandidateText: {},
+    };
+  }
+
+  const headers = {
+    apikey: key,
+    Authorization: `Bearer ${key}`,
+    Accept: "application/json",
+  };
+  const overlapLiteral = toPostgresTextArrayLiteral(normalizedLookupTerms);
+  const rows = await fetchJson(
+    `${url}/rest/v1/ingredient_catalog_entries?select=canonical_name,normalized_name,lookup_terms,lookup_count,seed_source,is_ready&is_ready=eq.true&lookup_terms=ov.${encodeURIComponent(
+      overlapLiteral,
+    )}&order=lookup_count.desc,canonical_name.asc`,
+    headers,
+  );
+
+  const normalizedRows = (Array.isArray(rows) ? rows : [])
+    .map((row) => {
+      const rowLookupTerms = dedupeStrings([
+        ...(Array.isArray(row?.lookup_terms) ? row.lookup_terms : []),
+        row?.normalized_name,
+        row?.canonical_name,
+      ].map((value) => normalizeCatalogLookupTerm(value)).filter(Boolean));
+      return {
+        canonicalName: asText(row?.canonical_name),
+        normalizedName: asText(row?.normalized_name),
+        lookupTerms: rowLookupTerms,
+        lookupCount: Number.isFinite(Number(row?.lookup_count))
+          ? Math.max(0, Math.trunc(Number(row.lookup_count)))
+          : 0,
+        seedSource: asText(row?.seed_source),
+      };
+    })
+    .filter((row) => row.lookupTerms.length);
+
+  const matchesByCandidateText = {};
+  safeCandidateTexts.forEach((candidateText) => {
+    const variants = new Set(buildCatalogLookupVariants(candidateText));
+    const matches = normalizedRows
+      .filter((row) => row.lookupTerms.some((term) => variants.has(term)))
+      .sort((left, right) => {
+        const bySupport = right.lookupCount - left.lookupCount;
+        if (bySupport !== 0) return bySupport;
+        return left.canonicalName.localeCompare(right.canonicalName);
+      })
+      .slice(0, 5)
+      .map((row) => ({
+        canonicalName: row.canonicalName,
+        normalizedName: row.normalizedName,
+        lookupCount: row.lookupCount,
+        seedSource: row.seedSource,
+      }));
+    if (matches.length) {
+      matchesByCandidateText[candidateText] = matches;
+    }
+  });
+
+  const result = {
+    matchedCandidateCount: Object.keys(matchesByCandidateText).length,
+    matchedCandidateTexts: Object.keys(matchesByCandidateText),
+    matchedEntriesByCandidateText: matchesByCandidateText,
+  };
+
+  if (!disableCache) {
+    setCachedCatalogMatches(cacheKey, result);
+  }
+
+  return result;
 }
 
 function normalizeIntegerCodes(values) {
@@ -731,7 +958,13 @@ function buildCandidateDebugPayload({
   resolvedDeclarationFlags,
   unresolvedDeclarationCandidates,
   aiCandidates,
+  catalogMatches,
 }) {
+  const matchedEntriesByCandidateText =
+    catalogMatches?.matchedEntriesByCandidateText &&
+    typeof catalogMatches.matchedEntriesByCandidateText === "object"
+      ? catalogMatches.matchedEntriesByCandidateText
+      : {};
   return {
     ingredientExtractionMethod: asText(parsedTranscript?.extractionMethod) || "fallback",
     parsedIngredientsList: Array.isArray(parsedTranscript?.parsedIngredientsList)
@@ -759,6 +992,13 @@ function buildCandidateDebugPayload({
     aiCandidateTexts: (Array.isArray(aiCandidates) ? aiCandidates : [])
       .map((candidate) => asText(candidate?.text))
       .filter(Boolean),
+    catalogMatchedCandidateCount: Number.isFinite(Number(catalogMatches?.matchedCandidateCount))
+      ? Math.max(0, Math.trunc(Number(catalogMatches.matchedCandidateCount)))
+      : 0,
+    catalogMatchedCandidateTexts: Array.isArray(catalogMatches?.matchedCandidateTexts)
+      ? catalogMatches.matchedCandidateTexts
+      : [],
+    catalogMatchedEntriesByCandidateText: matchedEntriesByCandidateText,
   };
 }
 
@@ -934,11 +1174,18 @@ export async function POST(request) {
       dietsByAllergen,
     });
     const aiCandidates = [...aiDirectCandidates, ...unresolvedDeclarationCandidates];
+    const catalogMatches = analysisOptions.debug
+      ? await fetchIngredientCatalogMatches({
+          candidateTexts: parsedTranscript.parsedIngredientsList,
+          disableCache: analysisOptions.disableCache,
+        })
+      : null;
     const candidateDebugPayload = buildCandidateDebugPayload({
       parsedTranscript,
       resolvedDeclarationFlags,
       unresolvedDeclarationCandidates,
       aiCandidates,
+      catalogMatches,
     });
     const analysisCacheKey = buildAnalysisCacheKey({
       transcriptLines,

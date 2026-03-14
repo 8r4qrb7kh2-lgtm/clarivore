@@ -803,6 +803,9 @@ function IngredientScanDebugView({ debug }) {
   const unresolvedDeclarationCandidateTexts = dedupeStrings(
     safeDebug.unresolvedDeclarationCandidateTexts,
   );
+  const catalogMatchedCandidateTexts = dedupeStrings(
+    safeDebug.catalogMatchedCandidateTexts,
+  );
   const aiCandidateTexts = dedupeStrings(safeDebug.aiCandidateTexts);
   const fallbackReason = asText(safeDebug.fallbackReason);
   const provider = asText(safeDebug.provider) || "openai";
@@ -853,7 +856,7 @@ function IngredientScanDebugView({ debug }) {
       >
         <span>Internal debug</span>
         <span style={{ color: "#94a3b8", fontSize: "0.76rem", fontWeight: 600 }}>
-          resolved {resolvedDeclarationCandidateTexts.length} · AI {aiCandidateTexts.length}
+          resolved {resolvedDeclarationCandidateTexts.length} · catalog {catalogMatchedCandidateTexts.length} · AI {aiCandidateTexts.length}
         </span>
       </summary>
 
@@ -926,6 +929,14 @@ function IngredientScanDebugView({ debug }) {
             accentColor="#fbbf24"
             emptyLabel="No declaration candidates resolved deterministically."
             testId="ingredient-scan-debug-resolved"
+          />
+          <IngredientScanDebugBucket
+            title="Catalog matches"
+            count={catalogMatchedCandidateTexts.length}
+            items={catalogMatchedCandidateTexts}
+            accentColor="#22c55e"
+            emptyLabel="No parsed ingredient candidates matched the ingredient catalog."
+            testId="ingredient-scan-debug-catalog"
           />
           <IngredientScanDebugBucket
             title="AI candidates"
