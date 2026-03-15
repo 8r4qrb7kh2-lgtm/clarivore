@@ -21,11 +21,28 @@ jobs:
           node-version: 20
           cache: npm
 
+      - name: Check required secrets
+        run: |
+          missing=()
+          [ -z "$VERCEL_TOKEN" ]      && missing+=(VERCEL_TOKEN)
+          [ -z "$VERCEL_ORG_ID" ]     && missing+=(VERCEL_ORG_ID)
+          [ -z "$VERCEL_PROJECT_ID" ] && missing+=(VERCEL_PROJECT_ID)
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "ERROR: The following required secrets are not configured:" >&2
+            printf '  - %s\n' "${missing[@]}" >&2
+            echo "Add them under Settings > Secrets and variables > Actions (or the 'production' environment secrets)." >&2
+            exit 1
+          fi
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
       - name: Install Vercel CLI
         run: npm install -g vercel@latest
 
       - name: Pull Vercel project settings
-        run: vercel pull --yes --environment=production
+        run: vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
