@@ -6,6 +6,7 @@ import PageShell from "../../components/PageShell";
 import ChatMessageText from "../../components/chat/ChatMessageText";
 import PageHeading from "../../components/surfaces/PageHeading";
 import AdminDataFlowVisualsTab from "./AdminDataFlowVisualsTab";
+import AdminRuntimeCodebaseTab from "./AdminRuntimeCodebaseTab";
 import { notifyManagerChat } from "../../lib/chatNotifications";
 import { formatChatTimestamp } from "../../lib/chatMessage";
 import {
@@ -31,6 +32,7 @@ const TAB_ROUTES = [
   { id: "feedback", label: "Anonymous Feedback" },
   { id: "product-reports", label: "📋 Issue Reports" },
   { id: "data-flows", label: "🧭 Data Flows" },
+  { id: "runtime-codebase", label: "🧩 Runtime Mapper" },
 ];
 
 function slugifyName(value) {
@@ -1444,7 +1446,7 @@ export default function AdminDashboardDom({
               ))}
             </div>
 
-            {activeTab !== "data-flows" ? (
+            {activeTab !== "data-flows" && activeTab !== "runtime-codebase" ? (
               <div className="tab-toolbar">
                 <div className="restaurant-selector">
                   <label htmlFor="admin-restaurant-select">Restaurant</label>
@@ -2439,6 +2441,7 @@ export default function AdminDashboardDom({
             ) : null}
 
             {activeTab === "data-flows" ? <AdminDataFlowVisualsTab /> : null}
+            {activeTab === "runtime-codebase" ? <AdminRuntimeCodebaseTab /> : null}
           </>
         ) : null}
     </PageShell>
