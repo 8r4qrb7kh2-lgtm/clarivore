@@ -1439,3 +1439,368 @@
         min-width: 480px;
       }
     }
+
+    .route-admin-dashboard .admin-runtime-card {
+      display: grid;
+      gap: 14px;
+    }
+
+    .route-admin-dashboard .admin-runtime-subtitle {
+      margin: -4px 0 2px;
+      color: #64748b;
+    }
+
+    .route-admin-dashboard .admin-runtime-layout {
+      display: grid;
+      grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
+      gap: 16px;
+      align-items: start;
+    }
+
+    .route-admin-dashboard .admin-runtime-sidebar {
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      background: #f8fafc;
+      padding: 12px;
+      display: grid;
+      gap: 10px;
+      position: sticky;
+      top: 16px;
+    }
+
+    .route-admin-dashboard .admin-runtime-sidebar h3 {
+      margin: 0;
+      font-size: 1rem;
+      color: #1e3a5f;
+    }
+
+    .route-admin-dashboard .admin-runtime-list {
+      display: grid;
+      gap: 8px;
+      max-height: 420px;
+      overflow-y: auto;
+      padding-right: 2px;
+    }
+
+    .route-admin-dashboard .admin-runtime-list-item {
+      border: 1px solid #dbe6f3;
+      border-radius: 10px;
+      background: #ffffff;
+      padding: 10px 12px;
+      text-align: left;
+      display: grid;
+      gap: 6px;
+      cursor: pointer;
+    }
+
+    .route-admin-dashboard .admin-runtime-list-item strong {
+      color: #1e3a5f;
+      font-size: 0.92rem;
+    }
+
+    .route-admin-dashboard .admin-runtime-list-item span {
+      color: #64748b;
+      font-size: 0.8rem;
+      line-height: 1.35;
+    }
+
+    .route-admin-dashboard .admin-runtime-list-item.active {
+      border-color: #4c5ad4;
+      box-shadow: 0 0 0 1px rgba(76, 90, 212, 0.2) inset;
+    }
+
+    .route-admin-dashboard .admin-runtime-main {
+      display: grid;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .route-admin-dashboard .admin-runtime-breadcrumbs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .route-admin-dashboard .admin-runtime-crumb {
+      border: 1px solid #cbd5e1;
+      border-radius: 999px;
+      background: #ffffff;
+      color: #334155;
+      font-size: 0.78rem;
+      font-weight: 600;
+      padding: 6px 10px;
+      cursor: pointer;
+    }
+
+    .route-admin-dashboard .admin-runtime-crumb.active {
+      border-color: #4c5ad4;
+      color: #1e3a5f;
+      background: #eef2ff;
+      cursor: default;
+    }
+
+    .route-admin-dashboard .admin-runtime-header h3 {
+      margin: 0;
+      color: #1e3a5f;
+    }
+
+    .route-admin-dashboard .admin-runtime-header p {
+      margin: 6px 0 0;
+      color: #64748b;
+      font-size: 0.9rem;
+    }
+
+    .route-admin-dashboard .admin-runtime-canvas-wrap {
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+      padding: 12px;
+    }
+
+    .route-admin-dashboard .admin-runtime-canvas {
+      position: relative;
+      width: 100%;
+      min-height: 500px;
+      border-radius: 10px;
+      background-image:
+        linear-gradient(to right, rgba(148, 163, 184, 0.12) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(148, 163, 184, 0.12) 1px, transparent 1px);
+      background-size: 28px 28px;
+      overflow: hidden;
+    }
+
+    .route-admin-dashboard .admin-runtime-connections {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+    }
+
+    .route-admin-dashboard .admin-runtime-connections line {
+      stroke: #64748b;
+      stroke-width: 0.55;
+      opacity: 0.85;
+    }
+
+    .route-admin-dashboard .admin-runtime-block {
+      position: absolute;
+      border: 1px solid #cbd5e1;
+      border-radius: 10px;
+      background: #ffffff;
+      color: #1e293b;
+      padding: 8px;
+      display: grid;
+      gap: 6px;
+      text-align: left;
+      cursor: pointer;
+      overflow: hidden;
+    }
+
+    .route-admin-dashboard .admin-runtime-block strong {
+      color: #1e3a5f;
+      font-size: 0.8rem;
+      line-height: 1.2;
+    }
+
+    .route-admin-dashboard .admin-runtime-block span {
+      font-size: 0.72rem;
+      color: #475569;
+      line-height: 1.25;
+      overflow: hidden;
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+    }
+
+    .route-admin-dashboard .admin-runtime-block em {
+      font-size: 0.68rem;
+      color: #64748b;
+      font-style: normal;
+      font-weight: 600;
+    }
+
+    .route-admin-dashboard .admin-runtime-block.branch {
+      border-color: #7c3aed;
+      box-shadow: 0 0 0 1px rgba(124, 58, 237, 0.12) inset;
+    }
+
+    .route-admin-dashboard .admin-runtime-block.active,
+    .route-admin-dashboard .admin-runtime-block:hover {
+      border-color: #4c5ad4;
+      box-shadow: 0 0 0 2px rgba(76, 90, 212, 0.2);
+      transform: translateY(-1px);
+    }
+
+    .route-admin-dashboard .admin-runtime-details {
+      border: 1px solid #dbe6f3;
+      border-radius: 12px;
+      background: #ffffff;
+      padding: 14px;
+      display: grid;
+      gap: 12px;
+    }
+
+    .route-admin-dashboard .admin-runtime-details h4,
+    .route-admin-dashboard .admin-runtime-details h5 {
+      margin: 0;
+      color: #1e3a5f;
+    }
+
+    .route-admin-dashboard .admin-runtime-details p {
+      margin: 0;
+      color: #334155;
+    }
+
+    .route-admin-dashboard .admin-runtime-tag-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .route-admin-dashboard .admin-runtime-tag-label {
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: #1e3a5f;
+    }
+
+    .route-admin-dashboard .admin-runtime-tag {
+      display: inline-flex;
+      align-items: center;
+      padding: 3px 8px;
+      border-radius: 999px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      border: 1px solid #c7d2fe;
+      color: #4338ca;
+      background: #eef2ff;
+    }
+
+    .route-admin-dashboard .admin-runtime-evidence-list {
+      display: grid;
+      gap: 8px;
+    }
+
+    .route-admin-dashboard .admin-runtime-evidence-item {
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      background: #f8fafc;
+      padding: 10px;
+      display: grid;
+      gap: 8px;
+    }
+
+    .route-admin-dashboard .admin-runtime-evidence-item p {
+      margin: 0;
+      font-size: 0.84rem;
+      color: #1e3a5f;
+    }
+
+    .route-admin-dashboard .admin-runtime-evidence-item ul {
+      margin: 0;
+      padding-left: 18px;
+      display: grid;
+      gap: 6px;
+      color: #334155;
+      font-size: 0.82rem;
+    }
+
+    .route-admin-dashboard .admin-runtime-evidence-item pre {
+      margin: 0;
+      white-space: pre-wrap;
+      max-height: 220px;
+      overflow: auto;
+      background: #0f172a;
+      color: #f8fafc;
+      border-radius: 8px;
+      padding: 8px;
+      font-size: 0.72rem;
+      line-height: 1.4;
+    }
+
+    .route-admin-dashboard .admin-runtime-ref-error {
+      color: #b91c1c !important;
+      font-weight: 600;
+    }
+
+    .route-admin-dashboard .admin-runtime-ask-panel {
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 12px;
+      background: #f8fafc;
+      display: grid;
+      gap: 8px;
+    }
+
+    .route-admin-dashboard .admin-runtime-ask-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 10px;
+      align-items: start;
+    }
+
+    .route-admin-dashboard .admin-runtime-ask-row textarea {
+      width: 100%;
+      min-height: 84px;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      padding: 10px;
+      font-size: 0.92rem;
+      font-family: inherit;
+      resize: vertical;
+    }
+
+    .route-admin-dashboard .admin-runtime-qa-list {
+      display: grid;
+      gap: 8px;
+      max-height: 360px;
+      overflow-y: auto;
+      padding-right: 2px;
+    }
+
+    .route-admin-dashboard .admin-runtime-qa-item {
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      background: #ffffff;
+      padding: 10px 12px;
+      display: grid;
+      gap: 8px;
+    }
+
+    .route-admin-dashboard .admin-runtime-qa-item p {
+      margin: 0;
+      white-space: pre-wrap;
+      color: #1e3a5f;
+      line-height: 1.42;
+    }
+
+    .route-admin-dashboard .admin-runtime-muted {
+      margin: 0;
+      color: #64748b;
+      font-size: 0.88rem;
+    }
+
+    @media (max-width: 1024px) {
+      .route-admin-dashboard .admin-runtime-layout {
+        grid-template-columns: 1fr;
+      }
+
+      .route-admin-dashboard .admin-runtime-sidebar {
+        position: static;
+      }
+
+      .route-admin-dashboard .admin-runtime-canvas {
+        min-height: 420px;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .route-admin-dashboard .admin-runtime-canvas {
+        min-height: 360px;
+      }
+
+      .route-admin-dashboard .admin-runtime-ask-row {
+        grid-template-columns: 1fr;
+      }
+    }
