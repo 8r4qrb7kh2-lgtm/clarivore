@@ -7,6 +7,9 @@ function asText(value) {
   return String(value || "").trim();
 }
 
+const MAX_HISTORY_CONTEXT_MESSAGES = 5;
+const MAX_CHAT_QUESTION_LENGTH = 1000;
+
 function normalizeDiagramList(items) {
   return (Array.isArray(items) ? items : [])
     .map((item) => ({
@@ -21,7 +24,7 @@ function normalizeDiagramList(items) {
 
 function buildQuestionHistoryMessages(history) {
   return (Array.isArray(history) ? history : [])
-    .slice(-5)
+    .slice(-MAX_HISTORY_CONTEXT_MESSAGES)
     .flatMap((row) => {
       const question = asText(row?.question);
       const answer = asText(row?.answer);
@@ -38,6 +41,13 @@ function summarizeVariable(variable) {
   const description = asText(variable?.description);
   const usedFor = asText(variable?.usedFor);
   return `${name || "variable"}: ${description || "(no description)"}${usedFor ? ` Used for: ${usedFor}` : ""}`;
+}
+
+function createClientId() {
+  if (typeof globalThis !== "undefined" && globalThis.crypto?.randomUUID) {
+    return globalThis.crypto.randomUUID();
+  }
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
 export default function AdminRuntimeCodebaseTab() {
@@ -227,7 +237,7 @@ export default function AdminRuntimeCodebaseTab() {
       setQaHistory((current) => [
         ...current,
         {
-          id: `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
+          id: createClientId(),
           diagramId: currentDiagramId,
           blockId,
           question,
@@ -334,7 +344,7 @@ export default function AdminRuntimeCodebaseTab() {
               ) : !currentDiagram ? (
                 <p className="admin-runtime-muted">Select a runtime diagram to begin.</p>
               ) : (
-                <div className="admin-runtime-canvas" role="img" aria-label="Runtime component flow chart">
+                <div className="admin-runtime-canvas" role="region" aria-label="Runtime component flow chart">
                   <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="admin-runtime-connections">
                     <defs>
                       <marker
@@ -459,7 +469,9 @@ export default function AdminRuntimeCodebaseTab() {
                 <textarea
                   ref={questionInputRef}
                   value={questionInput}
-                  onChange={(event) => setQuestionInput(event.target.value)}
+                  onChange={(event) =>
+                    setQuestionInput(asText(event.target.value).slice(0, MAX_CHAT_QUESTION_LENGTH))
+                  }
                   placeholder="Ask about the selected block (or full diagram if no block is selected)."
                 />
                 <button
@@ -474,6 +486,9 @@ export default function AdminRuntimeCodebaseTab() {
               <p className="admin-runtime-muted">
                 Chat answers are grounded in the current repository files and line ranges returned by this
                 runtime map.
+              </p>
+              <p className="admin-runtime-muted">
+                Question length limit: {MAX_CHAT_QUESTION_LENGTH} characters.
               </p>
             </div>
 

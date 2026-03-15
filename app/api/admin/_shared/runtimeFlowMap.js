@@ -74,9 +74,14 @@ export const ADMIN_RUNTIME_FLOW_DIAGRAMS = [
         childDiagramId: "admin-runtime-introspection",
         codeRefs: [
           {
-            filePath: "app/api/admin/data-flow-ask/route.js",
-            startLine: 405,
-            endLine: 520,
+            filePath: "app/api/admin/runtime-flow/route.js",
+            startLine: 1,
+            endLine: 133,
+          },
+          {
+            filePath: "app/api/admin/runtime-flow-ask/route.js",
+            startLine: 1,
+            endLine: 307,
           },
         ],
       },
@@ -215,7 +220,7 @@ export const ADMIN_RUNTIME_FLOW_DIAGRAMS = [
           {
             filePath: "app/api/admin/_shared/runtimeFlowMap.js",
             startLine: 1,
-            endLine: 420,
+            endLine: 592,
           },
         ],
       },
@@ -232,7 +237,7 @@ export const ADMIN_RUNTIME_FLOW_DIAGRAMS = [
           {
             filePath: "app/api/admin/runtime-flow/route.js",
             startLine: 1,
-            endLine: 260,
+            endLine: 133,
           },
         ],
       },
@@ -249,7 +254,7 @@ export const ADMIN_RUNTIME_FLOW_DIAGRAMS = [
           {
             filePath: "app/api/admin/runtime-flow-ask/route.js",
             startLine: 1,
-            endLine: 340,
+            endLine: 307,
           },
         ],
       },
