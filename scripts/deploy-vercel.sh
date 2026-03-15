@@ -20,7 +20,7 @@ fi
 
 # Use standard upload mode instead of archive mode. In large local worktrees
 # archive mode can include bulky non-runtime folders despite ignore settings.
-deploy_cmd=(vercel --prod --yes)
+deploy_cmd=(vercel --prod --yes --token="$VERCEL_TOKEN")
 if [ -n "$DOMAIN_SCOPE" ]; then
   deploy_cmd+=(--scope "$DOMAIN_SCOPE")
 fi
@@ -35,7 +35,7 @@ fi
 
 echo "Production deployment: $deploy_url"
 
-alias_cmd=(vercel alias set "$deploy_host" "$PRIMARY_DOMAIN")
+alias_cmd=(vercel alias set "$deploy_host" "$PRIMARY_DOMAIN" --token="$VERCEL_TOKEN")
 if [ -n "$DOMAIN_SCOPE" ]; then
   alias_cmd+=(--scope "$DOMAIN_SCOPE")
 fi
