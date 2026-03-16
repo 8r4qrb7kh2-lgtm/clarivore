@@ -23,6 +23,14 @@ const nextConfig = {
     unoptimized: true,
   },
   reactStrictMode: true,
+  experimental: {
+    outputFileTracingIncludes: {
+      "/api/admin/runtime-flow": ["./app/**/*"],
+      "/api/admin/runtime-flow-ask": ["./app/**/*"],
+      "/api/admin/runtime-systems": ["./app/**/*"],
+      "/api/admin/runtime-systems-ask": ["./app/**/*"],
+    },
+  },
   async redirects() {
     return htmlRedirects;
   },
