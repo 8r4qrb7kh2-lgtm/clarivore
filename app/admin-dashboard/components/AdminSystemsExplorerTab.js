@@ -6,12 +6,7 @@ import { isAdminDashboardDevBypassEnabled } from "../services/adminDashboardAcce
 
 const ROOT_NODE_ID = "workspace:clarivore-runtime";
 const POLL_INTERVAL_MS = 2_000;
-const NODE_WIDTH = 240;
-const NODE_HEIGHT = 138;
-const NODE_GAP_X = 68;
-const NODE_GAP_Y = 28;
-const CANVAS_PADDING = 36;
-const MAX_CHART_EDGES = 24;
+const MAX_FLOW_LINKS = 12;
 
 function asText(value) {
   return String(value || "").trim();
@@ -39,197 +34,194 @@ function getNodeKindLabel(node) {
   return "Runtime";
 }
 
-function getNodeColumnSeed(node) {
-  if (node.kind === "directory") return 0;
-  if (node.kind === "file") return 1;
-  return 2;
+function getNodeActionLabel(node) {
+  if (node.kind === "directory") return "Open subsystem";
+  if (node.kind === "file") return node.childCount ? "Open file blocks" : "Inspect file";
+  if (node.kind === "symbol") return "Inspect block";
+  return "Open runtime";
 }
 
-function buildFlowLayout(nodes, edges) {
-  const nodeMap = new Map(nodes.map((node) => [node.id, node]));
-  const indegree = new Map(nodes.map((node) => [node.id, 0]));
-  const outgoing = new Map(nodes.map((node) => [node.id, []]));
-  const incoming = new Map(nodes.map((node) => [node.id, []]));
+function buildNodeTraffic(nodes, edges) {
+  const statsById = new Map(
+    nodes.map((node) => [
+      node.id,
+      {
+        incoming: 0,
+        outgoing: 0,
+        variables: new Set(),
+      },
+    ]),
+  );
 
   edges.forEach((edge) => {
-    if (!nodeMap.has(edge.source) || !nodeMap.has(edge.target)) return;
-    outgoing.get(edge.source).push(edge.target);
-    incoming.get(edge.target).push(edge.source);
-    indegree.set(edge.target, (indegree.get(edge.target) || 0) + 1);
-  });
-
-  const layers = new Map();
-  const queue = nodes
-    .filter((node) => (indegree.get(node.id) || 0) === 0)
-    .sort((left, right) => left.label.localeCompare(right.label))
-    .map((node) => node.id);
-
-  while (queue.length) {
-    const nodeId = queue.shift();
-    const node = nodeMap.get(nodeId);
-    const predecessorLayers = (incoming.get(nodeId) || [])
-      .map((sourceId) => layers.get(sourceId))
-      .filter((value) => Number.isFinite(value));
-    const fallbackLayer = getNodeColumnSeed(node);
-    const nextLayer = predecessorLayers.length
-      ? Math.max(...predecessorLayers) + 1
-      : fallbackLayer;
-    layers.set(nodeId, nextLayer);
-    (outgoing.get(nodeId) || []).forEach((targetId) => {
-      const nextDegree = (indegree.get(targetId) || 0) - 1;
-      indegree.set(targetId, nextDegree);
-      if (nextDegree === 0) {
-        queue.push(targetId);
-      }
-    });
-  }
-
-  nodes.forEach((node) => {
-    if (layers.has(node.id)) return;
-    const predecessorLayers = (incoming.get(node.id) || [])
-      .map((sourceId) => layers.get(sourceId))
-      .filter((value) => Number.isFinite(value));
-    layers.set(
-      node.id,
-      predecessorLayers.length ? Math.max(...predecessorLayers) + 1 : getNodeColumnSeed(node),
-    );
-  });
-
-  const columns = new Map();
-  nodes.forEach((node) => {
-    const layer = layers.get(node.id) || 0;
-    const column = columns.get(layer) || [];
-    column.push(node);
-    columns.set(layer, column);
-  });
-
-  columns.forEach((column) => {
-    column.sort((left, right) => {
-      const kindDelta = getNodeColumnSeed(left) - getNodeColumnSeed(right);
-      if (kindDelta !== 0) return kindDelta;
-      return left.label.localeCompare(right.label);
+    const sourceStats = statsById.get(edge.source);
+    const targetStats = statsById.get(edge.target);
+    if (sourceStats) {
+      sourceStats.outgoing += 1;
+    }
+    if (targetStats) {
+      targetStats.incoming += 1;
+    }
+    (edge.variables || []).forEach((variable) => {
+      if (sourceStats) sourceStats.variables.add(variable.name);
+      if (targetStats) targetStats.variables.add(variable.name);
     });
   });
 
-  const orderedLayers = Array.from(columns.keys()).sort((left, right) => left - right);
-  const positions = new Map();
-  let maxRows = 0;
-  orderedLayers.forEach((layer) => {
-    const column = columns.get(layer) || [];
-    maxRows = Math.max(maxRows, column.length);
-    column.forEach((node, rowIndex) => {
-      const x = CANVAS_PADDING + layer * (NODE_WIDTH + NODE_GAP_X);
-      const y = CANVAS_PADDING + rowIndex * (NODE_HEIGHT + NODE_GAP_Y);
-      positions.set(node.id, { x, y });
-    });
-  });
-
-  const width =
-    CANVAS_PADDING * 2 +
-    (orderedLayers.length ? orderedLayers.length * NODE_WIDTH + (orderedLayers.length - 1) * NODE_GAP_X : NODE_WIDTH);
-  const height =
-    CANVAS_PADDING * 2 +
-    (maxRows ? maxRows * NODE_HEIGHT + (maxRows - 1) * NODE_GAP_Y : NODE_HEIGHT);
-
-  return {
-    width,
-    height,
-    positions,
-  };
+  return statsById;
 }
 
-function buildEdgePath(layout, edge) {
-  const source = layout.positions.get(edge.source);
-  const target = layout.positions.get(edge.target);
-  if (!source || !target) return "";
-  const startX = source.x + NODE_WIDTH;
-  const startY = source.y + NODE_HEIGHT / 2;
-  const endX = target.x;
-  const endY = target.y + NODE_HEIGHT / 2;
-  const controlX = startX + Math.max((endX - startX) / 2, 24);
-  return `M ${startX} ${startY} C ${controlX} ${startY}, ${controlX} ${endY}, ${endX} ${endY}`;
-}
-
-function FlowCanvas({ nodes, edges, onSelectNode }) {
-  const layout = useMemo(() => buildFlowLayout(nodes, edges), [nodes, edges]);
-
-  if (!nodes.length) {
-    return (
-      <div className="admin-systems-empty-state">
-        <h3>No more subdivisions</h3>
-        <p>This block is already at the file or symbol level.</p>
-      </div>
-    );
-  }
+function DrilldownFlowChart({
+  currentNode,
+  nodes,
+  edges,
+  navigatingNodeId,
+  onSelectNode,
+}) {
+  const nodeById = useMemo(
+    () => new Map(nodes.map((node) => [node.id, node])),
+    [nodes],
+  );
+  const trafficByNodeId = useMemo(() => buildNodeTraffic(nodes, edges), [nodes, edges]);
+  const flowLinks = useMemo(
+    () =>
+      edges.slice(0, MAX_FLOW_LINKS).map((edge) => ({
+        ...edge,
+        sourceLabel: nodeById.get(edge.source)?.label || "Source",
+        targetLabel: nodeById.get(edge.target)?.label || "Target",
+        variableSummary:
+          edge.variables?.length
+            ? edge.variables
+                .slice(0, 4)
+                .map((variable) => variable.name)
+                .join(", ")
+            : edge.label || "dependency",
+      })),
+    [edges, nodeById],
+  );
 
   return (
-    <div className="admin-systems-canvas-scroll">
-      <div
-        className="admin-systems-canvas"
-        style={{ width: layout.width, height: layout.height }}
-      >
-        <svg
-          className="admin-systems-canvas-svg"
-          width={layout.width}
-          height={layout.height}
-          aria-hidden="true"
-        >
-          <defs>
-            <marker
-              id="systems-arrow"
-              markerWidth="10"
-              markerHeight="10"
-              refX="9"
-              refY="5"
-              orient="auto"
-              markerUnits="strokeWidth"
-            >
-              <path d="M 0 0 L 10 5 L 0 10 z" fill="#244a74" />
-            </marker>
-          </defs>
-          {edges.map((edge) => {
-            const pathData = buildEdgePath(layout, edge);
-            if (!pathData) return null;
-            return (
-              <path
-                key={edge.id}
-                d={pathData}
-                className="admin-systems-edge"
-                markerEnd="url(#systems-arrow)"
-              />
-            );
-          })}
-        </svg>
-
-        {nodes.map((node) => {
-          const position = layout.positions.get(node.id);
-          if (!position) return null;
-          return (
-            <button
-              key={node.id}
-              type="button"
-              className="admin-systems-node"
-              data-node-id={node.id}
-              style={{
-                left: position.x,
-                top: position.y,
-              }}
-              onClick={() => onSelectNode(node.id)}
-            >
-              <span className="admin-systems-node-kind">{getNodeKindLabel(node)}</span>
-              <strong>{node.label}</strong>
-              <span className="admin-systems-node-summary">{node.summary}</span>
-              <span className="admin-systems-node-path">{node.relativePath}</span>
-              {node.authRoles?.length ? (
-                <span className="admin-systems-node-auth">
-                  {node.authRoles.slice(0, 2).join(" · ")}
-                </span>
-              ) : null}
-            </button>
-          );
-        })}
+    <section className="admin-systems-flow-shell" aria-labelledby="systems-flow-heading">
+      <div className="admin-systems-flow-header">
+        <div>
+          <h3 id="systems-flow-heading">Drilldown flow chart</h3>
+          <p>
+            This chart only shows the internal makeup of the currently selected block. Click any
+            child block below to rebuild the chart around that block.
+          </p>
+        </div>
+        <div className="admin-systems-flow-stats">
+          <span>{nodes.length} direct subdivisions</span>
+          <span>{edges.length} observed hand-offs</span>
+          <span>{currentNode?.isLeaf ? "Leaf block" : "Click a block to go deeper"}</span>
+        </div>
       </div>
-    </div>
+
+      <div className="admin-systems-flow-stage">
+        <article className="admin-systems-focus-node" data-testid="systems-focus-node">
+          <span className="admin-systems-node-kind">Current block</span>
+          <strong>{currentNode?.label || "Runtime"}</strong>
+          <span className="admin-systems-node-summary">{currentNode?.summary || ""}</span>
+          <span className="admin-systems-node-path">{currentNode?.relativePath || "app"}</span>
+          <p className="admin-systems-focus-description">
+            {currentNode?.description ||
+              "Select a child block to replace the chart with the system inside that block."}
+          </p>
+        </article>
+
+        {nodes.length ? (
+          <>
+            <div className="admin-systems-flow-spine" aria-hidden="true" />
+            <div className="admin-systems-drill-grid" data-testid="systems-drill-grid">
+              {nodes.map((node) => {
+                const traffic = trafficByNodeId.get(node.id);
+                const variablePreview = Array.from(traffic?.variables || []).slice(0, 3).join(", ");
+                const isOpening = navigatingNodeId === node.id;
+                return (
+                  <div key={node.id} className="admin-systems-drill-item">
+                    <div className="admin-systems-drill-connector" aria-hidden="true" />
+                    <button
+                      type="button"
+                      className={`admin-systems-drill-card${isOpening ? " pending" : ""}`}
+                      data-node-id={node.id}
+                      onClick={() => onSelectNode(node.id)}
+                      aria-label={`${getNodeActionLabel(node)} ${node.label}`}
+                    >
+                      <span className="admin-systems-node-kind">{getNodeKindLabel(node)}</span>
+                      <strong>{node.label}</strong>
+                      <span className="admin-systems-node-summary">{node.summary}</span>
+                      <span className="admin-systems-node-path">{node.relativePath}</span>
+                      {node.authRoles?.length ? (
+                        <span className="admin-systems-node-auth">
+                          {node.authRoles.slice(0, 3).join(" · ")}
+                        </span>
+                      ) : null}
+
+                      <div className="admin-systems-drill-metrics">
+                        <span>
+                          {node.childCount
+                            ? `${node.childCount} deeper subdivision${node.childCount === 1 ? "" : "s"}`
+                            : "No deeper subdivisions"}
+                        </span>
+                        <span>{node.descendantFileCount} runtime file{node.descendantFileCount === 1 ? "" : "s"}</span>
+                        <span>
+                          {traffic?.incoming || 0} in · {traffic?.outgoing || 0} out
+                        </span>
+                      </div>
+
+                      {variablePreview ? (
+                        <p className="admin-systems-drill-variables">
+                          Passing: <code>{variablePreview}</code>
+                        </p>
+                      ) : null}
+
+                      <span className="admin-systems-drill-action">
+                        {isOpening ? "Opening…" : getNodeActionLabel(node)}
+                      </span>
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="admin-systems-flow-links">
+              <div className="admin-systems-panel-heading">
+                <h3>Flow at this level</h3>
+                <p>
+                  Relationships between the child blocks currently shown in the chart.
+                </p>
+              </div>
+              {flowLinks.length ? (
+                <div className="admin-systems-flow-link-list">
+                  {flowLinks.map((edge) => (
+                    <article key={edge.id} className="admin-systems-flow-link">
+                      <div className="admin-systems-flow-link-route">
+                        <strong>{edge.sourceLabel}</strong>
+                        <span>→</span>
+                        <strong>{edge.targetLabel}</strong>
+                      </div>
+                      <p>{edge.variableSummary}</p>
+                    </article>
+                  ))}
+                </div>
+              ) : (
+                <p className="admin-systems-muted">
+                  No direct child-to-child hand-offs were detected at this subdivision level.
+                </p>
+              )}
+            </div>
+          </>
+        ) : (
+          <div className="admin-systems-empty-state">
+            <h3>No more subdivisions</h3>
+            <p>
+              This block is already at the file or symbol level. Use the code evidence panels below
+              for the exact lines that define it.
+            </p>
+          </div>
+        )}
+      </div>
+    </section>
   );
 }
 
@@ -254,16 +246,12 @@ export default function AdminSystemsExplorerTab() {
   const [view, setView] = useState(null);
   const [loading, setLoading] = useState(true);
   const [asking, setAsking] = useState(false);
+  const [navigatingNodeId, setNavigatingNodeId] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [questionInput, setQuestionInput] = useState("");
   const [chatHistory, setChatHistory] = useState([]);
   const [lastRefreshAt, setLastRefreshAt] = useState("");
   const currentNodeIdRef = useRef(ROOT_NODE_ID);
-
-  const chartEdges = useMemo(() => {
-    const edges = Array.isArray(view?.graph?.edges) ? view.graph.edges : [];
-    return edges.slice(0, MAX_CHART_EDGES);
-  }, [view]);
 
   const getAuthHeaders = useCallback(async () => {
     const headers = {
@@ -293,6 +281,9 @@ export default function AdminSystemsExplorerTab() {
   const loadView = useCallback(
     async (nodeId, options = {}) => {
       const targetNodeId = asText(nodeId) || ROOT_NODE_ID;
+      if (!options.fromPoll) {
+        setNavigatingNodeId(targetNodeId);
+      }
       if (!options.silent) {
         setLoading(true);
       }
@@ -330,6 +321,9 @@ export default function AdminSystemsExplorerTab() {
       } catch (error) {
         setErrorMessage(asText(error?.message) || "Failed to load systems explorer.");
       } finally {
+        if (!options.fromPoll) {
+          setNavigatingNodeId("");
+        }
         if (!options.silent) {
           setLoading(false);
         }
@@ -425,8 +419,9 @@ export default function AdminSystemsExplorerTab() {
           <div>
             <h2>Live Systems Explorer</h2>
             <p className="admin-systems-subtitle">
-              Current runtime flow map generated from the active codebase under <code>app/</code>.
-              Select any block to drill into its subsystems, files, and line-level evidence.
+              Drill down through the current runtime hierarchy under <code>app/</code>. Every click
+              redraws the flow chart for the selected block, then you can repeat that until you hit
+              a leaf file or symbol.
             </p>
           </div>
           <div className="admin-systems-status">
@@ -483,9 +478,11 @@ export default function AdminSystemsExplorerTab() {
               </div>
             </div>
 
-            <FlowCanvas
+            <DrilldownFlowChart
+              currentNode={view?.currentNode}
               nodes={Array.isArray(view?.graph?.nodes) ? view.graph.nodes : []}
-              edges={chartEdges}
+              edges={Array.isArray(view?.graph?.edges) ? view.graph.edges : []}
+              navigatingNodeId={navigatingNodeId}
               onSelectNode={onSelectNode}
             />
 
