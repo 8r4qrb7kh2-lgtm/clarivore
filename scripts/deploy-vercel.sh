@@ -13,6 +13,7 @@ fi
 
 PRIMARY_DOMAIN="clarivore.org"
 DOMAIN_SCOPE="${VERCEL_DOMAIN_SCOPE:-}"
+VERCEL_TOKEN_VALUE="${VERCEL_TOKEN:-}"
 
 if [ -z "$DOMAIN_SCOPE" ] && [ -f ".vercel/project.json" ]; then
   DOMAIN_SCOPE="$(node -e 'const fs=require("fs");try{const v=JSON.parse(fs.readFileSync(".vercel/project.json","utf8"));if(v&&v.orgId)process.stdout.write(String(v.orgId));}catch(_){ }')"
@@ -20,7 +21,15 @@ fi
 
 # Use standard upload mode instead of archive mode. In large local worktrees
 # archive mode can include bulky non-runtime folders despite ignore settings.
-deploy_cmd=(vercel --prod --yes --token="$VERCEL_TOKEN")
+token_args=()
+if [ -n "$VERCEL_TOKEN_VALUE" ]; then
+  token_args+=(--token="$VERCEL_TOKEN_VALUE")
+elif ! vercel whoami >/dev/null 2>&1; then
+  echo "VERCEL_TOKEN is not set and there is no authenticated local Vercel session." >&2
+  exit 1
+fi
+
+deploy_cmd=(vercel --prod --yes "${token_args[@]}")
 if [ -n "$DOMAIN_SCOPE" ]; then
   deploy_cmd+=(--scope "$DOMAIN_SCOPE")
 fi
@@ -35,7 +44,7 @@ fi
 
 echo "Production deployment: $deploy_url"
 
-alias_cmd=(vercel alias set "$deploy_host" "$PRIMARY_DOMAIN" --token="$VERCEL_TOKEN")
+alias_cmd=(vercel alias set "$deploy_host" "$PRIMARY_DOMAIN" "${token_args[@]}")
 if [ -n "$DOMAIN_SCOPE" ]; then
   alias_cmd+=(--scope "$DOMAIN_SCOPE")
 fi
