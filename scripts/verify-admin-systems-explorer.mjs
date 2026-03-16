@@ -89,19 +89,24 @@ async function stopDevServer(child) {
 }
 
 async function verifyExplorer(page) {
-  const liveSystemsButton = page.locator("button").filter({ hasText: "Live Systems" });
-  await page.goto(`${BASE_URL}/admin-dashboard`, { waitUntil: "networkidle" });
+  const liveSystemsButton = page.getByRole("button", { name: /live systems/i });
+  await page.goto(`${BASE_URL}/admin-dashboard`, { waitUntil: "domcontentloaded" });
+  await page.waitForTimeout(500);
+  await page.reload({ waitUntil: "domcontentloaded" });
   await waitFor(
     async () => {
       const url = page.url();
-      const text = (await page.textContent("body", { timeout: 1_000 }).catch(() => "")) || "";
+      const text = await page
+        .locator("body")
+        .innerText({ timeout: 1_000 })
+        .catch(() => "");
       return url.includes("/admin-dashboard") && text.includes("Admin Dashboard");
     },
     TIMEOUT_MS,
     "Admin dashboard never reached a ready state.",
   );
   await waitFor(
-    async () => (await liveSystemsButton.count()) > 0,
+    async () => await liveSystemsButton.isVisible().catch(() => false),
     TIMEOUT_MS,
     "Live Systems tab never rendered.",
   );
