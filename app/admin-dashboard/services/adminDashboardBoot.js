@@ -1,6 +1,17 @@
 import { supabaseClient as supabase } from "../../lib/supabase";
+import {
+  createAdminDashboardBypassUser,
+  isAdminDashboardDevBypassEnabled,
+} from "./adminDashboardAccess";
 
 export async function prepareAdminDashboardBootPayload() {
+  if (isAdminDashboardDevBypassEnabled()) {
+    return {
+      user: createAdminDashboardBypassUser(),
+      isAdmin: true,
+    };
+  }
+
   if (!supabase) {
     return {
       user: null,

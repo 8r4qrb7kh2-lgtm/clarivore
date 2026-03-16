@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import AppLoadingScreen from "./components/AppLoadingScreen";
+import { isAdminDashboardDevBypassEnabled } from "./admin-dashboard/services/adminDashboardAccess";
 import { ToastProvider } from "./components/ui";
 import { supabaseClient as supabase } from "./lib/supabase";
 
@@ -31,6 +32,12 @@ function shouldBypassGuestGate(pathname) {
   if (normalizedRoute.startsWith("/account")) return true;
   if (normalizedRoute.startsWith("/guest")) return true;
   if (normalizedRoute.startsWith("/report-issue")) return true;
+  if (
+    isAdminDashboardDevBypassEnabled() &&
+    normalizedRoute.startsWith("/admin-dashboard")
+  ) {
+    return true;
+  }
   // Let the restaurant route settle first to avoid query-param race conditions
   // during guest navigation from /guest -> /restaurant.
   if (normalizedRoute === "/restaurant") return true;
