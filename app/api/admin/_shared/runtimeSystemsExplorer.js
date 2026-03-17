@@ -11,7 +11,7 @@ const RUNTIME_EXTENSIONS = new Set([".js", ".jsx", ".mjs", ".ts", ".tsx", ".css"
 const CODE_EXTENSIONS = new Set([".js", ".jsx", ".mjs", ".ts", ".tsx"]);
 const TEST_FILE_RE = /\.(?:test|spec)\.[^.]+$/i;
 const POSIX_SEP_RE = /\\/g;
-const MAX_NODE_SOURCE_REFS = 10;
+const MAX_NODE_SOURCE_REFS = 16;
 const MAX_EDGE_VARIABLES = 8;
 const MAX_EDGE_REFS = 6;
 const MAX_QUERY_TERMS = 12;
@@ -21,21 +21,24 @@ const MAX_LINE_LENGTH = 220;
 
 const AUTH_ROLE_RULES = [
   {
-    role: "Admin",
+    role: "App admin",
     patterns: [
       /\bisAdmin\b/g,
       /\bapp_admins\b/g,
+      /app admin/gi,
       /administrator/gi,
       /admin dashboard/gi,
       /must be logged in as an administrator/gi,
-      /Unauthorized/gi,
     ],
   },
   {
-    role: "Manager",
+    role: "Manager \/ owner",
     patterns: [
       /\bmanager\b/gi,
+      /\bowner\b/gi,
       /\brestaurant_managers\b/g,
+      /restaurant access/gi,
+      /manager\/owner/gi,
       /manager dashboard/gi,
       /invite link/gi,
     ],
@@ -52,7 +55,7 @@ const AUTH_ROLE_RULES = [
     ],
   },
   {
-    role: "Diner",
+    role: "Diner \/ guest",
     patterns: [
       /\bdiner\b/gi,
       /\bguest\b/gi,
@@ -75,6 +78,29 @@ const AUTH_ROLE_RULES = [
       /\bkitchen tablet\b/gi,
       /\bkitchen line\b/gi,
       /\bkitchen monitor\b/gi,
+    ],
+  },
+  {
+    role: "System \/ cron",
+    patterns: [
+      /x-clarivore-system-key/gi,
+      /cron_secret/gi,
+      /vercel cron/gi,
+      /system key/gi,
+      /cron\/service/gi,
+    ],
+  },
+  {
+    role: "Feedback token holder",
+    patterns: [
+      /feedback-token holder/gi,
+      /feedback token/gi,
+    ],
+  },
+  {
+    role: "Any user",
+    patterns: [
+      /any user/gi,
     ],
   },
 ];
@@ -367,6 +393,51 @@ function describeVariable(variable, targetLabel) {
     return `${baseName} is passed into ${targetLabel} inside an options object.`;
   }
   return `${baseName} is passed into ${targetLabel} as a call argument.`;
+}
+
+function inferVariablePurpose(variable, targetLabel) {
+  const rawName = asText(variable?.name);
+  const name = rawName.toLowerCase();
+  const value = asText(variable?.value);
+  const lowerValue = value.toLowerCase();
+
+  if (!name && !value) return "";
+
+  if (
+    /^on[A-Z]/u.test(rawName) ||
+    /^(handle|set|update|submit|open|close|toggle|remove|add)[a-z]/u.test(name)
+  ) {
+    return `Trigger actions or state changes inside ${targetLabel}.`;
+  }
+  if (/(id|slug|key|token|code|restaurantid|userid|managerid|sessionid)/u.test(name)) {
+    return `Identify a specific record, route, or security context for ${targetLabel}.`;
+  }
+  if (/(auth|session|role|admin|manager|owner|user|permission|access)/u.test(name)
+    || /(auth|session|role|admin|manager|owner|user|permission|access)/u.test(lowerValue)
+  ) {
+    return `Carry identity or authorization context into ${targetLabel}.`;
+  }
+  if (/(data|items|list|results|payload|response|snapshot|record|records|state|model|config)/u.test(name)) {
+    return `Deliver runtime data or configuration consumed by ${targetLabel}.`;
+  }
+  if (/(pathname|path|href|url|route|navigate|redirect)/u.test(name)
+    || /(pathname|path|href|url|route|navigate|redirect)/u.test(lowerValue)
+  ) {
+    return `Control navigation or routing behavior for ${targetLabel}.`;
+  }
+  if (/(loading|pending|error|ready|open|visible|expanded|selected|active|disabled)/u.test(name)) {
+    return `Control UI state and rendering behavior in ${targetLabel}.`;
+  }
+  if (/(class|style|theme|variant|tone|size|layout)/u.test(name)) {
+    return `Control presentation or layout in ${targetLabel}.`;
+  }
+  if (variable?.usageKind === "prop") {
+    return `Configure ${targetLabel} through its component props.`;
+  }
+  if (variable?.usageKind === "option") {
+    return `Configure ${targetLabel} through an options object.`;
+  }
+  return `Provide an input consumed by ${targetLabel}.`;
 }
 
 function summarizeJsxAttribute(attribute, sourceFile) {
@@ -782,6 +853,7 @@ function deriveFileEdges(fileInfos) {
                 targetLabel,
                 specifier: specifier.localName,
                 description: describeVariable(variable, targetLabel),
+                usedFor: inferVariablePurpose(variable, targetLabel),
               })),
             ),
           )
@@ -1274,6 +1346,7 @@ export async function buildRuntimeSystemsView(nodeId) {
       summary: formatNodeSummary(currentNode, snapshot),
       childCount: childNodes.length,
       descendantFileCount: (currentNode.descendantFiles || []).length,
+      authRoles: auth.map((group) => group.role),
       isLeaf: childNodes.length === 0,
     },
     breadcrumb: buildBreadcrumb(snapshot.nodeById, currentNode.id),
@@ -1362,7 +1435,8 @@ function buildQuestionEvidence(snapshot, currentNode, question) {
     const sourceNode = snapshot.nodeById.get(handoff.source);
     const targetNode = snapshot.nodeById.get(handoff.target);
     const variableText = handoff.variables
-      .map((variable) => `${variable.name}=${variable.value}`)
+      .map((variable) =>
+        `${variable.name}=${variable.value}${variable.usedFor ? ` (${variable.usedFor})` : ""}`)
       .join(", ");
     evidence.push({
       type: "handoff",

@@ -1,15 +1,35 @@
 "use client";
 
-import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  startTransition,
+  useCallback,
+  useDeferredValue,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { supabaseClient as supabase } from "../../lib/supabase";
 import { isAdminDashboardDevBypassEnabled } from "../services/adminDashboardAccess";
 
 const ROOT_NODE_ID = "workspace:clarivore-runtime";
-const POLL_INTERVAL_MS = 2_000;
-const MAX_FLOW_LINKS = 12;
+const POLL_INTERVAL_MS = 1_000;
+const MAX_FLOW_LINKS = 14;
+const CANVAS_NODE_WIDTH = 264;
+const CANVAS_NODE_HEIGHT = 176;
+const CANVAS_ROW_GAP = 96;
+const CANVAS_NODE_GAP = 72;
+const CANVAS_PADDING = 40;
 
 function asText(value) {
   return String(value || "").trim();
+}
+
+function clampText(value, maxLength = 88) {
+  const text = asText(value).replace(/\s+/g, " ");
+  if (!text) return "";
+  if (text.length <= maxLength) return text;
+  return `${text.slice(0, Math.max(maxLength - 1, 1)).trimEnd()}…`;
 }
 
 function formatTimestamp(value) {
@@ -39,6 +59,20 @@ function getNodeActionLabel(node) {
   if (node.kind === "file") return node.childCount ? "Open file blocks" : "Inspect file";
   if (node.kind === "symbol") return "Inspect block";
   return "Open runtime";
+}
+
+function compareGraphNodes(left, right) {
+  const priorityByKind = {
+    directory: 0,
+    file: 1,
+    symbol: 2,
+  };
+  const leftPriority = priorityByKind[left?.kind] ?? 9;
+  const rightPriority = priorityByKind[right?.kind] ?? 9;
+  if (leftPriority !== rightPriority) {
+    return leftPriority - rightPriority;
+  }
+  return asText(left?.label).localeCompare(asText(right?.label));
 }
 
 function buildNodeTraffic(nodes, edges) {
@@ -71,7 +105,168 @@ function buildNodeTraffic(nodes, edges) {
   return statsById;
 }
 
-function DrilldownFlowChart({
+function buildEdgePath(sourceNode, targetNode) {
+  const startX = sourceNode.x + sourceNode.width / 2;
+  const startY = sourceNode.y + sourceNode.height;
+  const endX = targetNode.x + targetNode.width / 2;
+  const endY = targetNode.y;
+
+  if (endY > startY) {
+    const bend = Math.max((endY - startY) / 2, 44);
+    return `M ${startX} ${startY} C ${startX} ${startY + bend}, ${endX} ${endY - bend}, ${endX} ${endY}`;
+  }
+
+  const loopY = Math.max(startY, endY) + 64;
+  return `M ${startX} ${startY} C ${startX} ${loopY}, ${endX} ${loopY}, ${endX} ${endY}`;
+}
+
+function buildFlowLayout(nodes, edges) {
+  if (!nodes.length) {
+    return {
+      width: 0,
+      height: 0,
+      nodes: [],
+      edges: [],
+    };
+  }
+
+  const nodeById = new Map(nodes.map((node) => [node.id, node]));
+  const outgoing = new Map(nodes.map((node) => [node.id, []]));
+  const incoming = new Map(nodes.map((node) => [node.id, []]));
+
+  edges.forEach((edge) => {
+    if (!nodeById.has(edge.source) || !nodeById.has(edge.target)) return;
+    outgoing.get(edge.source).push(edge.target);
+    incoming.get(edge.target).push(edge.source);
+  });
+
+  const indegree = new Map(
+    Array.from(incoming.entries()).map(([nodeId, items]) => [nodeId, items.length]),
+  );
+  const compareIds = (leftId, rightId) =>
+    compareGraphNodes(nodeById.get(leftId), nodeById.get(rightId));
+
+  const queue = Array.from(nodeById.keys())
+    .filter((nodeId) => indegree.get(nodeId) === 0)
+    .sort(compareIds);
+  const levels = new Map(queue.map((nodeId) => [nodeId, 0]));
+  const seen = new Set();
+
+  while (queue.length) {
+    const nodeId = queue.shift();
+    seen.add(nodeId);
+    const nextLevel = (levels.get(nodeId) || 0) + 1;
+    const targets = (outgoing.get(nodeId) || []).slice().sort(compareIds);
+    targets.forEach((targetId) => {
+      levels.set(targetId, Math.max(levels.get(targetId) || 0, nextLevel));
+      indegree.set(targetId, Math.max((indegree.get(targetId) || 0) - 1, 0));
+      if (indegree.get(targetId) === 0) {
+        queue.push(targetId);
+        queue.sort(compareIds);
+      }
+    });
+  }
+
+  Array.from(nodeById.keys())
+    .filter((nodeId) => !seen.has(nodeId))
+    .sort(compareIds)
+    .forEach((nodeId) => {
+      const sourceLevels = (incoming.get(nodeId) || []).map((sourceId) => levels.get(sourceId) || 0);
+      levels.set(nodeId, sourceLevels.length ? Math.max(...sourceLevels) + 1 : 0);
+    });
+
+  const rows = Array.from(
+    Array.from(nodeById.values()).reduce((map, node) => {
+      const level = levels.get(node.id) || 0;
+      const row = map.get(level) || [];
+      row.push(node);
+      map.set(level, row);
+      return map;
+    }, new Map()),
+  )
+    .sort((left, right) => left[0] - right[0])
+    .map(([, rowNodes]) => rowNodes.sort(compareGraphNodes));
+
+  const maxRowWidth = Math.max(
+    ...rows.map((rowNodes) => rowNodes.length * CANVAS_NODE_WIDTH + Math.max(rowNodes.length - 1, 0) * CANVAS_NODE_GAP),
+    CANVAS_NODE_WIDTH,
+  );
+  const width = Math.max(maxRowWidth + CANVAS_PADDING * 2, 960);
+  const height =
+    rows.length * CANVAS_NODE_HEIGHT
+    + Math.max(rows.length - 1, 0) * CANVAS_ROW_GAP
+    + CANVAS_PADDING * 2;
+
+  const laidOutNodes = [];
+  rows.forEach((rowNodes, rowIndex) => {
+    const rowWidth =
+      rowNodes.length * CANVAS_NODE_WIDTH
+      + Math.max(rowNodes.length - 1, 0) * CANVAS_NODE_GAP;
+    const startX = CANVAS_PADDING + (maxRowWidth - rowWidth) / 2;
+    const y = CANVAS_PADDING + rowIndex * (CANVAS_NODE_HEIGHT + CANVAS_ROW_GAP);
+
+    rowNodes.forEach((node, columnIndex) => {
+      laidOutNodes.push({
+        ...node,
+        width: CANVAS_NODE_WIDTH,
+        height: CANVAS_NODE_HEIGHT,
+        x: startX + columnIndex * (CANVAS_NODE_WIDTH + CANVAS_NODE_GAP),
+        y,
+      });
+    });
+  });
+
+  const positionById = new Map(laidOutNodes.map((node) => [node.id, node]));
+  const laidOutEdges = edges
+    .map((edge) => {
+      const sourceNode = positionById.get(edge.source);
+      const targetNode = positionById.get(edge.target);
+      if (!sourceNode || !targetNode) return null;
+      const labelX = (sourceNode.x + sourceNode.width / 2 + targetNode.x + targetNode.width / 2) / 2;
+      const labelY = (sourceNode.y + sourceNode.height + targetNode.y) / 2;
+      return {
+        ...edge,
+        sourceLabel: positionById.get(edge.source)?.label || "Source",
+        targetLabel: positionById.get(edge.target)?.label || "Target",
+        path: buildEdgePath(sourceNode, targetNode),
+        labelX,
+        labelY,
+      };
+    })
+    .filter(Boolean);
+
+  return {
+    width,
+    height,
+    nodes: laidOutNodes,
+    edges: laidOutEdges,
+  };
+}
+
+function formatVariableLine(variable) {
+  const name = asText(variable?.name) || "value";
+  const value = asText(variable?.value) || "(computed)";
+  return `${name}=${value}`;
+}
+
+function EvidenceRefs({ refs }) {
+  if (!refs?.length) {
+    return <p className="admin-systems-muted">No direct code references in this result.</p>;
+  }
+
+  return (
+    <ul className="admin-systems-ref-list">
+      {refs.map((ref) => (
+        <li key={`${ref.filePath}-${ref.startLine}-${ref.endLine}-${ref.label || ""}`}>
+          <span className="admin-systems-ref-label">{summarizeRef(ref)}</span>
+          {ref.label ? <span className="admin-systems-ref-meta">{ref.label}</span> : null}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function SystemsFlowChart({
   currentNode,
   nodes,
   edges,
@@ -83,6 +278,7 @@ function DrilldownFlowChart({
     [nodes],
   );
   const trafficByNodeId = useMemo(() => buildNodeTraffic(nodes, edges), [nodes, edges]);
+  const layout = useMemo(() => buildFlowLayout(nodes, edges), [nodes, edges]);
   const flowLinks = useMemo(
     () =>
       edges.slice(0, MAX_FLOW_LINKS).map((edge) => ({
@@ -92,8 +288,8 @@ function DrilldownFlowChart({
         variableSummary:
           edge.variables?.length
             ? edge.variables
-                .slice(0, 4)
-                .map((variable) => variable.name)
+                .slice(0, 3)
+                .map((variable) => formatVariableLine(variable))
                 .join(", ")
             : edge.label || "dependency",
       })),
@@ -104,16 +300,16 @@ function DrilldownFlowChart({
     <section className="admin-systems-flow-shell" aria-labelledby="systems-flow-heading">
       <div className="admin-systems-flow-header">
         <div>
-          <h3 id="systems-flow-heading">Drilldown flow chart</h3>
+          <h3 id="systems-flow-heading">Interactive system flow chart</h3>
           <p>
-            This chart only shows the internal makeup of the currently selected block. Click any
-            child block below to rebuild the chart around that block.
+            Every block comes from the current runtime snapshot. Click a block to rebuild the chart
+            around that subsystem, then repeat until you reach a leaf file or symbol.
           </p>
         </div>
         <div className="admin-systems-flow-stats">
           <span>{nodes.length} direct subdivisions</span>
           <span>{edges.length} observed hand-offs</span>
-          <span>{currentNode?.isLeaf ? "Leaf block" : "Click a block to go deeper"}</span>
+          <span>{currentNode?.isLeaf ? "Leaf block" : "Click any block to drill down"}</span>
         </div>
       </div>
 
@@ -123,27 +319,97 @@ function DrilldownFlowChart({
           <strong>{currentNode?.label || "Runtime"}</strong>
           <span className="admin-systems-node-summary">{currentNode?.summary || ""}</span>
           <span className="admin-systems-node-path">{currentNode?.relativePath || "app"}</span>
+          {currentNode?.authRoles?.length ? (
+            <span className="admin-systems-node-auth">
+              Access: {currentNode.authRoles.join(" · ")}
+            </span>
+          ) : null}
           <p className="admin-systems-focus-description">
-            {currentNode?.description ||
-              "Select a child block to replace the chart with the system inside that block."}
+            {currentNode?.description
+              || "Select a child block to replace the flow chart with the system inside that block."}
           </p>
         </article>
 
-        {nodes.length ? (
+        {layout.nodes.length ? (
           <>
-            <div className="admin-systems-flow-spine" aria-hidden="true" />
-            <div className="admin-systems-drill-grid" data-testid="systems-drill-grid">
-              {nodes.map((node) => {
-                const traffic = trafficByNodeId.get(node.id);
-                const variablePreview = Array.from(traffic?.variables || []).slice(0, 3).join(", ");
-                const isOpening = navigatingNodeId === node.id;
-                return (
-                  <div key={node.id} className="admin-systems-drill-item">
-                    <div className="admin-systems-drill-connector" aria-hidden="true" />
+            <div className="admin-systems-canvas-scroll" data-testid="systems-flow-canvas">
+              <div
+                className="admin-systems-canvas"
+                style={{ width: `${layout.width}px`, height: `${layout.height}px` }}
+              >
+                <svg
+                  className="admin-systems-canvas-svg"
+                  width={layout.width}
+                  height={layout.height}
+                  viewBox={`0 0 ${layout.width} ${layout.height}`}
+                  aria-hidden="true"
+                >
+                  <defs>
+                    <marker
+                      id="systems-flow-arrow"
+                      markerWidth="8"
+                      markerHeight="8"
+                      refX="7"
+                      refY="4"
+                      orient="auto"
+                      markerUnits="strokeWidth"
+                    >
+                      <path d="M0,0 L0,8 L8,4 z" fill="rgba(36, 74, 116, 0.44)" />
+                    </marker>
+                  </defs>
+                  {layout.edges.map((edge) => {
+                    const labelWidth = Math.min(
+                      240,
+                      Math.max(96, clampText(edge.label, 32).length * 7 + 26),
+                    );
+                    return (
+                      <g key={edge.id}>
+                        <path
+                          className="admin-systems-edge"
+                          d={edge.path}
+                          markerEnd="url(#systems-flow-arrow)"
+                        />
+                        <g transform={`translate(${edge.labelX - labelWidth / 2}, ${edge.labelY - 14})`}>
+                          <rect
+                            width={labelWidth}
+                            height="28"
+                            rx="14"
+                            fill="rgba(255,255,255,0.96)"
+                            stroke="rgba(148, 163, 184, 0.5)"
+                          />
+                          <text
+                            x={labelWidth / 2}
+                            y="18"
+                            textAnchor="middle"
+                            fill="#173b63"
+                            fontSize="11"
+                            fontWeight="700"
+                          >
+                            {clampText(edge.label, 28)}
+                          </text>
+                        </g>
+                      </g>
+                    );
+                  })}
+                </svg>
+
+                {layout.nodes.map((node) => {
+                  const traffic = trafficByNodeId.get(node.id);
+                  const variablePreview = Array.from(traffic?.variables || []).slice(0, 3).join(", ");
+                  const isOpening = navigatingNodeId === node.id;
+                  return (
                     <button
+                      key={node.id}
                       type="button"
-                      className={`admin-systems-drill-card${isOpening ? " pending" : ""}`}
+                      className={`admin-systems-node${isOpening ? " pending" : ""}`}
                       data-node-id={node.id}
+                      data-testid="systems-graph-node"
+                      style={{
+                        left: `${node.x}px`,
+                        top: `${node.y}px`,
+                        width: `${node.width}px`,
+                        minHeight: `${node.height}px`,
+                      }}
                       onClick={() => onSelectNode(node.id)}
                       aria-label={`${getNodeActionLabel(node)} ${node.label}`}
                     >
@@ -156,39 +422,31 @@ function DrilldownFlowChart({
                           {node.authRoles.slice(0, 3).join(" · ")}
                         </span>
                       ) : null}
-
-                      <div className="admin-systems-drill-metrics">
-                        <span>
-                          {node.childCount
-                            ? `${node.childCount} deeper subdivision${node.childCount === 1 ? "" : "s"}`
-                            : "No deeper subdivisions"}
-                        </span>
-                        <span>{node.descendantFileCount} runtime file{node.descendantFileCount === 1 ? "" : "s"}</span>
-                        <span>
-                          {traffic?.incoming || 0} in · {traffic?.outgoing || 0} out
-                        </span>
-                      </div>
-
+                      <span className="admin-systems-node-path">
+                        {traffic?.incoming || 0} in · {traffic?.outgoing || 0} out ·{" "}
+                        {node.childCount
+                          ? `${node.childCount} deeper block${node.childCount === 1 ? "" : "s"}`
+                          : "Leaf block"}
+                      </span>
                       {variablePreview ? (
-                        <p className="admin-systems-drill-variables">
-                          Passing: <code>{variablePreview}</code>
-                        </p>
+                        <span className="admin-systems-node-path">
+                          Variables: {variablePreview}
+                        </span>
                       ) : null}
-
-                      <span className="admin-systems-drill-action">
-                        {isOpening ? "Opening…" : getNodeActionLabel(node)}
+                      <span className="admin-systems-node-auth">
+                        {isOpening ? "Rebuilding chart…" : getNodeActionLabel(node)}
                       </span>
                     </button>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
 
             <div className="admin-systems-flow-links">
               <div className="admin-systems-panel-heading">
                 <h3>Flow at this level</h3>
                 <p>
-                  Relationships between the child blocks currently shown in the chart.
+                  Variable and dependency hand-offs between the blocks currently shown in the graph.
                 </p>
               </div>
               {flowLinks.length ? (
@@ -215,30 +473,13 @@ function DrilldownFlowChart({
           <div className="admin-systems-empty-state">
             <h3>No more subdivisions</h3>
             <p>
-              This block is already at the file or symbol level. Use the code evidence panels below
-              for the exact lines that define it.
+              This block is already at the file or symbol level. Use the evidence panels below for
+              the exact files and line ranges that define it.
             </p>
           </div>
         )}
       </div>
     </section>
-  );
-}
-
-function EvidenceRefs({ refs }) {
-  if (!refs?.length) {
-    return <p className="admin-systems-muted">No direct code references in this result.</p>;
-  }
-
-  return (
-    <ul className="admin-systems-ref-list">
-      {refs.map((ref) => (
-        <li key={`${ref.filePath}-${ref.startLine}-${ref.endLine}-${ref.label || ""}`}>
-          <span className="admin-systems-ref-label">{summarizeRef(ref)}</span>
-          {ref.label ? <span className="admin-systems-ref-meta">{ref.label}</span> : null}
-        </li>
-      ))}
-    </ul>
   );
 }
 
@@ -249,9 +490,11 @@ export default function AdminSystemsExplorerTab() {
   const [navigatingNodeId, setNavigatingNodeId] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [questionInput, setQuestionInput] = useState("");
-  const [chatHistory, setChatHistory] = useState([]);
+  const [chatHistoryByNodeId, setChatHistoryByNodeId] = useState({});
   const [lastRefreshAt, setLastRefreshAt] = useState("");
   const currentNodeIdRef = useRef(ROOT_NODE_ID);
+
+  const deferredGraph = useDeferredValue(view?.graph || null);
 
   const getAuthHeaders = useCallback(async () => {
     const headers = {
@@ -301,8 +544,8 @@ export default function AdminSystemsExplorerTab() {
         const payload = await response.json().catch(() => ({}));
         if (!response.ok || !payload?.success) {
           throw new Error(
-            asText(payload?.error || payload?.message) ||
-              "Failed to load runtime systems explorer.",
+            asText(payload?.error || payload?.message)
+              || "Failed to load runtime systems explorer.",
           );
         }
 
@@ -348,13 +591,12 @@ export default function AdminSystemsExplorerTab() {
           headers,
         });
         const payload = await response.json().catch(() => ({}));
-        if (!response.ok || !payload?.success) return;
-        if (cancelled) return;
+        if (!response.ok || !payload?.success || cancelled) return;
         if (asText(payload.version) && payload.version !== view.version) {
           loadView(currentNodeIdRef.current, { silent: true, fromPoll: true });
         }
       } catch {
-        // Keep polling silent in the background; the current view remains usable.
+        // Keep polling silently; the current snapshot stays usable.
       }
     }, POLL_INTERVAL_MS);
 
@@ -373,7 +615,8 @@ export default function AdminSystemsExplorerTab() {
 
   const onAskQuestion = useCallback(async () => {
     const question = asText(questionInput);
-    if (!question || asking || !view?.currentNode?.id) return;
+    const activeNodeId = asText(view?.currentNode?.id);
+    if (!question || asking || !activeNodeId) return;
 
     setAsking(true);
     setErrorMessage("");
@@ -383,7 +626,7 @@ export default function AdminSystemsExplorerTab() {
         method: "POST",
         headers,
         body: JSON.stringify({
-          nodeId: view.currentNode.id,
+          nodeId: activeNodeId,
           question,
         }),
       });
@@ -394,34 +637,46 @@ export default function AdminSystemsExplorerTab() {
         );
       }
 
-      setChatHistory((current) => [
-        {
-          id: `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
-          question,
-          answer: asText(payload?.answer),
-          evidence: Array.isArray(payload?.evidence) ? payload.evidence : [],
-          createdAt: new Date().toISOString(),
-        },
+      const nextEntry = {
+        id: `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+        question,
+        answer: asText(payload?.answer),
+        evidence: Array.isArray(payload?.evidence) ? payload.evidence : [],
+        createdAt: new Date().toISOString(),
+      };
+
+      setChatHistoryByNodeId((current) => ({
         ...current,
-      ]);
+        [activeNodeId]: [nextEntry, ...(current[activeNodeId] || [])].slice(0, 10),
+      }));
       setQuestionInput("");
     } catch (error) {
       setErrorMessage(asText(error?.message) || "Failed to ask explorer question.");
     } finally {
       setAsking(false);
     }
-  }, [asking, getAuthHeaders, questionInput, view]);
+  }, [asking, getAuthHeaders, questionInput, view?.currentNode?.id]);
+
+  const graphNodes = Array.isArray(deferredGraph?.nodes) ? deferredGraph.nodes : [];
+  const graphEdges = Array.isArray(deferredGraph?.edges) ? deferredGraph.edges : [];
+  const graphNodeById = useMemo(
+    () => new Map(graphNodes.map((node) => [node.id, node])),
+    [graphNodes],
+  );
+  const currentChatHistory =
+    chatHistoryByNodeId[asText(view?.currentNode?.id) || ROOT_NODE_ID] || [];
 
   return (
     <div className="tab-content active">
       <div className="admin-card admin-card-full admin-systems-card">
         <div className="admin-systems-header">
           <div>
-            <h2>Live Systems Explorer</h2>
+            <h2>Live System Graph</h2>
             <p className="admin-systems-subtitle">
-              Drill down through the current runtime hierarchy under <code>app/</code>. Every click
-              redraws the flow chart for the selected block, then you can repeat that until you hit
-              a leaf file or symbol.
+              This graph is rebuilt from the current runtime code under <code>app/</code> plus{" "}
+              <code>next.config.js</code>. Every click drills down into the selected system, every
+              code snippet is tied to a current file and line range, and the assistant answers from
+              the latest snapshot only.
             </p>
           </div>
           <div className="admin-systems-status">
@@ -459,7 +714,7 @@ export default function AdminSystemsExplorerTab() {
         {loading && !view ? (
           <div className="admin-systems-empty-state">
             <h3>Building runtime map…</h3>
-            <p>Scanning the current codebase and deriving system relationships.</p>
+            <p>Scanning the active codebase and deriving the current system relationships.</p>
           </div>
         ) : (
           <>
@@ -475,13 +730,16 @@ export default function AdminSystemsExplorerTab() {
               <div className="admin-systems-current-meta">
                 <span>{view?.currentNode?.summary || ""}</span>
                 <span>{view?.currentNode?.description || ""}</span>
+                {view?.currentNode?.authRoles?.length ? (
+                  <span>Authorized users: {view.currentNode.authRoles.join(" · ")}</span>
+                ) : null}
               </div>
             </div>
 
-            <DrilldownFlowChart
+            <SystemsFlowChart
               currentNode={view?.currentNode}
-              nodes={Array.isArray(view?.graph?.nodes) ? view.graph.nodes : []}
-              edges={Array.isArray(view?.graph?.edges) ? view.graph.edges : []}
+              nodes={graphNodes}
+              edges={graphEdges}
               navigatingNodeId={navigatingNodeId}
               onSelectNode={onSelectNode}
             />
@@ -490,37 +748,52 @@ export default function AdminSystemsExplorerTab() {
               <section className="admin-systems-panel">
                 <div className="admin-systems-panel-heading">
                   <h3>Block Composition</h3>
-                  <p>Files and exact line ranges that make up the current block.</p>
+                  <p>
+                    Exact files and line ranges that currently make up{" "}
+                    <strong>{view?.currentNode?.label || "this block"}</strong>.
+                  </p>
                 </div>
                 <div id="systems-source-refs" data-testid="systems-source-refs">
-                  {(view?.details?.sourceRefs || []).map((ref) => (
-                    <article
-                      key={`${ref.filePath}-${ref.startLine}-${ref.endLine}-${ref.label || ""}`}
-                      className="admin-systems-evidence-card"
-                    >
-                      <div className="admin-systems-evidence-header">
-                        <strong>{ref.label || summarizeRef(ref)}</strong>
-                        <span>{summarizeRef(ref)}</span>
-                      </div>
-                      <pre className="admin-systems-code" data-testid="systems-source-snippet">
-                        {ref.excerpt}
-                      </pre>
-                    </article>
-                  ))}
+                  {(view?.details?.sourceRefs || []).length ? (
+                    (view.details.sourceRefs || []).map((ref) => (
+                      <article
+                        key={`${ref.filePath}-${ref.startLine}-${ref.endLine}-${ref.label || ""}`}
+                        className="admin-systems-evidence-card"
+                      >
+                        <div className="admin-systems-evidence-header">
+                          <strong>{ref.label || summarizeRef(ref)}</strong>
+                          <span>{summarizeRef(ref)}</span>
+                        </div>
+                        <pre className="admin-systems-code" data-testid="systems-source-snippet">
+                          {ref.excerpt}
+                        </pre>
+                      </article>
+                    ))
+                  ) : (
+                    <p className="admin-systems-muted">
+                      No direct file refs were derived for the current block.
+                    </p>
+                  )}
                 </div>
               </section>
 
               <section className="admin-systems-panel">
                 <div className="admin-systems-panel-heading">
                   <h3>Variable Hand-Offs</h3>
-                  <p>Observed props, arguments, and options passed between the blocks in this view.</p>
+                  <p>
+                    Props, arguments, and options currently observed moving between the blocks shown
+                    in this graph.
+                  </p>
                 </div>
                 {(view?.details?.handoffs || []).length ? (
                   <div className="admin-systems-stack">
                     {view.details.handoffs.map((handoff) => (
                       <article key={handoff.id} className="admin-systems-evidence-card">
                         <div className="admin-systems-evidence-header">
-                          <strong>{handoff.label || "Dependency"}</strong>
+                          <strong>
+                            {graphNodeById.get(handoff.source)?.label || "Source"} →{" "}
+                            {graphNodeById.get(handoff.target)?.label || "Target"}
+                          </strong>
                           <span>{handoff.weight} linked usages</span>
                         </div>
                         {handoff.variables?.length ? (
@@ -529,17 +802,16 @@ export default function AdminSystemsExplorerTab() {
                               <li
                                 key={`${handoff.id}-${variable.name}-${variable.value}-${variable.line}-${index}`}
                               >
-                                <code>
-                                  {variable.name}={variable.value}
-                                </code>
+                                <code>{formatVariableLine(variable)}</code>
                                 <span>{variable.description}</span>
+                                {variable.usedFor ? <span>Used for: {variable.usedFor}</span> : null}
                               </li>
                             ))}
                           </ul>
                         ) : (
                           <p className="admin-systems-muted">
-                            This link is import-based and does not expose direct prop or argument names
-                            in the current view.
+                            This link is import-based and does not expose direct prop or argument
+                            names in the current view.
                           </p>
                         )}
                         <EvidenceRefs refs={handoff.refs} />
@@ -556,7 +828,7 @@ export default function AdminSystemsExplorerTab() {
               <section className="admin-systems-panel">
                 <div className="admin-systems-panel-heading">
                   <h3>Authorized User Types</h3>
-                  <p>Inferred from current access guards, route copy, and auth checks in the code.</p>
+                  <p>Inferred from the current auth checks, route copy, and access guards in code.</p>
                 </div>
                 {(view?.details?.auth || []).length ? (
                   <div className="admin-systems-stack">
@@ -567,7 +839,10 @@ export default function AdminSystemsExplorerTab() {
                           <span>{group.refs.length} code references</span>
                         </div>
                         {group.refs.map((ref) => (
-                          <div key={`${ref.filePath}-${ref.startLine}-${group.role}`} className="admin-systems-auth-ref">
+                          <div
+                            key={`${ref.filePath}-${ref.startLine}-${group.role}`}
+                            className="admin-systems-auth-ref"
+                          >
                             <div className="admin-systems-auth-path">{summarizeRef(ref)}</div>
                             <pre className="admin-systems-code small">{ref.excerpt}</pre>
                           </div>
@@ -586,7 +861,7 @@ export default function AdminSystemsExplorerTab() {
                 <div className="admin-systems-panel-heading">
                   <h3>Code-Aware Assistant</h3>
                   <p>
-                    Questions are answered from the latest runtime snapshot and cite the code
+                    Questions are answered from the latest runtime snapshot only and cite the code
                     references used.
                   </p>
                 </div>
@@ -606,9 +881,9 @@ export default function AdminSystemsExplorerTab() {
                   </button>
                 </div>
 
-                {chatHistory.length ? (
+                {currentChatHistory.length ? (
                   <div className="admin-systems-chat-history">
-                    {chatHistory.map((entry) => (
+                    {currentChatHistory.map((entry) => (
                       <article key={entry.id} className="admin-systems-chat-entry">
                         <p className="admin-systems-chat-question">
                           <strong>Q:</strong> {entry.question}
@@ -633,7 +908,7 @@ export default function AdminSystemsExplorerTab() {
                   </div>
                 ) : (
                   <p className="admin-systems-muted">
-                    Ask about access control, file ownership, variables, or how one block connects to
+                    Ask about access control, code ownership, variable usage, or how one block feeds
                     another.
                   </p>
                 )}

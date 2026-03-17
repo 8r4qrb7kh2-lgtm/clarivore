@@ -30,7 +30,7 @@ const TAB_ROUTES = [
   { id: "appeals", label: "Appeals Review" },
   { id: "feedback", label: "Anonymous Feedback" },
   { id: "product-reports", label: "📋 Issue Reports" },
-  { id: "systems-explorer", label: "🧭 Live Systems" },
+  { id: "systems-explorer", label: "🧭 Live System Graph" },
 ];
 
 function slugifyName(value) {
