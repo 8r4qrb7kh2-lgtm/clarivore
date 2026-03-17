@@ -1534,8 +1534,67 @@ function collectFunctionalEdgeEvidence(snapshot, sourceNode, targetNode) {
   };
 }
 
+function buildFunctionalLeafEdges(snapshot, currentNode) {
+  const currentFiles = new Set(currentNode?.descendantFiles || []);
+  const grouped = new Map();
+
+  snapshot.fileEdges.forEach((edge) => {
+    if (!currentFiles.has(edge.sourceFilePath) || !currentFiles.has(edge.targetFilePath)) return;
+    if (edge.sourceFilePath === edge.targetFilePath) return;
+
+    const key = `${edge.sourceFilePath}:${edge.targetFilePath}`;
+    const group = grouped.get(key) || {
+      id: key,
+      sourceFilePath: edge.sourceFilePath,
+      targetFilePath: edge.targetFilePath,
+      variables: [],
+      refs: [],
+      weight: 0,
+      importedSymbols: new Set(),
+    };
+    group.weight += edge.weight || 0;
+    edge.importedSymbols.forEach((symbol) => group.importedSymbols.add(symbol));
+    group.variables.push(...(edge.variables || []));
+    group.refs.push(...(edge.refs || []));
+    grouped.set(key, group);
+  });
+
+  return Array.from(grouped.values())
+    .map((edge) => {
+      const sourceFileInfo = snapshot.fileInfoByPath.get(edge.sourceFilePath);
+      const targetFileInfo = snapshot.fileInfoByPath.get(edge.targetFilePath);
+      const variables = uniqueBy(
+        edge.variables,
+        (variable) =>
+          `${variable.name}:${variable.value}:${variable.usageKind}:${variable.line}:${variable.specifier}`,
+      ).slice(0, MAX_EDGE_VARIABLES);
+      const labelTokens = variables.length
+        ? variables.slice(0, 3).map((variable) => variable.name)
+        : Array.from(edge.importedSymbols).slice(0, 3);
+      return {
+        id: `functional-leaf:${edge.id}`,
+        source: buildNodeId("file", edge.sourceFilePath),
+        target: buildNodeId("file", edge.targetFilePath),
+        sourceLabel: sourceFileInfo?.label || inferNodeLabel(edge.sourceFilePath),
+        targetLabel: targetFileInfo?.label || inferNodeLabel(edge.targetFilePath),
+        label: clampText(labelTokens.join(", ") || "dependency", 48),
+        description: `${edge.weight} live code link${edge.weight === 1 ? "" : "s"} connect these files inside ${currentNode.label}.`,
+        variables,
+        refs: uniqueBy(edge.refs, (ref) => `${ref.filePath}:${ref.startLine}:${ref.label}`).slice(
+          0,
+          MAX_EDGE_REFS,
+        ),
+        weight: edge.weight,
+      };
+    })
+    .sort((left, right) => right.weight - left.weight);
+}
+
 function buildFunctionalEdges(snapshot, functionalGraph, currentNode) {
   const childNodes = getFunctionalChildNodes(functionalGraph.nodeById, currentNode);
+  if (!childNodes.length) {
+    return buildFunctionalLeafEdges(snapshot, currentNode);
+  }
   const childIds = new Set(childNodes.map((node) => node.id));
   const edges = [];
 
@@ -1549,6 +1608,8 @@ function buildFunctionalEdges(snapshot, functionalGraph, currentNode) {
         id: `${sourceNode.id}:${targetNode.id}:${index}`,
         source: sourceNode.id,
         target: targetNode.id,
+        sourceLabel: sourceNode.label,
+        targetLabel: targetNode.label,
         label: clampText(flow.label || "supports", 48),
         description:
           flow.description
@@ -1696,6 +1757,8 @@ function buildQuestionEvidence(snapshot, functionalGraph, currentNode, question)
   handoffs.forEach((handoff) => {
     const sourceNode = functionalGraph.nodeById.get(handoff.source);
     const targetNode = functionalGraph.nodeById.get(handoff.target);
+    const sourceLabel = handoff.sourceLabel || sourceNode?.label || "Source";
+    const targetLabel = handoff.targetLabel || targetNode?.label || "Target";
     const variableText = handoff.variables
       .map((variable) =>
         `${variable.name}=${variable.value}${variable.usedFor ? ` (${variable.usedFor})` : ""}`)
@@ -1705,11 +1768,9 @@ function buildQuestionEvidence(snapshot, functionalGraph, currentNode, question)
       score:
         scoreText(
           queryTerms,
-          `${sourceNode?.label || ""} ${targetNode?.label || ""} ${variableText} ${handoff.label}`,
+          `${sourceLabel} ${targetLabel} ${variableText} ${handoff.label}`,
         ) + 2,
-      text: `${sourceNode?.label || "Source"} -> ${targetNode?.label || "Target"}: ${
-        handoff.label
-      }`,
+      text: `${sourceLabel} -> ${targetLabel}: ${handoff.label}`,
       refs: handoff.refs,
     });
   });

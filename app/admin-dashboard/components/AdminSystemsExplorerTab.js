@@ -818,8 +818,8 @@ export default function AdminSystemsExplorerTab() {
                       <article key={handoff.id} className="admin-systems-evidence-card">
                         <div className="admin-systems-evidence-header">
                           <strong>
-                            {graphNodeById.get(handoff.source)?.label || "Source"} →{" "}
-                            {graphNodeById.get(handoff.target)?.label || "Target"}
+                            {handoff.sourceLabel || graphNodeById.get(handoff.source)?.label || "Source"} →{" "}
+                            {handoff.targetLabel || graphNodeById.get(handoff.target)?.label || "Target"}
                           </strong>
                           <span>{handoff.weight} live link{handoff.weight === 1 ? "" : "s"}</span>
                         </div>

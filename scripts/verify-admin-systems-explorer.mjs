@@ -155,6 +155,31 @@ async function verifyExplorer(page) {
   );
 
   await page.locator('.admin-systems-breadcrumb:has-text("How Clarivore Works")').click();
+  await page.locator('[data-node-id="functional:restaurant-menu-experience"]').click();
+  await page.waitForFunction(() => {
+    const target = document.querySelector('[data-testid="systems-current-node"]');
+    return target && /Restaurant Menu Experience/i.test(target.textContent || "");
+  });
+
+  await page.locator('[data-node-id="functional:menu-viewer"]').click();
+  await page.waitForFunction(() => {
+    const target = document.querySelector('[data-testid="systems-current-node"]');
+    return target && /Menu Viewer and Safety Filters/i.test(target.textContent || "");
+  });
+
+  await waitFor(
+    async () => {
+      const text = await page.locator("body").innerText({ timeout: 1_000 }).catch(() => "");
+      return (
+        text.includes("How Information Moves")
+        && !text.includes("No direct workflow links were mapped inside this area.")
+      );
+    },
+    TIMEOUT_MS,
+    "Leaf workflow node did not show internal handoff evidence.",
+  );
+
+  await page.locator('.admin-systems-breadcrumb:has-text("How Clarivore Works")').click();
   await page.locator('[data-node-id="functional:staff-order-handling"]').click();
   await page.waitForFunction(() => {
     const target = document.querySelector('[data-testid="systems-current-node"]');
