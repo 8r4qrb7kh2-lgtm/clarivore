@@ -12,11 +12,11 @@ import {
 import { supabaseClient as supabase } from "../../lib/supabase";
 import { isAdminDashboardDevBypassEnabled } from "../services/adminDashboardAccess";
 
-const ROOT_NODE_ID = "workspace:clarivore-runtime";
-const POLL_INTERVAL_MS = 1_000;
+const ROOT_NODE_ID = "functional:clarivore-workflows";
+const POLL_INTERVAL_MS = 5_000;
 const MAX_FLOW_LINKS = 14;
 const CANVAS_NODE_WIDTH = 264;
-const CANVAS_NODE_HEIGHT = 176;
+const CANVAS_NODE_HEIGHT = 204;
 const CANVAS_ROW_GAP = 96;
 const CANVAS_NODE_GAP = 72;
 const CANVAS_PADDING = 40;
@@ -48,6 +48,9 @@ function summarizeRef(ref) {
 }
 
 function getNodeKindLabel(node) {
+  if (node.kind === "root") return "System Map";
+  if (node.kind === "area") return "Area";
+  if (node.kind === "task") return "Step";
   if (node.kind === "directory") return "System";
   if (node.kind === "file") return "File";
   if (node.kind === "symbol") return "Block";
@@ -55,6 +58,9 @@ function getNodeKindLabel(node) {
 }
 
 function getNodeActionLabel(node) {
+  if (node.kind === "root") return "Open area";
+  if (node.kind === "area") return "Open area";
+  if (node.kind === "task") return node.childCount ? "Open step" : "Inspect step";
   if (node.kind === "directory") return "Open subsystem";
   if (node.kind === "file") return node.childCount ? "Open file blocks" : "Inspect file";
   if (node.kind === "symbol") return "Inspect block";
@@ -62,7 +68,15 @@ function getNodeActionLabel(node) {
 }
 
 function compareGraphNodes(left, right) {
+  const leftOrder = Number.isFinite(left?.order) ? left.order : null;
+  const rightOrder = Number.isFinite(right?.order) ? right.order : null;
+  if (leftOrder !== null && rightOrder !== null && leftOrder !== rightOrder) {
+    return leftOrder - rightOrder;
+  }
   const priorityByKind = {
+    root: 0,
+    area: 1,
+    task: 2,
     directory: 0,
     file: 1,
     symbol: 2,
@@ -285,13 +299,13 @@ function SystemsFlowChart({
         ...edge,
         sourceLabel: nodeById.get(edge.source)?.label || "Source",
         targetLabel: nodeById.get(edge.target)?.label || "Target",
-        variableSummary:
+        summaryText:
           edge.variables?.length
             ? edge.variables
                 .slice(0, 3)
                 .map((variable) => formatVariableLine(variable))
                 .join(", ")
-            : edge.label || "dependency",
+            : edge.description || edge.label || "workflow connection",
       })),
     [edges, nodeById],
   );
@@ -300,33 +314,40 @@ function SystemsFlowChart({
     <section className="admin-systems-flow-shell" aria-labelledby="systems-flow-heading">
       <div className="admin-systems-flow-header">
         <div>
-          <h3 id="systems-flow-heading">Interactive system flow chart</h3>
+          <h3 id="systems-flow-heading">Interactive workflow map</h3>
           <p>
-            Every block comes from the current runtime snapshot. Click a block to rebuild the chart
-            around that subsystem, then repeat until you reach a leaf file or symbol.
+            This view is organized by how Clarivore works for real people. Click any card to drill
+            deeper into that area while keeping the live permissions, files, and code lines below.
           </p>
         </div>
         <div className="admin-systems-flow-stats">
-          <span>{nodes.length} direct subdivisions</span>
-          <span>{edges.length} observed hand-offs</span>
-          <span>{currentNode?.isLeaf ? "Leaf block" : "Click any block to drill down"}</span>
+          <span>{nodes.length} direct parts</span>
+          <span>{edges.length} workflow connections</span>
+          <span>{currentNode?.isLeaf ? "Detailed area" : "Click any card to drill down"}</span>
         </div>
       </div>
 
       <div className="admin-systems-flow-stage">
         <article className="admin-systems-focus-node" data-testid="systems-focus-node">
-          <span className="admin-systems-node-kind">Current block</span>
+          <span className="admin-systems-node-kind">
+            {`Current ${getNodeKindLabel(currentNode).toLowerCase()}`}
+          </span>
           <strong>{currentNode?.label || "Runtime"}</strong>
           <span className="admin-systems-node-summary">{currentNode?.summary || ""}</span>
-          <span className="admin-systems-node-path">{currentNode?.relativePath || "app"}</span>
+          <span className="admin-systems-node-path">{currentNode?.scopeLabel || "Site overview"}</span>
+          {currentNode?.audience?.length ? (
+            <span className="admin-systems-node-path">
+              Primary users: {currentNode.audience.join(" · ")}
+            </span>
+          ) : null}
           {currentNode?.authRoles?.length ? (
             <span className="admin-systems-node-auth">
-              Access: {currentNode.authRoles.join(" · ")}
+              Permissions seen in code: {currentNode.authRoles.join(" · ")}
             </span>
           ) : null}
           <p className="admin-systems-focus-description">
             {currentNode?.description
-              || "Select a child block to replace the flow chart with the system inside that block."}
+              || "Select a child area to replace the map with the tasks inside that workflow."}
           </p>
         </article>
 
@@ -395,7 +416,6 @@ function SystemsFlowChart({
 
                 {layout.nodes.map((node) => {
                   const traffic = trafficByNodeId.get(node.id);
-                  const variablePreview = Array.from(traffic?.variables || []).slice(0, 3).join(", ");
                   const isOpening = navigatingNodeId === node.id;
                   return (
                     <button
@@ -416,25 +436,27 @@ function SystemsFlowChart({
                       <span className="admin-systems-node-kind">{getNodeKindLabel(node)}</span>
                       <strong>{node.label}</strong>
                       <span className="admin-systems-node-summary">{node.summary}</span>
-                      <span className="admin-systems-node-path">{node.relativePath}</span>
+                      <span className="admin-systems-node-path">
+                        {node.scopeLabel || "Workflow area"}
+                      </span>
+                      {node.audience?.length ? (
+                        <span className="admin-systems-node-path">
+                          Used by: {node.audience.slice(0, 3).join(" · ")}
+                        </span>
+                      ) : null}
                       {node.authRoles?.length ? (
                         <span className="admin-systems-node-auth">
-                          {node.authRoles.slice(0, 3).join(" · ")}
+                          Permissions: {node.authRoles.slice(0, 3).join(" · ")}
                         </span>
                       ) : null}
                       <span className="admin-systems-node-path">
                         {traffic?.incoming || 0} in · {traffic?.outgoing || 0} out ·{" "}
                         {node.childCount
-                          ? `${node.childCount} deeper block${node.childCount === 1 ? "" : "s"}`
-                          : "Leaf block"}
+                          ? `${node.childCount} deeper part${node.childCount === 1 ? "" : "s"}`
+                          : "Detailed area"}
                       </span>
-                      {variablePreview ? (
-                        <span className="admin-systems-node-path">
-                          Variables: {variablePreview}
-                        </span>
-                      ) : null}
                       <span className="admin-systems-node-auth">
-                        {isOpening ? "Rebuilding chart…" : getNodeActionLabel(node)}
+                        {isOpening ? "Rebuilding map…" : getNodeActionLabel(node)}
                       </span>
                     </button>
                   );
@@ -444,9 +466,9 @@ function SystemsFlowChart({
 
             <div className="admin-systems-flow-links">
               <div className="admin-systems-panel-heading">
-                <h3>Flow at this level</h3>
+                <h3>What Happens Between These Parts</h3>
                 <p>
-                  Variable and dependency hand-offs between the blocks currently shown in the graph.
+                  Plain-language workflow links for the cards currently shown in the map.
                 </p>
               </div>
               {flowLinks.length ? (
@@ -458,23 +480,23 @@ function SystemsFlowChart({
                         <span>→</span>
                         <strong>{edge.targetLabel}</strong>
                       </div>
-                      <p>{edge.variableSummary}</p>
+                      <p>{edge.summaryText}</p>
                     </article>
                   ))}
                 </div>
               ) : (
                 <p className="admin-systems-muted">
-                  No direct child-to-child hand-offs were detected at this subdivision level.
+                  These parts do not have a direct workflow link at this level of the map.
                 </p>
               )}
             </div>
           </>
         ) : (
           <div className="admin-systems-empty-state">
-            <h3>No more subdivisions</h3>
+            <h3>No more workflow subdivisions</h3>
             <p>
-              This block is already at the file or symbol level. Use the evidence panels below for
-              the exact files and line ranges that define it.
+              This area is already at its most specific workflow level. Use the evidence panels
+              below for the exact files, permissions, and line ranges behind it.
             </p>
           </div>
         )}
@@ -673,15 +695,14 @@ export default function AdminSystemsExplorerTab() {
           <div>
             <h2>Live System Graph</h2>
             <p className="admin-systems-subtitle">
-              This graph is rebuilt from the current runtime code under <code>app/</code> plus{" "}
-              <code>next.config.js</code>. Every click drills down into the selected system, every
-              code snippet is tied to a current file and line range, and the assistant answers from
-              the latest snapshot only.
+              This map is rebuilt from the current runtime under <code>app/</code> plus{" "}
+              <code>next.config.js</code>, but it is organized around how Clarivore actually works.
+              Every area still includes live permissions, file coverage, and code lines behind it.
             </p>
           </div>
           <div className="admin-systems-status">
             <span id="systems-version" data-testid="systems-version">
-              Snapshot {view?.version || "loading"}
+              Live snapshot {view?.version || "loading"}
             </span>
             <span>
               {view?.generatedAt ? `Built ${formatTimestamp(view.generatedAt)}` : "Building…"}
@@ -713,25 +734,28 @@ export default function AdminSystemsExplorerTab() {
 
         {loading && !view ? (
           <div className="admin-systems-empty-state">
-            <h3>Building runtime map…</h3>
-            <p>Scanning the active codebase and deriving the current system relationships.</p>
+            <h3>Building live workflow map…</h3>
+            <p>Scanning the active codebase and organizing it around the product’s functional areas.</p>
           </div>
         ) : (
           <>
             <div className="admin-systems-current">
               <div>
                 <h3 id="systems-current-node" data-testid="systems-current-node">
-                  {view?.currentNode?.label || "Runtime"}
+                  {view?.currentNode?.label || "How Clarivore Works"}
                 </h3>
                 <p className="admin-systems-current-path">
-                  <code>{view?.currentNode?.relativePath || "app"}</code>
+                  {view?.currentNode?.scopeLabel || "Site overview"}
                 </p>
               </div>
               <div className="admin-systems-current-meta">
                 <span>{view?.currentNode?.summary || ""}</span>
                 <span>{view?.currentNode?.description || ""}</span>
+                {view?.currentNode?.audience?.length ? (
+                  <span>Primary users: {view.currentNode.audience.join(" · ")}</span>
+                ) : null}
                 {view?.currentNode?.authRoles?.length ? (
-                  <span>Authorized users: {view.currentNode.authRoles.join(" · ")}</span>
+                  <span>Permissions seen in code: {view.currentNode.authRoles.join(" · ")}</span>
                 ) : null}
               </div>
             </div>
@@ -747,42 +771,45 @@ export default function AdminSystemsExplorerTab() {
             <div className="admin-systems-grid">
               <section className="admin-systems-panel">
                 <div className="admin-systems-panel-heading">
-                  <h3>Block Composition</h3>
+                  <h3>What Powers This Area</h3>
                   <p>
-                    Exact files and line ranges that currently make up{" "}
-                    <strong>{view?.currentNode?.label || "this block"}</strong>.
+                    The direct parts behind <strong>{view?.currentNode?.label || "this area"}</strong>,
+                    including line counts and the permissions seen in their live files.
                   </p>
                 </div>
-                <div id="systems-source-refs" data-testid="systems-source-refs">
-                  {(view?.details?.sourceRefs || []).length ? (
-                    (view.details.sourceRefs || []).map((ref) => (
-                      <article
-                        key={`${ref.filePath}-${ref.startLine}-${ref.endLine}-${ref.label || ""}`}
-                        className="admin-systems-evidence-card"
-                      >
+                {(view?.details?.components || []).length ? (
+                  <div className="admin-systems-stack">
+                    {view.details.components.map((component) => (
+                      <article key={component.id} className="admin-systems-evidence-card">
                         <div className="admin-systems-evidence-header">
-                          <strong>{ref.label || summarizeRef(ref)}</strong>
-                          <span>{summarizeRef(ref)}</span>
+                          <strong>{component.label}</strong>
+                          <span>{component.summary}</span>
                         </div>
-                        <pre className="admin-systems-code" data-testid="systems-source-snippet">
-                          {ref.excerpt}
-                        </pre>
+                        {component.scopeLabel ? (
+                          <div className="admin-systems-auth-path">{component.scopeLabel}</div>
+                        ) : null}
+                        <p className="admin-systems-muted">{component.description}</p>
+                        {component.authRoles?.length ? (
+                          <div className="admin-systems-component-meta">
+                            Permissions: {component.authRoles.join(" · ")}
+                          </div>
+                        ) : null}
                       </article>
-                    ))
-                  ) : (
-                    <p className="admin-systems-muted">
-                      No direct file refs were derived for the current block.
-                    </p>
-                  )}
-                </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="admin-systems-muted">
+                    No direct parts were derived for the current area.
+                  </p>
+                )}
               </section>
 
               <section className="admin-systems-panel">
                 <div className="admin-systems-panel-heading">
-                  <h3>Variable Hand-Offs</h3>
+                  <h3>How Information Moves</h3>
                   <p>
-                    Props, arguments, and options currently observed moving between the blocks shown
-                    in this graph.
+                    The workflow links between the parts shown in this area, with any live code
+                    evidence attached underneath.
                   </p>
                 </div>
                 {(view?.details?.handoffs || []).length ? (
@@ -794,8 +821,11 @@ export default function AdminSystemsExplorerTab() {
                             {graphNodeById.get(handoff.source)?.label || "Source"} →{" "}
                             {graphNodeById.get(handoff.target)?.label || "Target"}
                           </strong>
-                          <span>{handoff.weight} linked usages</span>
+                          <span>{handoff.weight} live link{handoff.weight === 1 ? "" : "s"}</span>
                         </div>
+                        {handoff.description ? (
+                          <p className="admin-systems-muted">{handoff.description}</p>
+                        ) : null}
                         {handoff.variables?.length ? (
                           <ul className="admin-systems-variable-list">
                             {handoff.variables.map((variable, index) => (
@@ -810,8 +840,8 @@ export default function AdminSystemsExplorerTab() {
                           </ul>
                         ) : (
                           <p className="admin-systems-muted">
-                            This link is import-based and does not expose direct prop or argument
-                            names in the current view.
+                            This workflow link is supported mainly by routing, shared state, or
+                            higher-level structure rather than a single direct prop or argument hand-off.
                           </p>
                         )}
                         <EvidenceRefs refs={handoff.refs} />
@@ -820,14 +850,14 @@ export default function AdminSystemsExplorerTab() {
                   </div>
                 ) : (
                   <p className="admin-systems-muted">
-                    No direct block-to-block hand-offs were detected for this subdivision level.
+                    No direct workflow links were mapped inside this area.
                   </p>
                 )}
               </section>
 
               <section className="admin-systems-panel">
                 <div className="admin-systems-panel-heading">
-                  <h3>Authorized User Types</h3>
+                  <h3>Who Can Use It</h3>
                   <p>Inferred from the current auth checks, route copy, and access guards in code.</p>
                 </div>
                 {(view?.details?.auth || []).length ? (
@@ -852,24 +882,53 @@ export default function AdminSystemsExplorerTab() {
                   </div>
                 ) : (
                   <p className="admin-systems-muted">
-                    No explicit authorization evidence was found in the current block.
+                    No explicit permissions were found in the current area.
                   </p>
                 )}
               </section>
 
               <section className="admin-systems-panel">
                 <div className="admin-systems-panel-heading">
-                  <h3>Code-Aware Assistant</h3>
+                  <h3>Key Live Code Evidence</h3>
                   <p>
-                    Questions are answered from the latest runtime snapshot only and cite the code
-                    references used.
+                    Exact files and line ranges currently powering{" "}
+                    <strong>{view?.currentNode?.label || "this area"}</strong>.
+                  </p>
+                </div>
+                <div id="systems-source-refs" data-testid="systems-source-refs">
+                  {(view?.details?.sourceRefs || []).length ? (
+                    (view.details.sourceRefs || []).map((ref) => (
+                      <article
+                        key={`${ref.filePath}-${ref.startLine}-${ref.endLine}-${ref.label || ""}`}
+                        className="admin-systems-evidence-card"
+                      >
+                        <div className="admin-systems-evidence-header">
+                          <strong>{ref.label || summarizeRef(ref)}</strong>
+                          <span>{summarizeRef(ref)}</span>
+                        </div>
+                        <pre className="admin-systems-code" data-testid="systems-source-snippet">
+                          {ref.excerpt}
+                        </pre>
+                      </article>
+                    ))
+                  ) : (
+                    <p className="admin-systems-muted">
+                      No direct code evidence was derived for the current area.
+                    </p>
+                  )}
+                </div>
+                <div className="admin-systems-panel-heading">
+                  <h3>Ask What This Part Does</h3>
+                  <p>
+                    Questions are answered from the latest runtime snapshot only and cite the live
+                    evidence used.
                   </p>
                 </div>
                 <div className="admin-systems-chat">
                   <textarea
                     value={questionInput}
                     onChange={(event) => setQuestionInput(event.target.value)}
-                    placeholder="Ask about the current block. Example: Which user types can access this and where is that enforced?"
+                    placeholder="Ask about the current area. Example: How does this step connect to the next one, and which users can reach it?"
                   />
                   <button
                     type="button"
@@ -877,7 +936,7 @@ export default function AdminSystemsExplorerTab() {
                     onClick={onAskQuestion}
                     disabled={asking || !asText(questionInput)}
                   >
-                    {asking ? "Reasoning…" : "Ask the codebase"}
+                    {asking ? "Reasoning…" : "Ask about this area"}
                   </button>
                 </div>
 
@@ -908,8 +967,8 @@ export default function AdminSystemsExplorerTab() {
                   </div>
                 ) : (
                   <p className="admin-systems-muted">
-                    Ask about access control, code ownership, variable usage, or how one block feeds
-                    another.
+                    Ask about permissions, supporting files, workflow steps, or how this area feeds
+                    the next part of the site.
                   </p>
                 )}
               </section>

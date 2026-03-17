@@ -89,7 +89,7 @@ async function stopDevServer(child) {
 }
 
 async function verifyExplorer(page) {
-  const liveSystemsButton = page.getByRole("button", { name: /live systems/i });
+  const liveSystemsButton = page.getByRole("button", { name: /live system/i });
   await page.goto(`${BASE_URL}/admin-dashboard`, { waitUntil: "domcontentloaded" });
   await page.waitForTimeout(500);
   await page.reload({ waitUntil: "domcontentloaded" });
@@ -115,9 +115,9 @@ async function verifyExplorer(page) {
 
   const currentNode = page.getByTestId("systems-current-node");
   await waitFor(
-    async () => (await currentNode.textContent())?.includes("Clarivore Runtime"),
+    async () => (await currentNode.textContent())?.includes("How Clarivore Works"),
     TIMEOUT_MS,
-    "Root runtime node never rendered.",
+    "Root workflow node never rendered.",
   );
 
   const dataFlowsButton = page.getByRole("button", { name: /data flows/i });
@@ -125,16 +125,22 @@ async function verifyExplorer(page) {
     throw new Error("Old Data Flows tab is still visible.");
   }
 
-  await page.locator('[data-node-id="dir:app/admin-dashboard"]').click();
+  await page.locator('[data-node-id="functional:admin-support"]').click();
   await page.waitForFunction(() => {
     const target = document.querySelector('[data-testid="systems-current-node"]');
-    return target && /Admin Dashboard/i.test(target.textContent || "");
+    return target && /Admin and Support/i.test(target.textContent || "");
+  });
+
+  await page.locator('[data-node-id="functional:admin-dashboard"]').click();
+  await page.waitForFunction(() => {
+    const target = document.querySelector('[data-testid="systems-current-node"]');
+    return target && /Admin Dashboard and Live System Maps/i.test(target.textContent || "");
   });
 
   await page.locator(".admin-systems-chat textarea").fill(
     "Which user types can access this system and where is that enforced?",
   );
-  await page.getByRole("button", { name: /ask the codebase/i }).click();
+  await page.getByRole("button", { name: /ask about this area/i }).click();
   await waitFor(
     async () => {
       const count = await page.locator(".admin-systems-chat-history").count();
@@ -148,17 +154,17 @@ async function verifyExplorer(page) {
     "Chat answer never cited admin-dashboard code.",
   );
 
-  await page.locator('.admin-systems-breadcrumb:has-text("Clarivore Runtime")').click();
-  await page.locator('[data-node-id="dir:app/kitchen-tablet"]').click();
+  await page.locator('.admin-systems-breadcrumb:has-text("How Clarivore Works")').click();
+  await page.locator('[data-node-id="functional:staff-order-handling"]').click();
   await page.waitForFunction(() => {
-    const target = document.querySelector(".admin-systems-current-path code");
-    return target && target.textContent === "app/kitchen-tablet";
+    const target = document.querySelector('[data-testid="systems-current-node"]');
+    return target && /Staff Order Handling/i.test(target.textContent || "");
   });
 
-  await page.locator('[data-node-id="file:app/kitchen-tablet/kitchenTabletLogic.js"]').click();
+  await page.locator('[data-node-id="functional:kitchen-tablet"]').click();
   await page.waitForFunction(() => {
-    const target = document.querySelector(".admin-systems-current-path code");
-    return target && target.textContent === "app/kitchen-tablet/kitchenTabletLogic.js";
+    const target = document.querySelector('[data-testid="systems-current-node"]');
+    return target && /Kitchen Tablet/i.test(target.textContent || "");
   });
 
   await waitFor(

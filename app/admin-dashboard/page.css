@@ -1531,7 +1531,7 @@
       position: absolute;
       z-index: 2;
       width: 240px;
-      min-height: 138px;
+      min-height: 156px;
       display: grid;
       gap: 8px;
       text-align: left;
@@ -1722,6 +1722,14 @@
     .route-admin-dashboard .admin-systems-ref-list li {
       display: grid;
       gap: 3px;
+    }
+
+    .route-admin-dashboard .admin-systems-component-meta {
+      color: #47617d;
+      font-size: 0.82rem;
+      line-height: 1.45;
+      padding-top: 6px;
+      border-top: 1px solid rgba(148, 163, 184, 0.2);
     }
 
     .route-admin-dashboard .admin-systems-chat {

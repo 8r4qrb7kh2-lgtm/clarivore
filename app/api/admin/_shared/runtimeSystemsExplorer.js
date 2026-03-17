@@ -2,6 +2,10 @@ import { createHash } from "node:crypto";
 import { access, readdir, readFile, stat } from "node:fs/promises";
 import path from "node:path";
 import ts from "typescript";
+import {
+  FUNCTIONAL_GRAPH_DEFINITION,
+  FUNCTIONAL_ROOT_NODE_ID,
+} from "./runtimeSystemsFunctionalMap";
 
 const WORKSPACE_ROOT = process.cwd();
 const APP_ROOT = path.join(WORKSPACE_ROOT, "app");
@@ -1323,55 +1327,294 @@ export async function getRuntimeSystemsVersion() {
   };
 }
 
+function filePathMatchesSelectors(filePath, selectors = {}) {
+  const value = asText(filePath);
+  if (!value) return false;
+  if ((selectors.exact || []).some((candidate) => value === candidate)) return true;
+  if ((selectors.prefixes || []).some((candidate) => value.startsWith(candidate))) return true;
+  if ((selectors.contains || []).some((candidate) => value.includes(candidate))) return true;
+  if ((selectors.suffixes || []).some((candidate) => value.endsWith(candidate))) return true;
+  return false;
+}
+
+function collectFunctionalLeafDefinitions(definition, results = []) {
+  if (!definition?.children?.length) {
+    results.push(definition);
+    return results;
+  }
+  definition.children.forEach((child) => collectFunctionalLeafDefinitions(child, results));
+  return results;
+}
+
+function buildFunctionalGraph(snapshot) {
+  if (snapshot.functionalGraph) {
+    return snapshot.functionalGraph;
+  }
+
+  const leafDefinitions = collectFunctionalLeafDefinitions(FUNCTIONAL_GRAPH_DEFINITION);
+  const unassignedLeaf =
+    leafDefinitions.find((definition) => definition.matchUnassigned) || null;
+  const directFilesByNodeId = new Map(leafDefinitions.map((definition) => [definition.id, []]));
+
+  Array.from(snapshot.fileInfoByPath.keys())
+    .sort()
+    .forEach((filePath) => {
+      const owner =
+        leafDefinitions.find(
+          (definition) =>
+            !definition.matchUnassigned && filePathMatchesSelectors(filePath, definition.selectors),
+        ) || unassignedLeaf;
+      if (!owner) return;
+      const files = directFilesByNodeId.get(owner.id) || [];
+      files.push(filePath);
+      directFilesByNodeId.set(owner.id, files);
+    });
+
+  const nodeById = new Map();
+
+  function visit(definition, parentId = "", order = 0) {
+    const node = {
+      id: definition.id,
+      label: definition.label,
+      kind: definition.kind,
+      subtype: definition.scopeLabel || "",
+      order,
+      relativePath: "",
+      scopeLabel: definition.scopeLabel || "",
+      description: definition.description || "",
+      audience: Array.isArray(definition.audience) ? definition.audience : [],
+      parentId,
+      childIds: (definition.children || []).map((child) => child.id),
+      flowsTo: Array.isArray(definition.flowsTo) ? definition.flowsTo : [],
+      directFiles: (directFilesByNodeId.get(definition.id) || []).slice(),
+      descendantFiles: [],
+      totalLineCount: 0,
+    };
+    nodeById.set(node.id, node);
+    (definition.children || []).forEach((child, index) => visit(child, node.id, index));
+    return node;
+  }
+
+  visit(FUNCTIONAL_GRAPH_DEFINITION);
+
+  function collectDescendantFiles(nodeId) {
+    const node = nodeById.get(nodeId);
+    if (!node) return [];
+    if (!node.childIds.length) {
+      node.descendantFiles = uniqueBy(node.directFiles, (filePath) => filePath);
+      return node.descendantFiles;
+    }
+    const descendants = uniqueBy(
+      node.childIds.flatMap((childId) => collectDescendantFiles(childId)),
+      (filePath) => filePath,
+    );
+    node.descendantFiles = descendants;
+    return descendants;
+  }
+
+  collectDescendantFiles(FUNCTIONAL_ROOT_NODE_ID);
+
+  nodeById.forEach((node) => {
+    node.totalLineCount = (node.descendantFiles || []).reduce((total, filePath) => {
+      const fileInfo = snapshot.fileInfoByPath.get(filePath);
+      return total + (fileInfo?.lineCount || 0);
+    }, 0);
+  });
+
+  snapshot.functionalGraph = {
+    rootNodeId: FUNCTIONAL_ROOT_NODE_ID,
+    nodeById,
+  };
+  return snapshot.functionalGraph;
+}
+
+function getFunctionalChildNodes(nodeById, currentNode) {
+  return (currentNode.childIds || []).map((childId) => nodeById.get(childId)).filter(Boolean);
+}
+
+function formatFunctionalNodeSummary(node) {
+  const fileCount = (node.descendantFiles || []).length;
+  const lineCount = node.totalLineCount || 0;
+  if (node.kind === "root") {
+    return `${node.childIds.length} areas · ${fileCount} runtime files · ${lineCount} lines of code`;
+  }
+  if (node.childIds.length) {
+    return `${node.childIds.length} parts · ${fileCount} runtime files · ${lineCount} lines of code`;
+  }
+  return `${fileCount} runtime files · ${lineCount} lines of code`;
+}
+
+function buildSourceRefsForFilePaths(snapshot, filePaths) {
+  const refs = [];
+  (filePaths || []).forEach((filePath) => {
+    const fileInfo = snapshot.fileInfoByPath.get(filePath);
+    if (!fileInfo) return;
+    fileInfo.primaryRefs.forEach((ref) => {
+      refs.push({
+        ...ref,
+        excerpt: createLineExcerpt(fileInfo.content, ref.startLine, ref.endLine),
+      });
+    });
+  });
+  return uniqueBy(refs, (ref) => `${ref.filePath}:${ref.startLine}:${ref.endLine}:${ref.label}`)
+    .sort((left, right) => {
+      const leftScore = left.label.includes("access evidence") ? -1 : 0;
+      const rightScore = right.label.includes("access evidence") ? -1 : 0;
+      if (leftScore !== rightScore) return leftScore - rightScore;
+      return left.filePath.localeCompare(right.filePath) || left.startLine - right.startLine;
+    })
+    .slice(0, MAX_NODE_SOURCE_REFS);
+}
+
+function buildFunctionalComponentList(snapshot, functionalGraph, currentNode) {
+  if ((currentNode.childIds || []).length) {
+    return getFunctionalChildNodes(functionalGraph.nodeById, currentNode).map((node) => ({
+      id: node.id,
+      label: node.label,
+      kind: node.kind,
+      scopeLabel: node.scopeLabel || "",
+      description: node.description,
+      summary: formatFunctionalNodeSummary(node),
+      lineCount: node.totalLineCount || 0,
+      fileCount: (node.descendantFiles || []).length,
+      authRoles: aggregateNodeAuth(snapshot.fileInfoByPath, node.descendantFiles || []).map(
+        (group) => group.role,
+      ),
+    }));
+  }
+
+  return (currentNode.descendantFiles || [])
+    .map((filePath) => snapshot.fileInfoByPath.get(filePath))
+    .filter(Boolean)
+    .sort((left, right) => left.relativePath.localeCompare(right.relativePath))
+    .map((fileInfo) => ({
+      id: fileInfo.id,
+      label: fileInfo.label,
+      kind: "file",
+      scopeLabel: fileInfo.relativePath,
+      description: fileInfo.description,
+      summary: `${fileInfo.lineCount} lines of code${
+        fileInfo.symbols.length ? ` · ${fileInfo.symbols.length} code block${fileInfo.symbols.length === 1 ? "" : "s"}` : ""
+      }`,
+      lineCount: fileInfo.lineCount,
+      fileCount: 1,
+      authRoles: aggregateNodeAuth(snapshot.fileInfoByPath, [fileInfo.relativePath]).map(
+        (group) => group.role,
+      ),
+      subtype: fileInfo.subtype,
+      relativePath: fileInfo.relativePath,
+    }));
+}
+
+function collectFunctionalEdgeEvidence(snapshot, sourceNode, targetNode) {
+  const sourceFiles = new Set(sourceNode?.descendantFiles || []);
+  const targetFiles = new Set(targetNode?.descendantFiles || []);
+  const variables = [];
+  const refs = [];
+  let weight = 0;
+
+  snapshot.fileEdges.forEach((edge) => {
+    if (!sourceFiles.has(edge.sourceFilePath) || !targetFiles.has(edge.targetFilePath)) return;
+    weight += edge.weight || 0;
+    variables.push(...(edge.variables || []));
+    refs.push(...(edge.refs || []));
+  });
+
+  return {
+    weight,
+    variables: uniqueBy(
+      variables,
+      (variable) =>
+        `${variable.name}:${variable.value}:${variable.usageKind}:${variable.line}:${variable.specifier}`,
+    ).slice(0, MAX_EDGE_VARIABLES),
+    refs: uniqueBy(refs, (ref) => `${ref.filePath}:${ref.startLine}:${ref.label}`).slice(
+      0,
+      MAX_EDGE_REFS,
+    ),
+  };
+}
+
+function buildFunctionalEdges(snapshot, functionalGraph, currentNode) {
+  const childNodes = getFunctionalChildNodes(functionalGraph.nodeById, currentNode);
+  const childIds = new Set(childNodes.map((node) => node.id));
+  const edges = [];
+
+  childNodes.forEach((sourceNode) => {
+    (sourceNode.flowsTo || []).forEach((flow, index) => {
+      if (!childIds.has(flow.targetId)) return;
+      const targetNode = functionalGraph.nodeById.get(flow.targetId);
+      if (!targetNode) return;
+      const evidence = collectFunctionalEdgeEvidence(snapshot, sourceNode, targetNode);
+      edges.push({
+        id: `${sourceNode.id}:${targetNode.id}:${index}`,
+        source: sourceNode.id,
+        target: targetNode.id,
+        label: clampText(flow.label || "supports", 48),
+        description:
+          flow.description
+          || (evidence.weight
+            ? `${evidence.weight} live code link${evidence.weight === 1 ? "" : "s"} support this workflow connection.`
+            : "This workflow step is shown from the functional map and may connect through routing, shared state, or configuration."),
+        variables: evidence.variables,
+        refs: evidence.refs,
+        weight: Math.max(evidence.weight, 1),
+      });
+    });
+  });
+
+  return edges;
+}
+
+function buildFunctionalNodeResponse(snapshot, functionalGraph, node) {
+  const auth = enrichAuthEvidence(
+    snapshot,
+    aggregateNodeAuth(snapshot.fileInfoByPath, node.descendantFiles || []),
+  );
+  return {
+    id: node.id,
+    label: node.label,
+    kind: node.kind,
+    subtype: node.subtype,
+    scopeLabel: node.scopeLabel || "",
+    relativePath: node.scopeLabel || "",
+    description: node.description,
+    summary: formatFunctionalNodeSummary(node),
+    audience: node.audience || [],
+    order: node.order || 0,
+    childCount: (node.childIds || []).length,
+    descendantFileCount: (node.descendantFiles || []).length,
+    totalLineCount: node.totalLineCount || 0,
+    authRoles: auth.map((group) => group.role),
+    isLeaf: !node.childIds?.length,
+  };
+}
+
 export async function buildRuntimeSystemsView(nodeId) {
   const snapshot = await getRuntimeSystemsSnapshot();
-  const currentNode = snapshot.nodeById.get(asText(nodeId)) || snapshot.nodeById.get(snapshot.rootNodeId);
-  const childNodes = sortChildNodes(snapshot.nodeById, currentNode.childIds || []);
+  const functionalGraph = buildFunctionalGraph(snapshot);
+  const currentNode =
+    functionalGraph.nodeById.get(asText(nodeId)) || functionalGraph.nodeById.get(functionalGraph.rootNodeId);
+  const childNodes = getFunctionalChildNodes(functionalGraph.nodeById, currentNode);
   const auth = enrichAuthEvidence(
     snapshot,
     aggregateNodeAuth(snapshot.fileInfoByPath, currentNode.descendantFiles || []),
   );
-  const edges = buildAggregatedEdges(snapshot, currentNode, snapshot.fileEdges);
+  const edges = buildFunctionalEdges(snapshot, functionalGraph, currentNode);
 
   return {
     version: snapshot.version,
     generatedAt: snapshot.generatedAt,
-    currentNode: {
-      id: currentNode.id,
-      label: currentNode.label,
-      kind: currentNode.kind,
-      subtype: currentNode.subtype,
-      relativePath: currentNode.relativePath,
-      description: currentNode.description,
-      summary: formatNodeSummary(currentNode, snapshot),
-      childCount: childNodes.length,
-      descendantFileCount: (currentNode.descendantFiles || []).length,
-      authRoles: auth.map((group) => group.role),
-      isLeaf: childNodes.length === 0,
-    },
-    breadcrumb: buildBreadcrumb(snapshot.nodeById, currentNode.id),
+    currentNode: buildFunctionalNodeResponse(snapshot, functionalGraph, currentNode),
+    breadcrumb: buildBreadcrumb(functionalGraph.nodeById, currentNode.id),
     graph: {
-      nodes: childNodes.map((node) => ({
-        id: node.id,
-        label: node.label,
-        kind: node.kind,
-        subtype: node.subtype,
-        relativePath: node.relativePath,
-        description: node.description,
-        summary: formatNodeSummary(node, snapshot),
-        childCount: (node.childIds || []).length,
-        descendantFileCount: (node.descendantFiles || []).length,
-        authRoles: aggregateNodeAuth(snapshot.fileInfoByPath, node.descendantFiles || [])
-          .map((group) => group.role)
-          .slice(0, 3),
-        isLeaf: !node.childIds?.length,
-      })),
+      nodes: childNodes.map((node) => buildFunctionalNodeResponse(snapshot, functionalGraph, node)),
       edges,
     },
     details: {
-      summary: formatNodeSummary(currentNode, snapshot),
+      summary: formatFunctionalNodeSummary(currentNode),
+      components: buildFunctionalComponentList(snapshot, functionalGraph, currentNode),
       auth,
-      sourceRefs: buildSourceRefsForNode(snapshot, currentNode),
+      sourceRefs: buildSourceRefsForFilePaths(snapshot, currentNode.descendantFiles || []),
       handoffs: edges,
     },
   };
@@ -1399,15 +1642,16 @@ function scoreText(queryTerms, text) {
   return score;
 }
 
-function buildQuestionEvidence(snapshot, currentNode, question) {
+function buildQuestionEvidence(snapshot, functionalGraph, currentNode, question) {
   const queryTerms = tokenizeQuestion(question);
-  const sourceRefs = buildSourceRefsForNode(snapshot, currentNode);
-  const handoffs = buildAggregatedEdges(snapshot, currentNode, snapshot.fileEdges);
+  const sourceRefs = buildSourceRefsForFilePaths(snapshot, currentNode.descendantFiles || []);
+  const handoffs = buildFunctionalEdges(snapshot, functionalGraph, currentNode);
+  const components = buildFunctionalComponentList(snapshot, functionalGraph, currentNode);
   const auth = enrichAuthEvidence(
     snapshot,
     aggregateNodeAuth(snapshot.fileInfoByPath, currentNode.descendantFiles || []),
   );
-  const childNodes = sortChildNodes(snapshot.nodeById, currentNode.childIds || []);
+  const childNodes = getFunctionalChildNodes(functionalGraph.nodeById, currentNode);
 
   const evidence = [];
 
@@ -1415,9 +1659,27 @@ function buildQuestionEvidence(snapshot, currentNode, question) {
     evidence.push({
       type: "child-node",
       score:
-        scoreText(queryTerms, `${node.label} ${node.description} ${node.relativePath}`) +
+        scoreText(
+          queryTerms,
+          `${node.label} ${node.description} ${node.scopeLabel} ${(node.audience || []).join(" ")}`,
+        ) +
         (currentNode.childIds.length ? 1 : 0),
-      text: `${node.label}: ${node.description} (${node.relativePath}).`,
+      text: `${node.label}: ${node.description} (${formatFunctionalNodeSummary(node)}).`,
+      refs: [],
+    });
+  });
+
+  components.forEach((component) => {
+    evidence.push({
+      type: "component",
+      score:
+        scoreText(
+          queryTerms,
+          `${component.label} ${component.description} ${component.scopeLabel} ${component.summary}`,
+        ) + 2,
+      text: `${component.label}: ${component.summary}${
+        component.scopeLabel ? ` (${component.scopeLabel})` : ""
+      }`,
       refs: [],
     });
   });
@@ -1432,8 +1694,8 @@ function buildQuestionEvidence(snapshot, currentNode, question) {
   });
 
   handoffs.forEach((handoff) => {
-    const sourceNode = snapshot.nodeById.get(handoff.source);
-    const targetNode = snapshot.nodeById.get(handoff.target);
+    const sourceNode = functionalGraph.nodeById.get(handoff.source);
+    const targetNode = functionalGraph.nodeById.get(handoff.target);
     const variableText = handoff.variables
       .map((variable) =>
         `${variable.name}=${variable.value}${variable.usedFor ? ` (${variable.usedFor})` : ""}`)
@@ -1443,10 +1705,10 @@ function buildQuestionEvidence(snapshot, currentNode, question) {
       score:
         scoreText(
           queryTerms,
-          `${sourceNode?.label || ""} ${targetNode?.label || ""} ${variableText}`,
+          `${sourceNode?.label || ""} ${targetNode?.label || ""} ${variableText} ${handoff.label}`,
         ) + 2,
       text: `${sourceNode?.label || "Source"} -> ${targetNode?.label || "Target"}: ${
-        variableText || handoff.label
+        handoff.label
       }`,
       refs: handoff.refs,
     });
@@ -1479,7 +1741,9 @@ function buildDeterministicAnswer(snapshot, currentNode, question, evidence) {
     lowerQuestion.includes("variable") ||
     lowerQuestion.includes("pass") ||
     lowerQuestion.includes("prop") ||
-    lowerQuestion.includes("data flow");
+    lowerQuestion.includes("data flow") ||
+    lowerQuestion.includes("flow") ||
+    lowerQuestion.includes("step");
   const wantsCode =
     lowerQuestion.includes("line") ||
     lowerQuestion.includes("file") ||
@@ -1488,7 +1752,7 @@ function buildDeterministicAnswer(snapshot, currentNode, question, evidence) {
 
   const lines = [];
   lines.push(
-    `Current workspace snapshot \`${snapshot.version}\` for ${currentNode.label} shows the following evidence:`,
+    `Current workspace snapshot \`${snapshot.version}\` for ${currentNode.label} shows the following live evidence:`,
   );
 
   if (wantsAuth) {
@@ -1505,16 +1769,19 @@ function buildDeterministicAnswer(snapshot, currentNode, question, evidence) {
     if (handoffs.length) {
       handoffs.slice(0, 4).forEach((item) => lines.push(`- ${item.text}`));
     } else {
-      lines.push("- No direct variable hand-off was detected between the currently displayed blocks.");
+      lines.push("- No direct workflow hand-off was detected between the currently displayed parts.");
     }
   }
 
   if (wantsCode || (!wantsAuth && !wantsVariables)) {
-    const codeEvidence = evidence.filter((item) => item.type === "source-ref" || item.type === "child-node");
+    const codeEvidence = evidence.filter(
+      (item) =>
+        item.type === "source-ref" || item.type === "child-node" || item.type === "component",
+    );
     if (codeEvidence.length) {
       codeEvidence.slice(0, 4).forEach((item) => lines.push(`- ${item.text}`));
     } else {
-      lines.push("- The current node does not have narrower subdivisions; use the source refs in the panel for exact lines.");
+      lines.push("- Use the code evidence panel for the exact files and line ranges behind this area.");
     }
   }
 
@@ -1537,8 +1804,10 @@ function buildDeterministicAnswer(snapshot, currentNode, question, evidence) {
 
 export async function answerRuntimeSystemsQuestion({ nodeId, question }) {
   const snapshot = await getRuntimeSystemsSnapshot();
-  const currentNode = snapshot.nodeById.get(asText(nodeId)) || snapshot.nodeById.get(snapshot.rootNodeId);
-  const evidence = buildQuestionEvidence(snapshot, currentNode, question);
+  const functionalGraph = buildFunctionalGraph(snapshot);
+  const currentNode =
+    functionalGraph.nodeById.get(asText(nodeId)) || functionalGraph.nodeById.get(functionalGraph.rootNodeId);
+  const evidence = buildQuestionEvidence(snapshot, functionalGraph, currentNode, question);
   const answer = buildDeterministicAnswer(snapshot, currentNode, question, evidence);
 
   return {
@@ -1546,7 +1815,7 @@ export async function answerRuntimeSystemsQuestion({ nodeId, question }) {
     currentNode: {
       id: currentNode.id,
       label: currentNode.label,
-      relativePath: currentNode.relativePath,
+      relativePath: currentNode.scopeLabel || "",
     },
     answer,
     evidence: evidence.map((item) => ({
