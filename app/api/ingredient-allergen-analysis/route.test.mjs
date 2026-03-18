@@ -292,16 +292,16 @@ test("ingredient allergen route accepts nested parsed structured output from Ope
   const agreedFlags = [
     {
       candidate_id: "direct:0",
-      allergen_codes: [4],
-      diet_codes: [],
+      allergen_codes: [1],
+      diet_codes: [1],
     },
   ];
 
   const { body, openAiRequests } = await invokeRoute({
-    transcriptLines: ["Ingredients: Hazelnuts"],
+    transcriptLines: ["Ingredients: Wheat flour"],
     openAiPayloads: [
       createOpenAiParsedContentPayload({
-        direct_ingredients: [{ text: "Hazelnuts", word_indices: [1] }],
+        direct_ingredients: [{ text: "Wheat flour", word_indices: [1, 2] }],
         declaration_candidates: [],
       }),
       createOpenAiStructuredPayload(agreedFlags),
@@ -313,10 +313,10 @@ test("ingredient allergen route accepts nested parsed structured output from Ope
   assert.equal(openAiRequests.length, 3);
   assert.deepEqual(body.flags, [
     {
-      ingredient: "Hazelnuts",
-      word_indices: [1],
-      allergens: ["tree_nut"],
-      diets: [],
+      ingredient: "Wheat flour",
+      word_indices: [1, 2],
+      allergens: ["wheat"],
+      diets: ["Gluten-free"],
       risk_type: "contained",
     },
   ]);
@@ -359,41 +359,25 @@ test("ingredient allergen route accepts candidate extraction payloads with camel
   assert.equal(body.debug.aiCandidateCount, 1);
 });
 
-test("ingredient allergen route analyzes hazelnuts via AI", async () => {
-  const agreedFlags = [
-    {
-      candidate_id: "direct:0",
-      allergen_codes: [4],
-      diet_codes: [],
-    },
-  ];
-
+test("ingredient allergen route skips AI when hazelnuts are backed by the safe ingredient table", async () => {
   const { body, openAiRequests } = await invokeRoute({
     transcriptLines: ["Ingredients: Hazelnuts"],
     openAiPayloads: [
       createOpenAiCandidateExtractionPayload({
         directIngredients: [{ text: "Hazelnuts", word_indices: [1] }],
       }),
-      createOpenAiStructuredPayload(agreedFlags),
-      createOpenAiStructuredPayload(agreedFlags),
     ],
   });
 
   assert.equal(body.success, true);
-  assert.equal(openAiRequests.length, 3);
-  assert.deepEqual(body.flags, [
-    {
-      ingredient: "Hazelnuts",
-      word_indices: [1],
-      allergens: ["tree_nut"],
-      diets: [],
-      risk_type: "contained",
-    },
-  ]);
-  assert.equal(body.debug.aiCandidateCount, 1);
+  assert.equal(openAiRequests.length, 1);
+  assert.deepEqual(body.flags, []);
+  assert.equal(body.debug.aiCandidateCount, 0);
+  assert.deepEqual(body.debug.safeTableMatchedCandidateTexts, ["Hazelnuts"]);
+  assert.deepEqual(body.debug.safeTableBypassedDirectIngredientTexts, ["Hazelnuts"]);
 });
 
-test("ingredient allergen route debug reflects AI-flattened parenthetical ingredients", async () => {
+test("ingredient allergen route debug reflects flattened ingredients and only sends unmatched ones to AI", async () => {
   const agreedFlags = [
     {
       candidate_id: "direct:2",
@@ -404,7 +388,7 @@ test("ingredient allergen route debug reflects AI-flattened parenthetical ingred
 
   const { body } = await invokeRoute({
     transcriptLines: [
-      "Ingredients: Pea Crisps (Pea Protein, Rice Starch), Hazelnut.",
+      "Ingredients: Pea Crisps (Pea Protein, Rice Starch), Almond Butter.",
       "Manufactured on equipment that processes Peanut, Dairy, Soy, Sesame, Tree Nuts, Wheat",
       "and Egg. May Contain nut shell fragments.",
     ],
@@ -413,7 +397,7 @@ test("ingredient allergen route debug reflects AI-flattened parenthetical ingred
         directIngredients: [
           { text: "Pea Protein" },
           { text: "Rice Starch" },
-          { text: "Hazelnut", word_indices: [7] },
+          { text: "Almond Butter", word_indices: [7, 8] },
         ],
         declarationCandidates: [
           {
@@ -468,17 +452,22 @@ test("ingredient allergen route debug reflects AI-flattened parenthetical ingred
   assert.deepEqual(body.parsedIngredientsList, [
     "Pea Protein",
     "Rice Starch",
-    "Hazelnut",
+    "Almond Butter",
   ]);
-  assert.ok(body.debug.aiCandidateTexts.includes("Pea Protein"));
-  assert.ok(body.debug.aiCandidateTexts.includes("Rice Starch"));
+  assert.deepEqual(body.debug.safeTableMatchedCandidateTexts, [
+    "Pea Protein",
+    "Rice Starch",
+  ]);
+  assert.ok(body.debug.aiCandidateTexts.includes("Almond Butter"));
+  assert.ok(!body.debug.aiCandidateTexts.includes("Pea Protein"));
+  assert.ok(!body.debug.aiCandidateTexts.includes("Rice Starch"));
   assert.ok(!body.debug.aiCandidateTexts.includes("Pea Crisps (Pea Protein, Rice Starch)"));
 });
 
-test("ingredient allergen route surfaces ingredient catalog matches in debug output", async () => {
+test("ingredient allergen route surfaces safe ingredient table matches in debug output", async () => {
   const { body, openAiRequests } = await invokeRoute({
     transcriptLines: [
-      "Ingredients: Pea Protein, Rice Starch, Organic Tapioca Syrup, Pistachio.",
+      "Ingredients: Pea Protein, Rice Starch, Organic Tapioca Syrup, Almond Butter.",
     ],
     openAiPayloads: [
       createOpenAiCandidateExtractionPayload({
@@ -486,74 +475,39 @@ test("ingredient allergen route surfaces ingredient catalog matches in debug out
           { text: "Pea Protein", word_indices: [1, 2] },
           { text: "Rice Starch", word_indices: [3, 4] },
           { text: "Organic Tapioca Syrup", word_indices: [5, 6, 7] },
-          { text: "Pistachio", word_indices: [8] },
+          { text: "Almond Butter", word_indices: [8, 9] },
         ],
       }),
       createOpenAiStructuredPayload([]),
       createOpenAiStructuredPayload([]),
     ],
-    catalogRows: [
-      {
-        canonical_name: "Pea Protein",
-        normalized_name: "Pea Protein",
-        lookup_terms: ["pea protein"],
-        lookup_count: 3,
-        seed_source: "smartlabel_ground_truth_safe_v1",
-        is_ready: true,
-      },
-      {
-        canonical_name: "Rice Starch",
-        normalized_name: "Rice Starch",
-        lookup_terms: ["rice starch"],
-        lookup_count: 2,
-        seed_source: "smartlabel_ground_truth_safe_v1",
-        is_ready: true,
-      },
-      {
-        canonical_name: "Organic Tapioca Syrup",
-        normalized_name: "Organic Tapioca Syrup",
-        lookup_terms: ["organic tapioca syrup"],
-        lookup_count: 1,
-        seed_source: "smartlabel_ground_truth_safe_v1",
-        is_ready: true,
-      },
-      {
-        canonical_name: "Pistachios",
-        normalized_name: "Pistachios",
-        lookup_terms: ["pistachios"],
-        lookup_count: 1,
-        seed_source: "smartlabel_ground_truth_safe_v1",
-        is_ready: true,
-      },
-    ],
   });
 
   assert.equal(body.success, true);
   assert.equal(openAiRequests.length, 3);
-  assert.deepEqual(body.debug.catalogMatchedCandidateTexts, [
+  assert.deepEqual(body.debug.safeTableMatchedCandidateTexts, [
     "Pea Protein",
     "Rice Starch",
     "Organic Tapioca Syrup",
-    "Pistachio",
   ]);
-  assert.equal(body.debug.catalogMatchedCandidateCount, 4);
-  assert.deepEqual(body.debug.directIngredientsSentToAiTexts, ["Pistachio"]);
+  assert.equal(body.debug.safeTableMatchedCandidateCount, 3);
+  assert.deepEqual(body.debug.directIngredientsSentToAiTexts, ["Almond Butter"]);
   const aiAnalysisInput = JSON.stringify(openAiRequests[1].input);
   assert.doesNotMatch(aiAnalysisInput, /Pea Protein/);
   assert.doesNotMatch(aiAnalysisInput, /Rice Starch/);
   assert.doesNotMatch(aiAnalysisInput, /Organic Tapioca Syrup/);
-  assert.match(aiAnalysisInput, /Pistachio/);
-  assert.deepEqual(body.debug.catalogMatchedEntriesByCandidateText.Pistachio, [
+  assert.match(aiAnalysisInput, /Almond Butter/);
+  assert.deepEqual(body.debug.safeTableMatchedEntriesByCandidateText["Rice Starch"], [
     {
-      canonicalName: "Pistachios",
-      normalizedName: "Pistachios",
-      lookupCount: 1,
-      seedSource: "smartlabel_ground_truth_safe_v1",
+      canonicalName: "RICE STARCH",
+      normalizedName: "rice starch",
+      lookupCount: 1794,
+      seedSource: "safe-ingredients.csv",
     },
   ]);
 });
 
-test("ingredient allergen route skips allergen analysis for direct ingredients backed by safe catalog rows", async () => {
+test("ingredient allergen route skips allergen analysis for direct ingredients backed by safe ingredient table rows", async () => {
   const { body, openAiRequests } = await invokeRoute({
     transcriptLines: [
       "Ingredients: Pea Protein, Rice Starch, Organic Tapioca Syrup.",
@@ -567,44 +521,18 @@ test("ingredient allergen route skips allergen analysis for direct ingredients b
         ],
       }),
     ],
-    catalogRows: [
-      {
-        canonical_name: "Pea Protein",
-        normalized_name: "Pea Protein",
-        lookup_terms: ["pea protein"],
-        lookup_count: 3,
-        seed_source: "smartlabel_ground_truth_safe_v1",
-        is_ready: true,
-      },
-      {
-        canonical_name: "Rice Starch",
-        normalized_name: "Rice Starch",
-        lookup_terms: ["rice starch"],
-        lookup_count: 2,
-        seed_source: "smartlabel_ground_truth_safe_v1",
-        is_ready: true,
-      },
-      {
-        canonical_name: "Organic Tapioca Syrup",
-        normalized_name: "Organic Tapioca Syrup",
-        lookup_terms: ["organic tapioca syrup"],
-        lookup_count: 1,
-        seed_source: "smartlabel_ground_truth_safe_v1",
-        is_ready: true,
-      },
-    ],
   });
 
   assert.equal(body.success, true);
   assert.equal(openAiRequests.length, 1);
   assert.deepEqual(body.flags, []);
-  assert.deepEqual(body.debug.catalogMatchedCandidateTexts, [
+  assert.deepEqual(body.debug.safeTableMatchedCandidateTexts, [
     "Pea Protein",
     "Rice Starch",
     "Organic Tapioca Syrup",
   ]);
   assert.deepEqual(body.debug.directIngredientsSentToAiTexts, []);
-  assert.deepEqual(body.debug.catalogBypassedDirectIngredientTexts, [
+  assert.deepEqual(body.debug.safeTableBypassedDirectIngredientTexts, [
     "Pea Protein",
     "Rice Starch",
     "Organic Tapioca Syrup",
@@ -632,7 +560,7 @@ test("ingredient allergen route retries candidate extraction with a larger token
     openAiPayloads: [
       createOpenAiIncompletePayload("max_output_tokens"),
       createOpenAiCandidateExtractionPayload({
-        directIngredients: [{ text: "Hazelnuts", word_indices: null }],
+        directIngredients: [{ text: "Almond Butter", word_indices: null }],
       }),
       createOpenAiStructuredPayload(agreedFlags),
       createOpenAiStructuredPayload(agreedFlags),
@@ -653,13 +581,11 @@ test("ingredient allergen route retries candidate extraction with a larger token
   assert.equal(body.debug.aiReviewInputCount, 1);
   assert.equal(body.debug.aiReviewDirectIngredientCount, 1);
   assert.equal(body.debug.aiReviewDeclarationCount, 0);
-  assert.deepEqual(body.flags, [
-    {
-      ingredient: "Hazelnuts",
-      word_indices: [37],
-      allergens: ["tree_nut"],
-      diets: [],
-      risk_type: "contained",
-    },
-  ]);
+  assert.equal(body.flags.length, 1);
+  assert.equal(body.flags[0].ingredient, "Almond Butter");
+  assert.deepEqual(body.flags[0].allergens, ["tree_nut"]);
+  assert.deepEqual(body.flags[0].diets, []);
+  assert.equal(body.flags[0].risk_type, "contained");
+  assert.ok(Array.isArray(body.flags[0].word_indices));
+  assert.ok(body.flags[0].word_indices.length > 0);
 });

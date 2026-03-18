@@ -806,17 +806,19 @@ function IngredientScanDebugView({ debug }) {
   const declarationsSentToAiTexts = dedupeStrings(
     safeDebug.declarationsSentToAiTexts || safeDebug.unresolvedDeclarationCandidateTexts,
   );
-  const catalogMatchedCandidateTexts = dedupeStrings(
-    safeDebug.catalogMatchedCandidateTexts,
+  const safeTableMatchedCandidateTexts = dedupeStrings(
+    safeDebug.safeTableMatchedCandidateTexts || safeDebug.catalogMatchedCandidateTexts,
   );
-  const catalogBypassedDirectIngredientTexts = dedupeStrings(
-    safeDebug.catalogBypassedDirectIngredientTexts,
+  const safeTableBypassedDirectIngredientTexts = dedupeStrings(
+    safeDebug.safeTableBypassedDirectIngredientTexts ||
+      safeDebug.catalogBypassedDirectIngredientTexts,
   );
   const directIngredientsSentToAiTexts = dedupeStrings(
     safeDebug.directIngredientsSentToAiTexts,
   );
-  const riskyCatalogMatchedDirectIngredientTexts = dedupeStrings(
-    safeDebug.riskyCatalogMatchedDirectIngredientTexts,
+  const riskySafeTableMatchedDirectIngredientTexts = dedupeStrings(
+    safeDebug.riskySafeTableMatchedDirectIngredientTexts ||
+      safeDebug.riskyCatalogMatchedDirectIngredientTexts,
   );
   const fallbackReason = asText(safeDebug.fallbackReason);
   const candidateExtractionProvider =
@@ -883,9 +885,9 @@ function IngredientScanDebugView({ debug }) {
   const aiReviewSummary = aiReviewInputCount
     ? `Reviewed ${aiReviewInputCount} items (${aiReviewDirectIngredientCount} direct sent to AI, ${aiReviewDeclarationCount} declarations).`
     : "Allergen analysis did not run.";
-  const catalogRetentionSummary = riskyCatalogMatchedDirectIngredientTexts.length
-    ? `Catalog matched but still reviewed by AI: ${riskyCatalogMatchedDirectIngredientTexts.join(", ")}.`
-    : `${catalogBypassedDirectIngredientTexts.length} catalog-matched direct ingredients bypassed AI.`;
+  const safeTableRetentionSummary = riskySafeTableMatchedDirectIngredientTexts.length
+    ? `Safe-table matched but still reviewed by AI: ${riskySafeTableMatchedDirectIngredientTexts.join(", ")}.`
+    : `${safeTableBypassedDirectIngredientTexts.length} safe-table matched direct ingredients bypassed AI.`;
 
   return (
     <details
@@ -911,7 +913,7 @@ function IngredientScanDebugView({ debug }) {
       >
         <span>Internal debug</span>
         <span style={{ color: "#94a3b8", fontSize: "0.76rem", fontWeight: 600 }}>
-          direct {directIngredientTexts.length} · catalog {catalogMatchedCandidateTexts.length} · AI-direct {directIngredientsSentToAiTexts.length} · AI-decl {declarationsSentToAiTexts.length}
+          direct {directIngredientTexts.length} · safe-table {safeTableMatchedCandidateTexts.length} · AI-direct {directIngredientsSentToAiTexts.length} · AI-decl {declarationsSentToAiTexts.length}
         </span>
       </summary>
 
@@ -956,7 +958,7 @@ function IngredientScanDebugView({ debug }) {
               {aiReviewSummary}
             </div>
             <div style={{ color: "#94a3b8", fontSize: "0.72rem", marginTop: 4 }}>
-              {catalogRetentionSummary}
+              {safeTableRetentionSummary}
             </div>
           </div>
           <div
@@ -1007,11 +1009,11 @@ function IngredientScanDebugView({ debug }) {
               testId="ingredient-scan-debug-direct"
             />
             <IngredientScanDebugBucket
-              title="Catalog-backed direct ingredients"
-              count={catalogMatchedCandidateTexts.length}
-              items={catalogMatchedCandidateTexts}
+              title="Safe-table matched direct ingredients"
+              count={safeTableMatchedCandidateTexts.length}
+              items={safeTableMatchedCandidateTexts}
               accentColor="#22c55e"
-              emptyLabel="No direct ingredients matched the ingredient catalog."
+              emptyLabel="No direct ingredients matched the safe ingredient table."
               testId="ingredient-scan-debug-catalog"
             />
             <IngredientScanDebugBucket

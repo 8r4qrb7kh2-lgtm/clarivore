@@ -25,6 +25,10 @@ import {
   buildParsedTranscriptFromCandidateExtraction,
   normalizeCandidateExtractionPayload,
 } from "../../lib/server/ingredientCandidateExtraction.js";
+import {
+  findSafeIngredientTableMatches,
+  loadSafeIngredientTable,
+} from "../../lib/server/safeIngredientTable.js";
 
 export const runtime = "nodejs";
 
@@ -36,7 +40,7 @@ const ANALYSIS_MAX_TOKENS = 1800;
 const VERIFICATION_MAX_TOKENS = 1400;
 const CANDIDATE_EXTRACTION_MIN_TOKENS = 1200;
 const CANDIDATE_EXTRACTION_MAX_TOKENS = 6400;
-const PROMPT_VERSION = "ingredient-allergen-openai-dual-agent-v3-20260313";
+const PROMPT_VERSION = "ingredient-allergen-openai-safe-table-v4-20260318";
 const CANDIDATE_EXTRACTION_PROMPT_VERSION =
   "ingredient-candidate-extraction-openai-v3-20260313";
 
@@ -45,14 +49,14 @@ const ANALYSIS_CACHE_TTL_MS = 15 * 60 * 1000;
 const ANALYSIS_CACHE_MAX_ENTRIES = 128;
 const CANDIDATE_EXTRACTION_CACHE_TTL_MS = 15 * 60 * 1000;
 const CANDIDATE_EXTRACTION_CACHE_MAX_ENTRIES = 128;
-const CATALOG_MATCH_CACHE_TTL_MS = 15 * 60 * 1000;
-const CATALOG_MATCH_CACHE_MAX_ENTRIES = 128;
+const SAFE_TABLE_MATCH_CACHE_TTL_MS = 15 * 60 * 1000;
+const SAFE_TABLE_MATCH_CACHE_MAX_ENTRIES = 128;
 let cachedConfig = null;
 let cachedConfigAt = 0;
 let cachedConfigPromise = null;
 const analysisCache = new Map();
 const candidateExtractionCache = new Map();
-const catalogMatchCache = new Map();
+const safeTableMatchCache = new Map();
 
 export function OPTIONS() {
   return corsOptions();
@@ -321,29 +325,29 @@ function setCachedCandidateExtraction(cacheKey, value) {
   }
 }
 
-function getCachedCatalogMatches(cacheKey) {
-  const entry = catalogMatchCache.get(cacheKey);
+function getCachedSafeTableMatches(cacheKey) {
+  const entry = safeTableMatchCache.get(cacheKey);
   if (!entry) return null;
-  if (Date.now() - entry.at > CATALOG_MATCH_CACHE_TTL_MS) {
-    catalogMatchCache.delete(cacheKey);
+  if (Date.now() - entry.at > SAFE_TABLE_MATCH_CACHE_TTL_MS) {
+    safeTableMatchCache.delete(cacheKey);
     return null;
   }
   return entry.value && typeof entry.value === "object" ? entry.value : null;
 }
 
-function setCachedCatalogMatches(cacheKey, value) {
-  catalogMatchCache.set(cacheKey, {
+function setCachedSafeTableMatches(cacheKey, value) {
+  safeTableMatchCache.set(cacheKey, {
     at: Date.now(),
     value: value && typeof value === "object" ? value : null,
   });
 
-  if (catalogMatchCache.size <= CATALOG_MATCH_CACHE_MAX_ENTRIES) {
+  if (safeTableMatchCache.size <= SAFE_TABLE_MATCH_CACHE_MAX_ENTRIES) {
     return;
   }
 
   let oldestKey = "";
   let oldestAt = Number.POSITIVE_INFINITY;
-  catalogMatchCache.forEach((entry, key) => {
+  safeTableMatchCache.forEach((entry, key) => {
     const at = Number(entry?.at);
     if (!Number.isFinite(at)) return;
     if (at < oldestAt) {
@@ -352,7 +356,7 @@ function setCachedCatalogMatches(cacheKey, value) {
     }
   });
   if (oldestKey) {
-    catalogMatchCache.delete(oldestKey);
+    safeTableMatchCache.delete(oldestKey);
   }
 }
 
@@ -554,117 +558,19 @@ function buildCatalogLookupVariants(value) {
   return Array.from(variants).filter(Boolean);
 }
 
-const CATALOG_BYPASS_RISK_TERMS = [
-  "milk",
-  "butter",
-  "cream",
-  "cheese",
-  "whey",
-  "casein",
-  "lactose",
-  "yogurt",
-  "ghee",
-  "egg",
-  "eggs",
-  "albumen",
-  "albumin",
-  "mayonnaise",
-  "mayo",
-  "peanut",
-  "peanuts",
-  "tree nut",
-  "tree nuts",
-  "almond",
-  "almonds",
-  "hazelnut",
-  "hazelnuts",
-  "pistachio",
-  "pistachios",
-  "cashew",
-  "cashews",
-  "walnut",
-  "walnuts",
-  "pecan",
-  "pecans",
-  "macadamia",
-  "macadamias",
-  "brazil nut",
-  "brazil nuts",
-  "pine nut",
-  "pine nuts",
-  "coconut",
-  "coconuts",
-  "soy",
-  "soybean",
-  "soybeans",
-  "edamame",
-  "miso",
-  "tempeh",
-  "tofu",
-  "sesame",
-  "sesame seed",
-  "sesame seeds",
-  "tahini",
-  "wheat",
-  "gluten",
-  "barley",
-  "rye",
-  "spelt",
-  "semolina",
-  "farro",
-  "malt",
-  "fish",
-  "salmon",
-  "tuna",
-  "cod",
-  "anchovy",
-  "anchovies",
-  "sardine",
-  "sardines",
-  "pollock",
-  "shellfish",
-  "shrimp",
-  "prawn",
-  "prawns",
-  "crab",
-  "crabs",
-  "lobster",
-  "lobsters",
-  "crayfish",
-  "mussel",
-  "mussels",
-  "clam",
-  "clams",
-  "oyster",
-  "oysters",
-  "scallop",
-  "scallops",
-];
-
-function containsCatalogBypassRiskTerm(value) {
-  const normalized = normalizeCatalogLookupTerm(value);
-  if (!normalized) return false;
-  const padded = ` ${normalized} `;
-  return CATALOG_BYPASS_RISK_TERMS.some((term) => padded.includes(` ${term} `));
-}
-
-function partitionDirectCandidatesForAiReview({ directCandidates, catalogMatches }) {
+function partitionDirectCandidatesForAiReview({ directCandidates, safeTableMatches }) {
   const matchedTexts = new Set(
-    Array.isArray(catalogMatches?.matchedCandidateTexts) ? catalogMatches.matchedCandidateTexts : [],
+    Array.isArray(safeTableMatches?.matchedCandidateTexts)
+      ? safeTableMatches.matchedCandidateTexts
+      : [],
   );
   const safeCatalogDirectCandidates = [];
   const aiReviewDirectCandidates = [];
-  const riskyCatalogMatchedDirectCandidates = [];
 
   (Array.isArray(directCandidates) ? directCandidates : []).forEach((candidate) => {
     const text = asText(candidate?.text);
     if (!text || !matchedTexts.has(text)) {
       aiReviewDirectCandidates.push(candidate);
-      return;
-    }
-    if (containsCatalogBypassRiskTerm(text)) {
-      aiReviewDirectCandidates.push(candidate);
-      riskyCatalogMatchedDirectCandidates.push(candidate);
       return;
     }
     safeCatalogDirectCandidates.push(candidate);
@@ -673,7 +579,7 @@ function partitionDirectCandidatesForAiReview({ directCandidates, catalogMatches
   return {
     safeCatalogDirectCandidates,
     aiReviewDirectCandidates,
-    riskyCatalogMatchedDirectCandidates,
+    riskyCatalogMatchedDirectCandidates: [],
   };
 }
 
@@ -685,16 +591,25 @@ function toPostgresTextArrayLiteral(values) {
     .join(",")}}`;
 }
 
-async function fetchIngredientCatalogMatches({
+async function fetchSafeIngredientTableMatches({
   candidateTexts,
   disableCache = false,
 }) {
   const safeCandidateTexts = dedupeStrings(candidateTexts);
+  const safeIngredientTable = await loadSafeIngredientTable();
   if (!safeCandidateTexts.length) {
     return {
       matchedCandidateCount: 0,
       matchedCandidateTexts: [],
       matchedEntriesByCandidateText: {},
+      sourceLabel: asText(safeIngredientTable?.sourceLabel) || "safe-ingredients.csv",
+      sourcePath: asText(safeIngredientTable?.sourcePath),
+      tableStatus: "not-needed",
+      tableVersionKey: asText(safeIngredientTable?.versionKey) || "not-needed",
+      tableRowCount: Number.isFinite(Number(safeIngredientTable?.rowCount))
+        ? Math.max(0, Math.trunc(Number(safeIngredientTable.rowCount)))
+        : 0,
+      tableError: asText(safeIngredientTable?.error),
     };
   }
 
@@ -705,86 +620,26 @@ async function fetchIngredientCatalogMatches({
       matchedCandidateCount: 0,
       matchedCandidateTexts: [],
       matchedEntriesByCandidateText: {},
+      sourceLabel: "safe-ingredients.csv",
+      sourcePath: "",
+      tableStatus: "invalid-input",
+      tableVersionKey: "invalid-input",
+      tableRowCount: 0,
+      tableError: "",
     };
   }
 
   const cacheKey = buildCatalogMatchCacheKey(normalizedLookupTerms);
+  const versionedCacheKey = `${asText(safeIngredientTable?.versionKey) || "missing"}::${cacheKey}`;
   if (!disableCache) {
-    const cached = getCachedCatalogMatches(cacheKey);
+    const cached = getCachedSafeTableMatches(versionedCacheKey);
     if (cached) return cached;
   }
 
-  const { url, key } = readSupabaseRuntime();
-  if (!url || !key) {
-    return {
-      matchedCandidateCount: 0,
-      matchedCandidateTexts: [],
-      matchedEntriesByCandidateText: {},
-    };
-  }
-
-  const headers = {
-    apikey: key,
-    Authorization: `Bearer ${key}`,
-    Accept: "application/json",
-  };
-  const overlapLiteral = toPostgresTextArrayLiteral(normalizedLookupTerms);
-  const rows = await fetchJson(
-    `${url}/rest/v1/ingredient_catalog_entries?select=canonical_name,normalized_name,lookup_terms,lookup_count,seed_source,is_ready&is_ready=eq.true&lookup_terms=ov.${encodeURIComponent(
-      overlapLiteral,
-    )}&order=lookup_count.desc,canonical_name.asc`,
-    headers,
-  );
-
-  const normalizedRows = (Array.isArray(rows) ? rows : [])
-    .map((row) => {
-      const rowLookupTerms = dedupeStrings([
-        ...(Array.isArray(row?.lookup_terms) ? row.lookup_terms : []),
-        row?.normalized_name,
-        row?.canonical_name,
-      ].map((value) => normalizeCatalogLookupTerm(value)).filter(Boolean));
-      return {
-        canonicalName: asText(row?.canonical_name),
-        normalizedName: asText(row?.normalized_name),
-        lookupTerms: rowLookupTerms,
-        lookupCount: Number.isFinite(Number(row?.lookup_count))
-          ? Math.max(0, Math.trunc(Number(row.lookup_count)))
-          : 0,
-        seedSource: asText(row?.seed_source),
-      };
-    })
-    .filter((row) => row.lookupTerms.length);
-
-  const matchesByCandidateText = {};
-  safeCandidateTexts.forEach((candidateText) => {
-    const variants = new Set(buildCatalogLookupVariants(candidateText));
-    const matches = normalizedRows
-      .filter((row) => row.lookupTerms.some((term) => variants.has(term)))
-      .sort((left, right) => {
-        const bySupport = right.lookupCount - left.lookupCount;
-        if (bySupport !== 0) return bySupport;
-        return left.canonicalName.localeCompare(right.canonicalName);
-      })
-      .slice(0, 5)
-      .map((row) => ({
-        canonicalName: row.canonicalName,
-        normalizedName: row.normalizedName,
-        lookupCount: row.lookupCount,
-        seedSource: row.seedSource,
-      }));
-    if (matches.length) {
-      matchesByCandidateText[candidateText] = matches;
-    }
-  });
-
-  const result = {
-    matchedCandidateCount: Object.keys(matchesByCandidateText).length,
-    matchedCandidateTexts: Object.keys(matchesByCandidateText),
-    matchedEntriesByCandidateText: matchesByCandidateText,
-  };
+  const result = await findSafeIngredientTableMatches(safeCandidateTexts);
 
   if (!disableCache) {
-    setCachedCatalogMatches(cacheKey, result);
+    setCachedSafeTableMatches(versionedCacheKey, result);
   }
 
   return result;
@@ -1133,13 +988,13 @@ function buildCandidateDebugPayload({
   aiReviewDirectCandidates,
   riskyCatalogMatchedDirectCandidates,
   aiCandidates,
-  catalogMatches,
+  safeTableMatches,
   candidateExtractionDebug,
 }) {
   const matchedEntriesByCandidateText =
-    catalogMatches?.matchedEntriesByCandidateText &&
-    typeof catalogMatches.matchedEntriesByCandidateText === "object"
-      ? catalogMatches.matchedEntriesByCandidateText
+    safeTableMatches?.matchedEntriesByCandidateText &&
+    typeof safeTableMatches.matchedEntriesByCandidateText === "object"
+      ? safeTableMatches.matchedEntriesByCandidateText
       : {};
   const directIngredientTexts = Array.isArray(parsedTranscript?.parsedIngredientsList)
     ? parsedTranscript.parsedIngredientsList
@@ -1201,11 +1056,38 @@ function buildCandidateDebugPayload({
     aiCandidateTexts: (Array.isArray(aiCandidates) ? aiCandidates : [])
       .map((candidate) => asText(candidate?.text))
       .filter(Boolean),
-    catalogMatchedCandidateCount: Number.isFinite(Number(catalogMatches?.matchedCandidateCount))
-      ? Math.max(0, Math.trunc(Number(catalogMatches.matchedCandidateCount)))
+    safeIngredientTableSource:
+      asText(safeTableMatches?.sourceLabel) || "safe-ingredients.csv",
+    safeIngredientTablePath: asText(safeTableMatches?.sourcePath),
+    safeIngredientTableStatus:
+      asText(safeTableMatches?.tableStatus) || "unknown",
+    safeIngredientTableVersionKey: asText(safeTableMatches?.tableVersionKey),
+    safeIngredientTableRowCount: Number.isFinite(Number(safeTableMatches?.tableRowCount))
+      ? Math.max(0, Math.trunc(Number(safeTableMatches.tableRowCount)))
       : 0,
-    catalogMatchedCandidateTexts: Array.isArray(catalogMatches?.matchedCandidateTexts)
-      ? catalogMatches.matchedCandidateTexts
+    safeIngredientTableError: asText(safeTableMatches?.tableError),
+    safeTableMatchedCandidateCount: Number.isFinite(
+      Number(safeTableMatches?.matchedCandidateCount),
+    )
+      ? Math.max(0, Math.trunc(Number(safeTableMatches.matchedCandidateCount)))
+      : 0,
+    safeTableMatchedCandidateTexts: Array.isArray(safeTableMatches?.matchedCandidateTexts)
+      ? safeTableMatches.matchedCandidateTexts
+      : [],
+    safeTableMatchedEntriesByCandidateText: matchedEntriesByCandidateText,
+    safeTableBypassedDirectIngredientCount: catalogBypassedDirectIngredientTexts.length,
+    safeTableBypassedDirectIngredientTexts: catalogBypassedDirectIngredientTexts,
+    riskySafeTableMatchedDirectIngredientCount:
+      riskyCatalogMatchedDirectIngredientTexts.length,
+    riskySafeTableMatchedDirectIngredientTexts:
+      riskyCatalogMatchedDirectIngredientTexts,
+    catalogMatchedCandidateCount: Number.isFinite(
+      Number(safeTableMatches?.matchedCandidateCount),
+    )
+      ? Math.max(0, Math.trunc(Number(safeTableMatches.matchedCandidateCount)))
+      : 0,
+    catalogMatchedCandidateTexts: Array.isArray(safeTableMatches?.matchedCandidateTexts)
+      ? safeTableMatches.matchedCandidateTexts
       : [],
     catalogMatchedEntriesByCandidateText: matchedEntriesByCandidateText,
     candidateExtractionProvider: asText(candidateExtractionDebug?.provider) || "openai",
@@ -1384,7 +1266,7 @@ export async function POST(request) {
     const aiDirectCandidates = Array.isArray(parsedTranscript.directCandidates)
       ? parsedTranscript.directCandidates
       : [];
-    const catalogMatches = await fetchIngredientCatalogMatches({
+    const safeTableMatches = await fetchSafeIngredientTableMatches({
       candidateTexts: parsedTranscript.parsedIngredientsList,
       disableCache: analysisOptions.disableCache,
     });
@@ -1394,7 +1276,7 @@ export async function POST(request) {
       riskyCatalogMatchedDirectCandidates,
     } = partitionDirectCandidatesForAiReview({
       directCandidates: aiDirectCandidates,
-      catalogMatches,
+      safeTableMatches,
     });
     const allergenAliasMap = buildAllergenAliasMap(config?.allergens);
     const dietsByAllergen = buildDietsByAllergenIndex(config?.dietAllergenConflicts);
@@ -1415,14 +1297,15 @@ export async function POST(request) {
       aiReviewDirectCandidates,
       riskyCatalogMatchedDirectCandidates,
       aiCandidates,
-      catalogMatches: analysisOptions.debug ? catalogMatches : null,
+      safeTableMatches: analysisOptions.debug ? safeTableMatches : null,
       candidateExtractionDebug,
     });
+    const safeTableVersionKey = asText(safeTableMatches?.tableVersionKey) || "missing";
     const analysisCacheKey = buildAnalysisCacheKey({
       transcriptLines,
       allergenEntries: allergenCodebook.entries,
       dietEntries: dietCodebook.entries,
-      promptVersion: `${PROMPT_VERSION}|${CANDIDATE_EXTRACTION_PROMPT_VERSION}`,
+      promptVersion: `${PROMPT_VERSION}|${CANDIDATE_EXTRACTION_PROMPT_VERSION}|${safeTableVersionKey}`,
     });
     if (!analysisOptions.disableCache) {
       const cachedFlags = getCachedAnalysis(analysisCacheKey);
