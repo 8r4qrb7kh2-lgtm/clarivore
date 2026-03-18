@@ -114,12 +114,14 @@ function resolveTokenRenderLayout(
     const availableTextWidthPx = Math.max(1, tokenBoxWidthPx - 2);
     const rawTextWidthPx = measuredTextWidthsPx[index] || 1;
     const scale = Number((availableTextWidthPx / rawTextWidthPx).toFixed(4));
+    const fontSizePx = Number((fontSize * scale).toFixed(2));
 
     return {
       ...token,
       leftPct,
       widthPct,
       scale,
+      fontSizePx,
     };
   });
 }
@@ -306,17 +308,17 @@ function CroppedLineCard({
       ),
     [tokenLayout, displayTokens, tokenStripWidthPx, tokenBaseFontSizePx],
   );
-  const maxTokenScale = useMemo(
+  const maxScaledFontSizePx = useMemo(
     () =>
       tokenRenderLayout.reduce(
-        (maxScale, token) => Math.max(maxScale, Number(token?.scale) || 1),
-        1,
+        (maxSize, token) => Math.max(maxSize, Number(token?.fontSizePx) || tokenBaseFontSizePx),
+        tokenBaseFontSizePx,
       ),
-    [tokenRenderLayout],
+    [tokenBaseFontSizePx, tokenRenderLayout],
   );
   const tokenStripHeightPx = useMemo(
-    () => Math.max(22, Math.round(tokenBaseFontSizePx * 2 * maxTokenScale)),
-    [maxTokenScale, tokenBaseFontSizePx],
+    () => Math.max(22, Math.round(maxScaledFontSizePx + 8)),
+    [maxScaledFontSizePx],
   );
 
   useEffect(() => {
@@ -490,12 +492,7 @@ function CroppedLineCard({
           style={{
             marginTop: 8,
             borderRadius: 4,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            background: "#000",
-            minHeight: 88,
-            padding: "6px clamp(2px, 0.8vw, 8px)",
+            overflow: "hidden",
           }}
         >
           <img
@@ -504,13 +501,10 @@ function CroppedLineCard({
             alt={`Extracted line ${lineIndex + 1}`}
             onLoad={syncTokenStripWidth}
             style={{
-              height: 72,
-              width: "auto",
-              maxWidth: "100%",
-              objectFit: "contain",
+              width: "100%",
+              height: "auto",
               borderRadius: 4,
               display: "block",
-              background: "#000",
             }}
           />
         </div>
@@ -571,11 +565,9 @@ function CroppedLineCard({
                   display: "inline-block",
                   color: "#e2e8f0",
                   fontWeight: 600,
-                  fontSize: `${tokenBaseFontSizePx}px`,
+                  fontSize: `${renderToken.fontSizePx || tokenBaseFontSizePx}px`,
                   lineHeight: 1,
                   whiteSpace: "nowrap",
-                  transform: `scale(${renderToken.scale || 1})`,
-                  transformOrigin: "center center",
                   textDecoration: risk ? "underline" : "none",
                   textDecorationColor: underlineColor,
                   textDecorationThickness: "2px",

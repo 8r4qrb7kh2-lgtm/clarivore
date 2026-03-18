@@ -131,7 +131,7 @@ export function DishIngredientCard({
     })
     .slice(0, 8);
   const isRowApplying = Boolean(applyBusy);
-  const preferenceSectionLocked = !hasAssignedBrand;
+  const preferenceSectionLocked = Boolean(ingredient?.brandRequired) && !hasAssignedBrand;
 
   return (
     <div
@@ -387,10 +387,7 @@ export function DishIngredientCard({
         </div>
 
         {/* Detection key keeps tone/line style semantics discoverable while editing. */}
-        <div
-          className={`restaurant-editor-dish-ingredient-flags ${preferenceSectionLocked ? "is-disabled" : ""}`}
-          aria-disabled={preferenceSectionLocked || undefined}
-        >
+        <div className="restaurant-editor-dish-ingredient-flags">
           <div className="restaurant-editor-dish-detection-note">
             <div className="restaurant-editor-dish-detection-key-row">
               <span className="restaurant-editor-dish-key-box restaurant-editor-dish-key-box-solid" />
