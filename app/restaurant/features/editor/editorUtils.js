@@ -1,4 +1,5 @@
 import { Button } from "../../../components/ui";
+import { buildDietAllergenConflictMessages } from "./conflictWarningLogic";
 
 // Primitive normalization helpers shared by editor, modals, and row components.
 function clamp(value, min, max) {
@@ -912,40 +913,13 @@ function buildRowConflictMessages({
     })
     .filter((entry) => entry.state !== "none");
 
-  const resolveSelectedAllergenState = (target) => {
-    const targetToken = normalizeToken(target);
-    if (!targetToken) return "none";
-    for (const entry of selectedAllergenEntries) {
-      if (normalizeToken(entry.token) === targetToken) {
-        return entry.state;
-      }
-    }
-    return "none";
-  };
-
-  const messages = [];
-  selectedDietEntries.forEach(({ token: diet, state: dietState }) => {
-    const conflicts = dedupeTokenList(getDietAllergenConflicts(diet));
-    conflicts.forEach((allergen) => {
-      const allergenState = resolveSelectedAllergenState(allergen);
-      if (allergenState === "none") return;
-
-      const formattedDiet = formatDietLabel(diet);
-      const formattedAllergen = formatAllergenLabel(allergen);
-      if (dietState === "contains" && allergenState === "contains") {
-        messages.push(
-          `Conflict warning: ${formattedDiet} conflicts with ${formattedAllergen} because both are marked as contains.`,
-        );
-        return;
-      }
-
-      messages.push(
-        `Cross-contamination warning: ${formattedDiet} may be compromised by ${formattedAllergen} (${formatTokenStateLabel(dietState)} diet selection and ${formatTokenStateLabel(allergenState)} allergen risk).`,
-      );
-    });
+  return buildDietAllergenConflictMessages({
+    selectedAllergenEntries,
+    selectedDietEntries,
+    getDietAllergenConflicts,
+    formatAllergenLabel,
+    formatDietLabel,
   });
-
-  return dedupeTokenList(messages);
 }
 
 // Ingredient and brand normalizers guarantee a stable shape before state comparisons.
