@@ -1,4 +1,5 @@
 import { analyzeAllergensWithLabelCropper } from "./ingredientAllergenAnalysis.js";
+import { reduceIngredientFlagSelections } from "./ingredientFlagReducer.js";
 import { createIngredientNormalizer } from "./ingredientNormalizer.js";
 import {
   buildIngredientPhotoLineMatchingPrompts,
@@ -1962,10 +1963,14 @@ export function initIngredientPhotoAnalysis(deps = {}) {
 
       // Get the allergen/diet data from the analysis
       const flags = analysisResult.allergenFlags;
-      const containedAllergens = new Set();
-      const crossContaminationAllergens = new Set();
-      const violatedDiets = new Set();
-      const crossContaminationDiets = new Set();
+      const {
+        containedAllergens,
+        crossContaminationAllergens,
+        violatedDiets,
+        crossContaminationDiets,
+      } = reduceIngredientFlagSelections(flags);
+      const violatedDietSet = new Set(violatedDiets);
+      const crossContaminationDietSet = new Set(crossContaminationDiets);
       const confirmedLines = Array.isArray(analysisResult.lines)
         ? analysisResult.lines.filter((_, idx) => lineConfirmations[idx])
         : [];
@@ -1984,51 +1989,9 @@ export function initIngredientPhotoAnalysis(deps = {}) {
         .filter(Boolean);
       const labelImage = analysisResult.correctedImage || capturedPhoto || "";
 
-      const addCrossContaminationDiets = (list) => {
-        (Array.isArray(list) ? list : []).forEach((diet) => {
-          if (diet !== undefined && diet !== null && diet !== "") {
-            crossContaminationDiets.add(diet);
-          }
-        });
-      };
-
-      const resolveFlagAllergens = (list) =>
-        Array.isArray(list) ? list : [];
-
-      flags.forEach((flag) => {
-        const flagAllergens = Array.isArray(flag.allergens) ? flag.allergens : [];
-        const flagDiets = Array.isArray(flag.diets) ? flag.diets : [];
-        const isContained = flag.risk_type === "contained";
-        const resolvedAllergens = resolveFlagAllergens(flagAllergens);
-
-        if (isContained) {
-          resolvedAllergens.forEach((a) => {
-            if (a !== undefined && a !== null && a !== "") {
-              containedAllergens.add(a);
-            }
-          });
-          flagDiets.forEach((d) => {
-            if (d !== undefined && d !== null && d !== "") {
-              violatedDiets.add(d);
-            }
-          });
-        } else {
-          // Cross-contamination
-          resolvedAllergens.forEach((a) => {
-            if (a !== undefined && a !== null && a !== "") {
-              crossContaminationAllergens.add(a);
-            }
-          });
-          addCrossContaminationDiets(flagDiets);
-        }
-      });
-
-      // Keep overlaps so a single allergen/diet can carry both
-      // "contains" and "cross-contamination" flags when needed.
-
       const allDiets = DIETS.slice();
       const compliantDiets = allDiets.filter(
-        (d) => !violatedDiets.has(d) && !crossContaminationDiets.has(d),
+        (d) => !violatedDietSet.has(d) && !crossContaminationDietSet.has(d),
       );
       let compressedImage = "";
       if (frontImageDataUrl) {
@@ -2040,10 +2003,10 @@ export function initIngredientPhotoAnalysis(deps = {}) {
           await onApplyResults({
             ingredientName,
             ingredientText,
-            allergens: Array.from(containedAllergens),
-            crossContaminationAllergens: Array.from(crossContaminationAllergens),
+            allergens: containedAllergens,
+            crossContaminationAllergens,
             diets: compliantDiets,
-            crossContaminationDiets: Array.from(crossContaminationDiets),
+            crossContaminationDiets,
             brandImage: compressedImage,
             ingredientsImage: labelImage,
             ingredientsList: ingredientLines,
@@ -2056,21 +2019,21 @@ export function initIngredientPhotoAnalysis(deps = {}) {
       // Update the ingredient row
       const data = collectAiTableData();
       if (data[rowIdx]) {
-        data[rowIdx].allergens = Array.from(containedAllergens);
-        data[rowIdx].crossContaminationAllergens = Array.from(crossContaminationAllergens);
+        data[rowIdx].allergens = containedAllergens;
+        data[rowIdx].crossContaminationAllergens = crossContaminationAllergens;
 
         // Set compliant diets (those NOT violated by contained allergens)
         data[rowIdx].diets = compliantDiets;
-        data[rowIdx].crossContaminationDiets = Array.from(crossContaminationDiets);
+        data[rowIdx].crossContaminationDiets = crossContaminationDiets;
         data[rowIdx].ingredientsImage = labelImage;
         data[rowIdx].ingredientsList = ingredientLines;
 
         data[rowIdx].confirmed = false;
-        data[rowIdx].aiDetectedAllergens = Array.from(containedAllergens);
+        data[rowIdx].aiDetectedAllergens = containedAllergens;
         data[rowIdx].aiDetectedCrossContaminationAllergens =
-          Array.from(crossContaminationAllergens);
+          crossContaminationAllergens;
         data[rowIdx].aiDetectedDiets = data[rowIdx].diets;
-        data[rowIdx].aiDetectedCrossContaminationDiets = Array.from(crossContaminationDiets);
+        data[rowIdx].aiDetectedCrossContaminationDiets = crossContaminationDiets;
 
         // Save front image and create brand entry if provided
         if (frontImageDataUrl) {
@@ -2087,10 +2050,10 @@ export function initIngredientPhotoAnalysis(deps = {}) {
               brandImage: compressedImage,
               ingredientsImage: labelImage,
               ingredientsList: ingredientLines,
-              allergens: Array.from(containedAllergens),
-              crossContaminationAllergens: Array.from(crossContaminationAllergens),
+              allergens: containedAllergens,
+              crossContaminationAllergens,
               diets: data[rowIdx].diets,
-              crossContaminationDiets: Array.from(crossContaminationDiets),
+              crossContaminationDiets,
             };
             data[rowIdx].brands.push(newBrand);
           }

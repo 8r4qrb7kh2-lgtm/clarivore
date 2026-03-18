@@ -34,9 +34,16 @@ export function createIngredientNormalizer(options = {}) {
 
   const pruneCrossSelections = (contains, crossRiskValues) => {
     if (!Array.isArray(crossRiskValues)) return [];
-    // Allow overlap so a single allergen/diet can carry both "contains" and
-    // "cross-contamination" flags when needed.
-    return crossRiskValues;
+    const toToken = (value) => String(value ?? "").trim().toLowerCase();
+    const containsTokens = new Set(
+      (Array.isArray(contains) ? contains : [])
+        .map((value) => toToken(normalizeAllergenKey(value) || normalizeDietKey(value)))
+        .filter(Boolean),
+    );
+    return crossRiskValues.filter((value) => {
+      const token = toToken(normalizeAllergenKey(value) || normalizeDietKey(value));
+      return token && !containsTokens.has(token);
+    });
   };
 
   const sanitizeBrandEntry = (brand = {}) =>
@@ -52,6 +59,7 @@ export function createIngredientNormalizer(options = {}) {
     normalizeAllergenKey,
     normalizeDietKey,
     normalizeStringArray,
+    pruneCrossSelections,
     sanitizeIngredientRow,
     sanitizeIngredientRows,
     sanitizeBrandEntry,

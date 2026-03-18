@@ -12,6 +12,10 @@ import {
   rebuildLineWordBoxes,
   separateIngredientList,
 } from "./analysisClient";
+import {
+  pruneCrossSelections,
+  reduceIngredientFlagSelections,
+} from "../../lib/ingredientFlagReducer";
 
 function asText(value) {
   return String(value ?? "").trim();
@@ -724,14 +728,24 @@ function buildGroupedResults(flags) {
   });
 
   const sortEntries = (entries) => {
-    return entries.sort((a, b) => {
-      const aHasContains = a[1].contains.size > 0;
-      const bHasContains = b[1].contains.size > 0;
-      if (aHasContains !== bHasContains) {
-        return bHasContains ? 1 : -1;
-      }
-      return a[0].localeCompare(b[0]);
-    });
+    return entries
+      .map(([name, group]) => [
+        name,
+        {
+          contains: group.contains,
+          cross: new Set(
+            pruneCrossSelections(Array.from(group.contains), Array.from(group.cross)),
+          ),
+        },
+      ])
+      .sort((a, b) => {
+        const aHasContains = a[1].contains.size > 0;
+        const bHasContains = b[1].contains.size > 0;
+        if (aHasContains !== bHasContains) {
+          return bHasContains ? 1 : -1;
+        }
+        return a[0].localeCompare(b[0]);
+      });
   };
 
   return {
@@ -1428,37 +1442,18 @@ export default function IngredientScanModal({
       const resolvedParsedIngredientsList = await separateIngredientList(finalLines);
 
       const ingredientText = finalLines.join(" ");
-      const containedAllergens = new Set();
-      const crossAllergens = new Set();
-      const violatedDiets = new Set();
-      const crossDiets = new Set();
-
-      allergenFlags.forEach((flag) => {
-        const isContains = asText(flag?.risk_type).toLowerCase().includes("cross")
-          ? false
-          : true;
-
-        (Array.isArray(flag?.allergens) ? flag.allergens : []).forEach((allergen) => {
-          const name = asText(allergen);
-          if (!name) return;
-          if (isContains) containedAllergens.add(name);
-          else crossAllergens.add(name);
-        });
-
-        (Array.isArray(flag?.diets) ? flag.diets : []).forEach((diet) => {
-          const name = asText(diet);
-          if (!name) return;
-          if (isContains) {
-            violatedDiets.add(name);
-          } else {
-            crossDiets.add(name);
-          }
-        });
-      });
+      const {
+        containedAllergens,
+        crossContaminationAllergens: crossAllergens,
+        violatedDiets,
+        crossContaminationDiets: crossDiets,
+      } = reduceIngredientFlagSelections(allergenFlags);
+      const violatedDietSet = new Set(violatedDiets);
+      const crossDietSet = new Set(crossDiets);
 
       const diets = dedupeStrings(
         (Array.isArray(supportedDiets) ? supportedDiets : []).filter(
-          (diet) => !violatedDiets.has(diet) && !crossDiets.has(diet),
+          (diet) => !violatedDietSet.has(diet) && !crossDietSet.has(diet),
         ),
       );
 
@@ -1486,10 +1481,10 @@ export default function IngredientScanModal({
       await onApply?.({
         ingredientName: asText(ingredientName),
         ingredientText,
-        allergens: Array.from(containedAllergens),
-        crossContaminationAllergens: Array.from(crossAllergens),
+        allergens: containedAllergens,
+        crossContaminationAllergens: crossAllergens,
         diets,
-        crossContaminationDiets: Array.from(crossDiets),
+        crossContaminationDiets: crossDiets,
         brandImage: persistedBrandImage,
         ingredientsImage: persistedIngredientsImage,
         ingredientsList: finalLines,
