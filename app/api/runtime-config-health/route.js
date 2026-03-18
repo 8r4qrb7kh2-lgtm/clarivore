@@ -13,6 +13,7 @@ const REQUIRED = [
   "GOOGLE_VISION_API_KEY",
   "CLARIVORE_SYSTEM_WRITE_KEY",
 ];
+const EDITOR_REQUIRED = ["DATABASE_URL"];
 
 function asText(value) {
   return String(value ?? "").trim();
@@ -38,10 +39,19 @@ function providerHealth(provider) {
   };
 }
 
+function editorHealth() {
+  return {
+    ok: hasEnv("DATABASE_URL"),
+    missing: hasEnv("DATABASE_URL") ? [] : ["DATABASE_URL"],
+    required: EDITOR_REQUIRED,
+  };
+}
+
 function readRuntimeConfigHealth() {
   const missing = [];
   const providerMode = resolveProviderMode(process.env);
   const shadowPrimaryProvider = getDefaultShadowPrimaryProvider(process.env);
+  const editor = editorHealth();
 
   if (!hasEnv("NEXT_PUBLIC_SUPABASE_URL")) {
     missing.push("NEXT_PUBLIC_SUPABASE_URL");
@@ -85,6 +95,7 @@ function readRuntimeConfigHealth() {
       anthropic: providerHealth("anthropic"),
       openai: providerHealth("openai"),
     },
+    editor,
   };
 }
 

@@ -31,6 +31,9 @@ export function useEditorLock({
   restaurantId,
   isEditorRequested,
   userId,
+  preflightPending = false,
+  preflightBlocked = false,
+  preflightMessage = "",
 }) {
   const mountedRef = useRef(false);
   const heartbeatTimerRef = useRef(null);
@@ -175,6 +178,18 @@ export function useEditorLock({
 
   const refreshStatus = useCallback(async () => {
     if (!isEditorRequested || !supabaseClient || !restaurantId || !userId) return;
+    if (preflightPending) {
+      setStatus("checking");
+      setReason("");
+      setMessage("");
+      return;
+    }
+    if (preflightBlocked) {
+      setStatus("error");
+      setReason("");
+      setMessage(asText(preflightMessage) || DEFAULT_ERROR_MESSAGE);
+      return;
+    }
 
     setRefreshBusy(true);
     setStatus("checking");
@@ -205,6 +220,9 @@ export function useEditorLock({
     acquireLock,
     clearHeartbeat,
     isEditorRequested,
+    preflightPending,
+    preflightBlocked,
+    preflightMessage,
     restaurantId,
     startHeartbeat,
     supabaseClient,
@@ -213,6 +231,18 @@ export function useEditorLock({
 
   const takeOver = useCallback(async () => {
     if (!isEditorRequested || !supabaseClient || !restaurantId || !userId) return;
+    if (preflightPending) {
+      setStatus("checking");
+      setReason("");
+      setMessage("");
+      return;
+    }
+    if (preflightBlocked) {
+      setStatus("error");
+      setReason("");
+      setMessage(asText(preflightMessage) || DEFAULT_ERROR_MESSAGE);
+      return;
+    }
 
     setTakeoverBusy(true);
     setStatus("checking");
@@ -223,6 +253,9 @@ export function useEditorLock({
       const sessionKey = readSessionKey();
       if (!sessionKey) {
         throw new Error(DEFAULT_ERROR_MESSAGE);
+      }
+      if (preflightBlocked) {
+        throw new Error(asText(preflightMessage) || DEFAULT_ERROR_MESSAGE);
       }
 
       const payload = await takeOverEditorLock({
@@ -255,6 +288,9 @@ export function useEditorLock({
     applyAcquirePayload,
     clearHeartbeat,
     isEditorRequested,
+    preflightPending,
+    preflightBlocked,
+    preflightMessage,
     readSessionKey,
     restaurantId,
     startHeartbeat,
@@ -299,13 +335,30 @@ export function useEditorLock({
 
   useEffect(() => {
     shouldHoldLockRef.current = Boolean(
-      isEditorRequested && supabaseClient && restaurantId && userId,
+      isEditorRequested &&
+        !preflightPending &&
+        !preflightBlocked &&
+        supabaseClient &&
+        restaurantId &&
+        userId,
     );
-  }, [isEditorRequested, restaurantId, supabaseClient, userId]);
+  }, [
+    isEditorRequested,
+    preflightPending,
+    preflightBlocked,
+    restaurantId,
+    supabaseClient,
+    userId,
+  ]);
 
   useEffect(() => {
     const shouldHoldLock = Boolean(
-      isEditorRequested && supabaseClient && restaurantId && userId,
+      isEditorRequested &&
+        !preflightPending &&
+        !preflightBlocked &&
+        supabaseClient &&
+        restaurantId &&
+        userId,
     );
 
     if (!shouldHoldLock) {
@@ -319,12 +372,22 @@ export function useEditorLock({
         heldRestaurantIdRef.current = "";
         holdingLockRef.current = false;
       }
-      setStatus("idle");
+      setStatus(isEditorRequested && preflightPending ? "checking" : "idle");
       setLock(null);
-      setMessage("");
+      setMessage(
+        isEditorRequested && preflightBlocked
+          ? asText(preflightMessage) || DEFAULT_ERROR_MESSAGE
+          : "",
+      );
       setReason("");
       setRefreshBusy(false);
       setTakeoverBusy(false);
+      if (isEditorRequested && preflightPending) {
+        return;
+      }
+      if (isEditorRequested && preflightBlocked) {
+        setStatus("error");
+      }
       return;
     }
 
@@ -366,6 +429,9 @@ export function useEditorLock({
     acquireLock,
     clearHeartbeat,
     isEditorRequested,
+    preflightPending,
+    preflightBlocked,
+    preflightMessage,
     releaseLockForRestaurant,
     restaurantId,
     startHeartbeat,

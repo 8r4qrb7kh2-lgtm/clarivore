@@ -395,6 +395,8 @@ export default function RestaurantClient() {
     runtimeMissingKeys,
     runtimeConfigBlocked,
     runtimeConfigErrorMessage,
+    editorRuntimeBlocked,
+    editorRuntimeErrorMessage,
   } = useRuntimeConfigHealth();
 
   // Single runtime source for restaurant/menu state in this page:
@@ -776,6 +778,9 @@ export default function RestaurantClient() {
     restaurantId: boot?.restaurant?.id || "",
     isEditorRequested,
     userId: boot?.user?.id || "",
+    preflightPending: !runtimeConfigChecked,
+    preflightBlocked: editorRuntimeBlocked,
+    preflightMessage: editorRuntimeErrorMessage,
   });
   const isEditorMode = isEditorRequested && editorLock.granted;
   const editorAccessBlocked = isEditorRequested && editorLock.blocked;
