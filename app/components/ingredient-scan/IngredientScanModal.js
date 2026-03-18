@@ -85,51 +85,42 @@ function measureTokenWidthsPx(tokens, fontSizePx) {
   return safeTokens.map((token) => context.measureText(asText(token)).width);
 }
 
-function resolveTokenFontSizePx(tokenLayout, displayTokens, tokenStripWidthPx) {
+function resolveTokenBaseFontSizePx(tokenStripWidthPx) {
+  const width = Number(tokenStripWidthPx) || 0;
+  if (width <= 0) return 10;
+  return width < 360 ? 10 : 11;
+}
+
+function resolveTokenRenderLayout(
+  tokenLayout,
+  displayTokens,
+  tokenStripWidthPx,
+  tokenBaseFontSizePx,
+) {
   const safeTokens = Array.isArray(displayTokens) ? displayTokens : [];
   const safeLayout = Array.isArray(tokenLayout) ? tokenLayout : [];
-  const width = Math.max(1, Number(tokenStripWidthPx) || 0);
-  if (!safeTokens.length || !width) return 10;
+  const stripWidth = Number(tokenStripWidthPx) || 0;
+  const fontSize = Math.max(1, Number(tokenBaseFontSizePx) || 1);
+  if (!safeTokens.length || !safeLayout.length || stripWidth <= 0) return [];
 
-  const totalChars = safeTokens.reduce((sum, token) => sum + asText(token).length, 0);
-  const maxFontPx = width < 360 ? 10 : 11;
-  const initialSize = Math.max(
-    6,
-    Math.min(maxFontPx, Math.floor((width / Math.max(totalChars, 1)) * 1.6)),
-  );
-
-  const widths = measureTokenWidthsPx(safeTokens, initialSize).map((value) =>
+  const measuredTextWidthsPx = measureTokenWidthsPx(safeTokens, fontSize).map((value) =>
     Math.max(1, Number(value) || 1),
   );
-  let scale = 1;
-  const edgeInsetPx = 2;
-  const pairGapPx = 2;
-  const tokenPadPx = 4;
 
-  for (let index = 0; index < safeLayout.length; index += 1) {
-    const centerPct = clampPercentage(Number(safeLayout[index]?.centerPct));
-    const centerPx = (centerPct / 100) * width;
-    const tokenWidth = widths[index] + tokenPadPx;
-    if (tokenWidth <= 0) continue;
-    const leftScale = (2 * Math.max(centerPx - edgeInsetPx, 0)) / tokenWidth;
-    const rightScale = (2 * Math.max(width - centerPx - edgeInsetPx, 0)) / tokenWidth;
-    if (Number.isFinite(leftScale)) scale = Math.min(scale, leftScale);
-    if (Number.isFinite(rightScale)) scale = Math.min(scale, rightScale);
-  }
+  return safeLayout.map((token, index) => {
+    const leftPct = clampPercentage(Number(token?.leftPct));
+    const widthPct = Math.max(0.5, clampPercentage(Number(token?.widthPct) || 0));
+    const tokenBoxWidthPx = Math.max(1, (widthPct / 100) * stripWidth);
+    const availableTextWidthPx = Math.max(1, tokenBoxWidthPx - 2);
+    const rawTextWidthPx = measuredTextWidthsPx[index] || 1;
 
-  for (let index = 0; index < safeLayout.length - 1; index += 1) {
-    const leftCenter = (clampPercentage(Number(safeLayout[index]?.centerPct)) / 100) * width;
-    const rightCenter =
-      (clampPercentage(Number(safeLayout[index + 1]?.centerPct)) / 100) * width;
-    const gap = rightCenter - leftCenter;
-    const denom = widths[index] + widths[index + 1] + tokenPadPx * 2;
-    if (denom <= 0) continue;
-    const allowedScale = (2 * Math.max(gap - pairGapPx, 0)) / denom;
-    if (Number.isFinite(allowedScale)) scale = Math.min(scale, allowedScale);
-  }
-
-  const nextSize = initialSize * Math.max(0.45, Math.min(1, scale));
-  return Math.max(6, Math.min(maxFontPx, Number(nextSize.toFixed(2))));
+    return {
+      ...token,
+      leftPct,
+      widthPct,
+      scaleX: Number((availableTextWidthPx / rawTextWidthPx).toFixed(4)),
+    };
+  });
 }
 
 function resolveLineTokenIndex(globalIndex, wordOffsets, tokenCounts) {
@@ -300,13 +291,23 @@ function CroppedLineCard({
     () => tokenLayout.map((token) => asText(token?.text)).filter(Boolean),
     [tokenLayout],
   );
-  const tokenFontSizePx = useMemo(
-    () => resolveTokenFontSizePx(tokenLayout, displayTokens, tokenStripWidthPx),
-    [tokenLayout, displayTokens, tokenStripWidthPx],
+  const tokenBaseFontSizePx = useMemo(
+    () => resolveTokenBaseFontSizePx(tokenStripWidthPx),
+    [tokenStripWidthPx],
+  );
+  const tokenRenderLayout = useMemo(
+    () =>
+      resolveTokenRenderLayout(
+        tokenLayout,
+        displayTokens,
+        tokenStripWidthPx,
+        tokenBaseFontSizePx,
+      ),
+    [tokenLayout, displayTokens, tokenStripWidthPx, tokenBaseFontSizePx],
   );
   const tokenStripHeightPx = useMemo(
-    () => Math.max(22, Math.round(tokenFontSizePx * 1.7)),
-    [tokenFontSizePx],
+    () => Math.max(22, Math.round(tokenBaseFontSizePx * 2)),
+    [tokenBaseFontSizePx],
   );
 
   useEffect(() => {
@@ -520,6 +521,7 @@ function CroppedLineCard({
         }}
       >
         {tokenLayout.map((token, tokenIndex) => {
+          const renderToken = tokenRenderLayout[tokenIndex] || token;
           const globalIndex = wordOffset + tokenIndex;
           const risk = wordRiskMap.get(globalIndex) || "";
           const underlineColor = risk === "contained" ? "#ef4444" : risk === "cross-contamination" ? "#fbbf24" : "transparent";
@@ -538,25 +540,40 @@ function CroppedLineCard({
               disabled={editLocked || savingEdit}
               style={{
                 position: "absolute",
-                left: `${token.centerPct}%`,
-                transform: "translateX(-50%)",
+                left: `${renderToken.leftPct}%`,
+                width: `${renderToken.widthPct}%`,
                 top: 0,
-                color: "#e2e8f0",
-                fontWeight: 600,
-                fontSize: `${tokenFontSizePx}px`,
-                whiteSpace: "nowrap",
-                textDecoration: risk ? "underline" : "none",
-                textDecorationColor: underlineColor,
-                textDecorationThickness: "2px",
+                height: tokenStripHeightPx,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
                 background: isSelected ? "rgba(124,156,255,0.22)" : "transparent",
                 border: isSelected
                   ? "1px solid rgba(124,156,255,0.75)"
                   : "1px solid transparent",
                 borderRadius: 4,
-                padding: "0 1px",
+                padding: 0,
+                boxSizing: "border-box",
+                overflow: "visible",
               }}
             >
-              {token.text}
+              <span
+                style={{
+                  display: "inline-block",
+                  color: "#e2e8f0",
+                  fontWeight: 600,
+                  fontSize: `${tokenBaseFontSizePx}px`,
+                  lineHeight: 1,
+                  whiteSpace: "nowrap",
+                  transform: `scaleX(${renderToken.scaleX || 1})`,
+                  transformOrigin: "center center",
+                  textDecoration: risk ? "underline" : "none",
+                  textDecorationColor: underlineColor,
+                  textDecorationThickness: "2px",
+                }}
+              >
+                {token.text}
+              </span>
             </button>
           );
         })}

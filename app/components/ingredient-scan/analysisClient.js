@@ -1,5 +1,5 @@
-import { loadScript } from "../../runtime/scriptLoader";
-import { analyzeAllergensWithLabelCropper } from "../../lib/ingredientAllergenAnalysis";
+import { loadScript } from "../../runtime/scriptLoader.js";
+import { analyzeAllergensWithLabelCropper } from "../../lib/ingredientAllergenAnalysis.js";
 
 const OPENCV_URL = "https://docs.opencv.org/4.5.2/opencv.js";
 
@@ -427,8 +427,21 @@ export function buildWordLayout(line) {
   const cropEnd = Number(crop?.x_end);
   const cropSpan = Math.max(1, cropEnd - cropStart);
 
-  const visionWords = Array.isArray(line?.words) ? line.words : [];
+  const visionWords = (Array.isArray(line?.words) ? line.words : [])
+    .map((word) => ({
+      ...word,
+      x_start: Number(word?.x_start),
+      x_end: Number(word?.x_end),
+    }))
+    .filter(
+      (word) =>
+        Number.isFinite(word?.x_start) &&
+        Number.isFinite(word?.x_end) &&
+        word.x_end > word.x_start,
+    )
+    .sort((a, b) => a.x_start - b.x_start);
   const used = new Set();
+  let lastMatchedIndex = -1;
 
   return tokens.map((token, tokenIndex) => {
     const cleanToken = token.toLowerCase().replace(/[^a-z0-9]/g, "");
@@ -436,7 +449,7 @@ export function buildWordLayout(line) {
     let bestScore = 0;
 
     visionWords.forEach((word, wordIndex) => {
-      if (used.has(wordIndex)) return;
+      if (used.has(wordIndex) || wordIndex < lastMatchedIndex) return;
       const cleanWord = asText(word?.text).toLowerCase().replace(/[^a-z0-9]/g, "");
       if (!cleanWord || !cleanToken) return;
 
@@ -458,18 +471,31 @@ export function buildWordLayout(line) {
 
     if (bestIndex >= 0) {
       used.add(bestIndex);
+      lastMatchedIndex = bestIndex;
       const matched = visionWords[bestIndex];
-      const center = (Number(matched?.x_start) + Number(matched?.x_end)) / 2;
+      const leftPct = clamp(((matched.x_start - cropStart) / cropSpan) * 100, 0, 100);
+      const rightPct = clamp(((matched.x_end - cropStart) / cropSpan) * 100, leftPct, 100);
+      const widthPct = Math.max(0.5, rightPct - leftPct);
       return {
         text: token,
-        centerPct: clamp(((center - cropStart) / cropSpan) * 100, 0, 100),
+        leftPct,
+        widthPct,
+        centerPct: clamp(leftPct + widthPct / 2, 0, 100),
+        hasMatchedBounds: true,
       };
     }
 
-    const fallbackCenter = ((tokenIndex + 0.5) / tokens.length) * 100;
+    const slotWidthPct = 100 / Math.max(tokens.length, 1);
+    const fallbackGapPct = Math.min(1, slotWidthPct * 0.08);
+    const leftPct = clamp(tokenIndex * slotWidthPct + fallbackGapPct / 2, 0, 100);
+    const rightPct = clamp((tokenIndex + 1) * slotWidthPct - fallbackGapPct / 2, leftPct, 100);
+    const widthPct = Math.max(0.5, rightPct - leftPct);
     return {
       text: token,
-      centerPct: clamp(fallbackCenter, 0, 100),
+      leftPct,
+      widthPct,
+      centerPct: clamp(leftPct + widthPct / 2, 0, 100),
+      hasMatchedBounds: false,
     };
   });
 }
