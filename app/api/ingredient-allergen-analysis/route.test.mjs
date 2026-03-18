@@ -192,7 +192,7 @@ async function invokeRoute({
   }
 }
 
-test("ingredient allergen route uses gpt-5.4 medium reasoning and accepts matching parallel agent results", async () => {
+test("ingredient allergen route uses gpt-5.4 with no reasoning and verifies per-candidate results", async () => {
   const agreedFlags = [
     {
       candidate_id: "direct:0",
@@ -216,8 +216,8 @@ test("ingredient allergen route uses gpt-5.4 medium reasoning and accepts matchi
   assert.equal(openAiRequests.length, 3);
   assert.ok(openAiRequests.every((request) => request.model === "gpt-5.4"));
   assert.equal(openAiRequests[0].reasoning, undefined);
-  assert.equal(openAiRequests[1].reasoning?.effort, "medium");
-  assert.equal(openAiRequests[2].reasoning?.effort, "medium");
+  assert.equal(openAiRequests[1].reasoning?.effort, "none");
+  assert.equal(openAiRequests[2].reasoning?.effort, "none");
   assert.deepEqual(body.flags, [
     {
       ingredient: "Wheat flour",
@@ -229,10 +229,10 @@ test("ingredient allergen route uses gpt-5.4 medium reasoning and accepts matchi
   ]);
   assert.equal(body.debug.provider, "openai");
   assert.equal(body.debug.model, "gpt-5.4");
-  assert.equal(body.debug.reasoningEffort, "medium");
+  assert.equal(body.debug.reasoningEffort, "none");
   assert.equal(body.debug.analysisProvider, "openai");
   assert.equal(body.debug.analysisModel, "gpt-5.4");
-  assert.equal(body.debug.analysisReasoningEffort, "medium");
+  assert.equal(body.debug.analysisReasoningEffort, "none");
   assert.equal(body.debug.candidateExtractionProvider, "openai");
   assert.equal(body.debug.candidateExtractionModel, "gpt-5.4");
   assert.equal(body.debug.candidateExtractionReasoningEffort, "none");
@@ -240,21 +240,20 @@ test("ingredient allergen route uses gpt-5.4 medium reasoning and accepts matchi
   assert.equal(body.debug.aiReviewInputCount, 1);
   assert.equal(body.debug.aiReviewDirectIngredientCount, 1);
   assert.equal(body.debug.aiReviewDeclarationCount, 0);
-  assert.equal(body.debug.agentAgreement, "agreed");
-  assert.equal(body.debug.adjudicationUsed, false);
+  assert.equal(body.debug.agentAgreement, "verified");
+  assert.equal(body.debug.adjudicationUsed, true);
   assert.equal(body.debug.aiCandidateCount, 1);
   assert.equal(body.debug.ingredientExtractionMethod, "ai");
 });
 
-test("ingredient allergen route adjudicates conflicting parallel agent results with a third verification call", async () => {
-  const agentAFlags = [
+test("ingredient allergen route lets final verification correct a bad per-candidate result", async () => {
+  const verifiedFlags = [
     {
       candidate_id: "direct:0",
       allergen_codes: [1],
       diet_codes: [1],
     },
   ];
-  const agentBFlags = [];
 
   const { body, openAiRequests } = await invokeRoute({
     transcriptLines: ["Ingredients: Wheat flour"],
@@ -262,15 +261,14 @@ test("ingredient allergen route adjudicates conflicting parallel agent results w
       createOpenAiCandidateExtractionPayload({
         directIngredients: [{ text: "Wheat flour", word_indices: [1, 2] }],
       }),
-      createOpenAiStructuredPayload(agentAFlags),
-      createOpenAiStructuredPayload(agentBFlags),
-      createOpenAiStructuredPayload(agentAFlags),
+      createOpenAiStructuredPayload([]),
+      createOpenAiStructuredPayload(verifiedFlags),
     ],
   });
 
   assert.equal(body.success, true);
-  assert.equal(openAiRequests.length, 4);
-  assert.equal(body.debug.agentAgreement, "conflict-resolved");
+  assert.equal(openAiRequests.length, 3);
+  assert.equal(body.debug.agentAgreement, "verified");
   assert.equal(body.debug.adjudicationUsed, true);
   assert.equal(body.debug.fallbackReason, null);
   assert.deepEqual(body.flags, [
@@ -283,9 +281,9 @@ test("ingredient allergen route adjudicates conflicting parallel agent results w
     },
   ]);
 
-  const adjudicationInput = JSON.stringify(openAiRequests[3].input);
-  assert.match(adjudicationInput, /Agent A candidate JSON/);
-  assert.match(adjudicationInput, /Agent B candidate JSON/);
+  const verificationInput = JSON.stringify(openAiRequests[2].input);
+  assert.match(verificationInput, /Candidate JSON to verify and correct/);
+  assert.match(verificationInput, /Wheat flour/);
 });
 
 test("ingredient allergen route accepts nested parsed structured output from OpenAI candidate extraction", async () => {
@@ -395,16 +393,17 @@ test("ingredient allergen route analyzes hazelnuts when they are not backed by t
   assert.deepEqual(body.debug.safeTableBypassedDirectIngredientTexts, []);
 });
 
-test("ingredient allergen route debug reflects flattened ingredients and only sends unmatched ones to AI", async () => {
-  const agreedFlags = [
+test("ingredient allergen route fans out direct and declaration candidates into individual AI calls", async () => {
+  const almondFlags = [
     {
       candidate_id: "direct:2",
       allergen_codes: [4],
       diet_codes: [],
     },
   ];
+  const verifiedFlags = [...almondFlags];
 
-  const { body } = await invokeRoute({
+  const { body, openAiRequests } = await invokeRoute({
     transcriptLines: [
       "Ingredients: Pea Crisps (Pea Protein, Rice Starch), Almond Butter.",
       "Manufactured on equipment that processes Peanut, Dairy, Soy, Sesame, Tree Nuts, Wheat",
@@ -460,12 +459,16 @@ test("ingredient allergen route debug reflects flattened ingredients and only se
           },
         ],
       }),
-      createOpenAiStructuredPayload(agreedFlags),
-      createOpenAiStructuredPayload(agreedFlags),
+      createOpenAiStructuredPayload(almondFlags),
+      createOpenAiStructuredPayload([]),
+      createOpenAiStructuredPayload([]),
+      createOpenAiStructuredPayload([]),
+      createOpenAiStructuredPayload(verifiedFlags),
     ],
   });
 
   assert.equal(body.success, true);
+  assert.equal(openAiRequests.length, 6);
   assert.equal(body.debug.ingredientExtractionMethod, "ai");
   assert.deepEqual(body.parsedIngredientsList, [
     "Pea Protein",
@@ -476,10 +479,29 @@ test("ingredient allergen route debug reflects flattened ingredients and only se
     "Pea Protein",
     "Rice Starch",
   ]);
+  assert.equal(body.debug.directIngredientsSentToAiCount, 1);
+  assert.equal(body.debug.declarationsSentToAiCount, 3);
   assert.ok(body.debug.aiCandidateTexts.includes("Almond Butter"));
+  assert.ok(body.debug.aiCandidateTexts.includes("Peanut"));
+  assert.ok(body.debug.aiCandidateTexts.includes("Egg"));
+  assert.ok(body.debug.aiCandidateTexts.includes("nut shell fragments"));
   assert.ok(!body.debug.aiCandidateTexts.includes("Pea Protein"));
   assert.ok(!body.debug.aiCandidateTexts.includes("Rice Starch"));
   assert.ok(!body.debug.aiCandidateTexts.includes("Pea Crisps (Pea Protein, Rice Starch)"));
+  const directRequestInput = JSON.stringify(openAiRequests[1].input);
+  assert.match(directRequestInput, /Almond Butter/);
+  assert.doesNotMatch(directRequestInput, /Peanut|Egg|nut shell fragments/);
+  const declarationRequestInputs = openAiRequests
+    .slice(2, 5)
+    .map((request) => JSON.stringify(request.input));
+  assert.ok(declarationRequestInputs.some((input) => /Peanut/.test(input)));
+  assert.ok(declarationRequestInputs.some((input) => /Egg/.test(input)));
+  assert.ok(declarationRequestInputs.some((input) => /nut shell fragments/.test(input)));
+  declarationRequestInputs.forEach((input) => {
+    assert.doesNotMatch(input, /Almond Butter/);
+  });
+  const verificationInput = JSON.stringify(openAiRequests[5].input);
+  assert.match(verificationInput, /Candidate JSON to verify and correct/);
 });
 
 test("ingredient allergen route surfaces safe ingredient table matches in debug output", async () => {
@@ -589,8 +611,8 @@ test("ingredient allergen route retries candidate extraction with a larger token
   assert.equal(openAiRequests.length, 4);
   assert.equal(openAiRequests[0].reasoning, undefined);
   assert.equal(openAiRequests[1].reasoning, undefined);
-  assert.equal(openAiRequests[2].reasoning?.effort, "medium");
-  assert.equal(openAiRequests[3].reasoning?.effort, "medium");
+  assert.equal(openAiRequests[2].reasoning?.effort, "none");
+  assert.equal(openAiRequests[3].reasoning?.effort, "none");
   assert.ok(openAiRequests[0].max_output_tokens > 1200);
   assert.ok(openAiRequests[1].max_output_tokens > openAiRequests[0].max_output_tokens);
   assert.equal(body.debug.ingredientExtractionMethod, "ai");

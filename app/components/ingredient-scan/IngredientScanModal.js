@@ -847,20 +847,31 @@ function IngredientScanDebugView({ debug }) {
   )
     ? Math.max(0, Math.trunc(Number(safeDebug.aiReviewDeclarationCount)))
     : declarationsSentToAiTexts.length;
+  const individualAiCallFailedCount = Number.isFinite(
+    Number(safeDebug.individualAiCallFailedCount),
+  )
+    ? Math.max(0, Math.trunc(Number(safeDebug.individualAiCallFailedCount)))
+    : 0;
   const flowSummary =
-    agentAgreement === "agreed"
-      ? "Two parallel agents agreed."
-      : agentAgreement === "conflict-resolved"
-        ? "Agents conflicted; adjudication resolved it."
-        : agentAgreement === "conflict-fallback-agent-a"
-          ? "Agents conflicted; adjudication failed, so agent A was used."
-          : agentAgreement === "single-agent-fallback"
-            ? "One agent failed, so the surviving result was used."
+    agentAgreement === "verified"
+      ? individualAiCallFailedCount
+        ? "Per-item AI calls finished with some failures; final verification completed the result."
+        : "Per-item AI calls finished; final verification confirmed the result."
+      : agentAgreement === "verification-fallback-individual"
+        ? "Verification failed, so the per-item AI results were used."
+        : agentAgreement === "agreed"
+          ? "Two parallel agents agreed."
+          : agentAgreement === "conflict-resolved"
+            ? "Agents conflicted; adjudication resolved it."
+            : agentAgreement === "conflict-fallback-agent-a"
+              ? "Agents conflicted; adjudication failed, so agent A was used."
+              : agentAgreement === "single-agent-fallback"
+                ? "One agent failed, so the surviving result was used."
             : agentAgreement === "cache-hit"
               ? "Served from cache."
               : safeDebug.pass1Used === true
                 ? safeDebug.pass2Used === true
-                ? "AI ran."
+                  ? "AI ran."
                   : "AI ran without adjudication."
                 : "AI did not run.";
   const buildModelSummary = (provider, model, reasoningEffort) =>
