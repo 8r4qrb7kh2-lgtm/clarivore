@@ -72,6 +72,23 @@ export async function refreshEditorLock({
   });
 }
 
+export async function takeOverEditorLock({
+  supabase,
+  restaurantId,
+  sessionKey,
+  holderInstance = "",
+}) {
+  return await postEditorLockAction({
+    supabase,
+    payload: {
+      action: "takeover",
+      restaurantId: asText(restaurantId),
+      sessionKey: asText(sessionKey),
+      holderInstance: asText(holderInstance),
+    },
+  });
+}
+
 export async function getEditorLockStatus({
   supabase,
   restaurantId,

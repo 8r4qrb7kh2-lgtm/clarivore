@@ -71,6 +71,7 @@ function buildAvailabilityPayload({ lockRow, session, sessionKey }) {
       owned: false,
       blocked: false,
       reason: "",
+      canTakeOver: false,
       lock: null,
     };
   }
@@ -85,6 +86,7 @@ function buildAvailabilityPayload({ lockRow, session, sessionKey }) {
       owned: true,
       blocked: false,
       reason: "",
+      canTakeOver: false,
       lock: activeLock,
     };
   }
@@ -98,6 +100,7 @@ function buildAvailabilityPayload({ lockRow, session, sessionKey }) {
       activeLock.userId === asText(session?.userId)
         ? "same_user_other_instance"
         : "another_editor_active",
+    canTakeOver: activeLock.userId === asText(session?.userId),
     lock: activeLock,
   };
 }
@@ -246,6 +249,80 @@ async function attemptLockUpsert({
   return rows?.[0] || null;
 }
 
+async function attemptSameUserTakeover({
+  restaurantId,
+  userId,
+  sessionKey,
+  holderName,
+  holderEmail,
+  holderInstance,
+}) {
+  const rows = await prisma.$queryRawUnsafe(
+    `
+    INSERT INTO ${EDITOR_LOCK_TABLE} (
+      restaurant_id,
+      user_id,
+      session_key,
+      holder_name,
+      holder_email,
+      holder_instance,
+      acquired_at,
+      last_heartbeat_at,
+      expires_at,
+      updated_at
+    )
+    VALUES (
+      $1::uuid,
+      $2::uuid,
+      $3,
+      $4,
+      $5,
+      $6,
+      now(),
+      now(),
+      now() + make_interval(secs => $7::int),
+      now()
+    )
+    ON CONFLICT (restaurant_id) DO UPDATE
+    SET
+      user_id = EXCLUDED.user_id,
+      session_key = EXCLUDED.session_key,
+      holder_name = EXCLUDED.holder_name,
+      holder_email = EXCLUDED.holder_email,
+      holder_instance = EXCLUDED.holder_instance,
+      acquired_at = now(),
+      last_heartbeat_at = now(),
+      expires_at = now() + make_interval(secs => $7::int),
+      updated_at = now()
+    WHERE
+      ${EDITOR_LOCK_TABLE}.user_id = EXCLUDED.user_id
+      OR ${EDITOR_LOCK_TABLE}.session_key = EXCLUDED.session_key
+      OR ${EDITOR_LOCK_TABLE}.expires_at <= now()
+      OR ${EDITOR_LOCK_TABLE}.last_heartbeat_at <= now() - make_interval(secs => $8::int)
+    RETURNING
+      restaurant_id,
+      user_id,
+      session_key,
+      holder_name,
+      holder_email,
+      holder_instance,
+      acquired_at,
+      last_heartbeat_at,
+      expires_at
+  `,
+    restaurantId,
+    userId,
+    sessionKey,
+    holderName,
+    holderEmail,
+    holderInstance,
+    LOCK_TTL_SECONDS,
+    LOCK_STALE_SECONDS,
+  );
+
+  return rows?.[0] || null;
+}
+
 async function requestEditorLock({
   restaurantId,
   sessionKey,
@@ -309,6 +386,41 @@ async function refreshEditorLock(options) {
   return await requestEditorLock(options);
 }
 
+async function takeOverEditorLock({
+  restaurantId,
+  sessionKey,
+  holderInstance,
+  session,
+}) {
+  const holderName = trimText(resolveHolderName(session?.user), MAX_NAME_CHARS) || "Manager";
+  const holderEmail = trimText(session?.userEmail, MAX_EMAIL_CHARS);
+  const safeInstance = trimText(holderInstance, MAX_INSTANCE_CHARS);
+
+  const lockRow = await attemptSameUserTakeover({
+    restaurantId,
+    userId: session.userId,
+    sessionKey,
+    holderName,
+    holderEmail,
+    holderInstance: safeInstance,
+  });
+
+  if (lockRow) {
+    return buildAvailabilityPayload({
+      lockRow,
+      session,
+      sessionKey,
+    });
+  }
+
+  const activeLock = await readActiveLockForRestaurant(restaurantId);
+  return buildAvailabilityPayload({
+    lockRow: activeLock,
+    session,
+    sessionKey,
+  });
+}
+
 async function readEditorLockStatus({
   restaurantId,
   sessionKey,
@@ -369,7 +481,7 @@ export async function POST(request) {
     );
   }
 
-  if (!["acquire", "refresh", "release", "status"].includes(action)) {
+  if (!["acquire", "refresh", "release", "status", "takeover"].includes(action)) {
     return NextResponse.json(
       { success: false, error: "Unsupported editor lock action." },
       { status: 400 },
@@ -412,6 +524,13 @@ export async function POST(request) {
             holderInstance,
             session,
           })
+        : action === "takeover"
+          ? await takeOverEditorLock({
+              restaurantId,
+              sessionKey,
+              holderInstance,
+              session,
+            })
         : await acquireEditorLock({
             restaurantId,
             sessionKey,

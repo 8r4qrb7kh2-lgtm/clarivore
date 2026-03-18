@@ -1049,7 +1049,10 @@ export default function RestaurantClient() {
         open={editorAccessBlocked}
         message={editorLock.message}
         refreshBusy={editorLock.refreshBusy || editorAccessChecking}
+        canTakeOver={editorLock.canTakeOver}
+        takeoverBusy={editorLock.takeoverBusy}
         onRefresh={editorLock.refreshStatus}
+        onTakeOver={editorLock.takeOver}
         onReturnDashboard={() => {
           router.replace("/manager-dashboard");
         }}

@@ -6,7 +6,10 @@ export default function EditorLockBlockedModal({
   open,
   message,
   refreshBusy = false,
+  canTakeOver = false,
+  takeoverBusy = false,
   onRefresh,
+  onTakeOver,
   onReturnDashboard,
 }) {
   return (
@@ -25,15 +28,28 @@ export default function EditorLockBlockedModal({
             size="compact"
             variant="outline"
             tone="neutral"
-            disabled={refreshBusy}
+            disabled={refreshBusy || takeoverBusy}
             onClick={onReturnDashboard}
           >
             Return to dashboard
           </Button>
+          {canTakeOver ? (
+            <Button
+              size="compact"
+              variant="outline"
+              tone="neutral"
+              loading={takeoverBusy}
+              disabled={refreshBusy}
+              onClick={onTakeOver}
+            >
+              Take over editor
+            </Button>
+          ) : null}
           <Button
             size="compact"
             tone="primary"
             loading={refreshBusy}
+            disabled={takeoverBusy}
             onClick={onRefresh}
           >
             Refresh status

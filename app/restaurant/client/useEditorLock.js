@@ -3,8 +3,13 @@ import {
   acquireEditorLock,
   refreshEditorLock,
   releaseEditorLock,
+  takeOverEditorLock,
 } from "../../lib/editorLockClient";
 import { readOrCreateEditorLockSessionKey } from "./editorLockSessionKey";
+import {
+  canTakeOverEditorLock,
+  resolveEditorLockMessage,
+} from "./editorLockState";
 
 const HEARTBEAT_INTERVAL_MS = 20 * 1000;
 const DEFAULT_BLOCKED_MESSAGE = "Someone is currently in web page editor.";
@@ -19,16 +24,6 @@ function resolveHolderInstance() {
   const host = asText(window.location?.host);
   const platform = asText(window.navigator?.platform || "web");
   return host ? `${host}:${platform}` : `web:${platform}`;
-}
-
-function toBlockedMessage(payload, fallbackMessage = DEFAULT_BLOCKED_MESSAGE) {
-  if (payload?.reason === "same_user_other_instance") {
-    return fallbackMessage;
-  }
-  if (payload?.reason === "another_editor_active") {
-    return fallbackMessage;
-  }
-  return fallbackMessage;
 }
 
 export function useEditorLock({
@@ -56,7 +51,9 @@ export function useEditorLock({
   const [status, setStatus] = useState("idle");
   const [lock, setLock] = useState(null);
   const [message, setMessage] = useState("");
+  const [reason, setReason] = useState("");
   const [refreshBusy, setRefreshBusy] = useState(false);
+  const [takeoverBusy, setTakeoverBusy] = useState(false);
 
   const readSessionKey = useCallback(() => {
     sessionKeyRef.current = readOrCreateEditorLockSessionKey({
@@ -106,6 +103,7 @@ export function useEditorLock({
         setStatus("granted");
         setLock(payload?.lock || null);
         setMessage("");
+        setReason("");
         holdingLockRef.current = true;
         heldRestaurantIdRef.current = asText(restaurantId);
         return true;
@@ -113,7 +111,8 @@ export function useEditorLock({
 
       setStatus("blocked");
       setLock(payload?.lock || null);
-      setMessage(toBlockedMessage(payload));
+      setMessage(asText(payload?.message));
+      setReason(asText(payload?.reason));
       holdingLockRef.current = false;
       heldRestaurantIdRef.current = "";
       return false;
@@ -168,6 +167,7 @@ export function useEditorLock({
         holdingLockRef.current = false;
         heldRestaurantIdRef.current = "";
         setStatus("error");
+        setReason("");
         setMessage(asText(error?.message) || DEFAULT_ERROR_MESSAGE);
       }
     }, HEARTBEAT_INTERVAL_MS);
@@ -179,6 +179,7 @@ export function useEditorLock({
     setRefreshBusy(true);
     setStatus("checking");
     setMessage("");
+    setReason("");
 
     try {
       const acquired = await acquireLock({ useRefreshAction: true });
@@ -193,6 +194,7 @@ export function useEditorLock({
       holdingLockRef.current = false;
       heldRestaurantIdRef.current = "";
       setStatus("error");
+      setReason("");
       setMessage(asText(error?.message) || DEFAULT_ERROR_MESSAGE);
     } finally {
       if (mountedRef.current) {
@@ -203,6 +205,57 @@ export function useEditorLock({
     acquireLock,
     clearHeartbeat,
     isEditorRequested,
+    restaurantId,
+    startHeartbeat,
+    supabaseClient,
+    userId,
+  ]);
+
+  const takeOver = useCallback(async () => {
+    if (!isEditorRequested || !supabaseClient || !restaurantId || !userId) return;
+
+    setTakeoverBusy(true);
+    setStatus("checking");
+    setMessage("");
+    setReason("");
+
+    try {
+      const sessionKey = readSessionKey();
+      if (!sessionKey) {
+        throw new Error(DEFAULT_ERROR_MESSAGE);
+      }
+
+      const payload = await takeOverEditorLock({
+        supabase: supabaseClient,
+        restaurantId,
+        sessionKey,
+        holderInstance: resolveHolderInstance(),
+      });
+
+      const acquired = applyAcquirePayload(payload);
+      if (acquired) {
+        startHeartbeat();
+      } else {
+        clearHeartbeat();
+      }
+    } catch (error) {
+      if (!mountedRef.current) return;
+      clearHeartbeat();
+      holdingLockRef.current = false;
+      heldRestaurantIdRef.current = "";
+      setStatus("error");
+      setReason("");
+      setMessage(asText(error?.message) || DEFAULT_ERROR_MESSAGE);
+    } finally {
+      if (mountedRef.current) {
+        setTakeoverBusy(false);
+      }
+    }
+  }, [
+    applyAcquirePayload,
+    clearHeartbeat,
+    isEditorRequested,
+    readSessionKey,
     restaurantId,
     startHeartbeat,
     supabaseClient,
@@ -269,7 +322,9 @@ export function useEditorLock({
       setStatus("idle");
       setLock(null);
       setMessage("");
+      setReason("");
       setRefreshBusy(false);
+      setTakeoverBusy(false);
       return;
     }
 
@@ -278,6 +333,7 @@ export function useEditorLock({
     const run = async () => {
       setStatus("checking");
       setMessage("");
+      setReason("");
 
       const previousRestaurantId = asText(heldRestaurantIdRef.current);
       if (holdingLockRef.current && previousRestaurantId && previousRestaurantId !== restaurantId) {
@@ -299,6 +355,7 @@ export function useEditorLock({
       holdingLockRef.current = false;
       heldRestaurantIdRef.current = "";
       setStatus("error");
+      setReason("");
       setMessage(asText(error?.message) || DEFAULT_ERROR_MESSAGE);
     });
 
@@ -319,20 +376,25 @@ export function useEditorLock({
   const checking = isEditorRequested && status === "checking";
   const granted = isEditorRequested && status === "granted";
   const blocked = isEditorRequested && (status === "blocked" || status === "error");
-  const blockedMessage =
-    status === "error"
-      ? DEFAULT_BLOCKED_MESSAGE
-      : asText(message) || DEFAULT_BLOCKED_MESSAGE;
+  const blockedMessage = resolveEditorLockMessage({
+    status,
+    reason,
+    message: message || DEFAULT_BLOCKED_MESSAGE,
+  });
+  const canTakeOver = canTakeOverEditorLock({ status, reason });
 
   return {
     status,
     checking,
     granted,
     blocked,
+    canTakeOver,
     lock,
     message: blocked ? blockedMessage : "",
     refreshBusy,
+    takeoverBusy,
     refreshStatus,
+    takeOver,
   };
 }
 
