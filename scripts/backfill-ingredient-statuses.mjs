@@ -1,6 +1,6 @@
-import { PrismaClient } from "@prisma/client";
+import { createDatabaseClient } from "../app/lib/server/postgres.js";
 
-const prisma = new PrismaClient();
+const db = createDatabaseClient();
 
 const parseAiIngredients = (value) => {
   if (!value) return [];
@@ -32,11 +32,11 @@ const coerceRowIndex = (value, fallback) => {
 };
 
 async function backfill() {
-  const allergens = await prisma.allergens.findMany({
+  const allergens = await db.allergens.findMany({
     where: { is_active: true },
     select: { id: true, key: true },
   });
-  const diets = await prisma.diets.findMany({
+  const diets = await db.diets.findMany({
     where: { is_active: true, is_supported: true },
     select: { id: true, label: true },
   });
@@ -47,7 +47,7 @@ async function backfill() {
   const dietIdByLabel = new Map(diets.map((row) => [row.label, row.id]));
   const supportedDietLabels = diets.map((row) => row.label);
 
-  const restaurants = await prisma.restaurants.findMany({
+  const restaurants = await db.restaurants.findMany({
     select: { id: true, name: true, overlays: true },
   });
 
@@ -66,7 +66,7 @@ async function backfill() {
 
       const rows = parseAiIngredients(overlay?.aiIngredients);
 
-      await prisma.dish_ingredient_rows.deleteMany({
+      await db.dish_ingredient_rows.deleteMany({
         where: {
           restaurant_id: restaurant.id,
           dish_name: dishName,
@@ -82,9 +82,9 @@ async function backfill() {
         row_text: normalizeRowText(row) || null,
       }));
 
-      await prisma.dish_ingredient_rows.createMany({ data: rowPayload });
+      await db.dish_ingredient_rows.createMany({ data: rowPayload });
 
-      const insertedRows = await prisma.dish_ingredient_rows.findMany({
+      const insertedRows = await db.dish_ingredient_rows.findMany({
         where: {
           restaurant_id: restaurant.id,
           dish_name: dishName,
@@ -176,12 +176,12 @@ async function backfill() {
       });
 
       if (allergenEntries.length) {
-        await prisma.dish_ingredient_allergens.createMany({
+        await db.dish_ingredient_allergens.createMany({
           data: allergenEntries,
         });
       }
       if (dietEntries.length) {
-        await prisma.dish_ingredient_diets.createMany({ data: dietEntries });
+        await db.dish_ingredient_diets.createMany({ data: dietEntries });
       }
 
       totalRows += insertedRows.length;
@@ -202,5 +202,5 @@ backfill()
     process.exitCode = 1;
   })
   .finally(async () => {
-    await prisma.$disconnect();
+    await db.$disconnect();
   });

@@ -20,19 +20,19 @@ function normalizeRestaurantIds(restaurantIds) {
   return output;
 }
 
-export async function fetchRestaurantMenuStateMapFromTablesWithPrisma(
-  prismaClient,
+export async function fetchRestaurantMenuStateMapFromTables(
+  dbClient,
   restaurantIds,
 ) {
-  if (!prismaClient) {
-    throw new Error("Prisma client is required.");
+  if (!dbClient) {
+    throw new Error("Database client is required.");
   }
 
   const ids = normalizeRestaurantIds(restaurantIds);
   if (!ids.length) return new Map();
 
   const [menuPageRows, menuDishRows, ingredientRows, brandRows] = await Promise.all([
-    prismaClient.restaurant_menu_pages.findMany({
+    dbClient.restaurant_menu_pages.findMany({
       where: { restaurant_id: { in: ids } },
       select: {
         restaurant_id: true,
@@ -40,7 +40,7 @@ export async function fetchRestaurantMenuStateMapFromTablesWithPrisma(
         image_url: true,
       },
     }),
-    prismaClient.restaurant_menu_dishes.findMany({
+    dbClient.restaurant_menu_dishes.findMany({
       where: { restaurant_id: { in: ids } },
       select: {
         id: true,
@@ -64,7 +64,7 @@ export async function fetchRestaurantMenuStateMapFromTablesWithPrisma(
         payload_json: true,
       },
     }),
-    prismaClient.restaurant_menu_ingredient_rows.findMany({
+    dbClient.restaurant_menu_ingredient_rows.findMany({
       where: { restaurant_id: { in: ids } },
       select: {
         id: true,
@@ -77,7 +77,7 @@ export async function fetchRestaurantMenuStateMapFromTablesWithPrisma(
         ingredient_payload: true,
       },
     }),
-    prismaClient.restaurant_menu_ingredient_brand_items.findMany({
+    dbClient.restaurant_menu_ingredient_brand_items.findMany({
       where: { restaurant_id: { in: ids } },
       select: {
         restaurant_id: true,
@@ -108,22 +108,22 @@ export async function fetchRestaurantMenuStateMapFromTablesWithPrisma(
   });
 }
 
-export async function fetchRestaurantMenuStateFromTablesWithPrisma(
-  prismaClient,
+export async function fetchRestaurantMenuStateFromTables(
+  dbClient,
   restaurantId,
 ) {
   const id = asText(restaurantId);
   if (!id) return getEmptyRestaurantMenuState();
 
-  const map = await fetchRestaurantMenuStateMapFromTablesWithPrisma(
-    prismaClient,
+  const map = await fetchRestaurantMenuStateMapFromTables(
+    dbClient,
     [id],
   );
   return map.get(id) || getEmptyRestaurantMenuState();
 }
 
-export async function hydrateRestaurantsWithTableMenuStateFromPrisma(
-  prismaClient,
+export async function hydrateRestaurantsWithTableMenuState(
+  dbClient,
   restaurantRows,
 ) {
   const rows = Array.isArray(restaurantRows) ? restaurantRows : [];
@@ -133,8 +133,8 @@ export async function hydrateRestaurantsWithTableMenuStateFromPrisma(
     .map((row) => asText(row?.id))
     .filter(Boolean);
 
-  const stateByRestaurantId = await fetchRestaurantMenuStateMapFromTablesWithPrisma(
-    prismaClient,
+  const stateByRestaurantId = await fetchRestaurantMenuStateMapFromTables(
+    dbClient,
     ids,
   );
 

@@ -1,5 +1,5 @@
-import { PrismaClient } from "@prisma/client";
 import { readFile } from "node:fs/promises";
+import { createDatabaseClient } from "../../app/lib/server/postgres.js";
 
 import {
   buildAiDishSearchPrompt,
@@ -47,7 +47,7 @@ import {
   createImageMessage,
   createTextMessage,
 } from "../../app/lib/server/ai/providerRuntime.js";
-import { fetchRestaurantMenuStateMapFromTablesWithPrisma } from "../../app/lib/server/restaurantMenuStateServer.js";
+import { fetchRestaurantMenuStateMapFromTables } from "../../app/lib/server/restaurantMenuStateServer.js";
 import { ADMIN_DATA_FLOW_VISUALS, getDataFlowSourcePath } from "../../app/api/admin/_shared/dataFlowVisuals.js";
 import { __bench as ingredientPhotoBench } from "../../app/api/ingredient-photo-analysis/route.js";
 import { __bench as menuImageBench } from "../../app/api/menu-image-analysis/localRepositionEngine.mjs";
@@ -1111,24 +1111,26 @@ function createGenericCase({
   };
 }
 
-async function fetchAiConfig(prisma) {
+async function fetchAiConfig(dbClient) {
   const [allergens, diets, conflicts] = await Promise.all([
-    prisma.allergens.findMany({
+    dbClient.allergens.findMany({
       where: { is_active: true },
       select: { key: true, label: true, sort_order: true },
       orderBy: { sort_order: "asc" },
     }),
-    prisma.diets.findMany({
+    dbClient.diets.findMany({
       where: { is_active: true },
       select: { key: true, label: true, sort_order: true, is_supported: true, is_ai_enabled: true },
       orderBy: { sort_order: "asc" },
     }),
-    prisma.diet_allergen_conflicts.findMany({
-      select: {
-        diets: { select: { label: true } },
-        allergens: { select: { key: true } },
-      },
-    }),
+    dbClient.$queryRawUnsafe(`
+      SELECT
+        d.label AS diet_label,
+        a.key AS allergen_key
+      FROM public.diet_allergen_conflicts dac
+      JOIN public.diets d ON d.id = dac.diet_id
+      JOIN public.allergens a ON a.id = dac.allergen_id
+    `),
   ]);
 
   const supportedDiets = dedupeStrings(
@@ -1139,8 +1141,8 @@ async function fetchAiConfig(prisma) {
   );
   const dietConflictGuideText = Object.entries(
     conflicts.reduce((acc, row) => {
-      const dietLabel = asText(row?.diets?.label);
-      const allergenKey = asText(row?.allergens?.key);
+      const dietLabel = asText(row?.diet_label);
+      const allergenKey = asText(row?.allergen_key);
       if (!dietLabel || !allergenKey) return acc;
       acc[dietLabel] = acc[dietLabel] || [];
       acc[dietLabel].push(allergenKey);
@@ -1182,41 +1184,36 @@ async function fetchAiConfig(prisma) {
   };
 }
 
-async function fetchBrandRows(prisma) {
-  return await prisma.restaurant_menu_ingredient_brand_items.findMany({
-    where: {
-      OR: [
-        { brand_image: { not: null } },
-        { ingredients_image: { not: null } },
-        { ingredient_list: { not: null } },
-      ],
-    },
-    select: {
-      restaurant_id: true,
-      ingredient_row_id: true,
-      dish_name: true,
-      row_index: true,
-      brand_name: true,
-      brand_image: true,
-      ingredients_image: true,
-      ingredient_list: true,
-      ingredients_list: true,
-      allergens: true,
-      cross_contamination_allergens: true,
-      diets: true,
-      cross_contamination_diets: true,
-      restaurant_menu_ingredient_rows: {
-        select: {
-          row_text: true,
-          applied_brand_item: true,
-        },
-      },
-    },
-  });
+async function fetchBrandRows(dbClient) {
+  return await dbClient.$queryRawUnsafe(`
+    SELECT
+      items.restaurant_id,
+      items.ingredient_row_id,
+      items.dish_name,
+      items.row_index,
+      items.brand_name,
+      items.brand_image,
+      items.ingredients_image,
+      items.ingredient_list,
+      items.ingredients_list,
+      items.allergens,
+      items.cross_contamination_allergens,
+      items.diets,
+      items.cross_contamination_diets,
+      rows.row_text,
+      rows.applied_brand_item
+    FROM public.restaurant_menu_ingredient_brand_items items
+    LEFT JOIN public.restaurant_menu_ingredient_rows rows
+      ON rows.id = items.ingredient_row_id
+    WHERE
+      items.brand_image IS NOT NULL
+      OR items.ingredients_image IS NOT NULL
+      OR items.ingredient_list IS NOT NULL
+  `);
 }
 
-async function fetchRawIngredientRows(prisma) {
-  return await prisma.restaurant_menu_ingredient_rows.findMany({
+async function fetchRawIngredientRows(dbClient) {
+  return await dbClient.restaurant_menu_ingredient_rows.findMany({
     where: {
       row_text: { not: null },
       applied_brand_item: null,
@@ -1231,8 +1228,8 @@ async function fetchRawIngredientRows(prisma) {
   });
 }
 
-async function fetchMenuPageData(prisma, limit) {
-  const pageRows = await prisma.restaurant_menu_pages.findMany({
+async function fetchMenuPageData(dbClient, limit) {
+  const pageRows = await dbClient.restaurant_menu_pages.findMany({
     where: { image_url: { not: null } },
     select: {
       restaurant_id: true,
@@ -1249,7 +1246,7 @@ async function fetchMenuPageData(prisma, limit) {
     selectedPages.map((row) => row.restaurant_id),
     (value) => value,
   );
-  const restaurants = await prisma.restaurants.findMany({
+  const restaurants = await dbClient.restaurants.findMany({
     where: { id: { in: restaurantIds } },
     select: {
       id: true,
@@ -1259,7 +1256,7 @@ async function fetchMenuPageData(prisma, limit) {
     },
   });
   const restaurantMap = new Map(restaurants.map((row) => [row.id, row]));
-  const stateByRestaurant = await fetchRestaurantMenuStateMapFromTablesWithPrisma(prisma, restaurantIds);
+  const stateByRestaurant = await fetchRestaurantMenuStateMapFromTables(dbClient, restaurantIds);
   return selectedPages.map((page) => ({
     ...page,
     restaurant: restaurantMap.get(page.restaurant_id) || null,
@@ -1283,7 +1280,7 @@ function buildAnalyzeIngredientScanCases(brandRows, rawRows, limit) {
 
   return [
     ...positiveCases.map((row) => {
-      const ingredientName = asText(row?.restaurant_menu_ingredient_rows?.applied_brand_item) || asText(row?.brand_name);
+      const ingredientName = asText(row?.applied_brand_item) || asText(row?.brand_name);
       const dishName = asText(row?.dish_name);
       const prompts = buildAnalyzeIngredientScanPrompts({ dishName, ingredientName });
       return createGenericCase({
@@ -1869,8 +1866,8 @@ async function buildBrandCompareCases(brandRows, limit) {
   return cases.slice(0, limit * 2);
 }
 
-async function buildAiDishSearchCases(prisma, limit) {
-  const restaurants = await prisma.restaurants.findMany({
+async function buildAiDishSearchCases(dbClient, limit) {
+  const restaurants = await dbClient.restaurants.findMany({
     select: {
       id: true,
       name: true,
@@ -1879,7 +1876,7 @@ async function buildAiDishSearchCases(prisma, limit) {
     },
   });
   const restaurantIds = restaurants.map((restaurant) => restaurant.id);
-  const stateByRestaurant = await fetchRestaurantMenuStateMapFromTablesWithPrisma(prisma, restaurantIds);
+  const stateByRestaurant = await fetchRestaurantMenuStateMapFromTables(dbClient, restaurantIds);
   const candidates = [];
   restaurants.forEach((restaurant) => {
     const overlays = Array.isArray(stateByRestaurant.get(restaurant.id)?.overlays)
@@ -1992,8 +1989,8 @@ async function buildAiDishSearchCases(prisma, limit) {
   return output.slice(0, limit);
 }
 
-async function buildHelpAssistantCases(prisma, aiConfig, limit) {
-  const kbRows = await prisma.help_kb.findMany({
+async function buildHelpAssistantCases(dbClient, aiConfig, limit) {
+  const kbRows = await dbClient.help_kb.findMany({
     select: {
       title: true,
       content: true,
@@ -2005,7 +2002,7 @@ async function buildHelpAssistantCases(prisma, aiConfig, limit) {
     take: limit,
     orderBy: { updated_at: "desc" },
   }).catch(async () => {
-    return await prisma.help_kb.findMany({
+    return await dbClient.help_kb.findMany({
       select: {
         title: true,
         content: true,
@@ -2178,15 +2175,15 @@ async function buildDishEditorCases(menuPages, aiConfig, limits) {
 }
 
 export async function captureBenchmarkCorpus({
-  prisma,
+  dbClient,
   limits = DEFAULT_CAPTURE_LIMITS,
   googleVisionApiKey = "",
 }) {
-  const aiConfig = await fetchAiConfig(prisma);
+  const aiConfig = await fetchAiConfig(dbClient);
   const [brandRows, rawRows, menuPages] = await Promise.all([
-    fetchBrandRows(prisma),
-    fetchRawIngredientRows(prisma),
-    fetchMenuPageData(prisma, limits.menuPage + 8),
+    fetchBrandRows(dbClient),
+    fetchRawIngredientRows(dbClient),
+    fetchMenuPageData(dbClient, limits.menuPage + 8),
   ]);
 
   const fixtureText = await readFile("ml/data/evals/ingredient_transcript_cases.jsonl", "utf8").catch(() => "");
@@ -2210,8 +2207,8 @@ export async function captureBenchmarkCorpus({
     buildIngredientPhotoCases(brandRows, aiConfig, googleVisionApiKey, limits),
     buildMenuCases(menuPages, googleVisionApiKey, limits),
     buildBrandCompareCases(brandRows, limits.confirmPairs),
-    buildAiDishSearchCases(prisma, limits.aiDishSearch),
-    buildHelpAssistantCases(prisma, aiConfig, limits.helpAssistant),
+    buildAiDishSearchCases(dbClient, limits.aiDishSearch),
+    buildHelpAssistantCases(dbClient, aiConfig, limits.helpAssistant),
     buildAdminDataFlowCases(limits.adminDataFlowAsk),
     buildDishEditorCases(menuPages, aiConfig, limits),
   ]);
@@ -2278,12 +2275,12 @@ export async function attachBaselineToCorpus(corpus, env = process.env) {
   };
 }
 
-export function createPrismaClient() {
-  return new PrismaClient();
+export function createBenchmarkDatabaseClient() {
+  return createDatabaseClient();
 }
 
-export async function closeBenchmarkResources(prisma) {
-  await prisma?.$disconnect?.();
+export async function closeBenchmarkResources(dbClient) {
+  await dbClient?.$disconnect?.();
   await closeImageToolBrowser();
 }
 

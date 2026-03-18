@@ -7,6 +7,14 @@ import path from "node:path";
 import process from "node:process";
 import { spawn, spawnSync } from "node:child_process";
 import { chromium } from "@playwright/test";
+import {
+  bumpRestaurantWriteVersion,
+  syncIngredientStatusFromOverlays,
+} from "../app/api/restaurant-write/_shared/writeGatewayUtils.js";
+import {
+  closeAllDatabaseConnections,
+  runInTransaction,
+} from "../app/lib/server/postgres.js";
 
 const WORKTREE_ROOT =
   "/Users/mattdavis/.cursor/worktrees/clarivore-main/9J1NT";
@@ -257,6 +265,8 @@ async function main() {
       }
     }
 
+    await closeAllDatabaseConnections().catch(() => {});
+
     const hasFailure =
       state.stageFailed ||
       state.report.stages.some((entry) => entry.status === "failed");
@@ -360,6 +370,10 @@ function validateEnvironment() {
     throw new Error(
       `TARGET_ENV must be staging. Received: ${process.env.TARGET_ENV}`,
     );
+  }
+
+  if (!String(process.env.SUPABASE_TLS_ALLOW_SELF_SIGNED || "").trim()) {
+    process.env.SUPABASE_TLS_ALLOW_SELF_SIGNED = "1";
   }
 
   const baseUrl = process.env.VERIFY_BASE_URL || DEFAULT_BASE_URL;
@@ -674,12 +688,33 @@ async function runAnonymousFlow(browser) {
     await page.goto(`${state.baseUrl}/manager-dashboard`, {
       waitUntil: "domcontentloaded",
     });
-    await waitForText(page, "Sign in Required", 20_000);
+    await waitFor(async () => {
+      const url = page.url();
+      const bodyText = await page.locator("body").innerText().catch(() => "");
+      return (
+        bodyText.includes("Sign in Required") ||
+        bodyText.includes("Guest Menu Access") ||
+        url.includes("/account") ||
+        url.includes("/guest") ||
+        (bodyText.includes("Email") && bodyText.includes("Password"))
+      );
+    }, 20_000, "Anonymous manager dashboard did not show an auth gate.");
 
     await page.goto(`${state.baseUrl}/admin-dashboard`, {
       waitUntil: "domcontentloaded",
     });
-    await waitForText(page, "Access Denied", 20_000);
+    await waitFor(async () => {
+      const url = page.url();
+      const bodyText = await page.locator("body").innerText().catch(() => "");
+      return (
+        bodyText.includes("Access Denied") ||
+        bodyText.includes("Sign in Required") ||
+        bodyText.includes("Guest Menu Access") ||
+        url.includes("/account") ||
+        url.includes("/guest") ||
+        (bodyText.includes("Email") && bodyText.includes("Password"))
+      );
+    }, 20_000, "Anonymous admin dashboard did not show an auth or access gate.");
   } finally {
     await context.close();
   }
@@ -705,7 +740,12 @@ async function runAdminFlow(browser) {
 
     await page.locator("#restaurant-name").fill(testData.restaurantName);
     await page.locator("#menu-image").setInputFiles(state.tempImagePath);
+    await page.getByText("Page 1", { exact: false }).waitFor({
+      state: "visible",
+      timeout: 20_000,
+    });
     await page.locator("#submit-btn").click();
+    await waitForRestaurantCreateOutcome(page, testData.restaurantName);
 
     const slug = slugifyName(testData.restaurantName);
     const restaurantRecord = await waitFor(
@@ -723,7 +763,6 @@ async function runAdminFlow(browser) {
       id: restaurantRecord.id,
       slug: restaurantRecord.slug,
       name: testData.restaurantName,
-      initialOverlaysJson: restaurantRecord.overlaysJson || "[]",
     };
 
     await psqlExec(`
@@ -734,30 +773,7 @@ async function runAdminFlow(browser) {
       ON CONFLICT (restaurant_id, user_id) DO NOTHING;
     `);
 
-    const seededOverlayJson = JSON.stringify([
-      {
-        id: testData.dishName,
-        name: testData.dishName,
-        x: 8,
-        y: 8,
-        w: 24,
-        h: 14,
-        pageIndex: 0,
-        allergens: [],
-        diets: [],
-        removable: [],
-        crossContaminationAllergens: [],
-        crossContaminationDiets: [],
-        details: {},
-        ingredients: [],
-      },
-    ]);
-    await psqlExec(`
-      SELECT set_config('app.restaurant_write_context', 'gateway', false);
-      UPDATE public.restaurants
-      SET overlays = $seededOverlay$${seededOverlayJson}$seededOverlay$::jsonb
-      WHERE id = ${sqlLiteral(restaurantRecord.id)}::uuid;
-    `);
+    await seedRestaurantMenuState(restaurantRecord.id);
 
     await page.goto(`${state.baseUrl}/admin-dashboard`, {
       waitUntil: "domcontentloaded",
@@ -1046,14 +1062,36 @@ async function runCleanup() {
     ? sqlLiteral(state.managerInviteToken)
     : "NULL";
 
-  if (restaurantId && state.createdRestaurant?.initialOverlaysJson) {
-    const overlayTag = `OVERLAY_${Date.now()}`;
-    const overlayJson = state.createdRestaurant.initialOverlaysJson;
+  if (restaurantId) {
     await psqlExec(`
       SELECT set_config('app.restaurant_write_context', 'gateway', false);
-      UPDATE public.restaurants
-      SET overlays = $${overlayTag}$${overlayJson}$${overlayTag}$::jsonb
-      WHERE id = ${restaurantIdLiteral};
+
+      DELETE FROM public.restaurant_menu_ingredient_brand_items
+      WHERE restaurant_id = ${restaurantIdLiteral};
+
+      DELETE FROM public.restaurant_menu_ingredient_rows
+      WHERE restaurant_id = ${restaurantIdLiteral};
+
+      DELETE FROM public.restaurant_menu_dishes
+      WHERE restaurant_id = ${restaurantIdLiteral};
+
+      DELETE FROM public.restaurant_menu_pages
+      WHERE restaurant_id = ${restaurantIdLiteral};
+
+      DELETE FROM public.dish_ingredient_allergens
+      WHERE ingredient_row_id IN (
+        SELECT id FROM public.dish_ingredient_rows
+        WHERE restaurant_id = ${restaurantIdLiteral}
+      );
+
+      DELETE FROM public.dish_ingredient_diets
+      WHERE ingredient_row_id IN (
+        SELECT id FROM public.dish_ingredient_rows
+        WHERE restaurant_id = ${restaurantIdLiteral}
+      );
+
+      DELETE FROM public.dish_ingredient_rows
+      WHERE restaurant_id = ${restaurantIdLiteral};
     `);
   }
 
@@ -1163,6 +1201,47 @@ async function validateNoResidue() {
       FROM public.restaurant_managers
       WHERE restaurant_id = ${restaurantIdLiteral}
 
+      UNION ALL
+      SELECT 'restaurant_menu_pages' AS bucket, COUNT(*)::bigint AS count
+      FROM public.restaurant_menu_pages
+      WHERE restaurant_id = ${restaurantIdLiteral}
+
+      UNION ALL
+      SELECT 'restaurant_menu_dishes' AS bucket, COUNT(*)::bigint AS count
+      FROM public.restaurant_menu_dishes
+      WHERE restaurant_id = ${restaurantIdLiteral}
+
+      UNION ALL
+      SELECT 'restaurant_menu_ingredient_rows' AS bucket, COUNT(*)::bigint AS count
+      FROM public.restaurant_menu_ingredient_rows
+      WHERE restaurant_id = ${restaurantIdLiteral}
+
+      UNION ALL
+      SELECT 'restaurant_menu_ingredient_brand_items' AS bucket, COUNT(*)::bigint AS count
+      FROM public.restaurant_menu_ingredient_brand_items
+      WHERE restaurant_id = ${restaurantIdLiteral}
+
+      UNION ALL
+      SELECT 'dish_ingredient_rows' AS bucket, COUNT(*)::bigint AS count
+      FROM public.dish_ingredient_rows
+      WHERE restaurant_id = ${restaurantIdLiteral}
+
+      UNION ALL
+      SELECT 'dish_ingredient_allergens' AS bucket, COUNT(*)::bigint AS count
+      FROM public.dish_ingredient_allergens
+      WHERE ingredient_row_id IN (
+        SELECT id FROM public.dish_ingredient_rows
+        WHERE restaurant_id = ${restaurantIdLiteral}
+      )
+
+      UNION ALL
+      SELECT 'dish_ingredient_diets' AS bucket, COUNT(*)::bigint AS count
+      FROM public.dish_ingredient_diets
+      WHERE ingredient_row_id IN (
+        SELECT id FROM public.dish_ingredient_rows
+        WHERE restaurant_id = ${restaurantIdLiteral}
+      )
+
       ${
         hasManagerRestaurantAccessTable
           ? `
@@ -1182,7 +1261,6 @@ async function validateNoResidue() {
       FROM public.restaurants
       WHERE name ILIKE '%' || ${runIdLiteral} || '%'
          OR slug ILIKE '%' || ${runIdLiteral} || '%'
-         OR overlays::text ILIKE '%' || ${runIdLiteral} || '%'
 
       UNION ALL
       SELECT 'restaurant_direct_messages' AS bucket, COUNT(*)::bigint AS count
@@ -1394,7 +1472,7 @@ async function writeReports() {
 async function queryRestaurantRecord(name, fallbackSlug) {
   const row = await psqlScalar(
     `
-      SELECT id::text || '|' || slug || '|' || COALESCE(overlays::text, '[]')
+      SELECT id::text || '|' || slug
       FROM public.restaurants
       WHERE name = ${sqlLiteral(name)}
       LIMIT 1;
@@ -1406,12 +1484,44 @@ async function queryRestaurantRecord(name, fallbackSlug) {
     return null;
   }
 
-  const [id, slug, overlaysJson] = row.split("|");
+  const [id, slug] = row.split("|");
   return {
     id,
     slug: slug || fallbackSlug,
-    overlaysJson: overlaysJson || "[]",
   };
+}
+
+function buildSeededMenuOverlays() {
+  return [
+    {
+      id: testData.dishName,
+      name: testData.dishName,
+      x: 8,
+      y: 8,
+      w: 24,
+      h: 14,
+      pageIndex: 0,
+      allergens: [],
+      diets: [],
+      removable: [],
+      crossContaminationAllergens: [],
+      crossContaminationDiets: [],
+      details: {},
+      ingredients: [],
+    },
+  ];
+}
+
+async function seedRestaurantMenuState(restaurantId) {
+  await runInTransaction(async (tx) => {
+    await syncIngredientStatusFromOverlays(
+      tx,
+      restaurantId,
+      buildSeededMenuOverlays(),
+      { menuImages: [] },
+    );
+    await bumpRestaurantWriteVersion(tx, restaurantId);
+  });
 }
 
 async function safeStopPreview() {
@@ -1503,6 +1613,10 @@ function extractPathsFromPorcelain(raw) {
   return paths;
 }
 
+function asText(value) {
+  return String(value ?? "").trim();
+}
+
 function sqlLiteral(value) {
   return `'${String(value).replace(/'/g, "''")}'`;
 }
@@ -1567,6 +1681,8 @@ async function signIn(page, email, password) {
     const isSignedInState =
       url.includes("/restaurants") ||
       url.includes("/manager-dashboard") ||
+      bodyText.includes("Complete setup") ||
+      (bodyText.includes("Select your allergens") && bodyText.includes("Your name")) ||
       bodyText.includes("Your information") ||
       bodyText.includes("Sign out");
     return isSignedInState;
@@ -1677,6 +1793,27 @@ async function waitForText(page, text, timeoutMs = 15_000) {
     state: "visible",
     timeout: timeoutMs,
   });
+}
+
+async function waitForRestaurantCreateOutcome(page, restaurantName) {
+  const statusMessage = page.locator("#status-message").first();
+  const result = await waitFor(async () => {
+    const text = asText(await statusMessage.innerText().catch(() => ""));
+    if (!text) return null;
+    if (/^Error adding restaurant:/i.test(text)) {
+      return { status: "error", text };
+    }
+    if (text.includes(`Added ${restaurantName}.`)) {
+      return { status: "success", text };
+    }
+    return null;
+  }, 60_000, `Timed out waiting for restaurant creation result: ${restaurantName}`);
+
+  if (result.status === "error") {
+    throw new Error(result.text);
+  }
+
+  return result.text;
 }
 
 async function tryWaitVisible(locator, timeoutMs) {

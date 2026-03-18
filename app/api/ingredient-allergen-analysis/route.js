@@ -602,7 +602,8 @@ async function fetchSafeIngredientTableMatches({
       matchedCandidateCount: 0,
       matchedCandidateTexts: [],
       matchedEntriesByCandidateText: {},
-      sourceLabel: asText(safeIngredientTable?.sourceLabel) || "safe-ingredients.csv",
+      sourceLabel:
+        asText(safeIngredientTable?.sourceLabel) || "safe-ingredient-table",
       sourcePath: asText(safeIngredientTable?.sourcePath),
       tableStatus: "not-needed",
       tableVersionKey: asText(safeIngredientTable?.versionKey) || "not-needed",
@@ -620,7 +621,8 @@ async function fetchSafeIngredientTableMatches({
       matchedCandidateCount: 0,
       matchedCandidateTexts: [],
       matchedEntriesByCandidateText: {},
-      sourceLabel: "safe-ingredients.csv",
+      sourceLabel:
+        asText(safeIngredientTable?.sourceLabel) || "safe-ingredient-table",
       sourcePath: "",
       tableStatus: "invalid-input",
       tableVersionKey: "invalid-input",
@@ -1057,7 +1059,7 @@ function buildCandidateDebugPayload({
       .map((candidate) => asText(candidate?.text))
       .filter(Boolean),
     safeIngredientTableSource:
-      asText(safeTableMatches?.sourceLabel) || "safe-ingredients.csv",
+      asText(safeTableMatches?.sourceLabel) || "safe-ingredient-table",
     safeIngredientTablePath: asText(safeTableMatches?.sourcePath),
     safeIngredientTableStatus:
       asText(safeTableMatches?.tableStatus) || "unknown",

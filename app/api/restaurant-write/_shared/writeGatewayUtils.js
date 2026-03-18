@@ -1,5 +1,4 @@
 import { randomUUID } from "node:crypto";
-import { createClient } from "@supabase/supabase-js";
 import {
   asText,
   getStateHashForSave,
@@ -12,7 +11,8 @@ import {
   toDishKey,
   toJsonSafe,
 } from "../../editor-pending-save/_shared/pendingSaveUtils.js";
-import { fetchRestaurantMenuStateFromTablesWithPrisma } from "../../../lib/server/restaurantMenuStateServer.js";
+import { fetchRestaurantMenuStateFromTables } from "../../../lib/server/restaurantMenuStateServer.js";
+import { createSupabaseAuthClient } from "../../../lib/server/supabaseServerClient.js";
 
 export { asText, prisma };
 
@@ -1588,20 +1588,11 @@ export async function ensureRestaurantWriteInfrastructure(client = prisma) {
 }
 
 function getSupabaseAuthClient() {
-  const supabaseUrl =
-    process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  const anonKey =
-    process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  const authKey = serviceRoleKey || anonKey;
-
-  if (!supabaseUrl || !authKey) {
+  const supabase = createSupabaseAuthClient();
+  if (!supabase) {
     throw new Error("Supabase server credentials missing");
   }
-
-  return createClient(supabaseUrl, authKey, {
-    auth: { persistSession: false },
-  });
+  return supabase;
 }
 
 export async function requireAuthenticatedSession(request) {
@@ -2490,7 +2481,7 @@ export async function setRestaurantWriteContext(tx) {
 }
 
 async function readRestaurantMenuStateSnapshot(tx, restaurantId) {
-  const state = await fetchRestaurantMenuStateFromTablesWithPrisma(tx, restaurantId);
+  const state = await fetchRestaurantMenuStateFromTables(tx, restaurantId);
   const overlays = normalizeOverlayListForStorage(state?.overlays);
   const menuImages = (Array.isArray(state?.menuImages) ? state.menuImages : [])
     .map((value) => asText(value))

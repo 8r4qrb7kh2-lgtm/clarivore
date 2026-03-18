@@ -1,4 +1,4 @@
-import { prisma } from "../app/api/editor-pending-save/_shared/pendingSaveUtils.js";
+import { db } from "../app/api/editor-pending-save/_shared/pendingSaveUtils.js";
 import {
   ensureRestaurantWriteInfrastructure,
   setRestaurantWriteContext,
@@ -23,7 +23,7 @@ function parseJsonArray(value) {
 }
 
 async function hasLegacyColumns() {
-  const rows = await prisma.$queryRawUnsafe(`
+  const rows = await db.$queryRawUnsafe(`
     SELECT column_name
     FROM information_schema.columns
     WHERE table_schema = 'public'
@@ -39,7 +39,7 @@ async function hasLegacyColumns() {
 }
 
 async function loadLegacyRestaurants() {
-  const rows = await prisma.$queryRawUnsafe(`
+  const rows = await db.$queryRawUnsafe(`
     SELECT id, name, overlays, menu_images, menu_image
     FROM public.restaurants
     ORDER BY name ASC
@@ -59,7 +59,7 @@ function readMenuImages(row) {
 }
 
 async function clearLegacyColumns() {
-  await prisma.$transaction(async (tx) => {
+  await db.$transaction(async (tx) => {
     await setRestaurantWriteContext(tx);
     await tx.$executeRawUnsafe(`
       UPDATE public.restaurants
@@ -72,7 +72,7 @@ async function clearLegacyColumns() {
 }
 
 async function dropLegacyColumns() {
-  await prisma.$transaction(async (tx) => {
+  await db.$transaction(async (tx) => {
     await setRestaurantWriteContext(tx);
     await tx.$executeRawUnsafe(`
       ALTER TABLE public.restaurants
@@ -86,7 +86,7 @@ async function dropLegacyColumns() {
 async function main() {
   const shouldDropColumns = process.argv.includes("--drop-legacy-columns");
 
-  await ensureRestaurantWriteInfrastructure(prisma);
+  await ensureRestaurantWriteInfrastructure(db);
 
   const columns = await hasLegacyColumns();
   if (!columns.overlays || !columns.menuImages || !columns.menuImage) {
@@ -116,7 +116,7 @@ async function main() {
     const overlays = parseJsonArray(restaurant?.overlays);
     const menuImages = readMenuImages(restaurant);
 
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await db.$transaction(async (tx) => {
       return await syncIngredientStatusFromOverlays(tx, restaurantId, overlays, {
         menuImages,
       });
@@ -164,5 +164,5 @@ try {
   console.error("[backfill-menu-state-to-tables] Failed", error);
   process.exitCode = 1;
 } finally {
-  await prisma.$disconnect();
+  await db.$disconnect();
 }

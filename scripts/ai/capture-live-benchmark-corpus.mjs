@@ -7,7 +7,7 @@ import {
   attachBaselineToCorpus,
   captureBenchmarkCorpus,
   closeBenchmarkResources,
-  createPrismaClient,
+  createBenchmarkDatabaseClient,
   DEFAULT_CAPTURE_LIMITS,
   planModelsForCorpus,
 } from "./benchmarkSuite.mjs";
@@ -64,12 +64,12 @@ async function main() {
   }
 
   await ensureDir(outDir);
-  const prisma = createPrismaClient();
+  const dbClient = createBenchmarkDatabaseClient();
 
   try {
     const limits = buildLimits(args);
     let corpus = await captureBenchmarkCorpus({
-      prisma,
+      dbClient,
       limits,
       googleVisionApiKey,
     });
@@ -99,7 +99,7 @@ async function main() {
       )}\n`,
     );
   } finally {
-    await closeBenchmarkResources(prisma);
+    await closeBenchmarkResources(dbClient);
   }
 }
 

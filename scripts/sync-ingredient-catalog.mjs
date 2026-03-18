@@ -1,6 +1,6 @@
-import { PrismaClient } from "@prisma/client";
 import fs from "node:fs";
 import path from "node:path";
+import { createDatabaseClient } from "../app/lib/server/postgres.js";
 
 const DEFAULT_SEED_FILE = "ml/seeds/ingredient_catalog_seed.jsonl";
 const INSERT_BATCH_SIZE = 500;
@@ -116,13 +116,13 @@ async function main() {
     throw new Error(`Seed file not found: ${resolvedSeedFile}`);
   }
 
-  const prisma = new PrismaClient();
+  const db = createDatabaseClient();
   try {
     const rows = readJsonlRows(resolvedSeedFile).map(normalizeRow);
     assertUniqueNormalizedNames(rows);
     let inserted = 0;
 
-    await prisma.$transaction(
+    await db.$transaction(
       async (tx) => {
         await tx.ingredient_catalog_entries.deleteMany({});
 
@@ -144,7 +144,7 @@ async function main() {
     console.log("Ingredient catalog sync complete.");
     console.log(`Rows inserted: ${inserted}`);
   } finally {
-    await prisma.$disconnect();
+    await db.$disconnect();
   }
 }
 

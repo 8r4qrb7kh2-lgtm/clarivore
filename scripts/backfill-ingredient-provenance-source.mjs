@@ -1,6 +1,6 @@
-import { PrismaClient } from "@prisma/client";
+import { createDatabaseClient } from "../app/lib/server/postgres.js";
 
-const prisma = new PrismaClient();
+const db = createDatabaseClient();
 
 const SOURCE = {
   SMART: "smart_detected",
@@ -336,7 +336,7 @@ async function syncIngredientStatusFromOverlays(tx, restaurantId, overlays) {
 }
 
 async function runBackfill() {
-  const restaurants = await prisma.restaurants.findMany({
+  const restaurants = await db.restaurants.findMany({
     select: { id: true, name: true, overlays: true },
     orderBy: { created_at: "asc" },
   });
@@ -351,7 +351,7 @@ async function runBackfill() {
     const overlays = parseOverlays(restaurant?.overlays);
 
     try {
-      const result = await prisma.$transaction((tx) =>
+      const result = await db.$transaction((tx) =>
         syncIngredientStatusFromOverlays(tx, restaurant.id, overlays),
       );
       const rows = Number(result?.rows) || 0;
@@ -389,5 +389,5 @@ runBackfill()
     process.exitCode = 1;
   })
   .finally(async () => {
-    await prisma.$disconnect();
+    await db.$disconnect();
   });

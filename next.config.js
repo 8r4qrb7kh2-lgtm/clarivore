@@ -27,7 +27,11 @@ const nextConfig = {
     outputFileTracingIncludes: {
       "/api/admin/runtime-systems": ["./app/**/*"],
       "/api/admin/runtime-systems-ask": ["./app/**/*"],
-      "/api/ingredient-allergen-analysis": ["./safe-ingredients.csv"],
+      "/api/ingredient-allergen-analysis": [
+        "./safe-ingredients-confirmed.csv",
+        "./safe-ingredients.csv",
+        "./ml/seeds/ingredient_catalog_seed.jsonl",
+      ],
     },
   },
   async redirects() {

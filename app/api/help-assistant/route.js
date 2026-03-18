@@ -1,6 +1,5 @@
 import { corsJson, corsOptions } from "../_shared/cors";
 import { asText, prisma } from "../editor-pending-save/_shared/pendingSaveUtils";
-import { Prisma } from "@prisma/client";
 import { buildHelpAssistantSystemPrompt } from "../../lib/claudePrompts";
 import {
   callAnthropicApi,
@@ -65,8 +64,8 @@ async function fetchKnowledgeBase({ query, mode, pageContext }) {
 
   let kbRows = [];
   try {
-    const modeValues = Prisma.join(requestedModes.map((value) => Prisma.sql`${value}`));
-    const rows = await prisma.$queryRaw`
+    const rows = await prisma.$queryRawUnsafe(
+      `
       SELECT
         title,
         content,
@@ -76,15 +75,18 @@ async function fetchKnowledgeBase({ query, mode, pageContext }) {
         mode,
         ts_rank_cd(
           to_tsvector('english', title || ' ' || content),
-          websearch_to_tsquery('english', ${searchText})
+          websearch_to_tsquery('english', $2)
         ) AS rank
       FROM public.help_kb
-      WHERE mode IN (${modeValues})
+      WHERE mode = ANY($1::text[])
         AND to_tsvector('english', title || ' ' || content)
-          @@ websearch_to_tsquery('english', ${searchText})
+          @@ websearch_to_tsquery('english', $2)
       ORDER BY rank DESC
       LIMIT 120
-    `;
+    `,
+      requestedModes,
+      searchText,
+    );
     kbRows = Array.isArray(rows) ? rows : [];
   } catch {
     kbRows = await prisma.help_kb.findMany({

@@ -1,4 +1,3 @@
-import { createClient } from "@supabase/supabase-js";
 import { corsJson, corsOptions } from "../_shared/cors";
 import { sendNotificationEmail } from "../notifications/_shared/emailSender";
 import {
@@ -7,6 +6,7 @@ import {
   prisma,
   requireAuthenticatedSession,
 } from "../restaurant-write/_shared/writeGatewayUtils";
+import { createSupabaseServiceRoleClient } from "../../lib/server/supabaseServerClient";
 
 export const runtime = "nodejs";
 
@@ -38,15 +38,7 @@ function extensionForMediaType(mediaType) {
 }
 
 function createStorageAdminClient() {
-  const supabaseUrl = asText(
-    process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL,
-  );
-  const serviceRoleKey = asText(process.env.SUPABASE_SERVICE_ROLE_KEY);
-  if (!supabaseUrl || !serviceRoleKey) return null;
-
-  return createClient(supabaseUrl, serviceRoleKey, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
+  return createSupabaseServiceRoleClient();
 }
 
 async function ensureAppealBucketExists({

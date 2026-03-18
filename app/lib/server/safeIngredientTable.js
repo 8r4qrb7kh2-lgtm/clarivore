@@ -1,7 +1,20 @@
 import fsp from "node:fs/promises";
 import path from "node:path";
 
-const SAFE_INGREDIENTS_CSV_PATH = path.join(process.cwd(), "safe-ingredients.csv");
+const CONFIRMED_SAFE_INGREDIENTS_CSV_PATH = path.join(
+  process.cwd(),
+  "safe-ingredients-confirmed.csv",
+);
+const LEGACY_SAFE_INGREDIENTS_CSV_PATH = path.join(
+  process.cwd(),
+  "safe-ingredients.csv",
+);
+const INGREDIENT_CATALOG_JSONL_PATH = path.join(
+  process.cwd(),
+  "ml",
+  "seeds",
+  "ingredient_catalog_seed.jsonl",
+);
 const MAX_MATCHES_PER_CANDIDATE = 5;
 
 let cachedTable = null;
@@ -149,20 +162,37 @@ function parseCsvRows(content) {
   return rows;
 }
 
+function parseJsonlRows(content) {
+  return content
+    .split(/\r?\n/)
+    .map((line) => asText(line))
+    .filter(Boolean)
+    .map((line) => JSON.parse(line));
+}
+
 function normalizeInteger(value) {
   const numeric = Number(value);
   if (!Number.isFinite(numeric)) return 0;
   return Math.max(0, Math.trunc(numeric));
 }
 
+function buildSourceLabel(source) {
+  if (source?.kind === "confirmed-csv") return "safe-ingredient-manual-audit";
+  if (source?.kind === "legacy-csv") return "safe-ingredient-csv";
+  if (source?.kind === "jsonl") return "ingredient-catalog-seed";
+  return path.basename(asText(source?.path || source)) || "safe-ingredient-table";
+}
+
 function emptySafeIngredientTable({
+  sourcePath = CONFIRMED_SAFE_INGREDIENTS_CSV_PATH,
+  sourceLabel = buildSourceLabel(sourcePath),
   status = "missing",
   versionKey = "missing",
   error = "",
 } = {}) {
   return {
-    sourcePath: SAFE_INGREDIENTS_CSV_PATH,
-    sourceLabel: "safe-ingredients.csv",
+    sourcePath,
+    sourceLabel,
     status,
     versionKey,
     rowCount: 0,
@@ -171,53 +201,183 @@ function emptySafeIngredientTable({
   };
 }
 
-function buildSafeIngredientRow(record, index) {
-  const ingredient = asText(record?.ingredient);
-  const ingredientKey = asText(record?.ingredient_key);
-  if (!ingredient && !ingredientKey) return null;
-
-  const productOccurrences = normalizeInteger(record?.product_occurrences);
-  const lookupTerms = dedupeStrings([
-    ingredientKey,
-    ingredient,
-    ...buildLookupVariants(ingredientKey),
-    ...buildLookupVariants(ingredient),
+function buildLookupTerms({
+  canonicalName,
+  normalizedName,
+  recordLookupTerms = [],
+  aliases = [],
+}) {
+  return dedupeStrings([
+    ...buildLookupVariants(canonicalName),
+    ...buildLookupVariants(normalizedName),
+    ...(Array.isArray(recordLookupTerms) ? recordLookupTerms : []).flatMap((value) =>
+      buildLookupVariants(value),
+    ),
+    ...(Array.isArray(aliases) ? aliases : []).flatMap((value) => buildLookupVariants(value)),
   ]);
+}
 
+function buildCatalogSeedRow(record, index) {
+  if (record?.is_ready === false) return null;
+
+  const canonicalName =
+    asText(record?.canonical_name) ||
+    asText(record?.ingredient) ||
+    asText(record?.ingredient_name);
+  const normalizedName = normalizeLookupTerm(
+    record?.normalized_name ||
+      record?.ingredient_key ||
+      canonicalName,
+  );
+  if (!canonicalName && !normalizedName) return null;
+
+  const lookupTerms = buildLookupTerms({
+    canonicalName,
+    normalizedName,
+    recordLookupTerms: Array.isArray(record?.lookup_terms) ? record.lookup_terms : [],
+    aliases: Array.isArray(record?.aliases) ? record.aliases : [],
+  });
   if (!lookupTerms.length) return null;
 
   return {
-    id: `${ingredientKey || ingredient || "row"}:${index}`,
-    ingredient,
-    ingredientKey,
-    productOccurrences,
+    id: `${normalizedName || canonicalName || "row"}:${index}`,
+    canonicalName: canonicalName || normalizedName,
+    normalizedName: normalizedName || normalizeLookupTerm(canonicalName),
+    lookupCount: normalizeInteger(record?.lookup_count),
     lookupTerms,
+    seedSource: asText(record?.seed_source) || "ingredient_catalog_seed",
   };
 }
 
-async function readSafeIngredientTable() {
-  let stat;
-  try {
-    stat = await fsp.stat(SAFE_INGREDIENTS_CSV_PATH);
-  } catch (error) {
-    if (error?.code === "ENOENT") {
-      return emptySafeIngredientTable();
-    }
-    console.warn("Safe ingredient table: failed to stat CSV", error);
-    return emptySafeIngredientTable({
-      status: "error",
-      versionKey: "error",
-      error: error?.message,
-    });
+function buildConfirmedCsvRow(record, index, sourceLabel) {
+  if (asText(record?.manual_audit_status).toLowerCase() !== "confirmed_safe") {
+    return null;
   }
 
-  const versionKey = `${Math.trunc(Number(stat.size) || 0)}:${Math.trunc(Number(stat.mtimeMs) || 0)}`;
-  const content = await fsp.readFile(SAFE_INGREDIENTS_CSV_PATH, "utf8");
+  const canonicalName = asText(record?.ingredient);
+  const normalizedName = normalizeLookupTerm(record?.ingredient_key || canonicalName);
+  if (!canonicalName && !normalizedName) return null;
+
+  const lookupTerms = buildLookupTerms({
+    canonicalName,
+    normalizedName,
+  });
+  if (!lookupTerms.length) return null;
+
+  return {
+    id: `${normalizedName || canonicalName || "row"}:${index}`,
+    canonicalName: canonicalName || normalizedName,
+    normalizedName: normalizedName || normalizeLookupTerm(canonicalName),
+    lookupCount: normalizeInteger(record?.product_occurrences),
+    lookupTerms,
+    seedSource: sourceLabel,
+  };
+}
+
+function buildLegacyCsvRow(record, index, sourceLabel) {
+  const canonicalName = asText(record?.ingredient);
+  const normalizedName = normalizeLookupTerm(
+    record?.ingredient_key || canonicalName,
+  );
+  if (!canonicalName && !normalizedName) return null;
+
+  const lookupTerms = buildLookupTerms({
+    canonicalName,
+    normalizedName,
+  });
+  if (!lookupTerms.length) return null;
+
+  return {
+    id: `${normalizedName || canonicalName || "row"}:${index}`,
+    canonicalName: canonicalName || normalizedName,
+    normalizedName: normalizedName || normalizeLookupTerm(canonicalName),
+    lookupCount: normalizeInteger(record?.product_occurrences),
+    lookupTerms,
+    seedSource: sourceLabel,
+  };
+}
+
+async function resolveSourceFile() {
+  const candidates = [
+    { path: CONFIRMED_SAFE_INGREDIENTS_CSV_PATH, kind: "confirmed-csv" },
+    { path: LEGACY_SAFE_INGREDIENTS_CSV_PATH, kind: "legacy-csv" },
+    { path: INGREDIENT_CATALOG_JSONL_PATH, kind: "jsonl" },
+  ];
+
+  for (const candidate of candidates) {
+    try {
+      const stat = await fsp.stat(candidate.path);
+      if (stat?.isFile?.()) {
+        return {
+          ...candidate,
+          stat,
+          label: buildSourceLabel(candidate),
+        };
+      }
+    } catch (error) {
+      if (error?.code !== "ENOENT") {
+        console.warn("Safe ingredient table: failed to stat source", candidate.path, error);
+      }
+    }
+  }
+
+  return null;
+}
+
+function buildVersionKey(source) {
+  return `${source.kind}:${Math.trunc(Number(source?.stat?.size) || 0)}:${Math.trunc(
+    Number(source?.stat?.mtimeMs) || 0,
+  )}`;
+}
+
+async function readJsonlSafeIngredientTable(source) {
+  const content = await fsp.readFile(source.path, "utf8");
+  const rows = parseJsonlRows(content);
+  const rowsByLookupTerm = new Map();
+  let rowCount = 0;
+
+  rows.forEach((record, index) => {
+    const normalizedRow = buildCatalogSeedRow(record, index);
+    if (!normalizedRow) return;
+    rowCount += 1;
+    normalizedRow.lookupTerms.forEach((term) => {
+      const existing = rowsByLookupTerm.get(term) || [];
+      existing.push(normalizedRow);
+      rowsByLookupTerm.set(term, existing);
+    });
+  });
+
+  rowsByLookupTerm.forEach((rowsForTerm, term) => {
+    rowsByLookupTerm.set(
+      term,
+      rowsForTerm.sort((left, right) => {
+        const bySupport = right.lookupCount - left.lookupCount;
+        if (bySupport !== 0) return bySupport;
+        return left.canonicalName.localeCompare(right.canonicalName);
+      }),
+    );
+  });
+
+  return {
+    sourcePath: source.path,
+    sourceLabel: source.label,
+    status: "loaded",
+    versionKey: buildVersionKey(source),
+    rowCount,
+    error: "",
+    rowsByLookupTerm,
+  };
+}
+
+async function readCsvSafeIngredientTable(source) {
+  const content = await fsp.readFile(source.path, "utf8");
   const rows = parseCsvRows(content);
   if (!rows.length) {
     return emptySafeIngredientTable({
+      sourcePath: source.path,
+      sourceLabel: source.label,
       status: "empty",
-      versionKey,
+      versionKey: buildVersionKey(source),
     });
   }
 
@@ -232,7 +392,10 @@ async function readSafeIngredientTable() {
       record[header] = values[headerIndex] ?? "";
     });
 
-    const normalizedRow = buildSafeIngredientRow(record, index);
+    const normalizedRow =
+      source.kind === "confirmed-csv"
+        ? buildConfirmedCsvRow(record, index, source.label)
+        : buildLegacyCsvRow(record, index, source.label);
     if (!normalizedRow) return;
 
     rowCount += 1;
@@ -247,34 +410,51 @@ async function readSafeIngredientTable() {
     rowsByLookupTerm.set(
       term,
       rowsForTerm.sort((left, right) => {
-        const bySupport = right.productOccurrences - left.productOccurrences;
+        const bySupport = right.lookupCount - left.lookupCount;
         if (bySupport !== 0) return bySupport;
-        return left.ingredient.localeCompare(right.ingredient);
+        return left.canonicalName.localeCompare(right.canonicalName);
       }),
     );
   });
 
   return {
-    sourcePath: SAFE_INGREDIENTS_CSV_PATH,
-    sourceLabel: "safe-ingredients.csv",
+    sourcePath: source.path,
+    sourceLabel: source.label,
     status: "loaded",
-    versionKey,
+    versionKey: buildVersionKey(source),
     rowCount,
     error: "",
     rowsByLookupTerm,
   };
 }
 
-async function readSafeIngredientTableSignature() {
-  try {
-    const stat = await fsp.stat(SAFE_INGREDIENTS_CSV_PATH);
-    return `${Math.trunc(Number(stat.size) || 0)}:${Math.trunc(Number(stat.mtimeMs) || 0)}`;
-  } catch (error) {
-    if (error?.code === "ENOENT") {
-      return "missing";
-    }
-    return "error";
+async function readSafeIngredientTable() {
+  const source = await resolveSourceFile();
+  if (!source) {
+    return emptySafeIngredientTable();
   }
+
+  try {
+    if (source.kind === "jsonl") {
+      return await readJsonlSafeIngredientTable(source);
+    }
+    return await readCsvSafeIngredientTable(source);
+  } catch (error) {
+    console.warn("Safe ingredient table: failed to read source", source.path, error);
+    return emptySafeIngredientTable({
+      sourcePath: source.path,
+      sourceLabel: source.label,
+      status: "error",
+      versionKey: buildVersionKey(source),
+      error: error?.message,
+    });
+  }
+}
+
+async function readSafeIngredientTableSignature() {
+  const source = await resolveSourceFile();
+  if (!source) return "missing";
+  return `${source.path}:${buildVersionKey(source)}`;
 }
 
 export async function loadSafeIngredientTable() {
@@ -354,16 +534,16 @@ export async function findSafeIngredientTableMatches(candidateTexts) {
 
     const matches = Array.from(dedupedMatches.values())
       .sort((left, right) => {
-        const bySupport = right.productOccurrences - left.productOccurrences;
+        const bySupport = right.lookupCount - left.lookupCount;
         if (bySupport !== 0) return bySupport;
-        return left.ingredient.localeCompare(right.ingredient);
+        return left.canonicalName.localeCompare(right.canonicalName);
       })
       .slice(0, MAX_MATCHES_PER_CANDIDATE)
       .map((row) => ({
-        canonicalName: row.ingredient,
-        normalizedName: row.ingredientKey,
-        lookupCount: row.productOccurrences,
-        seedSource: table.sourceLabel,
+        canonicalName: row.canonicalName,
+        normalizedName: row.normalizedName,
+        lookupCount: row.lookupCount,
+        seedSource: row.seedSource || table.sourceLabel,
       }));
 
     if (matches.length) {

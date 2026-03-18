@@ -1,6 +1,6 @@
 import { corsJson, corsOptions } from "../_shared/cors";
 import { asText, prisma } from "../editor-pending-save/_shared/pendingSaveUtils";
-import { fetchRestaurantMenuStateMapFromTablesWithPrisma } from "../../lib/server/restaurantMenuStateServer.js";
+import { fetchRestaurantMenuStateMapFromTables } from "../../lib/server/restaurantMenuStateServer.js";
 import { buildAiDishSearchPrompt } from "../../lib/claudePrompts";
 import {
   callAnthropicApi,
@@ -300,7 +300,7 @@ export async function POST(request) {
       orderBy: { name: "asc" },
     });
 
-    const restaurantMenuState = await fetchRestaurantMenuStateMapFromTablesWithPrisma(
+    const restaurantMenuState = await fetchRestaurantMenuStateMapFromTables(
       prisma,
       (Array.isArray(restaurants) ? restaurants : []).map((restaurant) => restaurant.id),
     );

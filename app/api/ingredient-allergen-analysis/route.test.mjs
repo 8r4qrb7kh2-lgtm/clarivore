@@ -359,22 +359,40 @@ test("ingredient allergen route accepts candidate extraction payloads with camel
   assert.equal(body.debug.aiCandidateCount, 1);
 });
 
-test("ingredient allergen route skips AI when hazelnuts are backed by the safe ingredient table", async () => {
+test("ingredient allergen route analyzes hazelnuts when they are not backed by the safe ingredient table", async () => {
+  const agreedFlags = [
+    {
+      candidate_id: "direct:0",
+      allergen_codes: [4],
+      diet_codes: [],
+    },
+  ];
+
   const { body, openAiRequests } = await invokeRoute({
     transcriptLines: ["Ingredients: Hazelnuts"],
     openAiPayloads: [
       createOpenAiCandidateExtractionPayload({
         directIngredients: [{ text: "Hazelnuts", word_indices: [1] }],
       }),
+      createOpenAiStructuredPayload(agreedFlags),
+      createOpenAiStructuredPayload(agreedFlags),
     ],
   });
 
   assert.equal(body.success, true);
-  assert.equal(openAiRequests.length, 1);
-  assert.deepEqual(body.flags, []);
-  assert.equal(body.debug.aiCandidateCount, 0);
-  assert.deepEqual(body.debug.safeTableMatchedCandidateTexts, ["Hazelnuts"]);
-  assert.deepEqual(body.debug.safeTableBypassedDirectIngredientTexts, ["Hazelnuts"]);
+  assert.equal(openAiRequests.length, 3);
+  assert.deepEqual(body.flags, [
+    {
+      ingredient: "Hazelnuts",
+      word_indices: [1],
+      allergens: ["tree_nut"],
+      diets: [],
+      risk_type: "contained",
+    },
+  ]);
+  assert.equal(body.debug.aiCandidateCount, 1);
+  assert.deepEqual(body.debug.safeTableMatchedCandidateTexts, []);
+  assert.deepEqual(body.debug.safeTableBypassedDirectIngredientTexts, []);
 });
 
 test("ingredient allergen route debug reflects flattened ingredients and only sends unmatched ones to AI", async () => {
@@ -502,7 +520,7 @@ test("ingredient allergen route surfaces safe ingredient table matches in debug 
       canonicalName: "RICE STARCH",
       normalizedName: "rice starch",
       lookupCount: 1794,
-      seedSource: "safe-ingredients.csv",
+      seedSource: "safe-ingredient-manual-audit",
     },
   ]);
 });

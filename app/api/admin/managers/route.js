@@ -1,10 +1,10 @@
-import { createClient } from "@supabase/supabase-js";
 import {
   asText,
   isAppAdminUser,
   prisma,
   requireAuthenticatedSession,
 } from "../../restaurant-write/_shared/writeGatewayUtils";
+import { createSupabaseServiceRoleClient } from "../../../lib/server/supabaseServerClient";
 
 export const runtime = "nodejs";
 
@@ -32,14 +32,7 @@ function buildDisplayName(user) {
 }
 
 function createSupabaseAdminClient() {
-  const supabaseUrl =
-    asText(process.env.SUPABASE_URL) || asText(process.env.NEXT_PUBLIC_SUPABASE_URL);
-  const serviceRoleKey = asText(process.env.SUPABASE_SERVICE_ROLE_KEY);
-  if (!supabaseUrl || !serviceRoleKey) return null;
-
-  return createClient(supabaseUrl, serviceRoleKey, {
-    auth: { persistSession: false },
-  });
+  return createSupabaseServiceRoleClient();
 }
 
 async function listManagers() {

@@ -1,47 +1,11 @@
-import { PrismaClient } from "@prisma/client";
+import {
+  db,
+  getMissingDatabaseUrlMessage,
+  isDatabaseConfigured,
+} from "../../../lib/server/postgres.js";
 
-const globalForPrisma = globalThis;
-const MISSING_DATABASE_URL_MESSAGE = "Database configuration missing: DATABASE_URL.";
-
-function hasDatabaseUrl() {
-  return String(process.env.DATABASE_URL || "").trim().length > 0;
-}
-
-function createPrismaClient() {
-  if (!hasDatabaseUrl()) {
-    throw new Error(MISSING_DATABASE_URL_MESSAGE);
-  }
-
-  const existingClient = globalForPrisma.__clarivorePrisma;
-  if (existingClient) {
-    return existingClient;
-  }
-
-  const client = new PrismaClient();
-  if (process.env.NODE_ENV !== "production") {
-    globalForPrisma.__clarivorePrisma = client;
-  }
-  return client;
-}
-
-export function isDatabaseConfigured() {
-  return hasDatabaseUrl();
-}
-
-export function getMissingDatabaseUrlMessage() {
-  return MISSING_DATABASE_URL_MESSAGE;
-}
-
-export const prisma = new Proxy(
-  {},
-  {
-    get(_target, property) {
-      const client = createPrismaClient();
-      const value = client[property];
-      return typeof value === "function" ? value.bind(client) : value;
-    },
-  },
-);
+export { db, getMissingDatabaseUrlMessage, isDatabaseConfigured };
+export const prisma = db;
 
 export function asText(value) {
   return String(value || "").trim();
