@@ -131,6 +131,7 @@ export function DishIngredientCard({
     })
     .slice(0, 8);
   const isRowApplying = Boolean(applyBusy);
+  const preferenceSectionLocked = !hasAssignedBrand;
 
   return (
     <div
@@ -243,6 +244,18 @@ export function DishIngredientCard({
                   >
                     {scanMessage}
                   </span>
+                ) : null}
+                {isScanProcessing ? (
+                  <div
+                    className="restaurant-editor-scan-progress"
+                    role="progressbar"
+                    aria-label="Ingredient label analysis progress"
+                    aria-valuetext={
+                      scanMessage || "Analyzing ingredient label in background..."
+                    }
+                  >
+                    <span className="restaurant-editor-scan-progress-bar" />
+                  </div>
                 ) : null}
                 {scanError ? (
                   <span
@@ -374,7 +387,10 @@ export function DishIngredientCard({
         </div>
 
         {/* Detection key keeps tone/line style semantics discoverable while editing. */}
-        <div className="restaurant-editor-dish-ingredient-flags">
+        <div
+          className={`restaurant-editor-dish-ingredient-flags ${preferenceSectionLocked ? "is-disabled" : ""}`}
+          aria-disabled={preferenceSectionLocked || undefined}
+        >
           <div className="restaurant-editor-dish-detection-note">
             <div className="restaurant-editor-dish-detection-key-row">
               <span className="restaurant-editor-dish-key-box restaurant-editor-dish-key-box-solid" />
@@ -391,7 +407,10 @@ export function DishIngredientCard({
           </div>
         </div>
 
-        <div className="restaurant-editor-dish-ingredient-pills">
+        <div
+          className={`restaurant-editor-dish-ingredient-pills ${preferenceSectionLocked ? "is-disabled" : ""}`}
+          aria-disabled={preferenceSectionLocked || undefined}
+        >
           <div className="restaurant-editor-dish-pill-column">
             {allergens.map((allergen) => {
               const selectedState = readTokenState({
@@ -414,6 +433,7 @@ export function DishIngredientCard({
                   key={`${index}-allergen-${allergen}`}
                   type="button"
                   className={`restaurant-editor-dish-chip ${toneClass} ${borderClass}`}
+                  disabled={preferenceSectionLocked}
                   onClick={() => onCycleTokenState(index, "allergen", allergen)}
                 >
                   {formatAllergenLabel(allergen)}
@@ -443,6 +463,7 @@ export function DishIngredientCard({
                   key={`${index}-diet-${diet}`}
                   type="button"
                   className={`restaurant-editor-dish-chip ${toneClass} ${borderClass}`}
+                  disabled={preferenceSectionLocked}
                   onClick={() => onCycleTokenState(index, "diet", diet)}
                 >
                   {formatDietLabel(diet)}

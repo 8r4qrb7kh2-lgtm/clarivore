@@ -113,12 +113,13 @@ function resolveTokenRenderLayout(
     const tokenBoxWidthPx = Math.max(1, (widthPct / 100) * stripWidth);
     const availableTextWidthPx = Math.max(1, tokenBoxWidthPx - 2);
     const rawTextWidthPx = measuredTextWidthsPx[index] || 1;
+    const scale = Number((availableTextWidthPx / rawTextWidthPx).toFixed(4));
 
     return {
       ...token,
       leftPct,
       widthPct,
-      scaleX: Number((availableTextWidthPx / rawTextWidthPx).toFixed(4)),
+      scale,
     };
   });
 }
@@ -305,9 +306,17 @@ function CroppedLineCard({
       ),
     [tokenLayout, displayTokens, tokenStripWidthPx, tokenBaseFontSizePx],
   );
+  const maxTokenScale = useMemo(
+    () =>
+      tokenRenderLayout.reduce(
+        (maxScale, token) => Math.max(maxScale, Number(token?.scale) || 1),
+        1,
+      ),
+    [tokenRenderLayout],
+  );
   const tokenStripHeightPx = useMemo(
-    () => Math.max(22, Math.round(tokenBaseFontSizePx * 2)),
-    [tokenBaseFontSizePx],
+    () => Math.max(22, Math.round(tokenBaseFontSizePx * 2 * maxTokenScale)),
+    [maxTokenScale, tokenBaseFontSizePx],
   );
 
   useEffect(() => {
@@ -565,7 +574,7 @@ function CroppedLineCard({
                   fontSize: `${tokenBaseFontSizePx}px`,
                   lineHeight: 1,
                   whiteSpace: "nowrap",
-                  transform: `scaleX(${renderToken.scaleX || 1})`,
+                  transform: `scale(${renderToken.scale || 1})`,
                   transformOrigin: "center center",
                   textDecoration: risk ? "underline" : "none",
                   textDecorationColor: underlineColor,
@@ -1187,6 +1196,7 @@ export default function IngredientScanModal({
   const totalLines = lines.length;
   const confirmedLines = lines.filter((line) => line?.confirmed).length;
   const allConfirmed = totalLines > 0 && confirmedLines === totalLines;
+  const analysisInFlight = analysisBusy || analysisPending;
   const captureActionState = useMemo(() => {
     if (cameraActive) return "camera_live";
     if (analysisResult || lines.length > 0) return "review_ready";
@@ -1703,6 +1713,16 @@ export default function IngredientScanModal({
 
           {statusText ? (
             <div style={{ color: "#a8b2d6", fontSize: "0.87rem" }}>{statusText}</div>
+          ) : null}
+          {analysisInFlight ? (
+            <div
+              className="restaurant-editor-scan-progress"
+              role="progressbar"
+              aria-label="Ingredient label analysis progress"
+              aria-valuetext={statusText || "Analyzing ingredient label"}
+            >
+              <span className="restaurant-editor-scan-progress-bar" />
+            </div>
           ) : null}
 
           {errorText ? (
