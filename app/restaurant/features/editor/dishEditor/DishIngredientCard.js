@@ -75,6 +75,7 @@ export function DishIngredientCard({
   const showApplyButton =
     !hasAssignedBrand &&
     currentIngredientName !== (lastAppliedIngredientName ?? currentIngredientName);
+  const hasPendingNameApply = showApplyButton;
   const requiresBrandBeforeConfirm =
     Boolean(ingredient?.brandRequired) && !hasAssignedBrand && ingredient?.confirmed !== true;
 
@@ -131,7 +132,8 @@ export function DishIngredientCard({
     })
     .slice(0, 8);
   const isRowApplying = Boolean(applyBusy);
-  const preferenceSectionLocked = Boolean(ingredient?.brandRequired) && !hasAssignedBrand;
+  const preferenceSectionLocked =
+    (Boolean(ingredient?.brandRequired) && !hasAssignedBrand) || hasPendingNameApply;
 
   return (
     <div
