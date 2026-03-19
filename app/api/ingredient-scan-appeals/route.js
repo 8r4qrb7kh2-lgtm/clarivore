@@ -540,6 +540,7 @@ export async function POST(request) {
   const createdAppealId = randomUUID();
   const actorLabel = resolveAppealActorLabel(session, "Manager");
   const responsePhotoUrl = getPublicAppealPhotoUrl(photoUrl);
+  let nextRestaurantWriteVersion = 0;
 
   try {
     await db.$transaction(async (tx) => {
@@ -572,7 +573,7 @@ export async function POST(request) {
         photos: responsePhotoUrl ? [responsePhotoUrl] : [],
       });
 
-      await bumpRestaurantWriteVersion(tx, restaurantId);
+      nextRestaurantWriteVersion = await bumpRestaurantWriteVersion(tx, restaurantId);
     });
   } catch (error) {
     if (photoPath && storageSupabase) {
@@ -619,6 +620,7 @@ export async function POST(request) {
     photoAttached: true,
     reviewStatus: "pending",
     submittedAt: submittedAt.toISOString(),
+    restaurantWriteVersion: nextRestaurantWriteVersion,
   });
 }
 
@@ -650,6 +652,7 @@ export async function PATCH(request) {
 
   const reviewedAt = new Date();
   const reviewedBy = resolveAppealActorLabel(session, "Admin");
+  let nextRestaurantWriteVersion = 0;
 
   try {
     const result = await db.$transaction(async (tx) => {
@@ -677,7 +680,7 @@ export async function PATCH(request) {
         photos: firstRow.photoUrl ? [firstRow.photoUrl] : [],
       });
 
-      await bumpRestaurantWriteVersion(tx, firstRow.restaurantId);
+      nextRestaurantWriteVersion = await bumpRestaurantWriteVersion(tx, firstRow.restaurantId);
 
       return {
         appeal: {
@@ -698,6 +701,7 @@ export async function PATCH(request) {
       success: true,
       appeal: result.appeal,
       matchedIngredientRows: result.matchedRowCount,
+      restaurantWriteVersion: nextRestaurantWriteVersion,
     });
   } catch (error) {
     const message = asText(error?.message) || "Failed to review appeal.";

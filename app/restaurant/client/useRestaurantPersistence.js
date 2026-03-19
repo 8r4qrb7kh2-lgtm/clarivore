@@ -64,6 +64,41 @@ export function useRestaurantPersistence({
     [boot?.restaurant?.id],
   );
 
+  const registerExternalRestaurantWrite = useCallback(
+    ({ restaurantId: targetRestaurantId, writeVersion }) => {
+      const restaurantId = String(targetRestaurantId || boot?.restaurant?.id || "").trim();
+      const nextVersion = Number(writeVersion);
+      if (!restaurantId || !Number.isFinite(nextVersion)) return 0;
+
+      const normalizedVersion = Math.max(Math.floor(nextVersion), 0);
+      if (restaurantId === String(boot?.restaurant?.id || "").trim()) {
+        restaurantWriteVersionRef.current = normalizedVersion;
+      }
+
+      queryClient.setQueryData(bootQueryKey, (current) => {
+        if (!current?.restaurant) return current;
+        const currentRestaurantId = String(current.restaurant.id || "").trim();
+        if (currentRestaurantId !== restaurantId) return current;
+
+        const currentVersion = Number(current.restaurant.write_version);
+        if (Number.isFinite(currentVersion) && Math.floor(currentVersion) === normalizedVersion) {
+          return current;
+        }
+
+        return {
+          ...current,
+          restaurant: {
+            ...current.restaurant,
+            write_version: normalizedVersion,
+          },
+        };
+      });
+
+      return normalizedVersion;
+    },
+    [boot?.restaurant?.id, bootQueryKey, queryClient],
+  );
+
   // Shared writer for full restaurant-scope operations.
   const stageRestaurantScopeWrite = useCallback(
     async ({ operationType, operationPayload, summary }) => {
@@ -412,6 +447,7 @@ export function useRestaurantPersistence({
     confirmInfo,
     saveRestaurantSettings,
     toggleFavorite,
+    registerExternalRestaurantWrite,
     preparePendingSave,
     applyPendingSave,
     loadChangeLogs,

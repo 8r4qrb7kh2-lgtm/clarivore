@@ -6,6 +6,7 @@ import {
   detectMenuCorners,
   detectMenuDishes,
 } from "../features/editor/editorServices";
+import { syncIngredientAppealWriteVersion } from "./appealWriteSync.js";
 import { notifyMenuUpdateIfNeeded } from "./menuUpdateNotifier";
 
 // Build the callback contract expected by `useRestaurantEditor`.
@@ -150,6 +151,13 @@ export function createRestaurantEditorCallbacks({
       if (!response.ok || !payload?.success) {
         throw new Error(payload?.error || "Unable to submit appeal right now.");
       }
+
+      syncIngredientAppealWriteVersion({
+        persistence,
+        restaurantId,
+        fallbackRestaurantId: boot?.restaurant?.id,
+        payload,
+      });
 
       return payload;
     },

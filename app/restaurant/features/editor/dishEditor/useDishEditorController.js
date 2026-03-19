@@ -28,10 +28,9 @@ import {
   clearIngredientBrandSelectionFields,
 } from "./brandSelectionFields";
 import {
-  applyIngredientBrandAppeal,
   clearIngredientBrandAppeal,
-  isIngredientBrandAppealPending,
 } from "./brandAppealState";
+import { mergeAppealPendingMap } from "./appealPendingState.js";
 
 function coerceIngredientNameForApply(value) {
   if (typeof value?.name === "string") return value.name;
@@ -113,16 +112,6 @@ async function compressAppealPhotoDataUrl(dataUrl) {
   } catch {
     return safe;
   }
-}
-
-function buildAppealPendingMap(ingredients) {
-  const next = {};
-  (Array.isArray(ingredients) ? ingredients : []).forEach((ingredient, index) => {
-    if (isIngredientBrandAppealPending(ingredient)) {
-      next[index] = true;
-    }
-  });
-  return next;
 }
 
 function booleanFlagMapsEqual(left, right) {
@@ -324,10 +313,10 @@ export function useDishEditorController({
 
   useEffect(() => {
     if (!editor.dishEditorOpen) return;
-    const nextPendingByRow = buildAppealPendingMap(ingredients);
-    setAppealPendingByRow((current) =>
-      booleanFlagMapsEqual(current, nextPendingByRow) ? current : nextPendingByRow,
-    );
+    setAppealPendingByRow((current) => {
+      const nextPendingByRow = mergeAppealPendingMap(current, ingredients);
+      return booleanFlagMapsEqual(current, nextPendingByRow) ? current : nextPendingByRow;
+    });
   }, [editor.dishEditorOpen, ingredients]);
 
   useEffect(() => {
@@ -1331,16 +1320,9 @@ export function useDishEditorController({
         return;
       }
 
-      applyIngredientChanges((current) =>
-        current.map((item, itemIndex) =>
-          itemIndex === ingredientIndex
-            ? applyIngredientBrandAppeal(item, {
-                ...(result?.appeal || result),
-                managerMessage,
-              })
-            : item,
-        ),
-      );
+      if (typeof editor.clearPendingSaveBatch === "function") {
+        editor.clearPendingSaveBatch();
+      }
 
       setAppealMessageByRow((current) => ({ ...current, [ingredientIndex]: "" }));
       setAppealPhotoByRow((current) => ({ ...current, [ingredientIndex]: null }));
