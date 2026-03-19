@@ -86,6 +86,9 @@ export function createRestaurantEditorCallbacks({
     onSaveRestaurantSettings: async (payload) => {
       return await persistence.saveRestaurantSettings(payload || {});
     },
+    onDiscardPendingSave: async ({ batchId }) => {
+      return await persistence.discardPendingSaveBatch({ batchId });
+    },
 
     // AI dish analysis is blocked when required runtime config is missing.
     onAnalyzeDish: async ({ dishName, text, imageData }) => {

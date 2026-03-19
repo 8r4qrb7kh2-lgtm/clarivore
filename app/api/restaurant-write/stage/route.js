@@ -66,7 +66,7 @@ export async function POST(request) {
     await ensureRestaurantWriteInfrastructure(db);
 
     const result = await db.$transaction(async (tx) => {
-      const existing = await loadPendingBatchForScope({
+      let existing = await loadPendingBatchForScope({
         client: tx,
         scopeType,
         scopeKey,
@@ -82,14 +82,36 @@ export async function POST(request) {
           ? Number(existing.batch.base_write_version ?? currentWriteVersion)
           : currentWriteVersion;
 
+        if (existing.batch && existingBase !== currentWriteVersion) {
+          if (
+            Number.isFinite(Number(expectedWriteVersion)) &&
+            Number(expectedWriteVersion) === currentWriteVersion
+          ) {
+            await tx.$executeRawUnsafe(
+              `
+              UPDATE ${RESTAURANT_WRITE_BATCH_TABLE}
+              SET
+                status = 'discarded',
+                discarded_at = now(),
+                updated_at = now()
+              WHERE id = $1::uuid
+            `,
+              existing.batch.id,
+            );
+
+            existing = {
+              batch: null,
+              operations: [],
+            };
+          } else {
+            throw new Error("Write scope is stale. Reload before staging changes.");
+          }
+        }
+
         if (
           Number.isFinite(Number(expectedWriteVersion)) &&
           Number(expectedWriteVersion) !== currentWriteVersion
         ) {
-          throw new Error("Write scope is stale. Reload before staging changes.");
-        }
-
-        if (existing.batch && existingBase !== currentWriteVersion) {
           throw new Error("Write scope is stale. Reload before staging changes.");
         }
 

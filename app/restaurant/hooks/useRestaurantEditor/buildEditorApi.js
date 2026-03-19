@@ -151,6 +151,7 @@ export function buildEditorApi({
     save: persistenceActions.save,
     preparePendingSave: persistenceActions.preparePendingSave,
     clearPendingSaveBatch: historyApi.clearPendingSaveBatch,
+    syncCommittedIngredientAppeal: persistenceActions.syncCommittedIngredientAppeal,
     discardUnsavedChanges: persistenceActions.discardUnsavedChanges,
     confirmInfo: persistenceActions.confirmInfo,
     confirmBusy,

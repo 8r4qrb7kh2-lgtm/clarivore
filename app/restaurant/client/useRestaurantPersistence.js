@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   commitRestaurantWrite,
+  discardRestaurantWrite,
   loadCurrentRestaurantWrite,
   stageRestaurantWrite,
 } from "../../lib/restaurantWriteGatewayClient";
@@ -391,6 +392,21 @@ export function useRestaurantPersistence({
     [boot?.restaurant?.id, commitStagedWrite],
   );
 
+  const discardPendingSaveBatch = useCallback(
+    async ({ batchId }) => {
+      const safeBatchId = String(batchId || "").trim();
+      if (!safeBatchId) {
+        return { discarded: false };
+      }
+
+      return await discardRestaurantWrite({
+        supabase: supabaseClient,
+        batchId: safeBatchId,
+      });
+    },
+    [supabaseClient],
+  );
+
   // Read recent change logs for the editor history panel.
   const loadChangeLogs = useCallback(
     async (options = {}) => {
@@ -450,6 +466,7 @@ export function useRestaurantPersistence({
     registerExternalRestaurantWrite,
     preparePendingSave,
     applyPendingSave,
+    discardPendingSaveBatch,
     loadChangeLogs,
     loadPendingSaveTable,
   };

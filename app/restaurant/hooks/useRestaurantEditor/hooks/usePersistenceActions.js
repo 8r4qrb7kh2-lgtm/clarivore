@@ -16,6 +16,8 @@ import {
   serializeSettingsDraft,
 } from "../utils/settingsAndChangelog";
 import { asText } from "../utils/text";
+import { cloneSnapshotList } from "../utils/imageProcessing";
+import { applyCommittedIngredientAppealToOverlays } from "../../../features/editor/dishEditor/committedIngredientAppealSync.js";
 
 // Save, staging, and settings actions.
 // This module keeps all write-heavy workflows in one place.
@@ -73,6 +75,94 @@ export function usePersistenceActions({
       // Saving should still succeed even if the follow-up change-log refresh fails.
     }
   }, [refreshChangeLogsAfterWrite]);
+
+  const syncCommittedIngredientAppeal = useCallback(
+    async ({ dishName, ingredientName, appeal }) => {
+      const safeIngredientName = asText(ingredientName);
+      if (!safeIngredientName) {
+        return { success: false, changed: false };
+      }
+
+      const baselineSnapshot = parseSerializedEditorState(baselineRef.current);
+      const baselineMenuImages = normalizeMenuImageList(baselineSnapshot?.menuImages);
+      const currentMenuImages = normalizeMenuImageList(menuImagesRef.current);
+      const currentPendingChanges = Array.isArray(pendingChangesRef.current)
+        ? [...pendingChangesRef.current]
+        : [];
+
+      const nextCurrent = applyCommittedIngredientAppealToOverlays({
+        overlays: cloneSnapshotList(overlaysRef.current),
+        dishName,
+        ingredientName: safeIngredientName,
+        appeal,
+      });
+      const nextBaseline = applyCommittedIngredientAppealToOverlays({
+        overlays: cloneSnapshotList(baselineSnapshot?.overlays),
+        dishName,
+        ingredientName: safeIngredientName,
+        appeal,
+      });
+
+      if (!nextCurrent.changed && !nextBaseline.changed) {
+        return { success: true, changed: false };
+      }
+
+      restoreHistorySnapshot({
+        overlays: nextCurrent.overlays,
+        menuImages: currentMenuImages,
+        pendingChanges: currentPendingChanges,
+      });
+
+      baselineRef.current = serializeEditorState(nextBaseline.overlays, baselineMenuImages);
+      historyRef.current = (Array.isArray(historyRef.current) ? historyRef.current : []).map(
+        (entry) => {
+          const nextEntry = applyCommittedIngredientAppealToOverlays({
+            overlays: cloneSnapshotList(entry?.overlays),
+            dishName,
+            ingredientName: safeIngredientName,
+            appeal,
+          });
+          return {
+            overlays: nextEntry.overlays,
+            menuImages: cloneSnapshotList(entry?.menuImages),
+            pendingChanges: Array.isArray(entry?.pendingChanges)
+              ? [...entry.pendingChanges]
+              : [],
+          };
+        },
+      );
+
+      if (pendingSaveBatchId && callbacks?.onDiscardPendingSave) {
+        try {
+          await callbacks.onDiscardPendingSave({ batchId: pendingSaveBatchId });
+        } catch {
+          // Keep editor state usable even if stale batch cleanup fails.
+        }
+      }
+
+      clearPendingSaveBatch();
+      setSaveError("");
+      if (!isSaving) {
+        setSaveStatus("idle");
+      }
+
+      return { success: true, changed: true };
+    },
+    [
+      baselineRef,
+      callbacks,
+      clearPendingSaveBatch,
+      historyRef,
+      isSaving,
+      menuImagesRef,
+      overlaysRef,
+      pendingChangesRef,
+      pendingSaveBatchId,
+      restoreHistorySnapshot,
+      setSaveError,
+      setSaveStatus,
+    ],
+  );
 
   // Commit a previously staged pending-save batch to the write gateway.
   // This flow validates ingredient confirmation and synchronizes local baselines on success.
@@ -556,5 +646,6 @@ export function usePersistenceActions({
     discardUnsavedChanges,
     confirmInfo,
     saveRestaurantSettings,
+    syncCommittedIngredientAppeal,
   };
 }

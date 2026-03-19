@@ -1320,7 +1320,17 @@ export function useDishEditorController({
         return;
       }
 
-      if (typeof editor.clearPendingSaveBatch === "function") {
+      const appealPayload = result?.result || result;
+      if (typeof editor.syncCommittedIngredientAppeal === "function") {
+        await editor.syncCommittedIngredientAppeal({
+          dishName: asText(overlay?.id || overlay?.name),
+          ingredientName,
+          appeal: {
+            ...(appealPayload?.appeal || appealPayload),
+            managerMessage,
+          },
+        });
+      } else if (typeof editor.clearPendingSaveBatch === "function") {
         editor.clearPendingSaveBatch();
       }
 

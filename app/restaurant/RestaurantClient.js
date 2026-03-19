@@ -610,6 +610,7 @@ export default function RestaurantClient() {
     registerExternalRestaurantWrite,
     preparePendingSave,
     applyPendingSave,
+    discardPendingSaveBatch,
     loadChangeLogs,
     loadPendingSaveTable,
   } = useRestaurantPersistence({
@@ -716,6 +717,7 @@ export default function RestaurantClient() {
         registerExternalRestaurantWrite,
         preparePendingSave,
         applyPendingSave,
+        discardPendingSaveBatch,
         loadChangeLogs,
         loadPendingSaveTable,
       },
@@ -730,6 +732,7 @@ export default function RestaurantClient() {
     loadPendingSaveTable,
     registerExternalRestaurantWrite,
     preparePendingSave,
+    discardPendingSaveBatch,
     runtimeConfigBlocked,
     runtimeConfigErrorMessage,
     saveDraft,
