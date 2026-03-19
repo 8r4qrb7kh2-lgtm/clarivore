@@ -207,6 +207,154 @@ test("menu review rows enumerate brand removal and related ingredient row writes
   );
 });
 
+test("menu review rows include submitted brand assignment appeals", () => {
+  const baselineOverlays = [
+    {
+      overlayKey: "ov-1",
+      id: "Grilled Tofu",
+      name: "Grilled Tofu",
+      pageIndex: 0,
+      x: 1,
+      y: 2,
+      w: 30,
+      h: 10,
+      ingredients: [
+        {
+          name: "Maple Syrup",
+          allergens: [],
+          diets: [],
+          brands: [],
+          brandRequired: true,
+          brandRequirementReason:
+            "Maple syrup is often processed and may contain additives, preservatives, or other ingredients beyond pure maple sap.",
+          removable: false,
+          confirmed: false,
+        },
+      ],
+    },
+  ];
+  const overlays = [
+    {
+      overlayKey: "ov-1",
+      id: "Grilled Tofu",
+      name: "Grilled Tofu",
+      pageIndex: 0,
+      x: 1,
+      y: 2,
+      w: 30,
+      h: 10,
+      ingredients: [
+        {
+          name: "Maple Syrup",
+          allergens: [],
+          diets: [],
+          brands: [],
+          brandRequired: true,
+          brandRequirementReason:
+            "Maple syrup is often processed and may contain additives, preservatives, or other ingredients beyond pure maple sap.",
+          removable: false,
+          confirmed: false,
+          brandAppeal: {
+            id: "appeal-1",
+            status: "pending",
+            managerMessage: "This is pure maple syrup, not a packaged blend.",
+            photoAttached: true,
+            submittedAt: "2026-03-19T18:20:00.000Z",
+          },
+        },
+      ],
+    },
+  ];
+
+  const payload = normalizeOperationPayload({
+    operationType: RESTAURANT_WRITE_OPERATION_TYPES.MENU_STATE_REPLACE,
+    operationPayload: {
+      baselineOverlays,
+      overlays,
+      changedFields: ["overlays"],
+    },
+  });
+
+  const appealRow = payload.rows.find((row) => row.fieldKey === "brandAppeal");
+  assert.ok(appealRow);
+  assert.equal(
+    appealRow.summary,
+    "Grilled Tofu: Submitted brand assignment appeal for Maple Syrup",
+  );
+  assert.equal(appealRow.beforeValue, "Brand assignment appeal: none");
+  assert.match(appealRow.afterValue, /Brand assignment appeal: pending/);
+  assert.match(
+    appealRow.afterValue,
+    /Message: This is pure maple syrup, not a packaged blend\./,
+  );
+  assert.match(appealRow.afterValue, /Photo attached: yes/);
+  assert.match(appealRow.afterValue, /Submitted at: 2026-03-19T18:20:00.000Z/);
+});
+
+test("menu review rows ignore whitespace-only brand requirement reason changes", () => {
+  const baselineOverlays = [
+    {
+      overlayKey: "ov-1",
+      id: "Grilled Tofu",
+      name: "Grilled Tofu",
+      pageIndex: 0,
+      x: 1,
+      y: 2,
+      w: 30,
+      h: 10,
+      ingredients: [
+        {
+          name: "Maple Syrup",
+          allergens: [],
+          diets: [],
+          brands: [],
+          brandRequired: true,
+          brandRequirementReason:
+            "Maple syrup is often processed and may contain additives, preservatives, or other ingredients beyond pure maple sap.",
+          removable: false,
+          confirmed: false,
+        },
+      ],
+    },
+  ];
+  const overlays = [
+    {
+      overlayKey: "ov-1",
+      id: "Grilled Tofu",
+      name: "Grilled Tofu",
+      pageIndex: 0,
+      x: 1,
+      y: 2,
+      w: 30,
+      h: 10,
+      ingredients: [
+        {
+          name: "Maple Syrup",
+          allergens: [],
+          diets: [],
+          brands: [],
+          brandRequired: true,
+          brandRequirementReason:
+            "Maple syrup is often processed and may contain additives,\n  preservatives, or other ingredients beyond pure maple sap.",
+          removable: false,
+          confirmed: false,
+        },
+      ],
+    },
+  ];
+
+  const payload = normalizeOperationPayload({
+    operationType: RESTAURANT_WRITE_OPERATION_TYPES.MENU_STATE_REPLACE,
+    operationPayload: {
+      baselineOverlays,
+      overlays,
+      changedFields: ["overlays"],
+    },
+  });
+
+  assert.equal(payload.rows.length, 0);
+});
+
 test("menu review rows prefer selected brand entries over stale direct brand fields", () => {
   const payload = normalizeOperationPayload({
     operationType: RESTAURANT_WRITE_OPERATION_TYPES.MENU_STATE_REPLACE,

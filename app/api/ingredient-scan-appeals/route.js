@@ -258,6 +258,7 @@ export async function POST(request) {
   }
 
   let data = null;
+  const submittedAt = new Date();
   try {
     data = await db.ingredient_scan_appeals.create({
       data: {
@@ -269,7 +270,7 @@ export async function POST(request) {
         review_status: "pending",
         ai_recommended_scan: true,
         manager_disagrees: true,
-        submitted_at: new Date(),
+        submitted_at: submittedAt,
       },
       select: { id: true },
     });
@@ -305,9 +306,22 @@ export async function POST(request) {
     );
   }
 
+  const responsePhotoUrl = photoUrl.startsWith("data:") ? "" : photoUrl;
+
   return corsJson({
     success: true,
     id: data?.id || "",
-    photoUrl,
+    appeal: {
+      id: data?.id || "",
+      reviewStatus: "pending",
+      managerMessage,
+      photoUrl: responsePhotoUrl,
+      photoAttached: true,
+      submittedAt: submittedAt.toISOString(),
+    },
+    photoUrl: responsePhotoUrl,
+    photoAttached: true,
+    reviewStatus: "pending",
+    submittedAt: submittedAt.toISOString(),
   });
 }
