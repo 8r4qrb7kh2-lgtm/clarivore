@@ -42,6 +42,7 @@ function DishEditorModal({
     appealPhotoErrorByRow,
     appealBusyByRow,
     appealFeedbackByRow,
+    appealPendingByRow,
     modalError,
     dictateActive,
     isIngredientGenerationBusy,
@@ -327,6 +328,7 @@ function DishEditorModal({
                         appealPhotoError={asText(appealPhotoErrorByRow[index])}
                         appealBusy={Boolean(appealBusyByRow[index])}
                         appealFeedback={appealFeedbackByRow[index]}
+                        appealPending={Boolean(appealPendingByRow[index])}
                         scanState={scanStateByRow[index] || {}}
                         existingBrandItems={existingBrandItems}
                         onRowRef={setIngredientRowRef}

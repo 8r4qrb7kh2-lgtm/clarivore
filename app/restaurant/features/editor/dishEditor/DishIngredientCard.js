@@ -31,6 +31,7 @@ export function DishIngredientCard({
   appealPhotoError,
   appealBusy,
   appealFeedback,
+  appealPending,
   scanState,
   existingBrandItems,
   onRowRef,
@@ -76,8 +77,14 @@ export function DishIngredientCard({
     !hasAssignedBrand &&
     currentIngredientName !== (lastAppliedIngredientName ?? currentIngredientName);
   const hasPendingNameApply = showApplyButton;
+  const requiresApplyBeforeConfirm =
+    hasPendingNameApply && ingredient?.confirmed !== true;
   const requiresBrandBeforeConfirm =
-    Boolean(ingredient?.brandRequired) && !hasAssignedBrand && ingredient?.confirmed !== true;
+    Boolean(ingredient?.brandRequired) &&
+    !hasAssignedBrand &&
+    !appealPending &&
+    ingredient?.confirmed !== true;
+  const confirmationDisabled = requiresBrandBeforeConfirm || requiresApplyBeforeConfirm;
 
   // Manual override and conflict text are precomputed once per render for readability.
   const manualOverrideMessages = buildRowManualOverrideMessages({
@@ -133,7 +140,8 @@ export function DishIngredientCard({
     .slice(0, 8);
   const isRowApplying = Boolean(applyBusy);
   const preferenceSectionLocked =
-    (Boolean(ingredient?.brandRequired) && !hasAssignedBrand) || hasPendingNameApply;
+    ((Boolean(ingredient?.brandRequired) && !hasAssignedBrand && !appealPending) ||
+      hasPendingNameApply);
 
   return (
     <div
@@ -477,7 +485,7 @@ export function DishIngredientCard({
             confirmed={ingredient.confirmed === true}
             pendingLabel="Mark confirmed"
             confirmedLabel="Confirmed"
-            disabled={requiresBrandBeforeConfirm}
+            disabled={confirmationDisabled}
             onClick={() => onToggleConfirmed(index)}
           />
         </div>
@@ -495,9 +503,19 @@ export function DishIngredientCard({
               {conflictWarningText}
             </span>
           ) : null}
-          {ingredient.brandRequired && !hasAssignedBrand ? (
+          {ingredient.brandRequired && !hasAssignedBrand && !appealPending ? (
             <span className="restaurant-editor-dish-brand-warning">
               Assign a brand item before marking this ingredient confirmed.
+            </span>
+          ) : null}
+          {ingredient.brandRequired && !hasAssignedBrand && appealPending ? (
+            <span className="restaurant-editor-dish-brand-warning">
+              Appeal pending review. You can continue setting flags and mark this ingredient confirmed.
+            </span>
+          ) : null}
+          {requiresApplyBeforeConfirm ? (
+            <span className="restaurant-editor-dish-brand-warning">
+              Apply the ingredient name before marking this ingredient confirmed.
             </span>
           ) : null}
         </div>

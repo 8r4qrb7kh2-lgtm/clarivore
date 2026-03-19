@@ -57,6 +57,7 @@ export function useDishEditorController({
   const [appealPhotoErrorByRow, setAppealPhotoErrorByRow] = useState({});
   const [appealBusyByRow, setAppealBusyByRow] = useState({});
   const [appealFeedbackByRow, setAppealFeedbackByRow] = useState({});
+  const [appealPendingByRow, setAppealPendingByRow] = useState({});
   const [processInputBusy, setProcessInputBusy] = useState(false);
   const [autoApplyBusy, setAutoApplyBusy] = useState(false);
   const [dictateActive, setDictateActive] = useState(false);
@@ -173,6 +174,7 @@ export function useDishEditorController({
       setAppealPhotoErrorByRow({});
       setAppealBusyByRow({});
       setAppealFeedbackByRow({});
+      setAppealPendingByRow({});
       setProcessInputBusy(false);
       setAutoApplyBusy(false);
       setDictateActive(false);
@@ -430,15 +432,27 @@ export function useDishEditorController({
     (ingredientIndex) => {
       const ingredient = ingredients[ingredientIndex];
       if (!ingredient) return;
+      const appealPending = appealPendingByRow[ingredientIndex] === true;
 
       const hasAssignedBrand = (Array.isArray(ingredient?.brands)
         ? ingredient.brands
         : []
       ).some((brand) => asText(brand?.name));
+      const ingredientNameAtConfirm = coerceIngredientNameForApply(ingredient);
+      const hasPendingNameApply =
+        !hasAssignedBrand &&
+        ingredientNameAtConfirm !==
+          (lastAppliedIngredientNameByRow[ingredientIndex] ?? ingredientNameAtConfirm);
       const requiresBrandBeforeConfirm =
         Boolean(ingredient?.brandRequired) &&
         !hasAssignedBrand &&
+        !appealPending &&
         ingredient?.confirmed !== true;
+
+      if (hasPendingNameApply) {
+        setModalError("Apply the ingredient name before confirming this ingredient.");
+        return;
+      }
 
       if (requiresBrandBeforeConfirm) {
         setModalError("Assign a brand item before confirming this ingredient.");
@@ -454,7 +468,12 @@ export function useDishEditorController({
         ),
       );
     },
-    [applyIngredientChanges, ingredients],
+    [
+      appealPendingByRow,
+      applyIngredientChanges,
+      ingredients,
+      lastAppliedIngredientNameByRow,
+    ],
   );
 
   const addIngredientRow = useCallback(() => {
@@ -515,6 +534,21 @@ export function useDishEditorController({
       );
       // Shift baselines for index-based rows after deletion.
       setLastAppliedIngredientNameByRow((current) => {
+        const next = {};
+        Object.keys(current || {}).forEach((key) => {
+          const numeric = Number(key);
+          if (!Number.isFinite(numeric)) return;
+          if (numeric < ingredientIndex) {
+            next[numeric] = current[key];
+            return;
+          }
+          if (numeric > ingredientIndex) {
+            next[numeric - 1] = current[key];
+          }
+        });
+        return next;
+      });
+      setAppealPendingByRow((current) => {
         const next = {};
         Object.keys(current || {}).forEach((key) => {
           const numeric = Number(key);
@@ -656,7 +690,11 @@ export function useDishEditorController({
   );
 
   const applyIngredientSmartDetection = useCallback(
-    async (ingredientIndex, { suppressModalError = false } = {}) => {
+    async (ingredientIndex, { suppressModalError = false, shouldContinue } = {}) => {
+      if (typeof shouldContinue === "function" && !shouldContinue()) {
+        return { success: false, cancelled: true };
+      }
+
       const currentRows = Array.isArray(latestIngredientsRef.current)
         ? latestIngredientsRef.current
         : [];
@@ -669,6 +707,9 @@ export function useDishEditorController({
       // Brand-assigned rows are source-of-truth from the selected brand item.
       // Apply should only clear the row's dirty-name state, not mutate brand/allergen/diet values.
       if (hasAssignedBrand) {
+        if (typeof shouldContinue === "function" && !shouldContinue()) {
+          return { success: false, cancelled: true };
+        }
         setLastAppliedIngredientNameByRow((current) => ({
           ...current,
           [ingredientIndex]: ingredientNameAtApply,
@@ -681,6 +722,10 @@ export function useDishEditorController({
       if (!suppressModalError) setModalError("");
       const detection = await analyzeIngredientForSmartDetection(ingredientIndex);
       setApplyBusyByRow((current) => ({ ...current, [ingredientIndex]: false }));
+
+      if (typeof shouldContinue === "function" && !shouldContinue()) {
+        return { success: false, cancelled: true };
+      }
 
       if (!detection?.success) {
         const errorMessage =
@@ -752,17 +797,47 @@ export function useDishEditorController({
       return { failedRows: [], cancelled: true };
     }
 
-    const failedRows = [];
-    for (let index = 0; index < safeNames.length; index += 1) {
-      if (typeof shouldContinue === "function" && !shouldContinue()) {
-        return { failedRows, cancelled: true };
-      }
-      const applied = await applyIngredientSmartDetection(index, {
-        suppressModalError: true,
-      });
-      if (applied?.success) continue;
-      failedRows.push(safeNames[index] || `Ingredient ${index + 1}`);
+    const applyResults = await Promise.allSettled(
+      safeNames.map(async (ingredientName, index) => {
+        if (typeof shouldContinue === "function" && !shouldContinue()) {
+          return {
+            ingredientName,
+            cancelled: true,
+          };
+        }
+
+        const applied = await applyIngredientSmartDetection(index, {
+          suppressModalError: true,
+          shouldContinue,
+        });
+
+        return {
+          ingredientName,
+          applied,
+        };
+      }),
+    );
+
+    if (typeof shouldContinue === "function" && !shouldContinue()) {
+      return { failedRows: [], cancelled: true };
     }
+
+    const failedRows = applyResults.flatMap((result, index) => {
+      const fallbackName = safeNames[index] || `Ingredient ${index + 1}`;
+      if (result.status !== "fulfilled") {
+        return [fallbackName];
+      }
+
+      if (result.value?.cancelled || result.value?.applied?.cancelled) {
+        return [];
+      }
+
+      if (result.value?.applied?.success) {
+        return [];
+      }
+
+      return [result.value?.ingredientName || fallbackName];
+    });
 
     return { failedRows, cancelled: false };
   }, [applyIngredientSmartDetection, waitForGeneratedRows]);
@@ -1127,6 +1202,7 @@ export function useDishEditorController({
       setAppealPhotoByRow((current) => ({ ...current, [ingredientIndex]: null }));
       setAppealPhotoErrorByRow((current) => ({ ...current, [ingredientIndex]: "" }));
       setAppealOpenByRow((current) => ({ ...current, [ingredientIndex]: false }));
+      setAppealPendingByRow((current) => ({ ...current, [ingredientIndex]: true }));
       setAppealFeedbackByRow((current) => ({
         ...current,
         [ingredientIndex]: {
@@ -1447,6 +1523,7 @@ export function useDishEditorController({
     appealPhotoErrorByRow,
     appealBusyByRow,
     appealFeedbackByRow,
+    appealPendingByRow,
     modalError,
     dictateActive,
     isIngredientGenerationBusy,
