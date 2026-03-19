@@ -1421,7 +1421,10 @@ export function RestaurantViewer({
         >
           <div
             className={`restaurant-menu-track ${isMenuZoomAnimating ? "is-zoom-animating" : ""}`}
-            style={{ "--menu-zoom-scale": menuZoomScale }}
+            style={{
+              "--menu-zoom-scale": menuZoomScale,
+              "--menu-zoom-animation-ms": `${MENU_ZOOM_ANIMATION_MS}ms`,
+            }}
           >
             {viewer.menuPages.map((page) => (
               <div

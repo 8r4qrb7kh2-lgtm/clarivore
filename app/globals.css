@@ -2910,7 +2910,7 @@ h2 {
 }
 
 .restaurant-menu-track.is-zoom-animating {
-  transition: width 0.24s linear;
+  transition: width var(--menu-zoom-animation-ms, 260ms) linear;
 }
 
 .restaurant-menu-scroll.is-blurred {
