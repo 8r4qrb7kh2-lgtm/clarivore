@@ -206,3 +206,55 @@ test("menu review rows enumerate brand removal and related ingredient row writes
     !payload.rows.some((row) => row.summary === "Grilled Tofu: Changes to Honey"),
   );
 });
+
+test("menu review rows prefer selected brand entries over stale direct brand fields", () => {
+  const payload = normalizeOperationPayload({
+    operationType: RESTAURANT_WRITE_OPERATION_TYPES.MENU_STATE_REPLACE,
+    operationPayload: {
+      baselineOverlays: [
+        {
+          overlayKey: "ov-1",
+          id: "Grilled Tofu",
+          name: "Grilled Tofu",
+          pageIndex: 0,
+          x: 1,
+          y: 2,
+          w: 30,
+          h: 10,
+          ingredients: [
+            {
+              name: "Honey",
+              brands: [{ name: "Old Brand" }],
+              appliedBrandItem: "Old Brand",
+            },
+          ],
+        },
+      ],
+      overlays: [
+        {
+          overlayKey: "ov-1",
+          id: "Grilled Tofu",
+          name: "Grilled Tofu",
+          pageIndex: 0,
+          x: 1,
+          y: 2,
+          w: 30,
+          h: 10,
+          ingredients: [
+            {
+              name: "Honey",
+              brands: [{ name: "New Brand" }],
+              appliedBrandItem: "Old Brand",
+            },
+          ],
+        },
+      ],
+      changedFields: ["overlays"],
+    },
+  });
+
+  const brandRow = payload.rows.find((row) => row.fieldKey === "appliedBrandItem");
+  assert.ok(brandRow);
+  assert.equal(brandRow.beforeValue, "Applied brand item: Old Brand");
+  assert.equal(brandRow.afterValue, "Applied brand item: New Brand");
+});
