@@ -15,6 +15,10 @@ import {
   computeMinimapJumpTarget,
 } from "../shared/minimapGeometry";
 import { useMinimapSync } from "../shared/useMinimapSync";
+import {
+  buildDishIngredientParagraph,
+  computeMobileDishPanelMaxHeight,
+} from "./dishPopoverUtils";
 
 function clamp(value, min, max) {
   return Math.min(Math.max(value, min), max);
@@ -182,6 +186,11 @@ const MOBILE_DISH_PANEL_FOCUS_GUTTER = 0;
 const MOBILE_DISH_PANEL_STABLE_DELAY_MS = 80;
 const MOBILE_DISH_VERTICAL_ANCHOR_RATIO = 0.5;
 const MOBILE_DISH_FOCUS_EDGE_PADDING = 14;
+const MOBILE_DISH_PANEL_DEFAULT_MAX_HEIGHT_RATIO = 0.36;
+const MOBILE_DISH_PANEL_DEFAULT_MAX_HEIGHT_PX = 300;
+const MOBILE_DISH_PANEL_MIN_HEIGHT = 96;
+const MOBILE_DISH_PANEL_HARD_MIN_HEIGHT = 80;
+const MOBILE_DISH_PANEL_OVERLAY_GAP = 12;
 const MENU_ZOOM_ANIMATION_MS = 260;
 
 export function RestaurantViewer({
@@ -207,12 +216,16 @@ export function RestaurantViewer({
   const [menuZoomScale, setMenuZoomScale] = useState(1);
   const [isMenuZoomAnimating, setIsMenuZoomAnimating] = useState(false);
   const [isMobileViewport, setIsMobileViewport] = useState(false);
+  const [mobileViewportMetrics, setMobileViewportMetrics] = useState({ width: 0, height: 0 });
   const [mobileDishPanelHeight, setMobileDishPanelHeight] = useState(0);
+  const [mobileDishPanelMaxHeight, setMobileDishPanelMaxHeight] = useState(0);
+  const [selectedDishContentMode, setSelectedDishContentMode] = useState("compatibility");
 
   const menuScrollRef = useRef(null);
   const pageRefs = useRef([]);
   const pageImageRefs = useRef([]);
   const mobileDishPanelRef = useRef(null);
+  const overlayNodeRefs = useRef(new Map());
   const mobileViewportRestoreRef = useRef(null);
   const menuZoomScaleRef = useRef(1);
   const zoomAnimationTimerRef = useRef(null);
@@ -273,6 +286,27 @@ export function RestaurantViewer({
     mediaQuery.addListener(syncViewportMode);
     return () => {
       mediaQuery.removeListener(syncViewportMode);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+
+    const syncViewportMetrics = () => {
+      setMobileViewportMetrics({
+        width: window.visualViewport?.width || window.innerWidth || 0,
+        height: window.visualViewport?.height || window.innerHeight || 0,
+      });
+    };
+
+    syncViewportMetrics();
+
+    window.addEventListener("resize", syncViewportMetrics);
+    window.visualViewport?.addEventListener("resize", syncViewportMetrics);
+
+    return () => {
+      window.removeEventListener("resize", syncViewportMetrics);
+      window.visualViewport?.removeEventListener("resize", syncViewportMetrics);
     };
   }, []);
 
@@ -909,6 +943,10 @@ export function RestaurantViewer({
     selectedDish,
     selectedDishPageNode,
   ]);
+  const selectedDishIngredientsParagraph = useMemo(
+    () => buildDishIngredientParagraph(selectedDish),
+    [selectedDish],
+  );
 
   const savedAllergenKeys = useMemo(
     () => (Array.isArray(viewer.savedAllergens) ? viewer.savedAllergens.map((item) => item.key) : []),
@@ -949,6 +987,10 @@ export function RestaurantViewer({
   }, [allowGuestPreferenceEditing, isEditingGuestDiets, savedDietKeys]);
 
   useEffect(() => {
+    setSelectedDishContentMode("compatibility");
+  }, [selectedOverlaySignature]);
+
+  useEffect(() => {
     if (!isMobileViewport || !selectedDish) {
       setMobileDishPanelHeight(0);
       return undefined;
@@ -979,6 +1021,57 @@ export function RestaurantViewer({
   }, [isMobileViewport, selectedDish, selectedOverlaySignature]);
 
   useEffect(() => {
+    if (!isMobileViewport || !selectedDish || !selectedOverlaySignature) {
+      setMobileDishPanelMaxHeight(0);
+      return undefined;
+    }
+
+    let frameId = 0;
+    frameId = window.requestAnimationFrame(() => {
+      const overlayNode = overlayNodeRefs.current.get(selectedOverlaySignature);
+      const viewportHeight = mobileViewportMetrics.height;
+      const defaultMaxHeight = Math.min(
+        viewportHeight * MOBILE_DISH_PANEL_DEFAULT_MAX_HEIGHT_RATIO,
+        MOBILE_DISH_PANEL_DEFAULT_MAX_HEIGHT_PX,
+      );
+
+      if (!overlayNode || viewportHeight <= 0) {
+        setMobileDishPanelMaxHeight(defaultMaxHeight);
+        return;
+      }
+
+      const overlayRect = overlayNode.getBoundingClientRect();
+      const nextMaxHeight = computeMobileDishPanelMaxHeight({
+        viewportHeight,
+        overlayBottom: overlayRect.bottom,
+        defaultMaxHeight,
+        minimumHeight: MOBILE_DISH_PANEL_MIN_HEIGHT,
+        hardMinimumHeight: MOBILE_DISH_PANEL_HARD_MIN_HEIGHT,
+        gap: MOBILE_DISH_PANEL_OVERLAY_GAP,
+      });
+
+      setMobileDishPanelMaxHeight((current) => {
+        return Math.abs(current - nextMaxHeight) < 1 ? current : nextMaxHeight;
+      });
+    });
+
+    return () => {
+      window.cancelAnimationFrame(frameId);
+    };
+  }, [
+    isMobileViewport,
+    menuZoomScale,
+    mobileViewportMetrics.height,
+    mobileViewportMetrics.width,
+    scrollSnapshot.clientHeight,
+    scrollSnapshot.clientWidth,
+    scrollSnapshot.scrollLeft,
+    scrollSnapshot.scrollTop,
+    selectedDish,
+    selectedOverlaySignature,
+  ]);
+
+  useEffect(() => {
     if (!acknowledgedReferenceNote || !isMobileViewport || !selectedDish) {
       return undefined;
     }
@@ -1000,8 +1093,63 @@ export function RestaurantViewer({
     acknowledgedReferenceNote,
     focusOverlayForCurrentViewport,
     isMobileViewport,
+    mobileViewportMetrics.height,
+    mobileViewportMetrics.width,
     mobileDishPanelHeight,
     selectedDish,
+    selectedOverlaySignature,
+  ]);
+
+  useEffect(() => {
+    if (!acknowledgedReferenceNote || !isMobileViewport || !selectedOverlaySignature) {
+      return undefined;
+    }
+
+    const scrollNode = menuScrollRef.current;
+    const overlayNode = overlayNodeRefs.current.get(selectedOverlaySignature);
+    const panelNode = mobileDishPanelRef.current;
+    if (!scrollNode || !overlayNode || !panelNode) {
+      return undefined;
+    }
+
+    let frameId = 0;
+    frameId = window.requestAnimationFrame(() => {
+      const overlayRect = overlayNode.getBoundingClientRect();
+      const panelRect = panelNode.getBoundingClientRect();
+      const overlapAmount =
+        overlayRect.bottom - panelRect.top + MOBILE_DISH_PANEL_OVERLAY_GAP;
+
+      if (overlapAmount <= 0.5) {
+        return;
+      }
+
+      const maxScrollTop = Math.max(scrollNode.scrollHeight - scrollNode.clientHeight, 0);
+      const nextScrollTop = clamp(scrollNode.scrollTop + overlapAmount, 0, maxScrollTop);
+
+      if (Math.abs(nextScrollTop - scrollNode.scrollTop) < 0.5) {
+        return;
+      }
+
+      scrollNode.scrollTo({
+        top: nextScrollTop,
+        behavior: "auto",
+      });
+      refreshScrollSnapshot();
+    });
+
+    return () => {
+      window.cancelAnimationFrame(frameId);
+    };
+  }, [
+    acknowledgedReferenceNote,
+    isMobileViewport,
+    mobileDishPanelHeight,
+    mobileDishPanelMaxHeight,
+    mobileViewportMetrics.height,
+    mobileViewportMetrics.width,
+    refreshScrollSnapshot,
+    scrollSnapshot.clientHeight,
+    scrollSnapshot.scrollTop,
     selectedOverlaySignature,
   ]);
 
@@ -1315,44 +1463,54 @@ export function RestaurantViewer({
                   <div className="restaurant-no-image">No menu image available.</div>
                 )}
 
-                {page.overlays.map((overlay, index) => (
-                  <button
-                    key={overlayKey(overlay, index)}
-                    type="button"
-                    title={overlay.name || overlay.id || "Dish"}
-                    aria-label={overlay.name || overlay.id || "Dish"}
-                    onClick={() => {
-                      if (!acknowledgedReferenceNote) return;
-                      if (isMobileViewport && !selectedOverlay) {
-                        captureViewportForMobileDishFocus();
-                      }
-                      viewer.selectDish(overlay.id);
-                      setSelectedOverlay(overlay);
-                      if (!isMobileViewport) {
-                        focusOverlayForCurrentViewport(overlay);
-                      }
-                    }}
-                    className={`restaurant-overlay ${
-                      selectedOverlaySignature &&
-                      overlaySignature(overlay) === selectedOverlaySignature
-                        ? "is-selected"
-                        : ""
-                    }`}
-                    style={{
-                      left: `${parseOverlayNumber(overlay.x)}%`,
-                      top: `${parseOverlayNumber(overlay.y)}%`,
-                      width: `${parseOverlayNumber(overlay.w)}%`,
-                      height: `${parseOverlayNumber(overlay.h)}%`,
-                      borderColor: statusBorderColor(overlay.compatibilityStatus),
-                      "--overlay-pulse-color": statusPulseColor(overlay.compatibilityStatus),
-                    }}
-                  >
-                    <span className="restaurant-overlay-warning">
-                      {overlay.hasCrossContamination ? "⚠" : ""}
-                    </span>
-                    <span className="restaurant-overlay-info">i</span>
-                  </button>
-                ))}
+                {page.overlays.map((overlay, index) => {
+                  const signature = overlaySignature(overlay);
+
+                  return (
+                    <button
+                      key={overlayKey(overlay, index)}
+                      ref={(node) => {
+                        if (node) {
+                          overlayNodeRefs.current.set(signature, node);
+                          return;
+                        }
+                        overlayNodeRefs.current.delete(signature);
+                      }}
+                      type="button"
+                      title={overlay.name || overlay.id || "Dish"}
+                      aria-label={overlay.name || overlay.id || "Dish"}
+                      onClick={() => {
+                        if (!acknowledgedReferenceNote) return;
+                        if (isMobileViewport && !selectedOverlay) {
+                          captureViewportForMobileDishFocus();
+                        }
+                        viewer.selectDish(overlay.id);
+                        setSelectedOverlay(overlay);
+                        if (!isMobileViewport) {
+                          focusOverlayForCurrentViewport(overlay);
+                        }
+                      }}
+                      className={`restaurant-overlay ${
+                        selectedOverlaySignature && signature === selectedOverlaySignature
+                          ? "is-selected"
+                          : ""
+                      }`}
+                      style={{
+                        left: `${parseOverlayNumber(overlay.x)}%`,
+                        top: `${parseOverlayNumber(overlay.y)}%`,
+                        width: `${parseOverlayNumber(overlay.w)}%`,
+                        height: `${parseOverlayNumber(overlay.h)}%`,
+                        borderColor: statusBorderColor(overlay.compatibilityStatus),
+                        "--overlay-pulse-color": statusPulseColor(overlay.compatibilityStatus),
+                      }}
+                    >
+                      <span className="restaurant-overlay-warning">
+                        {overlay.hasCrossContamination ? "⚠" : ""}
+                      </span>
+                      <span className="restaurant-overlay-info">i</span>
+                    </button>
+                  );
+                })}
               </div>
             ))}
           </div>
@@ -1362,7 +1520,13 @@ export function RestaurantViewer({
           <aside
             ref={isMobileViewport ? mobileDishPanelRef : null}
             className={`restaurant-dish-popover ${isMobileViewport ? "is-mobile" : ""}`}
-            style={isMobileViewport ? undefined : selectedDishPopupStyle}
+            style={
+              isMobileViewport
+                ? mobileDishPanelMaxHeight > 0
+                  ? { maxHeight: `${mobileDishPanelMaxHeight}px` }
+                  : undefined
+                : selectedDishPopupStyle
+            }
           >
             <header className="restaurant-dish-popover-header">
               <div className="restaurant-dish-popover-title-wrap">
@@ -1388,41 +1552,72 @@ export function RestaurantViewer({
             </header>
 
             <div className="restaurant-dish-popover-body">
-              <section className="restaurant-dish-popover-section">
-                <h3>Allergens:</h3>
-                {selectedDishAllergenRows.length ? (
-                  selectedDishAllergenRows.map((row) => (
-                    <div key={row.key} className={`dish-row ${row.tone}`}>
-                      <div className="dish-row-title">{row.title}</div>
-                      {row.reasonBullet ? (
-                        <ul className="dish-row-reasons">
-                          <li>{row.reasonBullet}</li>
-                        </ul>
-                      ) : null}
-                    </div>
-                  ))
-                ) : (
-                  <p className="dish-row-empty">{`No ${preferencePrefixLower} allergens.`}</p>
-                )}
-              </section>
+              <div className="restaurant-dish-popover-toggle-row">
+                <button
+                  type="button"
+                  className="restaurant-dish-popover-toggle-btn"
+                  onClick={() =>
+                    setSelectedDishContentMode((current) =>
+                      current === "ingredients" ? "compatibility" : "ingredients",
+                    )
+                  }
+                >
+                  {selectedDishContentMode === "ingredients"
+                    ? "Show allergens and diets"
+                    : "See full ingredient list"}
+                </button>
+              </div>
 
-              <section className="restaurant-dish-popover-section">
-                <h3>Diets:</h3>
-                {selectedDishDietRows.length ? (
-                  selectedDishDietRows.map((row) => (
-                    <div key={row.key} className={`dish-row ${row.tone}`}>
-                      <div className="dish-row-title">{row.title}</div>
-                      {row.reasonBullet ? (
-                        <ul className="dish-row-reasons">
-                          <li>{row.reasonBullet}</li>
-                        </ul>
-                      ) : null}
-                    </div>
-                  ))
-                ) : (
-                  <p className="dish-row-empty">{`No ${preferencePrefixLower} diets.`}</p>
-                )}
-              </section>
+              {selectedDishContentMode === "ingredients" ? (
+                <section className="restaurant-dish-popover-section">
+                  <h3>Ingredients:</h3>
+                  {selectedDishIngredientsParagraph ? (
+                    <p className="restaurant-dish-popover-ingredients">
+                      {selectedDishIngredientsParagraph}
+                    </p>
+                  ) : (
+                    <p className="dish-row-empty">Full ingredient list not available.</p>
+                  )}
+                </section>
+              ) : (
+                <>
+                  <section className="restaurant-dish-popover-section">
+                    <h3>Allergens:</h3>
+                    {selectedDishAllergenRows.length ? (
+                      selectedDishAllergenRows.map((row) => (
+                        <div key={row.key} className={`dish-row ${row.tone}`}>
+                          <div className="dish-row-title">{row.title}</div>
+                          {row.reasonBullet ? (
+                            <ul className="dish-row-reasons">
+                              <li>{row.reasonBullet}</li>
+                            </ul>
+                          ) : null}
+                        </div>
+                      ))
+                    ) : (
+                      <p className="dish-row-empty">{`No ${preferencePrefixLower} allergens.`}</p>
+                    )}
+                  </section>
+
+                  <section className="restaurant-dish-popover-section">
+                    <h3>Diets:</h3>
+                    {selectedDishDietRows.length ? (
+                      selectedDishDietRows.map((row) => (
+                        <div key={row.key} className={`dish-row ${row.tone}`}>
+                          <div className="dish-row-title">{row.title}</div>
+                          {row.reasonBullet ? (
+                            <ul className="dish-row-reasons">
+                              <li>{row.reasonBullet}</li>
+                            </ul>
+                          ) : null}
+                        </div>
+                      ))
+                    ) : (
+                      <p className="dish-row-empty">{`No ${preferencePrefixLower} diets.`}</p>
+                    )}
+                  </section>
+                </>
+              )}
             </div>
 
             <Button
