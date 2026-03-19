@@ -37,6 +37,7 @@ test("applyCommittedIngredientAppealToOverlays applies the appeal to matching in
     managerMessage: "House-made ingredient.",
     reviewNotes: "",
     photoUrl: "",
+    photoDataUrl: "",
     photoAttached: true,
     submittedAt: "",
     reviewedAt: "",

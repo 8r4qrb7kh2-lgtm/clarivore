@@ -97,6 +97,7 @@ function mergeAppealEntries(left, right) {
     reviewed_by: asText(preferred?.reviewed_by || fallback?.reviewed_by),
     manager_message: asText(preferred?.manager_message || fallback?.manager_message),
     photo_url: asText(preferred?.photo_url || fallback?.photo_url),
+    photo_data_url: asText(preferred?.photo_data_url || fallback?.photo_data_url),
     review_notes: asText(preferred?.review_notes || fallback?.review_notes),
     restaurants:
       (preferred?.restaurants && typeof preferred.restaurants === "object")
@@ -144,6 +145,7 @@ function buildCurrentAppealEntry(row) {
     reviewed_by: asText(appeal.reviewedBy),
     manager_message: asText(appeal.managerMessage),
     photo_url: asText(appeal.photoUrl),
+    photo_data_url: asText(appeal.photoDataUrl),
     review_notes: asText(appeal.reviewNotes),
     restaurants: null,
     reviewable: true,
@@ -212,6 +214,7 @@ function createHistoryAppealEntry({
     reviewed_by: asText(normalizedAppeal.reviewedBy),
     manager_message: asText(normalizedAppeal.managerMessage),
     photo_url: asText(normalizedAppeal.photoUrl),
+    photo_data_url: asText(normalizedAppeal.photoDataUrl),
     review_notes: asText(normalizedAppeal.reviewNotes),
     restaurants: null,
     reviewable: false,

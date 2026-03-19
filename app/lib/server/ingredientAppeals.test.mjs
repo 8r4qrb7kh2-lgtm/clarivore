@@ -21,6 +21,7 @@ test("listIngredientAppealsForAdmin merges current row state with newer changelo
               id: "appeal-1",
               status: "pending",
               managerMessage: "House-made cheese.",
+              photoDataUrl: "data:image/jpeg;base64,abc123",
               photoAttached: true,
               submittedAt: "2026-03-19T10:00:00.000Z",
             },
@@ -113,6 +114,7 @@ test("listIngredientAppealsForAdmin merges current row state with newer changelo
   assert.equal(activeAppeal.reviewable, true);
   assert.equal(activeAppeal.history_only, false);
   assert.equal(activeAppeal.restaurants?.slug, "pizzeria");
+  assert.equal(activeAppeal.photo_data_url, "data:image/jpeg;base64,abc123");
 
   const historyOnlyAppeal = appeals.find((appeal) => appeal.appeal_id === "appeal-2");
   assert.ok(historyOnlyAppeal);

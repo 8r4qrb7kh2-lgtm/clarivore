@@ -1882,6 +1882,8 @@ export default function AdminDashboardDom({
                       {filteredAppeals.map((appeal) => {
                         const status = appeal.review_status || "pending";
                         const restaurant = appeal.restaurants || {};
+                        const appealPhotoUrl =
+                          String(appeal.photo_url || appeal.photo_data_url || "").trim();
                         return (
                           <div key={appeal.id} className={`appeal-card ${status}`}>
                             <div className="appeal-header">
@@ -1922,7 +1924,7 @@ export default function AdminDashboardDom({
                               </div>
                             ) : null}
 
-                            {appeal.photo_url ? (
+                            {appealPhotoUrl ? (
                               <div style={{ margin: "16px 0" }}>
                                 <strong
                                   style={{
@@ -1934,12 +1936,12 @@ export default function AdminDashboardDom({
                                   Photo submitted:
                                 </strong>
                                 <img
-                                  src={appeal.photo_url}
+                                  src={appealPhotoUrl}
                                   alt="Appeal"
                                   className="appeal-photo"
                                   loading="lazy"
                                   decoding="async"
-                                  onClick={() => setPhotoModalUrl(appeal.photo_url)}
+                                  onClick={() => setPhotoModalUrl(appealPhotoUrl)}
                                 />
                               </div>
                             ) : null}

@@ -25,6 +25,7 @@ test("parseIngredientBrandAppealSnapshot round-trips formatted appeal snapshots"
     managerMessage: "This is house-made.",
     reviewNotes: "Approved because no packaged product is used.",
     photoUrl: "",
+    photoDataUrl: "",
     photoAttached: true,
     submittedAt: "2026-03-19T12:00:00.000Z",
     reviewedAt: "2026-03-20T08:30:00.000Z",

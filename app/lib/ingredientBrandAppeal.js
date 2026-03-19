@@ -31,11 +31,18 @@ export function normalizeIngredientBrandAppeal(appeal) {
   );
   const reviewNotes = normalizeInlineText(safe.reviewNotes || safe.review_notes);
   const rawPhotoUrl = asText(safe.photoUrl || safe.photo_url);
+  const rawPhotoDataUrl = asText(safe.photoDataUrl || safe.photo_data_url);
+  const inlinePhotoDataUrl = isInlineDataUrl(rawPhotoDataUrl)
+    ? rawPhotoDataUrl
+    : isInlineDataUrl(rawPhotoUrl)
+      ? rawPhotoUrl
+      : "";
   const photoAttached =
     isTruthyFlag(
       safe.photoAttached || safe.photo_attached || safe.hasPhoto || safe.has_photo,
-    ) || Boolean(rawPhotoUrl);
+    ) || Boolean(rawPhotoUrl) || Boolean(inlinePhotoDataUrl);
   const photoUrl = isInlineDataUrl(rawPhotoUrl) ? "" : rawPhotoUrl;
+  const photoDataUrl = inlinePhotoDataUrl;
   const submittedAt = asText(safe.submittedAt || safe.submitted_at);
   const reviewedAt = asText(safe.reviewedAt || safe.reviewed_at);
   const reviewedBy = asText(safe.reviewedBy || safe.reviewed_by);
@@ -47,6 +54,7 @@ export function normalizeIngredientBrandAppeal(appeal) {
     !managerMessage &&
     !reviewNotes &&
     !photoAttached &&
+    !photoDataUrl &&
     !submittedAt &&
     !reviewedAt &&
     !reviewedBy
@@ -60,6 +68,7 @@ export function normalizeIngredientBrandAppeal(appeal) {
     managerMessage,
     reviewNotes,
     photoUrl,
+    photoDataUrl,
     photoAttached,
     submittedAt,
     reviewedAt,
