@@ -46,6 +46,7 @@ export function usePersistenceActions({
   clearSaveStatusTimer,
   clearPendingSaveBatch,
   restoreHistorySnapshot,
+  refreshChangeLogsAfterWrite,
 
   setDraftMenuImages,
   setPendingChanges,
@@ -64,6 +65,14 @@ export function usePersistenceActions({
   setHistoryIndex,
 }) {
   const pendingSaveRequestRef = useRef(null);
+  const syncChangeLogAfterWrite = useCallback(async () => {
+    if (typeof refreshChangeLogsAfterWrite !== "function") return;
+    try {
+      await refreshChangeLogsAfterWrite();
+    } catch {
+      // Saving should still succeed even if the follow-up change-log refresh fails.
+    }
+  }, [refreshChangeLogsAfterWrite]);
 
   // Commit a previously staged pending-save batch to the write gateway.
   // This flow validates ingredient confirmation and synchronizes local baselines on success.
@@ -176,6 +185,7 @@ export function usePersistenceActions({
 
       historyRef.current = [snapshotAfterSave];
       setHistoryIndex(0);
+      await syncChangeLogAfterWrite();
 
       setSaveStatus("saved");
       saveStatusTimerRef.current = window.setTimeout(() => {
@@ -212,6 +222,7 @@ export function usePersistenceActions({
     overlaysRef,
     pendingChangesRef,
     saveStatusTimerRef,
+    syncChangeLogAfterWrite,
   ]);
 
   // Stage current edits into a pending-save batch for review/approval.
@@ -486,6 +497,7 @@ export function usePersistenceActions({
         photos: safePhotos,
       };
       const result = await callbacks.onConfirmInfo(payload);
+      await syncChangeLogAfterWrite();
       return { success: true, result };
     } catch (error) {
       setConfirmError(error?.message || "Failed to confirm information.");
@@ -493,7 +505,7 @@ export function usePersistenceActions({
     } finally {
       setConfirmBusy(false);
     }
-  }, [callbacks, restaurant?.id, setConfirmBusy, setConfirmError]);
+  }, [callbacks, restaurant?.id, setConfirmBusy, setConfirmError, syncChangeLogAfterWrite]);
 
   // Persist restaurant settings (website, phone, delivery/menu URLs).
   const saveRestaurantSettings = useCallback(async () => {
@@ -520,6 +532,7 @@ export function usePersistenceActions({
       });
 
       settingsBaselineRef.current = serializeSettingsDraft(payload);
+      await syncChangeLogAfterWrite();
       return { success: true };
     } catch (error) {
       setSettingsSaveError(error?.message || "Failed to save restaurant settings.");
@@ -527,7 +540,15 @@ export function usePersistenceActions({
     } finally {
       setSettingsSaveBusy(false);
     }
-  }, [callbacks, restaurant?.id, restaurantSettingsDraft, settingsBaselineRef, setSettingsSaveBusy, setSettingsSaveError]);
+  }, [
+    callbacks,
+    restaurant?.id,
+    restaurantSettingsDraft,
+    settingsBaselineRef,
+    setSettingsSaveBusy,
+    setSettingsSaveError,
+    syncChangeLogAfterWrite,
+  ]);
 
   return {
     save,

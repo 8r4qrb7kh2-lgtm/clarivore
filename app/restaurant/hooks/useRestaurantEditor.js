@@ -302,6 +302,7 @@ export function useRestaurantEditor({
     clearSaveStatusTimer: historyApi.clearSaveStatusTimer,
     clearPendingSaveBatch: historyApi.clearPendingSaveBatch,
     restoreHistorySnapshot: historyApi.restoreHistorySnapshot,
+    refreshChangeLogsAfterWrite: changeLogAndPendingTableActions.refreshChangeLogsAfterWrite,
 
     setDraftMenuImages,
     setPendingChanges,

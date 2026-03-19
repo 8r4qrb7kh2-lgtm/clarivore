@@ -117,6 +117,32 @@ export function useChangeLogAndPendingTable({
     return await loadChangeLogs({ append: true });
   }, [loadChangeLogs]);
 
+  const refreshChangeLogsAfterWrite = useCallback(async () => {
+    changeLogLoadedForOpenRef.current = false;
+    changeLogLoadPromiseRef.current = null;
+    setChangeLogError("");
+    setChangeLogHasMore(false);
+
+    if (!changeLogOpen) {
+      setChangeLogs([]);
+      setLoadingChangeLogs(false);
+      setLoadingMoreChangeLogs(false);
+      return;
+    }
+
+    await loadChangeLogs({ append: false });
+  }, [
+    changeLogLoadedForOpenRef,
+    changeLogLoadPromiseRef,
+    changeLogOpen,
+    loadChangeLogs,
+    setChangeLogError,
+    setChangeLogHasMore,
+    setChangeLogs,
+    setLoadingChangeLogs,
+    setLoadingMoreChangeLogs,
+  ]);
+
   // Load staged pending-save table (batch metadata + row previews).
   // Promise memoization avoids duplicate requests while one is already in flight.
   const loadPendingTable = useCallback(async () => {
@@ -212,6 +238,7 @@ export function useChangeLogAndPendingTable({
   return {
     loadChangeLogs,
     loadMoreChangeLogs,
+    refreshChangeLogsAfterWrite,
     loadPendingTable,
     restoreFromChangeLog,
   };
