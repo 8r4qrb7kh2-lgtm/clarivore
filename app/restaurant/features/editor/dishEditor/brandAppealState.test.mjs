@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   applyIngredientBrandAppeal,
+  buildPendingIngredientBrandAppeal,
   clearIngredientBrandAppeal,
   isIngredientBrandAppealPending,
   normalizeIngredientBrandAppeal,
@@ -91,4 +92,35 @@ test("apply and clear ingredient brand appeal update the ingredient payload", ()
   const cleared = clearIngredientBrandAppeal(withAppeal);
   assert.equal("brandAppeal" in cleared, false);
   assert.equal(isIngredientBrandAppealPending(cleared), false);
+});
+
+test("buildPendingIngredientBrandAppeal resets review fields and preserves inline photo evidence", () => {
+  assert.deepEqual(
+    buildPendingIngredientBrandAppeal({
+      existingAppeal: {
+        id: "appeal-old",
+        status: "approved",
+        managerMessage: "Old message",
+        reviewNotes: "Approved previously.",
+        reviewedAt: "2026-03-20T08:30:00.000Z",
+        reviewedBy: "Admin Reviewer",
+      },
+      managerMessage: "This is made in-house.",
+      photoDataUrl: "data:image/jpeg;base64,abc123",
+      submittedAt: "2026-03-21T12:00:00.000Z",
+      appealId: "appeal-new",
+    }),
+    {
+      id: "appeal-new",
+      status: "pending",
+      managerMessage: "This is made in-house.",
+      reviewNotes: "",
+      photoUrl: "",
+      photoDataUrl: "data:image/jpeg;base64,abc123",
+      photoAttached: true,
+      submittedAt: "2026-03-21T12:00:00.000Z",
+      reviewedAt: "",
+      reviewedBy: "",
+    },
+  );
 });

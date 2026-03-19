@@ -1,4 +1,5 @@
 import { Button } from "../../../components/ui";
+import { normalizeIngredientBrandAppeal } from "../../../lib/ingredientBrandAppeal.js";
 import { buildDietAllergenConflictMessages } from "./conflictWarningLogic";
 
 // Primitive normalization helpers shared by editor, modals, and row components.
@@ -963,6 +964,7 @@ function normalizeIngredientEntry(ingredient, index) {
     .map((brand) => normalizeBrandEntry(brand))
     .filter(Boolean);
   const firstBrand = normalizedBrands[0] || null;
+  const normalizedBrandAppeal = normalizeIngredientBrandAppeal(base.brandAppeal);
   return {
     ...base,
     // Preserve blank values while a manager edits the field.
@@ -984,6 +986,7 @@ function normalizeIngredientEntry(ingredient, index) {
     brandRequirementReason: asText(base.brandRequirementReason),
     removable: Boolean(base.removable),
     confirmed: base.confirmed === true,
+    ...(normalizedBrandAppeal ? { brandAppeal: normalizedBrandAppeal } : {}),
     contains: true,
   };
 }

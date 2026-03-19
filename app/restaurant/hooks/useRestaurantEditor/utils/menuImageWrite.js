@@ -1,6 +1,7 @@
 import { asText, dedupeTokenList } from "./text";
 import { clamp } from "./text";
 import { normalizeNumber, normalizeRectValue } from "./overlayGeometry";
+import { normalizeIngredientBrandAppeal } from "../../../../lib/ingredientBrandAppeal.js";
 
 // Write-time normalization helpers.
 // These helpers sanitize client-side editor state into API-safe payloads.
@@ -88,6 +89,7 @@ function normalizeIngredientForWrite(ingredient, index) {
   const brandImage = sanitizePersistedImageValue(
     safe?.brandImage || safe?.image || safe?.ingredientsImage,
   );
+  const normalizedBrandAppeal = normalizeIngredientBrandAppeal(safe?.brandAppeal);
 
   const normalized = {
     ...safe,
@@ -114,6 +116,9 @@ function normalizeIngredientForWrite(ingredient, index) {
 
   if (brandImage) normalized.brandImage = brandImage;
   else delete normalized.brandImage;
+
+  if (normalizedBrandAppeal) normalized.brandAppeal = normalizedBrandAppeal;
+  else delete normalized.brandAppeal;
 
   delete normalized.ingredientsImage;
   delete normalized.image;

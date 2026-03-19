@@ -28,6 +28,8 @@ import {
   clearIngredientBrandSelectionFields,
 } from "./brandSelectionFields";
 import {
+  applyIngredientBrandAppeal,
+  buildPendingIngredientBrandAppeal,
   clearIngredientBrandAppeal,
 } from "./brandAppealState";
 import { mergeAppealPendingMap } from "./appealPendingState.js";
@@ -1283,56 +1285,31 @@ export function useDishEditorController({
       }
 
       setAppealBusyByRow((current) => ({ ...current, [ingredientIndex]: true }));
+      setModalError("");
       setAppealFeedbackByRow((current) => ({
         ...current,
         [ingredientIndex]: { tone: "", message: "" },
       }));
 
-      let result = null;
-      try {
-        result = await editor.submitIngredientAppeal({
-          dishName: asText(overlay?.id || overlay?.name),
-          ingredientName,
-          managerMessage,
-          photoDataUrl,
-        });
-      } catch (error) {
-        result = {
-          success: false,
-          error: {
-            message:
-              asText(error?.message) || "Failed to submit appeal. Please try again.",
-          },
-        };
-      }
+      const submittedAt = new Date().toISOString();
+      const nextAppeal = buildPendingIngredientBrandAppeal({
+        existingAppeal: ingredient?.brandAppeal,
+        managerMessage,
+        photoDataUrl,
+        submittedAt,
+      });
 
+      applyIngredientChanges((current) =>
+        current.map((item, itemIndex) =>
+          itemIndex === ingredientIndex
+            ? applyIngredientBrandAppeal(item, nextAppeal)
+            : item,
+        ),
+        {
+          recordHistory: true,
+        },
+      );
       setAppealBusyByRow((current) => ({ ...current, [ingredientIndex]: false }));
-
-      if (!result?.success) {
-        setAppealFeedbackByRow((current) => ({
-          ...current,
-          [ingredientIndex]: {
-            tone: "error",
-            message:
-              result?.error?.message || "Failed to submit appeal. Please try again.",
-          },
-        }));
-        return;
-      }
-
-      const appealPayload = result?.result || result;
-      if (typeof editor.syncCommittedIngredientAppeal === "function") {
-        await editor.syncCommittedIngredientAppeal({
-          dishName: asText(overlay?.id || overlay?.name),
-          ingredientName,
-          appeal: {
-            ...(appealPayload?.appeal || appealPayload),
-            managerMessage,
-          },
-        });
-      } else if (typeof editor.clearPendingSaveBatch === "function") {
-        editor.clearPendingSaveBatch();
-      }
 
       setAppealMessageByRow((current) => ({ ...current, [ingredientIndex]: "" }));
       setAppealPhotoByRow((current) => ({ ...current, [ingredientIndex]: null }));
@@ -1343,7 +1320,7 @@ export function useDishEditorController({
         ...current,
         [ingredientIndex]: {
           tone: "success",
-          message: "Appeal submitted for review.",
+          message: "Appeal added. Save to Site to submit it.",
         },
       }));
     },
@@ -1351,10 +1328,8 @@ export function useDishEditorController({
       appealMessageByRow,
       appealPhotoByRow,
       applyIngredientChanges,
-      editor,
       ingredients,
-      overlay?.id,
-      overlay?.name,
+      setModalError,
     ],
   );
 

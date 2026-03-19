@@ -119,47 +119,6 @@ export function useIngredientServiceActions({
     }
   }, [callbacks, selectedOverlay?.id, selectedOverlay?.name]);
 
-  // Submit manager appeal with required dish/ingredient/message/photo payload.
-  const submitIngredientAppeal = useCallback(async ({
-    dishName,
-    ingredientName,
-    managerMessage,
-    photoDataUrl,
-  }) => {
-    if (!callbacks?.onSubmitIngredientAppeal) {
-      return {
-        success: false,
-        error: new Error("Ingredient appeal callback is not configured."),
-      };
-    }
-
-    const safeDishName =
-      asText(dishName) || asText(selectedOverlay?.id || selectedOverlay?.name);
-    const safeIngredientName = asText(ingredientName);
-    const safeManagerMessage = asText(managerMessage);
-    const safePhotoDataUrl = asText(photoDataUrl);
-
-    if (!safeDishName || !safeIngredientName || !safeManagerMessage || !safePhotoDataUrl) {
-      return {
-        success: false,
-        error: new Error("Dish, ingredient, appeal message, and appeal photo are required."),
-      };
-    }
-
-    try {
-      const result = await callbacks.onSubmitIngredientAppeal({
-        restaurantId: asText(restaurant?.id),
-        dishName: safeDishName,
-        ingredientName: safeIngredientName,
-        managerMessage: safeManagerMessage,
-        photoDataUrl: safePhotoDataUrl,
-      });
-      return { success: true, result };
-    } catch (error) {
-      return { success: false, error };
-    }
-  }, [callbacks, restaurant?.id, selectedOverlay?.id, selectedOverlay?.name]);
-
   // Start a new ingredient label scan flow and normalize structured result for editor.
   const openIngredientLabelScan = useCallback(async ({
     ingredientName,
@@ -281,7 +240,6 @@ export function useIngredientServiceActions({
   return {
     analyzeIngredientName,
     analyzeIngredientScanRequirement,
-    submitIngredientAppeal,
     openIngredientLabelScan,
     resumeIngredientLabelScan,
     detectMenuCorners,

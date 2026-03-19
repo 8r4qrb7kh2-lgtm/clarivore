@@ -6,7 +6,6 @@ import {
   detectMenuCorners,
   detectMenuDishes,
 } from "../features/editor/editorServices";
-import { syncIngredientAppealWriteVersion } from "./appealWriteSync.js";
 import { notifyMenuUpdateIfNeeded } from "./menuUpdateNotifier";
 
 // Build the callback contract expected by `useRestaurantEditor`.
@@ -107,62 +106,6 @@ export function createRestaurantEditorCallbacks({
     },
     onAnalyzeMenuImage: async (payload) => {
       return await analyzeMenuImageWithAi(payload || {});
-    },
-
-    // Appeal submission uses the current signed-in session token.
-    onSubmitIngredientAppeal: async ({
-      restaurantId,
-      dishName,
-      ingredientName,
-      managerMessage,
-      photoDataUrl,
-    }) => {
-      if (!supabaseClient) throw new Error("Supabase is not configured.");
-
-      const { data: sessionData, error: sessionError } =
-        await supabaseClient.auth.getSession();
-      if (sessionError) throw sessionError;
-
-      const accessToken = sessionData?.session?.access_token || "";
-      if (!accessToken) {
-        throw new Error("You must be signed in to submit an appeal.");
-      }
-
-      const response = await fetch("/api/ingredient-scan-appeals", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify({
-          restaurantId: restaurantId || boot?.restaurant?.id,
-          dishName,
-          ingredientName,
-          managerMessage,
-          photoDataUrl,
-        }),
-      });
-
-      const bodyText = await response.text();
-      let payload = null;
-      try {
-        payload = bodyText ? JSON.parse(bodyText) : null;
-      } catch {
-        payload = null;
-      }
-
-      if (!response.ok || !payload?.success) {
-        throw new Error(payload?.error || "Unable to submit appeal right now.");
-      }
-
-      syncIngredientAppealWriteVersion({
-        persistence,
-        restaurantId,
-        fallbackRestaurantId: boot?.restaurant?.id,
-        payload,
-      });
-
-      return payload;
     },
 
     onDetectMenuDishes: async ({ imageData }) => {

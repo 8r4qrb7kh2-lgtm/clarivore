@@ -72,6 +72,12 @@ export function DishIngredientCard({
       ingredient?.ingredientsImage,
   );
   const hasAssignedBrand = Boolean(selectedBrandName);
+  const appealStatus = asText(
+    ingredient?.brandAppeal?.status || ingredient?.brandAppeal?.reviewStatus,
+  ).toLowerCase();
+  const appealReviewNotes = asText(
+    ingredient?.brandAppeal?.reviewNotes || ingredient?.brandAppeal?.review_notes,
+  );
   // Apply only appears after a true manual name change on rows without an assigned brand item.
   const showApplyButton =
     !hasAssignedBrand &&
@@ -362,7 +368,7 @@ export function DishIngredientCard({
                         disabled={!canSubmitAppeal}
                         onClick={() => onSubmitAppeal(index)}
                       >
-                        {appealBusy ? "Submitting..." : "Send appeal"}
+                        {appealBusy ? "Adding..." : "Add appeal"}
                       </button>
                       <button
                         type="button"
@@ -511,6 +517,16 @@ export function DishIngredientCard({
           {ingredient.brandRequired && !hasAssignedBrand && appealPending ? (
             <span className="restaurant-editor-dish-brand-warning">
               Appeal pending review. You can continue setting flags and mark this ingredient confirmed.
+            </span>
+          ) : null}
+          {appealStatus === "approved" ? (
+            <span className="restaurant-editor-dish-brand-warning">
+              Appeal approved{appealReviewNotes ? `: ${appealReviewNotes}` : "."}
+            </span>
+          ) : null}
+          {appealStatus === "rejected" ? (
+            <span className="restaurant-editor-dish-brand-warning">
+              Appeal rejected{appealReviewNotes ? `: ${appealReviewNotes}` : "."}
             </span>
           ) : null}
           {requiresApplyBeforeConfirm ? (
