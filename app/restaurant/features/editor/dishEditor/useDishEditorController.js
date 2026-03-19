@@ -27,6 +27,11 @@ import {
   applyIngredientBrandSelectionFields,
   clearIngredientBrandSelectionFields,
 } from "./brandSelectionFields";
+import {
+  applyIngredientBrandAppeal,
+  clearIngredientBrandAppeal,
+  isIngredientBrandAppealPending,
+} from "./brandAppealState";
 
 function coerceIngredientNameForApply(value) {
   if (typeof value?.name === "string") return value.name;
@@ -108,6 +113,24 @@ async function compressAppealPhotoDataUrl(dataUrl) {
   } catch {
     return safe;
   }
+}
+
+function buildAppealPendingMap(ingredients) {
+  const next = {};
+  (Array.isArray(ingredients) ? ingredients : []).forEach((ingredient, index) => {
+    if (isIngredientBrandAppealPending(ingredient)) {
+      next[index] = true;
+    }
+  });
+  return next;
+}
+
+function booleanFlagMapsEqual(left, right) {
+  const leftKeys = Object.keys(left || {});
+  const rightKeys = Object.keys(right || {});
+  if (leftKeys.length !== rightKeys.length) return false;
+
+  return leftKeys.every((key) => Boolean(left?.[key]) === Boolean(right?.[key]));
 }
 
 export function useDishEditorController({
@@ -298,6 +321,14 @@ export function useDishEditorController({
       return changed ? next : current;
     });
   }, [ingredients.length]);
+
+  useEffect(() => {
+    if (!editor.dishEditorOpen) return;
+    const nextPendingByRow = buildAppealPendingMap(ingredients);
+    setAppealPendingByRow((current) =>
+      booleanFlagMapsEqual(current, nextPendingByRow) ? current : nextPendingByRow,
+    );
+  }, [editor.dishEditorOpen, ingredients]);
 
   useEffect(() => {
     return () => {
@@ -738,7 +769,7 @@ export function useDishEditorController({
               ? applyIngredientBrandSelectionFields(item, existingBrands[0])
               : clearIngredientBrandSelectionFields(item);
 
-          return {
+          const nextItem = {
             ...nextBase,
             allergens: nextAllergens,
             diets: nextDiets,
@@ -761,6 +792,12 @@ export function useDishEditorController({
             confirmed: false,
             brands: preserveExistingBrand && hasBrand ? existingBrands : [],
           };
+
+          const nextHasAssignedBrand = (Array.isArray(nextItem.brands) ? nextItem.brands : [])
+            .some((brand) => asText(brand?.name));
+          return !needsScan || nextHasAssignedBrand
+            ? clearIngredientBrandAppeal(nextItem)
+            : nextItem;
         }),
       );
     },
@@ -1007,8 +1044,12 @@ export function useDishEditorController({
           const crossDiets = normalizeDietList(
             normalizedBrand.crossContaminationDiets,
           );
+          const nextIngredient = applyIngredientBrandSelectionFields(
+            ingredient,
+            normalizedBrand,
+          );
           return {
-            ...applyIngredientBrandSelectionFields(ingredient, normalizedBrand),
+            ...clearIngredientBrandAppeal(nextIngredient),
             allergens: allergensList,
             diets: dietsList,
             crossContaminationAllergens: crossAllergens,
@@ -1017,7 +1058,6 @@ export function useDishEditorController({
             aiDetectedDiets: dietsList,
             aiDetectedCrossContaminationAllergens: crossAllergens,
             aiDetectedCrossContaminationDiets: crossDiets,
-            brands: [normalizedBrand],
             confirmed: true,
           };
         }),
@@ -1152,8 +1192,9 @@ export function useDishEditorController({
                 return item;
               }
               applied = true;
+              const nextItem = applyIngredientBrandSelectionFields(item, brandItem);
               return {
-                ...item,
+                ...clearIngredientBrandAppeal(nextItem),
                 allergens: brandItem.allergens,
                 diets: brandItem.diets,
                 crossContaminationAllergens: brandItem.crossContaminationAllergens,
@@ -1163,7 +1204,6 @@ export function useDishEditorController({
                 aiDetectedCrossContaminationAllergens:
                   brandItem.crossContaminationAllergens,
                 aiDetectedCrossContaminationDiets: brandItem.crossContaminationDiets,
-                ...applyIngredientBrandSelectionFields(item, brandItem),
                 confirmed: true,
               };
             }),
@@ -1259,12 +1299,23 @@ export function useDishEditorController({
         [ingredientIndex]: { tone: "", message: "" },
       }));
 
-      const result = await editor.submitIngredientAppeal({
-        dishName: asText(overlay?.id || overlay?.name),
-        ingredientName,
-        managerMessage,
-        photoDataUrl,
-      });
+      let result = null;
+      try {
+        result = await editor.submitIngredientAppeal({
+          dishName: asText(overlay?.id || overlay?.name),
+          ingredientName,
+          managerMessage,
+          photoDataUrl,
+        });
+      } catch (error) {
+        result = {
+          success: false,
+          error: {
+            message:
+              asText(error?.message) || "Failed to submit appeal. Please try again.",
+          },
+        };
+      }
 
       setAppealBusyByRow((current) => ({ ...current, [ingredientIndex]: false }));
 
@@ -1279,6 +1330,17 @@ export function useDishEditorController({
         }));
         return;
       }
+
+      applyIngredientChanges((current) =>
+        current.map((item, itemIndex) =>
+          itemIndex === ingredientIndex
+            ? applyIngredientBrandAppeal(item, {
+                ...(result?.appeal || result),
+                managerMessage,
+              })
+            : item,
+        ),
+      );
 
       setAppealMessageByRow((current) => ({ ...current, [ingredientIndex]: "" }));
       setAppealPhotoByRow((current) => ({ ...current, [ingredientIndex]: null }));
@@ -1296,6 +1358,7 @@ export function useDishEditorController({
     [
       appealMessageByRow,
       appealPhotoByRow,
+      applyIngredientChanges,
       editor,
       ingredients,
       overlay?.id,

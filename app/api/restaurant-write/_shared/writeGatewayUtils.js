@@ -603,9 +603,19 @@ function formatIngredientSelectionReviewSnapshot(label, lines) {
   ].join("\n");
 }
 
+function normalizeReviewText(value) {
+  return asText(value).replace(/\s+/g, " ");
+}
+
+function isReviewFlagEnabled(value) {
+  if (value === true) return true;
+  const normalized = asText(value).toLowerCase();
+  return normalized === "1" || normalized === "true" || normalized === "yes";
+}
+
 function formatIngredientBrandRequirementReviewSnapshot(row) {
   const required = Boolean(row?.brandRequired);
-  const reason = asText(row?.brandRequirementReason);
+  const reason = normalizeReviewText(row?.brandRequirementReason);
   const lines = [`Brand assignment required: ${required ? "yes" : "no"}`];
   if (required) {
     lines.push(`Reason: ${reason || "none"}`);
@@ -615,6 +625,52 @@ function formatIngredientBrandRequirementReviewSnapshot(row) {
 
 function formatIngredientConfirmationReviewSnapshot(row) {
   return `Confirmed: ${row?.confirmed === true ? "yes" : "no"}`;
+}
+
+function normalizeIngredientBrandAppealForReview(appeal) {
+  const safe = appeal && typeof appeal === "object" ? appeal : {};
+  const id = asText(safe.id);
+  const status = asText(safe.status || safe.reviewStatus).toLowerCase();
+  const managerMessage = normalizeReviewText(
+    safe.managerMessage || safe.message || safe.manager_message,
+  );
+  const rawPhotoUrl = asText(safe.photoUrl || safe.photo_url);
+  const photoAttached =
+    isReviewFlagEnabled(safe.photoAttached) ||
+    isReviewFlagEnabled(safe.hasPhoto) ||
+    Boolean(rawPhotoUrl);
+  const photoUrl = rawPhotoUrl.startsWith("data:") ? "" : rawPhotoUrl;
+  const submittedAt = asText(safe.submittedAt || safe.submitted_at);
+
+  if (!id && !status && !managerMessage && !photoAttached && !submittedAt) {
+    return null;
+  }
+
+  return {
+    id,
+    status: status || "pending",
+    managerMessage,
+    photoUrl,
+    photoAttached,
+    submittedAt,
+  };
+}
+
+function formatIngredientBrandAppealReviewSnapshot(row) {
+  const appeal = normalizeIngredientBrandAppealForReview(row?.brandAppeal);
+  if (!appeal) {
+    return "Brand assignment appeal: none";
+  }
+
+  const lines = [`Brand assignment appeal: ${appeal.status}`];
+  if (appeal.managerMessage) {
+    lines.push(`Message: ${appeal.managerMessage}`);
+  }
+  lines.push(`Photo attached: ${appeal.photoAttached ? "yes" : "no"}`);
+  if (appeal.submittedAt) {
+    lines.push(`Submitted at: ${appeal.submittedAt}`);
+  }
+  return lines.join("\n");
 }
 
 function buildIngredientRowComparableState({ row, fallbackName }) {
@@ -640,8 +696,10 @@ function buildIngredientRowComparableState({ row, fallbackName }) {
     dietSnapshot: formatIngredientSelectionReviewSnapshot("Diets", dietLines),
     removable: Boolean(row?.removable),
     brandRequirementRequired: Boolean(row?.brandRequired),
-    brandRequirementReason: asText(row?.brandRequirementReason),
+    brandRequirementReason: normalizeReviewText(row?.brandRequirementReason),
     brandRequirementSnapshot: formatIngredientBrandRequirementReviewSnapshot(row),
+    brandAppeal: normalizeIngredientBrandAppealForReview(row?.brandAppeal),
+    brandAppealSnapshot: formatIngredientBrandAppealReviewSnapshot(row),
     confirmed: row?.confirmed === true,
     confirmationSnapshot: formatIngredientConfirmationReviewSnapshot(row),
     appliedBrandItem: readIngredientRowAppliedBrandItem(row),
@@ -661,6 +719,7 @@ function formatIngredientRowReviewSnapshot({ dishName, row, fallbackName }) {
     rowState.dietSnapshot,
     `Removability: ${rowState.removable ? "removable" : "non-removable"}`,
     rowState.brandRequirementSnapshot,
+    rowState.brandAppealSnapshot,
     rowState.confirmationSnapshot,
     `Applied brand item: ${appliedBrandItem}`,
   ];
@@ -807,6 +866,24 @@ function buildIngredientRowFieldChangeRows({
       summary,
       beforeValue: beforeState.brandRequirementSnapshot,
       afterValue: afterState.brandRequirementSnapshot,
+    });
+  }
+
+  if (!valuesEqual(beforeState.brandAppeal, afterState.brandAppeal)) {
+    let summary = `${dishName}: Updated brand assignment appeal for ${ingredientName}`;
+    if (!beforeState.brandAppeal && afterState.brandAppeal) {
+      summary = `${dishName}: Submitted brand assignment appeal for ${ingredientName}`;
+    } else if (beforeState.brandAppeal && !afterState.brandAppeal) {
+      summary = `${dishName}: Removed brand assignment appeal for ${ingredientName}`;
+    }
+
+    pushFieldChange({
+      keySuffix: "brand-appeal",
+      changeType: "ingredient_brand_appeal_changed",
+      fieldKey: "brandAppeal",
+      summary,
+      beforeValue: beforeState.brandAppealSnapshot,
+      afterValue: afterState.brandAppealSnapshot,
     });
   }
 
