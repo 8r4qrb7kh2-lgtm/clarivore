@@ -37,3 +37,17 @@ test("parseIngredientBrandAppealSnapshot returns null for empty snapshots", () =
   assert.equal(parseIngredientBrandAppealSnapshot("Brand assignment appeal: none"), null);
   assert.equal(parseIngredientBrandAppealSnapshot(""), null);
 });
+
+test("normalizeIngredientBrandAppeal lets review status override a stale stored status", () => {
+  const appeal = normalizeIngredientBrandAppeal({
+    id: "appeal-1",
+    status: "pending",
+    reviewStatus: "approved",
+    reviewedAt: "2026-03-20T08:30:00.000Z",
+    reviewedBy: "Admin Reviewer",
+  });
+
+  assert.equal(appeal.status, "approved");
+  assert.equal(appeal.reviewedAt, "2026-03-20T08:30:00.000Z");
+  assert.equal(appeal.reviewedBy, "Admin Reviewer");
+});

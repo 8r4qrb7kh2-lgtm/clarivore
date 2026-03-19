@@ -25,7 +25,7 @@ function parseSnapshotBoolean(value) {
 
 export function normalizeIngredientBrandAppeal(appeal) {
   const safe = appeal && typeof appeal === "object" ? appeal : {};
-  const status = asText(safe.status || safe.reviewStatus || safe.review_status).toLowerCase();
+  const status = asText(safe.reviewStatus || safe.review_status || safe.status).toLowerCase();
   const managerMessage = normalizeInlineText(
     safe.managerMessage || safe.message || safe.manager_message,
   );
