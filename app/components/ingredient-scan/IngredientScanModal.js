@@ -10,7 +10,6 @@ import {
   buildWordLayout,
   prepareAnalysisImage,
   rebuildLineWordBoxes,
-  separateIngredientList,
 } from "./analysisClient";
 import {
   pruneCrossSelections,
@@ -1458,7 +1457,17 @@ export default function IngredientScanModal({
       const finalLines = lines
         .map((line) => asText(line?.text))
         .filter(Boolean);
-      const resolvedParsedIngredientsList = await separateIngredientList(finalLines);
+      const resolvedParsedIngredientsList = (Array.isArray(parsedIngredientsList)
+        ? parsedIngredientsList
+        : []
+      )
+        .map((entry) => asText(entry))
+        .filter(Boolean);
+      if (finalLines.length > 0 && !resolvedParsedIngredientsList.length) {
+        throw new Error(
+          "Parsed ingredient list is missing after confirmation. Please retry the scan.",
+        );
+      }
 
       const ingredientText = finalLines.join(" ");
       const {
