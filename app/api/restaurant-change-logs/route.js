@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { sanitizeChangeLogEntry } from "../../lib/changeLogs.js";
 import {
   asText,
   db,
@@ -16,6 +17,11 @@ function toSafeInteger(value, fallback) {
   return Math.max(parsed, 0);
 }
 
+function isTruthyFlag(value) {
+  const normalized = asText(value).toLowerCase();
+  return normalized === "1" || normalized === "true" || normalized === "yes" || normalized === "on";
+}
+
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
   const restaurantId = asText(searchParams.get("restaurantId"));
@@ -24,6 +30,7 @@ export async function GET(request) {
     MAX_LIMIT,
   );
   const offset = toSafeInteger(searchParams.get("offset"), 0);
+  const includeSnapshots = isTruthyFlag(searchParams.get("includeSnapshots"));
 
   if (!restaurantId) {
     return NextResponse.json(
@@ -49,7 +56,7 @@ export async function GET(request) {
 
     return NextResponse.json({
       success: true,
-      logs,
+      logs: logs.map((log) => sanitizeChangeLogEntry(log, { includeSnapshots })),
     });
   } catch (error) {
     const message = asText(error?.message) || "Failed to load change log.";

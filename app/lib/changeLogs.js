@@ -31,6 +31,45 @@ function compareLogIdsDescending(leftId, rightId) {
   });
 }
 
+function stripSnapshotFromChanges(changes) {
+  if (!changes || typeof changes !== "object" || Array.isArray(changes)) {
+    return changes;
+  }
+  if (!Object.prototype.hasOwnProperty.call(changes, "snapshot")) {
+    return changes;
+  }
+
+  const nextChanges = { ...changes };
+  delete nextChanges.snapshot;
+  return nextChanges;
+}
+
+export function sanitizeChangeLogEntry(log, options = {}) {
+  const safeLog = log && typeof log === "object" ? { ...log } : log;
+  if (!safeLog || typeof safeLog !== "object") {
+    return safeLog;
+  }
+
+  if (options.includeSnapshots === true) {
+    return safeLog;
+  }
+
+  if (safeLog.changes && typeof safeLog.changes === "object" && !Array.isArray(safeLog.changes)) {
+    safeLog.changes = stripSnapshotFromChanges(safeLog.changes);
+    return safeLog;
+  }
+
+  if (typeof safeLog.changes === "string") {
+    try {
+      safeLog.changes = stripSnapshotFromChanges(JSON.parse(safeLog.changes));
+    } catch {
+      // Leave malformed historical payloads unchanged instead of hiding the log entry.
+    }
+  }
+
+  return safeLog;
+}
+
 export function sortChangeLogsNewestFirst(logs = []) {
   const safeLogs = Array.isArray(logs) ? logs : [];
   return safeLogs
@@ -68,14 +107,17 @@ async function getAccessToken(supabaseClient) {
   return accessToken;
 }
 
-async function readChangeLogResponse(response) {
+async function readChangeLogResponse(response, options = {}) {
   const payload = await response.json().catch(() => ({}));
   if (!response.ok || payload?.success === false) {
     throw new Error(
       String(payload?.error || "").trim() || "Failed to load change log.",
     );
   }
-  return sortChangeLogsNewestFirst(payload?.logs);
+  const logs = Array.isArray(payload?.logs) ? payload.logs : [];
+  return sortChangeLogsNewestFirst(
+    logs.map((log) => sanitizeChangeLogEntry(log, options)),
+  );
 }
 
 // Shared change-log read helper so dashboard/editor stay in sync.
@@ -91,11 +133,13 @@ export async function fetchRestaurantChangeLogs(
 
   const limit = toSafeInteger(options.limit, 10) || 10;
   const offset = toSafeInteger(options.offset, 0);
+  const includeSnapshots = options.includeSnapshots === true;
   const accessToken = await getAccessToken(supabaseClient);
   const params = new URLSearchParams();
   params.set("restaurantId", safeRestaurantId);
   params.set("limit", String(limit));
   params.set("offset", String(offset));
+  params.set("includeSnapshots", includeSnapshots ? "1" : "0");
 
   const response = await fetch(`/api/restaurant-change-logs?${params.toString()}`, {
     method: "GET",
@@ -105,5 +149,5 @@ export async function fetchRestaurantChangeLogs(
     cache: "no-store",
   });
 
-  return await readChangeLogResponse(response);
+  return await readChangeLogResponse(response, { includeSnapshots });
 }

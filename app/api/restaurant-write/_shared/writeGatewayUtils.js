@@ -11,6 +11,10 @@ import {
   toDishKey,
   toJsonSafe,
 } from "../../editor-pending-save/_shared/pendingSaveUtils.js";
+import {
+  formatIngredientBrandAppealSnapshot,
+  normalizeIngredientBrandAppeal,
+} from "../../../lib/ingredientBrandAppeal.js";
 import { fetchRestaurantMenuStateFromTables } from "../../../lib/server/restaurantMenuStateServer.js";
 import { createSupabaseAuthClient } from "../../../lib/server/supabaseServerClient.js";
 
@@ -607,12 +611,6 @@ function normalizeReviewText(value) {
   return asText(value).replace(/\s+/g, " ");
 }
 
-function isReviewFlagEnabled(value) {
-  if (value === true) return true;
-  const normalized = asText(value).toLowerCase();
-  return normalized === "1" || normalized === "true" || normalized === "yes";
-}
-
 function formatIngredientBrandRequirementReviewSnapshot(row) {
   const required = Boolean(row?.brandRequired);
   const reason = normalizeReviewText(row?.brandRequirementReason);
@@ -627,50 +625,10 @@ function formatIngredientConfirmationReviewSnapshot(row) {
   return `Confirmed: ${row?.confirmed === true ? "yes" : "no"}`;
 }
 
-function normalizeIngredientBrandAppealForReview(appeal) {
-  const safe = appeal && typeof appeal === "object" ? appeal : {};
-  const id = asText(safe.id);
-  const status = asText(safe.status || safe.reviewStatus).toLowerCase();
-  const managerMessage = normalizeReviewText(
-    safe.managerMessage || safe.message || safe.manager_message,
-  );
-  const rawPhotoUrl = asText(safe.photoUrl || safe.photo_url);
-  const photoAttached =
-    isReviewFlagEnabled(safe.photoAttached) ||
-    isReviewFlagEnabled(safe.hasPhoto) ||
-    Boolean(rawPhotoUrl);
-  const photoUrl = rawPhotoUrl.startsWith("data:") ? "" : rawPhotoUrl;
-  const submittedAt = asText(safe.submittedAt || safe.submitted_at);
-
-  if (!id && !status && !managerMessage && !photoAttached && !submittedAt) {
-    return null;
-  }
-
-  return {
-    id,
-    status: status || "pending",
-    managerMessage,
-    photoUrl,
-    photoAttached,
-    submittedAt,
-  };
-}
+const normalizeIngredientBrandAppealForReview = normalizeIngredientBrandAppeal;
 
 function formatIngredientBrandAppealReviewSnapshot(row) {
-  const appeal = normalizeIngredientBrandAppealForReview(row?.brandAppeal);
-  if (!appeal) {
-    return "Brand assignment appeal: none";
-  }
-
-  const lines = [`Brand assignment appeal: ${appeal.status}`];
-  if (appeal.managerMessage) {
-    lines.push(`Message: ${appeal.managerMessage}`);
-  }
-  lines.push(`Photo attached: ${appeal.photoAttached ? "yes" : "no"}`);
-  if (appeal.submittedAt) {
-    lines.push(`Submitted at: ${appeal.submittedAt}`);
-  }
-  return lines.join("\n");
+  return formatIngredientBrandAppealSnapshot(row?.brandAppeal);
 }
 
 function buildIngredientRowComparableState({ row, fallbackName }) {

@@ -1127,16 +1127,31 @@ export default function AdminDashboardDom({
       setAppealBusyId(appeal.id);
 
       try {
-        const { error } = await supabase
-          .from("ingredient_scan_appeals")
-          .update({
-            review_status: status,
-            reviewed_at: new Date().toISOString(),
-            review_notes: notes || null,
-          })
-          .eq("id", appeal.id);
+        const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError) throw sessionError;
 
-        if (error) throw error;
+        const accessToken = String(sessionData?.session?.access_token || "").trim();
+        if (!accessToken) {
+          throw new Error("You must be signed in to review appeals.");
+        }
+
+        const response = await fetch("/api/ingredient-scan-appeals", {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify({
+            appealId: appeal.id,
+            status,
+            reviewNotes: notes,
+          }),
+        });
+
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok || payload?.success === false) {
+          throw new Error(payload?.error || "Unable to review this appeal right now.");
+        }
 
         if (appeal.restaurant_id) {
           try {
