@@ -5,7 +5,7 @@ import {
   normalizeIngredientRow,
   normalizeStringList,
   normalizeToken,
-  prisma,
+  db,
   readOverlayDishName,
   readOverlayIngredients,
   toDishKey,
@@ -14,7 +14,7 @@ import {
 import { fetchRestaurantMenuStateFromTables } from "../../../lib/server/restaurantMenuStateServer.js";
 import { createSupabaseAuthClient } from "../../../lib/server/supabaseServerClient.js";
 
-export { asText, prisma };
+export { asText, db };
 
 export const RESTAURANT_WRITE_BATCH_TABLE = "public.restaurant_write_batches";
 export const RESTAURANT_WRITE_OP_TABLE = "public.restaurant_write_ops";
@@ -1309,7 +1309,7 @@ function buildTokenMap(items, labelSelector) {
   return map;
 }
 
-export async function ensureRestaurantWriteInfrastructure(client = prisma) {
+export async function ensureRestaurantWriteInfrastructure(client = db) {
   // Heavy DDL/bootstrap should never run on hot runtime paths in production traffic.
   // Keep this opt-in for local recovery tasks; standard deploys should apply migrations.
   if (!shouldBootstrapWriteInfrastructureAtRuntime()) return;
@@ -1706,7 +1706,7 @@ export async function isAppAdminUser(client, userId) {
 
 export async function requireAdminSession(request) {
   const session = await requireAuthenticatedSession(request);
-  const isAdmin = await isAppAdminUser(prisma, session.userId);
+  const isAdmin = await isAppAdminUser(db, session.userId);
   if (!isAdmin) {
     throw new Error("Admin access required");
   }
@@ -1723,7 +1723,7 @@ export async function requireRestaurantAccessSession(request, restaurantId) {
   }
 
   const session = await requireAuthenticatedSession(request);
-  const isAdmin = await isAppAdminUser(prisma, session.userId);
+  const isAdmin = await isAppAdminUser(db, session.userId);
   if (isAdmin) {
     return {
       ...session,
@@ -1731,7 +1731,7 @@ export async function requireRestaurantAccessSession(request, restaurantId) {
     };
   }
 
-  const manager = await prisma.restaurant_managers.findFirst({
+  const manager = await db.restaurant_managers.findFirst({
     where: {
       user_id: session.userId,
       restaurant_id: safeRestaurantId,
@@ -2136,7 +2136,7 @@ export function mapOperationsForResponse(operations) {
 }
 
 export async function loadPendingBatchForScope({
-  client = prisma,
+  client = db,
   scopeType,
   scopeKey,
   userId,

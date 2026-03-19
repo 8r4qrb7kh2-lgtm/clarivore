@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import {
   asText,
-  prisma,
+  db,
   requireRestaurantAccessSession,
 } from "../restaurant-write/_shared/writeGatewayUtils";
 
@@ -35,7 +35,7 @@ export async function GET(request) {
   try {
     await requireRestaurantAccessSession(request, restaurantId);
 
-    const logs = await prisma.change_logs.findMany({
+    const logs = await db.change_logs.findMany({
       where: {
         restaurant_id: restaurantId,
       },

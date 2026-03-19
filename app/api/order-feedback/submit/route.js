@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import {
   asText,
   normalizeStringList,
-  prisma,
+  db,
 } from "../../editor-pending-save/_shared/pendingSaveUtils";
 
 export const runtime = "nodejs";
@@ -64,7 +64,7 @@ export async function POST(request) {
   }
 
   try {
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await db.$transaction(async (tx) => {
       const queueEntry = await tx.feedback_email_queue.findFirst({
         where: { feedback_token: token },
         select: {

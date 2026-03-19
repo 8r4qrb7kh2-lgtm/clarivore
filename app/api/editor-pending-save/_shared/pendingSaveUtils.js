@@ -5,7 +5,6 @@ import {
 } from "../../../lib/server/postgres.js";
 
 export { db, getMissingDatabaseUrlMessage, isDatabaseConfigured };
-export const prisma = db;
 
 export function asText(value) {
   return String(value || "").trim();

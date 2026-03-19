@@ -10,7 +10,7 @@ import {
   loadPendingBatchForScope,
   mapBatchForResponse,
   mapOperationsForResponse,
-  prisma,
+  db,
   RESTAURANT_WRITE_BATCH_TABLE,
   RESTAURANT_WRITE_OP_TABLE,
   RESTAURANT_WRITE_OPERATION_TYPES,
@@ -63,9 +63,9 @@ export async function POST(request) {
       operationType,
       restaurantId,
     });
-    await ensureRestaurantWriteInfrastructure(prisma);
+    await ensureRestaurantWriteInfrastructure(db);
 
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await db.$transaction(async (tx) => {
       const existing = await loadPendingBatchForScope({
         client: tx,
         scopeType,

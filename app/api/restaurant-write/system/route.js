@@ -5,7 +5,7 @@ import {
   ensureRestaurantWriteInfrastructure,
   getWriteMaintenanceMessage,
   isWriteMaintenanceModeEnabled,
-  prisma,
+  db,
   RESTAURANT_WRITE_OPERATION_TYPES,
 } from "../_shared/writeGatewayUtils";
 
@@ -85,9 +85,9 @@ export async function POST(request) {
     requireSystemKey(request);
 
     const operations = normalizeSystemOperations(body?.operations);
-    await ensureRestaurantWriteInfrastructure(prisma);
+    await ensureRestaurantWriteInfrastructure(db);
 
-    const result = await prisma.$transaction(
+    const result = await db.$transaction(
       async (tx) => {
         return await applyWriteOperations({
           tx,

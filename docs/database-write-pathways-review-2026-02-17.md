@@ -239,7 +239,7 @@ flowchart LR
     PUSH["Push Registration"] --> PUSH_DB["manager_* + diner_* tokens/subscriptions"]
   end
 
-  BLOCK_SQL["Direct SQL/Prisma restaurants write"] -. "blocked by trigger" .-> BLOCK_ERR["ERROR 42501"]
+  BLOCK_SQL["Direct SQL/ORM restaurants write"] -. "blocked by trigger" .-> BLOCK_ERR["ERROR 42501"]
   BLOCK_PROXY["POST /api/ai-proxy"] -. "removed" .-> BLOCK_404["404 Not Found"]
   BLOCK_EDGE["Deprecated runtime Edge functions"] -. "decommissioned" .-> BLOCK_OFF["No active deployed function"]
 ```

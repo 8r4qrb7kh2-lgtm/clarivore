@@ -1,7 +1,7 @@
 import {
   asText,
   isAppAdminUser,
-  prisma,
+  db,
   requireAuthenticatedSession,
 } from "../../restaurant-write/_shared/writeGatewayUtils";
 import { isAdminDashboardDevBypassEnabled } from "../../../admin-dashboard/services/adminDashboardAccess";
@@ -42,7 +42,7 @@ async function requireAdminRequest(request) {
   }
 
   const session = await requireAuthenticatedSession(request);
-  const isAdmin = await isAppAdminUser(prisma, session.userId);
+  const isAdmin = await isAppAdminUser(db, session.userId);
   if (!isAdmin) {
     throw new Error("Unauthorized");
   }

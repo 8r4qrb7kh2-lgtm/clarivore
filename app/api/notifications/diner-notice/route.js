@@ -1,7 +1,7 @@
 import {
   asText,
   isAppAdminUser,
-  prisma,
+  db,
   requireAuthenticatedSession,
 } from "../../restaurant-write/_shared/writeGatewayUtils";
 
@@ -51,10 +51,10 @@ function buildDishTitle(items) {
 }
 
 async function ensureCallerAuthorized({ userId, restaurantId }) {
-  const isAdmin = await isAppAdminUser(prisma, userId);
+  const isAdmin = await isAppAdminUser(db, userId);
   if (isAdmin) return true;
 
-  const manager = await prisma.restaurant_managers.findFirst({
+  const manager = await db.restaurant_managers.findFirst({
     where: {
       user_id: userId,
       restaurant_id: restaurantId,
@@ -80,7 +80,7 @@ export async function POST(request) {
       return json({ error: "Missing orderId" }, 400);
     }
 
-    const orderRow = await prisma.tablet_orders.findUnique({
+    const orderRow = await db.tablet_orders.findUnique({
       where: { id: orderId },
       select: { id: true, status: true, payload: true, restaurant_id: true },
     });
@@ -107,7 +107,7 @@ export async function POST(request) {
     }
 
     const restaurant = restaurantId
-      ? await prisma.restaurants.findUnique({
+      ? await db.restaurants.findUnique({
           where: { id: restaurantId },
           select: { name: true, slug: true },
         })

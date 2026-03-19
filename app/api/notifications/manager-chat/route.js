@@ -1,7 +1,7 @@
 import {
   asText,
   isAppAdminUser,
-  prisma,
+  db,
   requireAuthenticatedSession,
 } from "../../restaurant-write/_shared/writeGatewayUtils";
 
@@ -88,10 +88,10 @@ async function sendChatEmails({ emails, senderName, message, restaurantName, das
 }
 
 async function ensureCallerAuthorized({ userId, restaurantId }) {
-  const isAdmin = await isAppAdminUser(prisma, userId);
+  const isAdmin = await isAppAdminUser(db, userId);
   if (isAdmin) return true;
 
-  const manager = await prisma.restaurant_managers.findFirst({
+  const manager = await db.restaurant_managers.findFirst({
     where: {
       user_id: userId,
       restaurant_id: restaurantId,
@@ -117,7 +117,7 @@ export async function POST(request) {
       return json({ error: "Missing messageId" }, 400);
     }
 
-    const message = await prisma.restaurant_direct_messages.findUnique({
+    const message = await db.restaurant_direct_messages.findUnique({
       where: { id: messageId },
       select: {
         id: true,
@@ -145,12 +145,12 @@ export async function POST(request) {
       return json({ skipped: true, reason: "sender_role" }, 200);
     }
 
-    const restaurant = await prisma.restaurants.findUnique({
+    const restaurant = await db.restaurants.findUnique({
       where: { id: asText(message.restaurant_id) },
       select: { id: true, name: true },
     });
 
-    const managerRows = await prisma.restaurant_managers.findMany({
+    const managerRows = await db.restaurant_managers.findMany({
       where: { restaurant_id: asText(message.restaurant_id) },
       select: { user_id: true },
     });
@@ -163,7 +163,7 @@ export async function POST(request) {
       return json({ skipped: true, reason: "no_managers" }, 200);
     }
 
-    const users = await prisma.users.findMany({
+    const users = await db.users.findMany({
       where: {
         id: {
           in: managerIds,

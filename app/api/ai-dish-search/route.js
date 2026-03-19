@@ -1,5 +1,5 @@
 import { corsJson, corsOptions } from "../_shared/cors";
-import { asText, prisma } from "../editor-pending-save/_shared/pendingSaveUtils";
+import { asText, db } from "../editor-pending-save/_shared/pendingSaveUtils";
 import { fetchRestaurantMenuStateMapFromTables } from "../../lib/server/restaurantMenuStateServer.js";
 import { buildAiDishSearchPrompt } from "../../lib/claudePrompts";
 import {
@@ -290,7 +290,7 @@ export async function POST(request) {
   }
 
   try {
-    const restaurants = await prisma.restaurants.findMany({
+    const restaurants = await db.restaurants.findMany({
       select: {
         id: true,
         name: true,
@@ -301,7 +301,7 @@ export async function POST(request) {
     });
 
     const restaurantMenuState = await fetchRestaurantMenuStateMapFromTables(
-      prisma,
+      db,
       (Array.isArray(restaurants) ? restaurants : []).map((restaurant) => restaurant.id),
     );
 

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { asText, prisma } from "../../editor-pending-save/_shared/pendingSaveUtils";
+import { asText, db } from "../../editor-pending-save/_shared/pendingSaveUtils";
 
 export const runtime = "nodejs";
 
@@ -15,7 +15,7 @@ export async function GET(request) {
   }
 
   try {
-    const queueEntry = await prisma.feedback_email_queue.findFirst({
+    const queueEntry = await db.feedback_email_queue.findFirst({
       where: {
         feedback_token: token,
       },
@@ -35,7 +35,7 @@ export async function GET(request) {
       return invalidResponse(200);
     }
 
-    const restaurant = await prisma.restaurants.findUnique({
+    const restaurant = await db.restaurants.findUnique({
       where: { id: queueEntry.restaurant_id },
       select: { id: true, name: true, slug: true },
     });

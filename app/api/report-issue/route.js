@@ -1,5 +1,5 @@
 import { corsJson, corsOptions } from "../_shared/cors";
-import { prisma, asText, toJsonSafe } from "../editor-pending-save/_shared/pendingSaveUtils";
+import { db, asText, toJsonSafe } from "../editor-pending-save/_shared/pendingSaveUtils";
 import { sendNotificationEmail } from "../notifications/_shared/emailSender";
 
 export const runtime = "nodejs";
@@ -56,7 +56,7 @@ export async function POST(request) {
       {},
     );
 
-    const created = await prisma.product_issue_reports.create({
+    const created = await db.product_issue_reports.create({
       data: {
         message: payload.message,
         report_type: payload.context,

@@ -1,5 +1,5 @@
 import { corsJson, corsOptions } from "../_shared/cors";
-import { asText, prisma } from "../editor-pending-save/_shared/pendingSaveUtils";
+import { asText, db } from "../editor-pending-save/_shared/pendingSaveUtils";
 import { buildHelpAssistantSystemPrompt } from "../../lib/claudePrompts";
 import {
   callAnthropicApi,
@@ -64,7 +64,7 @@ async function fetchKnowledgeBase({ query, mode, pageContext }) {
 
   let kbRows = [];
   try {
-    const rows = await prisma.$queryRawUnsafe(
+    const rows = await db.$queryRawUnsafe(
       `
       SELECT
         title,
@@ -89,7 +89,7 @@ async function fetchKnowledgeBase({ query, mode, pageContext }) {
     );
     kbRows = Array.isArray(rows) ? rows : [];
   } catch {
-    kbRows = await prisma.help_kb.findMany({
+    kbRows = await db.help_kb.findMany({
       where: {
         mode: {
           in: requestedModes,
@@ -130,12 +130,12 @@ async function fetchKnowledgeBase({ query, mode, pageContext }) {
 
 async function fetchCanonicalFacts() {
   const [allergens, diets] = await Promise.all([
-    prisma.allergens.findMany({
+    db.allergens.findMany({
       where: { is_active: true },
       select: { label: true, key: true, sort_order: true },
       orderBy: { sort_order: "asc" },
     }),
-    prisma.diets.findMany({
+    db.diets.findMany({
       where: { is_active: true, is_supported: true },
       select: { label: true, key: true, sort_order: true },
       orderBy: { sort_order: "asc" },

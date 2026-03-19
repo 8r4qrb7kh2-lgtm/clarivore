@@ -6,7 +6,7 @@ import {
   loadPendingBatchForScope,
   mapBatchForResponse,
   mapOperationsForResponse,
-  prisma,
+  db,
   requireAdminSession,
   requireRestaurantAccessSession,
   WRITE_SCOPE_TYPES,
@@ -43,10 +43,10 @@ export async function GET(request) {
         ? await requireRestaurantAccessSession(request, restaurantId)
         : await requireAdminSession(request);
 
-    await ensureRestaurantWriteInfrastructure(prisma);
+    await ensureRestaurantWriteInfrastructure(db);
 
     const { batch, operations } = await loadPendingBatchForScope({
-      client: prisma,
+      client: db,
       scopeType,
       scopeKey,
       userId: session.userId,

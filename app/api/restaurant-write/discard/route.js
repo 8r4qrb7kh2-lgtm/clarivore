@@ -5,7 +5,7 @@ import {
   getWriteMaintenanceMessage,
   isAppAdminUser,
   isWriteMaintenanceModeEnabled,
-  prisma,
+  db,
   requireAuthenticatedSession,
   RESTAURANT_WRITE_BATCH_TABLE,
   WRITE_SCOPE_TYPES,
@@ -35,9 +35,9 @@ export async function POST(request) {
 
   try {
     const session = await requireAuthenticatedSession(request);
-    await ensureRestaurantWriteInfrastructure(prisma);
+    await ensureRestaurantWriteInfrastructure(db);
 
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await db.$transaction(async (tx) => {
       const batchRows = await tx.$queryRawUnsafe(
         `
         SELECT *

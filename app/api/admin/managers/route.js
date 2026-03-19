@@ -1,7 +1,7 @@
 import {
   asText,
   isAppAdminUser,
-  prisma,
+  db,
   requireAuthenticatedSession,
 } from "../../restaurant-write/_shared/writeGatewayUtils";
 import { createSupabaseServiceRoleClient } from "../../../lib/server/supabaseServerClient";
@@ -37,11 +37,11 @@ function createSupabaseAdminClient() {
 
 async function listManagers() {
   const [restaurants, links] = await Promise.all([
-    prisma.restaurants.findMany({
+    db.restaurants.findMany({
       select: { id: true, name: true, slug: true },
       orderBy: { name: "asc" },
     }),
-    prisma.restaurant_managers.findMany({
+    db.restaurant_managers.findMany({
       select: { restaurant_id: true, user_id: true, created_at: true },
     }),
   ]);
@@ -100,7 +100,7 @@ async function listManagers() {
 }
 
 async function revokeManager({ restaurantId, userId }) {
-  const result = await prisma.restaurant_managers.deleteMany({
+  const result = await db.restaurant_managers.deleteMany({
     where: {
       restaurant_id: restaurantId,
       user_id: userId,
@@ -122,7 +122,7 @@ export async function POST(request) {
 
   try {
     const session = await requireAuthenticatedSession(request);
-    const isAdmin = await isAppAdminUser(prisma, session.userId);
+    const isAdmin = await isAppAdminUser(db, session.userId);
     if (!isAdmin) {
       return json({ error: "Unauthorized" }, 403);
     }

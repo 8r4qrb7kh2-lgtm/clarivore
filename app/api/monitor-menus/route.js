@@ -3,7 +3,7 @@ import {
   applyWriteOperations,
   asText,
   ensureRestaurantWriteInfrastructure,
-  prisma,
+  db,
   RESTAURANT_WRITE_OPERATION_TYPES,
 } from "../restaurant-write/_shared/writeGatewayUtils";
 import { sendNotificationEmail } from "../notifications/_shared/emailSender";
@@ -107,9 +107,9 @@ function detectDishDiff(previousDishes, currentDishes) {
 }
 
 async function applyMonitoringStatsWrite({ restaurantId, emailsSentIncrement }) {
-  await ensureRestaurantWriteInfrastructure(prisma);
+  await ensureRestaurantWriteInfrastructure(db);
 
-  await prisma.$transaction(async (tx) => {
+  await db.$transaction(async (tx) => {
     await applyWriteOperations({
       tx,
       batch: {
@@ -150,7 +150,7 @@ export async function POST(request) {
       where.id = targetRestaurantId;
     }
 
-    const restaurants = await prisma.restaurants.findMany({
+    const restaurants = await db.restaurants.findMany({
       where,
       select: {
         id: true,
@@ -185,7 +185,7 @@ export async function POST(request) {
         const menuText = extractMenuText(html);
         const currentHash = hashContent(menuText);
 
-        const previousSnapshot = await prisma.menu_snapshots.findFirst({
+        const previousSnapshot = await db.menu_snapshots.findFirst({
           where: { restaurant_id: restaurantId },
           orderBy: { detected_at: "desc" },
           select: {
@@ -198,7 +198,7 @@ export async function POST(request) {
         const currentDishes = extractDishesFromText(menuText);
 
         if (!previousSnapshot) {
-          await prisma.menu_snapshots.create({
+          await db.menu_snapshots.create({
             data: {
               restaurant_id: restaurantId,
               content_hash: currentHash,
@@ -214,7 +214,7 @@ export async function POST(request) {
             dishes: currentDishes.length,
           });
         } else if (asText(previousSnapshot.content_hash) !== currentHash) {
-          await prisma.menu_snapshots.create({
+          await db.menu_snapshots.create({
             data: {
               restaurant_id: restaurantId,
               content_hash: currentHash,

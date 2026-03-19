@@ -3,7 +3,7 @@ import { sendNotificationEmail } from "../notifications/_shared/emailSender";
 import {
   asText,
   isAppAdminUser,
-  prisma,
+  db,
   requireAuthenticatedSession,
 } from "../restaurant-write/_shared/writeGatewayUtils";
 import { createSupabaseServiceRoleClient } from "../../lib/server/supabaseServerClient";
@@ -157,7 +157,7 @@ export async function POST(request) {
 
   let isAdmin = false;
   try {
-    isAdmin = await isAppAdminUser(prisma, userId);
+    isAdmin = await isAppAdminUser(db, userId);
   } catch (adminError) {
     return errorResponse(asText(adminError?.message) || "Failed to verify admin access.", 500);
   }
@@ -165,7 +165,7 @@ export async function POST(request) {
   if (!isAdmin) {
     let managerRecord = null;
     try {
-      managerRecord = await prisma.restaurant_managers.findFirst({
+      managerRecord = await db.restaurant_managers.findFirst({
         where: { user_id: userId, restaurant_id: restaurantId },
         select: { id: true },
       });
@@ -182,7 +182,7 @@ export async function POST(request) {
 
   let restaurantRecord = null;
   try {
-    restaurantRecord = await prisma.restaurants.findUnique({
+    restaurantRecord = await db.restaurants.findUnique({
       where: { id: restaurantId },
       select: { name: true, slug: true },
     });
@@ -245,7 +245,7 @@ export async function POST(request) {
 
   let data = null;
   try {
-    data = await prisma.ingredient_scan_appeals.create({
+    data = await db.ingredient_scan_appeals.create({
       data: {
         restaurant_id: restaurantId,
         dish_name: dishName,
@@ -281,7 +281,7 @@ export async function POST(request) {
       throw new Error(emailResult?.error || "Appeal email notification failed.");
     }
   } catch (emailError) {
-    await prisma.ingredient_scan_appeals.deleteMany({ where: { id: data?.id } });
+    await db.ingredient_scan_appeals.deleteMany({ where: { id: data?.id } });
     if (photoPath && storageSupabase) {
       await storageSupabase.storage.from(bucketName).remove([photoPath]);
     }

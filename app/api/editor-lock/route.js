@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import {
   asText,
-  prisma,
+  db,
   requireRestaurantAccessSession,
 } from "../restaurant-write/_shared/writeGatewayUtils";
 
@@ -111,7 +111,7 @@ async function ensureEditorLockInfrastructure() {
   }
 
   ensureInfrastructurePromise = (async () => {
-    await prisma.$executeRawUnsafe(`
+    await db.$executeRawUnsafe(`
       CREATE TABLE IF NOT EXISTS ${EDITOR_LOCK_TABLE} (
         restaurant_id uuid PRIMARY KEY REFERENCES public.restaurants(id) ON DELETE CASCADE,
         user_id uuid NOT NULL,
@@ -126,21 +126,21 @@ async function ensureEditorLockInfrastructure() {
       );
     `);
 
-    await prisma.$executeRawUnsafe(`
+    await db.$executeRawUnsafe(`
       CREATE INDEX IF NOT EXISTS idx_restaurant_editor_locks_expires_at
         ON ${EDITOR_LOCK_TABLE} (expires_at);
     `);
 
-    await prisma.$executeRawUnsafe(`
+    await db.$executeRawUnsafe(`
       CREATE INDEX IF NOT EXISTS idx_restaurant_editor_locks_user_id
         ON ${EDITOR_LOCK_TABLE} (user_id);
     `);
 
-    await prisma.$executeRawUnsafe(`
+    await db.$executeRawUnsafe(`
       ALTER TABLE ${EDITOR_LOCK_TABLE} ENABLE ROW LEVEL SECURITY
     `);
 
-    await prisma.$executeRawUnsafe(`
+    await db.$executeRawUnsafe(`
       REVOKE ALL ON TABLE ${EDITOR_LOCK_TABLE} FROM anon, authenticated
     `);
   })().catch((error) => {
@@ -152,7 +152,7 @@ async function ensureEditorLockInfrastructure() {
 }
 
 async function readActiveLockForRestaurant(restaurantId) {
-  const rows = await prisma.$queryRawUnsafe(
+  const rows = await db.$queryRawUnsafe(
     `
     SELECT
       restaurant_id,
@@ -185,7 +185,7 @@ async function attemptLockUpsert({
   holderEmail,
   holderInstance,
 }) {
-  const rows = await prisma.$queryRawUnsafe(
+  const rows = await db.$queryRawUnsafe(
     `
     INSERT INTO ${EDITOR_LOCK_TABLE} (
       restaurant_id,
@@ -257,7 +257,7 @@ async function attemptSameUserTakeover({
   holderEmail,
   holderInstance,
 }) {
-  const rows = await prisma.$queryRawUnsafe(
+  const rows = await db.$queryRawUnsafe(
     `
     INSERT INTO ${EDITOR_LOCK_TABLE} (
       restaurant_id,
@@ -439,7 +439,7 @@ async function releaseEditorLock({
   sessionKey,
   userId,
 }) {
-  const result = await prisma.$executeRawUnsafe(
+  const result = await db.$executeRawUnsafe(
     `
     DELETE FROM ${EDITOR_LOCK_TABLE}
     WHERE restaurant_id = $1::uuid

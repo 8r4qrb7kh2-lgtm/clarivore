@@ -436,7 +436,6 @@ function ensureForbiddenIdentifiersAbsent() {
         "app",
         "scripts",
         "supabase",
-        "prisma",
         "next.config.js",
         "package.json",
       ],
