@@ -557,9 +557,14 @@ export function RestaurantViewer({
 
       if (fitOverlayToViewport) {
         const verticalFitHeight = Math.max(visibleHeight - edgePadding * 2, 1);
+        const horizontalFitWidth = Math.max(scrollNode.clientWidth - edgePadding * 2, 1);
         if (overlayHeight > 0) {
           const maxScaleByHeight = currentScale * (verticalFitHeight / overlayHeight);
           nextTargetScale = Math.min(nextTargetScale, maxScaleByHeight);
+        }
+        if (overlayWidth > 0) {
+          const maxScaleByWidth = currentScale * (horizontalFitWidth / overlayWidth);
+          nextTargetScale = Math.min(nextTargetScale, maxScaleByWidth);
         }
       }
 
@@ -701,8 +706,23 @@ export function RestaurantViewer({
       const nextScale = clamp(Number(target.scale) || requestedScale, 1, 3);
 
       if (Math.abs(nextScale - menuZoomScaleRef.current) > 0.02) {
-        startMenuZoomAnimation();
         setMenuZoomScale(nextScale);
+        if (isMobileViewport) {
+          window.requestAnimationFrame(() => {
+            const scrollNode = menuScrollRef.current;
+            if (!scrollNode) return;
+            const maxScrollLeft = Math.max(scrollNode.scrollWidth - scrollNode.clientWidth, 0);
+            const maxScrollTop = Math.max(scrollNode.scrollHeight - scrollNode.clientHeight, 0);
+            scrollNode.scrollTo({
+              left: clamp(Number(target.left) || 0, 0, maxScrollLeft),
+              top: clamp(Number(target.top) || 0, 0, maxScrollTop),
+              behavior: "auto",
+            });
+            refreshScrollSnapshot();
+          });
+          return;
+        }
+        startMenuZoomAnimation();
         animateMenuScrollTo(target, MENU_ZOOM_ANIMATION_MS);
         return;
       }
@@ -720,6 +740,7 @@ export function RestaurantViewer({
       animateMenuScrollTo,
       centerOverlayInView,
       isMobileViewport,
+      refreshScrollSnapshot,
       resolveMobileViewportBottomInset,
       startMenuZoomAnimation,
     ],
@@ -1112,33 +1133,96 @@ export function RestaurantViewer({
       return undefined;
     }
 
-    let frameId = 0;
-    frameId = window.requestAnimationFrame(() => {
-      const overlayRect = overlayNode.getBoundingClientRect();
-      const panelRect = panelNode.getBoundingClientRect();
-      const overlapAmount =
-        overlayRect.bottom - panelRect.top + MOBILE_DISH_PANEL_OVERLAY_GAP;
+    const frameIds = new Set();
+    const timerIds = [];
+    let isActive = true;
 
-      if (overlapAmount <= 0.5) {
-        return;
-      }
+    const runCorrectionPass = () => {
+      stopScrollAnimation();
+      let attempts = 0;
 
-      const maxScrollTop = Math.max(scrollNode.scrollHeight - scrollNode.clientHeight, 0);
-      const nextScrollTop = clamp(scrollNode.scrollTop + overlapAmount, 0, maxScrollTop);
+      const correctViewport = () => {
+        if (!isActive) {
+          return;
+        }
+        attempts += 1;
+        const overlayRect = overlayNode.getBoundingClientRect();
+        const panelRect = panelNode.getBoundingClientRect();
+        const scrollRect = scrollNode.getBoundingClientRect();
+        const minVisibleLeft = scrollRect.left + MOBILE_DISH_FOCUS_EDGE_PADDING;
+        const maxVisibleRight = scrollRect.right - MOBILE_DISH_FOCUS_EDGE_PADDING;
+        const minVisibleTop = scrollRect.top + MOBILE_DISH_FOCUS_EDGE_PADDING;
+        const maxVisibleBottom =
+          Math.min(scrollRect.bottom, panelRect.top) - MOBILE_DISH_PANEL_OVERLAY_GAP;
+        let deltaLeft = 0;
+        let deltaTop = 0;
 
-      if (Math.abs(nextScrollTop - scrollNode.scrollTop) < 0.5) {
-        return;
-      }
+        if (overlayRect.left < minVisibleLeft) {
+          deltaLeft = overlayRect.left - minVisibleLeft;
+        } else if (overlayRect.right > maxVisibleRight) {
+          deltaLeft = overlayRect.right - maxVisibleRight;
+        }
 
-      scrollNode.scrollTo({
-        top: nextScrollTop,
-        behavior: "auto",
-      });
-      refreshScrollSnapshot();
-    });
+        if (overlayRect.top < minVisibleTop) {
+          deltaTop = overlayRect.top - minVisibleTop;
+        } else if (overlayRect.bottom > maxVisibleBottom) {
+          deltaTop = overlayRect.bottom - maxVisibleBottom;
+        }
+
+        if (Math.abs(deltaLeft) <= 0.5 && Math.abs(deltaTop) <= 0.5) {
+          return;
+        }
+
+        const maxScrollLeft = Math.max(scrollNode.scrollWidth - scrollNode.clientWidth, 0);
+        const maxScrollTop = Math.max(scrollNode.scrollHeight - scrollNode.clientHeight, 0);
+        const nextScrollLeft = clamp(scrollNode.scrollLeft + deltaLeft, 0, maxScrollLeft);
+        const nextScrollTop = clamp(scrollNode.scrollTop + deltaTop, 0, maxScrollTop);
+
+        if (
+          Math.abs(nextScrollLeft - scrollNode.scrollLeft) <= 0.5 &&
+          Math.abs(nextScrollTop - scrollNode.scrollTop) <= 0.5
+        ) {
+          return;
+        }
+
+        scrollNode.scrollTo({
+          left: nextScrollLeft,
+          top: nextScrollTop,
+          behavior: "auto",
+        });
+        refreshScrollSnapshot();
+
+        if (attempts < 3) {
+          const nextFrameId = window.requestAnimationFrame(correctViewport);
+          frameIds.add(nextFrameId);
+        }
+      };
+
+      const initialFrameId = window.requestAnimationFrame(correctViewport);
+      frameIds.add(initialFrameId);
+    };
+
+    const scheduleCorrectionPass = (delayMs) => {
+      const timerId = window.setTimeout(() => {
+        if (!isActive) {
+          return;
+        }
+        runCorrectionPass();
+      }, delayMs);
+      timerIds.push(timerId);
+    };
+
+    scheduleCorrectionPass(MOBILE_DISH_PANEL_STABLE_DELAY_MS + 40);
+    scheduleCorrectionPass(MOBILE_DISH_PANEL_STABLE_DELAY_MS + MENU_ZOOM_ANIMATION_MS + 60);
 
     return () => {
-      window.cancelAnimationFrame(frameId);
+      isActive = false;
+      timerIds.forEach((timerId) => {
+        window.clearTimeout(timerId);
+      });
+      frameIds.forEach((frameId) => {
+        window.cancelAnimationFrame(frameId);
+      });
     };
   }, [
     acknowledgedReferenceNote,
@@ -1148,9 +1232,8 @@ export function RestaurantViewer({
     mobileViewportMetrics.height,
     mobileViewportMetrics.width,
     refreshScrollSnapshot,
-    scrollSnapshot.clientHeight,
-    scrollSnapshot.scrollTop,
     selectedOverlaySignature,
+    stopScrollAnimation,
   ]);
 
   const persistGuestSelections = useCallback(
