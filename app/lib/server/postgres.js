@@ -151,13 +151,17 @@ function normalizeSelect(select) {
 }
 
 function normalizeOrderBy(orderBy) {
-  if (!orderBy || typeof orderBy !== "object" || Array.isArray(orderBy)) return [];
-  return Object.entries(orderBy)
-    .map(([field, direction]) => ({
-      field,
-      direction: asText(direction).toUpperCase() === "DESC" ? "DESC" : "ASC",
-    }))
-    .filter((entry) => entry.field);
+  const entries = Array.isArray(orderBy) ? orderBy : [orderBy];
+  return entries
+    .flatMap((entry) => {
+      if (!entry || typeof entry !== "object" || Array.isArray(entry)) return [];
+      return Object.entries(entry)
+        .map(([field, direction]) => ({
+          field,
+          direction: asText(direction).toUpperCase() === "DESC" ? "DESC" : "ASC",
+        }))
+        .filter((normalizedEntry) => normalizedEntry.field);
+    });
 }
 
 function serializeColumnValue(tableName, column, value) {
@@ -364,6 +368,10 @@ function createTableClient({ tableName, executor }) {
         Number.isFinite(Number(options.take)) && Number(options.take) > 0
           ? ` LIMIT ${Math.floor(Number(options.take))}`
           : "";
+      const offset =
+        Number.isFinite(Number(options.skip)) && Number(options.skip) > 0
+          ? ` OFFSET ${Math.floor(Number(options.skip))}`
+          : "";
       const orderSql = orderBy.length
         ? ` ORDER BY ${orderBy.map((entry) => `${quoteIdentifier(entry.field)} ${entry.direction}`).join(", ")}`
         : "";
@@ -376,6 +384,7 @@ function createTableClient({ tableName, executor }) {
           ${whereSql}
           ${orderSql}
           ${limit}
+          ${offset}
         `,
         params,
       );
