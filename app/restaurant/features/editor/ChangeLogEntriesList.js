@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { sortChangeLogsNewestFirst } from "../../../lib/changeLogs";
 import {
   asText,
   parseChangePayload,
@@ -31,7 +32,7 @@ export default function ChangeLogEntriesList({
   const [expandedRowsByLog, setExpandedRowsByLog] = useState({});
 
   const visibleLogs = useMemo(() => {
-    const safeLogs = Array.isArray(logs) ? logs : [];
+    const safeLogs = sortChangeLogsNewestFirst(logs);
     const maxRows = Number(limit);
     if (!Number.isFinite(maxRows) || maxRows <= 0) return safeLogs;
     return safeLogs.slice(0, maxRows);
@@ -77,7 +78,7 @@ export default function ChangeLogEntriesList({
         return (
           <div
             key={logId}
-            className="rounded-xl border border-[#2a3261] bg-[rgba(17,22,48,0.75)] p-3"
+            className="rounded-xl border border-[#33407b] bg-[linear-gradient(180deg,rgba(23,29,63,0.97),rgba(14,19,43,0.94))] p-4 shadow-[0_12px_28px_rgba(2,6,23,0.24),inset_0_1px_0_rgba(255,255,255,0.04)]"
           >
             <div className="flex items-center justify-between gap-2">
               <span className="text-sm font-semibold text-[#e9eefc]">

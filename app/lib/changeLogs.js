@@ -4,6 +4,58 @@ function toSafeInteger(value, fallback) {
   return Math.max(parsed, 0);
 }
 
+function toSortableTimestamp(log) {
+  const rawTimestamp =
+    log?.timestamp ?? log?.created_at ?? log?.createdAt ?? log?.updated_at ?? log?.updatedAt;
+  const parsed = Date.parse(String(rawTimestamp || "").trim());
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function compareLogIdsDescending(leftId, rightId) {
+  const leftText = String(leftId || "").trim();
+  const rightText = String(rightId || "").trim();
+  if (!leftText && !rightText) return 0;
+  if (!leftText) return 1;
+  if (!rightText) return -1;
+
+  const leftNumeric = Number(leftText);
+  const rightNumeric = Number(rightText);
+  if (Number.isFinite(leftNumeric) && Number.isFinite(rightNumeric)) {
+    if (leftNumeric !== rightNumeric) return rightNumeric - leftNumeric;
+    return 0;
+  }
+
+  return rightText.localeCompare(leftText, undefined, {
+    numeric: true,
+    sensitivity: "base",
+  });
+}
+
+export function sortChangeLogsNewestFirst(logs = []) {
+  const safeLogs = Array.isArray(logs) ? logs : [];
+  return safeLogs
+    .map((log, index) => ({
+      log,
+      index,
+      timestamp: toSortableTimestamp(log),
+    }))
+    .sort((left, right) => {
+      if (left.timestamp != null || right.timestamp != null) {
+        if (left.timestamp == null) return 1;
+        if (right.timestamp == null) return -1;
+        if (left.timestamp !== right.timestamp) {
+          return right.timestamp - left.timestamp;
+        }
+      }
+
+      const idComparison = compareLogIdsDescending(left.log?.id, right.log?.id);
+      if (idComparison !== 0) return idComparison;
+
+      return left.index - right.index;
+    })
+    .map(({ log }) => log);
+}
+
 async function getAccessToken(supabaseClient) {
   const { data: sessionData, error: sessionError } =
     await supabaseClient.auth.getSession();
@@ -23,7 +75,7 @@ async function readChangeLogResponse(response) {
       String(payload?.error || "").trim() || "Failed to load change log.",
     );
   }
-  return Array.isArray(payload?.logs) ? payload.logs : [];
+  return sortChangeLogsNewestFirst(payload?.logs);
 }
 
 // Shared change-log read helper so dashboard/editor stay in sync.
