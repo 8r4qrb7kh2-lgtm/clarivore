@@ -10,6 +10,7 @@ import {
   formatIngredientBrandAppealSnapshot,
   normalizeIngredientBrandAppeal,
 } from "../../lib/ingredientBrandAppeal.js";
+import { resetIngredientConfirmationIfChanged } from "../../lib/ingredientRowConfirmation.js";
 import {
   listIngredientAppealsForAdmin,
   loadIngredientAppealRowsById,
@@ -139,19 +140,25 @@ async function syncIngredientRowsForAppealReview(tx, {
       reviewedBy,
     });
 
+    const nextPayload = {
+      ...currentPayload,
+      brandRequired: reviewStatus !== "approved",
+      brandAppeal: nextAppeal,
+    };
     if (reviewStatus === "approved") {
-      currentPayload.brandRequired = false;
-      delete currentPayload.brandRequirementReason;
-    } else {
-      currentPayload.brandRequired = true;
+      delete nextPayload.brandRequirementReason;
     }
-    currentPayload.brandAppeal = nextAppeal;
+
+    const nextPersistedPayload = resetIngredientConfirmationIfChanged(
+      currentPayload,
+      nextPayload,
+    );
 
     await tx.restaurant_menu_ingredient_rows.update({
       where: { id: row.id },
       data: {
-        row_text: asText(currentPayload.name) || asText(row.row_text) || null,
-        ingredient_payload: currentPayload,
+        row_text: asText(nextPersistedPayload.name) || asText(row.row_text) || null,
+        ingredient_payload: nextPersistedPayload,
       },
     });
 
@@ -159,7 +166,7 @@ async function syncIngredientRowsForAppealReview(tx, {
       id: row.id,
       restaurantId: asText(row.restaurant_id),
       dishName: asText(row.dish_name),
-      ingredientName: asText(currentPayload.name || row.row_text),
+      ingredientName: asText(nextPersistedPayload.name || row.row_text),
       photoUrl: asText(beforeAppeal.photoUrl),
       beforeAppeal,
       afterAppeal: nextAppeal,

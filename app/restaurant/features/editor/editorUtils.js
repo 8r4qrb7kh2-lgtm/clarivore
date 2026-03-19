@@ -1,5 +1,6 @@
 import { Button } from "../../../components/ui";
 import { normalizeIngredientBrandAppeal } from "../../../lib/ingredientBrandAppeal.js";
+import { buildIngredientConfirmationSignature } from "../../../lib/ingredientRowConfirmation.js";
 import { buildDietAllergenConflictMessages } from "./conflictWarningLogic";
 
 // Primitive normalization helpers shared by editor, modals, and row components.
@@ -756,41 +757,8 @@ function formatTokenStateLabel(state) {
   return "none";
 }
 
-function normalizeBrandForSignature(brand) {
-  const normalized = normalizeBrandEntry(brand);
-  if (!normalized) return null;
-  return {
-    name: normalized.name,
-    allergens: dedupeTokenList(normalized.allergens),
-    diets: dedupeTokenList(normalized.diets),
-    crossContaminationAllergens: dedupeTokenList(
-      normalized.crossContaminationAllergens,
-    ),
-    crossContaminationDiets: dedupeTokenList(normalized.crossContaminationDiets),
-    ingredientsList: Array.isArray(normalized.ingredientsList)
-      ? normalized.ingredientsList.map((line) => asText(line)).filter(Boolean)
-      : [],
-    parsedIngredientsList: Array.isArray(normalized.parsedIngredientsList)
-      ? normalized.parsedIngredientsList.map((line) => asText(line)).filter(Boolean)
-      : [],
-  };
-}
-
 function buildPersistedIngredientSignature(ingredient) {
-  const base = ingredient && typeof ingredient === "object" ? ingredient : {};
-  return JSON.stringify({
-    name: asText(base.name),
-    allergens: dedupeTokenList(base.allergens),
-    diets: dedupeTokenList(base.diets),
-    crossContaminationAllergens: dedupeTokenList(base.crossContaminationAllergens),
-    crossContaminationDiets: dedupeTokenList(base.crossContaminationDiets),
-    brands: (Array.isArray(base.brands) ? base.brands : [])
-      .map((brand) => normalizeBrandForSignature(brand))
-      .filter(Boolean),
-    brandRequired: Boolean(base.brandRequired),
-    brandRequirementReason: asText(base.brandRequirementReason),
-    removable: Boolean(base.removable),
-  });
+  return buildIngredientConfirmationSignature(ingredient);
 }
 
 function buildRowManualOverrideMessages({
