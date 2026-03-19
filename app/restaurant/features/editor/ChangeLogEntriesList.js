@@ -78,7 +78,7 @@ export default function ChangeLogEntriesList({
         return (
           <div
             key={logId}
-            className="rounded-xl border border-[#33407b] bg-[linear-gradient(180deg,rgba(23,29,63,0.97),rgba(14,19,43,0.94))] p-4 shadow-[0_12px_28px_rgba(2,6,23,0.24),inset_0_1px_0_rgba(255,255,255,0.04)]"
+            className="rounded-xl border border-[#33407b] bg-[rgba(19,25,56,0.96)] p-4 shadow-[0_12px_28px_rgba(2,6,23,0.24),inset_0_1px_0_rgba(255,255,255,0.04)]"
           >
             <div className="flex items-center justify-between gap-2">
               <span className="text-sm font-semibold text-[#e9eefc]">
