@@ -1065,7 +1065,7 @@ export default function AdminDashboardDom({
     async ({ force = false } = {}) => {
       if (!supabase || !isAdmin) return;
 
-      if (!force && allAppeals.length && Date.now() - appealsLoadedAt < APPEALS_CACHE_WINDOW_MS) {
+      if (!force && appealsLoadedAt && Date.now() - appealsLoadedAt < APPEALS_CACHE_WINDOW_MS) {
         return;
       }
 
@@ -1111,7 +1111,7 @@ export default function AdminDashboardDom({
         setAppealsLoading(false);
       }
     },
-    [allAppeals.length, appealsLoadedAt, isAdmin, showStatus],
+    [appealsLoadedAt, isAdmin, showStatus],
   );
 
   const reviewAppeal = useCallback(
@@ -1280,7 +1280,7 @@ export default function AdminDashboardDom({
       return;
     }
     if (activeTab === "appeals" && !appealsLoading) {
-      loadAppeals({ force: true });
+      loadAppeals();
       return;
     }
     if (activeTab === "feedback" && !feedbackLoaded && !feedbackLoading) {
