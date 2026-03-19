@@ -2,7 +2,10 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { formatIngredientBrandAppealSnapshot } from "../ingredientBrandAppeal.js";
-import { listIngredientAppealsForAdmin } from "./ingredientAppeals.js";
+import {
+  listIngredientAppealsForAdmin,
+  loadIngredientAppealRowsForReview,
+} from "./ingredientAppeals.js";
 
 test("listIngredientAppealsForAdmin merges current row state with newer changelog history", async () => {
   const dbClient = {
@@ -115,6 +118,7 @@ test("listIngredientAppealsForAdmin merges current row state with newer changelo
   assert.equal(activeAppeal.history_only, false);
   assert.equal(activeAppeal.restaurants?.slug, "pizzeria");
   assert.equal(activeAppeal.photo_data_url, "data:image/jpeg;base64,abc123");
+  assert.equal(activeAppeal.review_target, "appeal:appeal-1");
 
   const historyOnlyAppeal = appeals.find((appeal) => appeal.appeal_id === "appeal-2");
   assert.ok(historyOnlyAppeal);
@@ -122,4 +126,86 @@ test("listIngredientAppealsForAdmin merges current row state with newer changelo
   assert.equal(historyOnlyAppeal.reviewable, false);
   assert.equal(historyOnlyAppeal.history_only, true);
   assert.equal(historyOnlyAppeal.restaurants?.slug, "soup-shop");
+  assert.equal(historyOnlyAppeal.review_target, "");
+});
+
+test("listIngredientAppealsForAdmin exposes a row review target for legacy appeals without ids", async () => {
+  const dbClient = {
+    async $queryRawUnsafe() {
+      return [
+        {
+          id: "row-legacy",
+          restaurant_id: "rest-1",
+          dish_name: "Pizza",
+          row_index: 0,
+          row_text: "Mozzarella",
+          updated_at: "2026-03-19T10:00:00.000Z",
+          ingredient_payload: {
+            name: "Mozzarella",
+            brandAppeal: {
+              status: "pending",
+              managerMessage: "Legacy appeal without ids.",
+              submittedAt: "2026-03-19T10:00:00.000Z",
+            },
+          },
+        },
+      ];
+    },
+    change_logs: {
+      async findMany() {
+        return [];
+      },
+    },
+    restaurants: {
+      async findMany() {
+        return [{ id: "rest-1", name: "Pizzeria", slug: "pizzeria" }];
+      },
+    },
+  };
+
+  const [appeal] = await listIngredientAppealsForAdmin(dbClient, {
+    limit: 10,
+    logLimit: 10,
+  });
+
+  assert.ok(appeal);
+  assert.equal(appeal.id, "row-legacy");
+  assert.equal(appeal.row_id, "row-legacy");
+  assert.equal(appeal.review_target, "row:row-legacy");
+  assert.equal(appeal.reviewable, true);
+});
+
+test("loadIngredientAppealRowsForReview falls back to row ids for legacy review actions", async () => {
+  const row = {
+    id: "row-legacy",
+    restaurant_id: "rest-1",
+    dish_name: "Pizza",
+    row_index: 0,
+    row_text: "Mozzarella",
+    ingredient_payload: {
+      name: "Mozzarella",
+      brandAppeal: {
+        status: "pending",
+        managerMessage: "Legacy appeal without ids.",
+        submittedAt: "2026-03-19T10:00:00.000Z",
+      },
+    },
+  };
+
+  const dbClient = {
+    async $queryRawUnsafe(query, value) {
+      if (query.includes("brandAppeal") && query.includes("->> 'id'")) {
+        assert.equal(value, "row-legacy");
+        return [];
+      }
+      if (query.includes("WHERE id = $1")) {
+        assert.equal(value, "row-legacy");
+        return [row];
+      }
+      throw new Error(`Unexpected query: ${query}`);
+    },
+  };
+
+  const rows = await loadIngredientAppealRowsForReview(dbClient, "row-legacy");
+  assert.deepEqual(rows, [row]);
 });

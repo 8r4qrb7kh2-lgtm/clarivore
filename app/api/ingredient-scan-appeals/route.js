@@ -15,7 +15,11 @@ import {
   formatIngredientBrandAppealSnapshot,
   normalizeIngredientBrandAppeal,
 } from "../../lib/ingredientBrandAppeal.js";
-import { listIngredientAppealsForAdmin, loadIngredientAppealRowsById } from "../../lib/server/ingredientAppeals.js";
+import { selectIngredientRowsForAppeal } from "../../lib/server/ingredientAppealRowMatching.js";
+import {
+  listIngredientAppealsForAdmin,
+  loadIngredientAppealRowsForReview,
+} from "../../lib/server/ingredientAppeals.js";
 import { createSupabaseServiceRoleClient } from "../../lib/server/supabaseServerClient";
 
 export const runtime = "nodejs";
@@ -29,10 +33,6 @@ const MAX_APPEAL_PHOTO_BYTES = 768 * 1024;
 
 function errorResponse(message, status) {
   return corsJson({ success: false, error: message }, { status });
-}
-
-function normalizeToken(value) {
-  return asText(value).toLowerCase().replace(/[^a-z0-9]/g, "");
 }
 
 function parseDataUrl(dataUrl) {
@@ -199,15 +199,6 @@ async function createAppealChangeLog(tx, {
   });
 }
 
-function readIngredientPayloadName(row) {
-  const payload = row?.ingredient_payload;
-  if (payload && typeof payload === "object" && !Array.isArray(payload)) {
-    const payloadName = asText(payload.name);
-    if (payloadName) return payloadName;
-  }
-  return asText(row?.row_text);
-}
-
 async function loadMatchingIngredientRows(tx, {
   restaurantId,
   dishName,
@@ -223,20 +214,11 @@ async function loadMatchingIngredientRows(tx, {
       ingredient_payload: true,
     },
   });
-
-  const dishToken = normalizeToken(dishName);
-  const ingredientToken = normalizeToken(ingredientName);
-  const exactDishRows = dishToken
-    ? allRows.filter((row) => normalizeToken(row?.dish_name) === dishToken)
-    : allRows;
-  const candidateRows = exactDishRows.length ? exactDishRows : allRows;
-
-  if (!ingredientToken) return candidateRows;
-
-  const exactIngredientRows = candidateRows.filter(
-    (row) => normalizeToken(readIngredientPayloadName(row)) === ingredientToken,
-  );
-  return exactIngredientRows.length ? exactIngredientRows : candidateRows;
+  return selectIngredientRowsForAppeal({
+    rows: allRows,
+    dishName,
+    ingredientName,
+  });
 }
 
 function buildPendingAppealState({
@@ -306,13 +288,13 @@ async function syncIngredientRowsForAppealSubmission(tx, {
 }
 
 async function syncIngredientRowsForAppealReview(tx, {
-  appealId,
+  reviewTarget,
   reviewStatus,
   reviewNotes,
   reviewedAt,
   reviewedBy,
 }) {
-  const rows = await loadIngredientAppealRowsById(tx, appealId);
+  const rows = await loadIngredientAppealRowsForReview(tx, reviewTarget);
   if (!Array.isArray(rows) || !rows.length) {
     throw new Error("Appeal not found.");
   }
@@ -643,11 +625,12 @@ export async function PATCH(request) {
   }
 
   const appealId = asText(body?.appealId);
+  const reviewTarget = asText(body?.reviewTarget) || appealId;
   const reviewStatus = normalizeAppealReviewStatus(body?.status);
   const reviewNotes = asText(body?.reviewNotes);
 
-  if (!appealId || !reviewStatus) {
-    return errorResponse("appealId and a valid status are required.", 400);
+  if (!reviewTarget || !reviewStatus) {
+    return errorResponse("reviewTarget and a valid status are required.", 400);
   }
 
   const reviewedAt = new Date();
@@ -659,7 +642,7 @@ export async function PATCH(request) {
       await setRestaurantWriteContext(tx);
 
       const updatedRows = await syncIngredientRowsForAppealReview(tx, {
-        appealId,
+        reviewTarget,
         reviewStatus,
         reviewNotes,
         reviewedAt: reviewedAt.toISOString(),
@@ -684,7 +667,8 @@ export async function PATCH(request) {
 
       return {
         appeal: {
-          id: appealId,
+          id: asText(firstRow.afterAppeal?.id || appealId || reviewTarget),
+          reviewTarget,
           restaurantId: firstRow.restaurantId,
           dishName: firstRow.dishName,
           ingredientName: firstRow.ingredientName,

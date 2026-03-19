@@ -5,8 +5,10 @@ import AppTopbar from "../../components/AppTopbar";
 import PageShell from "../../components/PageShell";
 import ChatMessageText from "../../components/chat/ChatMessageText";
 import PageHeading from "../../components/surfaces/PageHeading";
+import AdminAppealsTab from "./AdminAppealsTab";
 import AdminSystemsExplorerTab from "./AdminSystemsExplorerTab";
 import { notifyManagerChat } from "../../lib/chatNotifications";
+import { buildIngredientAppealReviewTarget } from "../../lib/ingredientAppealReviewTarget.js";
 import { formatChatTimestamp } from "../../lib/chatMessage";
 import {
   commitRestaurantWrite,
@@ -1129,10 +1131,17 @@ export default function AdminDashboardDom({
       setAppealBusyId(appeal.id);
 
       try {
+        const reviewTarget =
+          String(appeal?.review_target || "").trim() ||
+          buildIngredientAppealReviewTarget({
+            appealId: appeal?.appeal_id || appeal?.id,
+            rowId: appeal?.row_id,
+          });
         await callIngredientAppealsApi({
           method: "PATCH",
           payload: {
             appealId: appeal.id,
+            reviewTarget,
             status,
             reviewNotes: notes,
           },
@@ -1325,6 +1334,13 @@ export default function AdminDashboardDom({
       return appeal.review_status === appealFilter;
     });
   }, [allAppeals, appealFilter, selectedRestaurant]);
+
+  const updateAppealNote = useCallback((appealId, value) => {
+    setAppealNotesById((current) => ({
+      ...current,
+      [appealId]: value,
+    }));
+  }, []);
 
   const filteredFeedback = useMemo(() => {
     if (!selectedRestaurant) return allFeedback;
@@ -1829,221 +1845,17 @@ export default function AdminDashboardDom({
             ) : null}
 
             {activeTab === "appeals" ? (
-              <div className="tab-content active">
-                <div className="admin-card admin-card-full">
-                  <h2>📷 Ingredient Scan Appeals</h2>
-                  <p style={{ color: "#718096", marginBottom: 24 }}>
-                    Review and approve or deny manager appeals for ingredient scanning
-                    requirements
-                  </p>
-
-                  <div className="appeals-filters">
-                    <button
-                      type="button"
-                      className={`filter-btn${appealFilter === "all" ? " active" : ""}`}
-                      onClick={() => setAppealFilter("all")}
-                    >
-                      All Appeals
-                    </button>
-                    <button
-                      type="button"
-                      className={`filter-btn${appealFilter === "pending" ? " active" : ""}`}
-                      onClick={() => setAppealFilter("pending")}
-                    >
-                      Pending
-                    </button>
-                    <button
-                      type="button"
-                      className={`filter-btn${appealFilter === "approved" ? " active" : ""}`}
-                      onClick={() => setAppealFilter("approved")}
-                    >
-                      Approved
-                    </button>
-                    <button
-                      type="button"
-                      className={`filter-btn${appealFilter === "rejected" ? " active" : ""}`}
-                      onClick={() => setAppealFilter("rejected")}
-                    >
-                      Rejected
-                    </button>
-                  </div>
-
-                  {appealsLoading ? (
-                    <div id="loading-appeals" className="loading">
-                      <p>Loading appeals...</p>
-                    </div>
-                  ) : filteredAppeals.length === 0 ? (
-                    <div id="no-appeals" className="no-appeals">
-                      <h3>No appeals found</h3>
-                      <p>There are no appeals matching your current filter.</p>
-                    </div>
-                  ) : (
-                    <div id="appeals-list" className="appeals-list">
-                      {filteredAppeals.map((appeal) => {
-                        const status = appeal.review_status || "pending";
-                        const restaurant = appeal.restaurants || {};
-                        const appealPhotoUrl =
-                          String(appeal.photo_url || appeal.photo_data_url || "").trim();
-                        return (
-                          <div key={appeal.id} className={`appeal-card ${status}`}>
-                            <div className="appeal-header">
-                              <div className="appeal-info">
-                                <h3>{appeal.ingredient_name}</h3>
-                                <div className="appeal-meta">
-                                  <span>
-                                    <strong>Restaurant:</strong> {restaurant.name || "Unknown"}
-                                  </span>
-                                  {appeal.dish_name ? (
-                                    <span>
-                                      <strong>Dish:</strong> {appeal.dish_name}
-                                    </span>
-                                  ) : null}
-                                  <span>
-                                    <strong>Submitted:</strong>{" "}
-                                    {toDateLabel(appeal.submitted_at)}
-                                  </span>
-                                  {appeal.reviewed_at ? (
-                                    <span>
-                                      <strong>Reviewed:</strong>{" "}
-                                      {toDateLabel(appeal.reviewed_at)}
-                                    </span>
-                                  ) : null}
-                                  {appeal.reviewed_by ? (
-                                    <span>
-                                      <strong>Reviewer:</strong> {appeal.reviewed_by}
-                                    </span>
-                                  ) : null}
-                                </div>
-                              </div>
-                              <span className={`appeal-status ${status}`}>{status}</span>
-                            </div>
-
-                            {appeal.manager_message ? (
-                              <div className="appeal-message">
-                                <strong>Manager Message:</strong> {appeal.manager_message}
-                              </div>
-                            ) : null}
-
-                            {appealPhotoUrl ? (
-                              <div style={{ margin: "16px 0" }}>
-                                <strong
-                                  style={{
-                                    color: "#1e3a5f",
-                                    display: "block",
-                                    marginBottom: 8,
-                                  }}
-                                >
-                                  Photo submitted:
-                                </strong>
-                                <img
-                                  src={appealPhotoUrl}
-                                  alt="Appeal"
-                                  className="appeal-photo"
-                                  loading="lazy"
-                                  decoding="async"
-                                  onClick={() => setPhotoModalUrl(appealPhotoUrl)}
-                                />
-                              </div>
-                            ) : null}
-
-                            {status === "pending" && appeal.reviewable === true ? (
-                              <>
-                                <div className="review-notes">
-                                  <label
-                                    style={{
-                                      color: "#1e3a5f",
-                                      display: "block",
-                                      marginBottom: 8,
-                                      fontWeight: 600,
-                                    }}
-                                  >
-                                    <strong>Review Notes (optional):</strong>
-                                  </label>
-                                  <textarea
-                                    value={appealNotesById[appeal.id] || ""}
-                                    placeholder="Add any notes about your decision..."
-                                    onChange={(event) =>
-                                      setAppealNotesById((current) => ({
-                                        ...current,
-                                        [appeal.id]: event.target.value,
-                                      }))
-                                    }
-                                  />
-                                </div>
-                                <div className="appeal-actions">
-                                  <button
-                                    type="button"
-                                    className="btn-approve"
-                                    onClick={() => reviewAppeal(appeal, "approved")}
-                                    disabled={appealBusyId === appeal.id}
-                                  >
-                                    ✓ Approve
-                                  </button>
-                                  <button
-                                    type="button"
-                                    className="btn-deny"
-                                    onClick={() => reviewAppeal(appeal, "rejected")}
-                                    disabled={appealBusyId === appeal.id}
-                                  >
-                                    ✗ Deny
-                                  </button>
-                                  {restaurant.slug ? (
-                                    <a
-                                      href={`/restaurant?slug=${restaurant.slug}`}
-                                      className="btn-view-restaurant"
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                    >
-                                      View Restaurant
-                                    </a>
-                                  ) : null}
-                                </div>
-                              </>
-                            ) : status === "pending" ? (
-                              <div className="appeal-actions">
-                                <p style={{ color: "#1e3a5f" }}>
-                                  This appeal only exists in change history and can no longer be reviewed from here.
-                                </p>
-                                {restaurant.slug ? (
-                                  <a
-                                    href={`/restaurant?slug=${restaurant.slug}`}
-                                    className="btn-view-restaurant"
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                  >
-                                    View Restaurant
-                                  </a>
-                                ) : null}
-                              </div>
-                            ) : (
-                              <div className="appeal-actions">
-                                {appeal.review_notes ? (
-                                  <p style={{ color: "#1e3a5f" }}>
-                                    <strong style={{ color: "#1e3a5f" }}>
-                                      Review Notes:
-                                    </strong>{" "}
-                                    {appeal.review_notes}
-                                  </p>
-                                ) : null}
-                                {restaurant.slug ? (
-                                  <a
-                                    href={`/restaurant?slug=${restaurant.slug}`}
-                                    className="btn-view-restaurant"
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                  >
-                                    View Restaurant
-                                  </a>
-                                ) : null}
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              </div>
+              <AdminAppealsTab
+                appealsLoading={appealsLoading}
+                filteredAppeals={filteredAppeals}
+                appealFilter={appealFilter}
+                onFilterChange={setAppealFilter}
+                appealNotesById={appealNotesById}
+                onAppealNoteChange={updateAppealNote}
+                appealBusyId={appealBusyId}
+                onReviewAppeal={reviewAppeal}
+                onOpenPhoto={setPhotoModalUrl}
+              />
             ) : null}
 
             {activeTab === "feedback" ? (
