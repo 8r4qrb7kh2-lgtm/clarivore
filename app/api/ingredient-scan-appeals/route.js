@@ -15,6 +15,7 @@ export function OPTIONS() {
 }
 
 const DEFAULT_APPEAL_PHOTO_BUCKET = "ingredient-scan-appeals";
+const MAX_APPEAL_PHOTO_BYTES = 768 * 1024;
 
 function errorResponse(message, status) {
   return corsJson({ success: false, error: message }, { status });
@@ -27,6 +28,13 @@ function parseDataUrl(dataUrl) {
   const mediaType = asText(header.split(";")[0]?.replace("data:", "")) || "image/jpeg";
   if (!base64Data) return null;
   return { mediaType, base64Data };
+}
+
+function estimateBase64Bytes(base64Data) {
+  const safe = asText(base64Data);
+  if (!safe) return 0;
+  const padding = safe.endsWith("==") ? 2 : safe.endsWith("=") ? 1 : 0;
+  return Math.max(0, Math.floor((safe.length * 3) / 4) - padding);
 }
 
 function extensionForMediaType(mediaType) {
@@ -131,6 +139,12 @@ export async function POST(request) {
   const parsedPhoto = parseDataUrl(photoDataUrl);
   if (!parsedPhoto) {
     return errorResponse("photoDataUrl must be a valid data URL image.", 400);
+  }
+  if (!asText(parsedPhoto.mediaType).toLowerCase().startsWith("image/")) {
+    return errorResponse("photoDataUrl must be a valid image.", 400);
+  }
+  if (estimateBase64Bytes(parsedPhoto.base64Data) > MAX_APPEAL_PHOTO_BYTES) {
+    return errorResponse("Appeal photo is too large. Use an image under 768 KB.", 413);
   }
 
   let session = null;

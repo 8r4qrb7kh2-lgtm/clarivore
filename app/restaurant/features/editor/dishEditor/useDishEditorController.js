@@ -23,6 +23,10 @@ import {
   normalizeIngredientEntry,
   deriveDishStateFromIngredients,
 } from "../editorUtils";
+import {
+  applyIngredientBrandSelectionFields,
+  clearIngredientBrandSelectionFields,
+} from "./brandSelectionFields";
 
 function coerceIngredientNameForApply(value) {
   if (typeof value?.name === "string") return value.name;
@@ -34,6 +38,76 @@ function sleep(ms) {
   return new Promise((resolve) => {
     setTimeout(resolve, ms);
   });
+}
+
+const APPEAL_TARGET_PHOTO_BYTES = 320 * 1024;
+const APPEAL_MAX_PHOTO_BYTES = 768 * 1024;
+const APPEAL_MAX_PHOTO_EDGE = 1600;
+const APPEAL_COMPRESSION_QUALITIES = [0.9, 0.82, 0.74, 0.66, 0.58];
+
+function estimateDataUrlBytes(dataUrl) {
+  const safe = asText(dataUrl);
+  if (!safe.startsWith("data:")) return safe.length;
+  const commaIndex = safe.indexOf(",");
+  if (commaIndex < 0) return safe.length;
+  const base64 = safe.slice(commaIndex + 1);
+  if (!base64) return 0;
+  const padding = base64.endsWith("==") ? 2 : base64.endsWith("=") ? 1 : 0;
+  return Math.max(0, Math.floor((base64.length * 3) / 4) - padding);
+}
+
+function loadDataUrlImage(dataUrl) {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error("Unable to load image for compression."));
+    image.src = dataUrl;
+  });
+}
+
+async function compressAppealPhotoDataUrl(dataUrl) {
+  const safe = asText(dataUrl);
+  if (!safe) return "";
+  if (!safe.startsWith("data:image/")) return safe;
+  if (estimateDataUrlBytes(safe) <= APPEAL_TARGET_PHOTO_BYTES) {
+    return safe;
+  }
+
+  try {
+    const image = await loadDataUrlImage(safe);
+    const naturalWidth = Number(image?.naturalWidth || image?.width) || 0;
+    const naturalHeight = Number(image?.naturalHeight || image?.height) || 0;
+    if (!naturalWidth || !naturalHeight) return safe;
+
+    const largestEdge = Math.max(naturalWidth, naturalHeight);
+    const scale = Math.min(1, APPEAL_MAX_PHOTO_EDGE / largestEdge);
+    const width = Math.max(1, Math.round(naturalWidth * scale));
+    const height = Math.max(1, Math.round(naturalHeight * scale));
+
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+
+    const context = canvas.getContext("2d");
+    if (!context) return safe;
+    context.fillStyle = "#ffffff";
+    context.fillRect(0, 0, width, height);
+    context.drawImage(image, 0, 0, width, height);
+
+    let bestCandidate = "";
+    for (const quality of APPEAL_COMPRESSION_QUALITIES) {
+      const candidate = canvas.toDataURL("image/jpeg", quality);
+      if (!candidate) continue;
+      bestCandidate = candidate;
+      if (estimateDataUrlBytes(candidate) <= APPEAL_TARGET_PHOTO_BYTES) {
+        return candidate;
+      }
+    }
+
+    return bestCandidate || safe;
+  } catch {
+    return safe;
+  }
 }
 
 export function useDishEditorController({
@@ -245,13 +319,17 @@ export function useDishEditorController({
     }
     try {
       const dataUrl = await fileToDataUrl(file);
-      if (!asText(dataUrl)) {
+      const compressedDataUrl = await compressAppealPhotoDataUrl(dataUrl);
+      if (!asText(compressedDataUrl)) {
         throw new Error("Failed to read image.");
+      }
+      if (estimateDataUrlBytes(compressedDataUrl) > APPEAL_MAX_PHOTO_BYTES) {
+        throw new Error("Appeal photo is too large. Use an image under 768 KB.");
       }
       setAppealPhotoByRow((current) => ({
         ...current,
         [ingredientIndex]: {
-          dataUrl,
+          dataUrl: compressedDataUrl,
           fileName: asText(file.name),
         },
       }));
@@ -259,10 +337,11 @@ export function useDishEditorController({
         ...current,
         [ingredientIndex]: "",
       }));
-    } catch (_error) {
+    } catch (error) {
       setAppealPhotoErrorByRow((current) => ({
         ...current,
-        [ingredientIndex]: "Failed to read image. Try another photo.",
+        [ingredientIndex]:
+          asText(error?.message) || "Failed to read image. Try another photo.",
       }));
     }
   }, []);
@@ -654,9 +733,13 @@ export function useDishEditorController({
               ? asText(scanData?.reasoning)
               : ""
             : asText(item.brandRequirementReason);
+          const nextBase =
+            preserveExistingBrand && hasBrand
+              ? applyIngredientBrandSelectionFields(item, existingBrands[0])
+              : clearIngredientBrandSelectionFields(item);
 
           return {
-            ...item,
+            ...nextBase,
             allergens: nextAllergens,
             diets: nextDiets,
             crossContaminationAllergens: nextCrossAllergens,
@@ -676,8 +759,7 @@ export function useDishEditorController({
             brandRequired: needsScan,
             brandRequirementReason: requirementReason,
             confirmed: false,
-            brands:
-              preserveExistingBrand && hasBrand ? existingBrands : [],
+            brands: preserveExistingBrand && hasBrand ? existingBrands : [],
           };
         }),
       );
@@ -868,7 +950,7 @@ export function useDishEditorController({
         current.map((item, itemIndex) =>
           itemIndex === ingredientIndex
             ? {
-                ...item,
+                ...clearIngredientBrandSelectionFields(item),
                 brands: [],
                 allergens: [],
                 diets: [],
@@ -926,7 +1008,7 @@ export function useDishEditorController({
             normalizedBrand.crossContaminationDiets,
           );
           return {
-            ...ingredient,
+            ...applyIngredientBrandSelectionFields(ingredient, normalizedBrand),
             allergens: allergensList,
             diets: dietsList,
             crossContaminationAllergens: crossAllergens,
@@ -1081,7 +1163,7 @@ export function useDishEditorController({
                 aiDetectedCrossContaminationAllergens:
                   brandItem.crossContaminationAllergens,
                 aiDetectedCrossContaminationDiets: brandItem.crossContaminationDiets,
-                brands: [brandItem],
+                ...applyIngredientBrandSelectionFields(item, brandItem),
                 confirmed: true,
               };
             }),
