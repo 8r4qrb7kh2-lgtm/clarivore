@@ -391,6 +391,70 @@ function normalizeOverlayKeyList(values) {
   return output;
 }
 
+function buildOverlayStructureMatchToken(overlay) {
+  if (!overlay || typeof overlay !== "object") return "";
+  const ingredientNames = readOverlayIngredients(overlay).map((row, index) =>
+    normalizeIngredientRow(row, index).name,
+  );
+  try {
+    return JSON.stringify({
+      dishName: readOverlayDishName(overlay),
+      pageIndex: toSafeOverlayPageIndex(overlay?.pageIndex),
+      ingredientNames,
+    });
+  } catch {
+    return "";
+  }
+}
+
+export function reconcileBaseOverlaysWithBaselineKeys({
+  baseOverlays,
+  baselineOverlays,
+}) {
+  const currentBaseOverlays = Array.isArray(baseOverlays) ? baseOverlays : [];
+  const previousBaselineOverlays = Array.isArray(baselineOverlays) ? baselineOverlays : [];
+  if (!currentBaseOverlays.length || !previousBaselineOverlays.length) {
+    return currentBaseOverlays;
+  }
+
+  const baseIndex = buildOverlayOrderAndMap(currentBaseOverlays);
+  const candidatesByToken = new Map();
+  currentBaseOverlays.forEach((overlay, index) => {
+    const token = buildOverlayStructureMatchToken(overlay);
+    if (!token) return;
+    if (!candidatesByToken.has(token)) {
+      candidatesByToken.set(token, []);
+    }
+    candidatesByToken.get(token).push(index);
+  });
+
+  const matchedIndexes = new Set();
+  const nextBaseOverlays = [...currentBaseOverlays];
+
+  previousBaselineOverlays.forEach((baselineOverlay) => {
+    const desiredOverlayKey = asText(
+      baselineOverlay?.overlayKey || baselineOverlay?._editorKey,
+    );
+    const desiredKey = toOverlayDishKey({ overlayKey: desiredOverlayKey });
+    if (!desiredOverlayKey || !desiredKey || baseIndex.byKey.has(desiredKey)) {
+      return;
+    }
+
+    const token = buildOverlayStructureMatchToken(baselineOverlay);
+    const candidateIndexes = candidatesByToken.get(token) || [];
+    const matchedIndex = candidateIndexes.find((index) => !matchedIndexes.has(index));
+    if (!Number.isInteger(matchedIndex) || matchedIndex < 0) return;
+
+    matchedIndexes.add(matchedIndex);
+    nextBaseOverlays[matchedIndex] = {
+      ...nextBaseOverlays[matchedIndex],
+      overlayKey: desiredOverlayKey,
+    };
+  });
+
+  return nextBaseOverlays;
+}
+
 function applyOverlayDelta({
   baseOverlays,
   overlayUpserts,
@@ -1054,12 +1118,12 @@ function buildMenuReviewRows({
   return finalizeMenuReviewRows([...summaryRowsWithMenuRefs, ...ingredientReviewRows]);
 }
 
-function buildIngredientRowsFromOverlays(overlays) {
+export function buildIngredientRowsFromOverlays(overlays) {
   const output = [];
 
   (Array.isArray(overlays) ? overlays : []).forEach((overlay) => {
     const dishName = readOverlayDishName(overlay);
-    const dishKey = toDishKey(dishName);
+    const dishKey = toOverlayDishKey(overlay);
     if (!dishName || !dishKey) return;
 
     const ingredients = readOverlayIngredients(overlay).map((row, index) =>
@@ -1138,12 +1202,12 @@ function buildMenuPageRowsFromState(menuImages, overlays) {
   return rows;
 }
 
-function buildMenuDishRowsFromOverlays(overlays) {
+export function buildMenuDishRowsFromOverlays(overlays) {
   const rows = [];
 
   (Array.isArray(overlays) ? overlays : []).forEach((overlay) => {
     const dishName = readOverlayDishName(overlay);
-    const dishKey = toDishKey(dishName);
+    const dishKey = toOverlayDishKey(overlay);
     if (!dishName || !dishKey) return;
 
     rows.push({
@@ -2562,8 +2626,12 @@ export async function applyWriteOperations({
           : menuImagesProvided;
 
         if (hasOverlayDeltaPayload) {
-          const mergedOverlays = applyOverlayDelta({
+          const reconciledBaseOverlays = reconcileBaseOverlaysWithBaselineKeys({
             baseOverlays: currentMenuState.overlays,
+            baselineOverlays: payload?.baselineOverlays,
+          });
+          const mergedOverlays = applyOverlayDelta({
+            baseOverlays: reconciledBaseOverlays,
             overlayUpserts: payload?.overlayUpserts,
             overlayDeletes: payload?.overlayDeletes,
             overlayOrder: payload?.overlayOrder,
@@ -2632,8 +2700,12 @@ export async function applyWriteOperations({
         let overlays = normalizeOverlayListForStorage(payload?.overlays);
 
         if (hasOverlayDeltaPayload) {
-          overlays = applyOverlayDelta({
+          const reconciledBaseOverlays = reconcileBaseOverlaysWithBaselineKeys({
             baseOverlays: currentMenuState.overlays,
+            baselineOverlays: payload?.baselineOverlays,
+          });
+          overlays = applyOverlayDelta({
+            baseOverlays: reconciledBaseOverlays,
             overlayUpserts: payload?.overlayUpserts,
             overlayDeletes: payload?.overlayDeletes,
             overlayOrder: payload?.overlayOrder,

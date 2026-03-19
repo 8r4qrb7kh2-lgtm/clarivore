@@ -194,6 +194,7 @@ function buildOverlayFromDishRow(dishRow, ingredientRows, brandByIngredientId) {
   const dishName =
     asText(dishRow?.dish_name || payload?.name || payload?.id || payload?.dishName) ||
     "Dish";
+  const overlayKey = asText(payload?.overlayKey || dishRow?.dish_key);
 
   const pageIndex = toSafeNonNegativeInteger(dishRow?.page_index ?? payload?.pageIndex, 0);
 
@@ -250,6 +251,12 @@ function buildOverlayFromDishRow(dishRow, ingredientRows, brandByIngredientId) {
       ? ingredients
       : (Array.isArray(payload?.ingredients) ? payload.ingredients : []),
   };
+
+  if (overlayKey) {
+    overlay.overlayKey = overlayKey;
+  } else {
+    delete overlay.overlayKey;
+  }
 
   if (Array.isArray(overlay.ingredients) && overlay.ingredients.length) {
     overlay.aiIngredients = JSON.stringify(overlay.ingredients);
