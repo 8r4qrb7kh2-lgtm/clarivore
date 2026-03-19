@@ -23,7 +23,6 @@ const TABLE_METADATA = {
     schema: "public",
     jsonColumns: ["metadata"],
   },
-  ingredient_scan_appeals: { schema: "public" },
   menu_snapshots: { schema: "public", jsonColumns: ["dishes_json"] },
   order_feedback: { schema: "public" },
   product_issue_reports: { schema: "public", jsonColumns: ["analysis_details"] },

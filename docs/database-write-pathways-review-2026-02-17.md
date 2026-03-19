@@ -161,8 +161,8 @@ Result:
 | Tablet order lifecycle | `app/restaurant/hooks/useOrderFlow.js`, `app/lib/tabletOrderPersistence.js`, tablet UIs | `tablet_orders` upsert |
 | Order feedback flow | `app/order-feedback/OrderFeedbackClient.js` | `order_feedback` insert, `accommodation_requests` insert, `feedback_email_queue` update |
 | Manager/admin/help chat | dashboard/help clients | `restaurant_direct_messages` insert, `restaurant_direct_message_reads` upsert |
-| Ingredient scan appeal submit | `/api/ingredient-scan-appeals` | `ingredient_scan_appeals` insert/delete + storage object write/remove |
-| Appeal review/admin ops | admin dashboard | `ingredient_scan_appeals` update, optional `restaurant_direct_messages` insert |
+| Ingredient scan appeal submit | `/api/ingredient-scan-appeals` | `restaurant_menu_ingredient_rows.ingredient_payload.brandAppeal` update + `change_logs` insert + storage object write/remove |
+| Appeal review/admin ops | admin dashboard | `restaurant_menu_ingredient_rows.ingredient_payload.brandAppeal` update + `change_logs` insert, optional `restaurant_direct_messages` insert |
 | Issue report intake | `/api/report-issue` | `product_issue_reports` insert |
 | Product report resolution | admin dashboard | `product_issue_reports` update |
 | Manager invite and access | RPCs + `/api/admin/managers` | `manager_invites` via RPC, `restaurant_managers` insert/delete |
@@ -187,7 +187,7 @@ Result:
 | `editor_locks` | No active runtime writer found in current app paths |
 | `feedback_email_queue` | Active runtime writes |
 | `help_kb` | Operator/script writes |
-| `ingredient_scan_appeals` | Active runtime writes |
+| `ingredient_scan_appeals` | Removed by migration `20260319150000_drop_ingredient_scan_appeals.sql` |
 | `issue_reports` | No active runtime writer found in current app paths |
 | `manager_device_tokens` | Active runtime writes |
 | `manager_invitations` | Legacy table; no active primary runtime writer |
@@ -233,7 +233,7 @@ flowchart LR
     ACC["Account/Favorites/Loved Dishes"] --> PREF_DB["user_allergies + user_favorites + user_loved_dishes"]
     ORDERS["Order/Tablet/Feedback Flows"] --> ORD_DB["tablet_orders + order_feedback + accommodation_requests + feedback_email_queue"]
     CHAT["Manager/Admin/Help Contact"] --> CHAT_DB["restaurant_direct_messages + restaurant_direct_message_reads"]
-    APPEAL["POST /api/ingredient-scan-appeals"] --> APPEAL_DB["ingredient_scan_appeals"]
+    APPEAL["POST /api/ingredient-scan-appeals"] --> APPEAL_DB["restaurant_menu_ingredient_rows + change_logs"]
     ISSUE["POST /api/report-issue"] --> ISSUE_DB["product_issue_reports"]
     ADMIN["POST /api/admin/managers + RPC"] --> ACCESS_DB["restaurant_managers + manager_invites"]
     PUSH["Push Registration"] --> PUSH_DB["manager_* + diner_* tokens/subscriptions"]

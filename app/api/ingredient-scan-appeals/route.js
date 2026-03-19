@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+
 import { corsJson, corsOptions } from "../_shared/cors";
 import { sendNotificationEmail } from "../notifications/_shared/emailSender";
 import {
@@ -12,7 +14,8 @@ import {
 import {
   formatIngredientBrandAppealSnapshot,
   normalizeIngredientBrandAppeal,
-} from "../../lib/ingredientBrandAppeal";
+} from "../../lib/ingredientBrandAppeal.js";
+import { listIngredientAppealsForAdmin, loadIngredientAppealRowsById } from "../../lib/server/ingredientAppeals.js";
 import { createSupabaseServiceRoleClient } from "../../lib/server/supabaseServerClient";
 
 export const runtime = "nodejs";
@@ -158,6 +161,7 @@ function buildAppealChangePayload({
     items: {
       [safeDishName]: [
         {
+          appealId: asText(afterAppeal?.id || beforeAppeal?.id),
           summary,
           before: formatIngredientBrandAppealSnapshot(beforeAppeal),
           after: formatIngredientBrandAppealSnapshot(afterAppeal),
@@ -279,6 +283,10 @@ async function syncIngredientRowsForAppealSubmission(tx, {
     ingredientName,
   });
 
+  if (!rows.length) {
+    throw new Error("Ingredient row not found.");
+  }
+
   for (const row of rows) {
     const currentPayload =
       row?.ingredient_payload && typeof row.ingredient_payload === "object"
@@ -298,19 +306,16 @@ async function syncIngredientRowsForAppealSubmission(tx, {
 }
 
 async function syncIngredientRowsForAppealReview(tx, {
-  restaurantId,
-  dishName,
-  ingredientName,
+  appealId,
   reviewStatus,
   reviewNotes,
   reviewedAt,
   reviewedBy,
 }) {
-  const rows = await loadMatchingIngredientRows(tx, {
-    restaurantId,
-    dishName,
-    ingredientName,
-  });
+  const rows = await loadIngredientAppealRowsById(tx, appealId);
+  if (!Array.isArray(rows) || !rows.length) {
+    throw new Error("Appeal not found.");
+  }
 
   const updatedRows = [];
   for (const row of rows) {
@@ -319,6 +324,10 @@ async function syncIngredientRowsForAppealReview(tx, {
         ? { ...row.ingredient_payload }
         : {};
     const beforeAppeal = normalizeIngredientBrandAppeal(currentPayload.brandAppeal);
+    if (!beforeAppeal) {
+      continue;
+    }
+
     const nextAppeal = buildReviewedAppealState({
       existingAppeal: currentPayload.brandAppeal,
       reviewStatus,
@@ -345,9 +354,17 @@ async function syncIngredientRowsForAppealReview(tx, {
 
     updatedRows.push({
       id: row.id,
+      restaurantId: asText(row.restaurant_id),
+      dishName: asText(row.dish_name),
+      ingredientName: asText(currentPayload.name || row.row_text),
+      photoUrl: asText(beforeAppeal.photoUrl),
       beforeAppeal,
       afterAppeal: nextAppeal,
     });
+  }
+
+  if (!updatedRows.length) {
+    throw new Error("Appeal not found.");
   }
 
   return updatedRows;
@@ -360,6 +377,26 @@ function getSessionErrorStatus(error) {
   if (message === "Supabase server credentials missing") return 500;
   if (message === "Admin access required") return 403;
   return 401;
+}
+
+export async function GET(request) {
+  try {
+    await requireAdminSession(request);
+
+    const { searchParams } = new URL(request.url);
+    const limit = Math.max(1, Math.min(Number(searchParams.get("limit")) || 200, 500));
+    const appeals = await listIngredientAppealsForAdmin(db, { limit });
+
+    return corsJson({
+      success: true,
+      appeals,
+    });
+  } catch (error) {
+    return errorResponse(
+      asText(error?.message) || "Failed to load appeals.",
+      getSessionErrorStatus(error),
+    );
+  }
 }
 
 export async function POST(request) {
@@ -401,7 +438,10 @@ export async function POST(request) {
   try {
     session = await requireAuthenticatedSession(request);
   } catch (error) {
-    return errorResponse(asText(error?.message) || "Invalid user session.", getSessionErrorStatus(error));
+    return errorResponse(
+      asText(error?.message) || "Invalid user session.",
+      getSessionErrorStatus(error),
+    );
   }
 
   const userId = asText(session?.userId);
@@ -417,20 +457,19 @@ export async function POST(request) {
   }
 
   if (!isAdmin) {
-    let managerRecord = null;
     try {
-      managerRecord = await db.restaurant_managers.findFirst({
+      const managerRecord = await db.restaurant_managers.findFirst({
         where: { user_id: userId, restaurant_id: restaurantId },
         select: { id: true },
       });
+      if (!managerRecord?.id) {
+        return errorResponse("Not authorized to submit appeals for this restaurant.", 403);
+      }
     } catch (managerError) {
       return errorResponse(
         asText(managerError?.message) || "Failed to verify manager access.",
         500,
       );
-    }
-    if (!managerRecord?.id) {
-      return errorResponse("Not authorized to submit appeals for this restaurant.", 403);
     }
   }
 
@@ -498,31 +537,16 @@ export async function POST(request) {
   }
 
   const submittedAt = new Date();
+  const createdAppealId = randomUUID();
   const actorLabel = resolveAppealActorLabel(session, "Manager");
   const responsePhotoUrl = getPublicAppealPhotoUrl(photoUrl);
 
-  let createdAppealId = "";
   try {
-    const transactionResult = await db.$transaction(async (tx) => {
+    await db.$transaction(async (tx) => {
       await setRestaurantWriteContext(tx);
 
-      const createdAppeal = await tx.ingredient_scan_appeals.create({
-        data: {
-          restaurant_id: restaurantId,
-          dish_name: dishName,
-          ingredient_name: ingredientName,
-          photo_url: photoUrl,
-          manager_message: managerMessage,
-          review_status: "pending",
-          ai_recommended_scan: true,
-          manager_disagrees: true,
-          submitted_at: submittedAt,
-        },
-        select: { id: true },
-      });
-
       const appealState = buildPendingAppealState({
-        appealId: createdAppeal?.id,
+        appealId: createdAppealId,
         managerMessage,
         photoUrl,
         submittedAt: submittedAt.toISOString(),
@@ -548,23 +572,15 @@ export async function POST(request) {
         photos: responsePhotoUrl ? [responsePhotoUrl] : [],
       });
 
-      if (matchingRows.length) {
-        await bumpRestaurantWriteVersion(tx, restaurantId);
-      }
-
-      return {
-        appealId: asText(createdAppeal?.id),
-        appealState,
-        matchedRowCount: matchingRows.length,
-      };
+      await bumpRestaurantWriteVersion(tx, restaurantId);
     });
-
-    createdAppealId = transactionResult.appealId;
   } catch (error) {
     if (photoPath && storageSupabase) {
       await storageSupabase.storage.from(bucketName).remove([photoPath]);
     }
-    return errorResponse(asText(error?.message) || "Failed to create appeal.", 500);
+    const message = asText(error?.message) || "Failed to create appeal.";
+    const status = message === "Ingredient row not found." ? 404 : 500;
+    return errorResponse(message, status);
   }
 
   try {
@@ -611,7 +627,10 @@ export async function PATCH(request) {
   try {
     session = await requireAdminSession(request);
   } catch (error) {
-    return errorResponse(asText(error?.message) || "Admin access required.", getSessionErrorStatus(error));
+    return errorResponse(
+      asText(error?.message) || "Admin access required.",
+      getSessionErrorStatus(error),
+    );
   }
 
   let body = null;
@@ -636,100 +655,36 @@ export async function PATCH(request) {
     const result = await db.$transaction(async (tx) => {
       await setRestaurantWriteContext(tx);
 
-      const existingAppeal = await tx.ingredient_scan_appeals.findUnique({
-        where: { id: appealId },
-        select: {
-          id: true,
-          restaurant_id: true,
-          dish_name: true,
-          ingredient_name: true,
-          manager_message: true,
-          photo_url: true,
-          submitted_at: true,
-          review_status: true,
-          review_notes: true,
-          reviewed_at: true,
-        },
-      });
-
-      if (!existingAppeal?.id) {
-        throw new Error("Appeal not found.");
-      }
-
-      await tx.ingredient_scan_appeals.update({
-        where: { id: appealId },
-        data: {
-          review_status: reviewStatus,
-          reviewed_at: reviewedAt,
-          review_notes: reviewNotes || null,
-        },
-      });
-
       const updatedRows = await syncIngredientRowsForAppealReview(tx, {
-        restaurantId: asText(existingAppeal.restaurant_id),
-        dishName: asText(existingAppeal.dish_name),
-        ingredientName: asText(existingAppeal.ingredient_name),
+        appealId,
         reviewStatus,
         reviewNotes,
         reviewedAt: reviewedAt.toISOString(),
         reviewedBy,
       });
-
-      const beforeAppeal =
-        updatedRows[0]?.beforeAppeal ||
-        normalizeIngredientBrandAppeal({
-          id: existingAppeal.id,
-          review_status: existingAppeal.review_status,
-          manager_message: existingAppeal.manager_message,
-          photo_url: getPublicAppealPhotoUrl(existingAppeal.photo_url),
-          photo_attached: Boolean(asText(existingAppeal.photo_url)),
-          submitted_at: existingAppeal.submitted_at?.toISOString?.() || existingAppeal.submitted_at,
-          reviewed_at: existingAppeal.reviewed_at?.toISOString?.() || existingAppeal.reviewed_at,
-          review_notes: existingAppeal.review_notes,
-        });
-      const afterAppeal =
-        updatedRows[0]?.afterAppeal ||
-        buildReviewedAppealState({
-          existingAppeal: {
-            id: existingAppeal.id,
-            review_status: reviewStatus,
-            manager_message: existingAppeal.manager_message,
-            photo_url: getPublicAppealPhotoUrl(existingAppeal.photo_url),
-            photo_attached: Boolean(asText(existingAppeal.photo_url)),
-            submitted_at:
-              existingAppeal.submitted_at?.toISOString?.() || existingAppeal.submitted_at,
-          },
-          reviewStatus,
-          reviewNotes,
-          reviewedAt: reviewedAt.toISOString(),
-          reviewedBy,
-        });
+      const firstRow = updatedRows[0];
 
       await createAppealChangeLog(tx, {
-        restaurantId: asText(existingAppeal.restaurant_id),
+        restaurantId: firstRow.restaurantId,
         actorLabel: reviewedBy,
-        dishName: asText(existingAppeal.dish_name),
+        dishName: firstRow.dishName,
         summary:
           reviewStatus === "approved"
-            ? `${existingAppeal.dish_name}: Approved brand assignment appeal for ${existingAppeal.ingredient_name}`
-            : `${existingAppeal.dish_name}: Rejected brand assignment appeal for ${existingAppeal.ingredient_name}`,
-        beforeAppeal,
-        afterAppeal,
-        photos: getPublicAppealPhotoUrl(existingAppeal.photo_url)
-          ? [getPublicAppealPhotoUrl(existingAppeal.photo_url)]
-          : [],
+            ? `${firstRow.dishName}: Approved brand assignment appeal for ${firstRow.ingredientName}`
+            : `${firstRow.dishName}: Rejected brand assignment appeal for ${firstRow.ingredientName}`,
+        beforeAppeal: firstRow.beforeAppeal,
+        afterAppeal: firstRow.afterAppeal,
+        photos: firstRow.photoUrl ? [firstRow.photoUrl] : [],
       });
 
-      if (updatedRows.length) {
-        await bumpRestaurantWriteVersion(tx, asText(existingAppeal.restaurant_id));
-      }
+      await bumpRestaurantWriteVersion(tx, firstRow.restaurantId);
 
       return {
         appeal: {
-          id: asText(existingAppeal.id),
-          restaurantId: asText(existingAppeal.restaurant_id),
-          dishName: asText(existingAppeal.dish_name),
-          ingredientName: asText(existingAppeal.ingredient_name),
+          id: appealId,
+          restaurantId: firstRow.restaurantId,
+          dishName: firstRow.dishName,
+          ingredientName: firstRow.ingredientName,
           reviewStatus,
           reviewNotes,
           reviewedAt: reviewedAt.toISOString(),

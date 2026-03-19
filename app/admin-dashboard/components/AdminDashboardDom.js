@@ -962,6 +962,38 @@ export default function AdminDashboardDom({
     return result;
   }, []);
 
+  const callIngredientAppealsApi = useCallback(async ({ method = "GET", payload = null } = {}) => {
+    if (!supabase) {
+      throw new Error("Supabase is not configured.");
+    }
+
+    const {
+      data: { session },
+      error: sessionError,
+    } = await supabase.auth.getSession();
+    if (sessionError) throw sessionError;
+
+    const accessToken = String(session?.access_token || "").trim();
+    if (!accessToken) {
+      throw new Error("You must be signed in.");
+    }
+
+    const response = await fetch("/api/ingredient-scan-appeals?limit=200", {
+      method,
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
+      ...(payload ? { body: JSON.stringify(payload) } : {}),
+    });
+
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok || result?.success === false) {
+      throw new Error(result?.error || "Ingredient appeals request failed.");
+    }
+    return result;
+  }, []);
+
   const loadManagerAccess = useCallback(async () => {
     if (!supabase || !isAdmin) return;
 
@@ -1071,38 +1103,8 @@ export default function AdminDashboardDom({
 
       setAppealsLoading(true);
       try {
-        const { data, error } = await supabase
-          .from("ingredient_scan_appeals")
-          .select(
-            "id, ingredient_name, restaurant_id, dish_name, submitted_at, review_status, reviewed_at, manager_message, photo_url, review_notes",
-          )
-          .order("submitted_at", { ascending: false })
-          .limit(200);
-        if (error) throw error;
-
-        const appeals = Array.isArray(data) ? data : [];
-        const restaurantIds = [...new Set(appeals.map((appeal) => appeal.restaurant_id).filter(Boolean))];
-
-        const restaurantLookup = {};
-        if (restaurantIds.length) {
-          const { data: restaurantsData, error: restaurantError } = await supabase
-            .from("restaurants")
-            .select("id, name, slug")
-            .in("id", restaurantIds);
-
-          if (!restaurantError) {
-            (restaurantsData || []).forEach((restaurant) => {
-              restaurantLookup[restaurant.id] = restaurant;
-            });
-          }
-        }
-
-        const enriched = appeals.map((appeal) => ({
-          ...appeal,
-          restaurants: restaurantLookup[appeal.restaurant_id] || null,
-        }));
-
-        setAllAppeals(enriched);
+        const result = await callIngredientAppealsApi({ method: "GET" });
+        setAllAppeals(Array.isArray(result?.appeals) ? result.appeals : []);
         setAppealsLoadedAt(Date.now());
       } catch (error) {
         console.error("[admin-dashboard-next] failed to load appeals", error);
@@ -1111,12 +1113,12 @@ export default function AdminDashboardDom({
         setAppealsLoading(false);
       }
     },
-    [appealsLoadedAt, isAdmin, showStatus],
+    [appealsLoadedAt, callIngredientAppealsApi, isAdmin, showStatus],
   );
 
   const reviewAppeal = useCallback(
     async (appeal, status) => {
-      if (!supabase || !appeal?.id) return;
+      if (!supabase || !appeal?.id || appeal?.reviewable !== true) return;
 
       const confirmed = window.confirm(
         `Are you sure you want to ${status === "approved" ? "approve" : "deny"} this appeal?`,
@@ -1127,31 +1129,14 @@ export default function AdminDashboardDom({
       setAppealBusyId(appeal.id);
 
       try {
-        const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-        if (sessionError) throw sessionError;
-
-        const accessToken = String(sessionData?.session?.access_token || "").trim();
-        if (!accessToken) {
-          throw new Error("You must be signed in to review appeals.");
-        }
-
-        const response = await fetch("/api/ingredient-scan-appeals", {
+        await callIngredientAppealsApi({
           method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${accessToken}`,
-          },
-          body: JSON.stringify({
+          payload: {
             appealId: appeal.id,
             status,
             reviewNotes: notes,
-          }),
+          },
         });
-
-        const payload = await response.json().catch(() => ({}));
-        if (!response.ok || payload?.success === false) {
-          throw new Error(payload?.error || "Unable to review this appeal right now.");
-        }
 
         if (appeal.restaurant_id) {
           try {
@@ -1198,7 +1183,7 @@ export default function AdminDashboardDom({
         setAppealBusyId("");
       }
     },
-    [appealNotesById, currentUser?.id, loadAppeals, showStatus],
+    [appealNotesById, callIngredientAppealsApi, currentUser?.id, loadAppeals, showStatus],
   );
 
   const loadAnonymousFeedback = useCallback(async () => {
@@ -1921,6 +1906,11 @@ export default function AdminDashboardDom({
                                       {toDateLabel(appeal.reviewed_at)}
                                     </span>
                                   ) : null}
+                                  {appeal.reviewed_by ? (
+                                    <span>
+                                      <strong>Reviewer:</strong> {appeal.reviewed_by}
+                                    </span>
+                                  ) : null}
                                 </div>
                               </div>
                               <span className={`appeal-status ${status}`}>{status}</span>
@@ -1954,7 +1944,7 @@ export default function AdminDashboardDom({
                               </div>
                             ) : null}
 
-                            {status === "pending" ? (
+                            {status === "pending" && appeal.reviewable === true ? (
                               <>
                                 <div className="review-notes">
                                   <label
@@ -2007,6 +1997,22 @@ export default function AdminDashboardDom({
                                   ) : null}
                                 </div>
                               </>
+                            ) : status === "pending" ? (
+                              <div className="appeal-actions">
+                                <p style={{ color: "#1e3a5f" }}>
+                                  This appeal only exists in change history and can no longer be reviewed from here.
+                                </p>
+                                {restaurant.slug ? (
+                                  <a
+                                    href={`/restaurant?slug=${restaurant.slug}`}
+                                    className="btn-view-restaurant"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                  >
+                                    View Restaurant
+                                  </a>
+                                ) : null}
+                              </div>
                             ) : (
                               <div className="appeal-actions">
                                 {appeal.review_notes ? (

@@ -31,7 +31,7 @@ flowchart TD
   subgraph APPEALS["Appeals and Admin"]
     X1["POST /api/ingredient-scan-appeals (9264)<br/>User: authenticated manager/owner for restaurant or app admin<br/>Page: /restaurant<br/>File: app/api/ingredient-scan-appeals/route.js"]
     X2["POST /api/admin/managers (9077)<br/>User: app admin<br/>Page: /admin-dashboard<br/>File: app/api/admin/managers/route.js"]
-    X3["ingredient_scan_appeals (+ storage bucket)"]
+    X3["restaurant_menu_ingredient_rows.brandAppeal + change_logs (+ storage bucket)"]
     X4["restaurant_managers"]
   end
 

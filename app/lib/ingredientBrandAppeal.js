@@ -16,6 +16,13 @@ function isInlineDataUrl(value) {
   return asText(value).startsWith("data:");
 }
 
+function parseSnapshotBoolean(value) {
+  const normalized = asText(value).toLowerCase();
+  if (normalized === "yes") return true;
+  if (normalized === "no") return false;
+  return undefined;
+}
+
 export function normalizeIngredientBrandAppeal(appeal) {
   const safe = appeal && typeof appeal === "object" ? appeal : {};
   const status = asText(safe.status || safe.reviewStatus || safe.review_status).toLowerCase();
@@ -84,4 +91,50 @@ export function formatIngredientBrandAppealSnapshot(appeal, emptyLabel = "Brand 
     lines.push(`Review notes: ${normalizedAppeal.reviewNotes}`);
   }
   return lines.join("\n");
+}
+
+export function parseIngredientBrandAppealSnapshot(snapshot) {
+  const safeSnapshot = asText(snapshot);
+  if (!safeSnapshot) return null;
+  if (safeSnapshot === "Brand assignment appeal: none") {
+    return null;
+  }
+
+  const parsed = {};
+  safeSnapshot.split(/\r?\n/).forEach((line, index) => {
+    const safeLine = asText(line);
+    if (!safeLine) return;
+
+    if (index === 0 && safeLine.toLowerCase().startsWith("brand assignment appeal:")) {
+      parsed.status = asText(safeLine.slice("Brand assignment appeal:".length));
+      return;
+    }
+    if (safeLine.startsWith("Message:")) {
+      parsed.managerMessage = asText(safeLine.slice("Message:".length));
+      return;
+    }
+    if (safeLine.startsWith("Photo attached:")) {
+      parsed.photoAttached = parseSnapshotBoolean(
+        safeLine.slice("Photo attached:".length),
+      );
+      return;
+    }
+    if (safeLine.startsWith("Submitted at:")) {
+      parsed.submittedAt = asText(safeLine.slice("Submitted at:".length));
+      return;
+    }
+    if (safeLine.startsWith("Reviewed at:")) {
+      parsed.reviewedAt = asText(safeLine.slice("Reviewed at:".length));
+      return;
+    }
+    if (safeLine.startsWith("Reviewed by:")) {
+      parsed.reviewedBy = asText(safeLine.slice("Reviewed by:".length));
+      return;
+    }
+    if (safeLine.startsWith("Review notes:")) {
+      parsed.reviewNotes = asText(safeLine.slice("Review notes:".length));
+    }
+  });
+
+  return normalizeIngredientBrandAppeal(parsed);
 }
