@@ -239,6 +239,7 @@ export function RestaurantViewer({
   });
   const selectedDish = selectedOverlay;
   const selectedOverlaySignature = selectedDish ? overlaySignature(selectedDish) : "";
+  const isMobileDishPanelReady = mobileDishPanelHeight > 0;
   const preferencePrefix = String(preferenceTitlePrefix || "Saved").trim() || "Saved";
   const preferencePrefixLower = preferencePrefix.toLowerCase();
 
@@ -1076,7 +1077,7 @@ export function RestaurantViewer({
       return undefined;
     }
 
-    if (mobileDishPanelHeight <= 0) {
+    if (!isMobileDishPanelReady) {
       return undefined;
     }
 
@@ -1093,9 +1094,9 @@ export function RestaurantViewer({
     acknowledgedReferenceNote,
     focusOverlayForCurrentViewport,
     isMobileViewport,
+    isMobileDishPanelReady,
     mobileViewportMetrics.height,
     mobileViewportMetrics.width,
-    mobileDishPanelHeight,
     selectedDish,
     selectedOverlaySignature,
   ]);
