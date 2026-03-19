@@ -2,10 +2,6 @@ import {
   normalizeIngredientBrandAppeal,
   parseIngredientBrandAppealSnapshot,
 } from "../ingredientBrandAppeal.js";
-import {
-  buildIngredientAppealReviewTarget,
-  parseIngredientAppealReviewTarget,
-} from "../ingredientAppealReviewTarget.js";
 
 function asText(value) {
   return String(value ?? "").trim();
@@ -92,8 +88,6 @@ function mergeAppealEntries(left, right) {
   return {
     id: asText(preferred?.id || fallback?.id),
     appeal_id: asText(preferred?.appeal_id || fallback?.appeal_id),
-    row_id: asText(preferred?.row_id || fallback?.row_id),
-    review_target: asText(preferred?.review_target || fallback?.review_target),
     restaurant_id: asText(preferred?.restaurant_id || fallback?.restaurant_id),
     dish_name: asText(preferred?.dish_name || fallback?.dish_name),
     ingredient_name: asText(preferred?.ingredient_name || fallback?.ingredient_name),
@@ -142,11 +136,6 @@ function buildCurrentAppealEntry(row) {
   return {
     id: appeal.id || asText(row?.id),
     appeal_id: appeal.id,
-    row_id: asText(row?.id),
-    review_target: buildIngredientAppealReviewTarget({
-      appealId: appeal.id,
-      rowId: row?.id,
-    }),
     restaurant_id: asText(row?.restaurant_id),
     dish_name: asText(row?.dish_name),
     ingredient_name: asText(payload.name || row?.row_text),
@@ -216,8 +205,6 @@ function createHistoryAppealEntry({
   return {
     id: "",
     appeal_id: asText(normalizedAppeal.id),
-    row_id: "",
-    review_target: "",
     restaurant_id: asText(restaurantId),
     dish_name: asText(dishName),
     ingredient_name: asText(ingredientName),
@@ -427,58 +414,4 @@ export async function loadIngredientAppealRowsById(dbClient, appealId) {
     `,
     safeAppealId,
   );
-}
-
-async function loadIngredientAppealRowByRowId(dbClient, rowId) {
-  const safeRowId = asText(rowId);
-  if (!safeRowId) return [];
-
-  return await dbClient.$queryRawUnsafe(
-    `
-      SELECT id, restaurant_id, dish_name, row_index, row_text, ingredient_payload
-      FROM public.restaurant_menu_ingredient_rows
-      WHERE id = $1
-      ORDER BY row_index ASC
-    `,
-    safeRowId,
-  );
-}
-
-async function expandAppealRowsFromSeedRow(dbClient, seedRow) {
-  const payload =
-    seedRow?.ingredient_payload && typeof seedRow.ingredient_payload === "object"
-      ? seedRow.ingredient_payload
-      : {};
-  const appeal = normalizeIngredientBrandAppeal(payload.brandAppeal);
-  if (!appeal) {
-    return [];
-  }
-
-  const safeAppealId = asText(appeal.id);
-  if (!safeAppealId) {
-    return [seedRow];
-  }
-
-  const rows = await loadIngredientAppealRowsById(dbClient, safeAppealId);
-  return rows.length ? rows : [seedRow];
-}
-
-export async function loadIngredientAppealRowsForReview(dbClient, reviewTarget) {
-  const target = parseIngredientAppealReviewTarget(reviewTarget);
-  if (!target.type || !target.value) {
-    return [];
-  }
-
-  if (target.type === "appeal") {
-    const rows = await loadIngredientAppealRowsById(dbClient, target.value);
-    if (rows.length || !target.legacy) {
-      return rows;
-    }
-
-    const [seedRow] = await loadIngredientAppealRowByRowId(dbClient, target.value);
-    return seedRow ? await expandAppealRowsFromSeedRow(dbClient, seedRow) : [];
-  }
-
-  const [seedRow] = await loadIngredientAppealRowByRowId(dbClient, target.value);
-  return seedRow ? await expandAppealRowsFromSeedRow(dbClient, seedRow) : [];
 }

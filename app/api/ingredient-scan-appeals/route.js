@@ -18,7 +18,7 @@ import {
 import { selectIngredientRowsForAppeal } from "../../lib/server/ingredientAppealRowMatching.js";
 import {
   listIngredientAppealsForAdmin,
-  loadIngredientAppealRowsForReview,
+  loadIngredientAppealRowsById,
 } from "../../lib/server/ingredientAppeals.js";
 import { createSupabaseServiceRoleClient } from "../../lib/server/supabaseServerClient";
 
@@ -288,13 +288,13 @@ async function syncIngredientRowsForAppealSubmission(tx, {
 }
 
 async function syncIngredientRowsForAppealReview(tx, {
-  reviewTarget,
+  appealId,
   reviewStatus,
   reviewNotes,
   reviewedAt,
   reviewedBy,
 }) {
-  const rows = await loadIngredientAppealRowsForReview(tx, reviewTarget);
+  const rows = await loadIngredientAppealRowsById(tx, appealId);
   if (!Array.isArray(rows) || !rows.length) {
     throw new Error("Appeal not found.");
   }
@@ -625,12 +625,11 @@ export async function PATCH(request) {
   }
 
   const appealId = asText(body?.appealId);
-  const reviewTarget = asText(body?.reviewTarget) || appealId;
   const reviewStatus = normalizeAppealReviewStatus(body?.status);
   const reviewNotes = asText(body?.reviewNotes);
 
-  if (!reviewTarget || !reviewStatus) {
-    return errorResponse("reviewTarget and a valid status are required.", 400);
+  if (!appealId || !reviewStatus) {
+    return errorResponse("appealId and a valid status are required.", 400);
   }
 
   const reviewedAt = new Date();
@@ -642,7 +641,7 @@ export async function PATCH(request) {
       await setRestaurantWriteContext(tx);
 
       const updatedRows = await syncIngredientRowsForAppealReview(tx, {
-        reviewTarget,
+        appealId,
         reviewStatus,
         reviewNotes,
         reviewedAt: reviewedAt.toISOString(),
@@ -667,8 +666,7 @@ export async function PATCH(request) {
 
       return {
         appeal: {
-          id: asText(firstRow.afterAppeal?.id || appealId || reviewTarget),
-          reviewTarget,
+          id: asText(firstRow.afterAppeal?.id || appealId),
           restaurantId: firstRow.restaurantId,
           dishName: firstRow.dishName,
           ingredientName: firstRow.ingredientName,

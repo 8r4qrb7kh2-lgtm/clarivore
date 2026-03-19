@@ -8,7 +8,6 @@ import PageHeading from "../../components/surfaces/PageHeading";
 import AdminAppealsTab from "./AdminAppealsTab";
 import AdminSystemsExplorerTab from "./AdminSystemsExplorerTab";
 import { notifyManagerChat } from "../../lib/chatNotifications";
-import { buildIngredientAppealReviewTarget } from "../../lib/ingredientAppealReviewTarget.js";
 import { formatChatTimestamp } from "../../lib/chatMessage";
 import {
   commitRestaurantWrite,
@@ -1131,17 +1130,10 @@ export default function AdminDashboardDom({
       setAppealBusyId(appeal.id);
 
       try {
-        const reviewTarget =
-          String(appeal?.review_target || "").trim() ||
-          buildIngredientAppealReviewTarget({
-            appealId: appeal?.appeal_id || appeal?.id,
-            rowId: appeal?.row_id,
-          });
         await callIngredientAppealsApi({
           method: "PATCH",
           payload: {
             appealId: appeal.id,
-            reviewTarget,
             status,
             reviewNotes: notes,
           },
