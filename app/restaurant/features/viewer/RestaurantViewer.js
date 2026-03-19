@@ -1022,52 +1022,51 @@ export function RestaurantViewer({
   }, [isMobileViewport, selectedDish, selectedOverlaySignature]);
 
   useEffect(() => {
-    if (!isMobileViewport || !selectedDish || !selectedOverlaySignature) {
+    if (!isMobileViewport || !selectedDish || !selectedOverlaySignature || !isMobileDishPanelReady) {
       setMobileDishPanelMaxHeight(0);
       return undefined;
     }
 
     let frameId = 0;
-    frameId = window.requestAnimationFrame(() => {
-      const overlayNode = overlayNodeRefs.current.get(selectedOverlaySignature);
-      const viewportHeight = mobileViewportMetrics.height;
-      const defaultMaxHeight = Math.min(
-        viewportHeight * MOBILE_DISH_PANEL_DEFAULT_MAX_HEIGHT_RATIO,
-        MOBILE_DISH_PANEL_DEFAULT_MAX_HEIGHT_PX,
-      );
+    const timer = window.setTimeout(() => {
+      frameId = window.requestAnimationFrame(() => {
+        const overlayNode = overlayNodeRefs.current.get(selectedOverlaySignature);
+        const viewportHeight = mobileViewportMetrics.height;
+        const defaultMaxHeight = Math.min(
+          viewportHeight * MOBILE_DISH_PANEL_DEFAULT_MAX_HEIGHT_RATIO,
+          MOBILE_DISH_PANEL_DEFAULT_MAX_HEIGHT_PX,
+        );
 
-      if (!overlayNode || viewportHeight <= 0) {
-        setMobileDishPanelMaxHeight(defaultMaxHeight);
-        return;
-      }
+        if (!overlayNode || viewportHeight <= 0) {
+          setMobileDishPanelMaxHeight(defaultMaxHeight);
+          return;
+        }
 
-      const overlayRect = overlayNode.getBoundingClientRect();
-      const nextMaxHeight = computeMobileDishPanelMaxHeight({
-        viewportHeight,
-        overlayBottom: overlayRect.bottom,
-        defaultMaxHeight,
-        minimumHeight: MOBILE_DISH_PANEL_MIN_HEIGHT,
-        hardMinimumHeight: MOBILE_DISH_PANEL_HARD_MIN_HEIGHT,
-        gap: MOBILE_DISH_PANEL_OVERLAY_GAP,
+        const overlayRect = overlayNode.getBoundingClientRect();
+        const nextMaxHeight = computeMobileDishPanelMaxHeight({
+          viewportHeight,
+          overlayBottom: overlayRect.bottom,
+          defaultMaxHeight,
+          minimumHeight: MOBILE_DISH_PANEL_MIN_HEIGHT,
+          hardMinimumHeight: MOBILE_DISH_PANEL_HARD_MIN_HEIGHT,
+          gap: MOBILE_DISH_PANEL_OVERLAY_GAP,
+        });
+
+        setMobileDishPanelMaxHeight((current) => {
+          return Math.abs(current - nextMaxHeight) < 1 ? current : nextMaxHeight;
+        });
       });
-
-      setMobileDishPanelMaxHeight((current) => {
-        return Math.abs(current - nextMaxHeight) < 1 ? current : nextMaxHeight;
-      });
-    });
+    }, MOBILE_DISH_PANEL_STABLE_DELAY_MS + 40);
 
     return () => {
+      window.clearTimeout(timer);
       window.cancelAnimationFrame(frameId);
     };
   }, [
     isMobileViewport,
-    menuZoomScale,
+    isMobileDishPanelReady,
     mobileViewportMetrics.height,
     mobileViewportMetrics.width,
-    scrollSnapshot.clientHeight,
-    scrollSnapshot.clientWidth,
-    scrollSnapshot.scrollLeft,
-    scrollSnapshot.scrollTop,
     selectedDish,
     selectedOverlaySignature,
   ]);
