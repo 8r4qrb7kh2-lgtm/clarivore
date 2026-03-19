@@ -536,12 +536,12 @@ function readIngredientRowName(row, fallbackName) {
 }
 
 function readIngredientRowAppliedBrandItem(row) {
-  const direct = asText(row?.appliedBrandItem || row?.appliedBrand || row?.brandName);
-  if (direct) return direct;
   for (const brand of Array.isArray(row?.brands) ? row.brands : []) {
     const brandName = asText(brand?.name || brand?.productName);
     if (brandName) return brandName;
   }
+  const direct = asText(row?.appliedBrandItem || row?.appliedBrand || row?.brandName);
+  if (direct) return direct;
   return "";
 }
 
