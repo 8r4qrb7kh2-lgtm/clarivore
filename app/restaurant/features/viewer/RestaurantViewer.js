@@ -183,7 +183,6 @@ const MOBILE_VIEWPORT_QUERY = "(max-width: 900px)";
 const MOBILE_FOCUS_ZOOM = 1.65;
 const MOBILE_DISH_PANEL_FALLBACK_HEIGHT = 220;
 const MOBILE_DISH_PANEL_FOCUS_GUTTER = 0;
-const MOBILE_DISH_PANEL_STABLE_DELAY_MS = 80;
 const MOBILE_DISH_VERTICAL_ANCHOR_RATIO = 0.5;
 const MOBILE_DISH_FOCUS_EDGE_PADDING = 14;
 const MOBILE_DISH_PANEL_DEFAULT_MAX_HEIGHT_RATIO = 0.36;
@@ -217,7 +216,6 @@ export function RestaurantViewer({
   const [isMenuZoomAnimating, setIsMenuZoomAnimating] = useState(false);
   const [isMobileViewport, setIsMobileViewport] = useState(false);
   const [mobileViewportMetrics, setMobileViewportMetrics] = useState({ width: 0, height: 0 });
-  const [mobileDishPanelHeight, setMobileDishPanelHeight] = useState(0);
   const [mobileDishPanelMaxHeight, setMobileDishPanelMaxHeight] = useState(0);
   const [selectedDishContentMode, setSelectedDishContentMode] = useState("compatibility");
 
@@ -227,6 +225,7 @@ export function RestaurantViewer({
   const mobileDishPanelRef = useRef(null);
   const overlayNodeRefs = useRef(new Map());
   const mobileViewportRestoreRef = useRef(null);
+  const previousMobileViewportKeyRef = useRef("");
   const menuZoomScaleRef = useRef(1);
   const zoomAnimationTimerRef = useRef(null);
   const scrollAnimationFrameRef = useRef(null);
@@ -239,7 +238,6 @@ export function RestaurantViewer({
   });
   const selectedDish = selectedOverlay;
   const selectedOverlaySignature = selectedDish ? overlaySignature(selectedDish) : "";
-  const isMobileDishPanelReady = mobileDishPanelHeight > 0;
   const preferencePrefix = String(preferenceTitlePrefix || "Saved").trim() || "Saved";
   const preferencePrefixLower = preferencePrefix.toLowerCase();
 
@@ -510,6 +508,7 @@ export function RestaurantViewer({
       if (!overlay) return;
       const scrollNode = menuScrollRef.current;
       if (!scrollNode) return;
+      const scrollRect = scrollNode.getBoundingClientRect();
       const {
         behavior = "smooth",
         viewportBottomInset = 0,
@@ -553,11 +552,12 @@ export function RestaurantViewer({
         0,
         Math.max(Math.min(visibleHeight, scrollNode.clientWidth) * 0.45, 0),
       );
+      const viewportFitPadding = fitOverlayToViewport ? edgePadding + 1 : edgePadding;
       let nextTargetScale = clamp(Number(targetScale) || currentScale, 1, 3);
 
       if (fitOverlayToViewport) {
-        const verticalFitHeight = Math.max(visibleHeight - edgePadding * 2, 1);
-        const horizontalFitWidth = Math.max(scrollNode.clientWidth - edgePadding * 2, 1);
+        const verticalFitHeight = Math.max(visibleHeight - viewportFitPadding * 2, 1);
+        const horizontalFitWidth = Math.max(scrollNode.clientWidth - viewportFitPadding * 2, 1);
         if (overlayHeight > 0) {
           const maxScaleByHeight = currentScale * (verticalFitHeight / overlayHeight);
           nextTargetScale = Math.min(nextTargetScale, maxScaleByHeight);
@@ -583,11 +583,12 @@ export function RestaurantViewer({
       if (fitOverlayToViewport) {
         const centeredTop = overlayCenterY - visibleHeight / 2;
         const centeredLeft = overlayCenterX - scrollNode.clientWidth / 2;
-        const minTopForContain = scaledOverlayTop + scaledOverlayHeight - (visibleHeight - edgePadding);
-        const maxTopForContain = scaledOverlayTop - edgePadding;
+        const minTopForContain =
+          scaledOverlayTop + scaledOverlayHeight - (visibleHeight - viewportFitPadding);
+        const maxTopForContain = scaledOverlayTop - viewportFitPadding;
         const minLeftForContain =
-          scaledOverlayLeft + scaledOverlayWidth - (scrollNode.clientWidth - edgePadding);
-        const maxLeftForContain = scaledOverlayLeft - edgePadding;
+          scaledOverlayLeft + scaledOverlayWidth - (scrollNode.clientWidth - viewportFitPadding);
+        const maxLeftForContain = scaledOverlayLeft - viewportFitPadding;
         const canContainVertically = minTopForContain <= maxTopForContain;
         const canContainHorizontally = minLeftForContain <= maxLeftForContain;
 
@@ -616,6 +617,13 @@ export function RestaurantViewer({
         left: clamp(targetLeft, 0, maxScrollLeft),
         scale: safeTargetScale,
       };
+      const predictedOverlayRect = {
+        left: scrollRect.left + scaledOverlayLeft - clampedTarget.left,
+        top: scrollRect.top + scaledOverlayTop - clampedTarget.top,
+      };
+      predictedOverlayRect.right = predictedOverlayRect.left + scaledOverlayWidth;
+      predictedOverlayRect.bottom = predictedOverlayRect.top + scaledOverlayHeight;
+      clampedTarget.predictedOverlayRect = predictedOverlayRect;
 
       if (returnTargetOnly) {
         return clampedTarget;
@@ -633,7 +641,7 @@ export function RestaurantViewer({
   );
 
   const resolveMobileViewportBottomInset = useCallback(
-    (overrideInset) => {
+    (overrideInset, options = {}) => {
       const overrideInsetRaw = Number(overrideInset);
       if (Number.isFinite(overrideInsetRaw)) {
         return Math.max(0, overrideInsetRaw);
@@ -644,47 +652,55 @@ export function RestaurantViewer({
         return MOBILE_DISH_PANEL_FALLBACK_HEIGHT + MOBILE_DISH_PANEL_FOCUS_GUTTER;
       }
 
+      const estimatedPanelHeight = Number(options?.estimatedPanelHeight);
+      if (Number.isFinite(estimatedPanelHeight)) {
+        const scrollRect = scrollNode.getBoundingClientRect();
+        const estimatedPanelTop = mobileViewportMetrics.height - estimatedPanelHeight;
+        const visibleBottom = Math.min(scrollRect.bottom, estimatedPanelTop);
+        return Math.max(
+          0,
+          scrollRect.bottom - visibleBottom + MOBILE_DISH_PANEL_FOCUS_GUTTER,
+        );
+      }
+
       const panelNode = mobileDishPanelRef.current;
       if (panelNode) {
         const scrollRect = scrollNode.getBoundingClientRect();
         const panelRect = panelNode.getBoundingClientRect();
-        const overlap = Math.max(
-          0,
-          Math.min(scrollRect.bottom, panelRect.bottom) - Math.max(scrollRect.top, panelRect.top),
-        );
-        return Math.max(0, overlap + MOBILE_DISH_PANEL_FOCUS_GUTTER);
+        const visibleBottom = Math.min(scrollRect.bottom, panelRect.top);
+        return Math.max(0, scrollRect.bottom - visibleBottom + MOBILE_DISH_PANEL_FOCUS_GUTTER);
       }
 
-      const fallbackPanelHeight = Math.max(mobileDishPanelHeight, MOBILE_DISH_PANEL_FALLBACK_HEIGHT);
       return Math.max(
         0,
-        Math.min(fallbackPanelHeight, scrollNode.clientHeight) + MOBILE_DISH_PANEL_FOCUS_GUTTER,
+        Math.min(MOBILE_DISH_PANEL_FALLBACK_HEIGHT, scrollNode.clientHeight) +
+          MOBILE_DISH_PANEL_FOCUS_GUTTER,
       );
     },
-    [mobileDishPanelHeight],
+    [mobileViewportMetrics.height],
   );
 
-  const focusOverlayForCurrentViewport = useCallback(
-    (overlay, options = {}) => {
-      if (!overlay) return;
-      const desktopBehavior = options?.behavior === "auto" ? "auto" : "smooth";
-      const mobileBehavior = options?.behavior === "smooth" ? "smooth" : "auto";
-      const viewportBottomInset = isMobileViewport
-        ? resolveMobileViewportBottomInset(options?.viewportBottomInset)
-        : 0;
-      const recenter = (behavior = isMobileViewport ? mobileBehavior : desktopBehavior) => {
-        centerOverlayInView(overlay, {
-          behavior,
-          viewportBottomInset,
-          verticalAnchorRatio: isMobileViewport ? MOBILE_DISH_VERTICAL_ANCHOR_RATIO : 0.5,
-          overlayEdgePadding: isMobileViewport ? MOBILE_DISH_FOCUS_EDGE_PADDING : 0,
-          fitOverlayToViewport: isMobileViewport,
-        });
-      };
+  const getDefaultMobileDishPanelMaxHeight = useCallback(() => {
+    const viewportHeight = mobileViewportMetrics.height;
+    if (viewportHeight <= 0) {
+      return 0;
+    }
+    return Math.min(
+      viewportHeight * MOBILE_DISH_PANEL_DEFAULT_MAX_HEIGHT_RATIO,
+      MOBILE_DISH_PANEL_DEFAULT_MAX_HEIGHT_PX,
+    );
+  }, [mobileViewportMetrics.height]);
 
-      if (!isMobileViewport) {
-        recenter(desktopBehavior);
-        return;
+  const planMobileOverlayFocus = useCallback(
+    (overlay) => {
+      if (!isMobileViewport || !overlay) {
+        return null;
+      }
+
+      const viewportHeight = mobileViewportMetrics.height;
+      const defaultMaxHeight = getDefaultMobileDishPanelMaxHeight();
+      if (viewportHeight <= 0 || defaultMaxHeight <= 0) {
+        return null;
       }
 
       const requestedScale = clamp(
@@ -692,56 +708,128 @@ export function RestaurantViewer({
         1,
         3,
       );
+      let plannedPanelMaxHeight = defaultMaxHeight;
+      let target = null;
 
-      const target = centerOverlayInView(overlay, {
+      for (let attempt = 0; attempt < 4; attempt += 1) {
+        const viewportBottomInset = resolveMobileViewportBottomInset(undefined, {
+          estimatedPanelHeight: plannedPanelMaxHeight,
+        });
+        target = centerOverlayInView(overlay, {
+          behavior: "auto",
+          viewportBottomInset,
+          verticalAnchorRatio: MOBILE_DISH_VERTICAL_ANCHOR_RATIO,
+          overlayEdgePadding: MOBILE_DISH_FOCUS_EDGE_PADDING,
+          fitOverlayToViewport: true,
+          targetScale: requestedScale,
+          returnTargetOnly: true,
+        });
+        if (!target?.predictedOverlayRect) {
+          return null;
+        }
+
+        const nextPanelMaxHeight = computeMobileDishPanelMaxHeight({
+          viewportHeight,
+          overlayBottom: target.predictedOverlayRect.bottom,
+          defaultMaxHeight,
+          minimumHeight: MOBILE_DISH_PANEL_MIN_HEIGHT,
+          hardMinimumHeight: MOBILE_DISH_PANEL_HARD_MIN_HEIGHT,
+          gap: MOBILE_DISH_PANEL_OVERLAY_GAP,
+        });
+
+        if (Math.abs(nextPanelMaxHeight - plannedPanelMaxHeight) < 1) {
+          plannedPanelMaxHeight = nextPanelMaxHeight;
+          break;
+        }
+
+        plannedPanelMaxHeight = nextPanelMaxHeight;
+      }
+
+      const finalViewportBottomInset = resolveMobileViewportBottomInset(undefined, {
+        estimatedPanelHeight: plannedPanelMaxHeight,
+      });
+      const finalTarget = centerOverlayInView(overlay, {
         behavior: "auto",
-        viewportBottomInset,
+        viewportBottomInset: finalViewportBottomInset,
         verticalAnchorRatio: MOBILE_DISH_VERTICAL_ANCHOR_RATIO,
         overlayEdgePadding: MOBILE_DISH_FOCUS_EDGE_PADDING,
         fitOverlayToViewport: true,
         targetScale: requestedScale,
         returnTargetOnly: true,
       });
-      if (!target) return;
-      const nextScale = clamp(Number(target.scale) || requestedScale, 1, 3);
+      if (!finalTarget) {
+        return null;
+      }
+
+      return {
+        panelMaxHeight: plannedPanelMaxHeight,
+        target: finalTarget,
+      };
+    },
+    [
+      centerOverlayInView,
+      getDefaultMobileDishPanelMaxHeight,
+      isMobileViewport,
+      mobileViewportMetrics.height,
+      resolveMobileViewportBottomInset,
+    ],
+  );
+
+  const focusOverlayForCurrentViewport = useCallback(
+    (overlay, options = {}) => {
+      if (!overlay) return;
+      const desktopBehavior = options?.behavior === "auto" ? "auto" : "smooth";
+      const mobileBehavior = options?.behavior === "smooth" ? "smooth" : "auto";
+
+      if (!isMobileViewport) {
+        centerOverlayInView(overlay, {
+          behavior: desktopBehavior,
+          viewportBottomInset: 0,
+          verticalAnchorRatio: 0.5,
+          overlayEdgePadding: 0,
+          fitOverlayToViewport: false,
+        });
+        return;
+      }
+
+      const mobilePlan = options?.mobilePlan || planMobileOverlayFocus(overlay);
+      if (!mobilePlan?.target) {
+        return;
+      }
+
+      setMobileDishPanelMaxHeight((current) => {
+        return Math.abs(current - mobilePlan.panelMaxHeight) < 1
+          ? current
+          : mobilePlan.panelMaxHeight;
+      });
+
+      const target = mobilePlan.target;
+      const nextScale = clamp(Number(target.scale) || menuZoomScaleRef.current, 1, 3);
 
       if (Math.abs(nextScale - menuZoomScaleRef.current) > 0.02) {
-        setMenuZoomScale(nextScale);
-        if (isMobileViewport) {
-          window.requestAnimationFrame(() => {
-            const scrollNode = menuScrollRef.current;
-            if (!scrollNode) return;
-            const maxScrollLeft = Math.max(scrollNode.scrollWidth - scrollNode.clientWidth, 0);
-            const maxScrollTop = Math.max(scrollNode.scrollHeight - scrollNode.clientHeight, 0);
-            scrollNode.scrollTo({
-              left: clamp(Number(target.left) || 0, 0, maxScrollLeft),
-              top: clamp(Number(target.top) || 0, 0, maxScrollTop),
-              behavior: "auto",
-            });
-            refreshScrollSnapshot();
-          });
-          return;
-        }
         startMenuZoomAnimation();
+        setMenuZoomScale(nextScale);
         animateMenuScrollTo(target, MENU_ZOOM_ANIMATION_MS);
         return;
       }
 
-      centerOverlayInView(overlay, {
+      const scrollNode = menuScrollRef.current;
+      if (!scrollNode) {
+        return;
+      }
+      scrollNode.scrollTo({
+        left: Number(target.left) || 0,
+        top: Number(target.top) || 0,
         behavior: mobileBehavior,
-        viewportBottomInset,
-        verticalAnchorRatio: MOBILE_DISH_VERTICAL_ANCHOR_RATIO,
-        overlayEdgePadding: MOBILE_DISH_FOCUS_EDGE_PADDING,
-        fitOverlayToViewport: true,
-        targetScale: nextScale,
       });
+      refreshScrollSnapshot();
     },
     [
       animateMenuScrollTo,
       centerOverlayInView,
       isMobileViewport,
+      planMobileOverlayFocus,
       refreshScrollSnapshot,
-      resolveMobileViewportBottomInset,
       startMenuZoomAnimation,
     ],
   );
@@ -1014,226 +1102,36 @@ export function RestaurantViewer({
 
   useEffect(() => {
     if (!isMobileViewport || !selectedDish) {
-      setMobileDishPanelHeight(0);
-      return undefined;
-    }
-
-    const panelNode = mobileDishPanelRef.current;
-    if (!panelNode) return undefined;
-
-    const syncPanelHeight = () => {
-      const next = panelNode.getBoundingClientRect().height || 0;
-      setMobileDishPanelHeight(next);
-    };
-
-    syncPanelHeight();
-
-    if (typeof ResizeObserver === "function") {
-      const observer = new ResizeObserver(syncPanelHeight);
-      observer.observe(panelNode);
-      return () => {
-        observer.disconnect();
-      };
-    }
-
-    window.addEventListener("resize", syncPanelHeight);
-    return () => {
-      window.removeEventListener("resize", syncPanelHeight);
-    };
-  }, [isMobileViewport, selectedDish, selectedOverlaySignature]);
-
-  useEffect(() => {
-    if (!isMobileViewport || !selectedDish || !selectedOverlaySignature || !isMobileDishPanelReady) {
       setMobileDishPanelMaxHeight(0);
-      return undefined;
+      previousMobileViewportKeyRef.current = "";
+      return;
     }
 
-    let frameId = 0;
-    const timer = window.setTimeout(() => {
-      frameId = window.requestAnimationFrame(() => {
-        const overlayNode = overlayNodeRefs.current.get(selectedOverlaySignature);
-        const viewportHeight = mobileViewportMetrics.height;
-        const defaultMaxHeight = Math.min(
-          viewportHeight * MOBILE_DISH_PANEL_DEFAULT_MAX_HEIGHT_RATIO,
-          MOBILE_DISH_PANEL_DEFAULT_MAX_HEIGHT_PX,
-        );
+    const viewportKey = `${mobileViewportMetrics.width}x${mobileViewportMetrics.height}`;
+    const previousViewportKey = previousMobileViewportKeyRef.current;
+    previousMobileViewportKeyRef.current = viewportKey;
 
-        if (!overlayNode || viewportHeight <= 0) {
-          setMobileDishPanelMaxHeight(defaultMaxHeight);
-          return;
-        }
-
-        const overlayRect = overlayNode.getBoundingClientRect();
-        const nextMaxHeight = computeMobileDishPanelMaxHeight({
-          viewportHeight,
-          overlayBottom: overlayRect.bottom,
-          defaultMaxHeight,
-          minimumHeight: MOBILE_DISH_PANEL_MIN_HEIGHT,
-          hardMinimumHeight: MOBILE_DISH_PANEL_HARD_MIN_HEIGHT,
-          gap: MOBILE_DISH_PANEL_OVERLAY_GAP,
-        });
-
-        setMobileDishPanelMaxHeight((current) => {
-          return Math.abs(current - nextMaxHeight) < 1 ? current : nextMaxHeight;
-        });
-      });
-    }, MOBILE_DISH_PANEL_STABLE_DELAY_MS + 40);
-
-    return () => {
-      window.clearTimeout(timer);
-      window.cancelAnimationFrame(frameId);
-    };
-  }, [
-    isMobileViewport,
-    isMobileDishPanelReady,
-    mobileViewportMetrics.height,
-    mobileViewportMetrics.width,
-    selectedDish,
-    selectedOverlaySignature,
-  ]);
-
-  useEffect(() => {
-    if (!acknowledgedReferenceNote || !isMobileViewport || !selectedDish) {
-      return undefined;
+    if (!acknowledgedReferenceNote || !previousViewportKey || previousViewportKey === viewportKey) {
+      return;
     }
 
-    if (!isMobileDishPanelReady) {
-      return undefined;
+    const nextPlan = planMobileOverlayFocus(selectedDish);
+    if (!nextPlan) {
+      return;
     }
 
-    const timer = window.setTimeout(() => {
-      focusOverlayForCurrentViewport(selectedDish, {
-        behavior: "auto",
-      });
-    }, MOBILE_DISH_PANEL_STABLE_DELAY_MS);
-
-    return () => {
-      window.clearTimeout(timer);
-    };
+    focusOverlayForCurrentViewport(selectedDish, {
+      behavior: "auto",
+      mobilePlan: nextPlan,
+    });
   }, [
     acknowledgedReferenceNote,
     focusOverlayForCurrentViewport,
     isMobileViewport,
-    isMobileDishPanelReady,
     mobileViewportMetrics.height,
     mobileViewportMetrics.width,
+    planMobileOverlayFocus,
     selectedDish,
-    selectedOverlaySignature,
-  ]);
-
-  useEffect(() => {
-    if (!acknowledgedReferenceNote || !isMobileViewport || !selectedOverlaySignature) {
-      return undefined;
-    }
-
-    const scrollNode = menuScrollRef.current;
-    const overlayNode = overlayNodeRefs.current.get(selectedOverlaySignature);
-    const panelNode = mobileDishPanelRef.current;
-    if (!scrollNode || !overlayNode || !panelNode) {
-      return undefined;
-    }
-
-    const frameIds = new Set();
-    const timerIds = [];
-    let isActive = true;
-
-    const runCorrectionPass = () => {
-      stopScrollAnimation();
-      let attempts = 0;
-
-      const correctViewport = () => {
-        if (!isActive) {
-          return;
-        }
-        attempts += 1;
-        const overlayRect = overlayNode.getBoundingClientRect();
-        const panelRect = panelNode.getBoundingClientRect();
-        const scrollRect = scrollNode.getBoundingClientRect();
-        const minVisibleLeft = scrollRect.left + MOBILE_DISH_FOCUS_EDGE_PADDING;
-        const maxVisibleRight = scrollRect.right - MOBILE_DISH_FOCUS_EDGE_PADDING;
-        const minVisibleTop = scrollRect.top + MOBILE_DISH_FOCUS_EDGE_PADDING;
-        const maxVisibleBottom =
-          Math.min(scrollRect.bottom, panelRect.top) - MOBILE_DISH_PANEL_OVERLAY_GAP;
-        let deltaLeft = 0;
-        let deltaTop = 0;
-
-        if (overlayRect.left < minVisibleLeft) {
-          deltaLeft = overlayRect.left - minVisibleLeft;
-        } else if (overlayRect.right > maxVisibleRight) {
-          deltaLeft = overlayRect.right - maxVisibleRight;
-        }
-
-        if (overlayRect.top < minVisibleTop) {
-          deltaTop = overlayRect.top - minVisibleTop;
-        } else if (overlayRect.bottom > maxVisibleBottom) {
-          deltaTop = overlayRect.bottom - maxVisibleBottom;
-        }
-
-        if (Math.abs(deltaLeft) <= 0.5 && Math.abs(deltaTop) <= 0.5) {
-          return;
-        }
-
-        const maxScrollLeft = Math.max(scrollNode.scrollWidth - scrollNode.clientWidth, 0);
-        const maxScrollTop = Math.max(scrollNode.scrollHeight - scrollNode.clientHeight, 0);
-        const nextScrollLeft = clamp(scrollNode.scrollLeft + deltaLeft, 0, maxScrollLeft);
-        const nextScrollTop = clamp(scrollNode.scrollTop + deltaTop, 0, maxScrollTop);
-
-        if (
-          Math.abs(nextScrollLeft - scrollNode.scrollLeft) <= 0.5 &&
-          Math.abs(nextScrollTop - scrollNode.scrollTop) <= 0.5
-        ) {
-          return;
-        }
-
-        scrollNode.scrollTo({
-          left: nextScrollLeft,
-          top: nextScrollTop,
-          behavior: "auto",
-        });
-        refreshScrollSnapshot();
-
-        if (attempts < 3) {
-          const nextFrameId = window.requestAnimationFrame(correctViewport);
-          frameIds.add(nextFrameId);
-        }
-      };
-
-      const initialFrameId = window.requestAnimationFrame(correctViewport);
-      frameIds.add(initialFrameId);
-    };
-
-    const scheduleCorrectionPass = (delayMs) => {
-      const timerId = window.setTimeout(() => {
-        if (!isActive) {
-          return;
-        }
-        runCorrectionPass();
-      }, delayMs);
-      timerIds.push(timerId);
-    };
-
-    scheduleCorrectionPass(MOBILE_DISH_PANEL_STABLE_DELAY_MS + 40);
-    scheduleCorrectionPass(MOBILE_DISH_PANEL_STABLE_DELAY_MS + MENU_ZOOM_ANIMATION_MS + 60);
-
-    return () => {
-      isActive = false;
-      timerIds.forEach((timerId) => {
-        window.clearTimeout(timerId);
-      });
-      frameIds.forEach((frameId) => {
-        window.cancelAnimationFrame(frameId);
-      });
-    };
-  }, [
-    acknowledgedReferenceNote,
-    isMobileViewport,
-    mobileDishPanelHeight,
-    mobileDishPanelMaxHeight,
-    mobileViewportMetrics.height,
-    mobileViewportMetrics.width,
-    refreshScrollSnapshot,
-    selectedOverlaySignature,
-    stopScrollAnimation,
   ]);
 
   const persistGuestSelections = useCallback(
@@ -1567,11 +1465,16 @@ export function RestaurantViewer({
                         if (isMobileViewport && !selectedOverlay) {
                           captureViewportForMobileDishFocus();
                         }
+                        const mobilePlan = isMobileViewport ? planMobileOverlayFocus(overlay) : null;
+                        if (mobilePlan?.panelMaxHeight) {
+                          setMobileDishPanelMaxHeight(mobilePlan.panelMaxHeight);
+                        }
                         viewer.selectDish(overlay.id);
                         setSelectedOverlay(overlay);
-                        if (!isMobileViewport) {
-                          focusOverlayForCurrentViewport(overlay);
-                        }
+                        focusOverlayForCurrentViewport(overlay, {
+                          behavior: "auto",
+                          mobilePlan,
+                        });
                       }}
                       className={`restaurant-overlay ${
                         selectedOverlaySignature && signature === selectedOverlaySignature
