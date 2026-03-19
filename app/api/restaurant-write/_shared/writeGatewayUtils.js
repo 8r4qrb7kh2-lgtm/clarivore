@@ -509,9 +509,10 @@ function buildDishRowMap(overlays) {
 
     const dishKey = toOverlayDishKey(overlay);
     if (!dishKey) return;
-    const normalizedRows = readOverlayIngredients(overlay).map((row, index) =>
-      normalizeIngredientRow(row, index),
-    );
+    const normalizedRows = readOverlayIngredients(overlay).map((row, index) => ({
+      ...(row && typeof row === "object" ? toJsonSafe(row, {}) : {}),
+      ...normalizeIngredientRow(row, index),
+    }));
 
     const rowMap = new Map();
     normalizedRows.forEach((row, index) => {
@@ -589,9 +590,35 @@ function collectIngredientSelectionLines({
     });
 }
 
-function formatIngredientRowReviewSnapshot({ dishName, row, fallbackName }) {
-  const safeDishName = asText(dishName) || "none";
-  const safeIngredientName = readIngredientRowName(row, fallbackName) || "none";
+function formatIngredientSelectionReviewSnapshot(label, lines) {
+  const safeLabel = asText(label) || "Values";
+  const safeLines = (Array.isArray(lines) ? lines : []).filter(Boolean);
+  if (!safeLines.length) {
+    return `${safeLabel}: none`;
+  }
+
+  return [
+    `${safeLabel}:`,
+    ...safeLines.map((line) => `- ${line}`),
+  ].join("\n");
+}
+
+function formatIngredientBrandRequirementReviewSnapshot(row) {
+  const required = Boolean(row?.brandRequired);
+  const reason = asText(row?.brandRequirementReason);
+  const lines = [`Brand assignment required: ${required ? "yes" : "no"}`];
+  if (required) {
+    lines.push(`Reason: ${reason || "none"}`);
+  }
+  return lines.join("\n");
+}
+
+function formatIngredientConfirmationReviewSnapshot(row) {
+  return `Confirmed: ${row?.confirmed === true ? "yes" : "no"}`;
+}
+
+function buildIngredientRowComparableState({ row, fallbackName }) {
+  const ingredientName = readIngredientRowName(row, fallbackName) || "Ingredient";
   const allergenLines = collectIngredientSelectionLines({
     containsValues: row?.allergens,
     crossValues: row?.crossContaminationAllergens,
@@ -606,29 +633,37 @@ function formatIngredientRowReviewSnapshot({ dishName, row, fallbackName }) {
     smartCrossValues: row?.aiDetectedCrossContaminationDiets,
     containsLabel: "compatible",
   });
-  const appliedBrandItem = readIngredientRowAppliedBrandItem(row) || "none";
+
+  return {
+    ingredientName,
+    allergenSnapshot: formatIngredientSelectionReviewSnapshot("Allergens", allergenLines),
+    dietSnapshot: formatIngredientSelectionReviewSnapshot("Diets", dietLines),
+    removable: Boolean(row?.removable),
+    brandRequirementRequired: Boolean(row?.brandRequired),
+    brandRequirementReason: asText(row?.brandRequirementReason),
+    brandRequirementSnapshot: formatIngredientBrandRequirementReviewSnapshot(row),
+    confirmed: row?.confirmed === true,
+    confirmationSnapshot: formatIngredientConfirmationReviewSnapshot(row),
+    appliedBrandItem: readIngredientRowAppliedBrandItem(row),
+  };
+}
+
+function formatIngredientRowReviewSnapshot({ dishName, row, fallbackName }) {
+  const safeDishName = asText(dishName) || "none";
+  const rowState = buildIngredientRowComparableState({ row, fallbackName });
+  const safeIngredientName = rowState.ingredientName || "none";
+  const appliedBrandItem = rowState.appliedBrandItem || "none";
 
   const lines = [
     `Dish name: ${safeDishName}`,
     `Ingredient row name: ${safeIngredientName}`,
+    rowState.allergenSnapshot,
+    rowState.dietSnapshot,
+    `Removability: ${rowState.removable ? "removable" : "non-removable"}`,
+    rowState.brandRequirementSnapshot,
+    rowState.confirmationSnapshot,
+    `Applied brand item: ${appliedBrandItem}`,
   ];
-
-  if (allergenLines.length) {
-    lines.push("Allergens:");
-    allergenLines.forEach((line) => lines.push(`- ${line}`));
-  } else {
-    lines.push("Allergens: none");
-  }
-
-  if (dietLines.length) {
-    lines.push("Diets:");
-    dietLines.forEach((line) => lines.push(`- ${line}`));
-  } else {
-    lines.push("Diets: none");
-  }
-
-  lines.push(`Removability: ${Boolean(row?.removable) ? "removable" : "non-removable"}`);
-  lines.push(`Applied brand item: ${appliedBrandItem}`);
 
   return lines.join("\n");
 }
@@ -643,6 +678,150 @@ function buildIngredientRowSummary({ dishName, ingredientName, changeKind }) {
     return `${safeDishName}: Ingredient row removed: ${safeIngredientName}`;
   }
   return `${safeDishName}: Changes to ${safeIngredientName}`;
+}
+
+function buildIngredientRowFieldChangeRows({
+  dishName,
+  rowIndex,
+  beforeRow,
+  afterRow,
+  fallbackName,
+}) {
+  const beforeState = buildIngredientRowComparableState({
+    row: beforeRow,
+    fallbackName,
+  });
+  const afterState = buildIngredientRowComparableState({
+    row: afterRow,
+    fallbackName: beforeState.ingredientName || fallbackName,
+  });
+  const ingredientName = asText(afterState.ingredientName || beforeState.ingredientName) || "Ingredient";
+  const dishToken = normalizeToken(dishName) || "dish";
+  const ingredientToken = normalizeToken(ingredientName) || `row${rowIndex + 1}`;
+  const output = [];
+
+  const pushFieldChange = ({
+    keySuffix,
+    changeType,
+    fieldKey,
+    summary,
+    beforeValue,
+    afterValue,
+  }) => {
+    output.push({
+      id: `ingredient:${dishToken}:${rowIndex}:${keySuffix}`,
+      key: `ingredient:${dishToken}:${rowIndex}:${ingredientToken}:${fieldKey}`,
+      dishName,
+      rowIndex,
+      ingredientName,
+      changeType,
+      fieldKey,
+      beforeValue,
+      afterValue,
+      summary,
+    });
+  };
+
+  if (!valuesEqual(beforeState.ingredientName, afterState.ingredientName)) {
+    pushFieldChange({
+      keySuffix: "name",
+      changeType: "ingredient_row_name_changed",
+      fieldKey: "ingredientName",
+      summary: `${dishName}: Renamed ingredient row from ${beforeState.ingredientName} to ${afterState.ingredientName}`,
+      beforeValue: `Ingredient row name: ${beforeState.ingredientName}`,
+      afterValue: `Ingredient row name: ${afterState.ingredientName}`,
+    });
+  }
+
+  if (!valuesEqual(beforeState.appliedBrandItem, afterState.appliedBrandItem)) {
+    const beforeBrand = asText(beforeState.appliedBrandItem);
+    const afterBrand = asText(afterState.appliedBrandItem);
+    let summary = `${dishName}: Changed brand item assignment for ${ingredientName}`;
+    if (beforeBrand && !afterBrand) {
+      summary = `${dishName}: Removed brand item assignment from ${ingredientName}`;
+    } else if (!beforeBrand && afterBrand) {
+      summary = `${dishName}: Assigned brand item ${afterBrand} to ${ingredientName}`;
+    }
+
+    pushFieldChange({
+      keySuffix: "brand",
+      changeType: "ingredient_brand_assignment_changed",
+      fieldKey: "appliedBrandItem",
+      summary,
+      beforeValue: `Applied brand item: ${beforeBrand || "none"}`,
+      afterValue: `Applied brand item: ${afterBrand || "none"}`,
+    });
+  }
+
+  if (!valuesEqual(beforeState.allergenSnapshot, afterState.allergenSnapshot)) {
+    pushFieldChange({
+      keySuffix: "allergens",
+      changeType: "ingredient_allergens_changed",
+      fieldKey: "allergens",
+      summary: `${dishName}: Updated allergen selections for ${ingredientName}`,
+      beforeValue: beforeState.allergenSnapshot,
+      afterValue: afterState.allergenSnapshot,
+    });
+  }
+
+  if (!valuesEqual(beforeState.dietSnapshot, afterState.dietSnapshot)) {
+    pushFieldChange({
+      keySuffix: "diets",
+      changeType: "ingredient_diets_changed",
+      fieldKey: "diets",
+      summary: `${dishName}: Updated diet selections for ${ingredientName}`,
+      beforeValue: beforeState.dietSnapshot,
+      afterValue: afterState.dietSnapshot,
+    });
+  }
+
+  if (!valuesEqual(beforeState.removable, afterState.removable)) {
+    pushFieldChange({
+      keySuffix: "removable",
+      changeType: "ingredient_removability_changed",
+      fieldKey: "removable",
+      summary: `${dishName}: Marked ${ingredientName} ${afterState.removable ? "removable" : "non-removable"}`,
+      beforeValue: `Removability: ${beforeState.removable ? "removable" : "non-removable"}`,
+      afterValue: `Removability: ${afterState.removable ? "removable" : "non-removable"}`,
+    });
+  }
+
+  const brandRequirementChanged =
+    !valuesEqual(beforeState.brandRequirementRequired, afterState.brandRequirementRequired) ||
+    (
+      (beforeState.brandRequirementRequired || afterState.brandRequirementRequired) &&
+      !valuesEqual(beforeState.brandRequirementReason, afterState.brandRequirementReason)
+    );
+  if (brandRequirementChanged) {
+    let summary = `${dishName}: Updated brand assignment reason for ${ingredientName}`;
+    if (!beforeState.brandRequirementRequired && afterState.brandRequirementRequired) {
+      summary = `${dishName}: ${ingredientName} now requires brand assignment`;
+    } else if (beforeState.brandRequirementRequired && !afterState.brandRequirementRequired) {
+      summary = `${dishName}: ${ingredientName} no longer requires brand assignment`;
+    }
+
+    pushFieldChange({
+      keySuffix: "brand-requirement",
+      changeType: "ingredient_brand_requirement_changed",
+      fieldKey: "brandRequired",
+      summary,
+      beforeValue: beforeState.brandRequirementSnapshot,
+      afterValue: afterState.brandRequirementSnapshot,
+    });
+  }
+
+  if (!valuesEqual(beforeState.confirmed, afterState.confirmed)) {
+    pushFieldChange({
+      keySuffix: "confirmed",
+      changeType: "ingredient_confirmation_changed",
+      fieldKey: "confirmed",
+      summary: `${dishName}: ${afterState.confirmed ? "Confirmed" : "Marked"} ${ingredientName}${afterState.confirmed ? "" : " unconfirmed"}`,
+      beforeValue: beforeState.confirmationSnapshot,
+      afterValue: afterState.confirmationSnapshot,
+    });
+  }
+
+  return output;
 }
 
 function buildMenuChangeRows({ baselineOverlays, overlays }) {
@@ -738,6 +917,18 @@ function buildMenuChangeRows({ baselineOverlays, overlays }) {
         afterRow,
         readIngredientRowName(beforeRow, fallbackIngredientName),
       );
+      const fieldChangeRows = buildIngredientRowFieldChangeRows({
+        dishName,
+        rowIndex,
+        beforeRow,
+        afterRow,
+        fallbackName: fallbackIngredientName,
+      });
+      if (fieldChangeRows.length) {
+        output.push(...fieldChangeRows);
+        continue;
+      }
+
       output.push({
         dishName,
         rowIndex,

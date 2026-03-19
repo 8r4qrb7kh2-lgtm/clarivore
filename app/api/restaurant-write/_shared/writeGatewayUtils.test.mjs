@@ -4,7 +4,9 @@ import test from "node:test";
 import {
   buildIngredientRowsFromOverlays,
   buildMenuDishRowsFromOverlays,
+  normalizeOperationPayload,
   reconcileBaseOverlaysWithBaselineKeys,
+  RESTAURANT_WRITE_OPERATION_TYPES,
 } from "./writeGatewayUtils.js";
 import { buildRestaurantMenuStateMapFromRows } from "../../../lib/restaurantMenuStateRows.js";
 
@@ -116,5 +118,91 @@ test("legacy baseline overlays can remap stored rows onto staged overlay keys", 
   assert.deepEqual(
     buildMenuDishRowsFromOverlays(reconciled).map((row) => row.dishKey),
     ["ovlegacy1"],
+  );
+});
+
+test("menu review rows enumerate brand removal and related ingredient row writes", () => {
+  const baselineOverlays = [
+    {
+      overlayKey: "ov-1",
+      id: "Grilled Tofu",
+      name: "Grilled Tofu",
+      pageIndex: 0,
+      x: 1,
+      y: 2,
+      w: 30,
+      h: 10,
+      ingredients: [
+        {
+          name: "Honey",
+          allergens: ["Milk"],
+          diets: ["Vegetarian"],
+          brands: [{ name: "Local Honey" }],
+          appliedBrandItem: "Local Honey",
+          brandRequired: false,
+          brandRequirementReason: "",
+          removable: false,
+          confirmed: true,
+        },
+      ],
+    },
+  ];
+  const overlays = [
+    {
+      overlayKey: "ov-1",
+      id: "Grilled Tofu",
+      name: "Grilled Tofu",
+      pageIndex: 0,
+      x: 1,
+      y: 2,
+      w: 30,
+      h: 10,
+      ingredients: [
+        {
+          name: "Honey",
+          allergens: [],
+          diets: [],
+          brands: [],
+          brandRequired: true,
+          brandRequirementReason: "Ingredient must match packaged label",
+          removable: false,
+          confirmed: false,
+        },
+      ],
+    },
+  ];
+
+  const payload = normalizeOperationPayload({
+    operationType: RESTAURANT_WRITE_OPERATION_TYPES.MENU_STATE_REPLACE,
+    operationPayload: {
+      baselineOverlays,
+      overlays,
+      changedFields: ["overlays"],
+    },
+  });
+
+  assert.deepEqual(
+    payload.rows.map((row) => row.summary),
+    [
+      "Grilled Tofu: Removed brand item assignment from Honey",
+      "Grilled Tofu: Updated allergen selections for Honey",
+      "Grilled Tofu: Updated diet selections for Honey",
+      "Grilled Tofu: Honey now requires brand assignment",
+      "Grilled Tofu: Marked Honey unconfirmed",
+    ],
+  );
+
+  const brandRow = payload.rows.find((row) => row.fieldKey === "appliedBrandItem");
+  assert.ok(brandRow);
+  assert.equal(brandRow.beforeValue, "Applied brand item: Local Honey");
+  assert.equal(brandRow.afterValue, "Applied brand item: none");
+
+  const requirementRow = payload.rows.find((row) => row.fieldKey === "brandRequired");
+  assert.ok(requirementRow);
+  assert.match(requirementRow.afterValue, /Brand assignment required: yes/);
+  assert.match(requirementRow.afterValue, /Reason: Ingredient must match packaged label/);
+
+  assert.ok(
+    !payload.rows.some((row) => row.summary === "Grilled Tofu: Changes to Honey"),
   );
 });
