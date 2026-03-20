@@ -2,9 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import AppTopbar from "../components/AppTopbar";
+import GuestTopbar from "../components/GuestTopbar";
 import PageShell from "../components/PageShell";
 import ChatPreviewPanel from "../components/chat/ChatPreviewPanel";
 import SplitColumns from "../components/layout/SplitColumns";
@@ -21,13 +21,31 @@ import { resolveAccountName, resolveManagerDisplayName } from "../lib/userIdenti
 
 const ADMIN_DISPLAY_NAME = "Matt D (clarivore administrator)";
 
-function setAutoRestaurant(restaurants, preferRecent = true) {
+function asText(value) {
+  return String(value ?? "").trim();
+}
+
+function isMissingSessionError(error) {
+  const message = String(error?.message || "");
+  if (!message) return false;
+  return /auth session missing|session missing|refresh token/i.test(message);
+}
+
+function setAutoRestaurant(restaurants, preferRecent = true, preferredSlug = "") {
   if (!Array.isArray(restaurants) || !restaurants.length) return null;
 
   let selection = null;
-  const storedId = localStorage.getItem("helpSelectedRestaurantId");
-  if (storedId) {
-    selection = restaurants.find((row) => String(row.id) === storedId) || null;
+  const normalizedPreferredSlug = asText(preferredSlug);
+  if (normalizedPreferredSlug) {
+    selection =
+      restaurants.find((row) => asText(row?.slug) === normalizedPreferredSlug) || null;
+  }
+
+  if (!selection) {
+    const storedId = localStorage.getItem("helpSelectedRestaurantId");
+    if (storedId) {
+      selection = restaurants.find((row) => String(row.id) === storedId) || null;
+    }
   }
 
   if (!selection && preferRecent) {
@@ -60,6 +78,7 @@ function setAutoRestaurant(restaurants, preferRecent = true) {
 
 export default function HelpContactClient() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [bootError, setBootError] = useState("");
   const [user, setUser] = useState(null);
   const [managerRestaurants, setManagerRestaurants] = useState([]);
@@ -94,21 +113,41 @@ export default function HelpContactClient() {
   const assistantBoundModeRef = useRef("");
 
   const managerDisplayName = useMemo(() => resolveManagerDisplayName(user), [user]);
+  const preferredRestaurantSlug = useMemo(
+    () => asText(searchParams?.get("restaurant") || searchParams?.get("slug")),
+    [searchParams],
+  );
+  const guestSignInHref = useMemo(() => {
+    const params = new URLSearchParams();
+    params.set("mode", "signin");
+    params.set("guest", "1");
+    const currentPath = `/help-contact${searchParams?.toString() ? `?${searchParams.toString()}` : ""}`;
+    params.set("returnTo", currentPath);
+    return `/account?${params.toString()}`;
+  }, [searchParams]);
 
   const mode = isEditorMode ? "manager" : "customer";
   const isManagerOrOwner = isManagerOrOwnerUser(user);
+  const isGuestSession = !user?.id;
 
-  const applyRestaurantSelection = useCallback((availableRestaurants, preferRecent) => {
-    setRestaurants(availableRestaurants);
-    const initialSelection = setAutoRestaurant(availableRestaurants, preferRecent);
-    if (initialSelection) {
-      setSelectedRestaurantId(String(initialSelection.id));
-      setSelectedRestaurant(initialSelection);
-    } else {
-      setSelectedRestaurantId("");
-      setSelectedRestaurant(null);
-    }
-  }, []);
+  const applyRestaurantSelection = useCallback(
+    (availableRestaurants, preferRecent, nextPreferredSlug = "") => {
+      setRestaurants(availableRestaurants);
+      const initialSelection = setAutoRestaurant(
+        availableRestaurants,
+        preferRecent,
+        nextPreferredSlug,
+      );
+      if (initialSelection) {
+        setSelectedRestaurantId(String(initialSelection.id));
+        setSelectedRestaurant(initialSelection);
+      } else {
+        setSelectedRestaurantId("");
+        setSelectedRestaurant(null);
+      }
+    },
+    [],
+  );
 
   const bootQuery = useQuery({
     queryKey: queryKeys.auth.user("help-contact"),
@@ -122,10 +161,26 @@ export default function HelpContactClient() {
         data: { user: authUser },
         error,
       } = await supabase.auth.getUser();
-      if (error) throw error;
+      if (error && !isMissingSessionError(error)) throw error;
+
+      const { data, error: restaurantsError } = await supabase
+        .from("restaurants")
+        .select("id, name, slug")
+        .order("name");
+      if (restaurantsError) throw restaurantsError;
+
+      const availableAllRestaurants = data || [];
 
       if (!authUser) {
-        return { redirect: "/account?mode=signin" };
+        return {
+          redirect: "",
+          user: null,
+          hasManagerAccess: false,
+          managerRestaurants: [],
+          allRestaurants: availableAllRestaurants,
+          nextEditorMode: false,
+          initialRestaurants: availableAllRestaurants,
+        };
       }
 
       const hasManagerAccess = isManagerOrOwnerUser(authUser);
@@ -135,14 +190,6 @@ export default function HelpContactClient() {
 
       const storedMode = localStorage.getItem("clarivoreManagerMode");
       const nextEditorMode = hasManagerAccess && storedMode === "editor";
-
-      const { data, error: restaurantsError } = await supabase
-        .from("restaurants")
-        .select("id, name, slug")
-        .order("name");
-      if (restaurantsError) throw restaurantsError;
-
-      const availableAllRestaurants = data || [];
       const initialRestaurants =
         nextEditorMode && hasManagerAccess
           ? managerRestaurants
@@ -501,13 +548,14 @@ export default function HelpContactClient() {
     applyRestaurantSelection(
       bootQuery.data.initialRestaurants || [],
       !bootQuery.data.nextEditorMode,
+      preferredRestaurantSlug,
     );
     setAssistantModeReady(true);
 
     if (bootQuery.data.hasManagerAccess) {
       initManagerNotifications({ user: bootQuery.data.user, client: supabase });
     }
-  }, [applyRestaurantSelection, bootQuery.data, router]);
+  }, [applyRestaurantSelection, bootQuery.data, preferredRestaurantSlug, router]);
 
   useEffect(() => {
     if (!bootQuery.isError) return;
@@ -537,7 +585,7 @@ export default function HelpContactClient() {
   }, [isEditorMode, loadChatMessages]);
 
   useEffect(() => {
-    if (!user || !assistantModeReady) return;
+    if (!assistantModeReady) return;
     if (!helpQueryRef.current) return;
     if (!helpAskBtnRef.current) return;
     if (!helpConversationRef.current) return;
@@ -582,7 +630,7 @@ export default function HelpContactClient() {
     return () => {
       cancelled = true;
     };
-  }, [assistantModeReady, mode, user]);
+  }, [assistantModeReady, mode]);
 
   const onChatInputKeyDown = useCallback(
     (event) => {
@@ -604,14 +652,22 @@ export default function HelpContactClient() {
       mainClassName="help-main"
       contentClassName="help-container"
       topbar={
-        <AppTopbar
-          mode={isEditorMode ? "editor" : "customer"}
-          user={user || null}
-          managerRestaurants={managerRestaurants}
-          currentRestaurantSlug={selectedRestaurant?.slug || ""}
-          onSignOut={onSignOut}
-          onModeChange={onModeChange}
-        />
+        isGuestSession ? (
+          <GuestTopbar
+            brandHref="/guest"
+            signInHref={guestSignInHref}
+            authLabel="Sign in / Create an account"
+          />
+        ) : (
+          <AppTopbar
+            mode={isEditorMode ? "editor" : "customer"}
+            user={user || null}
+            managerRestaurants={managerRestaurants}
+            currentRestaurantSlug={selectedRestaurant?.slug || ""}
+            onSignOut={onSignOut}
+            onModeChange={onModeChange}
+          />
+        )
       }
       afterMain={
         bootError ? (

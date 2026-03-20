@@ -204,6 +204,7 @@ export function RestaurantViewer({
   onSaveGuestPreferences,
   showGuestSignupPrompt = false,
   guestSignupHref = "/account?mode=signup",
+  onNavigate,
 }) {
   const [selectedOverlay, setSelectedOverlay] = useState(null);
   const [acknowledgedReferenceNote, setAcknowledgedReferenceNote] = useState(false);
@@ -241,6 +242,9 @@ export function RestaurantViewer({
   const selectedOverlaySignature = selectedDish ? overlaySignature(selectedDish) : "";
   const preferencePrefix = String(preferenceTitlePrefix || "Saved").trim() || "Saved";
   const preferencePrefixLower = preferencePrefix.toLowerCase();
+  const helpHref = restaurant?.slug
+    ? `/help-contact?restaurant=${encodeURIComponent(restaurant.slug)}`
+    : "/help-contact";
 
   const dismissReferenceNote = useCallback(() => {
     setAcknowledgedReferenceNote(true);
@@ -1657,7 +1661,19 @@ export function RestaurantViewer({
       ) : null}
 
       <footer className="restaurant-help-fab">
-        <Link href="/help-contact">Help</Link>
+        {typeof onNavigate === "function" ? (
+          <a
+            href={helpHref}
+            onClick={(event) => {
+              event.preventDefault();
+              onNavigate(helpHref);
+            }}
+          >
+            Help
+          </a>
+        ) : (
+          <Link href={helpHref}>Help</Link>
+        )}
       </footer>
     </section>
   );

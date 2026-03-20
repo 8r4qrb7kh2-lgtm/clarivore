@@ -1065,6 +1065,7 @@ export default function RestaurantClient() {
             onSaveGuestPreferences={onSaveGuestPreferences}
             showGuestSignupPrompt={isGuestViewerSession}
             guestSignupHref={guestAccountSignupHref}
+            onNavigate={navigationGuard.onRestaurantNavigate}
           />
           {hasOrderSidebarContent ? (
             <RestaurantOrderSidebar

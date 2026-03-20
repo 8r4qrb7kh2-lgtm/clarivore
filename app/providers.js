@@ -31,6 +31,7 @@ function shouldBypassGuestGate(pathname) {
 
   if (normalizedRoute.startsWith("/account")) return true;
   if (normalizedRoute.startsWith("/guest")) return true;
+  if (normalizedRoute.startsWith("/help-contact")) return true;
   if (normalizedRoute.startsWith("/report-issue")) return true;
   if (
     isAdminDashboardDevBypassEnabled() &&

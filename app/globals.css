@@ -3232,7 +3232,7 @@ h2 {
 .restaurant-help-fab {
   position: fixed;
   right: max(12px, calc(12px + env(safe-area-inset-right, 0px)));
-  bottom: max(12px, calc(12px + env(safe-area-inset-bottom, 0px)));
+  bottom: max(72px, calc(12px + env(safe-area-inset-bottom, 0px)));
   z-index: 100;
 }
 
