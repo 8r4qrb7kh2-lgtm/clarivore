@@ -37,6 +37,17 @@ function parseClaudeJson(value) {
   }
 }
 
+function buildProviderEnv() {
+  if (!asText(process.env.OPENAI_API_KEY)) {
+    return process.env;
+  }
+  return {
+    ...process.env,
+    AI_PROVIDER: "openai",
+    OPENAI_MODEL_ANALYZE_INGREDIENT_SCAN: PINNED_OPENAI_MODEL,
+  };
+}
+
 export function OPTIONS() {
   return corsOptions();
 }
@@ -70,11 +81,7 @@ export async function POST(request) {
   }
 
   try {
-    const openAiEnv = {
-      ...process.env,
-      AI_PROVIDER: "openai",
-      OPENAI_MODEL_ANALYZE_INGREDIENT_SCAN: PINNED_OPENAI_MODEL,
-    };
+    const providerEnv = buildProviderEnv();
     const { systemPrompt, userPrompt } = buildAnalyzeIngredientScanPrompts({
       dishName,
       ingredientName,
@@ -95,7 +102,7 @@ export async function POST(request) {
                 messages: [{ role: "user", content: [createTextMessage(userPrompt)] }],
                 maxTokens: 300,
                 jsonSchema: analyzeIngredientScanSchema,
-                env: openAiEnv,
+                env: providerEnv,
               })
             : await callAnthropicApi({
                 promptClass: "analyzeIngredientScan",
@@ -114,7 +121,7 @@ export async function POST(request) {
           },
         };
       },
-      env: openAiEnv,
+      env: providerEnv,
     });
 
     return corsJson(

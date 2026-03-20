@@ -30,6 +30,17 @@ function asText(value) {
   return String(value ?? "").trim();
 }
 
+function buildProviderEnv() {
+  if (!asText(process.env.OPENAI_API_KEY)) {
+    return process.env;
+  }
+  return {
+    ...process.env,
+    AI_PROVIDER: "openai",
+    OPENAI_MODEL_INGREDIENT_NAME_ANALYSIS: PINNED_OPENAI_MODEL,
+  };
+}
+
 function canonicalToken(value) {
   return asText(value).toLowerCase().replace(/[^a-z0-9]/g, "");
 }
@@ -412,11 +423,7 @@ export async function POST(request) {
   }
 
   try {
-    const openAiEnv = {
-      ...process.env,
-      AI_PROVIDER: "openai",
-      OPENAI_MODEL_INGREDIENT_NAME_ANALYSIS: PINNED_OPENAI_MODEL,
-    };
+    const providerEnv = buildProviderEnv();
     const config = await fetchAllergenDietConfig();
     const allergenKeys = (Array.isArray(config?.allergens) ? config.allergens : [])
       .map((allergen) => asText(allergen?.key))
@@ -499,7 +506,7 @@ export async function POST(request) {
                 maxTokens: 520,
                 jsonSchema: ingredientNameAnalysisSchema,
                 reasoningEffort: "medium",
-                env: openAiEnv,
+                env: providerEnv,
               })
             : await runAnthropicNameAnalysis({
                 systemPrompt,
@@ -533,7 +540,7 @@ export async function POST(request) {
           },
         };
       },
-      env: openAiEnv,
+      env: providerEnv,
     });
 
     return corsJson(

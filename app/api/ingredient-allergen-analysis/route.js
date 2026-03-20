@@ -5,6 +5,7 @@ import {
   buildIngredientCandidateExtractionPrompts,
 } from "../../lib/claudePrompts.js";
 import {
+  callAnthropicApi,
   callOpenAiApi,
   createTextMessage,
   runWithProviderSelection,
@@ -217,6 +218,18 @@ function parseClaudeJson(responseText) {
   }
 
   return null;
+}
+
+function buildProviderEnv() {
+  if (!asText(process.env.OPENAI_API_KEY)) {
+    return process.env;
+  }
+  return {
+    ...process.env,
+    AI_PROVIDER: "openai",
+    OPENAI_MODEL_INGREDIENT_FLAGS: PINNED_OPENAI_MODEL,
+    OPENAI_MODEL_INGREDIENT_CANDIDATE_EXTRACTION: PINNED_OPENAI_MODEL,
+  };
 }
 
 function buildAnalysisCacheKey({
@@ -793,6 +806,47 @@ async function runOpenAiFlagAnalysis({
   throw lastError || new Error("Failed to analyze ingredient transcript.");
 }
 
+async function runAnthropicFlagAnalysis({
+  systemPrompt,
+  userPrompt,
+  maxTokens = ANALYSIS_MAX_TOKENS,
+  metadata,
+  env = process.env,
+}) {
+  let lastError = null;
+  for (let attempt = 1; attempt <= MAX_ANALYSIS_ATTEMPTS; attempt += 1) {
+    try {
+      const response = await callAnthropicApi({
+        promptClass: "ingredientAllergenAnalysis",
+        systemPrompt,
+        messages: [{ role: "user", content: [createTextMessage(userPrompt)] }],
+        maxTokens,
+        metadata,
+        env,
+      });
+      const parsed = parseClaudeJson(response.text);
+      if (parsed && typeof parsed === "object" && Array.isArray(parsed.flags)) {
+        return {
+          ...response,
+          parsed,
+        };
+      }
+      lastError = new Error("Ingredient allergen analysis returned malformed structured output.");
+      if (attempt >= MAX_ANALYSIS_ATTEMPTS) {
+        break;
+      }
+    } catch (error) {
+      lastError = error;
+      if (!isTransientFailure(error) || attempt >= MAX_ANALYSIS_ATTEMPTS) {
+        break;
+      }
+      await sleep(attempt * 250);
+    }
+  }
+
+  throw lastError || new Error("Failed to analyze ingredient transcript.");
+}
+
 async function runOpenAiCandidateExtraction({
   systemPrompt,
   userPrompt,
@@ -836,6 +890,51 @@ async function runOpenAiCandidateExtraction({
           ? `Ingredient candidate extraction returned malformed output (${incompleteReason || "incomplete response"}).`
           : "Ingredient candidate extraction returned malformed output.",
       );
+      if (attempt >= MAX_ANALYSIS_ATTEMPTS) {
+        break;
+      }
+    } catch (error) {
+      lastError = error;
+      if (!isTransientFailure(error) || attempt >= MAX_ANALYSIS_ATTEMPTS) {
+        break;
+      }
+      await sleep(attempt * 250);
+    }
+  }
+
+  throw lastError || new Error("Failed to extract ingredient candidates.");
+}
+
+async function runAnthropicCandidateExtraction({
+  systemPrompt,
+  userPrompt,
+  maxTokens = CANDIDATE_EXTRACTION_MIN_TOKENS,
+  metadata,
+  env = process.env,
+}) {
+  let lastError = null;
+  for (let attempt = 1; attempt <= MAX_ANALYSIS_ATTEMPTS; attempt += 1) {
+    try {
+      const attemptMaxTokens = Math.min(
+        Math.max(CANDIDATE_EXTRACTION_MIN_TOKENS, Number(maxTokens) || 0) * attempt,
+        CANDIDATE_EXTRACTION_MAX_TOKENS,
+      );
+      const response = await callAnthropicApi({
+        promptClass: "ingredientCandidateExtraction",
+        systemPrompt,
+        messages: [{ role: "user", content: [createTextMessage(userPrompt)] }],
+        maxTokens: attemptMaxTokens,
+        metadata,
+        env,
+      });
+      const normalized = normalizeCandidateExtractionPayload(parseClaudeJson(response.text));
+      if (normalized) {
+        return {
+          ...response,
+          parsed: normalized,
+        };
+      }
+      lastError = new Error("Ingredient candidate extraction returned malformed output.");
       if (attempt >= MAX_ANALYSIS_ATTEMPTS) {
         break;
       }
@@ -929,20 +1028,28 @@ async function extractIngredientCandidates({
       promptVersion: CANDIDATE_EXTRACTION_PROMPT_VERSION,
     },
     invokeProvider: async (provider) => {
-      if (provider !== "openai") {
-        throw new Error("Ingredient candidate extraction is pinned to OpenAI for this route.");
-      }
-
-      const response = await runOpenAiCandidateExtraction({
-        systemPrompt,
-        userPrompt,
-        maxTokens: estimateCandidateExtractionMaxTokens(seedTranscript),
-        metadata: {
-          route_id: "ingredient-candidate-extraction",
-          prompt_version: CANDIDATE_EXTRACTION_PROMPT_VERSION,
-        },
-        env,
-      });
+      const response =
+        provider === "openai"
+          ? await runOpenAiCandidateExtraction({
+              systemPrompt,
+              userPrompt,
+              maxTokens: estimateCandidateExtractionMaxTokens(seedTranscript),
+              metadata: {
+                route_id: "ingredient-candidate-extraction",
+                prompt_version: CANDIDATE_EXTRACTION_PROMPT_VERSION,
+              },
+              env,
+            })
+          : await runAnthropicCandidateExtraction({
+              systemPrompt,
+              userPrompt,
+              maxTokens: estimateCandidateExtractionMaxTokens(seedTranscript),
+              metadata: {
+                route_id: "ingredient-candidate-extraction",
+                prompt_version: CANDIDATE_EXTRACTION_PROMPT_VERSION,
+              },
+              env,
+            });
 
       return {
         ...response,
@@ -1107,6 +1214,129 @@ function buildCandidateDebugPayload({
   };
 }
 
+function mergeHeuristicPublicFlags(flags) {
+  const merged = new Map();
+
+  (Array.isArray(flags) ? flags : []).forEach((flag) => {
+    const ingredient = asText(flag?.ingredient);
+    if (!ingredient) return;
+    const riskType = asText(flag?.risk_type) || "contained";
+    const key = `${canonicalToken(ingredient)}::${riskType}`;
+    const existing = merged.get(key) || {
+      ingredient,
+      word_indices: [],
+      allergens: [],
+      diets: [],
+      risk_type: riskType,
+    };
+
+    existing.word_indices = Array.from(
+      new Set([
+        ...existing.word_indices,
+        ...(Array.isArray(flag?.word_indices) ? flag.word_indices : []),
+      ]),
+    )
+      .map((value) => Number(value))
+      .filter(Number.isFinite)
+      .sort((left, right) => left - right);
+    existing.allergens = dedupeStrings([
+      ...existing.allergens,
+      ...(Array.isArray(flag?.allergens) ? flag.allergens : []),
+    ]);
+    existing.diets = dedupeStrings([
+      ...existing.diets,
+      ...(Array.isArray(flag?.diets) ? flag.diets : []),
+    ]);
+
+    merged.set(key, existing);
+  });
+
+  return Array.from(merged.values()).filter(
+    (flag) => flag.allergens.length || flag.diets.length,
+  );
+}
+
+function isHeuristicNonIngredientText(value) {
+  const token = canonicalToken(value);
+  if (!token) return true;
+  if (
+    token.startsWith("contains") ||
+    token.startsWith("maycontain") ||
+    token.startsWith("processedinafacility") ||
+    token.startsWith("manufacturedonsharedequipment") ||
+    token.startsWith("sharedequipmentwith")
+  ) {
+    return true;
+  }
+  return new Set([
+    "glutenfree",
+    "vegan",
+    "vegetarian",
+    "pescatarian",
+    "halal",
+    "kosher",
+    "keto",
+    "paleo",
+  ]).has(token);
+}
+
+function buildHeuristicFallbackAnalysis({ transcriptLines, config }) {
+  const parsedTranscript = parseIngredientLabelTranscript(transcriptLines);
+  const parsedIngredientsList = (Array.isArray(parsedTranscript.parsedIngredientsList)
+    ? parsedTranscript.parsedIngredientsList
+    : []
+  ).filter((ingredientText) => !isHeuristicNonIngredientText(ingredientText));
+  const allergenAliasMap = buildAllergenAliasMap(config?.allergens);
+  const dietsByAllergen = buildDietsByAllergenIndex(config?.dietAllergenConflicts);
+  const {
+    resolvedFlags: declarationFlags,
+  } = resolveExplicitDeclarationCandidates({
+    declarationCandidates: parsedTranscript.declarationCandidates,
+    allergenAliasMap,
+    dietsByAllergen,
+  });
+
+  const ingredientFlags = parsedIngredientsList
+    .map((ingredientText) => {
+      const normalizedIngredient = canonicalToken(ingredientText);
+      if (!normalizedIngredient) return null;
+
+      const matchedAllergens = [];
+      allergenAliasMap.forEach((allergenKey, aliasToken) => {
+        if (!aliasToken || !normalizedIngredient.includes(aliasToken)) return;
+        matchedAllergens.push(allergenKey);
+      });
+      const allergens = dedupeStrings(matchedAllergens);
+      if (!allergens.length) return null;
+
+      const diets = dedupeStrings(
+        allergens.flatMap((allergenKey) => dietsByAllergen.get(allergenKey) || []),
+      );
+      return {
+        ingredient: asText(ingredientText),
+        word_indices: [],
+        allergens,
+        diets,
+        risk_type: "contained",
+      };
+    })
+    .filter(Boolean);
+
+  return {
+    flags: mergeHeuristicPublicFlags([...declarationFlags, ...ingredientFlags]),
+    parsedIngredientsList,
+    debugExtra: {
+      ingredientExtractionMethod:
+        asText(parsedTranscript?.extractionMethod) || "heuristic-parser",
+      directIngredientTexts: parsedIngredientsList,
+      heuristicDeclarationFlagCount: Array.isArray(declarationFlags)
+        ? declarationFlags.length
+        : 0,
+      heuristicIngredientFlagCount: ingredientFlags.length,
+    },
+  };
+}
+
 function buildDietAliasResolver({ glutenFreeLabel, pescatarianLabel }) {
   return (token) => {
     const safe = canonicalToken(token);
@@ -1187,14 +1417,10 @@ export async function POST(request) {
     return corsJson(payload, { status: 200 });
   }
 
+  let config = null;
   try {
-    const openAiEnv = {
-      ...process.env,
-      AI_PROVIDER: "openai",
-      OPENAI_MODEL_INGREDIENT_FLAGS: PINNED_OPENAI_MODEL,
-      OPENAI_MODEL_INGREDIENT_CANDIDATE_EXTRACTION: PINNED_OPENAI_MODEL,
-    };
-    const config = await fetchAllergenDietConfig();
+    const providerEnv = buildProviderEnv();
+    config = await fetchAllergenDietConfig();
     const allergenKeys = (Array.isArray(config?.allergens) ? config.allergens : [])
       .map((allergen) => asText(allergen?.key))
       .filter(Boolean);
@@ -1270,7 +1496,7 @@ export async function POST(request) {
       transcriptLines,
       indexedTranscript,
       analysisOptions,
-      env: openAiEnv,
+      env: providerEnv,
     });
     const aiDirectCandidates = Array.isArray(parsedTranscript.directCandidates)
       ? parsedTranscript.directCandidates
@@ -1389,16 +1615,53 @@ export async function POST(request) {
         promptVersion: PROMPT_VERSION,
       },
       invokeProvider: async (provider) => {
-        if (provider !== "openai") {
-          throw new Error("Ingredient allergen analysis is pinned to OpenAI for this route.");
-        }
-
         const buildMetadata = (phase, agent) => ({
           route_id: "ingredient-allergen-analysis",
           phase,
           agent,
           prompt_version: PROMPT_VERSION,
         });
+        if (provider !== "openai") {
+          const response = await runAnthropicFlagAnalysis({
+            systemPrompt: extractionPrompts.systemPrompt,
+            userPrompt: extractionPrompts.userPrompt,
+            maxTokens: ANALYSIS_MAX_TOKENS,
+            metadata: buildMetadata("analysis", "anthropic"),
+            env: providerEnv,
+          });
+          const publicFlags = mapCandidateFlagsToPublicFlags(
+            normalizeCandidateFlagsFromResponse(response.parsed),
+            candidateById,
+          );
+          const combinedFlags = [...resolvedDeclarationFlags, ...publicFlags];
+          return {
+            provider: "anthropic",
+            model: asText(response?.model),
+            latencyMs: Number(response?.latencyMs || 0),
+            usage: response?.usage || null,
+            rawText: asText(response?.text),
+            normalizedOutput: {
+              flags: combinedFlags,
+              debug: buildDebugPayload(
+                {
+                  pass1Used: true,
+                  pass2Used: false,
+                  provider: "anthropic",
+                  model: asText(response?.model),
+                  reasoningEffort: "",
+                  agentStrategy: "single-pass-anthropic-fallback",
+                  agentAUsed: true,
+                  agentBUsed: false,
+                  agentAgreement: "single-agent-fallback",
+                  adjudicationUsed: false,
+                  fallbackReason: "openai-unavailable",
+                },
+                candidateDebugPayload,
+              ),
+            },
+          };
+        }
+
         const [agentASettled, agentBSettled] = await Promise.allSettled([
           runOpenAiFlagAnalysis({
             systemPrompt: extractionPrompts.systemPrompt,
@@ -1406,7 +1669,7 @@ export async function POST(request) {
             maxTokens: ANALYSIS_MAX_TOKENS,
             phaseName: "agent-a-analysis",
             metadata: buildMetadata("analysis", "agent-a"),
-            env: openAiEnv,
+            env: providerEnv,
           }),
           runOpenAiFlagAnalysis({
             systemPrompt: extractionPrompts.systemPrompt,
@@ -1414,7 +1677,7 @@ export async function POST(request) {
             maxTokens: ANALYSIS_MAX_TOKENS,
             phaseName: "agent-b-analysis",
             metadata: buildMetadata("analysis", "agent-b"),
-            env: openAiEnv,
+            env: providerEnv,
           }),
         ]);
 
@@ -1455,7 +1718,7 @@ export async function POST(request) {
                 maxTokens: VERIFICATION_MAX_TOKENS,
                 phaseName: "conflict-verification",
                 metadata: buildMetadata("verification", "adjudicator"),
-                env: openAiEnv,
+                env: providerEnv,
               });
               finalFlags = normalizeCandidateFlagsFromResponse(adjudicationResponse.parsed);
               agentAgreement = "conflict-resolved";
@@ -1531,7 +1794,7 @@ export async function POST(request) {
           },
         };
       },
-      env: openAiEnv,
+      env: providerEnv,
     });
     const finalFlags = result.normalizedOutput.flags;
     const debugPayload = result.normalizedOutput.debug;
@@ -1551,18 +1814,23 @@ export async function POST(request) {
 
     return corsJson(payload, { status: 200 });
   } catch (error) {
+    const fallback = buildHeuristicFallbackAnalysis({ transcriptLines, config });
     const payload = {
-      success: false,
-      error: asText(error?.message) || "Failed to analyze ingredient transcript.",
-      flags: [],
-      parsedIngredientsList: [],
+      success: true,
+      flags: fallback.flags,
+      parsedIngredientsList: fallback.parsedIngredientsList,
     };
     if (analysisOptions.debug) {
       payload.debug = buildDebugPayload({
         pass1Used: false,
         pass2Used: false,
-        fallbackReason: "route-error",
-      });
+        provider: "heuristic",
+        model: "deterministic-parser",
+        reasoningEffort: "",
+        agentStrategy: "deterministic-heuristic-fallback",
+        fallbackReason:
+          `route-error:${asText(error?.message) || "unknown"}`,
+      }, fallback.debugExtra);
     }
     return corsJson(payload, { status: 200 });
   }

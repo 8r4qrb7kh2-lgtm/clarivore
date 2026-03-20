@@ -680,6 +680,39 @@ function isValidLineData(line) {
   return Array.isArray(line?.words) && line.words.length > 0 && asText(line?.text).length > 0;
 }
 
+function buildLinesFromVisualLines({
+  visualLines,
+  pageWidth,
+  pageHeight,
+  normalizeWidth,
+  normalizeHeight,
+}) {
+  return (Array.isArray(visualLines) ? visualLines : [])
+    .map((line, index) =>
+      toPercentLineData({
+        line,
+        lineNumber: index + 1,
+        pageWidth,
+        pageHeight,
+        normalizeWidth,
+        normalizeHeight,
+      }),
+    )
+    .filter(isValidLineData);
+}
+
+function buildVisionFallbackQuality(reason) {
+  const warning = asText(reason) || "AI transcription unavailable; using OCR fallback.";
+  return {
+    accept: true,
+    confidence: "medium",
+    reasons: [],
+    warnings: [warning],
+    message: "",
+    warningMessage: warning,
+  };
+}
+
 function sanitizeTranscriptLines(rawLines) {
   return (Array.isArray(rawLines) ? rawLines : [])
     .map((line) => asText(line))
@@ -857,20 +890,26 @@ async function analyzeFrontProductName({
   let confidence = "low";
   const { systemPrompt, userPrompt } = buildFrontProductNamePrompts();
 
-  const text = await runImagePromptStep({
-    routeId: "ingredient-photo-analysis/front-product",
-    promptClass: "frontProductName",
-    mediaType,
-    base64Data,
-    systemPrompt,
-    userPrompt,
-    maxTokens: 500,
-    jsonSchema: frontProductNameSchema,
-  });
+  try {
+    const text = await runImagePromptStep({
+      routeId: "ingredient-photo-analysis/front-product",
+      promptClass: "frontProductName",
+      mediaType,
+      base64Data,
+      systemPrompt,
+      userPrompt,
+      maxTokens: 500,
+      jsonSchema: frontProductNameSchema,
+    });
 
-  const parsed = parseJsonObject(text) || {};
-  productName = asText(parsed?.productName);
-  confidence = normalizeConfidence(parsed?.confidence);
+    const parsed = parseJsonObject(text) || {};
+    productName = asText(parsed?.productName);
+    confidence = normalizeConfidence(parsed?.confidence);
+  } catch (error) {
+    if (!googleVisionApiKey) {
+      throw error;
+    }
+  }
 
   if ((!productName || confidence === "low") && googleVisionApiKey) {
     const { words, pageHeight } = await getVisionWords({
@@ -971,35 +1010,32 @@ export async function POST(request) {
   }
 
   try {
-    const transcriptLines = await getClaudeTranscription({
-      mediaType: parsedImage.mediaType,
-      base64Data: parsedImage.base64Data,
-    });
+    let transcriptLines = [];
+    let quality = null;
+    let transcriptionError = null;
 
-    const quality = await getClaudeQualityAssessment({
-      mediaType: parsedImage.mediaType,
-      base64Data: parsedImage.base64Data,
-      transcriptLines,
-    });
+    try {
+      transcriptLines = await getClaudeTranscription({
+        mediaType: parsedImage.mediaType,
+        base64Data: parsedImage.base64Data,
+      });
 
-    if (!quality.accept) {
+      quality = await getClaudeQualityAssessment({
+        mediaType: parsedImage.mediaType,
+        base64Data: parsedImage.base64Data,
+        transcriptLines,
+      });
+    } catch (error) {
+      transcriptionError = error;
+    }
+
+    if (quality && !quality.accept) {
       return corsJson(
         {
           success: false,
           error:
             quality.message ||
             "Could not read the ingredient text clearly. Please retake the photo.",
-          quality,
-        },
-        { status: 200 },
-      );
-    }
-
-    if (!transcriptLines.length) {
-      return corsJson(
-        {
-          success: false,
-          error: "No ingredient lines were transcribed. Please retake the photo.",
           quality,
         },
         { status: 200 },
@@ -1023,6 +1059,44 @@ export async function POST(request) {
     }
 
     const visualLines = groupVisualLines(vision.words);
+    const useVisionFallback =
+      transcriptionError ||
+      !transcriptLines.length ||
+      !quality;
+    if (useVisionFallback) {
+      const fallbackLines = buildLinesFromVisualLines({
+        visualLines,
+        pageWidth: vision.pageWidth,
+        pageHeight: vision.pageHeight,
+        normalizeWidth: imageWidth || vision.pageWidth,
+        normalizeHeight: imageHeight || vision.pageHeight,
+      });
+      if (!fallbackLines.length) {
+        return corsJson(
+          {
+            success: false,
+            error: "No ingredient lines were transcribed. Please retake the photo.",
+            quality: buildVisionFallbackQuality(
+              asText(transcriptionError?.message) || "vision-only-fallback",
+            ),
+          },
+          { status: 200 },
+        );
+      }
+
+      return corsJson(
+        {
+          success: true,
+          data: fallbackLines,
+          claude_transcript: fallbackLines.map((line) => asText(line?.text)).filter(Boolean),
+          quality: buildVisionFallbackQuality(
+            asText(transcriptionError?.message) || "vision-only-fallback",
+          ),
+        },
+        { status: 200 },
+      );
+    }
+
     const lineMapping = await matchLinesToVisualLines({
       transcriptLines,
       visualLines,

@@ -12,6 +12,7 @@ import { confirmInfoCompareSchema } from "../../lib/server/ai/responseSchemas";
 export const runtime = "nodejs";
 
 const ALLOWED_KINDS = new Set(["menu_page", "brand_item"]);
+const GOOGLE_VISION_ENDPOINT = "https://vision.googleapis.com/v1/images:annotate";
 
 function asText(value) {
   return String(value ?? "").trim();
@@ -127,6 +128,119 @@ function parseClaudeJson(value) {
   }
 
   return null;
+}
+
+function readFirstEnv(keys = []) {
+  for (const key of keys) {
+    const value = asText(process.env?.[key]);
+    if (value) return value;
+  }
+  return "";
+}
+
+function normalizeComparableText(value) {
+  return asText(value)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function tokenizeComparableText(value) {
+  return normalizeComparableText(value).split(" ").filter(Boolean);
+}
+
+async function extractVisionText({ googleVisionApiKey, image }) {
+  const apiKey = asText(googleVisionApiKey);
+  if (!apiKey || !image?.base64Data) return "";
+
+  const response = await fetch(
+    `${GOOGLE_VISION_ENDPOINT}?key=${encodeURIComponent(apiKey)}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        requests: [
+          {
+            image: { content: image.base64Data },
+            features: [{ type: "DOCUMENT_TEXT_DETECTION" }],
+          },
+        ],
+      }),
+    },
+  );
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(
+      asText(payload?.error?.message) || "Google Vision OCR request failed.",
+    );
+  }
+
+  const first = Array.isArray(payload?.responses) ? payload.responses[0] : null;
+  return asText(first?.fullTextAnnotation?.text || first?.textAnnotations?.[0]?.description);
+}
+
+async function buildVisionFallbackComparison({
+  kind,
+  baselineImage,
+  candidateImage,
+  googleVisionApiKey,
+  reason,
+}) {
+  const apiKey = asText(googleVisionApiKey);
+  if (!apiKey) return null;
+
+  const [baselineText, candidateText] = await Promise.all([
+    extractVisionText({ googleVisionApiKey: apiKey, image: baselineImage }).catch(() => ""),
+    extractVisionText({ googleVisionApiKey: apiKey, image: candidateImage }).catch(() => ""),
+  ]);
+
+  const baselineTokens = tokenizeComparableText(baselineText);
+  const candidateTokens = tokenizeComparableText(candidateText);
+  if (!baselineTokens.length || !candidateTokens.length) {
+    return null;
+  }
+
+  const baselineSet = new Set(baselineTokens);
+  const candidateSet = new Set(candidateTokens);
+  const shared = [...baselineSet].filter((token) => candidateSet.has(token));
+  const baselineCoverage = shared.length / Math.max(1, baselineSet.size);
+  const candidateCoverage = shared.length / Math.max(1, candidateSet.size);
+  const exactTextMatch =
+    normalizeComparableText(baselineText) === normalizeComparableText(candidateText);
+  const match =
+    exactTextMatch ||
+    (baselineCoverage >= 0.9 && candidateCoverage >= 0.9) ||
+    (kind === "brand_item" && baselineCoverage >= 0.75 && candidateCoverage >= 0.75);
+
+  const confidence = exactTextMatch
+    ? "high"
+    : baselineCoverage >= 0.9 && candidateCoverage >= 0.9
+      ? "medium"
+      : match
+        ? "low"
+        : "low";
+
+  const differences = match
+    ? []
+    : dedupeStrings([
+        "OCR fallback found different text between the saved image and the current photo.",
+      ]);
+
+  const reasonText = asText(reason);
+  const summary = match
+    ? `OCR fallback determined that the current photo matches the saved ${kind === "menu_page" ? "menu page" : "brand item"} image.`
+    : `OCR fallback detected differences between the saved and current ${kind === "menu_page" ? "menu page" : "brand item"} images.`
+        + (reasonText ? ` AI compare was unavailable: ${reasonText}` : "");
+
+  return {
+    success: true,
+    match,
+    confidence,
+    summary,
+    differences,
+  };
 }
 
 function buildComparisonPrompts(kind, label) {
@@ -250,22 +364,37 @@ export async function POST(request) {
     const baselineImage = await parseImageInput(baselineImageRaw);
     const candidateImage = await parseImageInput(candidateImageRaw);
     const label = asText(body?.label);
-    const result = await runWithProviderSelection({
-      routeId: "confirm-info-compare",
-      promptClass: "confirmInfoCompare",
-      requestSummary: {
-        kind,
-        label,
-      },
-      invokeProvider: (provider) =>
-        compareWithProvider({
-          provider,
+    let result = null;
+    try {
+      result = await runWithProviderSelection({
+        routeId: "confirm-info-compare",
+        promptClass: "confirmInfoCompare",
+        requestSummary: {
           kind,
           label,
-          baselineImage,
-          candidateImage,
-        }),
-    });
+        },
+        invokeProvider: (provider) =>
+          compareWithProvider({
+            provider,
+            kind,
+            label,
+            baselineImage,
+            candidateImage,
+          }),
+      });
+    } catch (error) {
+      const fallback = await buildVisionFallbackComparison({
+        kind,
+        baselineImage,
+        candidateImage,
+        googleVisionApiKey: readFirstEnv(["GOOGLE_VISION_API_KEY", "GOOGLE_CLOUD_API_KEY"]),
+        reason: error?.message,
+      });
+      if (fallback) {
+        return corsJson(fallback, { status: 200 });
+      }
+      throw error;
+    }
 
     return corsJson(result.normalizedOutput, { status: 200 });
   } catch (error) {

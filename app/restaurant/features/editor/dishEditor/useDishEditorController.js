@@ -907,26 +907,34 @@ export function useDishEditorController({
       return { failedRows: [], cancelled: true };
     }
 
-    const applyResults = await Promise.allSettled(
-      safeNames.map(async (ingredientName, index) => {
-        if (typeof shouldContinue === "function" && !shouldContinue()) {
-          return {
-            ingredientName,
-            cancelled: true,
-          };
-        }
+    const applyResults = [];
+    for (let index = 0; index < safeNames.length; index += 1) {
+      const ingredientName = safeNames[index];
+      if (typeof shouldContinue === "function" && !shouldContinue()) {
+        return { failedRows: [], cancelled: true };
+      }
 
+      try {
+        // Run row analysis in series so provider-backed requests do not pile up and
+        // leave freshly generated rows stuck in the editor's Applying state.
         const applied = await applyIngredientSmartDetection(index, {
           suppressModalError: true,
           shouldContinue,
         });
-
-        return {
-          ingredientName,
-          applied,
-        };
-      }),
-    );
+        applyResults.push({
+          status: "fulfilled",
+          value: {
+            ingredientName,
+            applied,
+          },
+        });
+      } catch (error) {
+        applyResults.push({
+          status: "rejected",
+          reason: error,
+        });
+      }
+    }
 
     if (typeof shouldContinue === "function" && !shouldContinue()) {
       return { failedRows: [], cancelled: true };

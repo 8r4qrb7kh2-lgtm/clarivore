@@ -355,6 +355,19 @@ function toOpenAiInput(messages) {
   });
 }
 
+function sanitizeAnthropicMetadata(metadata) {
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) {
+    return null;
+  }
+
+  const userId = asText(metadata.user_id);
+  if (!userId) {
+    return null;
+  }
+
+  return { user_id: userId };
+}
+
 async function parseJsonPayload(response) {
   const rawText = await response.text();
   let payload = null;
@@ -403,8 +416,9 @@ export async function callAnthropicApi({
       budget_tokens: thinkingBudget,
     };
   }
-  if (metadata && typeof metadata === "object") {
-    body.metadata = metadata;
+  const anthropicMetadata = sanitizeAnthropicMetadata(metadata);
+  if (anthropicMetadata) {
+    body.metadata = anthropicMetadata;
   }
 
   const startedAt = Date.now();

@@ -161,7 +161,43 @@ const CONFIG = {
   ],
 };
 
-const VALID_SCENARIOS = new Set(["foundation", "final"]);
+const VALID_SCENARIOS = new Set([
+  "foundation",
+  "foundation_review",
+  "foundation_manual_review",
+  "final",
+]);
+
+const FOUNDATION_REVIEW_RECIPE =
+  "Press the extra-firm tofu for 20 minutes, toss it with tamari and lime juice, roast it until browned, then serve it over jasmine rice with sliced scallions.";
+
+const FOUNDATION_REVIEW_ROWS = [
+  {
+    name: "extra-firm tofu",
+    allergens: ["soy"],
+    diets: ["Gluten-free", "Pescatarian", "Vegan", "Vegetarian"],
+  },
+  {
+    name: "tamari",
+    allergens: ["soy"],
+    diets: ["Gluten-free", "Pescatarian", "Vegan", "Vegetarian"],
+  },
+  {
+    name: "lime juice",
+    allergens: [],
+    diets: ["Gluten-free", "Pescatarian", "Vegan", "Vegetarian"],
+  },
+  {
+    name: "jasmine rice",
+    allergens: [],
+    diets: ["Gluten-free", "Pescatarian", "Vegan", "Vegetarian"],
+  },
+  {
+    name: "scallions",
+    allergens: [],
+    diets: ["Gluten-free", "Pescatarian", "Vegan", "Vegetarian"],
+  },
+];
 
 function requiredEnv(name) {
   const value = asText(process.env[name]);
@@ -262,7 +298,10 @@ async function readRestaurantBySlug(pgClient, slug) {
 }
 
 function buildRestaurantSeedState(sourceRestaurant, scenario) {
-  const isFoundation = scenario === "foundation";
+  const isFoundation =
+    scenario === "foundation" ||
+    scenario === "foundation_review" ||
+    scenario === "foundation_manual_review";
   return {
     lastConfirmed: isFoundation ? null : toIsoDaysAgo(45),
     menuUrl: isFoundation ? null : sourceRestaurant.menu_url,
@@ -436,6 +475,165 @@ async function copyMenuPagesOnly(pgClient, sourceRestaurantId, targetRestaurantI
         [randomUUID(), targetRestaurantId, page.page_index, page.image_url],
       );
     }
+    await pgClient.query(
+      "UPDATE public.restaurants SET write_version = COALESCE(write_version, 0) + 1, updated_at = now() WHERE id = $1",
+      [targetRestaurantId],
+    );
+    await pgClient.query("COMMIT");
+  } catch (error) {
+    await pgClient.query("ROLLBACK");
+    throw error;
+  }
+}
+
+function buildFoundationIngredientPayload(row) {
+  const allergens = Array.isArray(row?.allergens) ? row.allergens : [];
+  const diets = Array.isArray(row?.diets) ? row.diets : [];
+  return {
+    name: asText(row?.name),
+    rowText: asText(row?.name),
+    allergens,
+    diets,
+    crossContaminationAllergens: [],
+    crossContaminationDiets: [],
+    aiDetectedAllergens: allergens,
+    aiDetectedDiets: diets,
+    aiDetectedCrossContaminationAllergens: [],
+    aiDetectedCrossContaminationDiets: [],
+    brandRequired: false,
+    brandRequirementReason: "",
+    confirmed: false,
+    removable: true,
+    brands: [],
+  };
+}
+
+async function seedFoundationReviewState(
+  pgClient,
+  sourceRestaurantId,
+  targetRestaurantId,
+  { includeManualRow = false } = {},
+) {
+  await copyMenuPagesOnly(pgClient, sourceRestaurantId, targetRestaurantId);
+
+  const templateDishResult = await pgClient.query(
+    `SELECT
+      page_index,
+      x,
+      y,
+      w,
+      h,
+      details_json,
+      removable_json,
+      ingredients_blocking_diets_json,
+      payload_json
+     FROM public.restaurant_menu_dishes
+     WHERE restaurant_id = $1
+     ORDER BY page_index ASC, dish_name ASC
+     LIMIT 1`,
+    [sourceRestaurantId],
+  );
+  const templateDish = templateDishResult.rows[0];
+  if (!templateDish) {
+    throw new Error("Unable to build foundation review state without a source dish template.");
+  }
+
+  const dishId = randomUUID();
+  const dishName = "Citrus Tofu Bowl";
+  const dishKey = "citrus-tofu-bowl";
+  const dishDescription = "Roasted tofu over rice with tamari, lime, and scallions.";
+
+  await pgClient.query("BEGIN");
+  try {
+    await pgClient.query("SELECT set_config('app.restaurant_write_context', 'gateway', true)");
+    await pgClient.query(
+      `INSERT INTO public.restaurant_menu_dishes (
+        id,
+        restaurant_id,
+        dish_key,
+        dish_name,
+        page_index,
+        x,
+        y,
+        w,
+        h,
+        dish_text,
+        description,
+        details_json,
+        allergens,
+        diets,
+        cross_contamination_allergens,
+        cross_contamination_diets,
+        removable_json,
+        ingredients_blocking_diets_json,
+        payload_json,
+        created_at,
+        updated_at
+      ) VALUES (
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
+        $11, $12, $13, $14, $15, $16, $17, $18, $19, now(), now()
+      )`,
+      [
+        dishId,
+        targetRestaurantId,
+        dishKey,
+        dishName,
+        templateDish.page_index,
+        templateDish.x,
+        templateDish.y,
+        templateDish.w,
+        templateDish.h,
+        FOUNDATION_REVIEW_RECIPE,
+        dishDescription,
+        buildJsonPayload(templateDish.details_json),
+        ["soy"],
+        ["Gluten-free", "Pescatarian", "Vegan", "Vegetarian"],
+        [],
+        [],
+        buildJsonPayload(templateDish.removable_json),
+        buildJsonPayload(templateDish.ingredients_blocking_diets_json),
+        buildJsonPayload(templateDish.payload_json),
+      ],
+    );
+
+    const rowsToInsert = includeManualRow
+      ? [
+          ...FOUNDATION_REVIEW_ROWS,
+          {
+            name: "lime zest",
+            allergens: [],
+            diets: ["Gluten-free", "Pescatarian", "Vegan", "Vegetarian"],
+          },
+        ]
+      : FOUNDATION_REVIEW_ROWS;
+
+    for (const [rowIndex, row] of rowsToInsert.entries()) {
+      await pgClient.query(
+        `INSERT INTO public.restaurant_menu_ingredient_rows (
+          id,
+          restaurant_id,
+          dish_id,
+          dish_name,
+          row_index,
+          row_text,
+          applied_brand_item,
+          ingredient_payload,
+          created_at,
+          updated_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, now(), now())`,
+        [
+          randomUUID(),
+          targetRestaurantId,
+          dishId,
+          dishName,
+          rowIndex,
+          row.name,
+          null,
+          buildFoundationIngredientPayload(row),
+        ],
+      );
+    }
+
     await pgClient.query(
       "UPDATE public.restaurants SET write_version = COALESCE(write_version, 0) + 1, updated_at = now() WHERE id = $1",
       [targetRestaurantId],
@@ -675,6 +873,198 @@ async function copyFullMenuState(pgClient, sourceRestaurantId, targetRestaurantI
       "UPDATE public.restaurants SET write_version = COALESCE(write_version, 0) + 1, updated_at = now() WHERE id = $1",
       [targetRestaurantId],
     );
+    await pgClient.query("COMMIT");
+  } catch (error) {
+    await pgClient.query("ROLLBACK");
+    throw error;
+  }
+}
+
+function mergeBrandPayload(payload, patch) {
+  const base = payload && typeof payload === "object" ? { ...payload } : {};
+  if (patch.brandName) {
+    base.name = patch.brandName;
+    base.brandName = patch.brandName;
+    base.brand = patch.brandName;
+    base.appliedBrand = patch.brandName;
+    base.appliedBrandItem = patch.brandName;
+  }
+  if (Array.isArray(patch.ingredientsList)) {
+    base.ingredientList = patch.ingredientsList;
+    base.ingredientsList = patch.ingredientsList;
+  }
+  if (Array.isArray(patch.allergens)) {
+    base.allergens = patch.allergens;
+    base.aiDetectedAllergens = patch.allergens;
+  }
+  if (Array.isArray(patch.diets)) {
+    base.diets = patch.diets;
+    base.aiDetectedDiets = patch.diets;
+  }
+  if (Array.isArray(patch.crossContaminationAllergens)) {
+    base.crossContaminationAllergens = patch.crossContaminationAllergens;
+    base.aiDetectedCrossContaminationAllergens = patch.crossContaminationAllergens;
+  }
+  if (Array.isArray(patch.crossContaminationDiets)) {
+    base.crossContaminationDiets = patch.crossContaminationDiets;
+    base.aiDetectedCrossContaminationDiets = patch.crossContaminationDiets;
+  }
+  return base;
+}
+
+function mergeIngredientPayload(payload, patch) {
+  const base = payload && typeof payload === "object" ? { ...payload } : {};
+  if (patch.rowText) {
+    base.name = patch.rowText;
+    base.rowText = patch.rowText;
+  }
+  if (patch.brandName) {
+    base.brand = patch.brandName;
+    base.appliedBrand = patch.brandName;
+    base.appliedBrandItem = patch.brandName;
+  }
+  if (Array.isArray(patch.ingredientsList)) {
+    base.ingredientsList = patch.ingredientsList;
+  }
+  if (Array.isArray(patch.allergens)) {
+    base.allergens = patch.allergens;
+    base.aiDetectedAllergens = patch.allergens;
+  }
+  if (Array.isArray(patch.diets)) {
+    base.diets = patch.diets;
+    base.aiDetectedDiets = patch.diets;
+  }
+  if (Array.isArray(patch.crossContaminationAllergens)) {
+    base.crossContaminationAllergens = patch.crossContaminationAllergens;
+    base.aiDetectedCrossContaminationAllergens = patch.crossContaminationAllergens;
+  }
+  if (Array.isArray(patch.crossContaminationDiets)) {
+    base.crossContaminationDiets = patch.crossContaminationDiets;
+    base.aiDetectedCrossContaminationDiets = patch.crossContaminationDiets;
+  }
+  if (Array.isArray(base.brands) && base.brands.length) {
+    base.brands = base.brands.map((brand, index) =>
+      index === 0 ? mergeBrandPayload(brand, patch) : brand,
+    );
+  }
+  return base;
+}
+
+async function normalizeGuideBrandData(pgClient, restaurantId) {
+  const tofuDishName = "Grilled Tofu";
+  const rowPatches = new Map([
+    [
+      0,
+      {
+        rowText: "extra-firm tofu",
+        brandName: "Hodo Organic Extra Firm Tofu",
+        ingredientsList: ["Organic soybeans, water, calcium sulfate."],
+        allergens: ["soy"],
+        diets: ["Gluten-free", "Pescatarian", "Vegan", "Vegetarian"],
+        crossContaminationAllergens: [],
+        crossContaminationDiets: [],
+      },
+    ],
+    [
+      1,
+      {
+        rowText: "tamari",
+        brandName: "San-J Tamari Gluten Free Soy Sauce",
+        ingredientsList: ["Water, soybeans, salt, alcohol."],
+        allergens: ["soy"],
+        diets: ["Gluten-free", "Pescatarian", "Vegan", "Vegetarian"],
+        crossContaminationAllergens: [],
+        crossContaminationDiets: [],
+      },
+    ],
+    [
+      3,
+      {
+        rowText: "maple syrup",
+        brandName: "Coombs Family Farms Organic Maple Syrup",
+        ingredientsList: ["Organic maple syrup."],
+        allergens: [],
+        diets: ["Gluten-free", "Pescatarian", "Vegan", "Vegetarian"],
+        crossContaminationAllergens: [],
+        crossContaminationDiets: [],
+      },
+    ],
+  ]);
+
+  const rowsResult = await pgClient.query(
+    `SELECT id::text, row_index, ingredient_payload
+     FROM public.restaurant_menu_ingredient_rows
+     WHERE restaurant_id = $1
+       AND dish_name = $2
+       AND row_index = ANY($3::int[])
+     ORDER BY row_index ASC`,
+    [restaurantId, tofuDishName, Array.from(rowPatches.keys())],
+  );
+  const brandRowsResult = await pgClient.query(
+    `SELECT id::text, row_index, brand_payload
+     FROM public.restaurant_menu_ingredient_brand_items
+     WHERE restaurant_id = $1
+       AND dish_name = $2
+       AND row_index = ANY($3::int[])
+     ORDER BY row_index ASC`,
+    [restaurantId, tofuDishName, Array.from(rowPatches.keys())],
+  );
+
+  await pgClient.query("BEGIN");
+  try {
+    await pgClient.query("SELECT set_config('app.restaurant_write_context', 'gateway', true)");
+
+    for (const row of rowsResult.rows) {
+      const patch = rowPatches.get(Number(row.row_index));
+      if (!patch) continue;
+      await pgClient.query(
+        `UPDATE public.restaurant_menu_ingredient_rows
+         SET
+           row_text = $2,
+           applied_brand_item = $3,
+           ingredient_payload = $4,
+           updated_at = now()
+         WHERE id = $1::uuid`,
+        [
+          row.id,
+          patch.rowText,
+          patch.brandName,
+          mergeIngredientPayload(buildJsonPayload(row.ingredient_payload), patch),
+        ],
+      );
+    }
+
+    for (const brandRow of brandRowsResult.rows) {
+      const patch = rowPatches.get(Number(brandRow.row_index));
+      if (!patch) continue;
+      const normalizedPayload = mergeBrandPayload(buildJsonPayload(brandRow.brand_payload), patch);
+      await pgClient.query(
+        `UPDATE public.restaurant_menu_ingredient_brand_items
+         SET
+           brand_name = $2,
+           ingredient_list = $3,
+           ingredients_list = $4,
+           allergens = $5,
+           cross_contamination_allergens = $6,
+           diets = $7,
+           cross_contamination_diets = $8,
+           brand_payload = $9,
+           updated_at = now()
+         WHERE id = $1::uuid`,
+        [
+          brandRow.id,
+          patch.brandName,
+          patch.ingredientsList,
+          patch.ingredientsList,
+          patch.allergens,
+          patch.crossContaminationAllergens,
+          patch.diets,
+          patch.crossContaminationDiets,
+          normalizedPayload,
+        ],
+      );
+    }
+
     await pgClient.query("COMMIT");
   } catch (error) {
     await pgClient.query("ROLLBACK");
@@ -1337,7 +1727,7 @@ async function reseedManagerArtifacts(pgClient, { restaurantId, managerUserId, d
         changes: {
           general: ["Reviewed brand items attached to high-traffic vegan dishes before lunch service."],
           [tofu]: [
-            "Confirmed Organic Extra Firm Tofu packaging is current.",
+            "Confirmed Hodo Organic Extra Firm Tofu packaging is current.",
             "Queued the crunchy topping brand for replacement review.",
           ],
         },
@@ -1520,8 +1910,23 @@ async function main() {
         restaurantId: targetRestaurantId,
         managerUserId,
       });
+    } else if (CONFIG.scenario === "foundation_review") {
+      await seedFoundationReviewState(pgClient, sourceRestaurant.id, targetRestaurantId);
+      await ensureRestaurantManagerAccess(pgClient, {
+        restaurantId: targetRestaurantId,
+        managerUserId,
+      });
+    } else if (CONFIG.scenario === "foundation_manual_review") {
+      await seedFoundationReviewState(pgClient, sourceRestaurant.id, targetRestaurantId, {
+        includeManualRow: true,
+      });
+      await ensureRestaurantManagerAccess(pgClient, {
+        restaurantId: targetRestaurantId,
+        managerUserId,
+      });
     } else {
       await copyFullMenuState(pgClient, sourceRestaurant.id, targetRestaurantId);
+      await normalizeGuideBrandData(pgClient, targetRestaurantId);
       await ensureRestaurantManagerAccess(pgClient, {
         restaurantId: targetRestaurantId,
         managerUserId,
