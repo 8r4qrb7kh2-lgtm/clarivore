@@ -52,6 +52,7 @@
     "docs:flows:optimize": "node scripts/docs/optimize-manager-flow-diagrams.mjs",
     "docs:flows:build": "npm run docs:flows:render && npm run docs:flows:optimize",
     "docs:flows:capture": "node scripts/docs/capture-manager-flow-screenshots.mjs",
+    "docs:manager:setup": "node scripts/docs/setup-manager-guide-demo.mjs",
     "docs:manager:pdf": "md-to-pdf docs/manager-user-guide.md",
     "axon:bootstrap": "bash scripts/axon-mcp/bootstrap.sh",
     "axon:up": "bash scripts/axon-mcp/up.sh",

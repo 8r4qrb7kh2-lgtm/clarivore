@@ -1,535 +1,933 @@
 # Clarivore Manager User Guide
 
-This is the manager-facing operating manual for Clarivore. It is organized by manager task type so you can quickly find what to do, where to do it, and what "good" looks like.
+This guide supersedes every earlier manager guide for Clarivore.
 
-## Guide metadata
+All screenshots in this manual were captured from the `demo-menu` restaurant using a real manager account with live manager access, live dashboard data, live editor access, and live tablet permissions. The guide is intentionally desktop-first because that is the clearest way to document the full manager workflow surface.
 
-- Product area: Manager dashboard, webpage editor, viewer validation, tablet pages
-- Audience: Restaurant managers, owners, operations leads
-- Scope: Day-to-day operation, monthly compliance confirmation, menu maintenance, analytics interpretation, escalation
+## What This Guide Covers
 
-## How to use this guide
+- Manager dashboard
+- Webpage editor
+- Viewer validation from the manager perspective
+- Server tablet
+- Kitchen tablet
+- Help
+- Account settings
 
-1. Start with `Task map` to understand daily/weekly/monthly responsibility.
-2. Jump to the section matching your current task.
-3. Use the embedded annotated screenshots and callout mappings while you execute.
-4. Use troubleshooting and escalation templates when expected outcomes do not occur.
+## How To Use This Guide
 
-## Task map
+1. Start with `Manager Surface Map` so you know where each part of the product lives.
+2. Use the workflow sections when you are trying to complete a task.
+3. Use the numbered callouts on each screenshot to identify exactly which button, panel, badge, or field matters.
+4. Use the diagrams at the start of each section to understand the full workflow before you click anything.
+5. Use `Troubleshooting And Escalation` if what you see does not match the expected screenshots.
+
+## Manager Surface Map
 
 ![Manager Task Map](./manager-flows/generated/18-manager-task-map.svg)
 
-This map is the reference hierarchy for all manager tasks in this guide:
+### Navigation map
 
-1. Daily operations: communication, request triage, due-date checks, analytics monitoring.
-2. Weekly governance: change quality review, brand drift review, viewer spot checks.
-3. Monthly governance: two-step confirmation completion and remediation planning.
+![Manager Navigation](./manager-flows/screenshots/manager-topbar-navigation-annotated-desktop.png)
 
-## Task type 1: Access, onboarding, and navigation
+Callout mapping:
 
-### 1.1 Objective
+1. Manager mode toggle and label. This confirms you are in the manager surface, not the diner surface.
+2. Dashboard. This is the daily command center for messages, requests, confirmations, change review, brand review, and analytics.
+3. Webpage editor. This opens the managed restaurant's menu editor.
+4. Tablet pages. This opens the server and kitchen tablet surfaces.
+5. Help. This opens the support area for manager chat, issue reporting, and Clarivore help search.
+6. Account settings. This opens your profile and sign-out controls.
 
-Access manager tooling in an authorized state and verify that navigation is routing to the correct manager surfaces.
+### Tablet pages menu
 
-### 1.2 Flow diagrams
+![Tablet Pages Menu](./manager-flows/screenshots/manager-topbar-tablet-pages-menu-annotated-desktop.png)
 
-![Manager Access Invite Sequence](./manager-flows/generated/01-access-invite-sequence.svg)
+Callout mapping:
 
-![Manager Access Decision Flow](./manager-flows/generated/02-access-decision-flow.svg)
+1. Tablet-pages menu trigger. Use this when you need the operational notice queues.
+2. Server tablet. This is where notices first arrive for approval and dispatch.
+3. Kitchen tablet. This is where the kitchen acknowledges notices and asks follow-up questions.
 
-### 1.3 Sign-in screen reference
+### Access checkpoints
 
-![Manager Sign-In Annotated Desktop](./manager-flows/screenshots/manager-signin-annotated-desktop.png)
+![Manager Sign-In](./manager-flows/screenshots/manager-signin-annotated-desktop.png)
 
 Callout mapping:
 
 1. Manager email input.
 2. Password input.
-3. Primary sign-in action.
-4. Account creation path.
+3. Primary sign-in button.
+4. Account-creation path if a manager account has not been provisioned yet.
 
-### 1.4 Unauthorized manager-dashboard state reference
-
-![Manager Dashboard Auth Required Annotated Desktop](./manager-flows/screenshots/manager-dashboard-auth-required-annotated-desktop.png)
+![Manager Auth Required](./manager-flows/screenshots/manager-dashboard-auth-required-annotated-desktop.png)
 
 Callout mapping:
 
-1. Authentication-required state.
-2. Recovery path to sign-in.
+1. Authentication-required state. You will see this if you try to open the dashboard without a valid session.
+2. Sign-in recovery link.
 
-### 1.5 Mobile reference (signin and dashboard shell)
+What this means:
 
-![Manager Sign-In Mobile](./manager-flows/screenshots/manager-signin-mobile.png)
+- If you see the sign-in form, you are not signed in yet.
+- If you see the auth-required screen, go back through sign-in.
+- If you sign in successfully and still cannot reach the dashboard, the account likely does not have manager or owner access for the current restaurant.
 
-![Manager Dashboard Main Mobile](./manager-flows/screenshots/manager-dashboard-main-mobile.png)
+## Workflow 1: Sign In And Verify Access
 
-### 1.6 Access checklist
+![Manager Access Invite Sequence](./manager-flows/generated/01-access-invite-sequence.svg)
 
-1. Open `/account?mode=signin`.
-2. Sign in with manager credentials.
-3. Open `/manager-dashboard`.
-4. Confirm `Restaurant Manager Dashboard` heading appears.
-5. Confirm manager sections render (direct messages, requests, confirmation, changes/brands, analytics).
-6. If owner: confirm restaurant selector appears and can switch restaurants.
+![Manager Access Decision Flow](./manager-flows/generated/02-access-decision-flow.svg)
 
-### 1.7 Common access outcomes
+### Step 1: Sign in with manager credentials
 
-- Signed in but no manager assignment: `Manager Access Required` state appears.
-- Signed out: auth-required messaging appears.
-- Valid manager assignment: full dashboard content appears.
+![Manager Sign-In](./manager-flows/screenshots/manager-signin-annotated-desktop.png)
 
-## Task type 2: Run the manager dashboard command center
+What to do:
 
-### 2.1 Objective
+1. Enter the manager email.
+2. Enter the password.
+3. Click `Sign in`.
 
-Use dashboard panels as the primary daily control center for communication, triage, compliance, change review, and analytics.
+What good looks like:
 
-### 2.2 Flow diagrams
+- You are redirected into Clarivore with manager navigation available.
+
+### Step 2: Confirm the dashboard loads correctly
+
+![Dashboard Overview](./manager-flows/screenshots/manager-dashboard-overview-annotated-desktop.png)
+
+Callout mapping:
+
+1. Topbar. This confirms the full manager navigation is present.
+2. Dashboard heading. This confirms you are on the correct page.
+3. Direct-messages area. This confirms live manager communication is loading.
+4. Accommodation requests. This confirms live request data is loading.
+5. Monthly confirmation card. This confirms confirmation status is loading.
+
+What good looks like:
+
+- The page header reads as the restaurant manager dashboard.
+- Direct messages, requests, confirmation, changes, and analytics sections all render.
+- Buttons are active and not replaced by an auth or error state.
+
+### Step 3: Recognize the signed-out state when it happens
+
+![Manager Auth Required](./manager-flows/screenshots/manager-dashboard-auth-required-annotated-desktop.png)
+
+What to do:
+
+1. Use the recovery link.
+2. Sign in again.
+3. Return to `/manager-dashboard`.
+
+## Workflow 2: Run The Manager Dashboard
 
 ![Daily Manager Operations Swimlane](./manager-flows/generated/03-daily-ops-swimlane.svg)
 
 ![Notification Delivery Sequence](./manager-flows/generated/11-notification-delivery-sequence.svg)
 
-### 2.3 Dashboard overview reference
+### Dashboard overview
 
-![Manager Dashboard Overview Annotated Desktop](./manager-flows/screenshots/manager-dashboard-overview-annotated-desktop.png)
+![Dashboard Overview](./manager-flows/screenshots/manager-dashboard-overview-annotated-desktop.png)
 
-Callout mapping:
+What this screen tells you at a glance:
 
-1. Topbar with mode toggle and navigation.
-2. Dashboard title and scope.
-3. Direct message panel.
-4. Accommodation request queue.
-5. Monthly confirmation status card.
+1. You are in the manager surface, not the diner surface.
+2. Direct messages need attention if an unread badge is visible.
+3. Accommodation requests need attention if pending requests are visible.
+4. Monthly confirmation needs attention if the due state is near due, due today, or overdue.
+5. The rest of the page continues downward into recent changes, brand items, and analytics.
 
-### 2.4 Direct message workflow
-
-#### Flow diagram
+### Workflow 2A: Review And Respond To Direct Messages
 
 ![Direct Message Sequence](./manager-flows/generated/04-chat-message-sequence.svg)
 
-#### Execution steps
+#### Step 1: Review unread admin context
 
-1. Open `Direct Messages` in dashboard top section.
-2. Review unread items and required action context.
-3. Reply with structured update: `Issue -> Impact -> Action taken -> Ask from admin`.
-4. Use `Acknowledge` after you have processed the message.
-5. Confirm unread state drops and timeline shows your response.
+![Direct Messages Review](./manager-flows/screenshots/manager-dashboard-messages-review-annotated-desktop.png)
 
-#### Quality standard
+Callout mapping:
 
-- Good: actionable details with timestamp, dish/menu scope, and required support.
-- Poor: vague requests with no operational context.
+1. Direct-messages workspace.
+2. Thread title and unread badge.
+3. Message history with timestamps and acknowledgement markers.
+4. `Acknowledge message(s)`. This clears the current unread admin run after you have processed it.
 
-### 2.5 Accommodation request triage
+What to look for:
 
-#### Flow diagrams
+- Operational reminders
+- Follow-up requests from Clarivore
+- Questions about brand items, requests, or confirmation status
+
+#### Step 2: Send a manager response
+
+![Direct Messages Compose](./manager-flows/screenshots/manager-dashboard-messages-compose-annotated-desktop.png)
+
+Callout mapping:
+
+1. Conversation history. Read this first.
+2. Message input. Type the manager response here.
+3. `Send`. This sends the response into the live manager-admin thread.
+4. Published-overlay summary. This is a useful side signal if the message relates to publish state.
+
+Recommended response structure:
+
+- Issue
+- Restaurant impact
+- What you already checked
+- What you need from Clarivore
+
+When to use `Acknowledge message(s)`:
+
+- After you have read and acted on the current unread admin messages
+- After you have replied, if a reply was needed
+- Not before you understand what the message is asking for
+
+### Workflow 2B: Triage Accommodation Requests
 
 ![Accommodation Request Triage Sequence](./manager-flows/generated/05-request-triage-sequence.svg)
 
 ![Accommodation Request State Machine](./manager-flows/generated/06-request-state-machine.svg)
 
-#### Panel reference
+#### Step 1: Review the pending queue
 
-![Manager Dashboard Requests Annotated Desktop](./manager-flows/screenshots/manager-dashboard-requests-annotated-desktop.png)
+![Accommodation Queue Overview](./manager-flows/screenshots/manager-dashboard-requests-annotated-desktop.png)
 
 Callout mapping:
 
-1. Pending vs All filters.
-2. Request cards and status badges.
-3. Implement/Review/Decline actions.
-4. Confirmation due-state context alongside triage.
+1. `Pending` and `All` tabs.
+2. Request cards showing the dish, date, and requested accommodations.
+3. Inline triage buttons.
+4. Confirmation card still visible so you do not lose due-date awareness while triaging.
 
-#### Decision rules
+How to read each request card:
 
-- `implemented`: use when accommodation is now materially available.
-- `reviewed`: use when assessed but not yet implemented.
-- `declined`: use when request cannot be supported.
+- Dish name: the menu item the diner could not confidently order
+- Date: when the request was created
+- Status badge: current state of the request
+- Allergen accommodations needed: requested allergen-safe coverage
+- Dietary accommodations needed: requested diet-safe coverage
 
-#### Execution steps
+#### Step 2: Choose the correct request action
 
-1. Start with `Pending`.
-2. Open each request card and verify dish and need context.
-3. Apply the correct action (`Mark Implemented`, `Mark Reviewed`, or `Decline`).
-4. Add manager response text when rationale is not obvious.
-5. Validate state transitions in `All` tab for audit continuity.
+![Accommodation Action Confirmation](./manager-flows/screenshots/manager-dashboard-request-modal-annotated-desktop.png)
 
-### 2.6 Monthly confirmation from dashboard
+Callout mapping:
 
-#### Flow diagrams
+1. Action-confirmation dialog.
+2. Action title. This tells you whether you are marking the request implemented, reviewed, or declined.
+3. Dish context.
+4. Optional manager rationale.
+5. Final submit button for the selected action.
+
+How to choose the correct status:
+
+- `Mark Implemented`: use this only when the restaurant can now truly support the accommodation.
+- `Mark Reviewed`: use this when the request has been investigated but the menu/editor change is not yet complete.
+- `Decline`: use this when the accommodation cannot be supported.
+
+When to add a response note:
+
+- When the reason is not obvious from the menu
+- When you need to document a temporary workaround
+- When you are clarifying why a request was declined or only reviewed
+
+#### Step 3: Verify the history view
+
+![Accommodation History Review](./manager-flows/screenshots/manager-dashboard-requests-history-annotated-desktop.png)
+
+Callout mapping:
+
+1. `All` history tab.
+2. Request history list across pending and non-pending requests.
+3. Final status badges.
+4. Saved manager response text.
+
+Why this matters:
+
+- `All` is your audit trail.
+- It lets you confirm that a status change actually persisted.
+- It shows future managers what decision was made and why.
+
+### Workflow 2C: Check Monthly Confirmation Status
 
 ![Monthly Confirmation Gating Flow](./manager-flows/generated/07-confirmation-gating-flow.svg)
 
 ![Monthly Confirmation Commit Sequence](./manager-flows/generated/08-confirmation-commit-sequence.svg)
 
-#### Dashboard interpretation
+#### Step 1: Review the dashboard card every day
 
-- `Due in N days`: normal if `N > 7`, watchlist if `N <= 7`.
-- `Due today`: immediate task.
-- `X days overdue`: highest urgency.
+![Monthly Confirmation Dashboard Step](./manager-flows/screenshots/manager-dashboard-confirmation-card-annotated-desktop.png)
 
-#### Execution steps
+Callout mapping:
 
-1. Review the `Menu Confirmation` card each day.
-2. If due/overdue or verification incomplete, click `Confirm information is up-to-date`.
-3. Complete the editor-based confirmation sequence (detailed in task type 3.7).
+1. Confirmation due-state card.
+2. Due-date label.
+3. Due-state urgency text.
+4. Last confirmed timestamp.
+5. `Confirm information is up-to-date`. This opens the confirmation workflow in the editor.
 
-### 2.7 Review recent changes and brand items
+How to read the due state:
 
-#### Flow diagrams
+- `Due in N days`: on track
+- `Due today`: needs action now
+- `X days overdue`: highest urgency
+
+What to do if overdue:
+
+1. Open the editor immediately from this button.
+2. Verify pages, overlays, and brand items.
+3. Complete both confirmation steps before returning to other work.
+
+### Workflow 2D: Review Recent Changes And Brand Items
 
 ![Brand Replacement Flow](./manager-flows/generated/09-brand-replacement-flow.svg)
 
 ![Brand Replacement Sequence](./manager-flows/generated/10-brand-replacement-sequence.svg)
 
-#### Panel reference
+#### Step 1: Review recent changes
 
-![Manager Dashboard Change and Brand Annotated Desktop](./manager-flows/screenshots/manager-dashboard-change-brand-annotated-desktop.png)
+![Change Review And Brand Management](./manager-flows/screenshots/manager-dashboard-change-brand-annotated-desktop.png)
 
 Callout mapping:
 
-1. Recent changes preview list.
-2. Open full changelog action.
-3. Brand item search.
-4. Brand cards with dish links and replace workflow.
+1. Recent change preview.
+2. `View full changelog`.
+3. Brand search field.
+4. Brand-item list.
 
-#### Execution steps
+How to use the recent-changes side:
 
-1. Scan `Recent changes` for unexpected edits.
-2. Use `View full changelog` when an edit needs full historical context.
-3. In `Brand items in use`, search for target item by name/ingredient/dish.
-4. Expand `More options` for full brand context.
-5. Use `Open` to jump to dish editor context, or `Replace item` for replacement flow.
+1. Scan for unexpected edits.
+2. Open the full changelog if a change needs more context.
+3. Use the editor if you need to inspect the affected dish directly.
 
-### 2.8 Interpret analytics and prioritize actions
+#### Step 2: Expand a brand item before acting on it
 
-#### Flow diagrams
+![Expanded Brand Item Card](./manager-flows/screenshots/manager-dashboard-brand-expanded-annotated-desktop.png)
+
+Callout mapping:
+
+1. Expanded brand-item record.
+2. Saved allergen metadata for the item.
+3. Saved diet metadata for the item.
+4. Dishes using the item.
+5. `Replace item`.
+
+How to use this panel:
+
+1. Search by brand name, ingredient name, or dish name.
+2. Open `More options`.
+3. Check whether the item is attached to the expected dishes.
+4. Use `Replace item` if the branded product on-site has changed.
+
+### Workflow 2E: Use Analytics To Prioritize Work
 
 ![Analytics Decision Playbook](./manager-flows/generated/15-analytics-decision-playbook.svg)
 
-![Daily Manager Operations Swimlane](./manager-flows/generated/03-daily-ops-swimlane.svg)
+#### Step 1: Read the heatmap and aggregate panels
 
-#### Panel reference
-
-![Manager Dashboard Analytics Annotated Desktop](./manager-flows/screenshots/manager-dashboard-analytics-annotated-desktop.png)
+![Analytics Interpretation Panel](./manager-flows/screenshots/manager-dashboard-analytics-annotated-desktop.png)
 
 Callout mapping:
 
-1. Metric toggles and legend controls.
-2. Dish-level heatmap surface.
+1. Metric toggles and legend.
+2. Heatmap overlay surface.
 3. Accommodation breakdown bars.
-4. User allergen/diet distribution panel.
+4. User allergen and diet distribution.
 
-#### Metric meaning
+How to use the metrics:
 
-- `Total views`: discovery demand.
-- `Total loves`: preference signal.
-- `Total orders`: conversion signal.
-- `Total requests`: accommodation friction.
-- `% accommodated`: compatibility fit signal.
+- `Total views`: demand signal
+- `Total loves`: preference signal
+- `Total orders`: conversion signal
+- `Total requests`: friction signal
+- `Proportion of views safe/accommodable`: fit signal
 
-#### Interpretation playbook
+#### Step 2: Click a dish to inspect the underlying conflict pattern
 
-1. Start with `views` and `orders` to identify high-impact dishes.
-2. Switch to `requests` and `% accommodated` to identify friction hotspots.
-3. Cross-check hotspots with user profile panel to estimate customer impact.
-4. Create remediation tasks in editor for high-demand, low-fit dishes.
+![Dish Analytics Drill-Down](./manager-flows/screenshots/manager-dashboard-dish-analytics-modal-annotated-desktop.png)
 
-## Task type 3: Edit and publish the menu safely
+Callout mapping:
 
-### 3.1 Objective
+1. Selected dish name.
+2. Restrictions that cannot be accommodated.
+3. Restrictions that can be accommodated.
+4. Views and status-distribution comparison.
+5. Conflict counts by allergen and diet.
+6. Total accommodation requests for the dish.
 
-Use webpage editor tools to maintain menu pages, overlays, dish data, settings, and monthly confirmations with safe publish behavior.
+How to interpret the drill-down:
 
-### 3.2 Flow diagrams
+1. If views are high and requests are high, the dish is creating friction for real demand.
+2. If the conflict bars cluster around a single allergen or diet, that is your clearest remediation target.
+3. If the dish is high-view but low-order, the fit or explanation may be weak.
+
+## Workflow 3: Edit And Publish Safely
 
 ![Editor Workflow Swimlane](./manager-flows/generated/13-editor-workflow-swimlane.svg)
 
 ![Editor Save Publish Sequence](./manager-flows/generated/14-editor-save-publish-sequence.svg)
 
-### 3.3 Editor core controls reference
+### Workflow 3A: Orient Yourself In The Webpage Editor
 
-![Restaurant Editor Overview Annotated Desktop](./manager-flows/screenshots/restaurant-editor-overview-annotated-desktop.png)
+#### Step 1: Review the editor shell before touching anything
+
+![Editor Core Controls](./manager-flows/screenshots/restaurant-editor-overview-annotated-desktop.png)
 
 Callout mapping:
 
-1. Minimap jump navigator.
-2. Add overlay, undo/redo, and save actions.
-3. Menu image management modal entry.
-4. Changelog modal entry.
-5. Restaurant settings entry.
-6. Monthly confirmation entry.
+1. Mini-map jump navigator.
+2. Editing controls: add overlay, undo, redo, save.
+3. Menu page management.
+4. Change log.
+5. Restaurant settings.
+6. Monthly confirmation entry point.
 7. Menu canvas with draggable overlays.
 
-### 3.4 Core editor operations
+What each toolbar group does:
 
-#### Add or modify overlay boxes
+- `Editing`: change overlays and publish updates
+- `Menu pages`: manage the underlying page images
+- `Restaurant`: update restaurant metadata and run monthly confirmation
 
-1. Use `+ Add overlay` to create a new dish box.
-2. Drag overlay to reposition.
-3. Drag corners to resize.
-4. Click `Edit` badge to open dish editor.
+### Workflow 3B: Open The Right Dish Overlay
 
-#### Undo and redo
+#### Step 1: Locate the overlay on the page
 
-1. Use `Undo` to step backward through local history.
-2. Use `Redo` to reapply reverted changes.
-3. Confirm final state before save.
-
-#### Save behavior
-
-1. `Save to site` publishes staged changes.
-2. Save can be blocked when ingredient confirmations are unresolved.
-3. Use confirmation guide controls to resolve outstanding rows before save.
-
-### 3.5 Dish editor and ingredient management
-
-![Restaurant Editor Dish Modal Annotated Desktop](./manager-flows/screenshots/restaurant-editor-dish-modal-annotated-desktop.png)
+![Open A Dish Overlay](./manager-flows/screenshots/restaurant-editor-open-dish-annotated-desktop.png)
 
 Callout mapping:
 
-1. Dish header with `Done` and `Delete` actions.
-2. Upload/camera controls for recipe evidence.
-3. Recipe text and dictation input area.
-4. `Process Input` action.
-5. Ingredient rows with brand assignment and confirmation controls.
+1. Mini-map jump navigator.
+2. Overlay box aligned to the menu item.
+3. Edit badge that opens the dish editor.
+4. Published/unpublished legend.
 
-Execution steps:
+What to verify before opening:
 
-1. Open overlay dish editor.
-2. Set accurate dish name.
-3. Add photo evidence and/or recipe text.
-4. Run `Process Input`.
-5. Verify each ingredient row and assign/confirm brand items.
-6. Resolve warnings and confirm all required rows.
-7. Click `Done`.
+- The overlay is aligned to the correct dish on the scanned menu page.
+- The box size roughly matches the dish text block.
+- Published overlays are green.
+- Unpublished overlays are red.
 
-### 3.6 Changelog review inside editor
+### Workflow 3C: Edit Dish Metadata And Evidence
 
-![Restaurant Editor Change Log Annotated Desktop](./manager-flows/screenshots/restaurant-editor-change-log-annotated-desktop.png)
+#### Step 1: Review the main dish editor controls
+
+![Dish Editor Main Step](./manager-flows/screenshots/restaurant-editor-dish-modal-annotated-desktop.png)
 
 Callout mapping:
 
-1. Changelog modal container.
-2. Change history context.
-3. Close control.
+1. Dish editor header with `Done` and `Delete`.
+2. Dish name field.
+3. Upload or capture recipe-photo evidence.
+4. Recipe text, dictation, and generic-recipe tools.
+5. `Process Input`.
 
-Execution steps:
+What to do in this step:
 
-1. Open `View log of changes`.
-2. Review entries for unintended edits before publishing.
-3. Close modal and continue editing or save.
+1. Confirm the dish name is correct.
+2. Add evidence using photos, typed recipe text, or both.
+3. Use dictation only when it is faster than typing and the result is still accurate.
+4. Use the generic-recipe helper only as a starting point, never as a blind final answer.
+5. Click `Process Input` after the evidence is ready.
 
-### 3.7 Menu page management
+### Workflow 3D: Review Ingredient Rows And The Customer Preview
 
-![Restaurant Editor Menu Pages Annotated Desktop](./manager-flows/screenshots/restaurant-editor-menu-pages-annotated-desktop.png)
+#### Step 1: Confirm every ingredient row
 
-Callout mapping:
-
-1. Menu image modal container.
-2. Add page action.
-3. Replace page action.
-4. Remove page action.
-5. Save page updates action.
-
-Execution steps:
-
-1. Open `Edit menu images`.
-2. Add missing pages, replace stale scans, remove obsolete pages.
-3. Save modal changes.
-4. Return to editor and validate overlays still align with page content.
-
-### 3.8 Restaurant settings management
-
-![Restaurant Editor Settings Annotated Desktop](./manager-flows/screenshots/restaurant-editor-settings-annotated-desktop.png)
+![Dish Ingredients And Preview Step](./manager-flows/screenshots/restaurant-editor-dish-ingredients-annotated-desktop.png)
 
 Callout mapping:
 
-1. Restaurant settings modal container.
+1. Ingredient rows with brand, allergen, diet, and confirmation controls.
+2. `Add ingredient`.
+3. Customer-facing preview of allergen and diet messaging.
+4. Final `Done` action.
+
+What must be true before you leave:
+
+- Ingredient names are correct.
+- Required brand assignments are correct.
+- Allergen and diet flags are correct.
+- Removability is correct.
+- Rows that require confirmation are confirmed.
+- The customer preview reads the way you expect a diner to see it.
+
+### Workflow 3E: Review The Change Log
+
+#### Step 1: Open the full editor change history
+
+![Editor Change Log](./manager-flows/screenshots/restaurant-editor-change-log-annotated-desktop.png)
+
+Callout mapping:
+
+1. Change-log dialog.
+2. Change-history heading.
+3. Close button.
+
+Use this when:
+
+- You need to see exactly what changed before publishing.
+- You need to confirm a replacement or confirmation action was recorded.
+- You are auditing work done by another manager.
+
+### Workflow 3F: Manage Menu Pages
+
+#### Step 1: Update the menu images that overlays sit on top of
+
+![Menu Page Management](./manager-flows/screenshots/restaurant-editor-menu-pages-annotated-desktop.png)
+
+Callout mapping:
+
+1. Menu-page management modal.
+2. Add a page.
+3. Replace a page.
+4. Remove a page.
+5. Save page changes.
+
+Use this when:
+
+- A new menu page has been added
+- A page scan is outdated or unreadable
+- A page is no longer on the current menu
+
+After saving menu pages:
+
+1. Return to the editor canvas.
+2. Verify overlay alignment again.
+3. Re-confirm any rows or overlays affected by the page change.
+
+### Workflow 3G: Update Restaurant Settings
+
+#### Step 1: Edit restaurant-level metadata
+
+![Restaurant Settings](./manager-flows/screenshots/restaurant-editor-settings-annotated-desktop.png)
+
+Callout mapping:
+
+1. Restaurant-settings modal.
 2. Website field.
 3. Delivery URL field.
 4. Menu URL field.
-5. Save settings action.
+5. Save button.
 
-Execution steps:
+Use this when:
 
-1. Open `Restaurant settings`.
-2. Update URLs and metadata fields.
-3. Save settings.
-4. Perform full `Save to site` if prompted by pending changes.
+- The restaurant website changes
+- A delivery URL changes
+- The public menu URL changes
 
-### 3.9 Monthly confirmation in editor
+### Workflow 3H: Review Changes Before Publishing
 
-![Restaurant Editor Confirmation Annotated Desktop](./manager-flows/screenshots/restaurant-editor-confirmation-annotated-desktop.png)
+#### Step 1: Open the save review
+
+![Save Review Before Publish](./manager-flows/screenshots/restaurant-editor-save-review-annotated-desktop.png)
 
 Callout mapping:
 
-1. Confirmation modal container.
-2. Step 1 menu/allergen confirmation context.
-3. Continue gate to brand review.
-4. Final confirmation submit action.
+1. Pre-publish review modal.
+2. Reminder to review before publishing.
+3. Grouped list of pending changes.
+4. `Cancel save`.
+5. `Confirm & Save`.
 
-Execution steps:
+How to use this safely:
 
-1. Confirm all menu pages are current and attestations are complete.
-2. Continue to brand verification.
-3. Resolve brand mismatches.
-4. Submit final confirmation.
-5. Verify due-state updates back in dashboard.
+1. Read the grouped change list from top to bottom.
+2. Confirm every listed change is intentional.
+3. Cancel if anything unexpected appears.
+4. Only click `Confirm & Save` after you are sure the review matches the real intended update.
 
-## Task type 4: Validate diner experience (manager perspective)
+Important behavior:
 
-### 4.1 Objective
+- `Save to site` only appears when there are unsaved changes.
+- If ingredient confirmations are unresolved, saving can be blocked before this modal opens.
 
-Confirm that published overlays and compatibility statuses produce the expected diner-facing experience.
+### Workflow 3I: Complete Monthly Confirmation
 
-### 4.2 Flow diagrams
+![Monthly Confirmation Gating Flow](./manager-flows/generated/07-confirmation-gating-flow.svg)
+
+![Monthly Confirmation Commit Sequence](./manager-flows/generated/08-confirmation-commit-sequence.svg)
+
+#### Step 1: Complete menu verification
+
+![Confirmation Step 1: Menu Verification](./manager-flows/screenshots/restaurant-editor-confirmation-menu-annotated-desktop.png)
+
+Callout mapping:
+
+1. Confirmation workflow dialog.
+2. Menu-verification step.
+3. `Cancel`.
+
+What you must do in step 1:
+
+1. Capture or replace a current photo for each saved menu page.
+2. Confirm every current photo is readable.
+3. Confirm the photos represent the most current menu.
+4. Continue only after the current-photo checks pass.
+
+#### Step 2: Complete brand verification
+
+![Confirmation Step 2: Brand Verification](./manager-flows/screenshots/restaurant-editor-confirmation-brand-annotated-desktop.png)
+
+Callout mapping:
+
+1. Brand-verification step.
+2. Baseline image for an existing verified brand item.
+3. Current capture or replacement image.
+4. Replace or review the brand-item comparison.
+5. Capture a current item photo from the restaurant.
+6. Final confirmation action after every card matches.
+
+What you must do in step 2:
+
+1. Review every branded item shown in the dialog.
+2. Capture or replace current evidence for any item that has changed.
+3. Verify the current item matches the saved verified item.
+4. Go back to step 1 if the menu-photo evidence is incomplete.
+5. Click `Confirm information is up-to-date` only when every card is correct.
+
+Important behavior:
+
+- The final confirmation button is only meaningful when every required card is in a safe verified state.
+- If brand items are mismatched or blocked, fix them before completing the confirmation.
+
+## Workflow 4: Validate The Diner Experience
 
 ![Diner Experience Validation Flow](./manager-flows/generated/16-diner-experience-validation-flow.svg)
 
-![Analytics Decision Playbook](./manager-flows/generated/15-analytics-decision-playbook.svg)
+### Why this workflow matters
 
-### 4.3 Viewer reference
+The manager dashboard and editor are only correct if the diner-facing experience is also correct. Managers should periodically validate what a diner actually sees.
 
-![Restaurant Viewer Overview Annotated Desktop](./manager-flows/screenshots/restaurant-viewer-overview-annotated-desktop.png)
+### Workflow 4A: Acknowledge The Viewer Reference Banner
 
-Callout mapping:
+#### Step 1: Review the locked first-look state
 
-1. Saved allergen and diet preference controls.
-2. Status legend (`complies`, `modifiable`, `cannot modify`).
-3. Menu browsing surface.
-4. Dish overlay hotspots.
-
-### 4.4 Dish detail reference
-
-![Restaurant Viewer Dish Popover Annotated Desktop](./manager-flows/screenshots/restaurant-viewer-dish-popover-annotated-desktop.png)
+![Viewer First-Look State](./manager-flows/screenshots/restaurant-viewer-reference-banner-annotated-desktop.png)
 
 Callout mapping:
 
-1. Dish detail popover/modal.
-2. Favorite toggle (`loves` signal).
-3. Order/add action (`orders` signal).
-4. Allergen and diet reasoning sections.
+1. Saved allergen and diet preferences.
+2. Compatibility legend and guidance.
+3. Reference-only warning banner.
+4. Locked menu stage.
 
-### 4.5 Validation procedure
+What to do:
 
-1. Open viewer mode for the target restaurant.
-2. Apply representative allergen and diet profile.
-3. Confirm overlay statuses align with known dish constraints.
-4. Open dish details and verify reasoning text is consistent with ingredient data.
-5. If mismatch exists, return to editor and correct data before republishing.
+1. Read the warning.
+2. Click `I understand`.
+3. Continue to overlay validation.
 
-## Task type 5: Tablet pages operations
+### Workflow 4B: Review Overlay Statuses Against Preferences
 
-### 5.1 Objective
+#### Step 1: Inspect the unlocked viewer surface
 
-Use `Tablet pages` navigation as an operational monitor for service and kitchen workflows.
+![Viewer Validation Overview](./manager-flows/screenshots/restaurant-viewer-overview-annotated-desktop.png)
 
-### 5.2 Flow diagrams
+Callout mapping:
+
+1. Saved allergen and diet preferences.
+2. Compatibility legend.
+3. Menu image browsing surface.
+4. Dish overlays.
+
+What to verify:
+
+- The saved preferences are the ones you expect for the test persona.
+- Dish overlays appear on the correct menu items.
+- The color/status interpretation matches the known dish data.
+
+### Workflow 4C: Open A Dish And Validate The Explanation
+
+#### Step 1: Inspect the dish detail panel
+
+![Dish Detail Validation](./manager-flows/screenshots/restaurant-viewer-dish-popover-annotated-desktop.png)
+
+Callout mapping:
+
+1. Dish-detail panel.
+2. Toggle between ingredient list and compatibility reasoning.
+3. Favorite button.
+4. `Add to order`.
+5. Allergen and diet reasoning sections.
+
+What to verify:
+
+- The ingredient list is sensible.
+- The allergen reasoning matches the ingredient data.
+- The diet reasoning matches the ingredient data.
+- Cross-contamination or removable modifiers appear where expected.
+
+### Workflow 4D: Test The Notice Dashboard
+
+#### Step 1: Add a dish and inspect the notice sidebar
+
+![Notice Dashboard Sidebar](./manager-flows/screenshots/restaurant-viewer-order-sidebar-annotated-desktop.png)
+
+Callout mapping:
+
+1. Notice-dashboard header.
+2. Pending notices section.
+3. Each selected dish.
+4. `Proceed to confirmation`.
+
+What to verify:
+
+- The selected dish appears in the pending notice list.
+- The sidebar badge reflects the notice state.
+- The diner can move to confirmation with the selected dish set.
+
+### Workflow 4E: Review The Final Notice Form
+
+#### Step 1: Open the confirmation drawer
+
+![Notice Confirmation Drawer](./manager-flows/screenshots/restaurant-viewer-order-confirm-annotated-desktop.png)
+
+Callout mapping:
+
+1. Final notice-confirmation drawer.
+2. Dishes in this notice.
+3. Name field.
+4. Dining mode.
+5. `Submit notice`.
+
+What to verify:
+
+- The selected dishes are correct.
+- The compatibility summary is clear.
+- Required fields are present.
+- Submission is available when the form is valid.
+
+## Workflow 5: Monitor Tablet Operations
 
 ![Tablet Operations Flow](./manager-flows/generated/17-tablet-ops-flow.svg)
 
-![Direct Message Sequence](./manager-flows/generated/04-chat-message-sequence.svg)
+### Workflow 5A: Use The Server Tablet
 
-### 5.3 Execution procedure
+#### Step 1: Open the server queue
 
-1. In topbar, open `Tablet pages`.
-2. Select `Server tablet` or `Kitchen tablet`.
-3. Verify diner notices and operational signals are appearing.
-4. Route required actions to kitchen/service teams.
-5. Confirm related follow-up in manager direct messages.
+![Server Tablet Overview](./manager-flows/screenshots/server-tablet-overview-annotated-desktop.png)
 
-## Task type 6: Troubleshoot and escalate
+Callout mapping:
 
-### 6.1 Flow diagram
+1. Server-tablet heading and purpose.
+2. `Refresh orders`.
+3. Completed/rescinded filter.
+4. Server tabs for active staff queues.
+5. Server notice card.
+6. Approve, dispatch, or reject actions.
+
+How to read a server card:
+
+- Table and diner name
+- Dishes in the notice
+- Allergies and diets on the notice
+- Status badge
+- Action buttons appropriate to the status
+
+Typical server actions:
+
+- `Approve & stage for kitchen`
+- `Send to kitchen`
+- `Reject notice`
+
+#### Step 2: Reject a notice when it cannot move forward
+
+![Server Tablet Reject Flow](./manager-flows/screenshots/server-tablet-reject-modal-annotated-desktop.png)
+
+Callout mapping:
+
+1. Reject-notice dialog.
+2. Rejection prompt.
+3. Optional diner-facing explanation.
+4. Final rejection submit button.
+
+Use rejection only when:
+
+- The notice is invalid
+- The diner must correct something before the notice can proceed
+- Approval should not continue into kitchen handling
+
+### Workflow 5B: Use The Kitchen Tablet
+
+#### Step 1: Open the kitchen queue
+
+![Kitchen Tablet Overview](./manager-flows/screenshots/kitchen-tablet-overview-annotated-desktop.png)
+
+Callout mapping:
+
+1. Kitchen-tablet heading and purpose.
+2. `Refresh orders`.
+3. Completed/rescinded filter.
+4. Kitchen notice card.
+5. Acknowledge, follow-up, and reject controls.
+
+How to use this surface:
+
+1. Review the current status badge.
+2. Acknowledge the notice when the kitchen accepts it.
+3. Send a follow-up question if the diner must answer something before the kitchen can proceed.
+4. Reject the order only when the kitchen truly cannot complete it.
+
+#### Step 2: Send a follow-up question
+
+![Kitchen Follow-Up Question](./manager-flows/screenshots/kitchen-tablet-followup-modal-annotated-desktop.png)
+
+Callout mapping:
+
+1. Kitchen follow-up modal.
+2. Question text box.
+3. `Cancel`.
+4. `Send question`.
+
+What good follow-up questions look like:
+
+- Specific
+- Actionable
+- About one decision the diner can clearly answer
+
+## Workflow 6: Use Help And Account Settings
+
+### Workflow 6A: Use The Help Center In Manager Mode
+
+#### Step 1: Review the help layout
+
+![Manager Help Center](./manager-flows/screenshots/manager-help-overview-annotated-desktop.png)
+
+Callout mapping:
+
+1. Manager topbar remains available.
+2. Help assistant search and conversation panel.
+3. Direct manager-to-admin support thread.
+4. Issue-report form.
+5. `Ask` for the help assistant.
+
+Use the help page for:
+
+- Clarivore usage questions
+- Direct manager support chat
+- Reporting product issues
+
+### Workflow 6B: Use Account Settings
+
+#### Step 1: Review your account controls
+
+![Manager Account Settings](./manager-flows/screenshots/manager-account-overview-annotated-desktop.png)
+
+Callout mapping:
+
+1. Manager navigation remains available inside account settings.
+2. Profile-information section.
+3. First-name field.
+4. Last-name field.
+5. Email field.
+6. `Sign out`.
+7. `Delete account`.
+8. `Report an issue`.
+
+Use this page for:
+
+- Updating your personal information
+- Signing out
+- Starting account deletion
+- Jumping into issue reporting
+
+## Reference: What Each Major Status Means
+
+### Accommodation request statuses
+
+| Status | Meaning | Manager action |
+| --- | --- | --- |
+| `pending` | The request still needs a decision. | Review and choose a status. |
+| `implemented` | The restaurant can now support the requested accommodation. | Confirm the editor and viewer really match this. |
+| `reviewed` | The request has been evaluated but is not fully implemented. | Finish the follow-up work or keep monitoring. |
+| `declined` | The accommodation cannot be supported. | Make sure the rationale is documented if needed. |
+
+### Confirmation states
+
+| State | Meaning | Manager action |
+| --- | --- | --- |
+| `Due in N days` | Confirmation window is approaching. | Schedule the confirmation flow. |
+| `Due today` | Confirmation should be completed now. | Open the editor and complete both steps. |
+| `X days overdue` | Confirmation is late. | Treat as highest priority. |
+
+### Viewer legend
+
+| Viewer status | Meaning |
+| --- | --- |
+| `Complies` | The dish fits the saved restriction set as-is. |
+| `Can be modified` | The dish may fit if a removable or configurable item is changed. |
+| `Cannot be modified` | The dish does not fit the restriction set. |
+
+### Tablet status examples
+
+| Surface | Status label | Meaning |
+| --- | --- | --- |
+| Server tablet | `Needs approval` | The notice has arrived and is waiting for server action. |
+| Server tablet | `Ready to dispatch` or queued-for-kitchen equivalent | The server has staged it and can send it onward. |
+| Kitchen tablet | `Awaiting acknowledgement` | The kitchen has received the notice and must acknowledge it. |
+| Kitchen tablet | `Waiting on diner` | The kitchen asked a question and is waiting for a response. |
+
+## Daily, Weekly, And Monthly Cadence
+
+### Daily
+
+1. Review unread direct messages.
+2. Clear or update pending accommodation requests.
+3. Check the confirmation due-state card.
+4. Review analytics for new friction hotspots.
+5. Monitor the server and kitchen tablet queues if active notices are in progress.
+
+### Weekly
+
+1. Review the changelog.
+2. Audit brand items in use.
+3. Validate a few high-traffic dishes in viewer mode.
+4. Check request history for stale reviewed items that still need work.
+
+### Monthly
+
+1. Complete the full confirmation flow before the due date.
+2. Re-check the highest-demand dishes with the worst compatibility or request patterns.
+3. Resolve open manager-admin support threads related to menu accuracy.
+
+## Troubleshooting And Escalation
 
 ![Troubleshooting Routing Flow](./manager-flows/generated/12-troubleshooting-routing-flow.svg)
 
-### 6.2 Symptom-to-action matrix
+### Symptom-to-action table
 
 | Symptom | Likely cause | Immediate action |
 | --- | --- | --- |
-| Sign in required | No active session | Sign in at `/account?mode=signin` |
-| Manager access required | Missing manager assignment | Request assignment/reapply invite |
-| Dashboard section not loading | Runtime fetch failure | Refresh and retry |
-| Request action failed | Write or context mismatch | Retry once and verify restaurant context |
-| Replacement appears not applied | Change staged but unsaved | Reconfirm rows and click `Save to site` |
-| Confirmation cannot submit | Missing attestations or unresolved brand/page checks | Complete all gating requirements |
-| Notifications missing | Browser permission or account mismatch | Verify notification permission and active manager session |
+| Dashboard says sign-in is required | Session expired or never existed | Sign in again and return to `/manager-dashboard` |
+| Dashboard loads but sections are missing | Data or access problem | Refresh once, then verify manager access |
+| `Continue to brand items` is disabled | Current page photos or attestations are incomplete | Upload current page photos, answer both menu questions, wait for comparison to finish |
+| Final confirmation cannot be submitted | Brand verification is incomplete | Replace or capture current brand evidence for every required card |
+| `Save to site` is missing | No unsaved changes exist | Make the needed change first |
+| Save is blocked | Ingredient confirmations are unresolved | Open the affected dish and confirm the row(s) |
+| Viewer status looks wrong | Dish or ingredient data is incorrect | Return to the editor and correct the dish rows |
+| Server or kitchen tablet shows the wrong dish info | Notice payload or order selection is wrong | Re-check the diner notice flow and tablet history |
 
-### 6.3 Escalation payload template
+### Escalation package
 
-Include all of the following in escalation:
+When you escalate to Clarivore, include:
 
-1. Restaurant name.
-2. Full URL.
-3. Action attempted.
-4. Error text.
-5. Timestamp and timezone.
-6. Annotated screenshot or short recording.
+1. Restaurant name
+2. Full URL
+3. Exact page you were on
+4. Exact button you clicked
+5. Exact text or badge you saw
+6. Timestamp and timezone
+7. Screenshot that clearly shows the state
 
-## Task type 7: Cadence and governance
+## Rebuild Commands
 
-### 7.1 Daily checklist
-
-1. Read and respond to direct messages.
-2. Clear pending accommodation queue or assign owners.
-3. Check confirmation due-state and route work before risk window.
-4. Review heatmap and dietary profile for new friction patterns.
-5. Escalate blockers with evidence.
-
-### 7.2 Weekly checklist
-
-1. Audit changelog for risky edits.
-2. Review brand-item drift and run replacements where needed.
-3. Perform viewer validation spot checks on high-volume dishes.
-4. Confirm request-status hygiene in `All` history.
-
-### 7.3 Monthly checklist
-
-1. Complete confirmation flow before due date.
-2. Review repeated request hotspots and plan remediation.
-3. Verify unresolved escalations are closed.
-4. Validate top-demand dishes for compatibility accuracy.
-
-## Feature inventory by manager task
-
-### Dashboard operations
-
-- Mode toggle and manager navigation.
-- Direct message inbox, send, acknowledge.
-- Accommodation queue with status transitions.
-- Confirmation due-state panel and editor deep-link.
-- Recent changes preview and full changelog access.
-- Brand item discovery, dish deep-links, replace-item flow.
-- Heatmap analytics and user profile interpretation panels.
-
-### Editor operations
-
-- Minimap navigation and page viewport sync.
-- Overlay create/move/resize/select.
-- Dish editor with recipe input, process action, ingredient confirmations.
-- Undo/redo and staged change handling.
-- Menu page add/replace/remove workflow.
-- Restaurant settings modal.
-- Save-to-site publish action.
-- Confirmation workflow entry and submission.
-
-### Experience validation operations
-
-- Viewer mode preference controls.
-- Overlay status legend interpretation.
-- Dish compatibility validation from manager perspective.
-
-### Governance operations
-
-- Tablet page monitoring.
-- Notifications and reminder checks.
-- Troubleshooting and escalation standards.
-
-## Rebuild commands
-
-- Regenerate diagrams: `npm run docs:flows:build`
+- Seed the manager demo environment: `npm run docs:manager:setup`
+- Regenerate workflow diagrams: `npm run docs:flows:build`
 - Regenerate screenshots: `npm run docs:flows:capture`
-- Lint manager docs: `npm run docs:lint`
-- Export PDF: `npm run docs:manager:pdf`
+- Lint the guide: `npm run docs:lint`
+- Export the PDF: `npm run docs:manager:pdf`
