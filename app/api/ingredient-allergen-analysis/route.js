@@ -1214,129 +1214,6 @@ function buildCandidateDebugPayload({
   };
 }
 
-function mergeHeuristicPublicFlags(flags) {
-  const merged = new Map();
-
-  (Array.isArray(flags) ? flags : []).forEach((flag) => {
-    const ingredient = asText(flag?.ingredient);
-    if (!ingredient) return;
-    const riskType = asText(flag?.risk_type) || "contained";
-    const key = `${canonicalToken(ingredient)}::${riskType}`;
-    const existing = merged.get(key) || {
-      ingredient,
-      word_indices: [],
-      allergens: [],
-      diets: [],
-      risk_type: riskType,
-    };
-
-    existing.word_indices = Array.from(
-      new Set([
-        ...existing.word_indices,
-        ...(Array.isArray(flag?.word_indices) ? flag.word_indices : []),
-      ]),
-    )
-      .map((value) => Number(value))
-      .filter(Number.isFinite)
-      .sort((left, right) => left - right);
-    existing.allergens = dedupeStrings([
-      ...existing.allergens,
-      ...(Array.isArray(flag?.allergens) ? flag.allergens : []),
-    ]);
-    existing.diets = dedupeStrings([
-      ...existing.diets,
-      ...(Array.isArray(flag?.diets) ? flag.diets : []),
-    ]);
-
-    merged.set(key, existing);
-  });
-
-  return Array.from(merged.values()).filter(
-    (flag) => flag.allergens.length || flag.diets.length,
-  );
-}
-
-function isHeuristicNonIngredientText(value) {
-  const token = canonicalToken(value);
-  if (!token) return true;
-  if (
-    token.startsWith("contains") ||
-    token.startsWith("maycontain") ||
-    token.startsWith("processedinafacility") ||
-    token.startsWith("manufacturedonsharedequipment") ||
-    token.startsWith("sharedequipmentwith")
-  ) {
-    return true;
-  }
-  return new Set([
-    "glutenfree",
-    "vegan",
-    "vegetarian",
-    "pescatarian",
-    "halal",
-    "kosher",
-    "keto",
-    "paleo",
-  ]).has(token);
-}
-
-function buildHeuristicFallbackAnalysis({ transcriptLines, config }) {
-  const parsedTranscript = parseIngredientLabelTranscript(transcriptLines);
-  const parsedIngredientsList = (Array.isArray(parsedTranscript.parsedIngredientsList)
-    ? parsedTranscript.parsedIngredientsList
-    : []
-  ).filter((ingredientText) => !isHeuristicNonIngredientText(ingredientText));
-  const allergenAliasMap = buildAllergenAliasMap(config?.allergens);
-  const dietsByAllergen = buildDietsByAllergenIndex(config?.dietAllergenConflicts);
-  const {
-    resolvedFlags: declarationFlags,
-  } = resolveExplicitDeclarationCandidates({
-    declarationCandidates: parsedTranscript.declarationCandidates,
-    allergenAliasMap,
-    dietsByAllergen,
-  });
-
-  const ingredientFlags = parsedIngredientsList
-    .map((ingredientText) => {
-      const normalizedIngredient = canonicalToken(ingredientText);
-      if (!normalizedIngredient) return null;
-
-      const matchedAllergens = [];
-      allergenAliasMap.forEach((allergenKey, aliasToken) => {
-        if (!aliasToken || !normalizedIngredient.includes(aliasToken)) return;
-        matchedAllergens.push(allergenKey);
-      });
-      const allergens = dedupeStrings(matchedAllergens);
-      if (!allergens.length) return null;
-
-      const diets = dedupeStrings(
-        allergens.flatMap((allergenKey) => dietsByAllergen.get(allergenKey) || []),
-      );
-      return {
-        ingredient: asText(ingredientText),
-        word_indices: [],
-        allergens,
-        diets,
-        risk_type: "contained",
-      };
-    })
-    .filter(Boolean);
-
-  return {
-    flags: mergeHeuristicPublicFlags([...declarationFlags, ...ingredientFlags]),
-    parsedIngredientsList,
-    debugExtra: {
-      ingredientExtractionMethod:
-        asText(parsedTranscript?.extractionMethod) || "heuristic-parser",
-      directIngredientTexts: parsedIngredientsList,
-      heuristicDeclarationFlagCount: Array.isArray(declarationFlags)
-        ? declarationFlags.length
-        : 0,
-      heuristicIngredientFlagCount: ingredientFlags.length,
-    },
-  };
-}
-
 function buildDietAliasResolver({ glutenFreeLabel, pescatarianLabel }) {
   return (token) => {
     const safe = canonicalToken(token);
@@ -1814,24 +1691,13 @@ export async function POST(request) {
 
     return corsJson(payload, { status: 200 });
   } catch (error) {
-    const fallback = buildHeuristicFallbackAnalysis({ transcriptLines, config });
-    const payload = {
-      success: true,
-      flags: fallback.flags,
-      parsedIngredientsList: fallback.parsedIngredientsList,
-    };
-    if (analysisOptions.debug) {
-      payload.debug = buildDebugPayload({
-        pass1Used: false,
-        pass2Used: false,
-        provider: "heuristic",
-        model: "deterministic-parser",
-        reasoningEffort: "",
-        agentStrategy: "deterministic-heuristic-fallback",
-        fallbackReason:
-          `route-error:${asText(error?.message) || "unknown"}`,
-      }, fallback.debugExtra);
-    }
-    return corsJson(payload, { status: 200 });
+    return corsJson(
+      {
+        success: false,
+        error: asText(error?.message) || "Failed to analyze ingredient transcript.",
+        flags: [],
+      },
+      { status: 500 },
+    );
   }
 }

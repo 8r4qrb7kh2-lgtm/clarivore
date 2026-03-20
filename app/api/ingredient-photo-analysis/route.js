@@ -680,39 +680,6 @@ function isValidLineData(line) {
   return Array.isArray(line?.words) && line.words.length > 0 && asText(line?.text).length > 0;
 }
 
-function buildLinesFromVisualLines({
-  visualLines,
-  pageWidth,
-  pageHeight,
-  normalizeWidth,
-  normalizeHeight,
-}) {
-  return (Array.isArray(visualLines) ? visualLines : [])
-    .map((line, index) =>
-      toPercentLineData({
-        line,
-        lineNumber: index + 1,
-        pageWidth,
-        pageHeight,
-        normalizeWidth,
-        normalizeHeight,
-      }),
-    )
-    .filter(isValidLineData);
-}
-
-function buildVisionFallbackQuality(reason) {
-  const warning = asText(reason) || "AI transcription unavailable; using OCR fallback.";
-  return {
-    accept: true,
-    confidence: "medium",
-    reasons: [],
-    warnings: [warning],
-    message: "",
-    warningMessage: warning,
-  };
-}
-
 function sanitizeTranscriptLines(rawLines) {
   return (Array.isArray(rawLines) ? rawLines : [])
     .map((line) => asText(line))
@@ -801,127 +768,26 @@ async function matchLinesToVisualLines({
   return mapping;
 }
 
-function deriveFrontNameFromVisionWords({ words, pageHeight }) {
-  const filtered = (Array.isArray(words) ? words : [])
-    .filter((word) => asText(word?.text))
-    .sort((a, b) => a.bbox.y0 - b.bbox.y0 || a.bbox.x0 - b.bbox.x0);
-  if (!filtered.length) return "";
-
-  const groups = [];
-  let current = [];
-  let anchorY = Number.NEGATIVE_INFINITY;
-
-  filtered.forEach((word) => {
-    if (!current.length) {
-      current.push(word);
-      anchorY = word.centerY;
-      return;
-    }
-    if (Math.abs(word.centerY - anchorY) <= Math.max(14, word.height * 0.8)) {
-      current.push(word);
-      return;
-    }
-    groups.push(current);
-    current = [word];
-    anchorY = word.centerY;
-  });
-  if (current.length) groups.push(current);
-
-  const blocked = /(nutrition|ingredients|contains|allergen|serving|calories|barcode|warning|may\s+contain)/i;
-
-  const lines = groups
-    .map((group) => {
-      const ordered = [...group].sort((a, b) => a.bbox.x0 - b.bbox.x0);
-      const text = ordered.map((word) => asText(word.text)).join(" ").replace(/\s+/g, " ").trim();
-      if (!text) return null;
-      const y0 = Math.min(...ordered.map((word) => word.bbox.y0));
-      const avgHeight =
-        ordered.reduce((sum, word) => sum + Math.max(word.bbox.y1 - word.bbox.y0, 1), 0) /
-        ordered.length;
-      const uppercaseCount = text.replace(/[^A-Z]/g, "").length;
-      const alphaCount = text.replace(/[^A-Za-z]/g, "").length || 1;
-      const uppercaseRatio = uppercaseCount / alphaCount;
-      return {
-        text,
-        y0,
-        avgHeight,
-        wordCount: ordered.length,
-        uppercaseRatio,
-      };
-    })
-    .filter(Boolean)
-    .filter((line) => !blocked.test(line.text))
-    .filter((line) => line.y0 <= Number(pageHeight || 1000) * 0.45);
-
-  if (!lines.length) return "";
-
-  lines.sort((a, b) => {
-    const scoreA = a.avgHeight * 3 + a.uppercaseRatio * 30 - a.y0 * 0.01 + a.wordCount;
-    const scoreB = b.avgHeight * 3 + b.uppercaseRatio * 30 - b.y0 * 0.01 + b.wordCount;
-    return scoreB - scoreA;
-  });
-
-  const primary = lines[0];
-  if (!primary) return "";
-
-  const siblings = lines
-    .filter((line) => line !== primary)
-    .sort((a, b) => a.y0 - b.y0)
-    .filter(
-      (line) =>
-        line.y0 > primary.y0 &&
-        line.y0 - primary.y0 <= Math.max(26, primary.avgHeight * 2.2) &&
-        line.wordCount <= 4,
-    );
-
-  const combined = [primary.text, ...siblings.slice(0, 1).map((line) => line.text)]
-    .join(" ")
-    .replace(/\s+/g, " ")
-    .trim();
-  return combined;
-}
-
 async function analyzeFrontProductName({
-  googleVisionApiKey,
   mediaType,
   base64Data,
 }) {
-  let productName = "";
-  let confidence = "low";
   const { systemPrompt, userPrompt } = buildFrontProductNamePrompts();
 
-  try {
-    const text = await runImagePromptStep({
-      routeId: "ingredient-photo-analysis/front-product",
-      promptClass: "frontProductName",
-      mediaType,
-      base64Data,
-      systemPrompt,
-      userPrompt,
-      maxTokens: 500,
-      jsonSchema: frontProductNameSchema,
-    });
+  const text = await runImagePromptStep({
+    routeId: "ingredient-photo-analysis/front-product",
+    promptClass: "frontProductName",
+    mediaType,
+    base64Data,
+    systemPrompt,
+    userPrompt,
+    maxTokens: 500,
+    jsonSchema: frontProductNameSchema,
+  });
 
-    const parsed = parseJsonObject(text) || {};
-    productName = asText(parsed?.productName);
-    confidence = normalizeConfidence(parsed?.confidence);
-  } catch (error) {
-    if (!googleVisionApiKey) {
-      throw error;
-    }
-  }
-
-  if ((!productName || confidence === "low") && googleVisionApiKey) {
-    const { words, pageHeight } = await getVisionWords({
-      googleVisionApiKey,
-      base64Data,
-    });
-    const fallbackName = deriveFrontNameFromVisionWords({ words, pageHeight });
-    if (!productName && fallbackName) {
-      productName = fallbackName;
-      confidence = "medium";
-    }
-  }
+  const parsed = parseJsonObject(text) || {};
+  const productName = asText(parsed?.productName);
+  const confidence = normalizeConfidence(parsed?.confidence);
 
   return {
     productName,
@@ -975,7 +841,6 @@ export async function POST(request) {
   if (mode === "front-analysis") {
     try {
       const front = await analyzeFrontProductName({
-        googleVisionApiKey,
         mediaType: parsedImage.mediaType,
         base64Data: parsedImage.base64Data,
       });
@@ -1010,24 +875,16 @@ export async function POST(request) {
   }
 
   try {
-    let transcriptLines = [];
-    let quality = null;
-    let transcriptionError = null;
+    const transcriptLines = await getClaudeTranscription({
+      mediaType: parsedImage.mediaType,
+      base64Data: parsedImage.base64Data,
+    });
 
-    try {
-      transcriptLines = await getClaudeTranscription({
-        mediaType: parsedImage.mediaType,
-        base64Data: parsedImage.base64Data,
-      });
-
-      quality = await getClaudeQualityAssessment({
-        mediaType: parsedImage.mediaType,
-        base64Data: parsedImage.base64Data,
-        transcriptLines,
-      });
-    } catch (error) {
-      transcriptionError = error;
-    }
+    const quality = await getClaudeQualityAssessment({
+      mediaType: parsedImage.mediaType,
+      base64Data: parsedImage.base64Data,
+      transcriptLines,
+    });
 
     if (quality && !quality.accept) {
       return corsJson(
@@ -1059,44 +916,6 @@ export async function POST(request) {
     }
 
     const visualLines = groupVisualLines(vision.words);
-    const useVisionFallback =
-      transcriptionError ||
-      !transcriptLines.length ||
-      !quality;
-    if (useVisionFallback) {
-      const fallbackLines = buildLinesFromVisualLines({
-        visualLines,
-        pageWidth: vision.pageWidth,
-        pageHeight: vision.pageHeight,
-        normalizeWidth: imageWidth || vision.pageWidth,
-        normalizeHeight: imageHeight || vision.pageHeight,
-      });
-      if (!fallbackLines.length) {
-        return corsJson(
-          {
-            success: false,
-            error: "No ingredient lines were transcribed. Please retake the photo.",
-            quality: buildVisionFallbackQuality(
-              asText(transcriptionError?.message) || "vision-only-fallback",
-            ),
-          },
-          { status: 200 },
-        );
-      }
-
-      return corsJson(
-        {
-          success: true,
-          data: fallbackLines,
-          claude_transcript: fallbackLines.map((line) => asText(line?.text)).filter(Boolean),
-          quality: buildVisionFallbackQuality(
-            asText(transcriptionError?.message) || "vision-only-fallback",
-          ),
-        },
-        { status: 200 },
-      );
-    }
-
     const lineMapping = await matchLinesToVisualLines({
       transcriptLines,
       visualLines,
