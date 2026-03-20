@@ -236,23 +236,48 @@ h2 {
   font-size: 0.9rem;
 }
 
+.restaurants-map-preview-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(300px, 0.95fr);
+  gap: 16px;
+  height: clamp(340px, 48vh, 460px);
+}
+
+.restaurants-map-preview-map-pane,
+.restaurants-map-preview-list-panel {
+  min-height: 0;
+  height: 100%;
+}
+
 .restaurants-map-preview-canvas,
 .restaurants-map-preview-loading {
   width: 100%;
-  min-height: 220px;
+  height: 100%;
+  min-height: 100%;
   border-radius: 12px;
-  overflow: hidden;
   background: radial-gradient(
     1000px 250px at 20% -20%,
     rgba(124, 156, 255, 0.2),
     rgba(9, 14, 32, 0.8)
   );
+  border: 1px solid rgba(124, 156, 255, 0.2);
+}
+
+.restaurants-map-preview-canvas {
+  position: relative;
+  overflow: visible;
 }
 
 .restaurants-map-preview-loading {
   display: grid;
   place-items: center;
   color: var(--muted);
+  text-align: center;
+  padding: 16px;
+}
+
+.restaurants-map-preview-error-panel {
+  padding: 16px;
 }
 
 .restaurants-map-preview-error {
@@ -262,6 +287,123 @@ h2 {
   border: 1px solid rgba(248, 113, 113, 0.45);
   color: #fca5a5;
   background: rgba(127, 29, 29, 0.22);
+}
+
+.restaurants-map-preview-list-panel {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 12px;
+  padding: 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(124, 156, 255, 0.18);
+  background:
+    linear-gradient(180deg, rgba(20, 28, 56, 0.98), rgba(11, 17, 34, 0.96)),
+    radial-gradient(circle at top left, rgba(91, 125, 255, 0.12), transparent 52%);
+}
+
+.restaurants-map-preview-list-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.restaurants-map-preview-list-header h3,
+.restaurants-map-preview-list-header p {
+  margin: 0;
+}
+
+.restaurants-map-preview-list-header h3 {
+  font-size: 0.95rem;
+}
+
+.restaurants-map-preview-list-header p {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.restaurants-map-preview-list {
+  min-height: 0;
+  overflow: auto;
+  display: grid;
+  gap: 10px;
+  padding-right: 4px;
+}
+
+.restaurants-map-preview-list-item {
+  appearance: none;
+  width: 100%;
+  border: 1px solid rgba(124, 156, 255, 0.18);
+  border-radius: 12px;
+  padding: 12px;
+  background: rgba(17, 24, 48, 0.78);
+  color: var(--text);
+  font: inherit;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 12px;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    transform 0.18s ease,
+    border-color 0.18s ease,
+    background 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.restaurants-map-preview-list-item:hover,
+.restaurants-map-preview-list-item:focus-visible,
+.restaurants-map-preview-list-item.is-active {
+  transform: translateY(-1px);
+  border-color: rgba(91, 125, 255, 0.65);
+  background: rgba(24, 33, 65, 0.96);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.24);
+  outline: none;
+}
+
+.restaurants-map-preview-pin {
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  background: rgba(91, 125, 255, 0.16);
+  border: 1px solid rgba(91, 125, 255, 0.4);
+  color: var(--text);
+  font-size: 0.95rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.restaurants-map-preview-list-copy {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.restaurants-map-preview-list-copy strong {
+  font-size: 0.95rem;
+  line-height: 1.35;
+}
+
+.restaurants-map-preview-list-meta,
+.restaurants-map-preview-list-address {
+  color: var(--muted);
+  font-size: 0.84rem;
+  line-height: 1.45;
+}
+
+.restaurants-map-preview-empty {
+  min-height: 100%;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  border-radius: 12px;
+  border: 1px dashed rgba(124, 156, 255, 0.25);
+  color: var(--muted);
+  text-align: center;
+  background: rgba(17, 24, 48, 0.45);
 }
 
 .restaurant-card {
@@ -312,9 +454,19 @@ h2 {
     grid-template-columns: 1fr;
   }
 
+  .restaurants-map-preview-body {
+    grid-template-columns: 1fr;
+    height: auto;
+  }
+
   .restaurants-map-preview-canvas,
   .restaurants-map-preview-loading {
-    min-height: 180px;
+    min-height: 220px;
+    height: 220px;
+  }
+
+  .restaurants-map-preview-list {
+    max-height: 260px;
   }
 }
 

@@ -23,6 +23,28 @@ function asText(value) {
   return String(value ?? "").trim();
 }
 
+function hasValidPosition(location) {
+  return (
+    Number.isFinite(Number(location?.position?.lat)) &&
+    Number.isFinite(Number(location?.position?.lng))
+  );
+}
+
+function buildPreviewLocation(location, index) {
+  const restaurantId = asText(location?.restaurantId);
+  const placeId = asText(location?.placeId);
+  const locationKey =
+    restaurantId ||
+    placeId ||
+    `${asText(location?.name) || "restaurant"}:${index}`;
+
+  return {
+    ...location,
+    locationKey,
+    markerLabel: String(index + 1),
+  };
+}
+
 function escapeHtml(value) {
   const text = asText(value);
   if (!text) return "";
@@ -262,19 +284,36 @@ export default function RestaurantsMapPreview({
 }) {
   const mapRef = useRef(null);
   const placePreviewCacheRef = useRef(new Map());
+  const openLocationPreviewRef = useRef(() => {});
   const [mapError, setMapError] = useState("");
+  const [visibleLocations, setVisibleLocations] = useState(() =>
+    sortByDistance((Array.isArray(locations) ? locations : []).filter(hasValidPosition)).map(
+      buildPreviewLocation,
+    ),
+  );
+  const [activeLocationKey, setActiveLocationKey] = useState("");
 
   useEffect(() => {
     let cancelled = false;
     const markers = [];
     const listeners = [];
     const points = sortByDistance(
-      (Array.isArray(locations) ? locations : []).filter(
-        (item) =>
-          Number.isFinite(Number(item?.position?.lat)) &&
-          Number.isFinite(Number(item?.position?.lng)),
-      ),
+      (Array.isArray(locations) ? locations : []).filter(hasValidPosition),
+    ).map(buildPreviewLocation);
+    const markerEntries = new Map();
+
+    openLocationPreviewRef.current = () => {};
+    setVisibleLocations(points);
+    setActiveLocationKey((current) =>
+      points.some((location) => location.locationKey === current) ? current : "",
     );
+
+    if (!points.length) {
+      setMapError("");
+      return () => {
+        openLocationPreviewRef.current = () => {};
+      };
+    }
 
     async function renderMap() {
       if (!apiKey || !mapRef.current || !points.length) return;
@@ -292,20 +331,57 @@ export default function RestaurantsMapPreview({
           gestureHandling: "cooperative",
         });
         const placesService = new window.google.maps.places.PlacesService(map);
-        const infoWindow = new window.google.maps.InfoWindow();
+        const infoWindow = new window.google.maps.InfoWindow({ maxWidth: 280 });
         let hoverToken = 0;
         const bounds = new window.google.maps.LatLngBounds();
 
-        async function openMarkerPreview(marker, location) {
+        function updateVisibleLocations() {
+          if (cancelled) return;
+
+          const currentBounds = map.getBounds();
+          if (!currentBounds) {
+            setVisibleLocations(points);
+            return;
+          }
+
+          setVisibleLocations(
+            sortByDistance(
+              points.filter((location) => currentBounds.contains(location.position)),
+            ),
+          );
+        }
+
+        function closePreview() {
+          hoverToken += 1;
+          infoWindow.close();
+          setActiveLocationKey("");
+        }
+
+        function panMarkerIntoView(marker) {
+          const position = marker?.getPosition?.();
+          if (!position) return;
+
+          map.panTo(position);
+          const panelHeight = mapRef.current?.clientHeight || 360;
+          const topOffset = Math.max(88, Math.round(panelHeight * 0.18));
+          map.panBy(0, -topOffset);
+        }
+
+        async function openMarkerPreview(marker, location, options = {}) {
           hoverToken += 1;
           const token = hoverToken;
+          const shouldPanIntoView = options?.panIntoView !== false;
 
+          setActiveLocationKey(location.locationKey);
           infoWindow.setContent(buildMapInfoWindowHtml(location, null, { loading: true }));
           infoWindow.open({
             map,
             anchor: marker,
             shouldFocus: false,
           });
+          if (shouldPanIntoView) {
+            panMarkerIntoView(marker);
+          }
 
           try {
             const preview = await getGooglePlacePreview(
@@ -315,21 +391,40 @@ export default function RestaurantsMapPreview({
             );
             if (cancelled || token !== hoverToken) return;
             infoWindow.setContent(buildMapInfoWindowHtml(location, preview));
+            if (shouldPanIntoView) {
+              window.google.maps.event.addListenerOnce(infoWindow, "domready", () => {
+                if (cancelled || token !== hoverToken) return;
+                panMarkerIntoView(marker);
+              });
+            }
           } catch (error) {
             if (cancelled || token !== hoverToken) return;
             console.warn("[restaurants] failed to load marker preview", error);
             infoWindow.setContent(buildMapInfoWindowHtml(location));
+            if (shouldPanIntoView) {
+              window.google.maps.event.addListenerOnce(infoWindow, "domready", () => {
+                if (cancelled || token !== hoverToken) return;
+                panMarkerIntoView(marker);
+              });
+            }
           }
         }
 
-        points.forEach((location, index) => {
+        openLocationPreviewRef.current = (locationKey, options = {}) => {
+          const entry = markerEntries.get(String(locationKey));
+          if (!entry) return;
+          void openMarkerPreview(entry.marker, entry.location, options);
+        };
+
+        points.forEach((location) => {
           const marker = new window.google.maps.Marker({
             map,
             position: location.position,
             title: location.name || "Restaurant",
-            label: String(index + 1),
+            label: location.markerLabel,
           });
 
+          markerEntries.set(location.locationKey, { marker, location });
           markers.push(marker);
           listeners.push(
             marker.addListener("mouseover", () => {
@@ -341,19 +436,34 @@ export default function RestaurantsMapPreview({
               void openMarkerPreview(marker, location);
             }),
           );
-          listeners.push(
-            marker.addListener("mouseout", () => {
-              hoverToken += 1;
-              infoWindow.close();
-            }),
-          );
           bounds.extend(location.position);
         });
+
+        listeners.push(
+          map.addListener("click", () => {
+            closePreview();
+          }),
+        );
+        listeners.push(
+          map.addListener("idle", () => {
+            updateVisibleLocations();
+          }),
+        );
+        listeners.push(
+          infoWindow.addListener("closeclick", () => {
+            hoverToken += 1;
+            setActiveLocationKey("");
+          }),
+        );
 
         if (!bounds.isEmpty()) {
           if (points.length === 1) {
             map.setCenter(points[0].position);
             map.setZoom(SINGLE_LOCATION_PREVIEW_ZOOM);
+            window.google.maps.event.addListenerOnce(map, "idle", () => {
+              if (cancelled) return;
+              updateVisibleLocations();
+            });
             return;
           }
 
@@ -364,6 +474,7 @@ export default function RestaurantsMapPreview({
             if (Number.isFinite(zoom) && zoom > MAX_FIT_BOUNDS_ZOOM) {
               map.setZoom(MAX_FIT_BOUNDS_ZOOM);
             }
+            updateVisibleLocations();
           });
         }
       } catch (error) {
@@ -377,12 +488,13 @@ export default function RestaurantsMapPreview({
 
     return () => {
       cancelled = true;
+      openLocationPreviewRef.current = () => {};
       listeners.forEach((listener) => listener.remove());
       markers.forEach((marker) => marker.setMap(null));
     };
   }, [apiKey, locations]);
 
-  const hasLocations = Array.isArray(locations) && locations.length > 0;
+  const hasLocations = Array.isArray(locations) && locations.some(hasValidPosition);
   if (!hasLocations && !isLoading) return null;
 
   return (
@@ -395,15 +507,80 @@ export default function RestaurantsMapPreview({
             : `${locations.length} result${locations.length === 1 ? "" : "s"} near ZIP ${zipCode}`}
         </p>
       </div>
-      {mapError ? (
-        <p className="restaurants-map-preview-error">{mapError}</p>
-      ) : hasLocations ? (
-        <div className="restaurants-map-preview-canvas" ref={mapRef} />
-      ) : (
-        <div className="restaurants-map-preview-loading">
-          Finding restaurant locations...
+      <div className="restaurants-map-preview-body">
+        <div className="restaurants-map-preview-map-pane">
+          {mapError ? (
+            <div className="restaurants-map-preview-loading restaurants-map-preview-error-panel">
+              <p className="restaurants-map-preview-error">{mapError}</p>
+            </div>
+          ) : hasLocations ? (
+            <div className="restaurants-map-preview-canvas" ref={mapRef} />
+          ) : (
+            <div className="restaurants-map-preview-loading">
+              Finding restaurant locations...
+            </div>
+          )}
         </div>
-      )}
+        <aside className="restaurants-map-preview-list-panel" aria-live="polite">
+          <div className="restaurants-map-preview-list-header">
+            <h3>Restaurants in view</h3>
+            <p>
+              {isLoading
+                ? "Updating map..."
+                : `${visibleLocations.length} visible`}
+            </p>
+          </div>
+          {visibleLocations.length ? (
+            <div className="restaurants-map-preview-list" role="list">
+              {visibleLocations.map((location) => {
+                const distanceLabel = formatDistanceMiles(location.distanceMiles);
+                const isActive = location.locationKey === activeLocationKey;
+
+                return (
+                  <button
+                    key={location.locationKey}
+                    type="button"
+                    role="listitem"
+                    className={`restaurants-map-preview-list-item${isActive ? " is-active" : ""}`}
+                    onMouseEnter={() =>
+                      openLocationPreviewRef.current(location.locationKey)
+                    }
+                    onFocus={() =>
+                      openLocationPreviewRef.current(location.locationKey)
+                    }
+                    onClick={() =>
+                      openLocationPreviewRef.current(location.locationKey)
+                    }
+                  >
+                    <span className="restaurants-map-preview-pin">
+                      {location.markerLabel}
+                    </span>
+                    <span className="restaurants-map-preview-list-copy">
+                      <strong>{location.name || "Restaurant"}</strong>
+                      {distanceLabel ? (
+                        <span className="restaurants-map-preview-list-meta">
+                          {distanceLabel} away
+                        </span>
+                      ) : null}
+                      {location.formattedAddress ? (
+                        <span className="restaurants-map-preview-list-address">
+                          {location.formattedAddress}
+                        </span>
+                      ) : null}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="restaurants-map-preview-empty">
+              {isLoading
+                ? "Finding restaurant locations..."
+                : "Move the map to bring restaurants into view."}
+            </div>
+          )}
+        </aside>
+      </div>
     </section>
   );
 }
