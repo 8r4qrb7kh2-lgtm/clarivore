@@ -129,6 +129,14 @@ export default function HelpContactClient() {
   const mode = isEditorMode ? "manager" : "customer";
   const isManagerOrOwner = isManagerOrOwnerUser(user);
   const isGuestSession = !user?.id;
+  const guestRestaurantSlug = useMemo(
+    () => asText(preferredRestaurantSlug || selectedRestaurant?.slug),
+    [preferredRestaurantSlug, selectedRestaurant?.slug],
+  );
+  const guestReturnPath = useMemo(() => {
+    if (!guestRestaurantSlug) return "";
+    return `/restaurant?slug=${encodeURIComponent(guestRestaurantSlug)}&guest=1`;
+  }, [guestRestaurantSlug]);
 
   const applyRestaurantSelection = useCallback(
     (availableRestaurants, preferRecent, nextPreferredSlug = "") => {
@@ -641,6 +649,10 @@ export default function HelpContactClient() {
     },
     [sendChatMessage],
   );
+  const handleBackToGuestRestaurant = useCallback(() => {
+    if (!guestReturnPath) return;
+    router.push(guestReturnPath);
+  }, [guestReturnPath, router]);
 
   const editorChatEmptyText = selectedRestaurantId
     ? "No messages yet."
@@ -680,6 +692,15 @@ export default function HelpContactClient() {
         ) : null
       }
     >
+          {isGuestSession && guestReturnPath ? (
+            <button
+              className="btn btnGhost help-guest-back-btn"
+              type="button"
+              onClick={handleBackToGuestRestaurant}
+            >
+              Back to restaurant
+            </button>
+          ) : null}
           <PageHeading
             className="help-header"
             title="Help"

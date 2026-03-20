@@ -32,6 +32,10 @@
       gap: 20px;
     }
 
+    .route-help-contact .help-guest-back-btn {
+      align-self: flex-start;
+    }
+
     .route-help-contact .help-header h1 {
       margin: 0 0 6px 0;
       font-size: 2rem;
