@@ -185,24 +185,45 @@
 
 .restaurant-content .editBox {
   position: absolute;
-  border: 2px solid var(--warn);
+  border: 2px solid rgba(255, 255, 255, 0.24);
   border-radius: 6px;
   background: transparent;
   cursor: move;
   touch-action: none;
   transition:
     background 0.15s ease,
-    border-color 0.15s ease;
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
 }
 
-.restaurant-content .editBox:hover {
-  background: rgba(255, 193, 7, 0.08);
-  border-color: #ffc107;
+.restaurant-content .editBox.is-published {
+  border-color: #22c55e;
+  background: rgba(34, 197, 94, 0.08);
 }
 
-.restaurant-content .editBox.active {
-  background: rgba(76, 175, 80, 0.12);
-  border-color: #4caf50;
+.restaurant-content .editBox.is-published:hover {
+  background: rgba(34, 197, 94, 0.14);
+  border-color: #16a34a;
+}
+
+.restaurant-content .editBox.is-unpublished {
+  border-color: #ef4444;
+  background: rgba(239, 68, 68, 0.08);
+}
+
+.restaurant-content .editBox.is-unpublished:hover {
+  background: rgba(239, 68, 68, 0.14);
+  border-color: #dc2626;
+}
+
+.restaurant-content .editBox.active.is-published {
+  border-color: #16a34a;
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.24);
+}
+
+.restaurant-content .editBox.active.is-unpublished {
+  border-color: #dc2626;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.24);
 }
 
 .restaurant-content .editBadge {

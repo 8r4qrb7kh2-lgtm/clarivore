@@ -15,6 +15,7 @@ import {
   isOwnerUser,
   resolveManagerRestaurantAccess,
 } from "../lib/managerRestaurants";
+import { filterPublishedOverlays } from "../lib/overlayPublication";
 import { queryKeys } from "../lib/queryKeys";
 import { hydrateRestaurantsWithTableMenuState } from "../lib/restaurantMenuStateClient";
 import { filterRestaurantsByVisibility } from "../lib/restaurantVisibility";
@@ -47,7 +48,7 @@ function sortByName(restaurants) {
 }
 
 function computeRestaurantFriendlyScore(restaurant, allergies, diets, engine) {
-  const overlays = normalizeOverlays(restaurant?.overlays);
+  const overlays = filterPublishedOverlays(normalizeOverlays(restaurant?.overlays));
   if (!overlays.length) return -1;
 
   let safeCount = 0;

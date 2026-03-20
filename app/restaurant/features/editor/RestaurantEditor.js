@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { getOverlayPublicationState } from "../../../lib/overlayPublication";
 import {
   buildMinimapViewport,
   computeMinimapJumpTarget,
@@ -1217,10 +1218,11 @@ export function RestaurantEditor({ editor, onNavigate, runtimeConfigHealth }) {
 
                 {page.overlays.map((overlay) => {
                   const isSelected = editor.selectedOverlayKey === overlay._editorKey;
+                  const publicationState = getOverlayPublicationState(overlay);
                   return (
                     <div
                       key={overlay._editorKey}
-                      className={`editBox ${isSelected ? "active" : ""}`}
+                      className={`editBox ${publicationState.isPublished ? "is-published" : "is-unpublished"} ${isSelected ? "active" : ""}`}
                       style={{
                         left: `${parseOverlayNumber(overlay.x)}%`,
                         top: `${parseOverlayNumber(overlay.y)}%`,
@@ -1228,7 +1230,8 @@ export function RestaurantEditor({ editor, onNavigate, runtimeConfigHealth }) {
                         height: `${parseOverlayNumber(overlay.h)}%`,
                         pointerEvents: mappingEnabled ? "none" : "auto",
                       }}
-                      title={overlay.id || "Dish"}
+                      title={`${overlay.id || "Dish"} (${publicationState.isPublished ? "Published" : "Unpublished"})`}
+                      data-publication-state={publicationState.isPublished ? "published" : "unpublished"}
                       onPointerDown={(event) => startDragOverlay(event, overlay, page.pageIndex)}
                       onMouseDown={(event) => {
                         startDragOverlay(event, overlay, page.pageIndex);

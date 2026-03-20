@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { filterPublishedOverlays } from "../../lib/overlayPublication";
 import { createCompatibilityEngine } from "../features/shared/compatibility";
 
 function normalizeOverlay(overlay, index) {
@@ -89,7 +90,7 @@ export function useRestaurantViewer({
         ? restaurant.overlays
         : [];
 
-    return list.map((overlay, index) => normalizeOverlay(overlay, index));
+    return filterPublishedOverlays(list).map((overlay, index) => normalizeOverlay(overlay, index));
   }, [overlays, restaurant?.overlays]);
 
   const menuImages = useMemo(
@@ -173,6 +174,8 @@ export function useRestaurantViewer({
     if (!selectedDishId) return filteredOverlays[0] || overlaysWithStatus[0] || null;
     return (
       overlaysWithStatus.find((overlay) => overlay.id === selectedDishId) ||
+      filteredOverlays[0] ||
+      overlaysWithStatus[0] ||
       null
     );
   }, [filteredOverlays, overlaysWithStatus, selectedDishId]);

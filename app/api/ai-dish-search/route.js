@@ -2,6 +2,7 @@ import { corsJson, corsOptions } from "../_shared/cors";
 import { asText, db } from "../editor-pending-save/_shared/pendingSaveUtils";
 import { fetchRestaurantMenuStateMapFromTables } from "../../lib/server/restaurantMenuStateServer.js";
 import { buildAiDishSearchPrompt } from "../../lib/claudePrompts";
+import { filterPublishedOverlays } from "../../lib/overlayPublication.js";
 import {
   callAnthropicApi,
   callOpenAiApi,
@@ -309,11 +310,11 @@ export async function POST(request) {
     const candidates = [];
 
     for (const restaurant of Array.isArray(restaurants) ? restaurants : []) {
-      const overlays = Array.isArray(
-        restaurantMenuState.get(asText(restaurant.id))?.overlays,
-      )
-        ? restaurantMenuState.get(asText(restaurant.id)).overlays
-        : [];
+      const overlays = filterPublishedOverlays(
+        Array.isArray(restaurantMenuState.get(asText(restaurant.id))?.overlays)
+          ? restaurantMenuState.get(asText(restaurant.id)).overlays
+          : [],
+      );
 
       overlays.forEach((overlay, overlayIndex) => {
         const dishName = asText(overlay?.name || overlay?.id || overlay?.dishName);

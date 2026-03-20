@@ -16,6 +16,7 @@ import {
   isManagerUser,
   isOwnerUser,
 } from "../lib/managerRestaurants";
+import { filterPublishedOverlays } from "../lib/overlayPublication";
 import { hydrateRestaurantsWithTableMenuState } from "../lib/restaurantMenuStateClient";
 import {
   supabaseClient as supabase,
@@ -239,7 +240,7 @@ export default function DishSearchClient() {
     restaurants.forEach((restaurant) => {
       map.set(
         String(restaurant.id),
-        Array.isArray(restaurant.overlays) ? restaurant.overlays : [],
+        filterPublishedOverlays(restaurant.overlays),
       );
     });
     return map;
@@ -280,9 +281,7 @@ export default function DishSearchClient() {
     }
     const sections = [];
     restaurants.forEach((restaurant) => {
-      const overlays = Array.isArray(restaurant.overlays)
-        ? restaurant.overlays
-        : [];
+      const overlays = filterPublishedOverlays(restaurant.overlays);
       if (!overlays.length) return;
       if (
         selectedRestaurantIds.size > 0 &&

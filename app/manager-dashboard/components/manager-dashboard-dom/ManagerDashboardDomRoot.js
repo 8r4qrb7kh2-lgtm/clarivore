@@ -1,9 +1,11 @@
 "use client";
 
+import { useMemo } from "react";
 import AppTopbar from "../../../components/AppTopbar";
 import PageShell from "../../../components/PageShell";
 import PageHeading from "../../../components/surfaces/PageHeading";
 import { useIngredientScanController } from "../../../components/ingredient-scan/useIngredientScanController";
+import { buildOverlayPublicationSummary } from "../../../lib/overlayPublication";
 import { useAccommodationBreakdown } from "./hooks/useAccommodationBreakdown";
 import { useAccommodationRequests } from "./hooks/useAccommodationRequests";
 import { useBrandManagement } from "./hooks/useBrandManagement";
@@ -246,6 +248,11 @@ export default function ManagerDashboardDomRoot({
     setStatus,
   });
 
+  const overlayPublicationSummary = useMemo(
+    () => buildOverlayPublicationSummary(currentRestaurantData?.overlays || []),
+    [currentRestaurantData?.overlays],
+  );
+
   const showRestaurantSelector = isOwner;
   const dashboardVisible = hasManagerAccess && !isLoadingDashboard;
 
@@ -302,6 +309,12 @@ export default function ManagerDashboardDomRoot({
             chatSending={chatSending}
             managerDisplayName={managerDisplayName}
             chatListRef={chatListRef}
+            overlayPublicationSummary={overlayPublicationSummary}
+            webpageEditorHref={
+              currentRestaurantData?.slug
+                ? `/restaurant?slug=${encodeURIComponent(currentRestaurantData.slug)}&edit=1`
+                : ""
+            }
           />
 
           <RequestsAndSuggestionsSection

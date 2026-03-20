@@ -15,7 +15,13 @@ export function QuickActionsSection({
   chatSending,
   managerDisplayName,
   chatListRef,
+  overlayPublicationSummary,
+  webpageEditorHref,
 }) {
+  const publishedCount = Number(overlayPublicationSummary?.publishedOverlayCount) || 0;
+  const totalCount = Number(overlayPublicationSummary?.totalOverlayCount) || 0;
+  const unpublishedCount = Number(overlayPublicationSummary?.unpublishedOverlayCount) || 0;
+
   return (
     <SurfaceCard className="section quick-actions-section">
       <div className="quick-actions-grid">
@@ -51,6 +57,33 @@ export function QuickActionsSection({
           }}
           isOutgoingResolver={(message) => message.sender_role === "restaurant"}
         />
+
+        <div className="quick-actions-panel publication-summary-panel">
+          <p className="quick-actions-title">Published overlays</p>
+          {totalCount > 0 ? (
+            <>
+              <p className="publication-summary-value">
+                {publishedCount}/{totalCount}
+              </p>
+              <p className="publication-summary-label">currently published</p>
+              <p className="publication-summary-helper">
+                {unpublishedCount > 0
+                  ? `${unpublishedCount} dish overlay${unpublishedCount === 1 ? " is" : "s are"} hidden from viewing mode until the ingredient rows are confirmed again in the webpage editor.`
+                  : "All dish overlays are currently visible in viewing mode."}
+              </p>
+            </>
+          ) : (
+            <p className="publication-summary-helper">
+              No dish overlays have been saved for this restaurant yet.
+            </p>
+          )}
+
+          {webpageEditorHref ? (
+            <a className="btn btnPrimary publication-summary-link" href={webpageEditorHref}>
+              Open webpage editor
+            </a>
+          ) : null}
+        </div>
       </div>
     </SurfaceCard>
   );
