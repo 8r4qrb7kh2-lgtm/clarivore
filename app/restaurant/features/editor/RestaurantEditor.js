@@ -1114,8 +1114,26 @@ export function RestaurantEditor({ editor, onNavigate, runtimeConfigHealth }) {
               ) : null}
 
               <div className="editorNoteRow">
-                <div className="note" id="editorNote">
-                  Drag to move. Drag any corner to resize. Click ✏️ to edit details.
+                <div className="editorNoteStack">
+                  <div className="note" id="editorNote">
+                    Drag to move. Drag any corner to resize. Click ✏️ to edit details.
+                  </div>
+                  <div className="editorOverlayLegend" aria-label="Overlay status legend">
+                    <span className="editorOverlayLegendItem">
+                      <span
+                        className="editorOverlayLegendSwatch is-published"
+                        aria-hidden="true"
+                      />
+                      Green = published
+                    </span>
+                    <span className="editorOverlayLegendItem">
+                      <span
+                        className="editorOverlayLegendSwatch is-unpublished"
+                        aria-hidden="true"
+                      />
+                      Red = unpublished
+                    </span>
+                  </div>
                 </div>
               </div>
 

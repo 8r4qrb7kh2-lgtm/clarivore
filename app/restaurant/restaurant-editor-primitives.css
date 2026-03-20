@@ -183,6 +183,45 @@
   font-size: 0.75rem;
 }
 
+.restaurant-content .editorNoteStack {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.restaurant-content .editorOverlayLegend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+  align-items: center;
+  font-size: 0.72rem;
+  color: #a8b2d6;
+}
+
+.restaurant-content .editorOverlayLegendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.restaurant-content .editorOverlayLegendSwatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  flex-shrink: 0;
+}
+
+.restaurant-content .editorOverlayLegendSwatch.is-published {
+  background: rgba(34, 197, 94, 0.18);
+  border-color: #22c55e;
+}
+
+.restaurant-content .editorOverlayLegendSwatch.is-unpublished {
+  background: rgba(239, 68, 68, 0.18);
+  border-color: #ef4444;
+}
+
 .restaurant-content .editBox {
   position: absolute;
   border: 2px solid rgba(255, 255, 255, 0.24);
