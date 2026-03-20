@@ -39,6 +39,7 @@ function maybeRelaxNodeTls() {
 }
 
 const CONFIG = {
+  scenario: asText(process.env.DOCS_MANAGER_SCENARIO) || "final",
   sourceSlug: asText(process.env.DOCS_MANAGER_SOURCE_SLUG) || "demo-restaurant",
   targetSlug: asText(process.env.DOCS_MANAGER_TARGET_SLUG) || "demo-menu",
   targetName: asText(process.env.DOCS_MANAGER_TARGET_NAME) || "Demo Menu",
@@ -54,27 +55,113 @@ const CONFIG = {
       password: asText(process.env.DOCS_DINER_1_PASSWORD) || "ClarivoreDocs123!",
       firstName: "Avery",
       lastName: "Patel",
+      allergens: ["peanut"],
+      diets: ["Vegan"],
+      profileLabel: "peanut-free vegan regular",
     },
     {
       email: asText(process.env.DOCS_DINER_2_EMAIL) || "manager-guide-diner-2@clarivore.local",
       password: asText(process.env.DOCS_DINER_2_PASSWORD) || "ClarivoreDocs123!",
       firstName: "Jordan",
       lastName: "Lee",
+      allergens: ["milk"],
+      diets: ["Vegetarian"],
+      profileLabel: "dairy-free vegetarian",
     },
     {
       email: asText(process.env.DOCS_DINER_3_EMAIL) || "manager-guide-diner-3@clarivore.local",
       password: asText(process.env.DOCS_DINER_3_PASSWORD) || "ClarivoreDocs123!",
       firstName: "Morgan",
       lastName: "Diaz",
+      allergens: ["wheat"],
+      diets: ["Gluten-free"],
+      profileLabel: "gluten-free traveler",
     },
     {
       email: asText(process.env.DOCS_DINER_4_EMAIL) || "manager-guide-diner-4@clarivore.local",
       password: asText(process.env.DOCS_DINER_4_PASSWORD) || "ClarivoreDocs123!",
       firstName: "Taylor",
       lastName: "Nguyen",
+      allergens: ["soy"],
+      diets: [],
+      profileLabel: "soy-sensitive diner",
+    },
+    {
+      email: "manager-guide-diner-5@clarivore.local",
+      password: "ClarivoreDocs123!",
+      firstName: "Casey",
+      lastName: "Brooks",
+      allergens: ["egg"],
+      diets: ["Vegetarian"],
+      profileLabel: "egg-free vegetarian",
+    },
+    {
+      email: "manager-guide-diner-6@clarivore.local",
+      password: "ClarivoreDocs123!",
+      firstName: "Riley",
+      lastName: "Santos",
+      allergens: ["tree nut"],
+      diets: ["Vegan"],
+      profileLabel: "tree-nut-free vegan",
+    },
+    {
+      email: "manager-guide-diner-7@clarivore.local",
+      password: "ClarivoreDocs123!",
+      firstName: "Devon",
+      lastName: "Kim",
+      allergens: ["sesame"],
+      diets: [],
+      profileLabel: "sesame allergy",
+    },
+    {
+      email: "manager-guide-diner-8@clarivore.local",
+      password: "ClarivoreDocs123!",
+      firstName: "Quinn",
+      lastName: "Rivera",
+      allergens: ["fish"],
+      diets: ["Pescatarian"],
+      profileLabel: "fish-aware pescatarian",
+    },
+    {
+      email: "manager-guide-diner-9@clarivore.local",
+      password: "ClarivoreDocs123!",
+      firstName: "Parker",
+      lastName: "Cole",
+      allergens: ["shellfish"],
+      diets: [],
+      profileLabel: "shellfish allergy",
+    },
+    {
+      email: "manager-guide-diner-10@clarivore.local",
+      password: "ClarivoreDocs123!",
+      firstName: "Jamie",
+      lastName: "Turner",
+      allergens: [],
+      diets: ["Vegetarian"],
+      profileLabel: "vegetarian planner",
+    },
+    {
+      email: "manager-guide-diner-11@clarivore.local",
+      password: "ClarivoreDocs123!",
+      firstName: "Cameron",
+      lastName: "Foster",
+      allergens: ["milk", "egg"],
+      diets: [],
+      profileLabel: "multi-allergen family diner",
+    },
+    {
+      email: "manager-guide-diner-12@clarivore.local",
+      password: "ClarivoreDocs123!",
+      firstName: "Skyler",
+      lastName: "Bell",
+      allergens: [],
+      diets: ["Vegan"],
+      profileLabel: "vegan lunch regular",
     },
   ],
 };
+
+const VALID_SCENARIOS = new Set(["foundation", "final"]);
 
 function requiredEnv(name) {
   const value = asText(process.env[name]);
@@ -174,8 +261,26 @@ async function readRestaurantBySlug(pgClient, slug) {
   return result.rows[0] || null;
 }
 
-async function ensureTargetRestaurant(pgClient, sourceRestaurant) {
-  const targetLastConfirmed = toIsoDaysAgo(45);
+function buildRestaurantSeedState(sourceRestaurant, scenario) {
+  const isFoundation = scenario === "foundation";
+  return {
+    lastConfirmed: isFoundation ? null : toIsoDaysAgo(45),
+    menuUrl: isFoundation ? null : sourceRestaurant.menu_url,
+    lastChecked: isFoundation ? null : sourceRestaurant.last_checked,
+    monitorEnabled: sourceRestaurant.monitor_enabled,
+    totalChecks: isFoundation ? 0 : sourceRestaurant.total_checks,
+    emailsSent: isFoundation ? 0 : sourceRestaurant.emails_sent,
+    checkFrequencyHours: sourceRestaurant.check_frequency_hours,
+    deliveryUrl: isFoundation ? null : sourceRestaurant.delivery_url,
+    website: isFoundation ? null : sourceRestaurant.website,
+    phone: isFoundation ? null : sourceRestaurant.phone,
+    writeVersion: isFoundation ? 0 : sourceRestaurant.write_version,
+    mapLocation: isFoundation ? null : sourceRestaurant.map_location,
+  };
+}
+
+async function ensureTargetRestaurant(pgClient, sourceRestaurant, scenario) {
+  const seedState = buildRestaurantSeedState(sourceRestaurant, scenario);
   const existingTarget = await readRestaurantBySlug(pgClient, CONFIG.targetSlug);
 
   if (existingTarget?.id) {
@@ -200,18 +305,18 @@ async function ensureTargetRestaurant(pgClient, sourceRestaurant) {
       [
         existingTarget.id,
         CONFIG.targetName,
-        targetLastConfirmed,
-        sourceRestaurant.menu_url,
-        sourceRestaurant.last_checked,
-        sourceRestaurant.monitor_enabled,
-        sourceRestaurant.total_checks,
-        sourceRestaurant.emails_sent,
-        sourceRestaurant.check_frequency_hours,
-        sourceRestaurant.delivery_url,
-        sourceRestaurant.website,
-        sourceRestaurant.phone,
-        sourceRestaurant.write_version,
-        sourceRestaurant.map_location,
+        seedState.lastConfirmed,
+        seedState.menuUrl,
+        seedState.lastChecked,
+        seedState.monitorEnabled,
+        seedState.totalChecks,
+        seedState.emailsSent,
+        seedState.checkFrequencyHours,
+        seedState.deliveryUrl,
+        seedState.website,
+        seedState.phone,
+        seedState.writeVersion,
+        seedState.mapLocation,
       ],
     );
     return existingTarget.id;
@@ -260,24 +365,89 @@ async function ensureTargetRestaurant(pgClient, sourceRestaurant) {
       restaurantId,
       CONFIG.targetSlug,
       CONFIG.targetName,
-      targetLastConfirmed,
-      sourceRestaurant.menu_url,
-      sourceRestaurant.last_checked,
-      sourceRestaurant.monitor_enabled,
-      sourceRestaurant.total_checks,
-      sourceRestaurant.emails_sent,
-      sourceRestaurant.check_frequency_hours,
-      sourceRestaurant.delivery_url,
-      sourceRestaurant.website,
-      sourceRestaurant.phone,
-      sourceRestaurant.write_version,
-      sourceRestaurant.map_location,
+      seedState.lastConfirmed,
+      seedState.menuUrl,
+      seedState.lastChecked,
+      seedState.monitorEnabled,
+      seedState.totalChecks,
+      seedState.emailsSent,
+      seedState.checkFrequencyHours,
+      seedState.deliveryUrl,
+      seedState.website,
+      seedState.phone,
+      seedState.writeVersion,
+      seedState.mapLocation,
     ],
   );
   return restaurantId;
 }
 
-async function cloneMenuState(pgClient, sourceRestaurantId, targetRestaurantId) {
+async function resetTargetRestaurantState(pgClient, targetRestaurantId) {
+  await pgClient.query("BEGIN");
+  try {
+    await pgClient.query("SELECT set_config('app.restaurant_write_context', 'gateway', true)");
+    for (const tableName of [
+      "restaurant_menu_ingredient_brand_items",
+      "restaurant_menu_ingredient_rows",
+      "restaurant_menu_dishes",
+      "restaurant_menu_pages",
+      "accommodation_requests",
+      "restaurant_direct_message_reads",
+      "restaurant_direct_messages",
+      "dish_interactions",
+      "user_loved_dishes",
+      "tablet_orders",
+      "change_logs",
+      "restaurant_managers",
+    ]) {
+      await pgClient.query(`DELETE FROM public.${tableName} WHERE restaurant_id = $1`, [
+        targetRestaurantId,
+      ]);
+    }
+    await pgClient.query("COMMIT");
+  } catch (error) {
+    await pgClient.query("ROLLBACK");
+    throw error;
+  }
+}
+
+async function copyMenuPagesOnly(pgClient, sourceRestaurantId, targetRestaurantId) {
+  const pagesResult = await pgClient.query(
+    `SELECT page_index, image_url
+     FROM public.restaurant_menu_pages
+     WHERE restaurant_id = $1
+     ORDER BY page_index ASC`,
+    [sourceRestaurantId],
+  );
+
+  await pgClient.query("BEGIN");
+  try {
+    await pgClient.query("SELECT set_config('app.restaurant_write_context', 'gateway', true)");
+    for (const page of pagesResult.rows) {
+      await pgClient.query(
+        `INSERT INTO public.restaurant_menu_pages (
+          id,
+          restaurant_id,
+          page_index,
+          image_url,
+          created_at,
+          updated_at
+        ) VALUES ($1, $2, $3, $4, now(), now())`,
+        [randomUUID(), targetRestaurantId, page.page_index, page.image_url],
+      );
+    }
+    await pgClient.query(
+      "UPDATE public.restaurants SET write_version = COALESCE(write_version, 0) + 1, updated_at = now() WHERE id = $1",
+      [targetRestaurantId],
+    );
+    await pgClient.query("COMMIT");
+  } catch (error) {
+    await pgClient.query("ROLLBACK");
+    throw error;
+  }
+}
+
+async function copyFullMenuState(pgClient, sourceRestaurantId, targetRestaurantId) {
   const pagesResult = await pgClient.query(
     `SELECT page_index, image_url
      FROM public.restaurant_menu_pages
@@ -353,22 +523,6 @@ async function cloneMenuState(pgClient, sourceRestaurantId, targetRestaurantId) 
   await pgClient.query("BEGIN");
   try {
     await pgClient.query("SELECT set_config('app.restaurant_write_context', 'gateway', true)");
-    await pgClient.query(
-      "DELETE FROM public.restaurant_menu_ingredient_brand_items WHERE restaurant_id = $1",
-      [targetRestaurantId],
-    );
-    await pgClient.query(
-      "DELETE FROM public.restaurant_menu_ingredient_rows WHERE restaurant_id = $1",
-      [targetRestaurantId],
-    );
-    await pgClient.query(
-      "DELETE FROM public.restaurant_menu_dishes WHERE restaurant_id = $1",
-      [targetRestaurantId],
-    );
-    await pgClient.query(
-      "DELETE FROM public.restaurant_menu_pages WHERE restaurant_id = $1",
-      [targetRestaurantId],
-    );
 
     for (const page of pagesResult.rows) {
       await pgClient.query(
@@ -536,161 +690,93 @@ function findDishName(dishNames, preferredNames, fallbackIndex = 0) {
   return dishNames[fallbackIndex] || dishNames[0] || "Dish";
 }
 
-function buildSeededInteractions({ restaurantId, dinerUserIds, dishNames }) {
-  const [userA, userB, userC, userD] = dinerUserIds;
+function buildInteractionEntry({
+  restaurantId,
+  dinerProfile,
+  dishName,
+  dishStatus,
+  daysAgo,
+  conflictingAllergens = [],
+  unmetDiets = [],
+}) {
+  return {
+    id: randomUUID(),
+    user_id: dinerProfile.userId,
+    restaurant_id: restaurantId,
+    dish_name: dishName,
+    user_allergens: dinerProfile.allergens || [],
+    user_diets: dinerProfile.diets || [],
+    dish_status: dishStatus,
+    conflicting_allergens: conflictingAllergens,
+    unmet_diets: unmetDiets,
+    created_at: toIsoDaysAgo(daysAgo),
+  };
+}
+
+function buildSeededInteractions({ restaurantId, dinerProfiles, dishNames }) {
   const tofu = findDishName(dishNames, ["Grilled Tofu"], 0);
   const pasta = findDishName(dishNames, ["Spaghetti Bolognese"], 1);
   const chicken = findDishName(dishNames, ["Lemon Herb Chicken"], 2);
   const salad = findDishName(dishNames, ["Greek Salad"], 3);
   const salmon = findDishName(dishNames, ["Seared Salmon"], 4);
   const curry = findDishName(dishNames, ["Vegetable Curry"], 5);
-
-  return [
-    {
-      id: randomUUID(),
-      user_id: userA,
-      restaurant_id: restaurantId,
-      dish_name: tofu,
-      user_allergens: ["peanut"],
-      user_diets: ["Vegan"],
-      dish_status: "safe",
-      conflicting_allergens: [],
-      unmet_diets: [],
-      created_at: toIsoDaysAgo(2),
-    },
-    {
-      id: randomUUID(),
-      user_id: userB,
-      restaurant_id: restaurantId,
-      dish_name: tofu,
-      user_allergens: ["milk"],
-      user_diets: ["Vegetarian"],
-      dish_status: "safe",
-      conflicting_allergens: [],
-      unmet_diets: [],
-      created_at: toIsoDaysAgo(3),
-    },
-    {
-      id: randomUUID(),
-      user_id: userC,
-      restaurant_id: restaurantId,
-      dish_name: pasta,
-      user_allergens: ["wheat"],
-      user_diets: ["Gluten-free"],
-      dish_status: "unsafe",
-      conflicting_allergens: ["wheat"],
-      unmet_diets: ["Gluten-free"],
-      created_at: toIsoDaysAgo(3),
-    },
-    {
-      id: randomUUID(),
-      user_id: userD,
-      restaurant_id: restaurantId,
-      dish_name: pasta,
-      user_allergens: ["milk"],
-      user_diets: [],
-      dish_status: "unsafe",
-      conflicting_allergens: ["milk"],
-      unmet_diets: [],
-      created_at: toIsoDaysAgo(4),
-    },
-    {
-      id: randomUUID(),
-      user_id: userA,
-      restaurant_id: restaurantId,
-      dish_name: chicken,
-      user_allergens: ["soy"],
-      user_diets: [],
-      dish_status: "removable",
-      conflicting_allergens: ["soy"],
-      unmet_diets: [],
-      created_at: toIsoDaysAgo(5),
-    },
-    {
-      id: randomUUID(),
-      user_id: userB,
-      restaurant_id: restaurantId,
-      dish_name: chicken,
-      user_allergens: ["sesame"],
-      user_diets: [],
-      dish_status: "safe",
-      conflicting_allergens: [],
-      unmet_diets: [],
-      created_at: toIsoDaysAgo(6),
-    },
-    {
-      id: randomUUID(),
-      user_id: userC,
-      restaurant_id: restaurantId,
-      dish_name: salad,
-      user_allergens: ["egg"],
-      user_diets: ["Vegetarian"],
-      dish_status: "removable",
-      conflicting_allergens: ["egg"],
-      unmet_diets: [],
-      created_at: toIsoDaysAgo(4),
-    },
-    {
-      id: randomUUID(),
-      user_id: userD,
-      restaurant_id: restaurantId,
-      dish_name: salad,
-      user_allergens: [],
-      user_diets: ["Vegetarian"],
-      dish_status: "safe",
-      conflicting_allergens: [],
-      unmet_diets: [],
-      created_at: toIsoDaysAgo(4),
-    },
-    {
-      id: randomUUID(),
-      user_id: userA,
-      restaurant_id: restaurantId,
-      dish_name: salmon,
-      user_allergens: ["fish"],
-      user_diets: ["Pescatarian"],
-      dish_status: "safe",
-      conflicting_allergens: [],
-      unmet_diets: [],
-      created_at: toIsoDaysAgo(1),
-    },
-    {
-      id: randomUUID(),
-      user_id: userB,
-      restaurant_id: restaurantId,
-      dish_name: salmon,
-      user_allergens: ["milk"],
-      user_diets: ["Pescatarian"],
-      dish_status: "unsafe",
-      conflicting_allergens: ["milk"],
-      unmet_diets: [],
-      created_at: toIsoDaysAgo(1),
-    },
-    {
-      id: randomUUID(),
-      user_id: userC,
-      restaurant_id: restaurantId,
-      dish_name: curry,
-      user_allergens: [],
-      user_diets: ["Vegan"],
-      dish_status: "safe",
-      conflicting_allergens: [],
-      unmet_diets: [],
-      created_at: toIsoDaysAgo(2),
-    },
-    {
-      id: randomUUID(),
-      user_id: userD,
-      restaurant_id: restaurantId,
-      dish_name: curry,
-      user_allergens: ["tree nut"],
-      user_diets: ["Vegan"],
-      dish_status: "removable",
-      conflicting_allergens: ["tree nut"],
-      unmet_diets: [],
-      created_at: toIsoDaysAgo(2),
-    },
+  const lasagna = findDishName(dishNames, ["Beef Lasagna"], 6);
+  const dishLookup = { tofu, pasta, chicken, salad, salmon, curry, lasagna };
+  const interactionPlans = [
+    { profileIndex: 0, dish: "tofu", status: "safe", daysAgo: 1 },
+    { profileIndex: 0, dish: "curry", status: "safe", daysAgo: 2 },
+    { profileIndex: 0, dish: "pasta", status: "unsafe", daysAgo: 5, unmetDiets: ["Vegan"] },
+    { profileIndex: 1, dish: "salad", status: "safe", daysAgo: 1 },
+    { profileIndex: 1, dish: "salmon", status: "unsafe", daysAgo: 3, conflictingAllergens: ["milk"] },
+    { profileIndex: 1, dish: "lasagna", status: "unsafe", daysAgo: 7, conflictingAllergens: ["milk"] },
+    { profileIndex: 2, dish: "pasta", status: "unsafe", daysAgo: 1, conflictingAllergens: ["wheat"], unmetDiets: ["Gluten-free"] },
+    { profileIndex: 2, dish: "salad", status: "safe", daysAgo: 4 },
+    { profileIndex: 2, dish: "tofu", status: "safe", daysAgo: 6 },
+    { profileIndex: 3, dish: "chicken", status: "removable", daysAgo: 1, conflictingAllergens: ["soy"] },
+    { profileIndex: 3, dish: "tofu", status: "unsafe", daysAgo: 2, conflictingAllergens: ["soy"] },
+    { profileIndex: 3, dish: "salad", status: "safe", daysAgo: 6 },
+    { profileIndex: 4, dish: "salad", status: "removable", daysAgo: 2, conflictingAllergens: ["egg"] },
+    { profileIndex: 4, dish: "curry", status: "safe", daysAgo: 4 },
+    { profileIndex: 4, dish: "lasagna", status: "unsafe", daysAgo: 8, conflictingAllergens: ["egg"] },
+    { profileIndex: 5, dish: "curry", status: "removable", daysAgo: 1, conflictingAllergens: ["tree nut"] },
+    { profileIndex: 5, dish: "tofu", status: "safe", daysAgo: 3 },
+    { profileIndex: 5, dish: "pasta", status: "unsafe", daysAgo: 7, unmetDiets: ["Vegan"] },
+    { profileIndex: 6, dish: "chicken", status: "safe", daysAgo: 2 },
+    { profileIndex: 6, dish: "salad", status: "safe", daysAgo: 4 },
+    { profileIndex: 6, dish: "tofu", status: "removable", daysAgo: 8, conflictingAllergens: ["sesame"] },
+    { profileIndex: 7, dish: "salmon", status: "unsafe", daysAgo: 1, conflictingAllergens: ["fish"] },
+    { profileIndex: 7, dish: "chicken", status: "safe", daysAgo: 3 },
+    { profileIndex: 7, dish: "pasta", status: "safe", daysAgo: 6 },
+    { profileIndex: 8, dish: "salmon", status: "safe", daysAgo: 2 },
+    { profileIndex: 8, dish: "pasta", status: "unsafe", daysAgo: 5, conflictingAllergens: ["shellfish"] },
+    { profileIndex: 8, dish: "salad", status: "safe", daysAgo: 7 },
+    { profileIndex: 9, dish: "salad", status: "safe", daysAgo: 1 },
+    { profileIndex: 9, dish: "tofu", status: "safe", daysAgo: 2 },
+    { profileIndex: 9, dish: "chicken", status: "unsafe", daysAgo: 6, unmetDiets: ["Vegetarian"] },
+    { profileIndex: 10, dish: "salad", status: "removable", daysAgo: 1, conflictingAllergens: ["milk", "egg"] },
+    { profileIndex: 10, dish: "lasagna", status: "unsafe", daysAgo: 4, conflictingAllergens: ["milk", "egg"] },
+    { profileIndex: 10, dish: "chicken", status: "safe", daysAgo: 9 },
+    { profileIndex: 11, dish: "tofu", status: "safe", daysAgo: 1 },
+    { profileIndex: 11, dish: "curry", status: "safe", daysAgo: 2 },
+    { profileIndex: 11, dish: "pasta", status: "unsafe", daysAgo: 4, unmetDiets: ["Vegan"] },
   ];
+
+  return interactionPlans
+    .map((plan) => {
+      const dinerProfile = dinerProfiles[plan.profileIndex];
+      const dishName = dishLookup[plan.dish];
+      if (!dinerProfile || !dishName) return null;
+      return buildInteractionEntry({
+        restaurantId,
+        dinerProfile,
+        dishName,
+        dishStatus: plan.status,
+        daysAgo: plan.daysAgo,
+        conflictingAllergens: plan.conflictingAllergens || [],
+        unmetDiets: plan.unmetDiets || [],
+      });
+    })
+    .filter(Boolean);
 }
 
 function buildDishAnalyticsRows({ restaurantId, interactions }) {
@@ -759,8 +845,8 @@ function buildTabletOrders({ restaurantId, dishNames }) {
       payload: {
         id: randomUUID(),
         restaurantId,
-        customerName: "Jordan Lee",
-        allergies: ["Milk", "Wheat"],
+        customerName: "Morgan Diaz",
+        allergies: ["Wheat"],
         diets: ["Gluten-free"],
         items: [pasta],
         dishes: [pasta],
@@ -788,7 +874,7 @@ function buildTabletOrders({ restaurantId, dishNames }) {
       payload: {
         id: randomUUID(),
         restaurantId,
-        customerName: "Taylor Nguyen",
+        customerName: "Avery Patel",
         allergies: ["Peanut"],
         diets: ["Vegan"],
         items: [tofu],
@@ -822,8 +908,8 @@ function buildTabletOrders({ restaurantId, dishNames }) {
       payload: {
         id: randomUUID(),
         restaurantId,
-        customerName: "Avery Patel",
-        allergies: ["Fish"],
+        customerName: "Jordan Lee",
+        allergies: ["Milk"],
         diets: ["Pescatarian"],
         items: [salmon],
         dishes: [salmon],
@@ -861,7 +947,7 @@ function buildTabletOrders({ restaurantId, dishNames }) {
       payload: {
         id: randomUUID(),
         restaurantId,
-        customerName: "Morgan Diaz",
+        customerName: "Taylor Nguyen",
         allergies: ["Soy"],
         diets: [],
         items: [chicken],
@@ -906,7 +992,22 @@ function buildTabletOrders({ restaurantId, dishNames }) {
   ];
 }
 
-async function reseedManagerArtifacts(pgClient, { restaurantId, managerUserId, dinerUserIds }) {
+async function ensureRestaurantManagerAccess(pgClient, { restaurantId, managerUserId }) {
+  await pgClient.query("BEGIN");
+  try {
+    await pgClient.query("SELECT set_config('app.restaurant_write_context', 'gateway', true)");
+    await pgClient.query(
+      "INSERT INTO public.restaurant_managers (id, restaurant_id, user_id, created_at) VALUES ($1, $2, $3, now())",
+      [randomUUID(), restaurantId, managerUserId],
+    );
+    await pgClient.query("COMMIT");
+  } catch (error) {
+    await pgClient.query("ROLLBACK");
+    throw error;
+  }
+}
+
+async function reseedManagerArtifacts(pgClient, { restaurantId, managerUserId, dinerProfiles }) {
   const dishNamesResult = await pgClient.query(
     `SELECT dish_name
      FROM public.restaurant_menu_dishes
@@ -921,8 +1022,9 @@ async function reseedManagerArtifacts(pgClient, { restaurantId, managerUserId, d
   const salad = findDishName(dishNames, ["Greek Salad"], 3);
   const lasagna = findDishName(dishNames, ["Beef Lasagna"], 4);
   const salmon = findDishName(dishNames, ["Seared Salmon"], 5);
+  const curry = findDishName(dishNames, ["Vegetable Curry"], 6);
   const now = new Date();
-  const interactions = buildSeededInteractions({ restaurantId, dinerUserIds, dishNames });
+  const interactions = buildSeededInteractions({ restaurantId, dinerProfiles, dishNames });
   const tabletOrders = buildTabletOrders({ restaurantId, dishNames });
   const adminMessageTimes = {
     first: new Date(now.getTime() - 1000 * 60 * 60 * 72).toISOString(),
@@ -936,23 +1038,6 @@ async function reseedManagerArtifacts(pgClient, { restaurantId, managerUserId, d
   await pgClient.query("BEGIN");
   try {
     await pgClient.query("SELECT set_config('app.restaurant_write_context', 'gateway', true)");
-    await pgClient.query("DELETE FROM public.restaurant_managers WHERE restaurant_id = $1", [restaurantId]);
-    await pgClient.query(
-      "INSERT INTO public.restaurant_managers (id, restaurant_id, user_id, created_at) VALUES ($1, $2, $3, now())",
-      [randomUUID(), restaurantId, managerUserId],
-    );
-
-    for (const tableName of [
-      "accommodation_requests",
-      "restaurant_direct_message_reads",
-      "restaurant_direct_messages",
-      "dish_interactions",
-      "user_loved_dishes",
-      "tablet_orders",
-      "change_logs",
-    ]) {
-      await pgClient.query(`DELETE FROM public.${tableName} WHERE restaurant_id = $1`, [restaurantId]);
-    }
 
     const directMessages = [
       {
@@ -962,7 +1047,7 @@ async function reseedManagerArtifacts(pgClient, { restaurantId, managerUserId, d
         sender_name: "Clarivore Team",
         sender_role: "admin",
         message:
-          "Please review the overnight allergy request spike for Spaghetti Bolognese before lunch service.",
+          "Breakfast service drove a sharp increase in gluten-free checks on Spaghetti Bolognese. Please review that dish before the next rush.",
         created_at: adminMessageTimes.first,
       },
       {
@@ -972,7 +1057,7 @@ async function reseedManagerArtifacts(pgClient, { restaurantId, managerUserId, d
         sender_name: `${CONFIG.managerFirstName} ${CONFIG.managerLastName}`.trim(),
         sender_role: "restaurant",
         message:
-          "Reviewed. I’m checking the wheat-free substitution path in the webpage editor and will update the dashboard after save.",
+          "Reviewed. I’m updating the pasta substitution notes and checking whether the tofu topping package still matches the saved brand item.",
         created_at: adminMessageTimes.managerReply,
       },
       {
@@ -982,7 +1067,7 @@ async function reseedManagerArtifacts(pgClient, { restaurantId, managerUserId, d
         sender_name: "Clarivore Team",
         sender_role: "admin",
         message:
-          "Reminder: the monthly menu confirmation for Demo Menu is overdue. Open the confirmation flow after the lunch edits are published.",
+          "Reminder: monthly confirmation is still overdue for Demo Menu. Finish the lunch edits, then open the confirmation workflow before close.",
         created_at: adminMessageTimes.second,
       },
       {
@@ -992,7 +1077,7 @@ async function reseedManagerArtifacts(pgClient, { restaurantId, managerUserId, d
         sender_name: "Clarivore Team",
         sender_role: "admin",
         message:
-          "One more check: verify the Organic Extra Firm Tofu brand image still matches the live package before you finalize the guide screenshots.",
+          "One more check: the salmon sauce photo was viewed several times by dairy-free diners today. Confirm the current prep note is still accurate.",
         created_at: adminMessageTimes.third,
       },
     ];
@@ -1055,11 +1140,11 @@ async function reseedManagerArtifacts(pgClient, { restaurantId, managerUserId, d
     const requests = [
       {
         id: randomUUID(),
-        user_id: dinerUserIds[0],
+        user_id: dinerProfiles[2].userId,
         restaurant_id: restaurantId,
         dish_name: pasta,
-        user_allergens: ["wheat"],
-        user_diets: ["Gluten-free"],
+        user_allergens: dinerProfiles[2].allergens,
+        user_diets: dinerProfiles[2].diets,
         requested_allergens: ["wheat"],
         requested_diets: ["Gluten-free"],
         user_message: "Can this dish be prepared with a gluten-free pasta swap?",
@@ -1071,11 +1156,11 @@ async function reseedManagerArtifacts(pgClient, { restaurantId, managerUserId, d
       },
       {
         id: randomUUID(),
-        user_id: dinerUserIds[1],
+        user_id: dinerProfiles[0].userId,
         restaurant_id: restaurantId,
         dish_name: tofu,
-        user_allergens: ["peanut"],
-        user_diets: ["Vegan"],
+        user_allergens: dinerProfiles[0].allergens,
+        user_diets: dinerProfiles[0].diets,
         requested_allergens: ["peanut"],
         requested_diets: ["Vegan"],
         user_message: "Need confirmation that the crunchy topping is peanut-free.",
@@ -1087,10 +1172,10 @@ async function reseedManagerArtifacts(pgClient, { restaurantId, managerUserId, d
       },
       {
         id: randomUUID(),
-        user_id: dinerUserIds[2],
+        user_id: dinerProfiles[1].userId,
         restaurant_id: restaurantId,
         dish_name: salmon,
-        user_allergens: ["milk"],
+        user_allergens: dinerProfiles[1].allergens,
         user_diets: ["Pescatarian"],
         requested_allergens: ["milk"],
         requested_diets: [],
@@ -1103,11 +1188,11 @@ async function reseedManagerArtifacts(pgClient, { restaurantId, managerUserId, d
       },
       {
         id: randomUUID(),
-        user_id: dinerUserIds[3],
+        user_id: dinerProfiles[4].userId,
         restaurant_id: restaurantId,
         dish_name: salad,
-        user_allergens: ["egg"],
-        user_diets: ["Vegetarian"],
+        user_allergens: dinerProfiles[4].allergens,
+        user_diets: dinerProfiles[4].diets,
         requested_allergens: ["egg"],
         requested_diets: [],
         user_message: "Would a no-egg dressing option be available next visit?",
@@ -1119,11 +1204,11 @@ async function reseedManagerArtifacts(pgClient, { restaurantId, managerUserId, d
       },
       {
         id: randomUUID(),
-        user_id: dinerUserIds[0],
+        user_id: dinerProfiles[3].userId,
         restaurant_id: restaurantId,
         dish_name: chicken,
-        user_allergens: ["soy"],
-        user_diets: [],
+        user_allergens: dinerProfiles[3].allergens,
+        user_diets: dinerProfiles[3].diets,
         requested_allergens: ["soy"],
         requested_diets: [],
         user_message: "Looking for a soy-free glaze option.",
@@ -1135,10 +1220,10 @@ async function reseedManagerArtifacts(pgClient, { restaurantId, managerUserId, d
       },
       {
         id: randomUUID(),
-        user_id: dinerUserIds[1],
+        user_id: dinerProfiles[10].userId,
         restaurant_id: restaurantId,
         dish_name: lasagna,
-        user_allergens: ["milk"],
+        user_allergens: dinerProfiles[10].allergens,
         user_diets: ["Gluten-free"],
         requested_allergens: ["milk"],
         requested_diets: ["Gluten-free"],
@@ -1148,6 +1233,38 @@ async function reseedManagerArtifacts(pgClient, { restaurantId, managerUserId, d
         manager_reviewed_at: toIsoDaysAgo(10),
         manager_reviewed_by: managerUserId,
         created_at: toIsoDaysAgo(11),
+      },
+      {
+        id: randomUUID(),
+        user_id: dinerProfiles[5].userId,
+        restaurant_id: restaurantId,
+        dish_name: curry,
+        user_allergens: dinerProfiles[5].allergens,
+        user_diets: dinerProfiles[5].diets,
+        requested_allergens: ["tree nut"],
+        requested_diets: ["Vegan"],
+        user_message: "Can you confirm whether the garnish can be removed to avoid tree nuts?",
+        status: "reviewed",
+        manager_response: "Reviewed. The garnish can be left off, but we still need to verify the latest prep station handling before marking implemented.",
+        manager_reviewed_at: toIsoDaysAgo(4),
+        manager_reviewed_by: managerUserId,
+        created_at: toIsoDaysAgo(5),
+      },
+      {
+        id: randomUUID(),
+        user_id: dinerProfiles[6].userId,
+        restaurant_id: restaurantId,
+        dish_name: tofu,
+        user_allergens: dinerProfiles[6].allergens,
+        user_diets: dinerProfiles[6].diets,
+        requested_allergens: ["sesame"],
+        requested_diets: [],
+        user_message: "Is there a sesame-free topping brand available for this dish?",
+        status: "pending",
+        manager_response: null,
+        manager_reviewed_at: null,
+        manager_reviewed_by: null,
+        created_at: toIsoDaysAgo(1),
       },
     ];
 
@@ -1203,10 +1320,10 @@ async function reseedManagerArtifacts(pgClient, { restaurantId, managerUserId, d
         timestamp: toIsoDaysAgo(2),
         changes: {
           general: [
-            "Updated the website and delivery links in Restaurant settings.",
-            "Prepared the monthly confirmation review package.",
+            "Updated restaurant settings after the new QR print run.",
+            "Published revised substitution notes for the gluten-free pasta request spike.",
           ],
-          [pasta]: ["Marked wheat handling notes for follow-up review."],
+          [pasta]: ["Clarified wheat handling notes and marked the dish for follow-up during the next confirmation pass."],
         },
       },
       {
@@ -1218,10 +1335,10 @@ async function reseedManagerArtifacts(pgClient, { restaurantId, managerUserId, d
         user_email: CONFIG.managerEmail,
         timestamp: toIsoDaysAgo(4),
         changes: {
-          general: ["Reviewed active brand items before replacing the tofu topping package."],
+          general: ["Reviewed brand items attached to high-traffic vegan dishes before lunch service."],
           [tofu]: [
             "Confirmed Organic Extra Firm Tofu packaging is current.",
-            "Queued the topping brand for replacement review.",
+            "Queued the crunchy topping brand for replacement review.",
           ],
         },
       },
@@ -1234,8 +1351,8 @@ async function reseedManagerArtifacts(pgClient, { restaurantId, managerUserId, d
         user_email: CONFIG.managerEmail,
         timestamp: toIsoDaysAgo(8),
         changes: {
-          general: ["Uploaded refreshed menu images and reviewed dish overlays."],
-          [chicken]: ["Verified ingredient rows and published the latest overlay adjustments."],
+          general: ["Uploaded refreshed menu images and reviewed the full restaurant shell before opening public access."],
+          [chicken]: ["Verified ingredient rows and published updated overlay bounds after the menu page refresh."],
         },
       },
     ];
@@ -1295,9 +1412,12 @@ async function reseedManagerArtifacts(pgClient, { restaurantId, managerUserId, d
     }
 
     const loves = [
-      { id: randomUUID(), user_id: dinerUserIds[0], restaurant_id: restaurantId, dish_name: tofu },
-      { id: randomUUID(), user_id: dinerUserIds[2], restaurant_id: restaurantId, dish_name: salad },
-      { id: randomUUID(), user_id: dinerUserIds[3], restaurant_id: restaurantId, dish_name: salmon },
+      { id: randomUUID(), user_id: dinerProfiles[0].userId, restaurant_id: restaurantId, dish_name: tofu },
+      { id: randomUUID(), user_id: dinerProfiles[2].userId, restaurant_id: restaurantId, dish_name: salad },
+      { id: randomUUID(), user_id: dinerProfiles[5].userId, restaurant_id: restaurantId, dish_name: curry },
+      { id: randomUUID(), user_id: dinerProfiles[7].userId, restaurant_id: restaurantId, dish_name: pasta },
+      { id: randomUUID(), user_id: dinerProfiles[8].userId, restaurant_id: restaurantId, dish_name: salmon },
+      { id: randomUUID(), user_id: dinerProfiles[9].userId, restaurant_id: restaurantId, dish_name: salad },
     ];
 
     for (const love of loves) {
@@ -1336,6 +1456,13 @@ async function reseedManagerArtifacts(pgClient, { restaurantId, managerUserId, d
 
 async function main() {
   maybeRelaxNodeTls();
+  if (!VALID_SCENARIOS.has(CONFIG.scenario)) {
+    throw new Error(
+      `Unsupported DOCS_MANAGER_SCENARIO "${CONFIG.scenario}". Expected one of: ${Array.from(
+        VALID_SCENARIOS,
+      ).join(", ")}`,
+    );
+  }
   const databaseUrl = requiredEnv("DATABASE_URL");
   const adminClient = createAdminClient();
   const pgClient = new PgClient({
@@ -1375,19 +1502,42 @@ async function main() {
       });
       dinerUserIds.push(dinerUserId);
     }
+    const dinerProfiles = CONFIG.dinerUsers.map((dinerConfig, index) => ({
+      ...dinerConfig,
+      userId: dinerUserIds[index],
+    }));
 
-    const targetRestaurantId = await ensureTargetRestaurant(pgClient, sourceRestaurant);
-    await cloneMenuState(pgClient, sourceRestaurant.id, targetRestaurantId);
-    await reseedManagerArtifacts(pgClient, {
-      restaurantId: targetRestaurantId,
-      managerUserId,
-      dinerUserIds,
-    });
+    const targetRestaurantId = await ensureTargetRestaurant(
+      pgClient,
+      sourceRestaurant,
+      CONFIG.scenario,
+    );
+    await resetTargetRestaurantState(pgClient, targetRestaurantId);
+
+    if (CONFIG.scenario === "foundation") {
+      await copyMenuPagesOnly(pgClient, sourceRestaurant.id, targetRestaurantId);
+      await ensureRestaurantManagerAccess(pgClient, {
+        restaurantId: targetRestaurantId,
+        managerUserId,
+      });
+    } else {
+      await copyFullMenuState(pgClient, sourceRestaurant.id, targetRestaurantId);
+      await ensureRestaurantManagerAccess(pgClient, {
+        restaurantId: targetRestaurantId,
+        managerUserId,
+      });
+      await reseedManagerArtifacts(pgClient, {
+        restaurantId: targetRestaurantId,
+        managerUserId,
+        dinerProfiles,
+      });
+    }
 
     console.log(
       JSON.stringify(
         {
           ok: true,
+          scenario: CONFIG.scenario,
           targetRestaurant: {
             id: targetRestaurantId,
             slug: CONFIG.targetSlug,
