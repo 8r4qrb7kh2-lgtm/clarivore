@@ -1120,17 +1120,11 @@ export function RestaurantEditor({ editor, onNavigate, runtimeConfigHealth }) {
                   </div>
                   <div className="editorOverlayLegend" aria-label="Overlay status legend">
                     <span className="editorOverlayLegendItem">
-                      <span
-                        className="editorOverlayLegendSwatch is-published"
-                        aria-hidden="true"
-                      />
+                      <span className="legend-box safe" aria-hidden="true" />
                       Green = published
                     </span>
                     <span className="editorOverlayLegendItem">
-                      <span
-                        className="editorOverlayLegendSwatch is-unpublished"
-                        aria-hidden="true"
-                      />
+                      <span className="legend-box unsafe" aria-hidden="true" />
                       Red = unpublished
                     </span>
                   </div>
