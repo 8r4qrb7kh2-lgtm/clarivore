@@ -4,11 +4,11 @@ export function isTruthyFlag(value) {
 }
 
 // Decide which view should open first for managers.
-// Query params win, then QR behavior, then the last saved local preference.
-export function readManagerModeDefault({ editParam, isQrVisit }) {
+// Query params win, then viewer-first guest entry behavior, then the last saved local preference.
+export function readManagerModeDefault({ editParam, preferViewerMode = false }) {
   if (isTruthyFlag(editParam)) return "editor";
   if (editParam !== null) return "viewer";
-  if (isQrVisit) return "viewer";
+  if (preferViewerMode) return "viewer";
 
   try {
     return localStorage.getItem("clarivoreManagerMode") === "editor"

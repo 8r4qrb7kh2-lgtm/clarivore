@@ -45,6 +45,9 @@
 }
 
 .signInLink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
   justify-self: end;
   background: transparent;
   border: none;
@@ -53,7 +56,8 @@
   text-underline-offset: 2px;
   font-size: 0.95rem;
   line-height: 1.1;
-  white-space: nowrap;
+  max-width: 12rem;
+  text-align: right;
 }
 
 .signInLink:hover {

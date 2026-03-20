@@ -363,7 +363,7 @@ export default function RestaurantClient() {
 
   // Read all route/query inputs once so downstream hooks can use plain values.
   const slug = searchParams?.get("slug") || "";
-  const qrParam = searchParams?.get("qr");
+  const legacyGuestParam = searchParams?.get("qr");
   const guestParam = searchParams?.get("guest");
   const inviteToken = searchParams?.get("invite") || "";
   const dishNameParam = searchParams?.get("dishName") || "";
@@ -375,15 +375,15 @@ export default function RestaurantClient() {
   const autoReplaceBrandParam = searchParams?.get("autoReplaceBrand");
   const replaceBrandKeyParam = searchParams?.get("replaceBrandKey") || "";
   const replaceBrandNameParam = searchParams?.get("replaceBrandName") || "";
-  const isQrVisit = isTruthyFlag(qrParam);
-  const isGuestVisit = isTruthyFlag(guestParam);
+  const isLegacyGuestVisit = isTruthyFlag(legacyGuestParam) && !inviteToken;
+  const isGuestVisit = isTruthyFlag(guestParam) || isLegacyGuestVisit;
   const shouldOpenLog = isTruthyFlag(openLogParam);
   const shouldOpenConfirm = isTruthyFlag(openConfirmParam);
   const shouldOpenAi = isTruthyFlag(openAiParam);
   const shouldAutoReplaceBrand = isTruthyFlag(autoReplaceBrandParam);
 
   const [activeView, setActiveView] = useState(() =>
-    readManagerModeDefault({ editParam, isQrVisit }),
+    readManagerModeDefault({ editParam, preferViewerMode: isGuestVisit }),
   );
   const [favoriteBusyDish, setFavoriteBusyDish] = useState("");
   const [orderSidebarOpen, setOrderSidebarOpen] = useState(false);
@@ -402,17 +402,11 @@ export default function RestaurantClient() {
   // Single runtime source for restaurant/menu state in this page:
   // bootQuery -> loadRestaurantBoot -> database `restaurants` table.
   const bootQuery = useQuery({
-    queryKey: queryKeys.restaurant.boot(
-      slug,
-      inviteToken,
-      isQrVisit,
-      isGuestVisit,
-    ),
+    queryKey: queryKeys.restaurant.boot(slug, inviteToken, isGuestVisit),
     enabled: Boolean(supabase) && Boolean(slug),
     queryFn: async () =>
       loadRestaurantBoot({
         slug,
-        isQrVisit,
         inviteToken,
         supabaseClient: supabase,
       }),
@@ -431,9 +425,16 @@ export default function RestaurantClient() {
   const guestSelectionsInitializedRef = useRef(false);
 
   const guestReturnToPath = useMemo(() => {
-    const query = searchParams?.toString();
+    const params = new URLSearchParams(searchParams?.toString() || "");
+    if (params.has("qr")) {
+      params.delete("qr");
+      if (!inviteToken && !isTruthyFlag(params.get("guest"))) {
+        params.set("guest", "1");
+      }
+    }
+    const query = params.toString();
     return `/restaurant${query ? `?${query}` : ""}`;
-  }, [searchParams]);
+  }, [inviteToken, searchParams]);
 
   const guestAccountSigninHref = useMemo(() => {
     const params = new URLSearchParams();
@@ -550,6 +551,24 @@ export default function RestaurantClient() {
     ],
   );
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!searchParams?.has("qr")) return;
+
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("qr");
+    if (!inviteToken && !isTruthyFlag(params.get("guest"))) {
+      params.set("guest", "1");
+    }
+
+    const query = params.toString();
+    const nextUrl = `${window.location.pathname}${query ? `?${query}` : ""}${window.location.hash}`;
+    const currentUrl = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+    if (nextUrl !== currentUrl) {
+      window.history.replaceState({}, document.title, nextUrl);
+    }
+  }, [inviteToken, searchParams]);
+
   // Respect redirect responses from boot loader (manager access checks).
   useEffect(() => {
     if (!boot?.redirect) return;
@@ -561,7 +580,7 @@ export default function RestaurantClient() {
     if (!boot?.restaurant) return;
     if (boot?.user?.id) return;
     if (inviteToken) return;
-    if (isGuestVisit || isQrVisit) return;
+    if (isGuestVisit) return;
 
     const safeSlug = asText(boot?.restaurant?.slug || slug);
     const nextPath = safeSlug
@@ -574,7 +593,6 @@ export default function RestaurantClient() {
     boot?.user?.id,
     inviteToken,
     isGuestVisit,
-    isQrVisit,
     router,
     slug,
   ]);
@@ -582,10 +600,13 @@ export default function RestaurantClient() {
   // Re-evaluate default mode whenever boot data or mode-related query params change.
   useEffect(() => {
     if (!boot) return;
-    const defaultMode = readManagerModeDefault({ editParam, isQrVisit });
+    const defaultMode = readManagerModeDefault({
+      editParam,
+      preferViewerMode: isGuestVisit,
+    });
     const nextMode = boot.canEdit ? defaultMode : "viewer";
     setActiveView(nextMode);
-  }, [boot, editParam, isQrVisit]);
+  }, [boot, editParam, isGuestVisit]);
 
   const lovedDishesSet = useMemo(() => {
     return new Set(boot?.lovedDishNames || []);
@@ -618,7 +639,6 @@ export default function RestaurantClient() {
     boot,
     slug,
     inviteToken,
-    isQrVisit,
     isGuestVisit,
     editorAuthorName,
     pushToast,
@@ -959,7 +979,11 @@ export default function RestaurantClient() {
 
   const topbar = isGuestViewerSession
     ? (
-      <GuestTopbar brandHref="/guest" signInHref={guestAccountSigninHref} />
+        <GuestTopbar
+          brandHref="/guest"
+          signInHref={guestAccountSigninHref}
+          authLabel="Sign in / Create an account"
+        />
     )
     : (
       <AppTopbar

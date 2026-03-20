@@ -34,13 +34,12 @@ export const queryKeys = {
     user: (routeId = "") => ["auth", "user", { routeId: normalizeScalar(routeId) }],
   },
   restaurant: {
-    boot: (slug = "", inviteToken = "", qr = false, guest = false) => [
+    boot: (slug = "", inviteToken = "", guest = false) => [
       "restaurant",
       "boot",
       {
         slug: normalizeScalar(slug),
         inviteToken: normalizeScalar(inviteToken),
-        qr: Boolean(qr),
         guest: Boolean(guest),
       },
     ],

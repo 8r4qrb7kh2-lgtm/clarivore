@@ -60,7 +60,7 @@ function getInviteUrl(token, entryPage) {
   const origin = typeof window !== "undefined" ? window.location.origin : "";
   if (entryPage?.startsWith("restaurant:")) {
     const slug = entryPage.replace("restaurant:", "");
-    return `${origin}/restaurant?slug=${encodeURIComponent(slug)}&qr=1&invite=${token}`;
+    return `${origin}/restaurant?slug=${encodeURIComponent(slug)}&invite=${token}`;
   }
   return `${origin}/account?invite=${token}`;
 }

@@ -7,6 +7,7 @@ import styles from "./GuestTopbar.module.css";
 export default function GuestTopbar({
   brandHref = "/guest",
   signInHref = "/account?mode=signin",
+  authLabel = "Sign in",
 }) {
   return (
     <header className={styles.topbar} role="banner">
@@ -17,7 +18,7 @@ export default function GuestTopbar({
           <span>Clarivore</span>
         </Link>
         <Link className={styles.signInLink} href={signInHref}>
-          Sign in
+          {authLabel}
         </Link>
       </div>
     </header>

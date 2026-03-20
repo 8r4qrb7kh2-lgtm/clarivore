@@ -168,9 +168,7 @@ export default function GuestLandingClient() {
       diets: normalizedDiets,
     });
 
-    router.push(
-      `/restaurant?slug=${encodeURIComponent(selectedRestaurantSlug)}&qr=1&guest=1`,
-    );
+    router.push(`/restaurant?slug=${encodeURIComponent(selectedRestaurantSlug)}&guest=1`);
   }, [config, router, selectedAllergies, selectedDiets, selectedRestaurantSlug]);
 
   const renderChips = useCallback(
@@ -199,7 +197,7 @@ export default function GuestLandingClient() {
 
   if (!supabase) {
     return (
-      <PageShell topbar={<GuestTopbar />}>
+      <PageShell topbar={<GuestTopbar authLabel="Sign in / Create an account" />}>
         <p className="status-text error">Supabase env vars are missing.</p>
       </PageShell>
     );
@@ -211,7 +209,7 @@ export default function GuestLandingClient() {
 
   if (bootQuery.isError) {
     return (
-      <PageShell topbar={<GuestTopbar />}>
+      <PageShell topbar={<GuestTopbar authLabel="Sign in / Create an account" />}>
         <p className="status-text error">
           {bootQuery.error?.message || "Failed to load restaurants."}
         </p>
@@ -220,7 +218,10 @@ export default function GuestLandingClient() {
   }
 
   return (
-    <PageShell shellClassName="page-shell route-guest" topbar={<GuestTopbar />}>
+    <PageShell
+      shellClassName="page-shell route-guest"
+      topbar={<GuestTopbar authLabel="Sign in / Create an account" />}
+    >
       <div className="guest-layout">
         <FormSectionCard className="guest-card">
           <header className="guest-header">

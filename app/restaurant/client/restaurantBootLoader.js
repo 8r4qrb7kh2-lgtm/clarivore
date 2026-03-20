@@ -33,7 +33,7 @@ function isMissingSessionError(error) {
   return /auth session missing|session missing|refresh token/i.test(message);
 }
 
-// QR flows may stage temporary selections in session storage before sign-in.
+// Guest flows may stage temporary selections in session storage before sign-in.
 function readSessionSavedPreferences(config) {
   const output = { allergies: [], diets: [] };
   if (typeof window === "undefined" || !config) {
@@ -69,7 +69,6 @@ function readSessionSavedPreferences(config) {
 // Data source rule: the restaurant itself is always read from the `restaurants` table.
 export async function loadRestaurantBoot({
   slug,
-  isQrVisit,
   inviteToken,
   supabaseClient,
 }) {

@@ -208,6 +208,7 @@ export function RestaurantViewer({
   const [selectedOverlay, setSelectedOverlay] = useState(null);
   const [acknowledgedReferenceNote, setAcknowledgedReferenceNote] = useState(false);
   const [showGuestSignupBanner, setShowGuestSignupBanner] = useState(false);
+  const [guestSignupBannerDismissed, setGuestSignupBannerDismissed] = useState(false);
   const [isEditingGuestAllergens, setIsEditingGuestAllergens] = useState(false);
   const [isEditingGuestDiets, setIsEditingGuestDiets] = useState(false);
   const [draftGuestAllergenKeys, setDraftGuestAllergenKeys] = useState([]);
@@ -245,8 +246,19 @@ export function RestaurantViewer({
     setAcknowledgedReferenceNote(true);
   }, []);
 
+  const dismissGuestSignupBanner = useCallback(() => {
+    setGuestSignupBannerDismissed(true);
+    setShowGuestSignupBanner(false);
+  }, []);
+
   useEffect(() => {
-    if (!showGuestSignupPrompt || !acknowledgedReferenceNote) {
+    if (showGuestSignupPrompt) return;
+    setGuestSignupBannerDismissed(false);
+    setShowGuestSignupBanner(false);
+  }, [showGuestSignupPrompt]);
+
+  useEffect(() => {
+    if (!showGuestSignupPrompt || !acknowledgedReferenceNote || guestSignupBannerDismissed) {
       setShowGuestSignupBanner(false);
       return undefined;
     }
@@ -259,7 +271,7 @@ export function RestaurantViewer({
     return () => {
       window.clearTimeout(timer);
     };
-  }, [acknowledgedReferenceNote, showGuestSignupPrompt]);
+  }, [acknowledgedReferenceNote, guestSignupBannerDismissed, showGuestSignupPrompt]);
 
   const lastConfirmedLabel = useMemo(
     () => parseLastConfirmed(restaurant?.last_confirmed),
@@ -1627,10 +1639,20 @@ export function RestaurantViewer({
 
       {showGuestSignupBanner ? (
         <div className="restaurant-guest-signup-banner">
-          <span>
+          <span className="restaurant-guest-signup-banner-text">
             Create a free account to save your preferences and browse other restaurants
           </span>
-          <Link href={guestSignupHref}>Create a free account</Link>
+          <div className="restaurant-guest-signup-banner-actions">
+            <Link href={guestSignupHref}>Create a free account</Link>
+            <button
+              type="button"
+              className="restaurant-guest-signup-banner-dismiss"
+              aria-label="Dismiss guest sign-up prompt"
+              onClick={dismissGuestSignupBanner}
+            >
+              ×
+            </button>
+          </div>
         </div>
       ) : null}
 
