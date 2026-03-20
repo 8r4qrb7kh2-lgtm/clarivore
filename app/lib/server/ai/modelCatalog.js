@@ -29,8 +29,12 @@ export const OPENAI_MODEL_DEFAULTS = {
 export const AI_PROMPT_MODELS = {
   analyzeIngredientScan: {
     openai: {
-      defaultModel: OPENAI_MODEL_DEFAULTS.cheap,
-      candidates: [OPENAI_MODEL_DEFAULTS.cheap, OPENAI_MODEL_DEFAULTS.balanced],
+      defaultModel: "gpt-5.4",
+      candidates: [
+        "gpt-5.4",
+        OPENAI_MODEL_DEFAULTS.balanced,
+        OPENAI_MODEL_DEFAULTS.cheap,
+      ],
     },
     anthropic: {
       defaultModel: ANTHROPIC_MODEL_DEFAULTS.sonnet,
@@ -174,8 +178,12 @@ export const AI_PROMPT_MODELS = {
   },
   ingredientNameAnalysis: {
     openai: {
-      defaultModel: OPENAI_MODEL_DEFAULTS.cheap,
-      candidates: [OPENAI_MODEL_DEFAULTS.cheap, OPENAI_MODEL_DEFAULTS.balanced],
+      defaultModel: "gpt-5.4",
+      candidates: [
+        "gpt-5.4",
+        OPENAI_MODEL_DEFAULTS.balanced,
+        OPENAI_MODEL_DEFAULTS.cheap,
+      ],
     },
     anthropic: {
       defaultModel: ANTHROPIC_MODEL_DEFAULTS.haiku,

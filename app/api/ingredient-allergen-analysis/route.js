@@ -1192,6 +1192,7 @@ export async function POST(request) {
       ...process.env,
       AI_PROVIDER: "openai",
       OPENAI_MODEL_INGREDIENT_FLAGS: PINNED_OPENAI_MODEL,
+      OPENAI_MODEL_INGREDIENT_CANDIDATE_EXTRACTION: PINNED_OPENAI_MODEL,
     };
     const config = await fetchAllergenDietConfig();
     const allergenKeys = (Array.isArray(config?.allergens) ? config.allergens : [])

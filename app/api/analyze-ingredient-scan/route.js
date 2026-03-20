@@ -10,6 +10,8 @@ import { analyzeIngredientScanSchema } from "../../lib/server/ai/responseSchemas
 
 export const runtime = "nodejs";
 
+const PINNED_OPENAI_MODEL = "gpt-5.4";
+
 function asText(value) {
   return String(value ?? "").trim();
 }
@@ -68,6 +70,11 @@ export async function POST(request) {
   }
 
   try {
+    const openAiEnv = {
+      ...process.env,
+      AI_PROVIDER: "openai",
+      OPENAI_MODEL_ANALYZE_INGREDIENT_SCAN: PINNED_OPENAI_MODEL,
+    };
     const { systemPrompt, userPrompt } = buildAnalyzeIngredientScanPrompts({
       dishName,
       ingredientName,
@@ -88,6 +95,7 @@ export async function POST(request) {
                 messages: [{ role: "user", content: [createTextMessage(userPrompt)] }],
                 maxTokens: 300,
                 jsonSchema: analyzeIngredientScanSchema,
+                env: openAiEnv,
               })
             : await callAnthropicApi({
                 promptClass: "analyzeIngredientScan",
@@ -106,6 +114,7 @@ export async function POST(request) {
           },
         };
       },
+      env: openAiEnv,
     });
 
     return corsJson(

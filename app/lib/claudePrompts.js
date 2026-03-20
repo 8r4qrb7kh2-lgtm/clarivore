@@ -415,8 +415,8 @@ STEP 2: MAP ALLERGEN CODES
 
 STEP 3: MAP DIET CODES FROM THE SAME CANDIDATE ONLY
 Add diet codes only when directly justified by the same candidate text.
-- milk or egg -> include Vegan
-- fish or shellfish -> include Vegetarian and Vegan
+- animal-based ingredients (like milk, egg, honey, ...) -> include Vegan
+- meat or fish-containing ingredients (like beef, salmon, gelatin, ...) -> include Vegetarian and Vegan
 - wheat, barley, rye, or malt -> include Gluten-free
 - do NOT infer Vegetarian from milk or egg alone
 - do NOT infer unrelated diets without evidence
@@ -501,8 +501,8 @@ Re-check the candidate output in this order and fix any violation you find.
 - coconut milk/cream, oat milk, soy milk, and rice milk are not dairy milk
 - treat coconut as tree nut for allergen purposes
 4) Diet mapping:
-- milk or egg -> Vegan
-- fish or shellfish -> Vegetarian and Vegan
+- animal-based ingredients (like milk, egg, honey, ...) -> Vegan
+- meat or fish-containing ingredients (like beef, salmon, gelatin, ...) -> Vegetarian and Vegan
 - wheat, barley, rye, or malt -> Gluten-free
 - no unrelated diets
 5) Deduplication:
@@ -567,8 +567,8 @@ ADJUDICATION PROTOCOL (MANDATORY):
 - coconut milk/cream, oat milk, soy milk, and rice milk are not dairy milk
 - treat coconut as tree nut for allergen purposes
 5) Diet mapping:
-- milk or egg -> Vegan
-- fish or shellfish -> Vegetarian and Vegan
+- animal-based ingredients (like milk, egg, honey, ...) -> Vegan
+- meat or fish-containing ingredients (like beef, salmon, gelatin, ...) -> Vegetarian and Vegan
 - wheat, barley, rye, or malt -> Gluten-free
 - no unrelated diets
 6) Conflict resolution:

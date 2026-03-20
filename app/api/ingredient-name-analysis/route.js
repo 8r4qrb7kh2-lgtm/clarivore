@@ -13,6 +13,7 @@ import { ingredientNameAnalysisSchema } from "../../lib/server/ai/responseSchema
 
 export const runtime = "nodejs";
 
+const PINNED_OPENAI_MODEL = "gpt-5.4";
 const ANTHROPIC_THINKING_BUDGET_TOKENS = 1024;
 const ANTHROPIC_MIN_OUTPUT_TOKENS = 220;
 const MAX_ANALYSIS_ATTEMPTS = 3;
@@ -411,6 +412,11 @@ export async function POST(request) {
   }
 
   try {
+    const openAiEnv = {
+      ...process.env,
+      AI_PROVIDER: "openai",
+      OPENAI_MODEL_INGREDIENT_NAME_ANALYSIS: PINNED_OPENAI_MODEL,
+    };
     const config = await fetchAllergenDietConfig();
     const allergenKeys = (Array.isArray(config?.allergens) ? config.allergens : [])
       .map((allergen) => asText(allergen?.key))
@@ -493,6 +499,7 @@ export async function POST(request) {
                 maxTokens: 520,
                 jsonSchema: ingredientNameAnalysisSchema,
                 reasoningEffort: "medium",
+                env: openAiEnv,
               })
             : await runAnthropicNameAnalysis({
                 systemPrompt,
@@ -526,6 +533,7 @@ export async function POST(request) {
           },
         };
       },
+      env: openAiEnv,
     });
 
     return corsJson(
