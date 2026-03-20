@@ -15,6 +15,9 @@ export function QuickActionsSection({
   chatSending,
   managerDisplayName,
   chatListRef,
+  chatHasOlderMessages,
+  chatLoadingOlderMessages,
+  onLoadOlderMessages,
   overlayPublicationSummary,
   webpageEditorHref,
 }) {
@@ -46,6 +49,10 @@ export function QuickActionsSection({
           resolveLink={resolveManagerChatLink}
           listRef={chatListRef}
           cardClassName="quick-actions-panel"
+          listClassName="chat-preview-list"
+          hasMoreMessages={chatHasOlderMessages}
+          loadingMoreMessages={chatLoadingOlderMessages}
+          onLoadMoreMessages={onLoadOlderMessages}
           senderLabelResolver={(message) => {
             const senderName = String(message.sender_name || "").trim();
             const isOutgoing = message.sender_role === "restaurant";

@@ -81,10 +81,13 @@ export default function ManagerDashboardDomRoot({
     setChatInput,
     chatSending,
     chatListRef,
+    chatHasOlderMessages,
+    chatLoadingOlderMessages,
     clearChatState,
     loadChatState,
     onSendChatMessage,
     onAcknowledgeChat,
+    onLoadOlderMessages,
     managerChatAckByIndex,
   } = useManagerChat({
     selectedRestaurantId,
@@ -309,6 +312,9 @@ export default function ManagerDashboardDomRoot({
             chatSending={chatSending}
             managerDisplayName={managerDisplayName}
             chatListRef={chatListRef}
+            chatHasOlderMessages={chatHasOlderMessages}
+            chatLoadingOlderMessages={chatLoadingOlderMessages}
+            onLoadOlderMessages={onLoadOlderMessages}
             overlayPublicationSummary={overlayPublicationSummary}
             webpageEditorHref={
               currentRestaurantData?.slug

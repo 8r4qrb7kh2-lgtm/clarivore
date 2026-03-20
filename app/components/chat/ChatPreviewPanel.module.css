@@ -102,3 +102,25 @@
   align-items: center;
   gap: 10px;
 }
+
+.body {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.loadMoreWrap {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  justify-content: center;
+  padding: 2px 0 6px;
+  background: linear-gradient(180deg, rgba(12, 17, 34, 0.96) 0%, rgba(12, 17, 34, 0.76) 80%, rgba(12, 17, 34, 0) 100%);
+}
+
+.loadMoreButton {
+  font-size: 0.78rem;
+  padding: 6px 12px;
+}

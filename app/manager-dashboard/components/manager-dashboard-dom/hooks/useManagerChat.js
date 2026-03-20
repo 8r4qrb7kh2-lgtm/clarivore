@@ -1,6 +1,9 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { supabaseClient as supabase } from "../../../../lib/supabase";
 import { ADMIN_DISPLAY_NAME } from "../constants/dashboardConstants";
+
+const INITIAL_CHAT_PAGE_SIZE = 6;
+const CHAT_PAGE_INCREMENT = 10;
 
 // Encapsulates direct-message state and actions for the dashboard quick-actions panel.
 // The chat model is intentionally small: latest messages, read markers, unread count, and send/ack actions.
@@ -10,31 +13,50 @@ export function useManagerChat({ selectedRestaurantId, managerDisplayName, userI
   const [chatUnreadCount, setChatUnreadCount] = useState(0);
   const [chatInput, setChatInput] = useState("");
   const [chatSending, setChatSending] = useState(false);
+  const [chatVisibleCount, setChatVisibleCount] = useState(INITIAL_CHAT_PAGE_SIZE);
+  const [chatHasOlderMessages, setChatHasOlderMessages] = useState(false);
+  const [chatLoadingOlderMessages, setChatLoadingOlderMessages] = useState(false);
 
   const chatListRef = useRef(null);
+  const lastLoadedRestaurantIdRef = useRef(null);
+  const pendingScrollModeRef = useRef("bottom");
+  const preservedScrollPositionRef = useRef(null);
 
   const clearChatState = useCallback(() => {
     setChatMessages([]);
     setChatReadState({ admin: null, restaurant: null });
     setChatUnreadCount(0);
+    setChatVisibleCount(INITIAL_CHAT_PAGE_SIZE);
+    setChatHasOlderMessages(false);
+    setChatLoadingOlderMessages(false);
+    lastLoadedRestaurantIdRef.current = null;
+    preservedScrollPositionRef.current = null;
+    pendingScrollModeRef.current = "bottom";
   }, []);
 
   const loadChatState = useCallback(
-    async (restaurantId) => {
+    async (restaurantId, options = {}) => {
       if (!supabase || !restaurantId) {
         clearChatState();
         return;
       }
 
       try {
+        const isNewRestaurant = lastLoadedRestaurantIdRef.current !== restaurantId;
+        const nextVisibleCount = Math.max(
+          1,
+          Number(options.visibleCount)
+            || (isNewRestaurant ? INITIAL_CHAT_PAGE_SIZE : chatVisibleCount),
+        );
+
         // Load latest messages and read markers together to keep counts aligned.
         const [messagesResult, readsResult] = await Promise.all([
           supabase
             .from("restaurant_direct_messages")
-            .select("id, message, sender_role, sender_name, created_at")
+            .select("id, message, sender_role, sender_name, created_at", { count: "exact" })
             .eq("restaurant_id", restaurantId)
             .order("created_at", { ascending: false })
-            .limit(6),
+            .limit(nextVisibleCount),
           supabase
             .from("restaurant_direct_message_reads")
             .select("restaurant_id, reader_role, last_read_at, acknowledged_at")
@@ -66,15 +88,20 @@ export function useManagerChat({ selectedRestaurantId, managerDisplayName, userI
         if (unreadResult.error) throw unreadResult.error;
 
         // DB query is descending for cheap limit; reverse for natural chat chronology.
-        setChatMessages((messagesResult.data || []).slice().reverse());
+        const nextMessages = (messagesResult.data || []).slice().reverse();
+        pendingScrollModeRef.current = options.scrollMode || "bottom";
+        setChatMessages(nextMessages);
         setChatReadState(nextReadState);
         setChatUnreadCount(unreadResult.count || 0);
+        setChatVisibleCount(nextVisibleCount);
+        setChatHasOlderMessages((messagesResult.count || 0) > nextMessages.length);
+        lastLoadedRestaurantIdRef.current = restaurantId;
       } catch (error) {
         console.error("[manager-dashboard-next] failed to load chat", error);
         clearChatState();
       }
     },
-    [clearChatState],
+    [chatVisibleCount, clearChatState],
   );
 
   const onSendChatMessage = useCallback(async () => {
@@ -129,10 +156,52 @@ export function useManagerChat({ selectedRestaurantId, managerDisplayName, userI
     }
   }, [loadChatState, selectedRestaurantId, setStatus]);
 
-  useEffect(() => {
-    // Auto-scroll to latest message after each chat refresh.
-    if (!chatListRef.current) return;
-    chatListRef.current.scrollTop = chatListRef.current.scrollHeight;
+  const onLoadOlderMessages = useCallback(async () => {
+    if (!selectedRestaurantId || chatLoadingOlderMessages || !chatHasOlderMessages) return;
+
+    const listNode = chatListRef.current;
+    if (listNode) {
+      preservedScrollPositionRef.current = {
+        scrollHeight: listNode.scrollHeight,
+        scrollTop: listNode.scrollTop,
+      };
+    }
+
+    setChatLoadingOlderMessages(true);
+    try {
+      await loadChatState(selectedRestaurantId, {
+        visibleCount: chatVisibleCount + CHAT_PAGE_INCREMENT,
+        scrollMode: "preserve",
+      });
+    } finally {
+      setChatLoadingOlderMessages(false);
+    }
+  }, [
+    chatHasOlderMessages,
+    chatLoadingOlderMessages,
+    chatVisibleCount,
+    loadChatState,
+    selectedRestaurantId,
+  ]);
+
+  useLayoutEffect(() => {
+    const listNode = chatListRef.current;
+    if (!listNode) return;
+
+    if (pendingScrollModeRef.current === "preserve" && preservedScrollPositionRef.current) {
+      const previousPosition = preservedScrollPositionRef.current;
+      listNode.scrollTop =
+        listNode.scrollHeight - previousPosition.scrollHeight + previousPosition.scrollTop;
+      preservedScrollPositionRef.current = null;
+      pendingScrollModeRef.current = "idle";
+      return;
+    }
+
+    if (pendingScrollModeRef.current === "bottom") {
+      listNode.scrollTop = listNode.scrollHeight;
+    }
+
+    pendingScrollModeRef.current = "idle";
   }, [chatMessages]);
 
   const managerChatAckByIndex = useMemo(() => {
@@ -199,11 +268,14 @@ export function useManagerChat({ selectedRestaurantId, managerDisplayName, userI
     chatInput,
     setChatInput,
     chatSending,
+    chatHasOlderMessages,
+    chatLoadingOlderMessages,
     chatListRef,
     clearChatState,
     loadChatState,
     onSendChatMessage,
     onAcknowledgeChat,
+    onLoadOlderMessages,
     managerChatAckByIndex,
   };
 }

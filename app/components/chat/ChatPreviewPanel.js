@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import SurfaceCard from "../surfaces/SurfaceCard";
 import ChatMessageText from "./ChatMessageText";
 import { Button } from "../ui";
@@ -32,14 +32,43 @@ export default function ChatPreviewPanel({
   listRef,
   cardClassName,
   listClassName,
+  bodyClassName,
   inputPlaceholder = "Message Clarivore",
   sendLabel = "Send",
   acknowledgeLabel = "Acknowledge message(s)",
+  hasMoreMessages = false,
+  loadingMoreMessages = false,
+  onLoadMoreMessages,
+  loadMoreLabel = "View more messages",
 }) {
   const safeMessages = useMemo(
     () => (Array.isArray(messages) ? messages : []),
     [messages],
   );
+  const [showLoadMore, setShowLoadMore] = useState(Boolean(hasMoreMessages));
+
+  useEffect(() => {
+    const listNode = listRef?.current;
+    if (!hasMoreMessages) {
+      setShowLoadMore(false);
+      return undefined;
+    }
+    if (!listNode) {
+      setShowLoadMore(true);
+      return undefined;
+    }
+
+    const syncLoadMoreVisibility = () => {
+      setShowLoadMore(listNode.scrollTop <= 16);
+    };
+
+    syncLoadMoreVisibility();
+    listNode.addEventListener("scroll", syncLoadMoreVisibility, { passive: true });
+
+    return () => {
+      listNode.removeEventListener("scroll", syncLoadMoreVisibility);
+    };
+  }, [hasMoreMessages, listRef, safeMessages.length]);
 
   const headerRight = (
     <div className={styles.actions}>
@@ -54,6 +83,7 @@ export default function ChatPreviewPanel({
   return (
     <SurfaceCard
       className={cardClassName}
+      bodyClassName={`${styles.body}${bodyClassName ? ` ${bodyClassName}` : ""}`}
       title={
         <span className={styles.heading}>
           <span className={styles.title}>{title}</span>
@@ -63,6 +93,18 @@ export default function ChatPreviewPanel({
       headerRight={headerRight}
     >
       <div className={`${styles.list}${listClassName ? ` ${listClassName}` : ""}`} ref={listRef}>
+        {hasMoreMessages && showLoadMore ? (
+          <div className={styles.loadMoreWrap}>
+            <Button
+              className={styles.loadMoreButton}
+              type="button"
+              onClick={onLoadMoreMessages}
+              disabled={loadingMoreMessages}
+            >
+              {loadingMoreMessages ? "Loading..." : loadMoreLabel}
+            </Button>
+          </div>
+        ) : null}
         {safeMessages.length === 0 ? (
           <div className={styles.empty}>{emptyText}</div>
         ) : (

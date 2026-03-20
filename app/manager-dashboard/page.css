@@ -444,10 +444,11 @@
       margin-bottom: 24px;
     }
 
-    .route-manager-dashboard .quick-actions-section > .quick-actions-grid {
+    .route-manager-dashboard .quick-actions-section .quick-actions-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 20px;
+      align-items: stretch;
       width: 100%;
     }
 
@@ -458,13 +459,13 @@
       padding: 24px;
       display: flex;
       flex-direction: column;
-      height: var(--dashboard-panel-height, auto);
-      max-height: var(--dashboard-panel-height, none);
+      height: 100%;
       width: 100%;
       min-width: 0;
     }
 
     .route-manager-dashboard .publication-summary-panel {
+      align-items: flex-start;
       justify-content: space-between;
       gap: 12px;
     }
@@ -493,14 +494,14 @@
 
     .route-manager-dashboard .publication-summary-link {
       margin-top: auto;
-      width: fit-content;
+      width: 100%;
     }
 
     .route-manager-dashboard .dashboard-split {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 20px;
-      align-items: start;
+      align-items: stretch;
       width: 100%;
     }
 
@@ -512,8 +513,7 @@
       display: flex;
       flex-direction: column;
       min-height: 0;
-      height: var(--dashboard-panel-height, auto);
-      max-height: var(--dashboard-panel-height, none);
+      height: 100%;
       width: 100%;
       min-width: 0;
     }
@@ -532,6 +532,7 @@
       display: flex;
       flex-direction: column;
       gap: 10px;
+      min-height: 0;
       max-height: 320px;
       overflow-y: auto;
       padding-right: 4px;
@@ -791,9 +792,11 @@
     }
 
     .route-manager-dashboard .brand-items-list {
+      flex: 1;
       display: flex;
       flex-direction: column;
       gap: 12px;
+      min-height: 0;
       max-height: 420px;
       overflow-y: auto;
       padding-right: 4px;
@@ -979,7 +982,7 @@
     }
 
     @media (max-width: 768px) {
-      .route-manager-dashboard .quick-actions-section > .quick-actions-grid {
+      .route-manager-dashboard .quick-actions-section .quick-actions-grid {
         grid-template-columns: 1fr;
       }
 
