@@ -805,7 +805,11 @@ export default function AccountClient() {
       shellClassName="page-shell route-account"
       topbar={
         showGuestChrome ? (
-          <GuestTopbar brandHref="/guest" signInHref={guestSignInHref} />
+          <GuestTopbar
+            brandHref="/guest"
+            signInHref={guestSignInHref}
+            showAuthAction={false}
+          />
         ) : (
           <AppTopbar
             mode={topbarMode}

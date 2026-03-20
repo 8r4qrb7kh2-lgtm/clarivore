@@ -8,6 +8,7 @@ export default function GuestTopbar({
   brandHref = "/guest",
   signInHref = "/account?mode=signin",
   authLabel = "Sign in",
+  showAuthAction = true,
 }) {
   return (
     <header className={styles.topbar} role="banner">
@@ -17,9 +18,11 @@ export default function GuestTopbar({
           <img src={CLARIVORE_LOGO_SRC} alt="Clarivore logo" />
           <span>Clarivore</span>
         </Link>
-        <Link className={styles.signInLink} href={signInHref}>
-          {authLabel}
-        </Link>
+        {showAuthAction ? (
+          <Link className={styles.signInLink} href={signInHref}>
+            {authLabel}
+          </Link>
+        ) : null}
       </div>
     </header>
   );
