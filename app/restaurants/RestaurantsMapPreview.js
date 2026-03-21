@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import RestaurantCard from "../components/RestaurantCard";
 import { formatDistanceMiles, loadGoogleMapsApi } from "./googleMapsLocation";
 
 const SINGLE_LOCATION_PREVIEW_ZOOM = 13;
@@ -281,6 +282,7 @@ export default function RestaurantsMapPreview({
   zipCode = "",
   locations = [],
   isLoading = false,
+  confirmationShowAll = true,
 }) {
   const mapRef = useRef(null);
   const placePreviewCacheRef = useRef(new Map());
@@ -535,40 +537,47 @@ export default function RestaurantsMapPreview({
               {visibleLocations.map((location) => {
                 const distanceLabel = formatDistanceMiles(location.distanceMiles);
                 const isActive = location.locationKey === activeLocationKey;
+                const restaurant = location.restaurant || {
+                  slug: "",
+                  name: location.name || "Restaurant",
+                  menuImage: "",
+                  last_confirmed: null,
+                };
+                const additionalMeta = [
+                  distanceLabel ? `Distance: ${distanceLabel}` : "",
+                  location.formattedAddress ? `Near: ${location.formattedAddress}` : "",
+                ];
 
                 return (
-                  <button
+                  <div
                     key={location.locationKey}
-                    type="button"
                     role="listitem"
                     className={`restaurants-map-preview-list-item${isActive ? " is-active" : ""}`}
                     onMouseEnter={() =>
                       openLocationPreviewRef.current(location.locationKey)
                     }
-                    onFocus={() =>
+                    onFocusCapture={() =>
                       openLocationPreviewRef.current(location.locationKey)
                     }
-                    onClick={() =>
-                      openLocationPreviewRef.current(location.locationKey)
-                    }
+                    onClick={(event) => {
+                      if (event.target instanceof Element && event.target.closest("a")) {
+                        return;
+                      }
+                      openLocationPreviewRef.current(location.locationKey);
+                    }}
                   >
-                    <span className="restaurants-map-preview-pin">
-                      {location.markerLabel}
-                    </span>
-                    <span className="restaurants-map-preview-list-copy">
-                      <strong>{location.name || "Restaurant"}</strong>
-                      {distanceLabel ? (
-                        <span className="restaurants-map-preview-list-meta">
-                          {distanceLabel} away
+                    <RestaurantCard
+                      restaurant={restaurant}
+                      confirmationShowAll={confirmationShowAll}
+                      confirmationUseMonthLabel
+                      additionalMeta={additionalMeta}
+                      mediaOverlay={
+                        <span className="restaurants-map-preview-pin restaurants-map-preview-card-pin">
+                          {location.markerLabel}
                         </span>
-                      ) : null}
-                      {location.formattedAddress ? (
-                        <span className="restaurants-map-preview-list-address">
-                          {location.formattedAddress}
-                        </span>
-                      ) : null}
-                    </span>
-                  </button>
+                      }
+                    />
+                  </div>
                 );
               })}
             </div>

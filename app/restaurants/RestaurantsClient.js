@@ -360,9 +360,33 @@ export default function RestaurantsClient({ googleMapsApiKey = "" }) {
   });
 
   const distanceByRestaurantId = distanceLookupQuery.data?.byRestaurantId || {};
+  const restaurantsById = useMemo(() => {
+    const entries = new Map();
+    restaurants.forEach((restaurant) => {
+      const restaurantId = String(restaurant?.id || "");
+      if (!restaurantId) return;
+      entries.set(restaurantId, restaurant);
+    });
+    return entries;
+  }, [restaurants]);
+
   const mapPreviewLocations = useMemo(
     () =>
       [...(Array.isArray(distanceLookupQuery.data?.locations) ? distanceLookupQuery.data.locations : [])]
+        .map((location) => {
+          const restaurantId = String(location?.restaurantId || "");
+          const restaurant = restaurantsById.get(restaurantId);
+
+          return {
+            ...location,
+            restaurant: restaurant
+              ? {
+                  ...restaurant,
+                  name: location?.name || restaurant?.name || "Restaurant",
+                }
+              : null,
+          };
+        })
         .sort((a, b) => {
           const aDistance = Number.isFinite(a?.distanceMiles)
             ? Number(a.distanceMiles)
@@ -372,7 +396,7 @@ export default function RestaurantsClient({ googleMapsApiKey = "" }) {
             : Number.POSITIVE_INFINITY;
           return aDistance - bDistance;
         }),
-    [distanceLookupQuery.data?.locations],
+    [distanceLookupQuery.data?.locations, restaurantsById],
   );
 
   const sortedRestaurants = useMemo(() => {
@@ -527,6 +551,7 @@ export default function RestaurantsClient({ googleMapsApiKey = "" }) {
                 zipCode={normalizedZipCode}
                 locations={mapPreviewLocations}
                 isLoading={distanceLookupQuery.isPending}
+                confirmationShowAll={isOwner || isManager}
               />
             ) : null}
             <div
